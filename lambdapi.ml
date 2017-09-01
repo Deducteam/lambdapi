@@ -205,7 +205,6 @@ type p_term =
   | P_Type
   | P_Kind
   | P_Prod of string * p_term * p_term
-  | P_Arrw of p_term * p_term
   | P_Abst of string * p_term * p_term
   | P_Appl of p_term * p_term
 
@@ -227,13 +226,9 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Atom
       -> P_Kind
   (* Product *)
-  | "Π" x:ident ":" a:(expr `Atom) "." b:(expr `Func)
+  | x:{ident ":"}?["_"] a:(expr `Appl) "⇒" b:(expr `Func)
       when p = `Func
       -> P_Prod(x,a,b)
-  (* Arrow *)
-  | a:(expr `Appl) "⇒" b:(expr `Func)
-      when p = `Func
-      -> P_Arrw(a,b)
   (* Abstraction *)
   | "λ" x:ident ":" a:(expr `Atom) "." t:(expr `Func)
       when p = `Func
@@ -305,11 +300,12 @@ let to_term : ctxt -> p_term -> term = fun ctx t ->
                        in box_of_var x
     | P_Type        -> t_type
     | P_Kind        -> t_kind
-    | P_Prod(x,a,b) -> t_prod (build vars a) x
-                         (fun v -> build ((x,v)::vars) b)
-    | P_Arrw(a,b)   -> t_prod (build vars a) "_" (fun _ -> build vars b)
-    | P_Abst(x,a,t) -> t_abst (build vars a) x
-                         (fun v -> build ((x,v)::vars) t)
+    | P_Prod(x,a,b) -> let f v =
+                         build (if x = "_" then vars else (x,v)::vars) b
+                       in
+                       t_prod (build vars a) x f
+    | P_Abst(x,a,t) -> let f v = build ((x,v)::vars) t in
+                       t_abst (build vars a) x f
     | P_Appl(t,u)   -> t_appl (build vars t) (build vars u)
   in
   unbox (build [] t)

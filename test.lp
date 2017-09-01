@@ -2,7 +2,7 @@ kind var X : Type;
 kind var Y : Type;
 kind var A : Type;
 
-check λx:X.x : Πx:X.X;
+check λx:X.x : x:X ⇒ X;
 
 check λx:X.λy:Y.x : X ⇒ Y ⇒ X;
 
@@ -12,4 +12,4 @@ type var succ : nat ⇒ nat;
 
 kind var vec  : nat ⇒ Type;
 type var nil  : vec zero;
-type var cons : Πn:nat.A ⇒ vec n ⇒ vec (succ n);
+type var cons : n:nat ⇒ A ⇒ vec n ⇒ vec (succ n);
