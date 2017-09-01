@@ -18,7 +18,7 @@ let mkfree : term var -> term =
   fun x -> Vari(x)
 
 (* Smart constructors *)
-let t_type : tbox = box Kind
+let t_type : tbox = box Type
 let t_kind : tbox = box Kind
 
 let t_prod : tbox -> string -> (tvar -> tbox) -> tbox =
@@ -41,6 +41,12 @@ let rec find : term var -> ctxt -> term = fun x ctx ->
   | Empty          -> raise Not_found
   | ConsT(ctx,y,b) -> if eq_vars x y then b else find x ctx
   | ConsK(ctx,y,b) -> if eq_vars x y then b else find x ctx
+
+let rec find_name : string -> ctxt -> term var = fun x ctx ->
+  match ctx with
+  | Empty          -> raise Not_found
+  | ConsT(ctx,y,b) -> if name_of y = x then y else find_name x ctx
+  | ConsK(ctx,y,b) -> if name_of y = x then y else find_name x ctx
 
 (* Evaluation *)
 let rec whnf : term -> term = fun t ->
@@ -101,6 +107,28 @@ let rec lift : term -> tbox = fun t ->
 let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
 
+(* Printing *)
+let rec print_term : out_channel -> term -> unit = fun oc t ->
+  match t with
+  | Vari(x)   -> output_string oc (name_of x)
+  | Type      -> output_string oc "Type"
+  | Kind      -> output_string oc "Kind"
+  | Prod(a,b) -> let (x,b) = unbind mkfree b in
+                 Printf.fprintf oc "Π%s:%a.%a" (name_of x)
+                   print_term a print_term b
+  | Abst(a,t) -> let (x,t) = unbind mkfree t in
+                 Printf.fprintf oc "λ%s:%a.%a" (name_of x)
+                   print_term a print_term t
+  | Appl(t,u) -> Printf.fprintf oc "(%a) (%a)" print_term t print_term u
+
+let rec print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
+  match ctx with
+  | Empty          -> output_string oc "∅"
+  | ConsT(ctx,x,a) -> Printf.fprintf oc "%a, Type %s : %a"
+                        print_ctxt ctx (name_of x) print_term a
+  | ConsK(ctx,x,a) -> Printf.fprintf oc "%a, Kind %s : %a"
+                        print_ctxt ctx (name_of x) print_term a
+
 (* Judgements *)
 let rec well_formed : ctxt -> bool = fun ctx ->
   match ctx with
@@ -127,6 +155,8 @@ and infer : ctxt -> term -> term = fun ctx t ->
                  end
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
+  Printf.printf "Proving: %a ⊢ %a : %a\n%!"
+    print_ctxt ctx print_term t print_term a;
   let a = whnf a in
   match (t, a) with
   (* Sort *)
@@ -173,7 +203,10 @@ type p_term =
   | P_Abst of string * p_term * p_term
   | P_Appl of p_term * p_term
 
-let parser ident = ''[a-zA-Z]+''
+let check_not_reserved id =
+  if List.mem id ["Type"; "Kind"] then Earley.give_up ()
+
+let parser ident = id:''[a-zA-Z]+'' -> check_not_reserved id; id
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | x:ident
@@ -208,19 +241,58 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Atom)
       when p = `Appl
 
+let expr = expr `Func
+
+type p_item =
+  | NewKVar of string * p_term
+  | NewTVar of string * p_term
+  | DoCheck of p_term * p_term
+
+let parser toplevel =
+  | "kind" "var" x:ident ":" a:expr -> NewKVar(x,a)
+  | "type" "var" x:ident ":" a:expr -> NewTVar(x,a)
+  | "check" t:expr ":" a:expr       -> DoCheck(t,a)
+
+let parser full = {l:toplevel ";"}*
+
+(** Blank function for basic blank characters (' ', '\t', '\r' and '\n')
+    and line comments starting with "//". *)
+let blank buf pos =
+  let rec fn state prev ((buf0, pos0) as curr) =
+    let (c, buf1, pos1) = Input.read buf0 pos0 in
+    let next = (buf1, pos1) in
+    match (state, c) with
+    (* Basic blancs. *)
+    | (`Ini, ' ' )
+    | (`Ini, '\t')
+    | (`Ini, '\r')
+    | (`Ini, '\n') -> fn `Ini curr next
+    (* Comment. *)
+    | (`Ini, '/' ) -> fn `Opn curr next
+    | (`Opn, '/' ) -> let p = (buf1, Input.line_length buf1) in fn `Ini p p
+    (* Other. *)
+    | (`Opn, _   ) -> prev
+    | (`Ini, _   ) -> curr
+  in
+  fn `Ini (buf, pos) (buf, pos)
+
+let parse_file : string -> p_item list =
+  Earley.(handle_exception (parse_file full blank))
+
 let parse : string -> p_term =
-  Earley.(handle_exception (parse_string (expr `Func) (blank_regexp "[ ]*")))
+  Earley.(handle_exception (parse_string expr blank))
 
 type context = (string * term var) list
 
-let find_ident : string -> context -> term var = fun x vars ->
-  try List.assoc x vars with Not_found ->
-    Printf.eprintf "Unbound variable %S...\n%!" x; exit 1
-
-let to_term : context -> p_term -> term = fun vars t ->
-  let rec build : context -> p_term -> tbox = fun vars t ->
+let to_term : ctxt -> p_term -> term = fun ctx t ->
+  let rec build vars t =
     match t with
-    | P_Vari(x)     -> box_of_var (find_ident x vars)
+    | P_Vari(x)     -> let x =
+                         try List.assoc x vars with Not_found ->
+                         try find_name x ctx with Not_found ->
+                         Printf.eprintf "Unbound variable %S...\n%!" x;
+                         exit 1
+                       in box_of_var x
     | P_Type        -> t_type
     | P_Kind        -> t_kind
     | P_Prod(x,a,b) -> t_prod (build vars a) x
@@ -229,18 +301,44 @@ let to_term : context -> p_term -> term = fun vars t ->
                          (fun v -> build ((x,v)::vars) t)
     | P_Appl(t,u)   -> t_appl (build vars t) (build vars u)
   in
-  unbox (build vars t)
+  unbox (build [] t)
 
-let parse_term : context -> string -> term = fun vars str ->
-  to_term vars (parse str)
+(* Interpret the term given as a string *)
+let parse_term : ctxt -> string -> term = fun ctx str ->
+  to_term ctx (parse str)
 
-(* Tests *)
+(* Interpret a whole file *)
+let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
+  let handle_item : ctxt -> p_item -> ctxt = fun ctx it ->
+    match it with
+    | NewKVar(x,a) -> let a = to_term ctx a in
+                      let xx = new_var mkfree x in
+                      if has_type ctx a Kind then ConsK(ctx,xx,a) else
+                        begin
+                          Printf.eprintf "(kind) Type error on %s...\n%!" x;
+                          exit 1
+                        end
+    | NewTVar(x,a) -> let a = to_term ctx a in
+                      let xx = new_var mkfree x in
+                      if has_type ctx a Type then ConsT(ctx,xx,a) else
+                        begin
+                          Printf.eprintf "(type) Type error on %s...\n%!" x;
+                          exit 1
+                        end
+    | DoCheck(t,a) -> let t = to_term ctx t in
+                      let a = to_term ctx a in
+                      if has_type ctx t a then ctx else
+                        begin
+                          Printf.eprintf "(check) Type error...\n%!";
+                          exit 1
+                        end
+  in
+  List.fold_left handle_item ctx (parse_file fname)
+
+(* Run files *)
 let _ =
-  let _X = new_var mkfree "X" in
-  let ctx = ConsK(Empty, _X, Type) in
-  let vars = [("X", _X)] in
-  let id = parse_term vars "λx:X.x" in
-  let ty = parse_term vars "Πx:X.X" in
-  assert (has_type ctx id ty);
-  assert (not (has_type ctx ty id));
-  Printf.printf "OK!\n%!"
+  let ctx = ref Empty in
+  for i = 1 to Array.length Sys.argv - 1 do
+    ctx := handle_file !ctx Sys.argv.(i)
+  done;
+  Printf.printf "Done.\n%!"
