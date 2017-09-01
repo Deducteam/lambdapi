@@ -155,8 +155,6 @@ and infer : ctxt -> term -> term = fun ctx t ->
                  end
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
-  Printf.printf "Proving: %a ⊢ %a : %a\n%!"
-    print_ctxt ctx print_term t print_term a;
   let a = whnf a in
   match (t, a) with
   (* Sort *)
@@ -193,6 +191,13 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
                               && has_type ctx u a
   (* No rule apply. *)
   | (_        , _        ) -> false
+
+let has_type : ctxt -> term -> term -> bool = fun ctx t a ->
+  let res = has_type ctx t a in
+  if not res then
+    Printf.printf "Failed to prove: %a ⊢ %a : %a\n%!"
+      print_ctxt ctx print_term t print_term a;
+  res
 
 (* Parser *)
 type p_term =
