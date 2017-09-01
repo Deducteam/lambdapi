@@ -226,7 +226,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Func
       -> P_Prod(x,a,b)
   (* Arrow *)
-  | a:(expr `Atom) "⇒" b:(expr `Func)
+  | a:(expr `Appl) "⇒" b:(expr `Func)
       when p = `Func
       -> P_Arrw(a,b)
   (* Abstraction *)
