@@ -113,7 +113,7 @@ let rec rewrite : ctxt -> term -> term = fun ctx t ->
       | [t]   -> t
       | t::ts ->
           let nb = List.length ts in
-          Printf.eprintf "could apply %i other rules...\n%!" nb; t
+          Printf.eprintf "(WARN) %i other rules apply...\n%!" nb; t
 
 and match_term : ctxt -> int -> rule -> term -> term option = fun ctx e r t ->
   let ar = mbinder_arity r.definition in
@@ -430,12 +430,12 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let xx = new_var mkfree x in
         if has_type ctx a Type then
           begin
-            Printf.printf "(Type) %s\t= %a\n%!" x print_term a;
+            Printf.printf "(type) %s\t= %a\n%!" x print_term a;
             add_var xx a ctx
           end
         else if has_type ctx a Kind then
           begin
-            Printf.printf "(Kind) %s\t= %a\n%!" x print_term a;
+            Printf.printf "(kind) %s\t= %a\n%!" x print_term a;
             add_var xx a ctx
           end
         else
@@ -460,7 +460,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
           | Some(x,i) ->
               let rule = {definition; constructor = x; arity = i} in
               (* TODO check type. *)
-              Printf.printf "(Rule) %a → %a\n%!" print_term t print_term u;
+              Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
               add_rule rule ctx
         end
     | Check(t,a)   ->
@@ -468,12 +468,12 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let a = to_term ctx a in
         if has_type ctx t a then
           begin
-            Printf.printf "(Chck) %a : %a\n%!" print_term t print_term a;
+            Printf.printf "(chck) %a : %a\n%!" print_term t print_term a;
             ctx
           end
         else
           begin
-            Printf.eprintf "(check) Type error...\n%!";
+            Printf.eprintf "(chck) Type error...\n%!";
             exit 1
           end
     | Infer(t)     ->
@@ -481,9 +481,9 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         begin
           try
             let a = infer ctx t in
-            Printf.eprintf "(infer) %a : %a\n%!" print_term t print_term a
+            Printf.eprintf "(infr) %a : %a\n%!" print_term t print_term a
           with Not_found ->
-            Printf.eprintf "(infer) %a : UNABLE TO INFER\n%!"
+            Printf.eprintf "(infr) %a : UNABLE TO INFER\n%!"
               print_term t
         end;
         ctx
@@ -500,5 +500,4 @@ let _ =
   let ctx = ref empty_ctxt in
   for i = 1 to Array.length Sys.argv - 1 do
     ctx := handle_file !ctx Sys.argv.(i)
-  done;
-  Printf.printf "Done.\n%!"
+  done

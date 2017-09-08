@@ -20,8 +20,10 @@ cons : n:Nat ⇒ Nat ⇒ Vec n ⇒ Vec (succ n).
 #CHECK cons zero (succ zero) nil, Vec (succ zero).
 
 add  : Nat ⇒ Nat ⇒ Nat.
-[m]   add zero     m → m.
-[m n] add (succ n) m → succ (add n m).
+[n]   add n        zero     → n.
+[m]   add zero     m        → m.
+[m n] add (succ n) m        → succ (add n m).
+[m n] add n        (succ m) → succ (add n m).
 
 #EVAL (λx:Nat.x) zero.
 #EVAL add zero zero.
