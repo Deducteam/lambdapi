@@ -172,7 +172,7 @@ let rec lift : term -> tbox = fun t ->
   | Abst(a,t) -> t_abst (lift a) (binder_name t)
                    (fun x -> lift (subst t (free_of x)))
   | Appl(t,u) -> t_appl (lift t) (lift u)
-  | Unif(tr)  -> assert false (* FIXME *) 
+  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
 
 let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
@@ -445,7 +445,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
           end
     | Rule(xs,t,u) ->
         let xs = new_mvar mkfree (Array.of_list xs) in
-        let add x ctx = add_var x Type ctx in
+        let add x ctx = add_var x (Unif(ref None)) ctx in
         let ctx = Array.fold_right add xs ctx in
         let t = to_tbox ctx t in
         let u = to_tbox ctx u in
@@ -459,9 +459,15 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
               exit 1
           | Some(x,i) ->
               let rule = {definition; constructor = x; arity = i} in
-              (* TODO check type. *)
-              Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
-              add_rule rule ctx
+              try
+                let tt = infer ctx t in
+                let tu = infer ctx u in
+                if not (eq ctx tt tu) then raise Not_found;
+                Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
+                add_rule rule ctx
+              with Not_found ->
+                Printf.eprintf "Ill-typed rule...\n%!";
+                exit 1
         end
     | Check(t,a)   ->
         let t = to_term ctx t in
