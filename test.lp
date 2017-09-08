@@ -1,15 +1,28 @@
-kind var X : Type;
-kind var Y : Type;
-kind var A : Type;
+X : Type.
+Y : Type.
 
-check λx:X.x : x:X ⇒ X;
+#CHECK λx:X.x, x:X ⇒ X.
+#CHECK λx:X.λy:Y.x, X ⇒ Y ⇒ X.
 
-check λx:X.λy:Y.x : X ⇒ Y ⇒ X;
+Nat  : Type.
+zero : Nat.
+succ : Nat ⇒ Nat.
 
-kind var nat  : Type;
-type var zero : nat;
-type var succ : nat ⇒ nat;
+Vec  : Nat ⇒ Type.
+nil  : Vec zero.
+cons : n:Nat ⇒ Nat ⇒ Vec n ⇒ Vec (succ n).
 
-kind var vec  : nat ⇒ Type;
-type var nil  : vec zero;
-type var cons : n:nat ⇒ A ⇒ vec n ⇒ vec (succ n);
+#INFER nil.
+#INFER cons zero.
+#INFER cons zero zero nil.
+
+#CHECK nil, Vec zero.
+#CHECK cons zero (succ zero) nil, Vec (succ zero).
+
+add  : Nat ⇒ Nat ⇒ Nat.
+[m]   add zero     m → m.
+[m n] add (succ n) m → succ (add n m).
+
+#EVAL (λx:Nat.x) zero.
+#EVAL add zero zero.
+#EVAL add (succ (succ zero)) (succ zero).
