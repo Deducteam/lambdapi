@@ -2,6 +2,9 @@ open Bindlib
 
 let debug = ref false
 
+type p = P
+type t = T
+
 (* AST *)
 type term =
   | Vari of term var
@@ -10,6 +13,7 @@ type term =
   | Prod of term * (term,term) binder
   | Abst of term * (term,term) binder
   | Appl of term * term
+  | Unif of term option ref
 
 type tbox = term bindbox
 
@@ -74,8 +78,6 @@ let find_name : string -> ctxt -> term var = fun x ctx ->
   fst (List.find (fun (y,_) -> name_of y = x) ctx.variables)
 
 (* Evaluation *)
-let match_rule : (term, term * term) binder 
-
 let rec rewrite : ctxt -> term -> term = fun ctx t ->
   match pattern_data t with
   | None      -> t
