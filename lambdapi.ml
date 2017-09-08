@@ -100,83 +100,6 @@ let remove_args : term -> int -> term * term list = fun t n ->
 let add_args : term -> term list -> term =
   List.fold_left (fun t u -> Appl(t,u))
 
-(* Evaluation *)
-let rec rewrite : ctxt -> term -> term = fun ctx t ->
-  match pattern_data t with
-  | None      -> t
-  | Some(x,i) ->
-      let rs = find_rules x i ctx in
-      let ts = List.rev_map (fun (i,r) -> match_term ctx i r t) rs in
-      let ts = from_opt_rev ts in
-      match ts with
-      | []    -> t
-      | [t]   -> t
-      | t::ts ->
-          let nb = List.length ts in
-          Printf.eprintf "(WARN) %i other rules apply...\n%!" nb; t
-
-and match_term : ctxt -> int -> rule -> term -> term option = fun ctx e r t ->
-  let ar = mbinder_arity r.definition in
-  let (l,r) = msubst r.definition (Array.init ar (fun _ -> Unif(ref None))) in
-  let (t,args) = remove_args t e in
-  if eq ~no_whnf:true ctx t l then Some(add_args r args) else None
-
-and whnf : ctxt -> term -> term = fun ctx t ->
-  let t = rewrite ctx t in
-  match t with
-  | Appl(t,u) ->
-      begin
-        match t with
-        | Abst(_,f) -> whnf ctx (subst f (whnf ctx u))
-        | t         -> Appl(t, whnf ctx u)
-      end
-  | _         -> t
-
-(* Equality *)
-and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
-  fun ?(no_whnf=false) ctx a b ->
-  let eq_binder f g =
-    let x = free_of (new_var mkfree "_") in
-    eq ctx (subst f x) (subst g x)
-  in
-  let a = if no_whnf then a else whnf ctx a in
-  let b = if no_whnf then b else whnf ctx b in
-  match (a,b) with
-  | (Vari(x)  , Vari(y)  ) -> eq_vars x y
-  | (Type     , Type     ) -> true
-  | (Kind     , Kind     ) -> true
-  | (Prod(a,f), Prod(b,g)) -> eq ctx a b && eq_binder f g
-  | (Abst(a,f), Abst(b,g)) -> eq ctx a b && eq_binder f g
-  | (Appl(t,u), Appl(f,g)) -> eq ctx t f && eq ctx u g
-  | (Unif(r)  , _        ) ->
-      begin
-        match !r with
-        | None   -> r := Some(b); true
-        | Some a -> eq ctx a b
-      end
-  | (_        , Unif(r)  ) ->
-      begin
-        match !r with
-        | None   -> r := Some(a); true
-        | Some b -> eq ctx a b
-      end
-  | (_        , _        ) -> false
-
-let rec lift : term -> tbox = fun t ->
-  match t with
-  | Vari(x)   -> box_of_var x
-  | Type      -> t_type
-  | Kind      -> t_kind
-  | Prod(a,b) -> t_prod (lift a) (binder_name b)
-                   (fun x -> lift (subst b (free_of x)))
-  | Abst(a,t) -> t_abst (lift a) (binder_name t)
-                   (fun x -> lift (subst t (free_of x)))
-  | Appl(t,u) -> t_appl (lift t) (lift u)
-  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
-
-let bind_vari : term var -> term -> (term,term) binder = fun x t ->
-  unbox (bind_var x (lift t))
-
 (* Printing *)
 let rec print_term : out_channel -> term -> unit = fun oc t ->
   let rec is_abst t =
@@ -189,6 +112,7 @@ let rec print_term : out_channel -> term -> unit = fun oc t ->
   let rec is_appl t =
     match t with
     | Appl(_,_) -> true
+    | Abst(_,_) -> true
     | Unif(r)   -> (match !r with None -> false | Some t -> is_appl t)
     | _         -> false
   in
@@ -233,6 +157,83 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
         else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
   in print_vars oc ctx.variables
 
+(* Evaluation *)
+let rec rewrite : ctxt -> term -> term = fun ctx t ->
+  match pattern_data t with
+  | None      -> t
+  | Some(x,i) ->
+      let rs = find_rules x i ctx in
+      let ts = List.rev_map (fun (i,r) -> match_term ctx i r t) rs in
+      let ts = from_opt_rev ts in
+      match ts with
+      | []    -> t
+      | [t]   -> t
+      | t::ts ->
+          let nb = List.length ts in
+          Printf.eprintf "(WARN) %i other rules apply...\n%!" nb; t
+
+and match_term : ctxt -> int -> rule -> term -> term option = fun ctx e r t ->
+  let ar = mbinder_arity r.definition in
+  let (l,r) = msubst r.definition (Array.init ar (fun _ -> Unif(ref None))) in
+  let (t,args) = remove_args t e in
+  if eq ~no_whnf:true ctx t l then Some(add_args r args) else None
+
+and eval : ctxt -> term -> term = fun ctx t ->
+  let t = rewrite ctx t in
+  match t with
+  | Appl(t,u) ->
+      begin
+        match t with
+        | Abst(_,f) -> eval ctx (subst f (eval ctx u))
+        | t         -> Appl(t, eval ctx u)
+      end
+  | _         -> t
+
+(* Equality *)
+and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
+  fun ?(no_whnf=false) ctx a b ->
+  let eq_binder f g =
+    let x = free_of (new_var mkfree "_eq_binder_") in
+    eq ctx (subst f x) (subst g x)
+  in
+  let a = if no_whnf then a else eval ctx a in
+  let b = if no_whnf then b else eval ctx b in
+  match (a,b) with
+  | (Vari(x)  , Vari(y)  ) -> eq_vars x y
+  | (Type     , Type     ) -> true
+  | (Kind     , Kind     ) -> true
+  | (Prod(a,f), Prod(b,g)) -> eq ctx a b && eq_binder f g
+  | (Abst(a,f), Abst(b,g)) -> eq ctx a b && eq_binder f g
+  | (Appl(t,u), Appl(f,g)) -> eq ctx t f && eq ctx u g
+  | (Unif(r)  , _        ) ->
+      begin
+        match !r with
+        | None   -> r := Some(b); true
+        | Some a -> eq ctx a b
+      end
+  | (_        , Unif(r)  ) ->
+      begin
+        match !r with
+        | None   -> r := Some(a); true
+        | Some b -> eq ctx a b
+      end
+  | (_        , _        ) -> false
+
+let rec lift : term -> tbox = fun t ->
+  match t with
+  | Vari(x)   -> box_of_var x
+  | Type      -> t_type
+  | Kind      -> t_kind
+  | Prod(a,b) -> t_prod (lift a) (binder_name b)
+                   (fun x -> lift (subst b (free_of x)))
+  | Abst(a,t) -> t_abst (lift a) (binder_name t)
+                   (fun x -> lift (subst t (free_of x)))
+  | Appl(t,u) -> t_appl (lift t) (lift u)
+  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
+
+let bind_vari : term var -> term -> (term,term) binder = fun x t ->
+  unbox (bind_var x (lift t))
+
 (* Judgements *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   match t with
@@ -267,7 +268,7 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
       Printf.printf "%a ⊢ %a : %a\n%!"
         print_ctxt ctx print_term t print_term a
     end;
-  let a = whnf ctx a in
+  let a = eval ctx a in
   match (t, a) with
   (* Sort *)
   | (Type     , Kind     ) -> true
@@ -495,7 +496,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         ctx
     | Eval(t)      ->
         let t = to_term ctx t in
-        let v = whnf ctx t in
+        let v = eval ctx t in
         Printf.eprintf "(eval) %a\n%!" print_term v;
         ctx
   in

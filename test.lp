@@ -28,3 +28,8 @@ add  : Nat ⇒ Nat ⇒ Nat.
 #EVAL (λx:Nat.x) zero.
 #EVAL add zero zero.
 #EVAL add (succ (succ zero)) (succ zero).
+
+id : (Nat ⇒ Nat) ⇒ Nat ⇒ Nat.
+[n] id (λx:Nat.x) n → n.
+
+#EVAL id (λy:Nat.y) (succ (succ zero)).
