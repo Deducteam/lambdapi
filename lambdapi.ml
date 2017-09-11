@@ -447,9 +447,9 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
     | Rule(xs,t,u) ->
         let xs = new_mvar mkfree (Array.of_list xs) in
         let add x ctx = add_var x (Unif(ref None)) ctx in
-        let ctx = Array.fold_right add xs ctx in
-        let t = to_tbox ctx t in
-        let u = to_tbox ctx u in
+        let ctx_aux = Array.fold_right add xs ctx in
+        let t = to_tbox ctx_aux t in
+        let u = to_tbox ctx_aux u in
         let definition = unbox (bind_mvar xs (box_pair t u)) in
         let t = unbox t in
         let u = unbox u in
@@ -461,8 +461,8 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
           | Some(x,i) ->
               let rule = {definition; constructor = x; arity = i} in
               try
-                let tt = infer ctx t in
-                let tu = infer ctx u in
+                let tt = infer ctx_aux t in
+                let tu = infer ctx_aux u in
                 if not (eq ctx tt tu) then raise Not_found;
                 Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
                 add_rule rule ctx
