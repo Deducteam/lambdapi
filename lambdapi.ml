@@ -193,7 +193,7 @@ and eval : ctxt -> term -> term = fun ctx t ->
 and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   fun ?(no_whnf=false) ctx a b ->
   let eq_binder f g =
-    let x = free_of (new_var mkfree "_eq_binder_") in
+    let x = mkfree (new_var mkfree "_eq_binder_") in
     eq ctx (subst f x) (subst g x)
   in
   let a = if no_whnf then a else eval ctx a in
@@ -225,9 +225,9 @@ let rec lift : term -> tbox = fun t ->
   | Type      -> t_type
   | Kind      -> t_kind
   | Prod(a,b) -> t_prod (lift a) (binder_name b)
-                   (fun x -> lift (subst b (free_of x)))
+                   (fun x -> lift (subst b (mkfree x)))
   | Abst(a,t) -> t_abst (lift a) (binder_name t)
-                   (fun x -> lift (subst t (free_of x)))
+                   (fun x -> lift (subst t (mkfree x)))
   | Appl(t,u) -> t_appl (lift t) (lift u)
   | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
 
@@ -241,10 +241,10 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Type      -> Kind
   | Kind      -> raise Not_found
   | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
-                 let b = subst b (free_of x) in
+                 let b = subst b (mkfree x) in
                  infer (add_var x a ctx) b
   | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
-                 let t = subst t (free_of x) in
+                 let t = subst t (mkfree x) in
                  let b = infer (add_var x a ctx) t in
                  Prod(a, bind_vari x b)
   | Appl(t,u) -> begin
@@ -276,18 +276,18 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
   | (Vari(x)  , a        ) -> eq ctx (find x ctx) a
   (* Product *)
   | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
-                              let b = subst b (free_of x) in
+                              let b = subst b (mkfree x) in
                               has_type ctx a Type
                               && has_type (add_var x a ctx) b Type
   (* Product 2 *)
   | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
-                              let b = subst b (free_of x) in
+                              let b = subst b (mkfree x) in
                               has_type ctx a Type
                               && has_type (add_var x a ctx) b Kind
   (* Abstraction and Abstraction 2 *)
   | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
-                              let t = subst t (free_of x) in
-                              let b = subst b (free_of x) in
+                              let t = subst t (mkfree x) in
+                              let b = subst b (mkfree x) in
                               let ctx_x = add_var x a ctx in
                               eq ctx a c
                               && has_type ctx a Type
