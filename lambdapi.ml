@@ -33,6 +33,12 @@ type rule =
 let mkfree : term var -> term =
   fun x -> Vari(x)
 
+(* Unfolding of unification variables. *)
+let rec unfold : term -> term = fun t ->
+  match t with
+  | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
+  | _       -> t
+
 (* Smart constructors *)
 let t_type : tbox = box Type
 let t_kind : tbox = box Kind
@@ -45,6 +51,9 @@ let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
 
 let t_appl : tbox -> tbox -> tbox =
   box_apply2 (fun t u -> Appl(t,u))
+
+let t_unif : unit -> tbox =
+  fun () -> box (Unif(ref None))
 
 (* Pattern data *)
 let pattern_data : term -> (term var * int) option = fun t ->
@@ -179,25 +188,31 @@ and match_term : ctxt -> int -> rule -> term -> term option = fun ctx e r t ->
   if eq ~no_whnf:true ctx t l then Some(add_args r args) else None
 
 and eval : ctxt -> term -> term = fun ctx t ->
-  let t = rewrite ctx t in
-  match t with
+  match rewrite ctx (unfold t) with
   | Appl(t,u) ->
+      let t = eval ctx t in
+      let u = eval ctx u in
       begin
         match t with
-        | Abst(_,f) -> eval ctx (subst f (eval ctx u))
-        | t         -> Appl(t, eval ctx u)
+        | Abst(_,f) -> eval ctx (subst f u)
+        | t         ->
+            (* FIXME looks hackish... *)
+            let t1 = Appl(t, u) in
+            let t2 = rewrite ctx t1 in
+            if t1 == t2 then t1 else eval ctx t2
       end
-  | _         -> t
+  | t         -> t
 
 (* Equality *)
 and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   fun ?(no_whnf=false) ctx a b ->
+  (*Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;*)
   let eq_binder f g =
     let x = mkfree (new_var mkfree "_eq_binder_") in
     eq ctx (subst f x) (subst g x)
   in
-  let a = if no_whnf then a else eval ctx a in
-  let b = if no_whnf then b else eval ctx b in
+  let a = if no_whnf then unfold a else eval ctx a in
+  let b = if no_whnf then unfold b else eval ctx b in
   match (a,b) with
   | (Vari(x)  , Vari(y)  ) -> eq_vars x y
   | (Type     , Type     ) -> true
@@ -205,6 +220,7 @@ and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   | (Prod(a,f), Prod(b,g)) -> eq ctx a b && eq_binder f g
   | (Abst(a,f), Abst(b,g)) -> eq ctx a b && eq_binder f g
   | (Appl(t,u), Appl(f,g)) -> eq ctx t f && eq ctx u g
+  | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
   | (Unif(r)  , _        ) ->
       begin
         match !r with
@@ -236,33 +252,35 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
 
 (* Judgements *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  match t with
-  | Vari(x)   -> find x ctx
-  | Type      -> Kind
-  | Kind      -> raise Not_found
-  | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
-                 let b = subst b (mkfree x) in
-                 infer (add_var x a ctx) b
-  | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
-                 let t = subst t (mkfree x) in
-                 let b = infer (add_var x a ctx) t in
-                 Prod(a, bind_vari x b)
-  | Appl(t,u) -> begin
-                   match infer ctx t with
-                   | Prod(a,b) ->
-                       let c = infer ctx u in
-                       if eq ctx c a then subst b u
-                       else raise Not_found
-                   | _         ->
-                       raise Not_found
-                 end
-  | Unif(r)   -> begin
-                   match !r with
-                   | None   -> raise Not_found
-                   | Some t -> infer ctx t
-                 end
+  let t = unfold t in
+  if !debug then Printf.eprintf "Infering the type of [%a]\n%!" print_term t;
+  let res =
+    match t with
+    | Vari(x)   -> find x ctx
+    | Type      -> Kind
+    | Kind      -> raise Not_found
+    | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
+                   let b = subst b (mkfree x) in
+                   infer (add_var x a ctx) b
+    | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
+                   let t = subst t (mkfree x) in
+                   let b = infer (add_var x a ctx) t in
+                   Prod(a, bind_vari x b)
+    | Appl(t,u) -> begin
+                     match unfold (infer ctx t) with
+                     | Prod(a,b) ->
+                         if has_type ctx u a then subst b u
+                         else raise Not_found
+                     | _         ->
+                         raise Not_found
+                   end
+    | Unif(_)   -> raise Not_found
+  in
+  eval ctx res
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
+  let t = unfold t in
+  let a = unfold a in
   if !debug then
     begin
       Printf.printf "%a ⊢ %a : %a\n%!"
@@ -303,6 +321,9 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
                               && has_type ctx u a
         | _          -> false
       end
+  (* Unification variable. *)
+  | (Unif(_)  , _        ) ->
+      true (* Only for patterns. *)
   (* No rule apply. *)
   | (_        , _        ) -> false
 
@@ -313,16 +334,21 @@ type p_term =
   | P_Prod of string * p_term * p_term
   | P_Abst of string * p_term * p_term
   | P_Appl of p_term * p_term
+  | P_Unif
 
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
 
-let parser ident = id:''[a-zA-Z]+'' -> check_not_reserved id; id
+let parser ident = id:''[a-zA-Z1-9]+'' -> check_not_reserved id; id
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | x:ident
       when p = `Atom
       -> P_Vari(x)
+  (* Wildcard *)
+  | "_"
+      when p = `Atom
+      -> P_Unif
   (* Type constant *)
   | "Type"
       when p = `Atom
@@ -356,6 +382,7 @@ type p_item =
   | Check  of p_term * p_term
   | Infer  of p_term
   | Eval   of p_term
+  | Conv   of p_term * p_term
 
 let parser toplevel =
   | x:ident ":" a:expr                  -> NewVar(x,a)
@@ -363,6 +390,7 @@ let parser toplevel =
   | "#CHECK" t:expr "," a:expr          -> Check(t,a)
   | "#INFER" t:expr                     -> Infer(t)
   | "#EVAL" t:expr                      -> Eval(t)
+  | "#CONV" t:expr "," u:expr           -> Conv(t,u)
 
 let parser full = {l:toplevel "."}*
 
@@ -404,6 +432,7 @@ let to_tbox : ctxt -> p_term -> tbox = fun ctx t ->
                          Printf.eprintf "Unbound variable %S...\n%!" x;
                          exit 1
                        in box_of_var x
+    | P_Unif        -> t_unif ()
     | P_Type        -> t_type
     | P_Prod(x,a,b) -> let f v =
                          build (if x = "_" then vars else (x,v)::vars) b
@@ -462,9 +491,11 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
               let rule = {definition; constructor = x; arity = i} in
               try
                 let tt = infer ctx_aux t in
+                (*Printf.eprintf "LEFT : %a\n%!" print_term tt;*)
                 let tu = infer ctx_aux u in
+                (*Printf.eprintf "RIGHT: %a\n%!" print_term tt;*)
                 if not (eq ctx tt tu) then raise Not_found;
-                Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
+                (*Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;*)
                 add_rule rule ctx
               with Not_found ->
                 Printf.eprintf "Ill-typed rule...\n%!";
@@ -498,6 +529,16 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let t = to_term ctx t in
         let v = eval ctx t in
         Printf.eprintf "(eval) %a\n%!" print_term v;
+        ctx
+    | Conv(t,u)    ->
+        let t = to_term ctx t in
+        let u = to_term ctx u in
+        begin
+          if not (eq ctx t u) then
+            Printf.eprintf "(conv) UNABLE TO CONVERT\n%!"
+          else
+            Printf.eprintf "(conv) OK\n%!"
+        end;
         ctx
   in
   List.fold_left handle_item ctx (parse_file fname)
