@@ -206,7 +206,7 @@ and eval : ctxt -> term -> term = fun ctx t ->
 (* Equality *)
 and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   fun ?(no_whnf=false) ctx a b ->
-  (*Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;*)
+  if !debug then Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;
   let eq_binder f g =
     let x = mkfree (new_var mkfree "_eq_binder_") in
     eq ctx (subst f x) (subst g x)
@@ -339,7 +339,7 @@ type p_term =
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
 
-let parser ident = id:''[a-zA-Z1-9]+'' -> check_not_reserved id; id
+let parser ident = id:''[_a-zA-Z1-9]+'' -> check_not_reserved id; id
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | x:ident
@@ -491,11 +491,11 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
               let rule = {definition; constructor = x; arity = i} in
               try
                 let tt = infer ctx_aux t in
-                (*Printf.eprintf "LEFT : %a\n%!" print_term tt;*)
+                if !debug then Printf.eprintf "LEFT : %a\n%!" print_term tt;
                 let tu = infer ctx_aux u in
-                (*Printf.eprintf "RIGHT: %a\n%!" print_term tt;*)
+                if !debug then Printf.eprintf "RIGHT: %a\n%!" print_term tu;
                 if not (eq ctx tt tu) then raise Not_found;
-                (*Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;*)
+                Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
                 add_rule rule ctx
               with Not_found ->
                 Printf.eprintf "Ill-typed rule...\n%!";
