@@ -4,7 +4,7 @@ lambdapi: lambdapi.ml
 	ocamlfind ocamlopt -pp pa_ocaml \
 		-package bindlib,earley,earley.str -linkpkg -o $@ $^
 
-test: lambdapi test.lp
+test: lambdapi test.lp $(wildcard examples/*.lp)
 	./$^
 
 clean:
