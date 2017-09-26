@@ -39,4 +39,5 @@ five : numeral.
 
 #CONV λx:numeral.x, λy:numeral.y.
 #CONV times four five, times five four.
-//#CONV power two (times four five), power two (times five four).
+// FIXME
+// #CONV power two (times four five), power two (times five four).
