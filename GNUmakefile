@@ -11,4 +11,5 @@ clean:
 	rm -f *.cmi *.cmo *.cmx *.o
 
 distclean: clean
-	rm -f *~ lambdapi
+	find . -type f -name "*~" -exec rm {} \;
+	rm -f lambdapi
