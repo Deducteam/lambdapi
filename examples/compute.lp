@@ -7,7 +7,7 @@ plus : Nat ⇒ Nat ⇒ Nat.
 [x y] plus (S x) y → plus x (S y).
 
 mult : Nat ⇒ Nat ⇒ Nat.
-[]    mult Z _     → Z.
+[y]   mult Z     y → Z.
 [x y] mult (S x) y → plus y (mult x y).
 
 fact : Nat ⇒ Nat.
@@ -19,11 +19,6 @@ six   : Nat.
 
 seven : Nat.
 [] seven → (S (S (S (S (S (S (S Z))))))).
-
-//#EVAL six.
-//#EVAL (plus (fact seven) (fact six)).
-//#EVAL (plus (fact six) (fact seven)).
-//#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
 
 0 : Nat.
 1 : Nat.
@@ -57,6 +52,9 @@ seven : Nat.
 #EVAL (fact 2).
 #EVAL (fact 3).
 
-//#EVAL (plus (fact one) (fact two)).
-//#EVAL (plus (fact two) (fact one)).
+#EVAL (plus (fact 3) (fact 2)).
+#EVAL (plus (fact 2) (fact 3)).
+
+// Takes too long ?
+#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
 

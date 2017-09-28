@@ -1,6 +1,6 @@
 open Bindlib
 
-let debug = ref true
+let debug = ref false
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -54,9 +54,6 @@ let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
 
 let t_appl : tbox -> tbox -> tbox =
   box_apply2 (fun t u -> Appl(t,u))
-
-let t_unif : unit -> tbox =
-  fun () -> box (Unif(ref None))
 
 (* Pattern data *)
 let pattern_data : term -> (term var * int) option = fun t ->
@@ -197,12 +194,14 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
             let (t, stk) = add_n_args rule.arity t stk in
             if eq ~no_whnf:true ctx t l then
               begin
-                Printf.eprintf "%a === %a\n%!" print_term t print_term l;
+                if !debug then
+                  Printf.eprintf "%a === %a\n%!" print_term t print_term l;
                 Some(add_args r stk)
               end
             else
               begin
-                Printf.eprintf "%a =/= %a\n%!" print_term t print_term l;
+                if !debug then
+                  Printf.eprintf "%a =/= %a\n%!" print_term t print_term l;
                 None
               end
           in
@@ -357,7 +356,6 @@ type p_term =
   | P_Prod of string * p_term * p_term
   | P_Abst of string * p_term * p_term
   | P_Appl of p_term * p_term
-  | P_Unif
 
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
@@ -370,10 +368,6 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | x:ident
       when p = `Atom
       -> P_Vari(x)
-  (* Wildcard *)
-  | "_"
-      when p = `Atom
-      -> P_Unif
   (* Type constant *)
   | "Type"
       when p = `Atom
@@ -457,7 +451,6 @@ let to_tbox : ctxt -> p_term -> tbox = fun ctx t ->
                          Printf.eprintf "Unbound variable %S...\n%!" x;
                          exit 1
                        in box_of_var x
-    | P_Unif        -> t_unif ()
     | P_Type        -> t_type
     | P_Prod(x,a,b) -> let f v =
                          build (if x = "_" then vars else (x,v)::vars) b
