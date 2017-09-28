@@ -1,6 +1,7 @@
 open Bindlib
 
-let debug = ref false
+let debug      = ref false
+let debug_eval = ref false
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -159,10 +160,10 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
 
 (* Evaluation *)
 let rec eval : ctxt -> term -> term = fun ctx t ->
-  if !debug then Printf.eprintf "\nEVAL %a\n%!" print_term t;
+  if !debug_eval then Printf.eprintf "\nEVAL %a\n%!" print_term t;
   let rec eval_aux ctx t stk =
     let t = unfold t in
-    if !debug then
+    if !debug_eval then
       begin
         Printf.eprintf "EVAL_AUX %a  @" print_term t;
         List.iter (Printf.eprintf " [%a]" print_term) stk;
@@ -183,7 +184,7 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
             let ar = mbinder_arity rule.defin in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
             let (l,r) = msubst rule.defin uvars in
-            if !debug then
+            if !debug_eval then
               Printf.eprintf "RULE %a → %a\n%!" print_term l print_term r;
             let rec add_n_args n t stk =
               match (n, stk) with
@@ -194,20 +195,20 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
             let (t, stk) = add_n_args rule.arity t stk in
             if eq ~no_whnf:true ctx t l then
               begin
-                if !debug then
+                if !debug_eval then
                   Printf.eprintf "%a === %a\n%!" print_term t print_term l;
                 Some(add_args r stk)
               end
             else
               begin
-                if !debug then
+                if !debug_eval then
                   Printf.eprintf "%a =/= %a\n%!" print_term t print_term l;
                 None
               end
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
-          if !debug then
+          if !debug_eval then
             begin
               let nb = List.length ts in
               if nb > 1 then
@@ -296,7 +297,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                      | _         ->
                          raise Not_found
                    end
-    | Unif(_)   -> raise Not_found
+    | Unif(_)   -> assert false
   in
   eval ctx res
 
