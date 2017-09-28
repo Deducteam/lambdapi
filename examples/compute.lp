@@ -20,5 +20,6 @@ six   : Nat.
 seven : Nat.
 [] seven → (S (S (S (S (S (S (S Z))))))).
 
-// FIXME
-// #CONV	(plus (fact seven) (fact six)),	(plus (fact six) (fact seven)).
+#EVAL (plus (fact seven) (fact six)).
+#EVAL (plus (fact six) (fact seven)).
+#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).

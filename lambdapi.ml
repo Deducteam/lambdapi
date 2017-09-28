@@ -2,6 +2,9 @@ open Bindlib
 
 let debug = ref false
 
+let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
+let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
+
 let from_opt_rev : 'a option list -> 'a list = fun l ->
   let fn acc e =
     match e with
@@ -25,9 +28,9 @@ type tbox = term bindbox
 type tvar = term var
 
 type rule =
-  { definition  : (term, term * term) mbinder
-  ; constructor : term var
-  ; arity       : int }
+  { defin : (term, term * term) mbinder
+  ; const : term var
+  ; arity : int }
 
 (* Bindlib's "mkfree" *)
 let mkfree : term var -> term =
@@ -80,15 +83,6 @@ let add_var : term var -> term -> ctxt -> ctxt = fun x a ctx ->
 
 let add_rule : rule -> ctxt -> ctxt = fun r ctx ->
   {ctx with rules = r::ctx.rules}
-
-let find_rules : term var -> int -> ctxt -> (int * rule) list = fun x i ctx ->
-  let rec suitable acc rs =
-    match rs with
-    | []    -> acc
-    | r::rs -> if eq_vars x r.constructor && r.arity <= i then
-                 suitable ((i - r.arity, r)::acc) rs
-               else suitable acc rs
-  in suitable [] ctx.rules
 
 let find : term var -> ctxt -> term = fun x ctx ->
   snd (List.find (fun (y,_) -> eq_vars x y) ctx.variables)
@@ -167,73 +161,90 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
   in print_vars oc ctx.variables
 
 (* Evaluation *)
-let rec rewrite : ctxt -> term -> term = fun ctx t ->
-  match pattern_data t with
-  | None      -> t
-  | Some(x,i) ->
-      let rs = find_rules x i ctx in
-      let ts = List.rev_map (fun (i,r) -> match_term ctx i r t) rs in
-      let ts = from_opt_rev ts in
-      match ts with
-      | []    -> t
-      | [t]   -> t
-      | t::ts ->
-          let nb = List.length ts in
-          Printf.eprintf "(WARN) %i other rules apply...\n%!" nb; t
-
-and match_term : ctxt -> int -> rule -> term -> term option = fun ctx e r t ->
-  let ar = mbinder_arity r.definition in
-  let (l,r) = msubst r.definition (Array.init ar (fun _ -> Unif(ref None))) in
-  let (t,args) = remove_args t e in
-  if eq ~no_whnf:true ctx t l then Some(add_args r args) else None
-
-and eval : ctxt -> term -> term = fun ctx t ->
-  match rewrite ctx (unfold t) with
-  | Appl(t,u) ->
-      let t = eval ctx t in
-      let u = eval ctx u in
+let rec eval : ctxt -> term -> term = fun ctx t ->
+  if !debug then Printf.eprintf "EVAL     %a\n%!" print_term t;
+  let rec eval_aux ctx t stk =
+    let t = unfold t in
+    if !debug then
       begin
-        match t with
-        | Abst(_,f) -> eval ctx (subst f u)
-        | t         ->
-            (* FIXME looks hackish... *)
-            let t1 = Appl(t, u) in
-            let t2 = rewrite ctx t1 in
-            if t1 == t2 then t1 else eval ctx t2
-      end
-  | t         -> t
+        Printf.eprintf "EVAL_AUX %a  @" print_term t;
+        List.iter (Printf.eprintf " [%a]" print_term) stk;
+        Printf.eprintf "%!\n"
+      end;
+    match (t, stk) with
+    (* Push. *)
+    | (Appl(t,u), stk    ) -> eval_aux ctx t (eval ctx u :: stk)
+    (* Beta. *)
+    | (Abst(_,f), v::stk ) -> eval_aux ctx (subst f v) stk
+    (* Try to rewrite. *)
+    | (Vari(x)  , stk    ) ->
+        begin
+          let nb_args = List.length stk in
+          let suitable r = eq_vars x r.const && r.arity <= nb_args in
+          let rs = List.filter suitable ctx.rules in
+          let match_term rule t stk =
+            let ar = mbinder_arity rule.defin in
+            let uvars = Array.init ar (fun _ -> Unif(ref None)) in
+            let (l,r) = msubst rule.defin uvars in
+            let rec add_n_args n t stk =
+              match (n, stk) with
+              | (0, stk   ) -> (t, stk)
+              | (i, v::stk) -> add_n_args (i-1) (Appl(t,v)) stk
+              | (_, _     ) -> assert false
+            in
+            let (t, stk) = add_n_args rule.arity t stk in
+            if eq ~no_whnf:true ctx t l then Some(add_args r stk) else None
+          in
+          let ts = List.rev_map (fun r -> match_term r t stk) rs in
+          if !debug then
+            begin
+              let nb = List.length ts in
+              if nb > 0 then
+                Printf.eprintf (yel "(WARN) %i rules apply...\n%!") nb
+            end;
+          match from_opt_rev ts with
+          | []   -> t
+          | t::_ -> eval ctx t
+        end
+    (* In head normal form. *)
+    | (t        , stk    ) -> add_args t stk
+  in
+  eval_aux ctx t []
 
 (* Equality *)
 and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   fun ?(no_whnf=false) ctx a b ->
-  if !debug then Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;
-  let eq_binder f g =
-    let x = mkfree (new_var mkfree "_eq_binder_") in
-    eq ctx (subst f x) (subst g x)
-  in
-  let a = if no_whnf then unfold a else eval ctx a in
-  let b = if no_whnf then unfold b else eval ctx b in
-  match (a,b) with
-  | (Vari(x)  , Vari(y)  ) -> eq_vars x y
-  | (Type     , Type     ) -> true
-  | (Kind     , Kind     ) -> true
-  | (Prod(a,f), Prod(b,g)) -> eq ctx a b && eq_binder f g
-  | (Abst(a,f), Abst(b,g)) -> eq ctx a b && eq_binder f g
-  | (Appl(t,u), Appl(f,g)) -> eq ctx t f && eq ctx u g
-  | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
-  | (Unif(r)  , _        ) ->
-      begin
-        match !r with
-        | None   -> r := Some(b); true
-        | Some a -> eq ctx a b
-      end
-  | (_        , Unif(r)  ) ->
-      begin
-        match !r with
-        | None   -> r := Some(a); true
-        | Some b -> eq ctx a b
-      end
-  | (_        , _        ) -> false
+    if !debug then Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;
+    let rec eq a b =
+      let eq_binder f g =
+        let x = mkfree (new_var mkfree "_eq_binder_") in
+        eq (subst f x) (subst g x)
+      in
+      let a = if no_whnf then unfold a else eval ctx a in
+      let b = if no_whnf then unfold b else eval ctx b in
+      match (a,b) with
+      | (Vari(x)  , Vari(y)  ) -> eq_vars x y
+      | (Type     , Type     ) -> true
+      | (Kind     , Kind     ) -> true
+      | (Prod(a,f), Prod(b,g)) -> eq a b && eq_binder f g
+      | (Abst(a,f), Abst(b,g)) -> eq a b && eq_binder f g
+      | (Appl(t,u), Appl(f,g)) -> eq t f && eq u g
+      | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
+      | (Unif(r)  , _        ) ->
+          begin
+            match !r with
+            | None   -> r := Some(b); true
+            | Some a -> eq a b
+          end
+      | (_        , Unif(r)  ) ->
+          begin
+            match !r with
+            | None   -> r := Some(a); true
+            | Some b -> eq a b
+          end
+      | (_        , _        ) -> false
+    in
+    eq a b
 
 let rec lift : term -> tbox = fun t ->
   match t with
@@ -481,7 +492,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let ctx_aux = Array.fold_right add xs ctx in
         let t = to_tbox ctx_aux t in
         let u = to_tbox ctx_aux u in
-        let definition = unbox (bind_mvar xs (box_pair t u)) in
+        let defin = unbox (bind_mvar xs (box_pair t u)) in
         let t = unbox t in
         let u = unbox u in
         begin
@@ -490,7 +501,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
               Printf.eprintf "Not a valid pattern...\n%!";
               exit 1
           | Some(x,i) ->
-              let rule = {definition; constructor = x; arity = i} in
+              let rule = {defin; const = x; arity = i} in
               try
                 let tt = infer ctx_aux t in
                 if !debug then Printf.eprintf "LEFT : %a\n%!" print_term tt;
@@ -500,7 +511,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
                 Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
                 add_rule rule ctx
               with Not_found ->
-                Printf.eprintf "Ill-typed rule...\n%!";
+                Printf.eprintf (red "Ill-typed rule...\n%!");
                 exit 1
         end
     | Check(t,a)   ->
@@ -513,7 +524,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
           end
         else
           begin
-            Printf.eprintf "(chck) Type error...\n%!";
+            Printf.eprintf (red "(chck) Type error...\n%!");
             exit 1
           end
     | Infer(t)     ->
@@ -523,7 +534,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
             let a = infer ctx t in
             Printf.eprintf "(infr) %a : %a\n%!" print_term t print_term a
           with Not_found ->
-            Printf.eprintf "(infr) %a : UNABLE TO INFER\n%!"
+            Printf.eprintf (red "(infr) %a : UNABLE TO INFER\n%!")
               print_term t
         end;
         ctx
@@ -537,7 +548,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let u = to_term ctx u in
         begin
           if not (eq ctx t u) then
-            Printf.eprintf "(conv) UNABLE TO CONVERT\n%!"
+            Printf.eprintf (red "(conv) UNABLE TO CONVERT\n%!")
           else
             Printf.eprintf "(conv) OK\n%!"
         end;
