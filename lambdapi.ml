@@ -1,6 +1,6 @@
 open Bindlib
 
-let debug = ref false
+let debug = ref true
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -162,7 +162,7 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
 
 (* Evaluation *)
 let rec eval : ctxt -> term -> term = fun ctx t ->
-  if !debug then Printf.eprintf "EVAL     %a\n%!" print_term t;
+  if !debug then Printf.eprintf "\nEVAL %a\n%!" print_term t;
   let rec eval_aux ctx t stk =
     let t = unfold t in
     if !debug then
@@ -173,7 +173,7 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
       end;
     match (t, stk) with
     (* Push. *)
-    | (Appl(t,u), stk    ) -> eval_aux ctx t (eval ctx u :: stk)
+    | (Appl(t,u), stk    ) -> eval_aux ctx t (eval_aux ctx u [] :: stk)
     (* Beta. *)
     | (Abst(_,f), v::stk ) -> eval_aux ctx (subst f v) stk
     (* Try to rewrite. *)
@@ -186,6 +186,8 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
             let ar = mbinder_arity rule.defin in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
             let (l,r) = msubst rule.defin uvars in
+            if !debug then
+              Printf.eprintf "RULE %a → %a\n%!" print_term l print_term r;
             let rec add_n_args n t stk =
               match (n, stk) with
               | (0, stk   ) -> (t, stk)
@@ -193,18 +195,28 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
               | (_, _     ) -> assert false
             in
             let (t, stk) = add_n_args rule.arity t stk in
-            if eq ~no_whnf:true ctx t l then Some(add_args r stk) else None
+            if eq ~no_whnf:true ctx t l then
+              begin
+                Printf.eprintf "%a === %a\n%!" print_term t print_term l;
+                Some(add_args r stk)
+              end
+            else
+              begin
+                Printf.eprintf "%a =/= %a\n%!" print_term t print_term l;
+                None
+              end
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
+          let ts = from_opt_rev ts in
           if !debug then
             begin
               let nb = List.length ts in
-              if nb > 0 then
+              if nb > 1 then
                 Printf.eprintf (yel "(WARN) %i rules apply...\n%!") nb
             end;
-          match from_opt_rev ts with
-          | []   -> t
-          | t::_ -> eval ctx t
+          match ts with
+          | []   -> add_args t stk
+          | t::_ -> eval_aux ctx t []
         end
     (* In head normal form. *)
     | (t        , stk    ) -> add_args t stk
@@ -350,7 +362,7 @@ type p_term =
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
 
-let parser ident = id:''[a-zA-Z1-9][_a-zA-Z1-9]*'' ->
+let parser ident = id:''[a-zA-Z0-9][_a-zA-Z0-9]*'' ->
   check_not_reserved id; id
 
 let parser expr (p : [`Func | `Appl | `Atom]) =

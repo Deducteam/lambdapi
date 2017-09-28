@@ -20,6 +20,43 @@ six   : Nat.
 seven : Nat.
 [] seven → (S (S (S (S (S (S (S Z))))))).
 
-#EVAL (plus (fact seven) (fact six)).
-#EVAL (plus (fact six) (fact seven)).
-#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
+//#EVAL six.
+//#EVAL (plus (fact seven) (fact six)).
+//#EVAL (plus (fact six) (fact seven)).
+//#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
+
+0 : Nat.
+1 : Nat.
+2 : Nat.
+3 : Nat.
+4 : Nat.
+5 : Nat.
+6 : Nat.
+7 : Nat.
+
+[] 0 → Z.
+[] 1 → S 0.
+[] 2 → S 1.
+[] 3 → S 2.
+[] 4 → S 3.
+[] 5 → S 4.
+[] 6 → S 5.
+[] 7 → S 6.
+
+#EVAL 0.
+#EVAL 1.
+#EVAL 2.
+#EVAL 3.
+#EVAL 4.
+#EVAL 5.
+#EVAL 6.
+#EVAL 7.
+
+#EVAL (fact 0).
+#EVAL (fact 1).
+#EVAL (fact 2).
+#EVAL (fact 3).
+
+//#EVAL (plus (fact one) (fact two)).
+//#EVAL (plus (fact two) (fact one)).
+
