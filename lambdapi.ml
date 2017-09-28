@@ -339,7 +339,9 @@ type p_term =
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
 
-let parser ident = id:''[_a-zA-Z1-9]+'' -> check_not_reserved id; id
+let parser ident = id:''[a-zA-Z1-9][_a-zA-Z1-9]*'' ->
+  check_not_reserved id; id
+
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | x:ident
