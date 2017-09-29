@@ -357,6 +357,7 @@ type p_term =
   | P_Prod of string * p_term * p_term
   | P_Abst of string * p_term * p_term
   | P_Appl of p_term * p_term
+  | P_Wild
 
 let check_not_reserved id =
   if List.mem id ["Type"] then Earley.give_up ()
@@ -377,6 +378,10 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | x:{ident ":"}?["_"] a:(expr `Appl) "⇒" b:(expr `Func)
       when p = `Func
       -> P_Prod(x,a,b)
+  (* Wildcard *)
+  | "_"
+      when p = `Atom
+      -> P_Wild
   (* Abstraction *)
   | "λ" x:ident ":" a:(expr `Atom) "." t:(expr `Func)
       when p = `Func
@@ -443,7 +448,15 @@ let parse : string -> p_term =
 
 type context = (string * term var) list
 
-let to_tbox : ctxt -> p_term -> tbox = fun ctx t ->
+let wildcards : term var list ref = ref []
+let new_wildcard : unit -> tbox =
+  let counter = ref (-1) in
+  fun () ->
+    incr counter;
+    let x = new_var mkfree (Printf.sprintf "#%i#" !counter) in
+    wildcards := x :: !wildcards; box_of_var x
+
+let to_tbox : bool -> ctxt -> p_term -> tbox = fun allow_wild ctx t ->
   let rec build vars t =
     match t with
     | P_Vari(x)     -> let x =
@@ -460,11 +473,23 @@ let to_tbox : ctxt -> p_term -> tbox = fun ctx t ->
     | P_Abst(x,a,t) -> let f v = build ((x,v)::vars) t in
                        t_abst (build vars a) x f
     | P_Appl(t,u)   -> t_appl (build vars t) (build vars u)
+    | P_Wild        ->
+        if not allow_wild then
+          begin
+            Printf.eprintf "Wildcard \"_\" not allowd here...\n%!";
+            exit 1
+          end;
+        new_wildcard ()
   in
   build [] t
 
 let to_term : ctxt -> p_term -> term = fun ctx t ->
-  unbox (to_tbox ctx t)
+  unbox (to_tbox false ctx t)
+
+let to_tbox_wc : ctxt -> p_term -> tbox * term var array = fun ctx t ->
+  wildcards := [];
+  let t = to_tbox true ctx t in
+  (t, Array.of_list !wildcards)
 
 (* Interpret the term given as a string *)
 let parse_term : ctxt -> string -> term = fun ctx str ->
@@ -496,10 +521,13 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let xs = new_mvar mkfree (Array.of_list xs) in
         let add x ctx = add_var x (Unif(ref None)) ctx in
         let ctx_aux = Array.fold_right add xs ctx in
-        let t = to_tbox ctx_aux t in
-        let u = to_tbox ctx_aux u in
+        let (t, wcs) = to_tbox_wc ctx_aux t in
+        let u = to_tbox false ctx_aux u in
+        let xs = Array.append xs wcs in
         let defin = unbox (bind_mvar xs (box_pair t u)) in
-        let t = unbox t in
+        let t = unbox (bind_mvar wcs t) in
+        let new_unif _ = Unif(ref None) in
+        let t = msubst t (Array.init (Array.length wcs) new_unif) in
         let u = unbox u in
         begin
           match pattern_data t with

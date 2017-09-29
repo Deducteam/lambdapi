@@ -13,4 +13,4 @@ cons  : n:Nat ⇒ A ⇒ Listn n ⇒ Listn (S n).
 
 append : n:Nat ⇒ Listn n ⇒ m:Nat ⇒ Listn m ⇒ Listn (plus n m).
 [l2]          append _ nil _ l2 → l2.
-//[n l1 m l2 a] append _ (cons n a l1) m l2 → cons (plus n m) a (append n l1 m l2).
+[n l1 m l2 a] append _ (cons n a l1) m l2 → cons (plus n m) a (append n l1 m l2).
