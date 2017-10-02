@@ -404,7 +404,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Atom
       -> P_Wild
   (* Abstraction *)
-  | "λ" x:ident ":" a:(expr `Atom) "." t:(expr `Func)
+  | "λ" x:ident ":" a:(expr `Func) "." t:(expr `Func)
       when p = `Func
       -> P_Abst(x,a,t)
   (* Application *)
