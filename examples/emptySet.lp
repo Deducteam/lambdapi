@@ -6,8 +6,7 @@ prf : Prop ⇒ Type.
 forall : (Set ⇒ Prop) ⇒ Prop.
 imp    : Prop ⇒ Prop ⇒ Prop.
 
-// FIXME
-// [f]   prf (forall f) → λx:Set. prf (f x).
+[f]   prf (forall f) → x:Set ⇒ prf (f x).
 [A B] prf (imp A B)  → prf A ⇒ prf B.
 
 False : Prop.
@@ -37,5 +36,5 @@ stmt : Prop.
 [] stmt → forall (λx:Set. not (min x empty)).
 
 theorem : prf stmt.
-// FIXME
-// [] theorem → (λx:Set. λp:Set. (empty_ax x) (min_ax2 empty x p)).
+// FIXME (typing / inference)
+//[] theorem → λx:Set. λp:Set. (empty_ax x) (min_ax2 empty x p).
