@@ -19,27 +19,33 @@ equiv : Prop ⇒ Prop ⇒ Prop.
 [] equiv → λA:Prop. λB:Prop. and (imp A B) (imp B A).
 
 tt : prf true.
-// FIXME
-// []  prf false → λP:Prop. prf P
-// [A] prf (not A) → prf A ⇒ prf false
-// [A,B] prf (and A B)   → P:Prop ⇒ (prf A ⇒ prf B ⇒ prf P) ⇒ prf P
-// [A,B] prf (or  A B)   → P:Prop ⇒ (prf A ⇒ prf P) ⇒ (prf B ⇒ prf P) ⇒ prf P
-// [A,B] prf (imp A B)   → prf A ⇒ prf B
-// [A]  prf (forall A)  → x:Term ⇒ prf (A x)
-// [A]  prf (exists A)  → P:Prop ⇒ (x:Term ⇒ prf (A x) ⇒ prf P) ⇒ prf P
-// [x,y] prf (equals x y) → P:(Term ⇒ Prop) ⇒ prf (P x) ⇒ prf (P y).
-// 
-// lem: A:Prop ⇒ prf (or A (not A)).
-// 
-// (; *** Theorems ;)
-// 
-// (; implication ;)
-// def imp_elim  : A:Prop ⇒ B:Prop ⇒ prf (imp A B) ⇒ prf A ⇒ prf B
-// := A:Prop => B:Prop => p:prf (imp A B) => p.
-// 
-// def imp_intro : A:Prop ⇒ B:Prop ⇒ (prf A ⇒ prf B) ⇒ prf (imp A B)
-// := A:Prop => B:Prop => p:(prf A ⇒ prf B) => p.
-// 
+
+[]    prf false → P:Prop ⇒ prf P.
+
+[A]   prf (not A)      → prf A ⇒ prf false.
+
+[A B] prf (and A B) → P:Prop ⇒ (prf A ⇒ prf B ⇒ prf P) ⇒ prf P.
+[A B] prf (or  A B) → P:Prop ⇒ (prf A ⇒ prf P) ⇒ (prf B ⇒ prf P) ⇒ prf P.
+[A B] prf (imp A B) → prf A ⇒ prf B.
+
+[A] prf (forall A) → x:Term ⇒ prf (A x).
+[A] prf (exists A) → P:Prop ⇒ (x:Term ⇒ prf (A x) ⇒ prf P) ⇒ prf P.
+
+[x y] prf (equals x y) → P:(Term ⇒ Prop) ⇒ prf (P x) ⇒ prf (P y).
+
+lem : A:Prop ⇒ prf (or A (not A)).
+
+// *** Theorems
+
+// implication 
+// FIXME text right after comment does not work.
+
+imp_elim : A:Prop ⇒ B:Prop ⇒ prf (imp A B) ⇒ prf A ⇒ prf B.
+[] imp_elim → λA:Prop. λB:Prop. λp:(prf (imp A B)). p.
+
+imp_intro : A:Prop ⇒ B:Prop ⇒ (prf A ⇒ prf B) ⇒ prf (imp A B).
+[] imp_intro → λA:Prop. λB:Prop. λp:(prf A ⇒ prf B). p.
+
 // (; disjunction ;)
 // def or_intro_1 : A:Prop ⇒ B:Prop ⇒ prf A ⇒ prf (or A B)
 // := A:Prop => B:Prop => p:prf A =>
