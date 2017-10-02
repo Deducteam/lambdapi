@@ -1,7 +1,13 @@
 open Bindlib
 
-let debug      = ref false
-let debug_eval = ref false
+let debug       = ref false
+let debug_eval  = ref false
+let debug_infer = ref false
+
+let set_debug str =
+  if String.contains str 'a' then debug := true;
+  if String.contains str 'e' then debug_eval := true;
+  if String.contains str 'i' then debug_infer := true
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -276,15 +282,24 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
 (* Judgements *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   let t = unfold t in
-  if !debug then Printf.eprintf "Infering the type of [%a]\n%!" print_term t;
-  let res =
+  if !debug_infer then
+    Printf.eprintf "Infering the type of [%a]\n%!" print_term t;
+  let a =
     match t with
     | Vari(x)   -> find x ctx
     | Type      -> Kind
     | Kind      -> raise Not_found
     | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
                    let b = subst b (mkfree x) in
-                   infer (add_var x a ctx) b
+                   begin
+                     match infer (add_var x a ctx) b with
+                     | Kind -> Kind
+                     | Type -> Type 
+                     | _    ->
+                         Printf.eprintf "Expected Type of Kind for [%a]\n%!"
+                           print_term b;
+                         raise Not_found
+                   end
     | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
                    let t = subst t (mkfree x) in
                    let b = infer (add_var x a ctx) t in
@@ -299,7 +314,13 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                    end
     | Unif(_)   -> assert false
   in
-  eval ctx res
+  if !debug_infer then
+    Printf.eprintf "Inferred type [%a] for [%a]\n%!"
+      print_term a print_term t;
+  let res = eval ctx a in
+  if !debug_infer && res != a then
+    Printf.eprintf "Reduced to [%a]\n%!" print_term res;
+  assert (has_type ctx t res); res
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
   let t = unfold t in
@@ -545,7 +566,8 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
                 Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
                 add_rule rule ctx
               with Not_found ->
-                Printf.eprintf (red "Ill-typed rule...\n%!");
+                Printf.eprintf (red "Ill-typed rule [%a → %a]\n%!")
+                  print_term t print_term u;
                 exit 1
         end
     | Check(t,a)   ->
@@ -592,7 +614,12 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
 
 (* Run files *)
 let _ =
-  let ctx = ref empty_ctxt in
-  for i = 1 to Array.length Sys.argv - 1 do
-    ctx := handle_file !ctx Sys.argv.(i)
-  done
+  let usage = Sys.argv.(0) ^ " [--debug str] [FILE1] ... [FILEN]" in
+  let spec =
+    [("--debug", Arg.String set_debug, "Set debugging mode.") ]
+  in
+  let files = ref [] in
+  let anon fn = files := fn :: !files in
+  Arg.parse spec anon usage;
+  let files = List.rev !files in
+  List.fold_left handle_file empty_ctxt files
