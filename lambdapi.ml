@@ -5,6 +5,7 @@ let debug_eval  = ref false
 let debug_infer = ref false
 
 let set_debug str =
+  if String.contains str 'p' then Earley.debug_lvl := 1;
   if String.contains str 'a' then debug := true;
   if String.contains str 'e' then debug_eval := true;
   if String.contains str 'i' then debug_infer := true
@@ -171,9 +172,9 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
     let t = unfold t in
     if !debug_eval then
       begin
-        Printf.eprintf "EVAL_AUX %a  @" print_term t;
+        Printf.eprintf "EVAL_AUX %a  ∗" print_term t;
         List.iter (Printf.eprintf " [%a]" print_term) stk;
-        Printf.eprintf "%!\n"
+        Printf.eprintf "\n%!"
       end;
     match (t, stk) with
     (* Push. *)
