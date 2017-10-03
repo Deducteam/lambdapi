@@ -44,4 +44,4 @@ power : numeral ⇒ numeral ⇒ numeral.
 #EVAL power 2 (times 5 4).
 
 // FIXME (loops)
-//#CONV power 2 (times 4 5), power 2 (times 5 4).
+#CONV power 2 (times 4 5), power 2 (times 5 4).
