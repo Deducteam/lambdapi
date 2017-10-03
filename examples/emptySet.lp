@@ -36,5 +36,4 @@ stmt : Prop.
 [] stmt → forall (λx:Set. not (min x empty)).
 
 theorem : prf stmt.
-// FIXME (typing / inference)
-//[] theorem → λx:Set. λp:Set. (empty_ax x) (min_ax2 empty x p).
+[] theorem → λx:Set. λp:prf (min x empty). (empty_ax x) (min_ax2 empty x p).
