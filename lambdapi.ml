@@ -244,18 +244,8 @@ and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
       | (Abst(a,f), Abst(b,g)) -> eq no_whnf a b && eq_binder f g
       | (Appl(t,u), Appl(f,g)) -> eq no_whnf t f && eq no_whnf u g
       | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
-      | (Unif(r)  , _        ) ->
-          begin
-            match !r with
-            | None   -> r := Some(b); true
-            | Some a -> eq no_whnf a b
-          end
-      | (_        , Unif(r)  ) ->
-          begin
-            match !r with
-            | None   -> r := Some(a); true
-            | Some b -> eq no_whnf a b
-          end
+      | (Unif(r)  , _        ) -> r := Some(b); true
+      | (_        , Unif(r)  ) -> r := Some(a); true
       | (_        , _        ) -> false
     in
     let res = eq no_whnf a b in
