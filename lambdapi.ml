@@ -12,6 +12,9 @@ let set_debug str =
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
+let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
+
+let log name fmt = Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 let from_opt_rev : 'a option list -> 'a list = fun l ->
   let fn acc e =
@@ -167,7 +170,7 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
 
 (* Evaluation *)
 let rec eval : ctxt -> term -> term = fun ctx t ->
-  if !debug_eval then Printf.eprintf "\nEVAL %a\n%!" print_term t;
+  if !debug then log "eval" "evaluating %a" print_term t;
   let rec eval_aux ctx t stk =
     let t = unfold t in
     if !debug_eval then
@@ -200,18 +203,7 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
               | (_, _     ) -> assert false
             in
             let (t, stk) = add_n_args rule.arity t stk in
-            if eq ~no_whnf:true ctx t l then
-              begin
-                if !debug_eval then
-                  Printf.eprintf "%a === %a\n%!" print_term t print_term l;
-                Some(add_args r stk)
-              end
-            else
-              begin
-                if !debug_eval then
-                  Printf.eprintf "%a =/= %a\n%!" print_term t print_term l;
-                None
-              end
+            if eq ~no_whnf:true ctx t l then Some(add_args r stk) else None
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -228,42 +220,51 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
     (* In head normal form. *)
     | (t        , stk    ) -> add_args t stk
   in
-  eval_aux ctx t []
+  let u = eval_aux ctx t [] in
+  if !debug then log "eval" "produced %a" print_term u; u
 
 (* Equality *)
 and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
   fun ?(no_whnf=false) ctx a b ->
-    if !debug then Printf.eprintf "%a =?= %a\n%!" print_term a print_term b;
-    let rec eq a b =
+    if !debug then log "equa" "%a =?= %a" print_term a print_term b;
+    let rec eq no_whnf a b =
       let eq_binder f g =
         let x = mkfree (new_var mkfree "_eq_binder_") in
-        eq (subst f x) (subst g x)
+        eq no_whnf (subst f x) (subst g x)
       in
+      let trivial = if not no_whnf then eq true a b else false in
+      trivial ||
       let a = if no_whnf then unfold a else eval ctx a in
       let b = if no_whnf then unfold b else eval ctx b in
       match (a,b) with
       | (Vari(x)  , Vari(y)  ) -> eq_vars x y
       | (Type     , Type     ) -> true
       | (Kind     , Kind     ) -> true
-      | (Prod(a,f), Prod(b,g)) -> eq a b && eq_binder f g
-      | (Abst(a,f), Abst(b,g)) -> eq a b && eq_binder f g
-      | (Appl(t,u), Appl(f,g)) -> eq t f && eq u g
+      | (Prod(a,f), Prod(b,g)) -> eq no_whnf a b && eq_binder f g
+      | (Abst(a,f), Abst(b,g)) -> eq no_whnf a b && eq_binder f g
+      | (Appl(t,u), Appl(f,g)) -> eq no_whnf t f && eq no_whnf u g
       | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
       | (Unif(r)  , _        ) ->
           begin
             match !r with
             | None   -> r := Some(b); true
-            | Some a -> eq a b
+            | Some a -> eq no_whnf a b
           end
       | (_        , Unif(r)  ) ->
           begin
             match !r with
             | None   -> r := Some(a); true
-            | Some b -> eq a b
+            | Some b -> eq no_whnf a b
           end
       | (_        , _        ) -> false
     in
-    eq a b
+    let res = eq no_whnf a b in
+    if !debug then
+      begin
+        let c = if res then '=' else '/' in
+        log "equa" "%a =%c= %a" print_term a c print_term b;
+      end;
+    res
 
 let rec lift : term -> tbox = fun t ->
   match t with
@@ -283,8 +284,7 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
 (* Judgements *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
   let t = unfold t in
-  if !debug_infer then
-    Printf.eprintf "Infering the type of [%a]\n%!" print_term t;
+  if !debug_infer then log "infr" "type of [%a]?" print_term t;
   let a =
     match t with
     | Vari(x)   -> find x ctx
@@ -315,22 +315,16 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                    end
     | Unif(_)   -> assert false
   in
-  if !debug_infer then
-    Printf.eprintf "Inferred type [%a] for [%a]\n%!"
-      print_term a print_term t;
+  if !debug_infer then log "infr" "%a : %a" print_term t print_term a;
   let res = eval ctx a in
-  if !debug_infer && res != a then
-    Printf.eprintf "Reduced to [%a]\n%!" print_term res;
+  if !debug_infer && res != a then log "infr" "→ %a" print_term res;
   assert (has_type ctx t res); res
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
   let t = unfold t in
   let a = unfold a in
   if !debug then
-    begin
-      Printf.printf "%a ⊢ %a : %a\n%!"
-        print_ctxt ctx print_term t print_term a
-    end;
+    log "type" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
   let a = eval ctx a in
   match (t, a) with
   (* Sort *)
