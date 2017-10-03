@@ -172,9 +172,9 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
     let t = unfold t in
     if !debug_eval then
       begin
-        Printf.eprintf "EVAL_AUX %a  ∗" print_term t;
+        Printf.eprintf "EVAL_AUX (%a ∗" print_term t;
         List.iter (Printf.eprintf " [%a]" print_term) stk;
-        Printf.eprintf "\n%!"
+        Printf.eprintf "%s)\n%!" (if List.length stk = 0 then " ε" else "")
       end;
     match (t, stk) with
     (* Push. *)
