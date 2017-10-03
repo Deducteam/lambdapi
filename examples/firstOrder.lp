@@ -38,7 +38,6 @@ lem : A:Prop ⇒ prf (or A (not A)).
 // *** Theorems
 
 // implication 
-// FIXME text right after comment does not work.
 
 imp_elim : A:Prop ⇒ B:Prop ⇒ prf (imp A B) ⇒ prf A ⇒ prf B.
 [] imp_elim → λA:Prop. λB:Prop. λp:(prf (imp A B)). p.
