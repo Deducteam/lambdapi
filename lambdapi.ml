@@ -43,15 +43,24 @@ type rule =
   ; const : term var
   ; arity : int }
 
-(* Bindlib's "mkfree" *)
-let mkfree : term var -> term =
-  fun x -> Vari(x)
-
 (* Unfolding of unification variables. *)
 let rec unfold : term -> term = fun t ->
   match t with
   | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
   | _       -> t
+
+(* Occurence check. *)
+let rec occurs : term option ref -> term -> bool = fun r t ->
+  match unfold t with
+  | Prod(a,b) -> occurs r a || occurs r (subst b Kind)
+  | Abst(a,t) -> occurs r a || occurs r (subst t Kind)
+  | Appl(t,u) -> occurs r t || occurs r u
+  | Unif(u)   -> u == r
+  | _         -> false
+
+(* Bindlib's "mkfree" *)
+let mkfree : term var -> term =
+  fun x -> Vari(x)
 
 (* Smart constructors *)
 let t_type : tbox = box Type
@@ -244,8 +253,8 @@ and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
       | (Abst(a,f), Abst(b,g)) -> eq no_whnf a b && eq_binder f g
       | (Appl(t,u), Appl(f,g)) -> eq no_whnf t f && eq no_whnf u g
       | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
-      | (Unif(r)  , _        ) -> r := Some(b); true
-      | (_        , Unif(r)  ) -> r := Some(a); true
+      | (Unif(r)  , _        ) -> not (occurs r b) && (r := Some(b); true)
+      | (_        , Unif(r)  ) -> not (occurs r a) && (r := Some(a); true)
       | (_        , _        ) -> false
     in
     let res = eq no_whnf a b in
