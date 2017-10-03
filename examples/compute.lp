@@ -20,6 +20,9 @@ six   : Nat.
 seven : Nat.
 [] seven → (S (S (S (S (S (S (S Z))))))).
 
+eight : Nat.
+[] eight → (S (S (S (S (S (S (S (S Z)))))))).
+
 0 : Nat.
 1 : Nat.
 2 : Nat.
@@ -55,7 +58,10 @@ seven : Nat.
 #EVAL (plus (fact 3) (fact 2)).
 #EVAL (plus (fact 2) (fact 3)).
 
-// Takes too long ?
-//#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
 #CONV (plus (fact 5) (fact 4)), (plus (fact 4) (fact 5)).
 
+// FIXME Takes too long? (dedukti: 1   seconds, here 9   seconds, factor 9)
+//#CONV (plus (fact seven) (fact six))  , (plus (fact six)   (fact seven)).
+
+// FIXME Takes too long? (dedukti: 116 seconds, here 795 seconds, factor 7)
+//#CONV (plus (fact seven) (fact eight)), (plus (fact eight) (fact seven)).
