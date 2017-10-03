@@ -314,9 +314,11 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                    end
     | Unif(_)   -> assert false
   in
-  if !debug_infer then log "infr" "%a : %a" print_term t print_term a;
+  if !debug_infer then
+    log "infr" "%a : %a" print_term t print_term a;
   let res = eval ctx a in
-  if !debug_infer && res != a then log "infr" "→ %a" print_term res;
+  if !debug_infer && res != a then
+    log "infr" "%a : %a" print_term t print_term res;
   assert (has_type ctx t res); res
 
 and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
@@ -551,18 +553,27 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
               exit 1
           | Some(x,i) ->
               let rule = {defin; const = x; arity = i} in
-              try
-                let tt = infer ctx_aux t in
-                if !debug then Printf.eprintf "LEFT : %a\n%!" print_term tt;
-                let tu = infer ctx_aux u in
-                if !debug then Printf.eprintf "RIGHT: %a\n%!" print_term tu;
-                if not (eq ctx tt tu) then raise Not_found;
-                Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
-                add_rule rule ctx
-              with Not_found ->
-                Printf.eprintf (red "Ill-typed rule [%a → %a]\n%!")
-                  print_term t print_term u;
+              let infer t =
+                try infer ctx_aux t with Not_found ->
+                Printf.eprintf (red "Unable to infer the type of [%a]\n%!")
+                  print_term t;
                 exit 1
+              in
+              let tt = infer t in
+              let tu = infer u in
+              if eq ctx tt tu then
+                begin
+                  Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
+                  add_rule rule ctx
+                end
+              else
+                begin
+                  Printf.eprintf (red "Ill-typed rule [%a → %a]\n%!")
+                    print_term t print_term u;
+                  Printf.eprintf (red "Left : %a\n%!") print_term tt;
+                  Printf.eprintf (red "Right: %a\n%!") print_term tu;
+                  exit 1
+                end
         end
     | Check(t,a)   ->
         let t = to_term ctx t in
