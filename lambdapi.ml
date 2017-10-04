@@ -292,7 +292,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
     match t with
     | Vari(x)   -> find x ctx
     | Type      -> Kind
-    | Kind      -> raise Not_found
+    | Kind      -> err "Kind has not type\n";
+                   raise Not_found
     | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
                    let b = subst b (mkfree x) in
                    begin
@@ -300,7 +301,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                      | Kind -> Kind
                      | Type -> Type 
                      | _    ->
-                         err "Expected Type / Kind for [%a]\n%!" print_term b;
+                         err "Expected Type / Kind for [%a]\n" print_term b;
                          raise Not_found
                    end
     | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
@@ -311,8 +312,14 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                      match unfold (infer ctx t) with
                      | Prod(a,b) ->
                          if has_type ctx u a then subst b u
-                         else raise Not_found
+                         else
+                           begin
+                             err "Cannot show %a : %a\n"
+                               print_term u print_term a;
+                             raise Not_found
+                           end
                      | _         ->
+                         err "Product type expected\n";
                          raise Not_found
                    end
     | Unif(_)   -> assert false
@@ -497,7 +504,7 @@ let to_tbox : bool -> ctxt -> p_term -> tbox = fun allow_wild ctx t ->
     | P_Wild        ->
         if not allow_wild then
           begin
-            err "Wildcard \"_\" not allowd here...\n%!";
+            err "Wildcard \"_\" not allowd here...\n";
             exit 1
           end;
         new_wildcard ()
@@ -535,7 +542,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
           end
         else
           begin
-            err "Type error on %s...\n%!" x;
+            err "Type error on %s...\n" x;
             exit 1
           end
     | Rule(xs,t,u) ->
@@ -553,13 +560,13 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         begin
           match pattern_data t with
           | None      ->
-              err "Not a valid pattern...\n%!";
+              err "Not a valid pattern...\n";
               exit 1
           | Some(x,i) ->
               let rule = {defin; const = x; arity = i} in
               let infer t =
                 try infer ctx_aux t with Not_found ->
-                  err "Unable to infer the type of [%a]\n%!" print_term t;
+                  err "Unable to infer the type of [%a]\n" print_term t;
                   exit 1
               in
               let tt = infer t in
@@ -571,9 +578,9 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
                 end
               else
                 begin
-                  err "[%a → %a] is ill-typed\n%!" print_term t print_term u;
-                  err "Left : %a\n%!" print_term tt;
-                  err "Right: %a\n%!" print_term tu;
+                  err "[%a → %a] is ill-typed\n" print_term t print_term u;
+                  err "Left : %a\n" print_term tt;
+                  err "Right: %a\n" print_term tu;
                   exit 1
                 end
         end
@@ -609,7 +616,7 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let t = to_term ctx t in
         let u = to_term ctx u in
         begin
-          if not (eq ctx t u) then err "unable to convert\n%!"
+          if not (eq ctx t u) then err "unable to convert\n"
           else out "(conv) OK\n%!"
         end;
         ctx

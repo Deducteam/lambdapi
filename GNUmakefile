@@ -5,6 +5,7 @@ lambdapi: lambdapi.ml
 	@ocamlfind ocamlopt -pp pa_ocaml -package bindlib,earley,earley.str \
 		-linkpkg -o $@ $^
 
+.PHONY: tests
 tests: lambdapi $(wildcard tests/*.lp) $(wildcard examples/*.lp)
 	@./$^ --quiet
 	@echo "All good."
