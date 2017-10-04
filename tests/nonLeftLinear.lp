@@ -12,3 +12,6 @@ cns : n:Nat ⇒ Elt ⇒ Vec n ⇒ Vec (S n).
 
 tail : n:Nat ⇒ Vec (S n) ⇒ Vec n.
 [n l] tail n (cns n _ l) → l.
+
+//tail2 : n:Nat ⇒ Vec (S n) ⇒ Vec n.
+//[n m l] tail2 n (cns m _ l) → l.

@@ -15,19 +15,18 @@ and : Bool ⇒ Bool ⇒ Bool.
 []  and False _ → False.
 [x] and True  x → x.
 
-and_ : n : Nat ⇒ Bool_ n.
-[]      and_ 0             → True.
-[x]     and_ (S 0)     x   → x.
-[x y n] and_ (S (S n)) x y → and_ (S n) (and x y).
+and1_ : n : Nat ⇒ Bool_ n.
+[]      and1_ 0             → True.
+[x]     and1_ (S 0)     x   → x.
+[x y n] and1_ (S (S n)) x y → and1_ (S n) (and x y).
 
 // Ici un and acceptant un nombre variable d'arguments qui type-check bien
-and_ : n : Nat ⇒ Bool_ n.
-[]      and_ 0         → True.
-[x]     and_ (S 0)     → λx:Bool. x.
-[x y n] and_ (S (S n)) → λx:Bool. λy:Bool. (and_ (S n) (and x y)).
+and2_ : n : Nat ⇒ Bool_ n.
+[]      and2_ 0         → True.
+[x]     and2_ (S 0)     → λx:Bool. x.
+[x y n] and2_ (S (S n)) → λx:Bool. λy:Bool. (and2_ (S n) (and x y)).
 
 e : n : Nat ⇒ Bool_ n ⇒ Bool_ n.
-
 andb : n : Nat ⇒ Bool_ n.
 []      e 0 (andb 0        ) → True.
 [x]     e 0 (andb (S 0) x  ) → x.
