@@ -1,7 +1,7 @@
 Set  : Type.
 Prop : Type.
 
-prf : Prop ⇒ Type.
+def prf : Prop ⇒ Type.
 
 forall : (Set ⇒ Prop) ⇒ Prop.
 imp    : Prop ⇒ Prop ⇒ Prop.
@@ -10,7 +10,7 @@ imp    : Prop ⇒ Prop ⇒ Prop.
 [A B] prf (imp A B)  → prf A ⇒ prf B.
 
 False : Prop.
-not : Prop ⇒ Prop.
+def not : Prop ⇒ Prop.
 
 [] not → λA:Prop.imp A False.
 
@@ -32,8 +32,8 @@ min_ax2 : prf (
   forall (λx:Set.
   imp (min x S) (in x S)))).
 
-stmt : Prop.
+def stmt : Prop.
 [] stmt → forall (λx:Set. not (min x empty)).
 
-theorem : prf stmt.
+def theorem : prf stmt.
 [] theorem → λx:Set. λp:prf (min x empty). (empty_ax x) (min_ax2 empty x p).

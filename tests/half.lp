@@ -3,7 +3,7 @@ Nat : Type.
 0 : Nat.
 S : Nat ⇒ Nat.
 
-half : Nat ⇒ Nat.
+def half : Nat ⇒ Nat.
 
 []  half 0         → 0.
 []  half (S 0)     → 0.

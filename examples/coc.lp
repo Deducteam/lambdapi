@@ -1,8 +1,8 @@
 Utype : Type.
 Ukind : Type.
 
-etype : Utype ⇒ Type.
-ekind : Ukind ⇒ Type.
+def etype : Utype ⇒ Type.
+def ekind : Ukind ⇒ Type.
 
 dottype : Ukind.
 
@@ -18,7 +18,7 @@ dotpi4 : x:Ukind ⇒ y:(ekind x ⇒ Ukind) ⇒ Ukind.
 [x y] ekind (dotpi2 x y) → w:etype x ⇒ ekind (y w).
 [x y] ekind (dotpi4 x y) → w:ekind x ⇒ ekind (y w).
 
-a : x:Utype ⇒ y:etype x ⇒ etype x.
+def a : x:Utype ⇒ y:etype x ⇒ etype x.
 [] a → λx:Utype. λy:etype x. y.
 
 // Logic
@@ -27,7 +27,7 @@ False : Utype.
 True  : Utype.
 I : etype True.
 
-eq  : t:Utype ⇒ etype t ⇒ etype t ⇒ Type.
+def eq  : t:Utype ⇒ etype t ⇒ etype t ⇒ Type.
 eq_ : t:Utype ⇒ etype t ⇒ etype t ⇒ Utype.
 
 [t x y] eq t x y → etype (eq_ t x y).
@@ -42,7 +42,7 @@ eq_rec : t:Utype
   ⇒ h:eq t x y
   ⇒ etype (p y).
 
-f_equal : A:Utype
+def f_equal : A:Utype
   ⇒ B:Utype
   ⇒ f:(etype A ⇒ etype B)
   ⇒ x:etype A
@@ -59,7 +59,7 @@ f_equal : A:Utype
 
 nat_ : Utype.
 
-nat : Type.
+def nat : Type.
 
 [] nat → etype nat_.
 
@@ -67,7 +67,7 @@ Z : nat.
 
 S : nat ⇒ nat.
 
-nat_rec : t:Utype
+def nat_rec : t:Utype
   ⇒ etype t
   ⇒ (nat ⇒ etype t ⇒ etype t)
   ⇒ nat
@@ -76,34 +76,34 @@ nat_rec : t:Utype
 [t a f]   nat_rec t a f Z     → a.
 [t a f n] nat_rec t a f (S n) → f n (nat_rec t a f n).
 
-plus : nat ⇒ nat ⇒ nat.
+def plus : nat ⇒ nat ⇒ nat.
 [] plus → λx:nat. λy:nat. nat_rec nat_ Z (λx:nat. λy:nat. y) x.
 
-plus2 : nat ⇒ nat ⇒ nat.
+def plus2 : nat ⇒ nat ⇒ nat.
 [x]   plus2 x     Z     → x.
 [x]   plus2 Z     x     → x.
 [x y] plus2 x     (S y) → S (plus2 x y).
 [x y] plus2 (S x) y     → S (plus2 x y).
 
-eq_S : x:nat
+def eq_S : x:nat
   ⇒ y : nat
   ⇒ eq nat_ x y
   ⇒ eq nat_ (S x) (S y).
 
 [] eq_S → f_equal nat_ nat_ S.
 
-eq_S2 : etype (dotpi1 nat_ (λx:nat.
+def eq_S2 : etype (dotpi1 nat_ (λx:nat.
   dotpi1 nat_ (λy:nat.
   dotpi1 (eq_ nat_ x y) (λh:eq nat_ x y. eq_ nat_ (S x) (S y))))).
 
 [] eq_S2 → eq_S.
 
-pred : nat ⇒ nat.
+def pred : nat ⇒ nat.
 [] pred → nat_rec nat_ Z (λx:nat. λy:nat. x).
 
-pred2 : nat ⇒ nat.
+def pred2 : nat ⇒ nat.
 []  pred2 Z     → Z.
 [x] pred2 (S x) → x.
 
-pred_Sn : n : nat ⇒ eq nat_ n (pred (S n)).
+def pred_Sn : n : nat ⇒ eq nat_ n (pred (S n)).
 [] pred_Sn → λn:nat. refl_equal nat_ n.

@@ -2,12 +2,12 @@ nat : Type.
 Z   : nat.
 S   : nat ⇒ nat.
 
-plus : nat ⇒ nat ⇒ nat.
+def plus : nat ⇒ nat ⇒ nat.
 [m]   plus Z (S m) → S m.
 [n]   plus n Z → n.
 [n m] plus (S n) (S m) → S (S m).
 
-e: nat ⇒ Type.
-x: e Z.
-y: e (plus Z Z).
+e : nat ⇒ Type.
+def x : e Z.
+y : e (plus Z Z).
 [] x → y.

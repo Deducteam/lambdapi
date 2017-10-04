@@ -2,35 +2,35 @@ Nat : Type.
 Z   : Nat.
 S   : Nat ⇒ Nat.
 
-plus : Nat ⇒ Nat ⇒ Nat.
+def plus : Nat ⇒ Nat ⇒ Nat.
 [x]   plus Z     x → x.
 [x y] plus (S x) y → plus x (S y).
 
-mult : Nat ⇒ Nat ⇒ Nat.
+def mult : Nat ⇒ Nat ⇒ Nat.
 []    mult Z     _ → Z.
 [x y] mult (S x) y → plus y (mult x y).
 
-fact : Nat ⇒ Nat.
+def fact : Nat ⇒ Nat.
 []  fact Z     → S Z.
 [x] fact (S x) → mult (S x) (fact x).
 
-six   : Nat.
+def six   : Nat.
 [] six   → (S (S (S (S (S (S Z)))))).
 
-seven : Nat.
+def seven : Nat.
 [] seven → (S (S (S (S (S (S (S Z))))))).
 
-eight : Nat.
+def eight : Nat.
 [] eight → (S (S (S (S (S (S (S (S Z)))))))).
 
-0 : Nat.
-1 : Nat.
-2 : Nat.
-3 : Nat.
-4 : Nat.
-5 : Nat.
-6 : Nat.
-7 : Nat.
+def 0 : Nat.
+def 1 : Nat.
+def 2 : Nat.
+def 3 : Nat.
+def 4 : Nat.
+def 5 : Nat.
+def 6 : Nat.
+def 7 : Nat.
 
 [] 0 → Z.
 [] 1 → S 0.

@@ -1,3 +1,6 @@
+QUIET = --quiet
+TESTFILES = $(wildcard tests/*.lp) $(wildcard examples/*.lp)
+
 all: lambdapi tests
 
 lambdapi: lambdapi.ml
@@ -6,8 +9,11 @@ lambdapi: lambdapi.ml
 		-linkpkg -o $@ $^
 
 .PHONY: tests
-tests: lambdapi $(wildcard tests/*.lp) $(wildcard examples/*.lp)
-	@./$^ --quiet
+tests: lambdapi
+	@for file in $(TESTFILES) ; do \
+		echo "Testing file \"$$file\"" ; \
+		./lambdapi $(QUIET) $$file ; \
+	done;
 	@echo "All good."
 
 clean:

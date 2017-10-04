@@ -620,7 +620,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         begin
           match pattern_data t with
           | None      ->
-              err "Not a valid pattern...\n";
+              err "%a is not a valid pattern...\n" print_term t;
               exit 1
           | Some(s,i) ->
               let rule = { defin ; arity = i } in
