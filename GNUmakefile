@@ -1,4 +1,4 @@
-all: lambdapi
+all: lambdapi tests
 
 lambdapi: lambdapi.ml
 	@echo "[OPT] $^ → $@"
