@@ -123,6 +123,22 @@ let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
 let t_appl : tbox -> tbox -> tbox =
   box_apply2 (fun t u -> Appl(t,u))
 
+(* Lifting function *)
+let rec lift : term -> tbox = fun t ->
+  match t with
+  | Vari(x)   -> box_of_var x
+  | Type      -> t_type
+  | Kind      -> t_kind
+  | Symb(s)   -> box (Symb(s))
+  | Prod(a,b) -> t_prod (lift a) (binder_name b)
+                   (fun x -> lift (subst b (mkfree x)))
+  | Abst(a,t) -> t_abst (lift a) (binder_name t)
+                   (fun x -> lift (subst t (mkfree x)))
+  | Appl(t,u) -> t_appl (lift t) (lift u)
+  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
+
+let update_names : term -> term = fun t -> unbox (lift t)
+
 (* Unfolding of unification variables. *)
 let rec unfold : term -> term = fun t ->
   match t with
@@ -166,7 +182,7 @@ let add_args : term -> term list -> term =
   List.fold_left (fun t u -> Appl(t,u))
 
 (* Printing *)
-let rec print_term : out_channel -> term -> unit = fun oc t ->
+let print_term : out_channel -> term -> unit = fun oc t ->
   let rec is_abst t =
     match t with
     | Abst(_,_) -> true
@@ -181,32 +197,33 @@ let rec print_term : out_channel -> term -> unit = fun oc t ->
     | Unif(r)   -> (match !r with None -> false | Some t -> is_appl t)
     | _         -> false
   in
-  match t with
-  | Vari(x)   -> output_string oc (name_of x)
-  | Type      -> output_string oc "Type"
-  | Kind      -> output_string oc "Kind"
-  | Symb(s)   -> output_string oc (symbol_name s)
-  | Prod(a,b) ->
-      let (x,b) = unbind mkfree b in
-      let x = name_of x in
-      let (l,r) = if is_abst a then ("(",")") else ("","") in
-      if x = "_" then
-        Printf.fprintf oc "%s%a%s ⇒ %a" l print_term a r print_term b
-      else
-        Printf.fprintf oc "%s%s:%a%s ⇒ %a" l x print_term a r print_term b
-  | Abst(a,t) ->
-      let (x,t) = unbind mkfree t in
-      Printf.fprintf oc "λ%s:%a.%a" (name_of x) print_term a print_term t
-  | Appl(t,u) ->
-      let (l1,r1) = if is_abst t then ("(",")") else ("","") in
-      let (l2,r2) = if is_appl u then ("(",")") else ("","") in
-      Printf.fprintf oc "%s%a%s %s%a%s" l1 print_term t r1 l2 print_term u r2
-  | Unif(r)   ->
-      begin
-        match !r with
-        | None    -> output_string oc "?"
-        | Some(t) -> print_term oc t
-      end
+  let rec print oc t =
+    match t with
+    | Vari(x)   -> output_string oc (name_of x)
+    | Type      -> output_string oc "Type"
+    | Kind      -> output_string oc "Kind"
+    | Symb(s)   -> output_string oc (symbol_name s)
+    | Prod(a,b) ->
+        let (x,b) = unbind mkfree b in
+        let x = name_of x in
+        let (l,r) = if is_abst a then ("(",")") else ("","") in
+        if x = "_" then Printf.fprintf oc "%s%a%s ⇒ %a" l print a r print b
+        else Printf.fprintf oc "%s%s:%a%s ⇒ %a" l x print a r print b
+    | Abst(a,t) ->
+        let (x,t) = unbind mkfree t in
+        Printf.fprintf oc "λ%s:%a.%a" (name_of x) print a print t
+    | Appl(t,u) ->
+        let (l1,r1) = if is_abst t then ("(",")") else ("","") in
+        let (l2,r2) = if is_appl u then ("(",")") else ("","") in
+        Printf.fprintf oc "%s%a%s %s%a%s" l1 print t r1 l2 print u r2
+    | Unif(r)   ->
+        begin
+          match !r with
+          | None    -> output_string oc "?"
+          | Some(t) -> print oc t
+        end
+  in
+  print oc (update_names t)
 
 let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
   let rec print_vars oc ls =
@@ -311,19 +328,6 @@ and eq : ?no_whnf:bool -> Sign.t -> term -> term -> bool =
         log "equa" "%a =%c= %a" print_term a c print_term b;
       end;
     res
-
-let rec lift : term -> tbox = fun t ->
-  match t with
-  | Vari(x)   -> box_of_var x
-  | Type      -> t_type
-  | Kind      -> t_kind
-  | Symb(s)   -> box (Symb(s))
-  | Prod(a,b) -> t_prod (lift a) (binder_name b)
-                   (fun x -> lift (subst b (mkfree x)))
-  | Abst(a,t) -> t_abst (lift a) (binder_name t)
-                   (fun x -> lift (subst t (mkfree x)))
-  | Appl(t,u) -> t_appl (lift t) (lift u)
-  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
 
 let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
