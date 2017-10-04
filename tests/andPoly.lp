@@ -31,5 +31,5 @@ def andb : n:Nat ⇒ Bool_ n.
 []      e 0 (andb 0            ) → True.
 [x]     e 0 (andb (S 0)     x  ) → x.
 [x y n] e n (andb (S (S _)) x y) → andb (S n) (and x y).
-// [x y n] e n (andb _ x y) → andb (S n) (and x y).
+//[x y n] e n (andb _ x y) → andb (S n) (and x y).
 // FIXME used to work.

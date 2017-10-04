@@ -38,10 +38,12 @@ type term =
   | Type
   | Kind
   | Symb of symbol
-  | Prod of term * (term,term) binder
-  | Abst of term * (term,term) binder
+  | Prod of term * ttbinder
+  | Abst of term * ttbinder
   | Appl of term * term
   | Unif of term option ref
+
+and  ttbinder = (term, term) binder
 
 and  sym =
   { sym_name  : string
@@ -138,6 +140,12 @@ let rec lift : term -> tbox = fun t ->
   | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
 
 let update_names : term -> term = fun t -> unbox (lift t)
+
+(* Equality of binders. *)
+let eq_binder : (term -> term -> bool) -> ttbinder -> ttbinder -> bool =
+  fun eq f g -> f == g ||
+    let x = mkfree (new_var mkfree "_eq_binder_") in
+    eq (subst f x) (subst g x)
 
 (* Unfolding of unification variables. *)
 let rec unfold : term -> term = fun t ->
@@ -240,6 +248,35 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
         else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
   in print_vars oc ctx
 
+(* Strict equality (no conversion). *)
+let unify : term option ref -> term -> bool =
+  fun r a -> not (occurs r a) && (r := Some(a); true)
+
+let eq : term -> term -> bool = fun a b ->
+  if !debug then log "equa" "%a =!?!= %a" print_term a print_term b;
+  let rec eq a b = a == b ||
+    match (unfold a, unfold b) with
+    | (Vari(x)      , Vari(y)      ) -> eq_vars x y
+    | (Type         , Type         ) -> true
+    | (Kind         , Kind         ) -> true
+    | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
+    | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
+    | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
+    | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
+    | (Appl(t,u)    , Appl(f,g)    ) -> eq t f && eq u g
+    | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
+    | (Unif(r)      , b            ) -> unify r b
+    | (a            , Unif(r)      ) -> unify r a
+    | (_            , _            ) -> false
+  in
+  let res = eq a b in
+  if !debug then
+    begin
+      let c = if res then '=' else '/' in
+      log "equa" "%a =!%c!= %a" print_term a c print_term b;
+    end;
+  res
+
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug then log "eval" "evaluating %a" print_term t;
@@ -274,7 +311,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
               | (_, _     ) -> assert false
             in
             let (t, stk) = add_n_args rule.arity t stk in
-            if eq ~no_eval:true sign t l then Some(add_args r stk) else None
+            if eq t l then Some(add_args r stk) else None
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -291,43 +328,34 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug then log "eval" "produced %a" print_term u; u
 
 (* Equality *)
-and eq : ?no_eval:bool -> Sign.t -> term -> term -> bool =
-  fun ?(no_eval=false) sign a b ->
-    if !debug then log "equa" "%a =?= %a" print_term a print_term b;
-    let rec eq no_eval a b = a == b ||
-      let eq_binder f g = f == g ||
-        let x = mkfree (new_var mkfree "_eq_binder_") in
-        eq no_eval (subst f x) (subst g x)
-      in
-      let trivial = if not no_eval then eq true a b else false in
-      trivial ||
-      let a = if no_eval then unfold a else eval sign a in
-      let b = if no_eval then unfold b else eval sign b in
-      match (a,b) with
-      | (Vari(x)  , Vari(y)  ) -> eq_vars x y
-      | (Type     , Type     ) -> true
-      | (Kind     , Kind     ) -> true
-      | (Symb(sa) , Symb(sb) ) -> eq_symbols sa sb
-      | (Prod(a,f), Prod(b,g)) -> eq no_eval a b && eq_binder f g
-      | (Abst(a,f), Abst(b,g)) -> eq no_eval a b && eq_binder f g
-      | (Appl(t,u), Appl(f,g)) -> eq no_eval t f && eq no_eval u g
-      | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
-      | (Unif(r)  , _        ) -> not (occurs r b) && (r := Some(b); true)
-      | (_        , Unif(r)  ) -> not (occurs r a) && (r := Some(a); true)
-      | (_        , _        ) -> false
-    and eq_symbols sa sb =
-      match (sa, sb) with
-      | (Sym(sa), Sym(sb)) -> sa == sb (* FIXME FIXME FIXME *)
-      | (Def(sa), Def(sb)) -> sa == sb (* FIXME FIXME FIXME *)
-      | (_      , _      ) -> false
-    in
-    let res = eq no_eval a b in
-    if !debug then
-      begin
-        let c = if res then '=' else '/' in
-        log "equa" "%a =%c= %a" print_term a c print_term b;
-      end;
-    res
+let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
+  if !debug then log "equa" "%a =?= %a" print_term a print_term b;
+  let rec eq_mod a b = eq a b ||
+    match (eval sign a, eval sign b) with
+    | (Vari(x)  , Vari(y)  ) -> eq_vars x y
+    | (Type     , Type     ) -> true
+    | (Kind     , Kind     ) -> true
+    | (Symb(sa) , Symb(sb) ) -> eq_symbols sa sb
+    | (Prod(a,f), Prod(b,g)) -> eq_mod a b && eq_binder eq_mod f g
+    | (Abst(a,f), Abst(b,g)) -> eq_mod a b && eq_binder eq_mod f g
+    | (Appl(t,u), Appl(f,g)) -> eq_mod t f && eq_mod u g
+    | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
+    | (Unif(r)  , b        ) -> unify r b
+    | (a        , Unif(r)  ) -> unify r a
+    | (_        , _        ) -> false
+  and eq_symbols sa sb =
+    match (sa, sb) with
+    | (Sym(sa), Sym(sb)) -> sa == sb (* FIXME FIXME FIXME *)
+    | (Def(sa), Def(sb)) -> sa == sb (* FIXME FIXME FIXME *)
+    | (_      , _      ) -> false
+  in
+  let res = eq_mod a b in
+  if !debug then
+    begin
+      let c = if res then '=' else '/' in
+      log "equa" "%a =%c= %a" print_term a c print_term b;
+    end;
+  res
 
 let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
@@ -392,9 +420,9 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   (* Sort *)
   | (Type     , Kind     ) -> true
   (* Variable *)
-  | (Vari(x)  , a        ) -> eq sign (find x ctx) a
+  | (Vari(x)  , a        ) -> eq_modulo sign (find x ctx) a
   (* Symbol *)
-  | (Symb(s)  , a        ) -> eq sign (symbol_type s) a
+  | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
   (* Product *)
   | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
                               let b = subst b (mkfree x) in
@@ -410,7 +438,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
                               let t = subst t (mkfree x) in
                               let b = subst b (mkfree x) in
                               let ctx_x = add_var x a ctx in
-                              eq sign a c
+                              eq_modulo sign a c
                               && has_type sign ctx a Type
                               && (has_type sign ctx_x b Type
                                   || has_type sign ctx_x b Kind)
@@ -419,7 +447,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   | (Appl(t,u), b        ) ->
       begin
         match infer sign ctx t with
-        | Prod(a,ba) as tt -> eq sign (subst ba u) b
+        | Prod(a,ba) as tt -> eq_modulo sign (subst ba u) b
                               && has_type sign ctx t tt
                               && has_type sign ctx u a
         | _          -> false
@@ -637,7 +665,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
               in
               let tt = infer t in
               let tu = infer u in
-              if eq sign tt tu then
+              if eq_modulo sign tt tu then
                 begin
                   out "(rule) %a → %a\n%!" print_term t print_term u;
                   s.def_rules := !(s.def_rules) @ [rule]
@@ -675,7 +703,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Conv(t,u)    ->
         let t = to_term sign t in
         let u = to_term sign u in
-        if not (eq sign t u) then
+        if not (eq_modulo sign t u) then
           err "unable to convert %a and %a...\n" print_term t print_term u
         else
           out "(conv) OK\n%!"
