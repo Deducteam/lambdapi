@@ -10,7 +10,7 @@ lambdapi: lambdapi.ml
 
 .PHONY: tests
 tests: lambdapi
-	@for file in $(TESTFILES) ; do \
+	@time for file in $(TESTFILES) ; do \
 		echo "Testing file \"$$file\"" ; \
 		./lambdapi $(QUIET) $$file ; \
 	done;
