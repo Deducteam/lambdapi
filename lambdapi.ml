@@ -294,8 +294,8 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
 and eq : ?no_eval:bool -> Sign.t -> term -> term -> bool =
   fun ?(no_eval=false) sign a b ->
     if !debug then log "equa" "%a =?= %a" print_term a print_term b;
-    let rec eq no_eval a b =
-      let eq_binder f g =
+    let rec eq no_eval a b = a == b ||
+      let eq_binder f g = f == g ||
         let x = mkfree (new_var mkfree "_eq_binder_") in
         eq no_eval (subst f x) (subst g x)
       in
