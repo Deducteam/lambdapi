@@ -14,7 +14,6 @@ tests: lambdapi
 		echo "Testing file \"$$file\"" ; \
 		./lambdapi $(QUIET) $$file ; \
 	done;
-	@echo "All good."
 
 clean:
 	@rm -f *.cmi *.cmo *.cmx *.o
