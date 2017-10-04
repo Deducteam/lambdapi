@@ -59,9 +59,7 @@ def 7 : Nat.
 #EVAL (plus (fact 2) (fact 3)).
 
 #CONV (plus (fact 5) (fact 4)), (plus (fact 4) (fact 5)).
+#CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
 
-// FIXME Takes too long? (dedukti: 1   seconds, here 9   seconds, factor 9)
-//#CONV (plus (fact seven) (fact six))  , (plus (fact six)   (fact seven)).
-
-// FIXME Takes too long? (dedukti: 116 seconds, here 795 seconds, factor 7)
+// FIXME Takes too long? (dedukti: 116 seconds, here 300 seconds, factor 2.6)
 //#CONV (plus (fact seven) (fact eight)), (plus (fact eight) (fact seven)).
