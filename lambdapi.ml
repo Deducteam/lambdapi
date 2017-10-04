@@ -274,7 +274,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
               | (_, _     ) -> assert false
             in
             let (t, stk) = add_n_args rule.arity t stk in
-            if eq ~no_whnf:true sign t l then Some(add_args r stk) else None
+            if eq ~no_eval:true sign t l then Some(add_args r stk) else None
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -291,26 +291,26 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug then log "eval" "produced %a" print_term u; u
 
 (* Equality *)
-and eq : ?no_whnf:bool -> Sign.t -> term -> term -> bool =
-  fun ?(no_whnf=false) sign a b ->
+and eq : ?no_eval:bool -> Sign.t -> term -> term -> bool =
+  fun ?(no_eval=false) sign a b ->
     if !debug then log "equa" "%a =?= %a" print_term a print_term b;
-    let rec eq no_whnf a b =
+    let rec eq no_eval a b =
       let eq_binder f g =
         let x = mkfree (new_var mkfree "_eq_binder_") in
-        eq no_whnf (subst f x) (subst g x)
+        eq no_eval (subst f x) (subst g x)
       in
-      let trivial = if not no_whnf then eq true a b else false in
+      let trivial = if not no_eval then eq true a b else false in
       trivial ||
-      let a = if no_whnf then unfold a else eval sign a in
-      let b = if no_whnf then unfold b else eval sign b in
+      let a = if no_eval then unfold a else eval sign a in
+      let b = if no_eval then unfold b else eval sign b in
       match (a,b) with
       | (Vari(x)  , Vari(y)  ) -> eq_vars x y
       | (Type     , Type     ) -> true
       | (Kind     , Kind     ) -> true
       | (Symb(sa) , Symb(sb) ) -> eq_symbols sa sb
-      | (Prod(a,f), Prod(b,g)) -> eq no_whnf a b && eq_binder f g
-      | (Abst(a,f), Abst(b,g)) -> eq no_whnf a b && eq_binder f g
-      | (Appl(t,u), Appl(f,g)) -> eq no_whnf t f && eq no_whnf u g
+      | (Prod(a,f), Prod(b,g)) -> eq no_eval a b && eq_binder f g
+      | (Abst(a,f), Abst(b,g)) -> eq no_eval a b && eq_binder f g
+      | (Appl(t,u), Appl(f,g)) -> eq no_eval t f && eq no_eval u g
       | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
       | (Unif(r)  , _        ) -> not (occurs r b) && (r := Some(b); true)
       | (_        , Unif(r)  ) -> not (occurs r a) && (r := Some(a); true)
@@ -321,7 +321,7 @@ and eq : ?no_whnf:bool -> Sign.t -> term -> term -> bool =
       | (Def(sa), Def(sb)) -> sa == sb (* FIXME FIXME FIXME *)
       | (_      , _      ) -> false
     in
-    let res = eq no_whnf a b in
+    let res = eq no_eval a b in
     if !debug then
       begin
         let c = if res then '=' else '/' in
