@@ -19,7 +19,7 @@ cons : n:Nat ⇒ Nat ⇒ Vec n ⇒ Vec (succ n).
 #CHECK nil, Vec zero.
 #CHECK cons zero (succ zero) nil, Vec (succ zero).
 
-add  : Nat ⇒ Nat ⇒ Nat.
+def add : Nat ⇒ Nat ⇒ Nat.
 [n]   add n        zero     → n.
 [m]   add zero     m        → m.
 [m n] add (succ n) m        → succ (add n m).
@@ -29,7 +29,7 @@ add  : Nat ⇒ Nat ⇒ Nat.
 #EVAL add zero zero.
 #EVAL add (succ (succ zero)) (succ zero).
 
-id : (Nat ⇒ Nat) ⇒ Nat ⇒ Nat.
+def id : (Nat ⇒ Nat) ⇒ Nat ⇒ Nat.
 [n] id (λx:Nat.x) n → n.
 
 #EVAL id (λy:Nat.y) (succ (succ zero)).

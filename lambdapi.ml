@@ -37,19 +37,91 @@ type term =
   | Vari of term var
   | Type
   | Kind
+  | Symb of symbol
   | Prod of term * (term,term) binder
   | Abst of term * (term,term) binder
   | Appl of term * term
   | Unif of term option ref
 
-type tbox = term bindbox
+and  sym =
+  { sym_name  : string
+  ; sym_type  : term }
 
+and  def =
+  { def_name  : string
+  ; def_type  : term
+  ; def_rules : rule list ref }
+
+and  symbol =
+  | Sym of sym
+  | Def of def
+
+and  rule =
+  { defin : (term, term * term) mbinder
+  ; arity : int }
+
+let symbol_name : symbol -> string = fun s ->
+  match s with
+  | Sym(sym) -> sym.sym_name
+  | Def(def) -> def.def_name
+
+let symbol_type : symbol -> term = fun s ->
+  match s with
+  | Sym(sym) -> sym.sym_type
+  | Def(def) -> def.def_type
+
+(* Signature *)
+module Sign =
+  struct
+    type t =
+      { syms  : (string, sym) Hashtbl.t
+      ; defs  : (string, def) Hashtbl.t }
+ 
+    let create : unit -> t = fun () ->
+      let syms  = Hashtbl.create 37 in
+      let defs  = Hashtbl.create 37 in
+      { syms ; defs }
+
+    let name_exists : string -> t -> bool = fun n sign ->
+      Hashtbl.mem sign.syms n || Hashtbl.mem sign.defs n
+
+    let new_sym : t -> string -> term -> unit = fun sign name ty ->
+      if name_exists name sign then wrn "Redefinition of %s.\n" name;
+      let sym = { sym_name = name ; sym_type = ty } in
+      Hashtbl.add sign.syms name sym
+ 
+    let new_def : t -> string -> term -> unit = fun sign name ty ->
+      if name_exists name sign then wrn "Redefinition of %s.\n" name;
+      let def = { def_name = name ; def_type = ty ; def_rules = ref [] } in
+      Hashtbl.add sign.defs name def
+ 
+    let find_symbol : t -> string -> symbol = fun sign name ->
+      try Sym (Hashtbl.find sign.syms name)
+      with Not_found -> Def (Hashtbl.find sign.defs name)
+  end
+
+(* Bindlib related things and smart constructors. *)
+type tbox = term bindbox
 type tvar = term var
 
-type rule =
-  { defin : (term, term * term) mbinder
-  ; const : term var
-  ; arity : int }
+let mkfree : term var -> term =
+  fun x -> Vari(x)
+
+let t_type : tbox = box Type
+
+let t_kind : tbox = box Kind
+
+let t_symb : Sign.t -> string -> tbox =
+  fun sign n -> box (Symb (Sign.find_symbol sign n))
+
+let t_prod : tbox -> string -> (tvar -> tbox) -> tbox =
+  fun a x f -> box_apply2 (fun a b -> Prod(a,b)) a (vbind mkfree x f)
+
+let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
+  fun a x f -> box_apply2 (fun a b -> Abst(a,b)) a (vbind mkfree x f)
+
+let t_appl : tbox -> tbox -> tbox =
+  box_apply2 (fun t u -> Appl(t,u))
 
 (* Unfolding of unification variables. *)
 let rec unfold : term -> term = fun t ->
@@ -64,56 +136,21 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Abst(a,t) -> occurs r a || occurs r (subst t Kind)
   | Appl(t,u) -> occurs r t || occurs r u
   | Unif(u)   -> u == r
-  | _         -> false
-
-(* Bindlib's "mkfree" *)
-let mkfree : term var -> term =
-  fun x -> Vari(x)
-
-(* Smart constructors *)
-let t_type : tbox = box Type
-let t_kind : tbox = box Kind
-
-let t_prod : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f -> box_apply2 (fun a b -> Prod(a,b)) a (vbind mkfree x f)
-
-let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f -> box_apply2 (fun a b -> Abst(a,b)) a (vbind mkfree x f)
-
-let t_appl : tbox -> tbox -> tbox =
-  box_apply2 (fun t u -> Appl(t,u))
-
-(* Pattern data *)
-let pattern_data : term -> (term var * int) option = fun t ->
-  let rec get_args acc t =
-    match t with
-    | Vari(x)   -> Some(x, acc)
-    | Appl(t,u) -> get_args (u::acc) t
-    | _         -> None
-  in
-  match get_args [] t with
-  | None        -> None
-  | Some(x, ts) -> Some(x, List.length ts)
+  | Type      -> false
+  | Kind      -> false
+  | Vari(_)   -> false
+  | Symb(_)   -> false
 
 (* Context *)
-type ctxt =
-  { variables : (term var * term) list
-  ; rules     : rule list }
+type ctxt = (term var * term) list
 
-let empty_ctxt =
-  {variables = []; rules = []} 
+let empty_ctxt = []
 
-let add_var : term var -> term -> ctxt -> ctxt = fun x a ctx ->
-  {ctx with variables = (x,a)::ctx.variables}
-
-let add_rule : rule -> ctxt -> ctxt = fun r ctx ->
-  {ctx with rules = r::ctx.rules}
+let add_var : term var -> term -> ctxt -> ctxt =
+  fun x a ctx -> (x,a)::ctx
 
 let find : term var -> ctxt -> term = fun x ctx ->
-  snd (List.find (fun (y,_) -> eq_vars x y) ctx.variables)
-
-let find_name : string -> ctxt -> term var = fun x ctx ->
-  fst (List.find (fun (y,_) -> name_of y = x) ctx.variables)
+  snd (List.find (fun (y,_) -> eq_vars x y) ctx)
 
 let remove_args : term -> int -> term * term list = fun t n ->
   let rec rem acc n t =
@@ -148,6 +185,7 @@ let rec print_term : out_channel -> term -> unit = fun oc t ->
   | Vari(x)   -> output_string oc (name_of x)
   | Type      -> output_string oc "Type"
   | Kind      -> output_string oc "Kind"
+  | Symb(s)   -> output_string oc (symbol_name s)
   | Prod(a,b) ->
       let (x,b) = unbind mkfree b in
       let x = name_of x in
@@ -183,12 +221,12 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
         let x = name_of x in
         if x = "_" then print_vars oc ctx
         else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
-  in print_vars oc ctx.variables
+  in print_vars oc ctx
 
 (* Evaluation *)
-let rec eval : ctxt -> term -> term = fun ctx t ->
+let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug then log "eval" "evaluating %a" print_term t;
-  let rec eval_aux ctx t stk =
+  let rec eval_aux sign t stk =
     let t = unfold t in
     if !debug_eval then
       begin
@@ -198,15 +236,14 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
       end;
     match (t, stk) with
     (* Push. *)
-    | (Appl(t,u), stk    ) -> eval_aux ctx t (eval_aux ctx u [] :: stk)
+    | (Appl(t,u)   , stk    ) -> eval_aux sign t (eval_aux sign u [] :: stk)
     (* Beta. *)
-    | (Abst(_,f), v::stk ) -> eval_aux ctx (subst f v) stk
+    | (Abst(_,f)   , v::stk ) -> eval_aux sign (subst f v) stk
     (* Try to rewrite. *)
-    | (Vari(x)  , stk    ) ->
+    | (Symb(Def(s)), stk    ) ->
         begin
           let nb_args = List.length stk in
-          let suitable r = eq_vars x r.const && r.arity <= nb_args in
-          let rs = List.filter suitable ctx.rules in
+          let rs = List.filter (fun r -> r.arity <= nb_args) !(s.def_rules) in
           let match_term rule t stk =
             let ar = mbinder_arity rule.defin in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
@@ -220,7 +257,7 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
               | (_, _     ) -> assert false
             in
             let (t, stk) = add_n_args rule.arity t stk in
-            if eq ~no_whnf:true ctx t l then Some(add_args r stk) else None
+            if eq ~no_whnf:true sign t l then Some(add_args r stk) else None
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -228,17 +265,17 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
           if !debug_eval && nb > 1 then wrn "%i rules apply...\n%!" nb;
           match ts with
           | []   -> add_args t stk
-          | t::_ -> eval_aux ctx t []
+          | t::_ -> eval_aux sign t []
         end
     (* In head normal form. *)
-    | (t        , stk    ) -> add_args t stk
+    | (t           , stk    ) -> add_args t stk
   in
-  let u = eval_aux ctx t [] in
+  let u = eval_aux sign t [] in
   if !debug then log "eval" "produced %a" print_term u; u
 
 (* Equality *)
-and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
-  fun ?(no_whnf=false) ctx a b ->
+and eq : ?no_whnf:bool -> Sign.t -> term -> term -> bool =
+  fun ?(no_whnf=false) sign a b ->
     if !debug then log "equa" "%a =?= %a" print_term a print_term b;
     let rec eq no_whnf a b =
       let eq_binder f g =
@@ -247,12 +284,13 @@ and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
       in
       let trivial = if not no_whnf then eq true a b else false in
       trivial ||
-      let a = if no_whnf then unfold a else eval ctx a in
-      let b = if no_whnf then unfold b else eval ctx b in
+      let a = if no_whnf then unfold a else eval sign a in
+      let b = if no_whnf then unfold b else eval sign b in
       match (a,b) with
       | (Vari(x)  , Vari(y)  ) -> eq_vars x y
       | (Type     , Type     ) -> true
       | (Kind     , Kind     ) -> true
+      | (Symb(sa) , Symb(sb) ) -> eq_symbols sa sb
       | (Prod(a,f), Prod(b,g)) -> eq no_whnf a b && eq_binder f g
       | (Abst(a,f), Abst(b,g)) -> eq no_whnf a b && eq_binder f g
       | (Appl(t,u), Appl(f,g)) -> eq no_whnf t f && eq no_whnf u g
@@ -260,6 +298,11 @@ and eq : ?no_whnf:bool -> ctxt -> term -> term -> bool =
       | (Unif(r)  , _        ) -> not (occurs r b) && (r := Some(b); true)
       | (_        , Unif(r)  ) -> not (occurs r a) && (r := Some(a); true)
       | (_        , _        ) -> false
+    and eq_symbols sa sb =
+      match (sa, sb) with
+      | (Sym(sa), Sym(sb)) -> sa == sb (* FIXME FIXME FIXME *)
+      | (Def(sa), Def(sb)) -> sa == sb (* FIXME FIXME FIXME *)
+      | (_      , _      ) -> false
     in
     let res = eq no_whnf a b in
     if !debug then
@@ -274,6 +317,7 @@ let rec lift : term -> tbox = fun t ->
   | Vari(x)   -> box_of_var x
   | Type      -> t_type
   | Kind      -> t_kind
+  | Symb(s)   -> box (Symb(s))
   | Prod(a,b) -> t_prod (lift a) (binder_name b)
                    (fun x -> lift (subst b (mkfree x)))
   | Abst(a,t) -> t_abst (lift a) (binder_name t)
@@ -285,7 +329,7 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
 
 (* Judgements *)
-let rec infer : ctxt -> term -> term = fun ctx t ->
+let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   let t = unfold t in
   if !debug_infer then log "infr" "type of [%a]?" print_term t;
   let a =
@@ -294,10 +338,11 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
     | Type      -> Kind
     | Kind      -> err "Kind has not type\n";
                    raise Not_found
+    | Symb(s)   -> symbol_type s
     | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
                    let b = subst b (mkfree x) in
                    begin
-                     match infer (add_var x a ctx) b with
+                     match infer sign (add_var x a ctx) b with
                      | Kind -> Kind
                      | Type -> Type 
                      | _    ->
@@ -306,12 +351,12 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                    end
     | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
                    let t = subst t (mkfree x) in
-                   let b = infer (add_var x a ctx) t in
+                   let b = infer sign (add_var x a ctx) t in
                    Prod(a, bind_vari x b)
     | Appl(t,u) -> begin
-                     match unfold (infer ctx t) with
+                     match unfold (infer sign ctx t) with
                      | Prod(a,b) ->
-                         if has_type ctx u a then subst b u
+                         if has_type sign ctx u a then subst b u
                          else
                            begin
                              err "Cannot show %a : %a\n"
@@ -326,49 +371,51 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   in
   if !debug_infer then
     log "infr" "%a : %a" print_term t print_term a;
-  let res = eval ctx a in
+  let res = eval sign a in
   if !debug_infer && res != a then
     log "infr" "%a : %a" print_term t print_term res;
-  assert (has_type ctx t res); res
+  assert (has_type sign ctx t res); res
 
-and has_type : ctxt -> term -> term -> bool = fun ctx t a ->
+and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   let t = unfold t in
   let a = unfold a in
   if !debug then
     log "type" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
-  let a = eval ctx a in
+  let a = eval sign a in
   match (t, a) with
   (* Sort *)
   | (Type     , Kind     ) -> true
   (* Variable *)
-  | (Vari(x)  , a        ) -> eq ctx (find x ctx) a
+  | (Vari(x)  , a        ) -> eq sign (find x ctx) a
+  (* Symbol *)
+  | (Symb(s)  , a        ) -> eq sign (symbol_type s) a
   (* Product *)
   | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
                               let b = subst b (mkfree x) in
-                              has_type ctx a Type
-                              && has_type (add_var x a ctx) b Type
+                              has_type sign ctx a Type
+                              && has_type sign (add_var x a ctx) b Type
   (* Product 2 *)
   | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
                               let b = subst b (mkfree x) in
-                              has_type ctx a Type
-                              && has_type (add_var x a ctx) b Kind
+                              has_type sign ctx a Type
+                              && has_type sign (add_var x a ctx) b Kind
   (* Abstraction and Abstraction 2 *)
   | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
                               let t = subst t (mkfree x) in
                               let b = subst b (mkfree x) in
                               let ctx_x = add_var x a ctx in
-                              eq ctx a c
-                              && has_type ctx a Type
-                              && (has_type ctx_x b Type
-                                  || has_type ctx_x b Kind)
-                              && has_type ctx_x t b
+                              eq sign a c
+                              && has_type sign ctx a Type
+                              && (has_type sign ctx_x b Type
+                                  || has_type sign ctx_x b Kind)
+                              && has_type sign ctx_x t b
   (* Application *)
   | (Appl(t,u), b        ) ->
       begin
-        match infer ctx t with
-        | Prod(a,ba) as tt -> eq ctx (subst ba u) b
-                              && has_type ctx t tt
-                              && has_type ctx u a
+        match infer sign ctx t with
+        | Prod(a,ba) as tt -> eq sign (subst ba u) b
+                              && has_type sign ctx t tt
+                              && has_type sign ctx u a
         | _          -> false
       end
   (* Unification variable. *)
@@ -429,15 +476,19 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
 let expr = expr `Func
 
 type p_item =
-  | NewVar of string * p_term
+  | NewSym of bool * string * p_term
   | Rule   of string list * p_term * p_term
   | Check  of p_term * p_term
   | Infer  of p_term
   | Eval   of p_term
   | Conv   of p_term * p_term
 
+let parser def =
+  | "def" -> true
+  | EMPTY -> false
+
 let parser toplevel =
-  | x:ident ":" a:expr                  -> NewVar(x,a)
+  | d:def x:ident ":" a:expr            -> NewSym(d,x,a)
   | "[" xs:ident* "]" t:expr "→" u:expr -> Rule(xs,t,u)
   | "#CHECK" t:expr "," a:expr          -> Check(t,a)
   | "#INFER" t:expr                     -> Infer(t)
@@ -484,97 +535,106 @@ let new_wildcard : unit -> tbox =
     let x = new_var mkfree (Printf.sprintf "#%i#" !counter) in
     wildcards := x :: !wildcards; box_of_var x
 
-let to_tbox : bool -> ctxt -> p_term -> tbox = fun allow_wild ctx t ->
-  let rec build vars t =
-    match t with
-    | P_Vari(x)     -> let x =
-                         try List.assoc x vars with Not_found ->
-                         try find_name x ctx with Not_found ->
-                         err "Unbound variable %S...\n%!" x;
-                         exit 1
-                       in box_of_var x
-    | P_Type        -> t_type
-    | P_Prod(x,a,b) -> let f v =
-                         build (if x = "_" then vars else (x,v)::vars) b
-                       in
-                       t_prod (build vars a) x f
-    | P_Abst(x,a,t) -> let f v = build ((x,v)::vars) t in
-                       t_abst (build vars a) x f
-    | P_Appl(t,u)   -> t_appl (build vars t) (build vars u)
-    | P_Wild        ->
-        if not allow_wild then
+type env = (string * tvar) list
+
+let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
+  fun allow_wild vars sign t ->
+    let rec build vars t =
+      match t with
+      | P_Vari(x)     ->
           begin
-            err "Wildcard \"_\" not allowd here...\n";
+            try box_of_var (List.assoc x vars) with Not_found ->
+            try t_symb sign x with Not_found ->
+            err "Unbound variable %S...\n%!" x;
             exit 1
-          end;
-        new_wildcard ()
-  in
-  build [] t
+          end
+      | P_Type        ->
+          t_type
+      | P_Prod(x,a,b) ->
+          let f v = build (if x = "_" then vars else (x,v)::vars) b in
+          t_prod (build vars a) x f
+      | P_Abst(x,a,t) ->
+          let f v = build ((x,v)::vars) t in
+          t_abst (build vars a) x f
+      | P_Appl(t,u)   ->
+          t_appl (build vars t) (build vars u)
+      | P_Wild        ->
+          if not allow_wild then
+            begin
+              err "Wildcard \"_\" not allowd here...\n";
+              exit 1
+            end;
+          new_wildcard ()
+    in
+    build vars t
 
-let to_term : ctxt -> p_term -> term = fun ctx t ->
-  unbox (to_tbox false ctx t)
+let to_term : ?vars:env -> Sign.t -> p_term -> term =
+  fun ?(vars=[]) sign t -> unbox (to_tbox false vars sign t)
 
-let to_tbox_wc : ctxt -> p_term -> tbox * term var array = fun ctx t ->
-  wildcards := [];
-  let t = to_tbox true ctx t in
-  (t, Array.of_list !wildcards)
-
-(* Interpret the term given as a string *)
-let parse_term : ctxt -> string -> term = fun ctx str ->
-  to_term ctx (parse str)
+let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> tbox * term var array =
+  fun ?(vars=[]) sign t ->
+    wildcards := [];
+    let t = to_tbox true vars sign t in
+    (t, Array.of_list !wildcards)
 
 (* Interpret a whole file *)
-let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
-  let handle_item : ctxt -> p_item -> ctxt = fun ctx it ->
+let handle_file : Sign.t -> string -> unit = fun sign fname ->
+  let handle_item : p_item -> unit = fun it ->
     match it with
-    | NewVar(x,a)  ->
-        let a = to_term ctx a in
-        let xx = new_var mkfree x in
-        if has_type ctx a Type then
+    | NewSym(d,x,a) ->
+        let a = to_term sign a in
+        let sort =
+          if has_type sign empty_ctxt a Type then "Type" else
+          if has_type sign empty_ctxt a Kind then "Kind" else
           begin
-            out "(type) %s\t= %a\n%!" x print_term a;
-            add_var xx a ctx
-          end
-        else if has_type ctx a Kind then
-          begin
-            out "(kind) %s\t= %a\n%!" x print_term a;
-            add_var xx a ctx
-          end
-        else
-          begin
-            err "Type error on %s...\n" x;
+            err "%s is neither of type Type nor Kind.\n" x;
             exit 1
           end
+        in
+        let kind = if d then "defi" else "symb" in
+        out "(%s) %s : %a (of sort %s)\n" kind x print_term a sort;
+        if d then Sign.new_def sign x a else Sign.new_sym sign x a
     | Rule(xs,t,u) ->
-        let xs = new_mvar mkfree (Array.of_list xs) in
-        let add x ctx = add_var x (Unif(ref None)) ctx in
-        let ctx_aux = Array.fold_right add xs ctx in
-        let (t, wcs) = to_tbox_wc ctx_aux t in
-        let u = to_tbox false ctx_aux u in
+        let vars = List.map (fun x -> (x, new_var mkfree x)) xs in
+        let xs = Array.of_list (List.map snd vars) in
+        let ctx = List.map (fun (_,x) -> (x, Unif(ref None))) vars in
+        let (t, wcs) = to_tbox_wc ~vars sign t in
+        let u = to_tbox false vars sign u in
         let xs = Array.append xs wcs in
         let defin = unbox (bind_mvar xs (box_pair t u)) in
         let t = unbox (bind_mvar wcs t) in
         let new_unif _ = Unif(ref None) in
         let t = msubst t (Array.init (Array.length wcs) new_unif) in
         let u = unbox u in
+        let pattern_data : term -> (def * int) option = fun t ->
+          let rec get_args acc t =
+            match unfold t with
+            | Symb(Def(s)) -> Some(s, acc)
+            | Appl(t,u)    -> get_args (u::acc) t
+            | _            -> None
+          in
+          match get_args [] t with
+          | None        -> None
+          | Some(x, ts) -> Some(x, List.length ts)
+        in
         begin
           match pattern_data t with
           | None      ->
               err "Not a valid pattern...\n";
               exit 1
-          | Some(x,i) ->
-              let rule = {defin; const = x; arity = i} in
+          | Some(s,i) ->
+              let rule = { defin ; arity = i } in
               let infer t =
-                try infer ctx_aux t with Not_found ->
+                try infer sign ctx t with Not_found ->
                   err "Unable to infer the type of [%a]\n" print_term t;
                   exit 1
               in
               let tt = infer t in
               let tu = infer u in
-              if eq ctx tt tu then
+              if eq sign tt tu then
                 begin
                   out "(rule) %a → %a\n%!" print_term t print_term u;
-                  add_rule rule ctx
+                  s.def_rules := !(s.def_rules) @ [rule]
                 end
               else
                 begin
@@ -585,43 +645,36 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
                 end
         end
     | Check(t,a)   ->
-        let t = to_term ctx t in
-        let a = to_term ctx a in
-        if has_type ctx t a then
-          begin
-            out "(chck) %a : %a\n%!" print_term t print_term a;
-            ctx
-          end
+        let t = to_term sign t in
+        let a = to_term sign a in
+        if has_type sign empty_ctxt t a then
+          out "(chck) %a : %a\n%!" print_term t print_term a
         else
           begin
-            err "Type error...\n%!";
+            err "%a does not have type %a...\n" print_term t print_term a;
             exit 1
           end
     | Infer(t)     ->
-        let t = to_term ctx t in
+        let t = to_term sign t in
         begin
           try
-            let a = infer ctx t in
+            let a = infer sign empty_ctxt t in
             out "(infr) %a : %a\n%!" print_term t print_term a
           with Not_found ->
             err "%a : unable to infer\n%!" print_term t;
-        end;
-        ctx
+        end
     | Eval(t)      ->
-        let t = to_term ctx t in
-        let v = eval ctx t in
-        out "(eval) %a\n%!" print_term v;
-        ctx
+        let t = to_term sign t in
+        out "(eval) %a\n%!" print_term (eval sign t)
     | Conv(t,u)    ->
-        let t = to_term ctx t in
-        let u = to_term ctx u in
-        begin
-          if not (eq ctx t u) then err "unable to convert\n"
-          else out "(conv) OK\n%!"
-        end;
-        ctx
+        let t = to_term sign t in
+        let u = to_term sign u in
+        if not (eq sign t u) then
+          err "unable to convert %a and %a...\n" print_term t print_term u
+        else
+          out "(conv) OK\n%!"
   in
-  List.fold_left handle_item ctx (parse_file fname)
+  List.iter handle_item (parse_file fname)
 
 (* Run files *)
 let _ =
@@ -634,4 +687,5 @@ let _ =
   let anon fn = files := fn :: !files in
   Arg.parse spec anon usage;
   let files = List.rev !files in
-  List.fold_left handle_file empty_ctxt files
+  let sign = Sign.create () in
+  List.iter (handle_file sign) files
