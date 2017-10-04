@@ -27,7 +27,7 @@ def and2_ : n : Nat ⇒ Bool_ n.
 [x y n] and2_ (S (S n)) → λx:Bool. λy:Bool. (and2_ (S n) (and x y)).
 
 def e : n : Nat ⇒ Bool_ n ⇒ Bool_ n.
-def andb : n : Nat ⇒ Bool_ n.
+def andb : n:Nat ⇒ Bool_ n.
 []      e 0 (andb 0        ) → True.
 [x]     e 0 (andb (S 0) x  ) → x.
 [x y n] e n (andb _     x y) → andb (S n) (and x y).

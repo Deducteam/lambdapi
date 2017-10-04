@@ -1,9 +1,9 @@
 T     : Type.
 Pairs : Type.
 
-p1 : Pairs ⇒ T.
-p2 : Pairs ⇒ T.
-mk : T ⇒ T ⇒ Pairs.
+def p1 : Pairs ⇒ T.
+def p2 : Pairs ⇒ T.
+def mk : T ⇒ T ⇒ Pairs.
 
 [a] p1 (mk a _) → a.
 [b] p2 (mk _ b) → b.
