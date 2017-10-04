@@ -5,7 +5,8 @@ lambdapi: lambdapi.ml
 		-package bindlib,earley,earley.str -linkpkg -o $@ $^
 
 test: lambdapi test.lp $(wildcard examples/*.lp)
-	./$^
+	@./$^ --quiet
+	@echo "OK."
 
 clean:
 	rm -f *.cmi *.cmo *.cmx *.o

@@ -1,5 +1,6 @@
 open Bindlib
 
+let quiet       = ref false
 let debug       = ref false
 let debug_eval  = ref false
 let debug_infer = ref false
@@ -15,6 +16,13 @@ let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
 let log name fmt = Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+
+let out fmt =
+  if !quiet then Printf.ifprintf stdout fmt
+  else Printf.printf fmt
+
+let err fmt = Printf.eprintf (red fmt)
+let wrn fmt = Printf.eprintf (yel fmt)
 
 let from_opt_rev : 'a option list -> 'a list = fun l ->
   let fn acc e =
@@ -204,7 +212,7 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
             let (l,r) = msubst rule.defin uvars in
             if !debug_eval then
-              Printf.eprintf "RULE %a → %a\n%!" print_term l print_term r;
+              log "eval" "RULE %a → %a" print_term l print_term r;
             let rec add_n_args n t stk =
               match (n, stk) with
               | (0, stk   ) -> (t, stk)
@@ -216,12 +224,8 @@ let rec eval : ctxt -> term -> term = fun ctx t ->
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
-          if !debug_eval then
-            begin
-              let nb = List.length ts in
-              if nb > 1 then
-                Printf.eprintf (yel "(WARN) %i rules apply...\n%!") nb
-            end;
+          let nb = List.length ts in
+          if !debug_eval && nb > 1 then wrn "%i rules apply...\n%!" nb;
           match ts with
           | []   -> add_args t stk
           | t::_ -> eval_aux ctx t []
@@ -296,8 +300,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
                      | Kind -> Kind
                      | Type -> Type 
                      | _    ->
-                         Printf.eprintf "Expected Type of Kind for [%a]\n%!"
-                           print_term b;
+                         err "Expected Type / Kind for [%a]\n%!" print_term b;
                          raise Not_found
                    end
     | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
@@ -480,7 +483,7 @@ let to_tbox : bool -> ctxt -> p_term -> tbox = fun allow_wild ctx t ->
     | P_Vari(x)     -> let x =
                          try List.assoc x vars with Not_found ->
                          try find_name x ctx with Not_found ->
-                         Printf.eprintf "Unbound variable %S...\n%!" x;
+                         err "Unbound variable %S...\n%!" x;
                          exit 1
                        in box_of_var x
     | P_Type        -> t_type
@@ -494,7 +497,7 @@ let to_tbox : bool -> ctxt -> p_term -> tbox = fun allow_wild ctx t ->
     | P_Wild        ->
         if not allow_wild then
           begin
-            Printf.eprintf "Wildcard \"_\" not allowd here...\n%!";
+            err "Wildcard \"_\" not allowd here...\n%!";
             exit 1
           end;
         new_wildcard ()
@@ -522,17 +525,17 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let xx = new_var mkfree x in
         if has_type ctx a Type then
           begin
-            Printf.printf "(type) %s\t= %a\n%!" x print_term a;
+            out "(type) %s\t= %a\n%!" x print_term a;
             add_var xx a ctx
           end
         else if has_type ctx a Kind then
           begin
-            Printf.printf "(kind) %s\t= %a\n%!" x print_term a;
+            out "(kind) %s\t= %a\n%!" x print_term a;
             add_var xx a ctx
           end
         else
           begin
-            Printf.eprintf "Type error on %s...\n%!" x;
+            err "Type error on %s...\n%!" x;
             exit 1
           end
     | Rule(xs,t,u) ->
@@ -550,29 +553,27 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         begin
           match pattern_data t with
           | None      ->
-              Printf.eprintf "Not a valid pattern...\n%!";
+              err "Not a valid pattern...\n%!";
               exit 1
           | Some(x,i) ->
               let rule = {defin; const = x; arity = i} in
               let infer t =
                 try infer ctx_aux t with Not_found ->
-                Printf.eprintf (red "Unable to infer the type of [%a]\n%!")
-                  print_term t;
-                exit 1
+                  err "Unable to infer the type of [%a]\n%!" print_term t;
+                  exit 1
               in
               let tt = infer t in
               let tu = infer u in
               if eq ctx tt tu then
                 begin
-                  Printf.printf "(rule) %a → %a\n%!" print_term t print_term u;
+                  out "(rule) %a → %a\n%!" print_term t print_term u;
                   add_rule rule ctx
                 end
               else
                 begin
-                  Printf.eprintf (red "Ill-typed rule [%a → %a]\n%!")
-                    print_term t print_term u;
-                  Printf.eprintf (red "Left : %a\n%!") print_term tt;
-                  Printf.eprintf (red "Right: %a\n%!") print_term tu;
+                  err "[%a → %a] is ill-typed\n%!" print_term t print_term u;
+                  err "Left : %a\n%!" print_term tt;
+                  err "Right: %a\n%!" print_term tu;
                   exit 1
                 end
         end
@@ -581,12 +582,12 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         let a = to_term ctx a in
         if has_type ctx t a then
           begin
-            Printf.printf "(chck) %a : %a\n%!" print_term t print_term a;
+            out "(chck) %a : %a\n%!" print_term t print_term a;
             ctx
           end
         else
           begin
-            Printf.eprintf (red "(chck) Type error...\n%!");
+            err "Type error...\n%!";
             exit 1
           end
     | Infer(t)     ->
@@ -594,25 +595,22 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
         begin
           try
             let a = infer ctx t in
-            Printf.eprintf "(infr) %a : %a\n%!" print_term t print_term a
+            out "(infr) %a : %a\n%!" print_term t print_term a
           with Not_found ->
-            Printf.eprintf (red "(infr) %a : UNABLE TO INFER\n%!")
-              print_term t
+            err "%a : unable to infer\n%!" print_term t;
         end;
         ctx
     | Eval(t)      ->
         let t = to_term ctx t in
         let v = eval ctx t in
-        Printf.eprintf "(eval) %a\n%!" print_term v;
+        out "(eval) %a\n%!" print_term v;
         ctx
     | Conv(t,u)    ->
         let t = to_term ctx t in
         let u = to_term ctx u in
         begin
-          if not (eq ctx t u) then
-            Printf.eprintf (red "(conv) UNABLE TO CONVERT\n%!")
-          else
-            Printf.eprintf "(conv) OK\n%!"
+          if not (eq ctx t u) then err "unable to convert\n%!"
+          else out "(conv) OK\n%!"
         end;
         ctx
   in
@@ -620,9 +618,10 @@ let handle_file : ctxt -> string -> ctxt = fun ctx fname ->
 
 (* Run files *)
 let _ =
-  let usage = Sys.argv.(0) ^ " [--debug str] [FILE1] ... [FILEN]" in
+  let usage = Sys.argv.(0) ^ " [--debug str] [--quiet] [FILE] ..." in
   let spec =
-    [("--debug", Arg.String set_debug, "Set debugging mode.") ]
+    [ ("--debug", Arg.String set_debug, "Set debugging mode.")
+    ; ("--quiet", Arg.Set quiet       , "No output."         ) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
