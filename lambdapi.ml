@@ -336,7 +336,7 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
     match t with
     | Vari(x)   -> find x ctx
     | Type      -> Kind
-    | Kind      -> err "Kind has not type\n";
+    | Kind      -> err "Kind has not type...\n";
                    raise Not_found
     | Symb(s)   -> symbol_type s
     | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
@@ -346,7 +346,8 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
                      | Kind -> Kind
                      | Type -> Type 
                      | _    ->
-                         err "Expected Type / Kind for [%a]\n" print_term b;
+                         err "Expected Type / Kind for [%a]...\n"
+                           print_term b;
                          raise Not_found
                    end
     | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
@@ -359,12 +360,13 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
                          if has_type sign ctx u a then subst b u
                          else
                            begin
-                             err "Cannot show %a : %a\n"
+                             err "Cannot show [%a : %a]...\n"
                                print_term u print_term a;
                              raise Not_found
                            end
-                     | _         ->
-                         err "Product type expected\n";
+                     | a         ->
+                         err "Product type expected for [%a], found [%a]...\n"
+                           print_term t print_term a;
                          raise Not_found
                    end
     | Unif(_)   -> assert false
