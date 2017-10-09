@@ -4,12 +4,14 @@ let quiet       = ref false
 let debug       = ref false
 let debug_eval  = ref false
 let debug_infer = ref false
+let debug_patt  = ref false
 
 let set_debug str =
-  if String.contains str 'p' then Earley.debug_lvl := 1;
+  if String.contains str 's' then Earley.debug_lvl := 1;
   if String.contains str 'a' then debug := true;
-  if String.contains str 'e' then debug_eval := true;
-  if String.contains str 'i' then debug_infer := true
+  if String.contains str 'e' then debug_eval  := true;
+  if String.contains str 'i' then debug_infer := true;
+  if String.contains str 'p' then debug_patt  := true
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -18,6 +20,7 @@ let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 let log name fmt = Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 let out fmt =
+  let fmt = fmt ^^ "%!" in
   if !quiet then Printf.ifprintf stdout fmt
   else Printf.printf fmt
 
@@ -330,24 +333,36 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
 (* Equality *)
 let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
   if !debug then log "equa" "%a =?= %a" print_term a print_term b;
+  let rec get_head acc t =
+    match unfold t with
+    | Appl(t,u) -> get_head (u::acc) t
+    | t         -> (t, acc)
+  in
   let rec eq_mod a b = eq a b ||
-    match (eval sign a, eval sign b) with
-    | (Vari(x)  , Vari(y)  ) -> eq_vars x y
-    | (Type     , Type     ) -> true
-    | (Kind     , Kind     ) -> true
-    | (Symb(sa) , Symb(sb) ) -> eq_symbols sa sb
-    | (Prod(a,f), Prod(b,g)) -> eq_mod a b && eq_binder eq_mod f g
-    | (Abst(a,f), Abst(b,g)) -> eq_mod a b && eq_binder eq_mod f g
-    | (Appl(t,u), Appl(f,g)) -> eq_mod t f && eq_mod u g
-    | (Unif(r1) , Unif(r2) ) when r1 == r2 -> true
-    | (Unif(r)  , b        ) -> unify r b
-    | (a        , Unif(r)  ) -> unify r a
-    | (_        , _        ) -> false
-  and eq_symbols sa sb =
-    match (sa, sb) with
-    | (Sym(sa), Sym(sb)) -> sa == sb (* FIXME FIXME FIXME *)
-    | (Def(sa), Def(sb)) -> sa == sb (* FIXME FIXME FIXME *)
-    | (_      , _      ) -> false
+    let a = eval sign a in
+    let b = eval sign b in
+    eq a b ||
+    let (ha, argsa) = get_head [] a in
+    let (hb, argsb) = get_head [] b in
+    let rigid = ref true in
+    begin
+      match (ha, hb) with
+      | (Vari(x)      , Vari(y)      ) -> eq_vars x y
+      | (Type         , Type         ) -> true
+      | (Kind         , Kind         ) -> true
+      | (Symb(Sym(sa)), Symb(Sym(sb))) -> rigid := false; sa == sb
+      | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
+      | (Prod(a,f)    , Prod(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
+      | (Abst(a,f)    , Abst(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
+      | (Appl(_,_)    , _            ) -> assert false
+      | (_            , Appl(_,_)    ) -> assert false
+      | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
+      | (Unif(r)      , b            ) -> unify r b
+      | (a            , Unif(r)      ) -> unify r a
+      | (_            , _            ) -> false
+    end &&
+    try List.for_all2 (if !rigid then eq else eq_mod) argsa argsb
+    with Invalid_argument(_) -> false
   in
   let res = eq_mod a b in
   if !debug then
@@ -454,7 +469,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
       end
   (* Unification variable. *)
   | (Unif(_)  , _        ) ->
-      true (* Only for patterns. *)
+      true (* Only for patterns. FIXME FIXME FIXME ??!! *)
   (* No rule apply. *)
   | (_        , _        ) -> false
 
@@ -595,7 +610,7 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
       | P_Wild        ->
           if not allow_wild then
             begin
-              err "Wildcard \"_\" not allowd here...\n";
+              err "Wildcards \"_\" are only allowed in patterns...\n";
               exit 1
             end;
           new_wildcard ()
@@ -638,7 +653,8 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let defin = unbox (bind_mvar xs (box_pair t u)) in
         let t = unbox (bind_mvar wcs t) in
         let new_unif _ = Unif(ref None) in
-        let t = msubst t (Array.init (Array.length wcs) new_unif) in
+        let wcs_args = Array.init (Array.length wcs) new_unif in
+        let t = msubst t wcs_args in
         let u = unbox u in
         let pattern_data : term -> (def * int) option = fun t ->
           let rec get_args acc t =
@@ -664,10 +680,22 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
                   exit 1
               in
               let tt = infer t in
+              if !debug_patt then
+                begin
+                  log "left" "Context for %a:" print_term t;
+                  let fn (x,a) =
+                    log "left" "  %s : %a" (name_of x) print_term a
+                  in
+                  List.iter fn ctx;
+                  let fn i a =
+                    log "left" "  #%i# = %a" i print_term a
+                  in
+                  Array.iteri fn wcs_args
+                end;
               let tu = infer u in
               if eq_modulo sign tt tu then
                 begin
-                  out "(rule) %a → %a\n%!" print_term t print_term u;
+                  out "(rule) %a → %a\n" print_term t print_term u;
                   s.def_rules := !(s.def_rules) @ [rule]
                 end
               else
@@ -682,7 +710,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let t = to_term sign t in
         let a = to_term sign a in
         if has_type sign empty_ctxt t a then
-          out "(chck) %a : %a\n%!" print_term t print_term a
+          out "(chck) %a : %a\n" print_term t print_term a
         else
           begin
             err "%a does not have type %a...\n" print_term t print_term a;
@@ -693,20 +721,20 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         begin
           try
             let a = infer sign empty_ctxt t in
-            out "(infr) %a : %a\n%!" print_term t print_term a
+            out "(infr) %a : %a\n" print_term t print_term a
           with Not_found ->
             err "%a : unable to infer\n%!" print_term t;
         end
     | Eval(t)      ->
         let t = to_term sign t in
-        out "(eval) %a\n%!" print_term (eval sign t)
+        out "(eval) %a\n" print_term (eval sign t)
     | Conv(t,u)    ->
         let t = to_term sign t in
         let u = to_term sign u in
         if not (eq_modulo sign t u) then
           err "unable to convert %a and %a...\n" print_term t print_term u
         else
-          out "(conv) OK\n%!"
+          out "(conv) OK\n"
   in
   List.iter handle_item (parse_file fname)
 
