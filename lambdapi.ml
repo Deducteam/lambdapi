@@ -14,6 +14,7 @@ let set_debug str =
   if String.contains str 'p' then debug_patt  := true
 
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
+let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
@@ -256,7 +257,7 @@ let unify : term option ref -> term -> bool =
   fun r a -> not (occurs r a) && (r := Some(a); true)
 
 let eq : term -> term -> bool = fun a b ->
-  if !debug then log "equa" "%a =!?!= %a" print_term a print_term b;
+  if !debug then log "equa" "%a =!= %a" print_term a print_term b;
   let rec eq a b = a == b ||
     match (unfold a, unfold b) with
     | (Vari(x)      , Vari(y)      ) -> eq_vars x y
@@ -275,8 +276,8 @@ let eq : term -> term -> bool = fun a b ->
   let res = eq a b in
   if !debug then
     begin
-      let c = if res then '=' else '/' in
-      log "equa" "%a =!%c!= %a" print_term a c print_term b;
+      let c = if res then gre else red in
+      log "equa" (c "%a =!= %a") print_term a print_term b;
     end;
   res
 
@@ -332,7 +333,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
 
 (* Equality *)
 let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
-  if !debug then log "equa" "%a =?= %a" print_term a print_term b;
+  if !debug then log "equa" "%a == %a" print_term a print_term b;
   let rec get_head acc t =
     match unfold t with
     | Appl(t,u) -> get_head (u::acc) t
@@ -367,8 +368,8 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
   let res = eq_mod a b in
   if !debug then
     begin
-      let c = if res then '=' else '/' in
-      log "equa" "%a =%c= %a" print_term a c print_term b;
+      let c = if res then gre else red in
+      log "equa" (c "%a == %a") print_term a print_term b;
     end;
   res
 
@@ -426,52 +427,57 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   assert (has_type sign ctx t res); res
 
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
-  let t = unfold t in
-  let a = unfold a in
+  let rec has_type ctx t a =
+    match (unfold t, eval sign a) with
+    (* Sort *)
+    | (Type     , Kind     ) -> true
+    (* Variable *)
+    | (Vari(x)  , a        ) -> eq_modulo sign (find x ctx) a
+    (* Symbol *)
+    | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
+    (* Product *)
+    | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
+                                let b = subst b (mkfree x) in
+                                has_type ctx a Type
+                                && has_type (add_var x a ctx) b Type
+    (* Product 2 *)
+    | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
+                                let b = subst b (mkfree x) in
+                                has_type ctx a Type
+                                && has_type (add_var x a ctx) b Kind
+    (* Abstraction and Abstraction 2 *)
+    | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
+                                let t = subst t (mkfree x) in
+                                let b = subst b (mkfree x) in
+                                let ctx_x = add_var x a ctx in
+                                eq_modulo sign a c
+                                && has_type ctx a Type
+                                && (has_type ctx_x b Type
+                                    || has_type ctx_x b Kind)
+                                && has_type ctx_x t b
+    (* Application *)
+    | (Appl(t,u), b        ) ->
+        begin
+          match infer sign ctx t with
+          | Prod(a,ba) as tt -> eq_modulo sign (subst ba u) b
+                                && has_type ctx t tt
+                                && has_type ctx u a
+          | _          -> false
+        end
+    (* Unification variable. *)
+    | (Unif(_)  , _        ) ->
+        true (* Only for patterns. FIXME FIXME FIXME ??!! *)
+    (* No rule apply. *)
+    | (_        , _        ) -> false
+  in
   if !debug then
     log "type" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
-  let a = eval sign a in
-  match (t, a) with
-  (* Sort *)
-  | (Type     , Kind     ) -> true
-  (* Variable *)
-  | (Vari(x)  , a        ) -> eq_modulo sign (find x ctx) a
-  (* Symbol *)
-  | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
-  (* Product *)
-  | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
-                              let b = subst b (mkfree x) in
-                              has_type sign ctx a Type
-                              && has_type sign (add_var x a ctx) b Type
-  (* Product 2 *)
-  | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
-                              let b = subst b (mkfree x) in
-                              has_type sign ctx a Type
-                              && has_type sign (add_var x a ctx) b Kind
-  (* Abstraction and Abstraction 2 *)
-  | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
-                              let t = subst t (mkfree x) in
-                              let b = subst b (mkfree x) in
-                              let ctx_x = add_var x a ctx in
-                              eq_modulo sign a c
-                              && has_type sign ctx a Type
-                              && (has_type sign ctx_x b Type
-                                  || has_type sign ctx_x b Kind)
-                              && has_type sign ctx_x t b
-  (* Application *)
-  | (Appl(t,u), b        ) ->
-      begin
-        match infer sign ctx t with
-        | Prod(a,ba) as tt -> eq_modulo sign (subst ba u) b
-                              && has_type sign ctx t tt
-                              && has_type sign ctx u a
-        | _          -> false
-      end
-  (* Unification variable. *)
-  | (Unif(_)  , _        ) ->
-      true (* Only for patterns. FIXME FIXME FIXME ??!! *)
-  (* No rule apply. *)
-  | (_        , _        ) -> false
+  let res = has_type ctx t a in
+  if !debug then
+    log "type" ((if res then gre else red) "%a ⊢ %a : %a")
+      print_ctxt ctx print_term t print_term a;
+  res
+
 
 (* Parser *)
 type p_term =
