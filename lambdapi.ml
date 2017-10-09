@@ -289,7 +289,7 @@ let eq : term -> term -> bool = fun a b ->
 
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
-  if !debug then log "eval" "evaluating %a" print_term t;
+  if !debug_eval then log "eval" "evaluating %a" print_term t;
   let rec eval_aux sign t stk =
     let t = unfold t in
     match (t, stk) with
@@ -329,7 +329,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     | (t           , stk    ) -> add_args t stk
   in
   let u = eval_aux sign t [] in
-  if !debug then log "eval" "produced %a" print_term u; u
+  if !debug_eval then log "eval" "produced %a" print_term u; u
 
 (* Equality *)
 let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
