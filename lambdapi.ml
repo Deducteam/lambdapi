@@ -6,6 +6,9 @@ let debug_eval  = ref false
 let debug_infer = ref false
 let debug_patt  = ref false
 
+let in_debug_mode : unit -> bool = fun () ->
+  !debug || !debug_eval || !debug_infer || !debug_patt
+
 let set_debug str =
   if String.contains str 's' then Earley.debug_lvl := 1;
   if String.contains str 'a' then debug := true;
@@ -16,11 +19,14 @@ let set_debug str =
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
+let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
+let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
 let log name fmt = Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 let out fmt =
+  let fmt = if in_debug_mode () then mag fmt else fmt in
   let fmt = fmt ^^ "%!" in
   if !quiet then Printf.ifprintf stdout fmt
   else Printf.printf fmt
@@ -286,12 +292,6 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug then log "eval" "evaluating %a" print_term t;
   let rec eval_aux sign t stk =
     let t = unfold t in
-    if !debug_eval then
-      begin
-        Printf.eprintf "EVAL_AUX (%a ∗" print_term t;
-        List.iter (Printf.eprintf " [%a]" print_term) stk;
-        Printf.eprintf "%s)\n%!" (if List.length stk = 0 then " ε" else "")
-      end;
     match (t, stk) with
     (* Push. *)
     | (Appl(t,u)   , stk    ) -> eval_aux sign t (eval_aux sign u [] :: stk)
@@ -378,53 +378,56 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
 
 (* Judgements *)
 let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
-  let t = unfold t in
-  if !debug_infer then log "infr" "type of [%a]?" print_term t;
-  let a =
-    match t with
-    | Vari(x)   -> find x ctx
-    | Type      -> Kind
-    | Kind      -> err "Kind has not type...\n";
-                   raise Not_found
-    | Symb(s)   -> symbol_type s
-    | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
-                   let b = subst b (mkfree x) in
-                   begin
-                     match infer sign (add_var x a ctx) b with
-                     | Kind -> Kind
-                     | Type -> Type 
-                     | _    ->
-                         err "Expected Type / Kind for [%a]...\n"
-                           print_term b;
-                         raise Not_found
-                   end
-    | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
-                   let t = subst t (mkfree x) in
-                   let b = infer sign (add_var x a ctx) t in
-                   Prod(a, bind_vari x b)
-    | Appl(t,u) -> begin
-                     match unfold (infer sign ctx t) with
-                     | Prod(a,b) ->
-                         if has_type sign ctx u a then subst b u
-                         else
-                           begin
-                             err "Cannot show [%a : %a]...\n"
-                               print_term u print_term a;
-                             raise Not_found
-                           end
-                     | a         ->
-                         err "Product type expected for [%a], found [%a]...\n"
-                           print_term t print_term a;
-                         raise Not_found
-                   end
-    | Unif(_)   -> assert false
+  let rec infer ctx t =
+    let t = unfold t in
+    if !debug_infer then log "infr" "type of [%a]?" print_term t;
+    let a =
+      match t with
+      | Vari(x)   -> find x ctx
+      | Type      -> Kind
+      | Kind      -> err "Kind has not type...\n";
+                     raise Not_found
+      | Symb(s)   -> symbol_type s
+      | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
+                     let b = subst b (mkfree x) in
+                     begin
+                       match infer (add_var x a ctx) b with
+                       | Kind -> Kind
+                       | Type -> Type 
+                       | _    ->
+                           err "Expected Type / Kind for [%a]...\n"
+                             print_term b;
+                           raise Not_found
+                     end
+      | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
+                     let t = subst t (mkfree x) in
+                     let b = infer (add_var x a ctx) t in
+                     Prod(a, bind_vari x b)
+      | Appl(t,u) -> begin
+                       match unfold (infer ctx t) with
+                       | Prod(a,b) ->
+                           if has_type sign ctx u a then subst b u
+                           else
+                             begin
+                               err "Cannot show [%a : %a]...\n"
+                                 print_term u print_term a;
+                               raise Not_found
+                             end
+                       | a         ->
+                           err "Product expected for [%a], found [%a]...\n"
+                             print_term t print_term a;
+                           raise Not_found
+                     end
+      | Unif(_)   -> assert false
+    in
+    eval sign a
   in
-  if !debug_infer then
-    log "infr" "%a : %a" print_term t print_term a;
-  let res = eval sign a in
-  if !debug_infer && res != a then
-    log "infr" "%a : %a" print_term t print_term res;
-  assert (has_type sign ctx t res); res
+  if !debug then
+    log "infr" "%a ⊢ %a : ?" print_ctxt ctx print_term t;
+  let a = infer ctx t in
+  if !debug then
+    log "infr" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
+  assert (has_type sign ctx t a); a
 
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
