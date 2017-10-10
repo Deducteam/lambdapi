@@ -544,13 +544,8 @@ let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
     match cs with
     | []        -> acc
     | (a,b)::cs ->
-        (* wrn "Constraint (%a, %a)\n%!" print_term a print_term b; *)
         let (ha,argsa) = get_args a in
         let (hb,argsb) = get_args b in
-        (*
-        wrn "HEADS: (%a, %a)\n%!" print_term ha print_term hb;
-        wrn "ARGS:  (%i, %i)\n%!" (List.length argsa) (List.length argsb);
-        *)
         match (unfold ha, unfold hb) with
         | (Symb(Sym(sa)), Symb(Sym(sb))) when sa == sb ->
             let cs =
@@ -561,14 +556,8 @@ let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
             wrn "%s may not be injective...\n%!" sa.def_name;
             build_sub acc cs
         | (Vari(x)      , _            ) when argsa = [] ->
-            (*
-            wrn "Found %s = %a\n%!" (name_of x) print_term b;
-            *)
             build_sub ((x,b)::acc) cs
         | (_            , Vari(x)      ) when argsb = [] ->
-            (*
-            wrn "Found %s = %a\n%!" (name_of x) print_term a;
-            *)
             build_sub ((x,a)::acc) cs
         | (a            , b            ) ->
             wrn "Not implemented [%a] [%a]...\n%!" print_term a print_term b;
