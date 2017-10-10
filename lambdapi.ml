@@ -766,7 +766,12 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
           try infer_with_constrs sign ctx u with Not_found ->
             fatal "Unable to infer the type of [%a]\n" print_term u
         in
-        assert (tu_constrs = []); (* FIXME is it useful to allow more ? *)
+        (* Checking the implication of constraints. *)
+        let check_constraint (a,b) =
+          if not (eq_modulo_constrs tt_constrs sign a b) then
+            fatal "A constraint is not satisfied...\n"
+        in
+        List.iter check_constraint tu_constrs;
         (* Checking if the rule is well-typed. *)
         if eq_modulo_constrs tt_constrs sign tt tu then
           begin
