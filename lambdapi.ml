@@ -682,11 +682,6 @@ let blank buf pos =
 let parse_file : string -> p_item list =
   Earley.(handle_exception (parse_file full blank))
 
-let parse : string -> p_term =
-  Earley.(handle_exception (parse_string expr blank))
-
-type context = (string * term var) list
-
 let wildcards : term var list ref = ref []
 let wildcard_counter = ref (-1)
 let new_wildcard : unit -> tbox = fun () ->
