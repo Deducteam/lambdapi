@@ -28,8 +28,14 @@ def S_bis : Nat ⇒ Nat.
 
 cns_bis : n:Nat ⇒ Vec n ⇒ Vec (S_bis n).
 
+//def id_bis : n:Nat ⇒ Vec (S_bis n) ⇒ Vec (S_bis n).
+//[n l] id_bis _ (cns_bis n l) → cns_bis n l.
+//[m n l] id_bis m (cns_bis n l) → cns_bis n l.
+
 def tail_bis : n:Nat ⇒ Vec (S_bis n) ⇒ Vec n.
 [n l] tail_bis n (cns_bis _ l) → l.
+//[n l] tail_bis n (cns_bis n l) → l.
+//[n m l] tail_bis n (cns_bis m l) → l.
 
 def left  : Vec 3.
 [] left  → cns 2 (cns 1 (cns 0 nil)).

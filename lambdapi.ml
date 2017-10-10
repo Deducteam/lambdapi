@@ -379,10 +379,10 @@ let bind_vari : term var -> term -> (term,term) binder = fun x t ->
 (* Judgements *)
 let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
-    let t = unfold t in
-    if !debug_infer then log "infr" "type of [%a]?" print_term t;
+    if !debug_infer then
+      log "INFR" "%a ⊢ %a : ?" print_ctxt ctx print_term t;
     let a =
-      match t with
+      match unfold t with
       | Vari(x)   -> find x ctx
       | Type      -> Kind
       | Kind      -> err "Kind has not type...\n";
@@ -420,6 +420,8 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
                      end
       | Unif(_)   -> assert false
     in
+    if !debug_infer then
+      log "INFR" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
     eval sign a
   in
   if !debug then
@@ -427,7 +429,7 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   let a = infer ctx t in
   if !debug then
     log "infr" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
-  assert (has_type sign ctx t a); a
+  (* assert (has_type sign ctx t a); *) a
 
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
@@ -586,12 +588,11 @@ let parse : string -> p_term =
 type context = (string * term var) list
 
 let wildcards : term var list ref = ref []
-let new_wildcard : unit -> tbox =
-  let counter = ref (-1) in
-  fun () ->
-    incr counter;
-    let x = new_var mkfree (Printf.sprintf "#%i#" !counter) in
-    wildcards := x :: !wildcards; box_of_var x
+let wildcard_counter = ref (-1)
+let new_wildcard : unit -> tbox = fun () ->
+  incr wildcard_counter;
+  let x = new_var mkfree (Printf.sprintf "#%i#" !wildcard_counter) in
+  wildcards := x :: !wildcards; box_of_var x
 
 type env = (string * tvar) list
 
@@ -631,7 +632,7 @@ let to_term : ?vars:env -> Sign.t -> p_term -> term =
 
 let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> tbox * term var array =
   fun ?(vars=[]) sign t ->
-    wildcards := [];
+    wildcards := []; wildcard_counter := -1;
     let t = to_tbox true vars sign t in
     (t, Array.of_list !wildcards)
 
@@ -654,11 +655,10 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         if d then Sign.new_def sign x a else Sign.new_sym sign x a
     | Rule(xs,t,u) ->
         let vars = List.map (fun x -> (x, new_var mkfree x)) xs in
-        let xs = Array.of_list (List.map snd vars) in
         let ctx = List.map (fun (_,x) -> (x, Unif(ref None))) vars in
         let (t, wcs) = to_tbox_wc ~vars sign t in
         let u = to_tbox false vars sign u in
-        let xs = Array.append xs wcs in
+        let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
         let defin = unbox (bind_mvar xs (box_pair t u)) in
         let t = unbox (bind_mvar wcs t) in
         let new_unif _ = Unif(ref None) in
@@ -702,6 +702,11 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
                   Array.iteri fn wcs_args
                 end;
               let tu = infer u in
+              if !debug_patt then
+                begin
+                  log "left" "LHS: %a" print_term tt;
+                  log "left" "RHS: %a" print_term tu
+                end;
               if eq_modulo sign tt tu then
                 begin
                   out "(rule) %a → %a\n" print_term t print_term u;
