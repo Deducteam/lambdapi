@@ -5,7 +5,7 @@ all: lambdapi tests
 
 lambdapi: lambdapi.ml
 	@echo "[OPT] $^ → $@"
-	@ocamlfind ocamlopt -pp pa_ocaml -package bindlib,earley,earley.str \
+	@ocamlfind ocamlopt -pp pa_ocaml -package bindlib,unix,earley,earley.str \
 		-linkpkg -o $@ $^
 
 .PHONY: tests
@@ -20,4 +20,5 @@ clean:
 
 distclean: clean
 	@find . -type f -name "*~" -exec rm {} \;
+	@find . -type f -name "*.lpo" -exec rm {} \;
 	@rm -f lambdapi

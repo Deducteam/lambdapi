@@ -64,12 +64,14 @@ and  ttbinder = (term, term) binder
 
 and  sym =
   { sym_name  : string
-  ; sym_type  : term }
+  ; sym_type  : term
+  ; sym_path  : string list }
 
 and  def =
   { def_name  : string
   ; def_type  : term
-  ; def_rules : rule list ref }
+  ; def_rules : rule list ref
+  ; def_path  : string list }
 
 and  symbol =
   | Sym of sym
@@ -78,12 +80,6 @@ and  symbol =
 and  rule =
   { defin : (term, term * term) mbinder
   ; arity : int }
-
-let symbol_name : symbol -> string = fun s ->
-  match s with
-  | Sym(sym) -> sym.sym_name
-  | Def(def) -> def.def_name
-
 let symbol_type : symbol -> term = fun s ->
   match s with
   | Sym(sym) -> sym.sym_type
@@ -94,30 +90,44 @@ module Sign =
   struct
     type t =
       { syms  : (string, sym) Hashtbl.t
-      ; defs  : (string, def) Hashtbl.t }
+      ; defs  : (string, def) Hashtbl.t
+      ; path  : string list }
  
-    let create : unit -> t = fun () ->
+    let create : string list -> t = fun path ->
       let syms  = Hashtbl.create 37 in
       let defs  = Hashtbl.create 37 in
-      { syms ; defs }
+      { syms ; defs ; path }
 
     let name_exists : string -> t -> bool = fun n sign ->
       Hashtbl.mem sign.syms n || Hashtbl.mem sign.defs n
 
-    let new_sym : t -> string -> term -> unit = fun sign name ty ->
-      if name_exists name sign then wrn "Redefinition of %s.\n" name;
-      let sym = { sym_name = name ; sym_type = ty } in
-      Hashtbl.add sign.syms name sym
+    let new_sym : t -> string -> term -> unit = fun sign sym_name sym_type ->
+      if name_exists sym_name sign then wrn "Redefinition of %s.\n" sym_name;
+      let sym =
+        { sym_name ; sym_type ; sym_path = sign.path }
+      in
+      Hashtbl.add sign.syms sym_name sym
  
-    let new_def : t -> string -> term -> unit = fun sign name ty ->
-      if name_exists name sign then wrn "Redefinition of %s.\n" name;
-      let def = { def_name = name ; def_type = ty ; def_rules = ref [] } in
-      Hashtbl.add sign.defs name def
+    let new_def : t -> string -> term -> unit = fun sign def_name def_type ->
+      if name_exists def_name sign then wrn "Redefinition of %s.\n" def_name;
+      let def =
+        { def_name ; def_type ; def_rules = ref [] ; def_path = sign.path }
+      in
+      Hashtbl.add sign.defs def_name def
  
     let find_symbol : t -> string -> symbol = fun sign name ->
       try Sym (Hashtbl.find sign.syms name)
       with Not_found -> Def (Hashtbl.find sign.defs name)
   end
+
+let symbol_name : symbol -> string = fun s ->
+  let open Sign in
+  let (path, name) =
+    match s with
+    | Sym(sym) -> (sym.sym_path, sym.sym_name)
+    | Def(def) -> (def.def_path, def.def_name)
+  in
+  String.concat "::" (path @ [name])
 
 (* Bindlib related things and smart constructors. *)
 type tbox = term bindbox
@@ -575,7 +585,7 @@ let eq_modulo_constrs : constrs -> Sign.t -> term -> term -> bool =
 
 (* Parser *)
 type p_term =
-  | P_Vari of string
+  | P_Vari of string list * string
   | P_Type
   | P_Prod of string * p_term * p_term
   | P_Abst of string * p_term * p_term
@@ -590,9 +600,9 @@ let parser ident = id:''[a-zA-Z0-9][_a-zA-Z0-9]*'' ->
 
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
-  | x:ident
+  | fs:{ident "::"}* x:ident
       when p = `Atom
-      -> P_Vari(x)
+      -> P_Vari(fs,x)
   (* Type constant *)
   | "Type"
       when p = `Atom
@@ -680,15 +690,32 @@ let new_wildcard : unit -> tbox = fun () ->
 
 type env = (string * tvar) list
 
+let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
+
+let compile_ref : (bool -> string -> Sign.t) ref =
+  ref (fun _ _ -> assert false)
+
+let load_signature : string list -> Sign.t = fun fs ->
+  try Hashtbl.find loaded fs with Not_found ->
+  let file = (String.concat "/" fs) ^ ".lp" in
+  !compile_ref false file
+
 let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
   fun allow_wild vars sign t ->
     let rec build vars t =
       match t with
-      | P_Vari(x)     ->
+      | P_Vari([],x)  ->
           begin
             try box_of_var (List.assoc x vars) with Not_found ->
             try t_symb sign x with Not_found ->
             fatal "Unbound variable %S...\n%!" x
+          end
+      | P_Vari(fs,x)  ->
+          begin
+            let sign = load_signature fs in
+            try t_symb sign x with Not_found ->
+              let x = String.concat "::" (fs @ [x]) in
+              fatal "Unbound symbol %S...\n%!" x
           end
       | P_Type        ->
           t_type
@@ -802,6 +829,59 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
   in
   List.iter handle_item (parse_file fname)
 
+let obj_file : string -> string = fun file ->
+  Filename.chop_extension file ^ ".lpo"
+
+let module_path : string -> string list = fun file ->
+  let base = Filename.chop_extension (Filename.basename file) in
+  let dir  = Filename.dirname  file in
+  let rec build_path acc dir =
+    let dirbase = Filename.basename dir in
+    let dirdir  = Filename.dirname  dir in
+    if dirbase = "." then acc else build_path (dirbase::acc) dirdir
+  in
+  build_path [base] dir
+
+let mod_time : string -> float = fun fname ->
+  if Sys.file_exists fname then Unix.((stat fname).st_mtime)
+  else neg_infinity
+
+let binary_time : float = mod_time "/proc/self/exe"
+
+let more_recent source target =
+  mod_time source > mod_time target
+  || binary_time > mod_time target
+
+let compile : bool -> string -> Sign.t = fun force file ->
+  if not (Sys.file_exists file) then fatal "File not found: %s\n" file;
+  let obj = obj_file file in
+  let fs = module_path file in
+  if more_recent file obj || (force && not (Hashtbl.mem loaded fs)) then
+    begin
+      out "Loading file [%s]\n%!" file;
+      let sign = Sign.create fs in
+      begin
+        try handle_file sign file with e ->
+          fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+      end;
+      let oc = open_out obj in
+      Marshal.to_channel oc sign [Marshal.Closures];
+      close_out oc;
+      Hashtbl.add loaded fs sign;
+      out "Done with file [%s]\n%!" file;
+      sign
+    end
+  else
+    try Hashtbl.find loaded fs with Not_found ->
+    let ic = open_in obj in
+    let sign = Marshal.from_channel ic in
+    close_in ic;
+    Hashtbl.add loaded fs sign; sign
+
+let _ = compile_ref := compile
+
+let compile force file = ignore (compile force file)
+
 (* Run files *)
 let _ =
   let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p]] [--quiet] [FILE] ..." in
@@ -820,7 +900,4 @@ let _ =
   let files = ref [] in
   let anon fn = files := fn :: !files in
   Arg.parse (Arg.align spec) anon usage;
-  let files = List.rev !files in
-  let sign = Sign.create () in
-  try List.iter (handle_file sign) files with e ->
-    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+  List.iter (compile true) (List.rev !files)
