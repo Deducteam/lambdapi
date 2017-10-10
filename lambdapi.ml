@@ -9,12 +9,6 @@ let debug_patt  = ref false
 let debug_enabled : unit -> bool = fun () ->
   !debug || !debug_eval || !debug_infer || !debug_patt
 
-let set_debug str =
-  if String.contains str 'a' then debug       := true;
-  if String.contains str 'e' then debug_eval  := true;
-  if String.contains str 'i' then debug_infer := true;
-  if String.contains str 'p' then debug_patt  := true
-
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -34,6 +28,17 @@ let err fmt = Printf.eprintf (red fmt)
 let wrn fmt = Printf.eprintf (yel fmt)
 
 let fatal fmt = Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
+
+let set_debug str =
+  let enable c =
+    match c with
+    | 'a' -> debug       := true
+    | 'e' -> debug_eval  := true
+    | 'i' -> debug_infer := true
+    | 'p' -> debug_patt  := true
+    | _   -> wrn "Unknown debug flag %C\n" c
+  in
+  String.iter enable str
 
 (* Missing from the standard library. *)
 let from_opt_rev : 'a option list -> 'a list = fun l ->
@@ -815,14 +820,22 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
 
 (* Run files *)
 let _ =
-  let usage = Sys.argv.(0) ^ " [--debug str] [--quiet] [FILE] ..." in
+  let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p]] [--quiet] [FILE] ..." in
+  let flags =
+    [ "a : general debug informations"
+    ; "e : extra debugging informations for equality"
+    ; "i : extra debugging informations for inference"
+    ; "p : extra debugging informations for patterns" ]
+  in
+  let flags = List.map (fun s -> String.make 18 ' ' ^ s) flags in
+  let flags = String.concat "\n" flags in
   let spec =
-    [ ("--debug", Arg.String set_debug, "Set debugging mode.")
-    ; ("--quiet", Arg.Set quiet       , "No output."         ) ]
+    [ ("--debug", Arg.String set_debug, "<str> Set debugging mode:\n" ^ flags)
+    ; ("--quiet", Arg.Set quiet       , " Disable output") ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
-  Arg.parse spec anon usage;
+  Arg.parse (Arg.align spec) anon usage;
   let files = List.rev !files in
   let sign = Sign.create () in
   try List.iter (handle_file sign) files with e ->
