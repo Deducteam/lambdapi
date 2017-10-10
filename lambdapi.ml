@@ -6,12 +6,11 @@ let debug_eval  = ref false
 let debug_infer = ref false
 let debug_patt  = ref false
 
-let in_debug_mode : unit -> bool = fun () ->
+let debug_enabled : unit -> bool = fun () ->
   !debug || !debug_eval || !debug_infer || !debug_patt
 
 let set_debug str =
-  if String.contains str 's' then Earley.debug_lvl := 1;
-  if String.contains str 'a' then debug := true;
+  if String.contains str 'a' then debug       := true;
   if String.contains str 'e' then debug_eval  := true;
   if String.contains str 'i' then debug_infer := true;
   if String.contains str 'p' then debug_patt  := true
@@ -23,19 +22,20 @@ let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
 let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
-let log name fmt = Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+let log name fmt =
+  let fmt = (cya "[%s] ") ^^ fmt ^^ "\n%!" in
+  Printf.eprintf fmt name
 
 let out fmt =
-  let fmt = if in_debug_mode () then mag fmt else fmt in
-  let fmt = fmt ^^ "%!" in
-  if !quiet then Printf.ifprintf stdout fmt
-  else Printf.printf fmt
+  let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
+  if !quiet then Printf.ifprintf stdout fmt else Printf.printf fmt
 
 let err fmt = Printf.eprintf (red fmt)
 let wrn fmt = Printf.eprintf (yel fmt)
 
 let fatal fmt = Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
 
+(* Missing from the standard library. *)
 let from_opt_rev : 'a option list -> 'a list = fun l ->
   let fn acc e =
     match e with
@@ -338,8 +338,11 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
-          let nb = List.length ts in
-          if !debug_eval && nb > 1 then wrn "%i rules apply...\n%!" nb;
+          if !debug_eval then
+            begin
+              let nb = List.length ts in
+              if nb > 1 then wrn "%i rules apply...\n%!" nb
+            end;
           match ts with
           | []   -> add_args t stk
           | t::_ -> eval_aux sign t []
@@ -457,7 +460,7 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   let a = infer ctx t in
   if !debug then
     log "infr" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
-  (* assert (has_type sign ctx t a); *) a
+  a
 
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
   let eq_modulo sg a b =
@@ -500,9 +503,6 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
                                 && has_type ctx u a
           | _          -> false
         end
-    (* Unification variable. *)
-    | (Unif(_)  , _        ) ->
-        true (* Only for patterns. FIXME FIXME FIXME ??!! *)
     (* No rule apply. *)
     | (_        , _        ) -> false
   in
