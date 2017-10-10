@@ -34,6 +34,8 @@ let out fmt =
 let err fmt = Printf.eprintf (red fmt)
 let wrn fmt = Printf.eprintf (yel fmt)
 
+let fatal fmt = Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
+
 let from_opt_rev : 'a option list -> 'a list = fun l ->
   let fn acc e =
     match e with
@@ -163,6 +165,15 @@ let rec unfold : term -> term = fun t ->
   | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
   | _       -> t
 
+(* Separate the head term and its arguments. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get acc t =
+    match unfold t with
+    | Appl(t,u) -> get (u::acc) t
+    | t         -> (t, acc)
+  in
+  get [] t
+
 (* Occurence check. *)
 let rec occurs : term option ref -> term -> bool = fun r t ->
   match unfold t with
@@ -257,6 +268,14 @@ let print_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
         if x = "_" then print_vars oc ctx
         else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
   in print_vars oc ctx
+ 
+(* Check that the given term is a pattern and returns its data. *)
+let pattern_data : term -> def * int = fun t ->
+  let (hd, args) = get_args t in
+  match unfold hd with
+  | Symb(Def(s)) -> (s, List.length args)
+  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | _            -> fatal "%a is not a valid pattern...\n" print_term t
 
 (* Strict equality (no conversion). *)
 let unify : term option ref -> term -> bool =
@@ -376,6 +395,15 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
 let bind_vari : term var -> term -> (term,term) binder = fun x t ->
   unbox (bind_var x (lift t))
 
+type constrs = (term * term) list
+
+let constraints = ref None
+let add_constraint : Sign.t -> term -> term -> bool = fun sign a b ->
+  match !constraints with
+  | None    -> false
+  | Some cs -> let c = (eval sign a, eval sign b) in
+               constraints := Some (c :: cs); true
+
 (* Judgements *)
 let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
@@ -432,6 +460,9 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
   (* assert (has_type sign ctx t a); *) a
 
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
+  let eq_modulo sg a b =
+    eq_modulo sg a b || add_constraint sg a b
+  in
   let rec has_type ctx t a =
     match (unfold t, eval sign a) with
     (* Sort *)
@@ -483,6 +514,70 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t a ->
       print_ctxt ctx print_term t print_term a;
   res
 
+let infer_with_constrs : Sign.t -> ctxt -> term -> term * constrs =
+  fun sign ctx t ->
+    constraints := Some [];
+    let a = infer sign ctx t in
+    let cnstrs = match !constraints with Some cs -> cs | None -> [] in
+    constraints := None;
+    if !debug_patt then
+      begin
+        log "patt" "inferred type [%a] for [%a]" print_term a print_term t;
+        let fn (x,a) =
+          log "patt" "  with\t%s\t: %a" (name_of x) print_term a
+        in
+        List.iter fn ctx;
+        let fn (a,b) =
+          log "patt" "  where\t%a == %a" print_term a print_term b
+        in
+        List.iter fn cnstrs
+      end;
+    (a, cnstrs)
+
+let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
+  let rec build_sub acc cs =
+    match cs with
+    | []        -> acc
+    | (a,b)::cs ->
+        (* wrn "Constraint (%a, %a)\n%!" print_term a print_term b; *)
+        let (ha,argsa) = get_args a in
+        let (hb,argsb) = get_args b in
+        (*
+        wrn "HEADS: (%a, %a)\n%!" print_term ha print_term hb;
+        wrn "ARGS:  (%i, %i)\n%!" (List.length argsa) (List.length argsb);
+        *)
+        match (unfold ha, unfold hb) with
+        | (Symb(Sym(sa)), Symb(Sym(sb))) when sa == sb ->
+            let cs =
+              try List.combine argsa argsb @ cs with Invalid_argument _ -> cs
+            in
+            build_sub acc cs
+        | (Symb(Def(sa)), Symb(Def(sb))) when sa == sb ->
+            wrn "%s may not be injective...\n%!" sa.def_name;
+            build_sub acc cs
+        | (Vari(x)      , _            ) when argsa = [] ->
+            (*
+            wrn "Found %s = %a\n%!" (name_of x) print_term b;
+            *)
+            build_sub ((x,b)::acc) cs
+        | (_            , Vari(x)      ) when argsb = [] ->
+            (*
+            wrn "Found %s = %a\n%!" (name_of x) print_term a;
+            *)
+            build_sub ((x,a)::acc) cs
+        | (a            , b            ) ->
+            wrn "Not implemented [%a] [%a]...\n%!" print_term a print_term b;
+            build_sub acc cs
+  in
+  let sub = build_sub [] cs in
+  (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
+
+let eq_modulo_constrs : constrs -> Sign.t -> term -> term -> bool =
+  fun constrs sign a b -> eq_modulo sign a b ||
+    let (xs,sub) = sub_from_constrs constrs in
+    let p = unbox (bind_mvar xs (box_pair (lift a) (lift b))) in
+    let (a,b) = msubst p sub in
+    eq_modulo sign a b
 
 (* Parser *)
 type p_term =
@@ -604,8 +699,7 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
           begin
             try box_of_var (List.assoc x vars) with Not_found ->
             try t_symb sign x with Not_found ->
-            err "Unbound variable %S...\n%!" x;
-            exit 1
+            fatal "Unbound variable %S...\n%!" x
           end
       | P_Type        ->
           t_type
@@ -618,11 +712,7 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
       | P_Appl(t,u)   ->
           t_appl (build vars t) (build vars u)
       | P_Wild        ->
-          if not allow_wild then
-            begin
-              err "Wildcards \"_\" are only allowed in patterns...\n";
-              exit 1
-            end;
+          if not allow_wild then fatal "\"_\" not allowed in terms...\n";
           new_wildcard ()
     in
     build vars t
@@ -645,91 +735,57 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let sort =
           if has_type sign empty_ctxt a Type then "Type" else
           if has_type sign empty_ctxt a Kind then "Kind" else
-          begin
-            err "%s is neither of type Type nor Kind.\n" x;
-            exit 1
-          end
+          fatal "%s is neither of type Type nor Kind.\n" x
         in
         let kind = if d then "defi" else "symb" in
         out "(%s) %s : %a (of sort %s)\n" kind x print_term a sort;
         if d then Sign.new_def sign x a else Sign.new_sym sign x a
     | Rule(xs,t,u) ->
+        (* Scoping the LHS and RHS. *)
         let vars = List.map (fun x -> (x, new_var mkfree x)) xs in
-        let ctx = List.map (fun (_,x) -> (x, Unif(ref None))) vars in
         let (t, wcs) = to_tbox_wc ~vars sign t in
         let u = to_tbox false vars sign u in
+        (* Building the definition. *)
         let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
         let defin = unbox (bind_mvar xs (box_pair t u)) in
-        let t = unbox (bind_mvar wcs t) in
-        let new_unif _ = Unif(ref None) in
-        let wcs_args = Array.init (Array.length wcs) new_unif in
-        let t = msubst t wcs_args in
+        (* Constructing the typing context and the terms. *)
+        let xs = Array.to_list xs in
+        let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
+        let t = unbox t in
         let u = unbox u in
-        let pattern_data : term -> (def * int) option = fun t ->
-          let rec get_args acc t =
-            match unfold t with
-            | Symb(Def(s)) -> Some(s, acc)
-            | Appl(t,u)    -> get_args (u::acc) t
-            | _            -> None
-          in
-          match get_args [] t with
-          | None        -> None
-          | Some(x, ts) -> Some(x, List.length ts)
+        (* Check that the LHS is a pattern and build the rule. *)
+        let (s,i) = pattern_data t in
+        let rule = { defin ; arity = i } in
+        (* Infer the type of the LHS and the constraints. *)
+        let (tt, tt_constrs) =
+          try infer_with_constrs sign ctx t with Not_found ->
+            fatal "Unable to infer the type of [%a]\n" print_term t
         in
-        begin
-          match pattern_data t with
-          | None      ->
-              err "%a is not a valid pattern...\n" print_term t;
-              exit 1
-          | Some(s,i) ->
-              let rule = { defin ; arity = i } in
-              let infer t =
-                try infer sign ctx t with Not_found ->
-                  err "Unable to infer the type of [%a]\n" print_term t;
-                  exit 1
-              in
-              let tt = infer t in
-              if !debug_patt then
-                begin
-                  log "left" "Context for %a:" print_term t;
-                  let fn (x,a) =
-                    log "left" "  %s : %a" (name_of x) print_term a
-                  in
-                  List.iter fn ctx;
-                  let fn i a =
-                    log "left" "  #%i# = %a" i print_term a
-                  in
-                  Array.iteri fn wcs_args
-                end;
-              let tu = infer u in
-              if !debug_patt then
-                begin
-                  log "left" "LHS: %a" print_term tt;
-                  log "left" "RHS: %a" print_term tu
-                end;
-              if eq_modulo sign tt tu then
-                begin
-                  out "(rule) %a → %a\n" print_term t print_term u;
-                  s.def_rules := !(s.def_rules) @ [rule]
-                end
-              else
-                begin
-                  err "[%a → %a] is ill-typed\n" print_term t print_term u;
-                  err "Left : %a\n" print_term tt;
-                  err "Right: %a\n" print_term tu;
-                  exit 1
-                end
-        end
+        (* Infer the type of the RHS and the constraints. *)
+        let (tu, tu_constrs) =
+          try infer_with_constrs sign ctx u with Not_found ->
+            fatal "Unable to infer the type of [%a]\n" print_term u
+        in
+        assert (tu_constrs = []); (* FIXME is it useful to allow more ? *)
+        (* Checking if the rule is well-typed. *)
+        if eq_modulo_constrs tt_constrs sign tt tu then
+          begin
+            out "(rule) %a → %a\n" print_term t print_term u;
+            s.def_rules := !(s.def_rules) @ [rule]
+          end
+        else
+          begin
+            err "Infered type for LHS: %a\n" print_term tt;
+            err "Infered type for RHS: %a\n" print_term tu;
+            fatal "[%a → %a] is ill-typed\n" print_term t print_term u
+          end
     | Check(t,a)   ->
         let t = to_term sign t in
         let a = to_term sign a in
         if has_type sign empty_ctxt t a then
           out "(chck) %a : %a\n" print_term t print_term a
         else
-          begin
-            err "%a does not have type %a...\n" print_term t print_term a;
-            exit 1
-          end
+          fatal "%a does not have type %a...\n" print_term t print_term a
     | Infer(t)     ->
         let t = to_term sign t in
         begin
@@ -737,7 +793,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
             let a = infer sign empty_ctxt t in
             out "(infr) %a : %a\n" print_term t print_term a
           with Not_found ->
-            err "%a : unable to infer\n%!" print_term t;
+            err "%a : unable to infer\n%!" print_term t
         end
     | Eval(t)      ->
         let t = to_term sign t in
@@ -764,4 +820,5 @@ let _ =
   Arg.parse spec anon usage;
   let files = List.rev !files in
   let sign = Sign.create () in
-  List.iter (handle_file sign) files
+  try List.iter (handle_file sign) files with e ->
+    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
