@@ -10,6 +10,8 @@ lambdapi: lambdapi.ml
 
 .PHONY: tests
 tests: lambdapi
+	@echo -n "Number of lines: "
+	@wc -l lambdapi.ml | cut -d ' ' -f 1
 	@time for file in $(TESTFILES) ; do \
 		echo "Testing file \"$$file\"" ; \
 		./lambdapi $(QUIET) $$file ; \

@@ -1,14 +1,6 @@
-open Bindlib
+(**** Colorful error / warning messages *************************************)
 
-let quiet       = ref false
-let debug       = ref false
-let debug_eval  = ref false
-let debug_infer = ref false
-let debug_patt  = ref false
-
-let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_infer || !debug_patt
-
+(* Format transformers (colors). *)
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -16,20 +8,35 @@ let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
 let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
-let log name fmt =
-  let fmt = (cya "[%s] ") ^^ fmt ^^ "\n%!" in
-  Printf.eprintf fmt name
+(* [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
+   that the output buffer is flushed by the function. *)
+let wrn : ('a, out_channel, unit) format -> 'a =
+  fun fmt -> Printf.eprintf (yel fmt)
 
-let out fmt =
-  let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-  if !quiet then Printf.ifprintf stdout fmt else Printf.printf fmt
+(* [err fmt] prints a red error message with [Printf] format [fmt]. Note that
+   the output buffer is flushed by the function. *)
+let err : ('a, out_channel, unit) format -> 'a =
+  fun fmt -> Printf.eprintf (red fmt)
 
-let err fmt = Printf.eprintf (red fmt)
-let wrn fmt = Printf.eprintf (yel fmt)
+(* [fatal fmt] is like [err fmt], but it aborts the program with [exit 1]. *)
+let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
+  fun fmt -> Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
 
-let fatal fmt = Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
+(**** Debugging messages management *****************************************)
 
-let set_debug str =
+(* Various debugging / message flags. *)
+let quiet       = ref false
+let debug       = ref false
+let debug_eval  = ref false
+let debug_infer = ref false
+let debug_patt  = ref false
+
+(* [debug_enabled ()] indicates whether any debugging flag is enable. *)
+let debug_enabled : unit -> bool = fun () ->
+  !debug || !debug_eval || !debug_infer || !debug_patt
+
+(* [set_debug str] enables debugging flags according to [str]. *)
+let set_debug : string -> unit =
   let enable c =
     match c with
     | 'a' -> debug       := true
@@ -38,54 +45,118 @@ let set_debug str =
     | 'p' -> debug_patt  := true
     | _   -> wrn "Unknown debug flag %C\n" c
   in
-  String.iter enable str
+  String.iter enable
 
-(* Missing from the standard library. *)
+(* [log name fmt] prints a message in the log with the [Printf] format [fmt].
+   The message is identified with the name (or flag) [name], and coloured in
+   cyan. Note that the output buffer is flushed by the function, and that a
+   newline character ['\n'] is appended to the output. *)
+let log : string -> ('a, out_channel, unit) format -> 'a =
+  fun name fmt -> Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+
+(* [out fmt] prints an output message with the [Printf] format [fmt]. Note
+   that the output buffer is flushed by the function, and that the message is
+   displayed in magenta whenever a debugging mode is enabled. *)
+let out : ('a, out_channel, unit) format -> 'a =
+  fun fmt ->
+    let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
+    if !quiet then Printf.ifprintf stdout fmt else Printf.printf fmt
+
+(**** Function that should be in the standard library ***********************)
+
+(* [from_opt_rev l] extracts the values contained in the [Some] constructors
+   in a list of [option] values. The values appear in reverse order in the
+   produced list. *)
 let from_opt_rev : 'a option list -> 'a list = fun l ->
-  let fn acc e =
-    match e with
-    | None   -> acc
-    | Some e -> e::acc
-  in
-  List.fold_left fn [] l
+  let rec aux acc l =
+    match l with
+    | []          -> acc
+    | None   :: l -> aux acc l
+    | Some e :: l -> aux (e::acc) l
+  in aux [] l
 
-(* AST *)
+(**** Abstract syntax of the language ***************************************)
+
+(* Type of terms (and types). *)
 type term =
-  | Vari of term var
+  (* Free variable. *)
+  | Vari of term Bindlib.var
+  (* "Type" constant. *)
   | Type
+  (* "Kind" constant. *)
   | Kind
+  (* Symbol (static or definable). *)
   | Symb of symbol
-  | Prod of term * ttbinder
-  | Abst of term * ttbinder
+  (* Dependent product. *)
+  | Prod of term * (term, term) Bindlib.binder
+  (* Abstraction. *)
+  | Abst of term * (term, term) Bindlib.binder
+  (* Application. *)
   | Appl of term * term
+  (* Unification variable. *)
   | Unif of term option ref
 
-and  ttbinder = (term, term) binder
+(* Representation of a reduction rule. The [arity] is the minimal number of
+   arguments that are required for the rule to apply. The definition [defin]
+   binds the context of the rule to its LHS and RHS. *)
+and rule =
+  { defin : (term, term * term) Bindlib.mbinder
+  ; arity : int }
 
-and  sym =
+(* NOTE: to check if a rule [r] can be applied on a term [t] using the above
+   representation is really easy. First, one should substitute the [r.defin]
+   binder (with the [Bindlib.msubst] function) using an array of unification
+   variables (of size [Bindlib.mbinder_arity r.defin]) to obtain a couple of
+   two terms [(lhs, rhs)]. To check if [r] applies, one should test equality
+   (with unification) between [t] and [lhs]. If they are equal then the rule
+   applies and the result of the application is exactly [rhs], otherwise the
+   rule does not apply. *)
+
+(**** Symbols (static or definable) *****************************************)
+
+(* Representation of a static symbol. *)
+and sym =
   { sym_name  : string
   ; sym_type  : term
   ; sym_path  : string list }
 
-and  def =
+(* Representation of a definable symbol. Note that it carries its reduction
+   rules in a reference, that should be updated when new rules are added. *)
+and def =
   { def_name  : string
   ; def_type  : term
   ; def_rules : rule list ref
   ; def_path  : string list }
 
-and  symbol =
+(* NOTE: the [path] stored in a symbol corresponds to its "module path". In
+   the current implementation, the module path [["dira"; "dirb"; "file"]]
+   corresponds to the file ["dira/dirb/file.lp"]. It is printed and read in
+   the source code as ["dira::dirb::file"] *)
+
+(* Representation of a (static or definable) symbol. *)
+and symbol =
   | Sym of sym
   | Def of def
 
-and  rule =
-  { defin : (term, term * term) mbinder
-  ; arity : int }
-let symbol_type : symbol -> term = fun s ->
-  match s with
-  | Sym(sym) -> sym.sym_type
-  | Def(def) -> def.def_type
+(* [symbol_type s] returns the type of the given symbol [s]. *)
+let symbol_type : symbol -> term =
+  fun s ->
+    match s with
+    | Sym(sym) -> sym.sym_type
+    | Def(def) -> def.def_type
 
-(* Signature *)
+(* [symbol_name s] returns the full name of the given symbol [s] (including
+   the module path). *)
+let symbol_name : symbol -> string = fun s ->
+  let (path, name) =
+    match s with
+    | Sym(sym) -> (sym.sym_path, sym.sym_name)
+    | Def(def) -> (def.def_path, def.def_name)
+  in
+  String.concat "::" (path @ [name])
+
+(**** Signature *************************************************************)
+
 module Sign =
   struct
     type t =
@@ -120,25 +191,21 @@ module Sign =
       with Not_found -> Def (Hashtbl.find sign.defs name)
   end
 
-let symbol_name : symbol -> string = fun s ->
-  let open Sign in
-  let (path, name) =
-    match s with
-    | Sym(sym) -> (sym.sym_path, sym.sym_name)
-    | Def(def) -> (def.def_path, def.def_name)
-  in
-  String.concat "::" (path @ [name])
+(**** Smart constructors and other Bindlib-related things *******************)
 
-(* Bindlib related things and smart constructors. *)
+open Bindlib
+
 type tbox = term bindbox
 type tvar = term var
 
-let mkfree : term var -> term =
+let mkfree : tvar -> term =
   fun x -> Vari(x)
 
-let t_type : tbox = box Type
+let t_type : tbox =
+  box Type
 
-let t_kind : tbox = box Kind
+let t_kind : tbox =
+  box Kind
 
 let t_symb : Sign.t -> string -> tbox =
   fun sign n -> box (Symb (Sign.find_symbol sign n))
@@ -169,7 +236,8 @@ let rec lift : term -> tbox = fun t ->
 let update_names : term -> term = fun t -> unbox (lift t)
 
 (* Equality of binders. *)
-let eq_binder : (term -> term -> bool) -> ttbinder -> ttbinder -> bool =
+type 'a eq = 'a -> 'a -> bool
+let eq_binder : term eq -> (term, term) Bindlib.binder eq =
   fun eq f g -> f == g ||
     let x = mkfree (new_var mkfree "_eq_binder_") in
     eq (subst f x) (subst g x)
@@ -410,9 +478,6 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
     end;
   res
 
-let bind_vari : term var -> term -> (term,term) binder = fun x t ->
-  unbox (bind_var x (lift t))
-
 type constrs = (term * term) list
 
 let constraints = ref None
@@ -448,7 +513,7 @@ let rec infer : Sign.t -> ctxt -> term -> term = fun sign ctx t ->
       | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
                      let t = subst t (mkfree x) in
                      let b = infer (add_var x a ctx) t in
-                     Prod(a, bind_vari x b)
+                     Prod(a, unbox (bind_var x (lift b)))
       | Appl(t,u) -> begin
                        match unfold (infer ctx t) with
                        | Prod(a,b) ->
