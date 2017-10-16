@@ -156,11 +156,15 @@ let symbol_name : symbol -> string = fun s ->
 
 module Sign =
   struct
+    (* Representation of a signature (roughly, a set of symbols). *)
     type t = { symbols : (string, symbol) Hashtbl.t ; path : string list }
  
+    (* [create path] creates an empty signature with module path [path]. *)
     let create : string list -> t =
       fun path -> { path ; symbols = Hashtbl.create 37 }
 
+    (* [new_static sign name a] creates a new static symbol named [name] with
+       type [a] the signature [sign]. *)
     let new_static : t -> string -> term -> unit =
       fun sign sym_name sym_type ->
         if Hashtbl.mem sign.symbols sym_name then
@@ -169,6 +173,8 @@ module Sign =
         let sym = { sym_name ; sym_type ; sym_path } in
         Hashtbl.add sign.symbols sym_name (Sym(sym))
  
+    (* [new_definable sign name a] creates a new definable symbol (with no
+       reduction rules) named [name] with type [a] the signature [sign]. *)
     let new_definable : t -> string -> term -> unit =
       fun sign def_name def_type ->
         if Hashtbl.mem sign.symbols def_name then
@@ -178,9 +184,52 @@ module Sign =
         let def = { def_name ; def_type ; def_rules ; def_path } in
         Hashtbl.add sign.symbols def_name (Def(def))
  
+    (* [find sign name] looks for a symbol named [name] in the signature
+       [sign]. If none is found, the exception [Not_found] is raised. *)
     let find : t -> string -> symbol =
       fun sign name -> Hashtbl.find sign.symbols name
+
+    (* [write sign file] writes the signature [sign] to the file [fname]. *)
+    let write : t -> string -> unit =
+      fun sign fname ->
+        let oc = open_out fname in
+        Marshal.to_channel oc sign [Marshal.Closures];
+        close_out oc
+
+    (* [read fname] reads a signature from the file [fname]. *)
+    let read : string -> t =
+      fun fname ->
+        let ic = open_in fname in
+        let sign = Marshal.from_channel ic in
+        close_in ic; sign
   end
+
+(**** Unification variables management **************************************)
+
+(* [unfold t] unfolds the toplevel unification variables in [t]. *)
+let rec unfold : term -> term = fun t ->
+  match t with
+  | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
+  | _       -> t
+
+(* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
+let rec occurs : term option ref -> term -> bool = fun r t ->
+  match unfold t with
+  | Prod(a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Abst(a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Appl(t,u) -> occurs r t || occurs r u
+  | Unif(u)   -> u == r
+  | Type      -> false
+  | Kind      -> false
+  | Vari(_)   -> false
+  | Symb(_)   -> false
+
+(* [unify r t] tries to unify [r] with [t], and returns a boolean indicating
+   whether it succeeded or not. *)
+let unify : term option ref -> term -> bool =
+  fun r a ->
+    assert (!r = None);
+    not (occurs r a) && (r := Some(a); true)
 
 (**** Smart constructors and other Bindlib-related things *******************)
 
@@ -212,6 +261,7 @@ let t_appl : tbox -> tbox -> tbox =
 
 (* Lifting function *)
 let rec lift : term -> tbox = fun t ->
+  let t = unfold t in
   match t with
   | Vari(x)   -> box_of_var x
   | Type      -> t_type
@@ -222,7 +272,7 @@ let rec lift : term -> tbox = fun t ->
   | Abst(a,t) -> t_abst (lift a) (binder_name t)
                    (fun x -> lift (subst t (mkfree x)))
   | Appl(t,u) -> t_appl (lift t) (lift u)
-  | Unif(r)   -> (match !r with Some t -> lift t | None -> box t)
+  | Unif(_)   -> box t
 
 let update_names : term -> term = fun t -> unbox (lift t)
 
@@ -233,12 +283,6 @@ let eq_binder : term eq -> (term, term) Bindlib.binder eq =
     let x = mkfree (new_var mkfree "_eq_binder_") in
     eq (subst f x) (subst g x)
 
-(* Unfolding of unification variables. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
-  | _       -> t
-
 (* Separate the head term and its arguments. *)
 let get_args : term -> term * term list = fun t ->
   let rec get acc t =
@@ -247,18 +291,6 @@ let get_args : term -> term * term list = fun t ->
     | t         -> (t, acc)
   in
   get [] t
-
-(* Occurence check. *)
-let rec occurs : term option ref -> term -> bool = fun r t ->
-  match unfold t with
-  | Prod(a,b) -> occurs r a || occurs r (subst b Kind)
-  | Abst(a,t) -> occurs r a || occurs r (subst t Kind)
-  | Appl(t,u) -> occurs r t || occurs r u
-  | Unif(u)   -> u == r
-  | Type      -> false
-  | Kind      -> false
-  | Vari(_)   -> false
-  | Symb(_)   -> false
 
 (* Context *)
 type ctxt = (term var * term) list
@@ -352,9 +384,6 @@ let pattern_data : term -> def * int = fun t ->
   | _            -> fatal "%a is not a valid pattern...\n" print_term t
 
 (* Strict equality (no conversion). *)
-let unify : term option ref -> term -> bool =
-  fun r a -> not (occurs r a) && (r := Some(a); true)
-
 let eq : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a =!= %a" print_term a print_term b;
   let rec eq a b = a == b ||
@@ -920,18 +949,14 @@ let compile : bool -> string -> Sign.t = fun force file ->
         try handle_file sign file with e ->
           fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
       end;
-      let oc = open_out obj in
-      Marshal.to_channel oc sign [Marshal.Closures];
-      close_out oc;
+      Sign.write sign obj;
       Hashtbl.add loaded fs sign;
       out "Done with file [%s]\n%!" file;
       sign
     end
   else
     try Hashtbl.find loaded fs with Not_found ->
-    let ic = open_in obj in
-    let sign = Marshal.from_channel ic in
-    close_in ic;
+    let sign = Sign.read obj in
     Hashtbl.add loaded fs sign; sign
 
 let _ = compile_ref := compile
