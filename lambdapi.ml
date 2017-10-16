@@ -100,8 +100,7 @@ type term =
    arguments that are required for the rule to apply. The definition [defin]
    binds the context of the rule to its LHS and RHS. *)
 and rule =
-  { defin : (term, term * term) Bindlib.mbinder
-  ; arity : int }
+  { defin : (term, term * term) Bindlib.mbinder ; arity : int }
 
 (* NOTE: to check if a rule [r] can be applied on a term [t] using the above
    representation is really easy. First, one should substitute the [r.defin]
@@ -134,9 +133,7 @@ and def =
    the source code as ["dira::dirb::file"] *)
 
 (* Representation of a (static or definable) symbol. *)
-and symbol =
-  | Sym of sym
-  | Def of def
+and symbol = Sym of sym | Def of def
 
 (* [symbol_type s] returns the type of the given symbol [s]. *)
 let symbol_type : symbol -> term =
@@ -159,36 +156,30 @@ let symbol_name : symbol -> string = fun s ->
 
 module Sign =
   struct
-    type t =
-      { syms  : (string, sym) Hashtbl.t
-      ; defs  : (string, def) Hashtbl.t
-      ; path  : string list }
+    type t = { symbols : (string, symbol) Hashtbl.t ; path : string list }
  
-    let create : string list -> t = fun path ->
-      let syms  = Hashtbl.create 37 in
-      let defs  = Hashtbl.create 37 in
-      { syms ; defs ; path }
+    let create : string list -> t =
+      fun path -> { path ; symbols = Hashtbl.create 37 }
 
-    let name_exists : string -> t -> bool = fun n sign ->
-      Hashtbl.mem sign.syms n || Hashtbl.mem sign.defs n
-
-    let new_sym : t -> string -> term -> unit = fun sign sym_name sym_type ->
-      if name_exists sym_name sign then wrn "Redefinition of %s.\n" sym_name;
-      let sym =
-        { sym_name ; sym_type ; sym_path = sign.path }
-      in
-      Hashtbl.add sign.syms sym_name sym
+    let new_static : t -> string -> term -> unit =
+      fun sign sym_name sym_type ->
+        if Hashtbl.mem sign.symbols sym_name then
+          wrn "Redefinition of %s.\n" sym_name;
+        let sym_path = sign.path in
+        let sym = { sym_name ; sym_type ; sym_path } in
+        Hashtbl.add sign.symbols sym_name (Sym(sym))
  
-    let new_def : t -> string -> term -> unit = fun sign def_name def_type ->
-      if name_exists def_name sign then wrn "Redefinition of %s.\n" def_name;
-      let def =
-        { def_name ; def_type ; def_rules = ref [] ; def_path = sign.path }
-      in
-      Hashtbl.add sign.defs def_name def
+    let new_definable : t -> string -> term -> unit =
+      fun sign def_name def_type ->
+        if Hashtbl.mem sign.symbols def_name then
+          wrn "Redefinition of %s.\n" def_name;
+        let def_path = sign.path in
+        let def_rules = ref [] in
+        let def = { def_name ; def_type ; def_rules ; def_path } in
+        Hashtbl.add sign.symbols def_name (Def(def))
  
-    let find_symbol : t -> string -> symbol = fun sign name ->
-      try Sym (Hashtbl.find sign.syms name)
-      with Not_found -> Def (Hashtbl.find sign.defs name)
+    let find : t -> string -> symbol =
+      fun sign name -> Hashtbl.find sign.symbols name
   end
 
 (**** Smart constructors and other Bindlib-related things *******************)
@@ -208,7 +199,7 @@ let t_kind : tbox =
   box Kind
 
 let t_symb : Sign.t -> string -> tbox =
-  fun sign n -> box (Symb (Sign.find_symbol sign n))
+  fun sign n -> box (Symb (Sign.find sign n))
 
 let t_prod : tbox -> string -> (tvar -> tbox) -> tbox =
   fun a x f -> box_apply2 (fun a b -> Prod(a,b)) a (vbind mkfree x f)
@@ -820,7 +811,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         in
         let kind = if d then "defi" else "symb" in
         out "(%s) %s : %a (of sort %s)\n" kind x print_term a sort;
-        if d then Sign.new_def sign x a else Sign.new_sym sign x a
+        if d then Sign.new_definable sign x a else Sign.new_static sign x a
     | Rule(xs,t,u) ->
         (* Scoping the LHS and RHS. *)
         let vars = List.map (fun x -> (x, new_var mkfree x)) xs in
