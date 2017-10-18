@@ -230,8 +230,8 @@ module Ctxt =
 (* [unfold t] unfolds the toplevel unification variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif(r) -> (match !r with Some(t) -> unfold t | None -> t) 
-  | _       -> t
+  | Unif({contents = Some(t)}) -> t
+  | _                          -> t
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
 let rec occurs : term option ref -> term -> bool = fun r t ->
@@ -254,48 +254,133 @@ let unify : term option ref -> term -> bool =
 
 (**** Smart constructors and other Bindlib-related things *******************)
 
-open Bindlib
-
+(* Short names for variables and boxed terms. *)
 type tvar = term Bindlib.var
-type tbox = term bindbox
+type tbox = term Bindlib.bindbox
 
+(* Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term =
   fun x -> Vari(x)
 
-let t_type : tbox =
-  box Type
+(* [_Vari x] injects the free variable [x] into the bindbox, thus making it
+   available for binding. *)
+let _Vari : tvar -> tbox =
+  Bindlib.box_of_var
 
-let t_kind : tbox =
-  box Kind
+(* [_Type] injects the constructor [Type] in the [bindbox] type. *)
+let _Type : tbox = Bindlib.box Type
 
-let t_symb : Sign.t -> string -> tbox =
-  fun sign n -> box (Symb (Sign.find sign n))
+(* [_Kind] injects the constructor [Kind] in the [bindbox] type. *)
+let _Kind : tbox = Bindlib.box Kind
 
-let t_prod : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f -> box_apply2 (fun a b -> Prod(a,b)) a (vbind mkfree x f)
+(* [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
+let _Symb : symbol -> tbox =
+  fun s -> Bindlib.box (Symb(s))
 
-let t_abst : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f -> box_apply2 (fun a b -> Abst(a,b)) a (vbind mkfree x f)
+(* [_Symb_find sign name] finds the symbol [s] with the given [name] in the
+   signature [sign], and injects the constructor [Symb(s] into the [bindbox]
+   type. The exception [Not_found] is raised if no such symbol is found. *)
+let _Symb_find : Sign.t -> string -> tbox =
+  fun sign n -> _Symb (Sign.find sign n)
 
-let t_appl : tbox -> tbox -> tbox =
-  box_apply2 (fun t u -> Appl(t,u))
+(* [_Appl t u] lifts an application to the [bindbox] type, given two boxed
+   terms [t] and [u]. *)
+let _Appl : tbox -> tbox -> tbox =
+  Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
-(* Lifting function *)
+(* [_Prod a x f] lifts a dependent product node to the [bindbox] type, given
+   a boxed term [a] (the type of the domain), the prefered name for the bound
+   variable [x], and function [f] to build the [binder] (codomain). *)
+let _Prod : tbox -> string -> (tvar -> tbox) -> tbox =
+  fun a x f ->
+    let b = Bindlib.vbind mkfree x f in
+    Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
+
+(* [_Abst a x f] lifts an abstraction node to the [bindbox] type, given a
+   boxed term [a] (the type of the bound varialbe), the prefered name for the
+   bound variable [x], and the function [f] to build the [binder]. *)
+let _Abst : tbox -> string -> (tvar -> tbox) -> tbox =
+  fun a x f ->
+    let b = Bindlib.vbind mkfree x f in
+    Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
+
+(* [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering all of
+   its free variables, making them available for binding. Note that at the
+   same time, names are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
   let t = unfold t in
   match t with
-  | Vari(x)   -> box_of_var x
-  | Type      -> t_type
-  | Kind      -> t_kind
-  | Symb(s)   -> box (Symb(s))
-  | Prod(a,b) -> t_prod (lift a) (binder_name b)
-                   (fun x -> lift (subst b (mkfree x)))
-  | Abst(a,t) -> t_abst (lift a) (binder_name t)
-                   (fun x -> lift (subst t (mkfree x)))
-  | Appl(t,u) -> t_appl (lift t) (lift u)
-  | Unif(_)   -> box t
+  | Vari(x)   -> _Vari x
+  | Type      -> _Type
+  | Kind      -> _Kind
+  | Symb(s)   -> _Symb s
+  | Prod(a,b) -> _Prod (lift a) (Bindlib.binder_name b)
+                   (fun x -> lift (Bindlib.subst b (mkfree x)))
+  | Abst(a,t) -> _Abst (lift a) (Bindlib.binder_name t)
+                   (fun x -> lift (Bindlib.subst t (mkfree x)))
+  | Appl(t,u) -> _Appl (lift t) (lift u)
+  | Unif(_)   -> Bindlib.box t (* Variable not instanciated. *)
 
-let update_names : term -> term = fun t -> unbox (lift t)
+(* [update_names t] updates the names of the bound variables of [t] to avoid
+   "visual capture" while printing. Note that with [Bindlib], no capture is
+   actually possible as binders are represented as OCaml function (HOAS). *)
+let update_names : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(**** Printing functions (should come early for debuging) *******************)
+
+(* TODO cleaning and comments from here on. *)
+
+(* Printing *)
+let print_term : out_channel -> term -> unit = fun oc t ->
+  let is_abst t =
+    match unfold t with Abst(_,_) | Prod(_,_) -> true | _ -> false
+  in
+  let is_appl t =
+    match unfold t with Appl(_,_) | Abst(_,_) -> true | _ -> false
+  in
+  let rec print oc t =
+    match unfold t with
+    | Vari(x)   -> output_string oc (Bindlib.name_of x)
+    | Type      -> output_string oc "Type"
+    | Kind      -> output_string oc "Kind"
+    | Symb(s)   -> output_string oc (symbol_name s)
+    | Prod(a,b) ->
+        let (l,r) = if is_abst a then ("(",")") else ("","") in
+        let (x,c) = Bindlib.unbind mkfree b in
+        if Bindlib.binder_occur b then
+          let x = Bindlib.name_of x in
+          Printf.fprintf oc "%s%s:%a%s ⇒ %a" l x print a r print c
+        else
+          Printf.fprintf oc "%s%a%s ⇒ %a" l print a r print c
+    | Abst(a,t) ->
+        let (x,t) = Bindlib.unbind mkfree t in
+        Printf.fprintf oc "λ%s:%a.%a" (Bindlib.name_of x) print a print t
+    | Appl(t,u) ->
+        let (l1,r1) = if is_abst t then ("(",")") else ("","") in
+        let (l2,r2) = if is_appl u then ("(",")") else ("","") in
+        Printf.fprintf oc "%s%a%s %s%a%s" l1 print t r1 l2 print u r2
+    | Unif(_)   -> output_string oc "?"
+  in
+  print oc (update_names t)
+
+let print_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
+  let rec print_vars : out_channel -> Ctxt.t -> unit = fun oc ls ->
+    match ls with
+    | []          ->
+        output_string oc "∅"
+    | [(x,a)]     ->
+        let x = Bindlib.name_of x in
+        if x = "_" then output_string oc "∅"
+        else Printf.fprintf oc "%s : %a" x print_term a
+    | (x,a)::ctx  ->
+        let x = Bindlib.name_of x in
+        if x = "_" then print_vars oc ctx
+        else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
+  in print_vars oc ctx
+
+(**** TODO ******************************************************************)
+
+open Bindlib
 
 (* Equality of binders. *)
 type 'a eq = 'a -> 'a -> bool
@@ -326,52 +411,6 @@ let remove_args : term -> int -> term * term list = fun t n ->
 let add_args : term -> term list -> term =
   List.fold_left (fun t u -> Appl(t,u))
 
-(* Printing *)
-let print_term : out_channel -> term -> unit = fun oc t ->
-  let is_abst t =
-    match unfold t with Abst(_,_) | Prod(_,_) -> true | _ -> false
-  in
-  let is_appl t =
-    match unfold t with Appl(_,_) | Abst(_,_) -> true | _ -> false
-  in
-  let rec print oc t =
-    match unfold t with
-    | Vari(x)   -> output_string oc (name_of x)
-    | Type      -> output_string oc "Type"
-    | Kind      -> output_string oc "Kind"
-    | Symb(s)   -> output_string oc (symbol_name s)
-    | Prod(a,b) ->
-        let (l,r) = if is_abst a then ("(",")") else ("","") in
-        let (x,c) = unbind mkfree b in
-        if binder_occur b then
-          Printf.fprintf oc "%s%s:%a%s ⇒ %a" l (name_of x) print a r print c
-        else
-          Printf.fprintf oc "%s%a%s ⇒ %a" l print a r print c
-    | Abst(a,t) ->
-        let (x,t) = unbind mkfree t in
-        Printf.fprintf oc "λ%s:%a.%a" (name_of x) print a print t
-    | Appl(t,u) ->
-        let (l1,r1) = if is_abst t then ("(",")") else ("","") in
-        let (l2,r2) = if is_appl u then ("(",")") else ("","") in
-        Printf.fprintf oc "%s%a%s %s%a%s" l1 print t r1 l2 print u r2
-    | Unif(_)   -> output_string oc "?"
-  in
-  print oc (update_names t)
-
-let print_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
-  let rec print_vars : out_channel -> Ctxt.t -> unit = fun oc ls ->
-    match ls with
-    | []          ->
-        output_string oc "∅"
-    | [(x,a)]     ->
-        let x = name_of x in
-        if x = "_" then output_string oc "∅"
-        else Printf.fprintf oc "%s : %a" x print_term a
-    | (x,a)::ctx  ->
-        let x = name_of x in
-        if x = "_" then print_vars oc ctx
-        else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
-  in print_vars oc ctx
  
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def * int = fun t ->
@@ -790,26 +829,26 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
       | P_Vari([],x)  ->
           begin
             try box_of_var (List.assoc x vars) with Not_found ->
-            try t_symb sign x with Not_found ->
+            try _Symb_find sign x with Not_found ->
             fatal "Unbound variable %S...\n%!" x
           end
       | P_Vari(fs,x)  ->
           begin
             let sign = load_signature fs in
-            try t_symb sign x with Not_found ->
+            try _Symb_find sign x with Not_found ->
               let x = String.concat "::" (fs @ [x]) in
               fatal "Unbound symbol %S...\n%!" x
           end
       | P_Type        ->
-          t_type
+          _Type
       | P_Prod(x,a,b) ->
           let f v = build (if x = "_" then vars else (x,v)::vars) b in
-          t_prod (build vars a) x f
+          _Prod (build vars a) x f
       | P_Abst(x,a,t) ->
           let f v = build ((x,v)::vars) t in
-          t_abst (build vars a) x f
+          _Abst (build vars a) x f
       | P_Appl(t,u)   ->
-          t_appl (build vars t) (build vars u)
+          _Appl (build vars t) (build vars u)
       | P_Wild        ->
           if not allow_wild then fatal "\"_\" not allowed in terms...\n";
           new_wildcard ()
