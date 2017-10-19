@@ -546,20 +546,18 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
       | Kind      -> err "Kind has not type...\n";
                      raise Not_found
       | Symb(s)   -> symbol_type s
-      | Prod(a,b) -> let x = Bindlib.new_var mkfree (Bindlib.binder_name b) in
-                     let b = Bindlib.subst b (mkfree x) in
+      | Prod(a,b) -> let (x,bx) = Bindlib.unbind mkfree b in
                      begin
-                       match infer (Ctxt.add x a ctx) b with
+                       match infer (Ctxt.add x a ctx) bx with
                        | Kind -> Kind
                        | Type -> Type 
                        | _    ->
                            err "Expected Type / Kind for [%a]...\n"
-                             print_term b;
+                             print_term bx;
                            raise Not_found
                      end
-      | Abst(a,t) -> let x = Bindlib.new_var mkfree (Bindlib.binder_name t) in
-                     let t = Bindlib.subst t (mkfree x) in
-                     let b = infer (Ctxt.add x a ctx) t in
+      | Abst(a,t) -> let (x,tx) = Bindlib.unbind mkfree t in
+                     let b = infer (Ctxt.add x a ctx) tx in
                      Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       | Appl(t,u) -> begin
                        match unfold (infer ctx t) with
@@ -602,38 +600,32 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     (* Symbol *)
     | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
     (* Product *)
-    | (Prod(a,b), Type     ) -> let x = Bindlib.binder_name b in
-                                let x = Bindlib.new_var mkfree x in
-                                let ctx_aux =
+    | (Prod(a,b), Type     ) -> let (x,bx) = Bindlib.unbind mkfree b in
+                                let ctx_x =
                                   if Bindlib.binder_occur b then
                                     Ctxt.add x a ctx
                                   else ctx
                                 in
-                                let b = Bindlib.subst b (mkfree x) in
                                 has_type ctx a Type
-                                && has_type ctx_aux b Type
+                                && has_type ctx_x bx Type
     (* Product 2 *)
-    | (Prod(a,b), Kind     ) -> let x = Bindlib.binder_name b in
-                                let x = Bindlib.new_var mkfree x in
-                                let ctx_aux =
+    | (Prod(a,b), Kind     ) -> let (x,bx) = Bindlib.unbind mkfree b in
+                                let ctx_x =
                                   if Bindlib.binder_occur b then
                                     Ctxt.add x a ctx
                                   else ctx
                                 in
-                                let b = Bindlib.subst b (mkfree x) in
                                 has_type ctx a Type
-                                && has_type ctx_aux b Kind
+                                && has_type ctx_x bx Kind
     (* Abstraction and Abstraction 2 *)
-    | (Abst(a,t), Prod(c,b)) -> let x = Bindlib.binder_name b in
-                                let x = Bindlib.new_var mkfree x in
-                                let t = Bindlib.subst t (mkfree x) in
-                                let b = Bindlib.subst b (mkfree x) in
+    | (Abst(a,t), Prod(c,b)) -> let (x,bx) = Bindlib.unbind mkfree b in
+                                let tx = Bindlib.subst t (mkfree x) in
                                 let ctx_x = Ctxt.add x a ctx in
                                 eq_modulo sign a c
                                 && has_type ctx a Type
-                                && (has_type ctx_x b Type
-                                    || has_type ctx_x b Kind)
-                                && has_type ctx_x t b
+                                && (has_type ctx_x bx Type
+                                    || has_type ctx_x bx Kind)
+                                && has_type ctx_x tx bx
     (* Application *)
     | (Appl(t,u), b        ) ->
         begin
