@@ -99,8 +99,7 @@ type term =
 (* Representation of a reduction rule. The [arity] is the minimal number of
    arguments that are required for the rule to apply. The definition [defin]
    binds the context of the rule to its LHS and RHS. *)
-and rule =
-  { defin : (term, term * term) Bindlib.mbinder ; arity : int }
+and rule = { defin : (term, term * term) Bindlib.mbinder ; arity : int }
 
 (* NOTE: to check if a rule [r] can be applied on a term [t] using the above
    representation is really easy. First, one should substitute the [r.defin]
@@ -142,6 +141,10 @@ let symbol_type : symbol -> term =
     | Sym(sym) -> sym.sym_type
     | Def(def) -> def.def_type
 
+(* Reference containing the module path of the current file. This is used to
+   only print the symbol name for the current module. *)
+let current_module : string list ref = ref []
+
 (* [symbol_name s] returns the full name of the given symbol [s] (including
    the module path). *)
 let symbol_name : symbol -> string = fun s ->
@@ -150,7 +153,8 @@ let symbol_name : symbol -> string = fun s ->
     | Sym(sym) -> (sym.sym_path, sym.sym_name)
     | Def(def) -> (def.def_path, def.def_name)
   in
-  String.concat "::" (path @ [name])
+  if path = !current_module then name
+  else String.concat "::" (path @ [name])
 
 (**** Signature *************************************************************)
 
@@ -328,57 +332,49 @@ let update_names : term -> term = fun t -> Bindlib.unbox (lift t)
 
 (**** Printing functions (should come early for debuging) *******************)
 
-(* TODO cleaning and comments from here on. *)
-
-(* Printing *)
+(* [print_term oc t] pretty-prints the term [t] to the channel [oc]. *)
 let print_term : out_channel -> term -> unit = fun oc t ->
-  let is_abst t =
-    match unfold t with Abst(_,_) | Prod(_,_) -> true | _ -> false
-  in
-  let is_appl t =
-    match unfold t with Appl(_,_) | Abst(_,_) -> true | _ -> false
-  in
-  let rec print oc t =
-    match unfold t with
-    | Vari(x)   -> output_string oc (Bindlib.name_of x)
-    | Type      -> output_string oc "Type"
-    | Kind      -> output_string oc "Kind"
-    | Symb(s)   -> output_string oc (symbol_name s)
-    | Prod(a,b) ->
-        let (l,r) = if is_abst a then ("(",")") else ("","") in
-        let (x,c) = Bindlib.unbind mkfree b in
-        if Bindlib.binder_occur b then
-          let x = Bindlib.name_of x in
-          Printf.fprintf oc "%s%s:%a%s ⇒ %a" l x print a r print c
-        else
-          Printf.fprintf oc "%s%a%s ⇒ %a" l print a r print c
-    | Abst(a,t) ->
+  let pstring = output_string oc in
+  let pformat fmt = Printf.fprintf oc fmt in
+  let name = Bindlib.name_of in
+  let rec print (p : [`Func | `Appl | `Atom]) oc t =
+    let t = unfold t in
+    match (t, p) with
+    (* Atoms are printed inconditonally. *)
+    | (Vari(x)  , _    ) -> pstring (name x)
+    | (Type     , _    ) -> pstring "Type"
+    | (Kind     , _    ) -> pstring "Kind"
+    | (Symb(s)  , _    ) -> pstring (symbol_name s)
+    | (Unif(_)  , _    ) -> pstring "?"
+    (* Applications are printed when priority is above [`Appl]. *)
+    | (Appl(t,u), `Appl)
+    | (Appl(t,u), `Func) -> pformat "%a %a" (print `Appl) t (print `Atom) u
+    (* Abstractions and products are only printed at priority [`Func]. *)
+    | (Abst(a,t), `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
-        Printf.fprintf oc "λ%s:%a.%a" (Bindlib.name_of x) print a print t
-    | Appl(t,u) ->
-        let (l1,r1) = if is_abst t then ("(",")") else ("","") in
-        let (l2,r2) = if is_appl u then ("(",")") else ("","") in
-        Printf.fprintf oc "%s%a%s %s%a%s" l1 print t r1 l2 print u r2
-    | Unif(_)   -> output_string oc "?"
+        pformat "λ%s:%a.%a" (name x) (print `Func) a (print `Func) t
+    | (Prod(a,b), `Func) ->
+        let (x,c) = Bindlib.unbind mkfree b in
+        let x = if Bindlib.binder_occur b then (name x) ^ ":" else "" in
+        pformat "%s%a ⇒ %a" x (print `Appl) a (print `Func) c
+    (* Anything else needs parentheses. *)
+    | (_        , _    ) -> pformat "(%a)" (print `Func) t
   in
-  print oc (update_names t)
+  print `Func oc (update_names t)
 
+(* [print_ctxt oc ctx] pretty-prints the context [ctx] to the channel [oc]. *)
 let print_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
-  let rec print_vars : out_channel -> Ctxt.t -> unit = fun oc ls ->
+  let pstring = output_string oc in
+  let pformat fmt = Printf.fprintf oc fmt in
+  let name = Bindlib.name_of in
+  let rec print oc ls =
     match ls with
-    | []          ->
-        output_string oc "∅"
-    | [(x,a)]     ->
-        let x = Bindlib.name_of x in
-        if x = "_" then output_string oc "∅"
-        else Printf.fprintf oc "%s : %a" x print_term a
-    | (x,a)::ctx  ->
-        let x = Bindlib.name_of x in
-        if x = "_" then print_vars oc ctx
-        else Printf.fprintf oc "%a, %s : %a" print_vars ctx x print_term a
-  in print_vars oc ctx
+    | []          -> pstring "∅"
+    | [(x,a)]     -> pformat "%s : %a" (name x) print_term a
+    | (x,a)::ctx  -> pformat "%a, %s : %a" print ctx (name x) print_term a
+  in print oc ctx
 
-(**** TODO ******************************************************************)
+(**** TODO cleaning and comments from here on *******************************)
 
 open Bindlib
 
@@ -613,14 +609,24 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
     (* Product *)
     | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
+                                let ctx_aux =
+                                  if Bindlib.binder_occur b then
+                                    Ctxt.add x a ctx
+                                  else ctx
+                                in
                                 let b = subst b (mkfree x) in
                                 has_type ctx a Type
-                                && has_type (Ctxt.add x a ctx) b Type
+                                && has_type ctx_aux b Type
     (* Product 2 *)
     | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
+                                let ctx_aux =
+                                  if Bindlib.binder_occur b then
+                                    Ctxt.add x a ctx
+                                  else ctx
+                                in
                                 let b = subst b (mkfree x) in
                                 has_type ctx a Type
-                                && has_type (Ctxt.add x a ctx) b Kind
+                                && has_type ctx_aux b Kind
     (* Abstraction and Abstraction 2 *)
     | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
                                 let t = subst t (mkfree x) in
@@ -998,7 +1004,10 @@ let compile : bool -> string -> Sign.t = fun force file ->
 
 let _ = compile_ref := compile
 
-let compile force file = ignore (compile force file)
+let compile force file =
+  let fs = module_path file in
+  current_module := fs;
+  ignore (compile force file)
 
 (* Run files *)
 let _ =
