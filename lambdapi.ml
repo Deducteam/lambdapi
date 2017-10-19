@@ -527,8 +527,6 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
 
 type constrs = (term * term) list
 
-open Bindlib
-
 let constraints = ref None
 let add_constraint : Sign.t -> term -> term -> bool = fun sign a b ->
   match !constraints with
@@ -548,8 +546,8 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
       | Kind      -> err "Kind has not type...\n";
                      raise Not_found
       | Symb(s)   -> symbol_type s
-      | Prod(a,b) -> let x = new_var mkfree (binder_name b) in
-                     let b = subst b (mkfree x) in
+      | Prod(a,b) -> let x = Bindlib.new_var mkfree (Bindlib.binder_name b) in
+                     let b = Bindlib.subst b (mkfree x) in
                      begin
                        match infer (Ctxt.add x a ctx) b with
                        | Kind -> Kind
@@ -559,14 +557,14 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                              print_term b;
                            raise Not_found
                      end
-      | Abst(a,t) -> let x = new_var mkfree (binder_name t) in
-                     let t = subst t (mkfree x) in
+      | Abst(a,t) -> let x = Bindlib.new_var mkfree (Bindlib.binder_name t) in
+                     let t = Bindlib.subst t (mkfree x) in
                      let b = infer (Ctxt.add x a ctx) t in
-                     Prod(a, unbox (bind_var x (lift b)))
+                     Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
       | Appl(t,u) -> begin
                        match unfold (infer ctx t) with
                        | Prod(a,b) ->
-                           if has_type sign ctx u a then subst b u
+                           if has_type sign ctx u a then Bindlib.subst b u
                            else
                              begin
                                err "Cannot show [%a : %a]...\n"
@@ -604,29 +602,32 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     (* Symbol *)
     | (Symb(s)  , a        ) -> eq_modulo sign (symbol_type s) a
     (* Product *)
-    | (Prod(a,b), Type     ) -> let x = new_var mkfree (binder_name b) in
+    | (Prod(a,b), Type     ) -> let x = Bindlib.binder_name b in
+                                let x = Bindlib.new_var mkfree x in
                                 let ctx_aux =
                                   if Bindlib.binder_occur b then
                                     Ctxt.add x a ctx
                                   else ctx
                                 in
-                                let b = subst b (mkfree x) in
+                                let b = Bindlib.subst b (mkfree x) in
                                 has_type ctx a Type
                                 && has_type ctx_aux b Type
     (* Product 2 *)
-    | (Prod(a,b), Kind     ) -> let x = new_var mkfree (binder_name b) in
+    | (Prod(a,b), Kind     ) -> let x = Bindlib.binder_name b in
+                                let x = Bindlib.new_var mkfree x in
                                 let ctx_aux =
                                   if Bindlib.binder_occur b then
                                     Ctxt.add x a ctx
                                   else ctx
                                 in
-                                let b = subst b (mkfree x) in
+                                let b = Bindlib.subst b (mkfree x) in
                                 has_type ctx a Type
                                 && has_type ctx_aux b Kind
     (* Abstraction and Abstraction 2 *)
-    | (Abst(a,t), Prod(c,b)) -> let x = new_var mkfree (binder_name b) in
-                                let t = subst t (mkfree x) in
-                                let b = subst b (mkfree x) in
+    | (Abst(a,t), Prod(c,b)) -> let x = Bindlib.binder_name b in
+                                let x = Bindlib.new_var mkfree x in
+                                let t = Bindlib.subst t (mkfree x) in
+                                let b = Bindlib.subst b (mkfree x) in
                                 let ctx_x = Ctxt.add x a ctx in
                                 eq_modulo sign a c
                                 && has_type ctx a Type
@@ -637,7 +638,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     | (Appl(t,u), b        ) ->
         begin
           match infer sign ctx t with
-          | Prod(a,ba) as tt -> eq_modulo sign (subst ba u) b
+          | Prod(a,ba) as tt -> eq_modulo sign (Bindlib.subst ba u) b
                                 && has_type ctx t tt
                                 && has_type ctx u a
           | _          -> false
@@ -663,7 +664,7 @@ let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
       begin
         log "patt" "inferred type [%a] for [%a]" print_term a print_term t;
         let fn (x,a) =
-          log "patt" "  with\t%s\t: %a" (name_of x) print_term a
+          log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) print_term a
         in
         List.iter fn ctx;
         let fn (a,b) =
@@ -703,8 +704,9 @@ let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
 let eq_modulo_constrs : constrs -> Sign.t -> term -> term -> bool =
   fun constrs sign a b -> eq_modulo sign a b ||
     let (xs,sub) = sub_from_constrs constrs in
-    let p = unbox (bind_mvar xs (box_pair (lift a) (lift b))) in
-    let (a,b) = msubst p sub in
+    let p = Bindlib.box_pair (lift a) (lift b) in
+    let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
+    let (a,b) = Bindlib.msubst p sub in
     eq_modulo sign a b
 
 (* Parser *)
@@ -805,12 +807,12 @@ let blank buf pos =
 let parse_file : string -> p_item list =
   Earley.(handle_exception (parse_file full blank))
 
-let wildcards : term var list ref = ref []
+let wildcards : tvar list ref = ref []
 let wildcard_counter = ref (-1)
 let new_wildcard : unit -> tbox = fun () ->
   incr wildcard_counter;
-  let x = new_var mkfree (Printf.sprintf "#%i#" !wildcard_counter) in
-  wildcards := x :: !wildcards; box_of_var x
+  let x = Bindlib.new_var mkfree (Printf.sprintf "#%i#" !wildcard_counter) in
+  wildcards := x :: !wildcards; Bindlib.box_of_var x
 
 type env = (string * tvar) list
 
@@ -830,7 +832,7 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
       match t with
       | P_Vari([],x)  ->
           begin
-            try box_of_var (List.assoc x vars) with Not_found ->
+            try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
             try _Symb_find sign x with Not_found ->
             fatal "Unbound variable %S...\n%!" x
           end
@@ -858,9 +860,9 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
     build vars t
 
 let to_term : ?vars:env -> Sign.t -> p_term -> term =
-  fun ?(vars=[]) sign t -> unbox (to_tbox false vars sign t)
+  fun ?(vars=[]) sign t -> Bindlib.unbox (to_tbox false vars sign t)
 
-let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> tbox * term var array =
+let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> tbox * tvar array =
   fun ?(vars=[]) sign t ->
     wildcards := []; wildcard_counter := -1;
     let t = to_tbox true vars sign t in
@@ -882,17 +884,18 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         if d then Sign.new_definable sign x a else Sign.new_static sign x a
     | Rule(xs,t,u) ->
         (* Scoping the LHS and RHS. *)
-        let vars = List.map (fun x -> (x, new_var mkfree x)) xs in
+        let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
         let (t, wcs) = to_tbox_wc ~vars sign t in
         let u = to_tbox false vars sign u in
         (* Building the definition. *)
         let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-        let defin = unbox (bind_mvar xs (box_pair t u)) in
+        let p = Bindlib.box_pair t u in
+        let defin = Bindlib.unbox (Bindlib.bind_mvar xs p) in
         (* Constructing the typing context and the terms. *)
         let xs = Array.to_list xs in
         let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-        let t = unbox t in
-        let u = unbox u in
+        let t = Bindlib.unbox t in
+        let u = Bindlib.unbox u in
         (* Check that the LHS is a pattern and build the rule. *)
         let (s,i) = pattern_data t in
         let rule = { defin ; arity = i } in
