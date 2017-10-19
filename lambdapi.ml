@@ -374,54 +374,26 @@ let print_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
     | (x,a)::ctx  -> pformat "%a, %s : %a" print ctx (name x) print_term a
   in print oc ctx
 
-(**** TODO cleaning and comments from here on *******************************)
+(**** Strict equality (no conversion) with unification **********************)
 
-open Bindlib
-
-(* Equality of binders. *)
+(* Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
+
+(* [eq_binder eq b1 b2] tests equality of two binders by substituting them
+   with the same free variable, and testing equality of the obtained term
+   using the [eq] function. *)
 let eq_binder : term eq -> (term, term) Bindlib.binder eq =
   fun eq f g -> f == g ||
-    let x = mkfree (new_var mkfree "_eq_binder_") in
-    eq (subst f x) (subst g x)
+    let x = mkfree (Bindlib.new_var mkfree "_eq_binder_") in
+    eq (Bindlib.subst f x) (Bindlib.subst g x)
 
-(* Separate the head term and its arguments. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get acc t =
-    match unfold t with
-    | Appl(t,u) -> get (u::acc) t
-    | t         -> (t, acc)
-  in
-  get [] t
-
-let remove_args : term -> int -> term * term list = fun t n ->
-  let rec rem acc n t =
-    assert (n >= 0);
-    match (t, n) with
-    | (_        , 0) -> (t, acc)
-    | (Appl(t,u), n) -> rem (u::acc) (n-1) t
-    | (_        , _) -> assert false
-  in
-  rem [] n t
-
-let add_args : term -> term list -> term =
-  List.fold_left (fun t u -> Appl(t,u))
-
- 
-(* Check that the given term is a pattern and returns its data. *)
-let pattern_data : term -> def * int = fun t ->
-  let (hd, args) = get_args t in
-  match unfold hd with
-  | Symb(Def(s)) -> (s, List.length args)
-  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
-  | _            -> fatal "%a is not a valid pattern...\n" print_term t
-
-(* Strict equality (no conversion). *)
+(* [eq t u] tests the equality of the terms [t] and [u], while possibly
+   instantiating unification variables. *)
 let eq : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a =!= %a" print_term a print_term b;
   let rec eq a b = a == b ||
     match (unfold a, unfold b) with
-    | (Vari(x)      , Vari(y)      ) -> eq_vars x y
+    | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
     | (Type         , Type         ) -> true
     | (Kind         , Kind         ) -> true
     | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
@@ -442,6 +414,28 @@ let eq : term -> term -> bool = fun a b ->
     end;
   res
 
+(**** TODO cleaning and comments from here on *******************************)
+
+(* Separate the head term and its arguments. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get acc t =
+    match unfold t with
+    | Appl(t,u) -> get (u::acc) t
+    | t         -> (t, acc)
+  in
+  get [] t
+
+let add_args : term -> term list -> term =
+  List.fold_left (fun t u -> Appl(t,u))
+ 
+(* Check that the given term is a pattern and returns its data. *)
+let pattern_data : term -> def * int = fun t ->
+  let (hd, args) = get_args t in
+  match unfold hd with
+  | Symb(Def(s)) -> (s, List.length args)
+  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | _            -> fatal "%a is not a valid pattern...\n" print_term t
+
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug_eval then log "eval" "evaluating %a" print_term t;
@@ -451,16 +445,16 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     (* Push. *)
     | (Appl(t,u)   , stk    ) -> eval_aux sign t (eval_aux sign u [] :: stk)
     (* Beta. *)
-    | (Abst(_,f)   , v::stk ) -> eval_aux sign (subst f v) stk
+    | (Abst(_,f)   , v::stk ) -> eval_aux sign (Bindlib.subst f v) stk
     (* Try to rewrite. *)
     | (Symb(Def(s)), stk    ) ->
         begin
           let nb_args = List.length stk in
           let rs = List.filter (fun r -> r.arity <= nb_args) !(s.def_rules) in
           let match_term rule t stk =
-            let ar = mbinder_arity rule.defin in
+            let ar = Bindlib.mbinder_arity rule.defin in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
-            let (l,r) = msubst rule.defin uvars in
+            let (l,r) = Bindlib.msubst rule.defin uvars in
             if !debug_eval then
               log "eval" "RULE %a → %a" print_term l print_term r;
             let rec add_n_args n t stk =
@@ -506,7 +500,7 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
     let rigid = ref true in
     begin
       match (ha, hb) with
-      | (Vari(x)      , Vari(y)      ) -> eq_vars x y
+      | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
       | (Type         , Type         ) -> true
       | (Kind         , Kind         ) -> true
       | (Symb(Sym(sa)), Symb(Sym(sb))) -> rigid := false; sa == sb
@@ -532,6 +526,8 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
   res
 
 type constrs = (term * term) list
+
+open Bindlib
 
 let constraints = ref None
 let add_constraint : Sign.t -> term -> term -> bool = fun sign a b ->
