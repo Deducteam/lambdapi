@@ -425,11 +425,10 @@ let get_args : term -> term * term list = fun t ->
   in
   get [] t
 
-let rec add_args : term -> term list -> term =
-  fun t l ->
-  match l with
-  | [] -> t
-  | x::l -> add_args (Appl(t,x)) l
+let rec add_args : term -> term list -> term = fun t args ->
+  match args with
+  | []      -> t
+  | u::args -> add_args (Appl(t,u)) args
 
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def * int = fun t ->
