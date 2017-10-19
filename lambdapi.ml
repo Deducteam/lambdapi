@@ -162,7 +162,7 @@ module Sign =
   struct
     (* Representation of a signature (roughly, a set of symbols). *)
     type t = { symbols : (string, symbol) Hashtbl.t ; path : string list }
- 
+
     (* [create path] creates an empty signature with module path [path]. *)
     let create : string list -> t =
       fun path -> { path ; symbols = Hashtbl.create 37 }
@@ -176,7 +176,7 @@ module Sign =
         let sym_path = sign.path in
         let sym = { sym_name ; sym_type ; sym_path } in
         Hashtbl.add sign.symbols sym_name (Sym(sym))
- 
+
     (* [new_definable sign name a] creates a new definable symbol (with no
        reduction rules) named [name] with type [a] the signature [sign]. *)
     let new_definable : t -> string -> term -> unit =
@@ -187,7 +187,7 @@ module Sign =
         let def_rules = ref [] in
         let def = { def_name ; def_type ; def_rules ; def_path } in
         Hashtbl.add sign.symbols def_name (Def(def))
- 
+
     (* [find sign name] looks for a symbol named [name] in the signature
        [sign]. If none is found, the exception [Not_found] is raised. *)
     let find : t -> string -> symbol =
@@ -425,9 +425,12 @@ let get_args : term -> term * term list = fun t ->
   in
   get [] t
 
-let add_args : term -> term list -> term =
-  List.fold_left (fun t u -> Appl(t,u))
- 
+let rec add_args : term -> term list -> term =
+  fun t l ->
+  match l with
+  | [] -> t
+  | x::l -> add_args (Appl(t,x)) l
+
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def * int = fun t ->
   let (hd, args) = get_args t in
@@ -550,7 +553,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                      begin
                        match infer (Ctxt.add x a ctx) bx with
                        | Kind -> Kind
-                       | Type -> Type 
+                       | Type -> Type
                        | _    ->
                            err "Expected Type / Kind for [%a]...\n"
                              print_term bx;
