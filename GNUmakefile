@@ -15,7 +15,7 @@ tests: lambdapi
 	@time for file in $(TESTFILES) ; do \
 		echo "Testing file \"$$file\"" ; \
 		./lambdapi $(QUIET) $$file ; \
-	done;
+	done
 
 clean:
 	@rm -f *.cmi *.cmo *.cmx *.o
