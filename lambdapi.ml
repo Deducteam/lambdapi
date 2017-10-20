@@ -99,7 +99,7 @@ type term =
 (* Representation of a reduction rule. The [ari] is the minimal number of
    arguments that are required for the rule to apply. The definition [lhs]
    and [rhs] binds the context of the rule to its LHS and RHS. *)
-and rule = { lhs : (term, term) Bindlib.mbinder
+and rule = { lhs : (term, term list) Bindlib.mbinder
            ; rhs : (term, term) Bindlib.mbinder
            ; ari : int }
 
@@ -433,14 +433,6 @@ let rec add_args : term -> term list -> term =
   | [] -> t
   | x::l -> add_args (Appl(t,x)) l
 
-(* Check that the given term is a pattern and returns its data. *)
-let pattern_data : term -> def * int = fun t ->
-  let (hd, args) = get_args t in
-  match unfold hd with
-  | Symb(Def(s)) -> (s, List.length args)
-  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
-  | _            -> fatal "%a is not a valid pattern...\n" print_term t
-
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
   if !debug_eval then log "eval" "evaluating %a" print_term t;
@@ -460,20 +452,20 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
             let ar = Bindlib.mbinder_arity rule.lhs in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
             let l = Bindlib.msubst rule.lhs uvars in
-            if !debug_eval then
-              log "eval" "RULE %a → ?" print_term l;
-            let rec add_n_args n t stk =
-              match (n, stk) with
-              | (0, stk   ) -> (t, stk)
-              | (i, v::stk) -> add_n_args (i-1) (Appl(t,v)) stk
-              | (_, _     ) -> assert false
+            (*if !debug_eval then FIXME: put a printable form in the
+                                         rule record ?
+              log "eval" "RULE %a → ?" print_term l;*)
+            let rec match_args l stk =
+              match (l, stk) with
+              | ([]  , stk   ) ->
+                 let r = Bindlib.msubst rule.rhs uvars in
+                 Some(add_args r stk)
+              | (t::l, v::stk) ->
+                 if eq t v then match_args l stk else None
+              | (_, _     ) ->
+                 assert false
             in
-            let (t, stk) = add_n_args rule.ari t stk in
-            if eq t l then
-              let r = Bindlib.msubst rule.rhs uvars in
-              Some(add_args r stk)
-            else
-              None
+            match_args l stk
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -863,11 +855,44 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
 let to_term : ?vars:env -> Sign.t -> p_term -> term =
   fun ?(vars=[]) sign t -> Bindlib.unbox (to_tbox false vars sign t)
 
-let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> tbox * tvar array =
+
+(* Check that the given term is a pattern and returns its data. *)
+let pattern_data : term -> def = fun hd ->
+  match unfold hd with
+  | Symb(Def(s)) -> s
+  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | _            -> raise Exit
+
+let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
   fun ?(vars=[]) sign t ->
-    wildcards := []; wildcard_counter := -1;
-    let t = to_tbox true vars sign t in
-    (t, Array.of_list !wildcards)
+  let rec fn acc t =
+    match t with
+    | P_Vari([],x)  ->
+       let root =
+         try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
+           try _Symb_find sign x with Not_found ->
+             fatal "Unbound variable %S...\n%!" x
+       in (root, acc)
+    | P_Vari(fs,x)  ->
+       let root =
+         let sign = load_signature fs in
+         try _Symb_find sign x with Not_found ->
+           let x = String.concat "::" (fs @ [x]) in
+           fatal "Unbound symbol %S...\n%!" x
+       in (root, acc)
+    | P_Appl(t,u) ->
+       fn (to_tbox true vars sign u::acc) t
+    | _ -> raise Exit
+  in
+  wildcards := []; wildcard_counter := -1;
+  try
+    let (hd,args) = fn [] t in
+    let s = pattern_data (Bindlib.unbox hd) in
+    (s, args, Array.of_list !wildcards)
+  with
+    Exit ->
+      let t = Bindlib.unbox (to_tbox true vars sign t) in
+      fatal "%a is not a valid pattern...\n" print_term t
 
 (* Interpret a whole file *)
 let handle_file : Sign.t -> string -> unit = fun sign fname ->
@@ -886,20 +911,21 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Rule(xs,t,u) ->
         (* Scoping the LHS and RHS. *)
         let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-        let (t, wcs) = to_tbox_wc ~vars sign t in
+        let (s, l, wcs) = to_tbox_wc ~vars sign t in
+        let ari = List.length l in
+        let l = Bindlib.box_list l in
         let u = to_tbox false vars sign u in
         (* Building the definition. *)
         let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-        let lhs = Bindlib.unbox (Bindlib.bind_mvar xs t) in
+        let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
         let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
         (* Constructing the typing context and the terms. *)
         let xs = Array.to_list xs in
         let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-        let t = Bindlib.unbox t in
         let u = Bindlib.unbox u in
         (* Check that the LHS is a pattern and build the rule. *)
-        let (s,i) = pattern_data t in
-        let rule = { lhs ; rhs ; ari = i } in
+        let rule = { lhs ; rhs ; ari } in
+        let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
         (* Infer the type of the LHS and the constraints. *)
         let (tt, tt_constrs) =
           try infer_with_constrs sign ctx t with Not_found ->
