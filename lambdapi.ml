@@ -29,24 +29,24 @@ let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
 (**** Debugging messages management *****************************************)
 
 (* Various debugging / message flags. *)
-let quiet       = ref false
-let debug       = ref false
-let debug_eval  = ref false
-let debug_infer = ref false
-let debug_patt  = ref false
+let quiet      = ref false
+let debug      = ref false
+let debug_eval = ref false
+let debug_infr = ref false
+let debug_patt = ref false
 
 (* [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_infer || !debug_patt
+  !debug || !debug_eval || !debug_infr || !debug_patt
 
 (* [set_debug str] enables debugging flags according to [str]. *)
 let set_debug : string -> unit =
   let enable c =
     match c with
-    | 'a' -> debug       := true
-    | 'e' -> debug_eval  := true
-    | 'i' -> debug_infer := true
-    | 'p' -> debug_patt  := true
+    | 'a' -> debug      := true
+    | 'e' -> debug_eval := true
+    | 'i' -> debug_infr := true
+    | 'p' -> debug_patt := true
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable
@@ -559,13 +559,11 @@ let add_constraint : term -> term -> bool = fun a b ->
 (* Judgements *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
-    if !debug_infer then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp_term t;
+    if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp_term t;
     let a =
       match unfold t with
       | Vari(x)   -> Ctxt.find x ctx
       | Type      -> Kind
-      | Kind      -> err "Kind has not type...\n";
-                     raise Not_found
       | Symb(s)   -> symbol_type s
       | Prod(a,b) -> let (x,bx) = Bindlib.unbind mkfree b in
                      begin
@@ -595,10 +593,11 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                              pp_term t pp_term a;
                            raise Not_found
                      end
+      | Kind      -> assert false
       | Unif(_)   -> assert false
       | PVar(_)   -> assert false
     in
-    if !debug_infer then
+    if !debug_infr then
       log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term a;
     eval a
   in
@@ -1040,10 +1039,10 @@ let compile : bool -> string -> Sign.t = fun force file ->
 
 let _ = compile_ref := compile
 
-let compile force file =
+let compile file =
   let fs = module_path file in
   current_module := fs;
-  ignore (compile force file)
+  ignore (compile true file)
 
 (* Run files *)
 let _ =
@@ -1063,4 +1062,4 @@ let _ =
   let files = ref [] in
   let anon fn = files := fn :: !files in
   Arg.parse (Arg.align spec) anon usage;
-  List.iter (compile true) (List.rev !files)
+  List.iter compile (List.rev !files)
