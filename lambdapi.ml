@@ -579,34 +579,31 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
       | Vari(x)   -> Ctxt.find x ctx
       | Type      -> Kind
       | Symb(s)   -> symbol_type s
-      | Prod(a,b) -> let (x,bx) = Bindlib.unbind mkfree b in
-                     begin
-                       match infer (Ctxt.add x a ctx) bx with
-                       | Kind -> Kind
-                       | Type -> Type
-                       | _    ->
-                           err "Expected Type / Kind for [%a]...\n"
-                             pp_term bx;
-                           raise Not_found
-                     end
-      | Abst(a,t) -> let (x,tx) = Bindlib.unbind mkfree t in
-                     let b = infer (Ctxt.add x a ctx) tx in
-                     Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
-      | Appl(_,t,u) -> begin
-                       match unfold (infer ctx t) with
-                       | Prod(a,b) ->
-                           if has_type sign ctx u a then Bindlib.subst b u
-                           else
-                             begin
-                               err "Cannot show [%a : %a]...\n"
-                                 pp_term u pp_term a;
-                               raise Not_found
-                             end
-                       | a         ->
-                           err "Product expected for [%a], found [%a]...\n"
-                             pp_term t pp_term a;
-                           raise Not_found
-                     end
+      | Prod(a,b) ->
+          let (x,bx) = Bindlib.unbind mkfree b in
+          begin
+            match infer (Ctxt.add x a ctx) bx with
+            | Kind -> Kind
+            | Type -> Type
+            | _    -> err "Expected Type / Kind for [%a]...\n" pp_term bx;
+                      raise Not_found
+          end
+      | Abst(a,t) ->
+          let (x,tx) = Bindlib.unbind mkfree t in
+          let b = infer (Ctxt.add x a ctx) tx in
+          Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+      | Appl(_,t,u) ->
+          begin
+            match unfold (infer ctx t) with
+            | Prod(a,b) when has_type sign ctx u a -> Bindlib.subst b u
+            | Prod(a,_)                            ->
+                err "Cannot show [%a : %a]...\n" pp_term u pp_term a;
+                raise Not_found
+            | a                                    ->
+                err "Product expected for [%a], found [%a]...\n"
+                  pp_term t pp_term a;
+                raise Not_found
+          end
       | Kind      -> assert false
       | Unif(_)   -> assert false
       | PVar(_)   -> assert false
@@ -630,39 +627,34 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     (* Symbol *)
     | (Symb(s)  , a        ) -> eq_modulo (symbol_type s) a
     (* Product *)
-    | (Prod(a,b), Type     ) -> let (x,bx) = Bindlib.unbind mkfree b in
-                                let ctx_x =
-                                  if Bindlib.binder_occur b then
-                                    Ctxt.add x a ctx
-                                  else ctx
-                                in
-                                has_type ctx a Type
-                                && has_type ctx_x bx Type
+    | (Prod(a,b), Type     ) ->
+        let (x,bx) = Bindlib.unbind mkfree b in
+        let ctx_x =
+          if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
+        in
+        has_type ctx a Type && has_type ctx_x bx Type
     (* Product 2 *)
-    | (Prod(a,b), Kind     ) -> let (x,bx) = Bindlib.unbind mkfree b in
-                                let ctx_x =
-                                  if Bindlib.binder_occur b then
-                                    Ctxt.add x a ctx
-                                  else ctx
-                                in
-                                has_type ctx a Type
-                                && has_type ctx_x bx Kind
+    | (Prod(a,b), Kind     ) ->
+        let (x,bx) = Bindlib.unbind mkfree b in
+        let ctx_x =
+          if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
+        in
+        has_type ctx a Type && has_type ctx_x bx Kind
     (* Abstraction and Abstraction 2 *)
-    | (Abst(a,t), Prod(c,b)) -> let (x,bx) = Bindlib.unbind mkfree b in
-                                let tx = Bindlib.subst t (mkfree x) in
-                                let ctx_x = Ctxt.add x a ctx in
-                                eq_modulo a c
-                                && has_type ctx a Type
-                                && (has_type ctx_x bx Type
-                                    || has_type ctx_x bx Kind)
-                                && has_type ctx_x tx bx
+    | (Abst(a,t), Prod(c,b)) ->
+        let (x,bx) = Bindlib.unbind mkfree b in
+        let tx = Bindlib.subst t (mkfree x) in
+        let ctx_x = Ctxt.add x a ctx in
+        eq_modulo a c && has_type ctx a Type
+        && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
+        && has_type ctx_x tx bx
     (* Application *)
     | (Appl(_,t,u), b        ) ->
         begin
           match infer sign ctx t with
-          | Prod(a,ba) as tt -> eq_modulo (Bindlib.subst ba u) b
-                                && has_type ctx t tt
-                                && has_type ctx u a
+          | Prod(a,ba) as tt ->
+              eq_modulo (Bindlib.subst ba u) b
+              && has_type ctx t tt && has_type ctx u a
           | _          -> false
         end
     (* No rule apply. *)
