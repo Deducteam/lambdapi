@@ -96,10 +96,12 @@ type term =
   (* Unification variable. *)
   | Unif of term option ref
 
-(* Representation of a reduction rule. The [arity] is the minimal number of
-   arguments that are required for the rule to apply. The definition [defin]
-   binds the context of the rule to its LHS and RHS. *)
-and rule = { defin : (term, term * term) Bindlib.mbinder ; arity : int }
+(* Representation of a reduction rule. The [ari] is the minimal number of
+   arguments that are required for the rule to apply. The definition [lhs]
+   and [rhs] binds the context of the rule to its LHS and RHS. *)
+and rule = { lhs : (term, term) Bindlib.mbinder
+           ; rhs : (term, term) Bindlib.mbinder
+           ; ari : int }
 
 (* NOTE: to check if a rule [r] can be applied on a term [t] using the above
    representation is really easy. First, one should substitute the [r.defin]
@@ -425,10 +427,11 @@ let get_args : term -> term * term list = fun t ->
   in
   get [] t
 
-let rec add_args : term -> term list -> term = fun t args ->
-  match args with
-  | []      -> t
-  | u::args -> add_args (Appl(t,u)) args
+let rec add_args : term -> term list -> term =
+  fun t l ->
+  match l with
+  | [] -> t
+  | x::l -> add_args (Appl(t,x)) l
 
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def * int = fun t ->
@@ -452,21 +455,25 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     | (Symb(Def(s)), stk    ) ->
         begin
           let nb_args = List.length stk in
-          let rs = List.filter (fun r -> r.arity <= nb_args) !(s.def_rules) in
+          let rs = List.filter (fun r -> r.ari <= nb_args) !(s.def_rules) in
           let match_term rule t stk =
-            let ar = Bindlib.mbinder_arity rule.defin in
+            let ar = Bindlib.mbinder_arity rule.lhs in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
-            let (l,r) = Bindlib.msubst rule.defin uvars in
+            let l = Bindlib.msubst rule.lhs uvars in
             if !debug_eval then
-              log "eval" "RULE %a → %a" print_term l print_term r;
+              log "eval" "RULE %a → ?" print_term l;
             let rec add_n_args n t stk =
               match (n, stk) with
               | (0, stk   ) -> (t, stk)
               | (i, v::stk) -> add_n_args (i-1) (Appl(t,v)) stk
               | (_, _     ) -> assert false
             in
-            let (t, stk) = add_n_args rule.arity t stk in
-            if eq t l then Some(add_args r stk) else None
+            let (t, stk) = add_n_args rule.ari t stk in
+            if eq t l then
+              let r = Bindlib.msubst rule.rhs uvars in
+              Some(add_args r stk)
+            else
+              None
           in
           let ts = List.rev_map (fun r -> match_term r t stk) rs in
           let ts = from_opt_rev ts in
@@ -883,8 +890,8 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let u = to_tbox false vars sign u in
         (* Building the definition. *)
         let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-        let p = Bindlib.box_pair t u in
-        let defin = Bindlib.unbox (Bindlib.bind_mvar xs p) in
+        let lhs = Bindlib.unbox (Bindlib.bind_mvar xs t) in
+        let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
         (* Constructing the typing context and the terms. *)
         let xs = Array.to_list xs in
         let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
@@ -892,7 +899,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let u = Bindlib.unbox u in
         (* Check that the LHS is a pattern and build the rule. *)
         let (s,i) = pattern_data t in
-        let rule = { defin ; arity = i } in
+        let rule = { lhs ; rhs ; ari = i } in
         (* Infer the type of the LHS and the constraints. *)
         let (tt, tt_constrs) =
           try infer_with_constrs sign ctx t with Not_found ->
