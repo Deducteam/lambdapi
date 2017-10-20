@@ -1,0 +1,120 @@
+#NAME coc.
+
+Utype : Type.
+Ukind : Type.
+
+def etype : Utype -> Type.
+def ekind : Ukind -> Type.
+
+dottype : Ukind.
+
+dotpi1 : x : Utype -> y : (etype x -> Utype) -> Utype.
+dotpi2 : x : Utype -> y : (etype x -> Ukind) -> Ukind.
+dotpi3 : x : Ukind -> y : (ekind x -> Utype) -> Utype.
+dotpi4 : x : Ukind -> y : (ekind x -> Ukind) -> Ukind.
+
+[x,y] etype (dotpi1 x y) --> w : etype x -> etype (y w)
+[x,y] etype (dotpi3 x y) --> w : ekind x -> etype (y w).
+
+[] ekind dottype --> Utype
+[x,y] ekind (dotpi2 x y) --> w : etype x -> ekind (y w)
+[x,y] ekind (dotpi4 x y) --> w : ekind x -> ekind (y w).
+
+def a : x : Utype -> y : etype x -> etype x.
+[] a --> x : Utype => y : etype x => y.
+
+
+(; Logic ;)
+
+False : Utype.
+True : Utype.
+I : etype True.
+
+def eq : t : Utype -> etype t -> etype t -> Type.
+eq_ : t : Utype -> etype t -> etype t -> Utype.
+
+[t,x,y] eq t x y --> etype (eq_ t x y).
+
+refl_equal : t : Utype -> x : etype t -> eq t x x.
+
+eq_rec : t : Utype
+     -> x : etype t
+     -> p : (etype t -> Utype)
+     -> g : etype (p x)
+     -> y : etype t
+     -> h : eq t x y
+     -> etype (p y).
+
+def f_equal
+     : A : Utype
+    -> B : Utype
+    -> f : (etype A -> etype B)
+    -> x : etype A
+    -> y : etype A
+    -> H : eq A x y
+    -> eq B (f x) (f y).
+
+[] f_equal -->
+    A : Utype
+ => B : Utype
+ => f : (etype A -> etype B)
+ => x : etype A
+ => y : etype A
+ => H : eq A x y
+ => eq_rec A x (z : etype A => eq_ B (f x) (f z)) (refl_equal B (f x)) y H.
+
+(; Peano ;)
+
+nat_ : Utype.
+
+def nat : Type.
+
+[] nat --> etype nat_.
+
+Z : nat.
+
+S : nat -> nat.
+
+def nat_rec : t : Utype
+    -> etype t
+    -> (nat -> etype t -> etype t)
+    -> nat
+    -> etype t.
+
+[t,a,f] nat_rec t a f Z --> a
+
+[t,a,f,n] nat_rec t a f (S n) --> f n (nat_rec t a f n).
+
+def plus : nat -> nat -> nat.
+[] plus --> x : nat => y : nat => nat_rec nat_ Z (x : nat => y : nat => y) x.
+
+def plus2 : nat -> nat -> nat.
+[x] plus2 x Z --> x
+[x] plus2 Z x --> x
+[x,y] plus2 x (S y) --> S (plus2 x y)
+[x,y] plus2 (S x) y --> S (plus2 x y).
+
+def eq_S : x : nat
+    -> y : nat
+    -> eq nat_ x y
+    -> eq nat_ (S x) (S y).
+
+[] eq_S --> f_equal nat_ nat_ S.
+
+def eq_S2 : etype (dotpi1 nat_ (x : nat
+    => dotpi1 nat_ (y : nat
+    => dotpi1 (eq_ nat_ x y) (h : eq nat_ x y
+    => eq_ nat_ (S x) (S y))))).
+
+[] eq_S2 --> eq_S.
+
+
+def pred : nat -> nat.
+[] pred --> nat_rec nat_ Z (x:nat => dummy:nat => x).
+
+def pred2 : nat -> nat.
+[] pred2 Z --> Z
+[x] pred2 (S x) --> x.
+
+def pred_Sn : n : nat -> eq nat_ n (pred (S n)).
+[] pred_Sn --> n : nat => refl_equal nat_ n.

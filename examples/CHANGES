@@ -1,0 +1,10 @@
+lambda.dk (line 12):
+  - [f,arg] App _ _ (Lam _ _ (x => f x)) arg --> f arg.
+  + [f,arg] App _ _ (Lam _ _ f) arg --> f arg.
+
+emptySet.dk (line 15):
+  - def not (A:Prop) := imp A False.
+  + def not := A:Prop => imp A False.
+
+FO_theorems.dk (lines 4 to 11):
+  "FO." := "examples::firstOrder::"

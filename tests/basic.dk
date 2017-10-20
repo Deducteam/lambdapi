@@ -1,0 +1,35 @@
+X : Type.
+Y : Type.
+
+#CHECK x:X => x, x:X -> X.
+#CHECK x:X => y:Y => x, X -> Y -> X.
+
+Nat  : Type.
+zero : Nat.
+succ : Nat -> Nat.
+
+Vec  : Nat -> Type.
+nil  : Vec zero.
+cons : n:Nat -> Nat -> Vec n -> Vec (succ n).
+
+#INFER nil.
+#INFER cons zero.
+#INFER cons zero zero nil.
+
+#CHECK nil, Vec zero.
+#CHECK cons zero (succ zero) nil, Vec (succ zero).
+
+def add : Nat -> Nat -> Nat.
+[n]   add n        zero     --> n.
+[m]   add zero     m        --> m.
+[m,n] add (succ n) m        --> succ (add n m).
+[m,n] add n        (succ m) --> succ (add n m).
+
+#EVAL (x:Nat => x) zero.
+#EVAL add zero zero.
+#EVAL add (succ (succ zero)) (succ zero).
+
+def id : (Nat -> Nat) -> Nat -> Nat.
+[n] id (x:Nat => x) n --> n.
+
+#EVAL id (y:Nat => y) (succ (succ zero)).

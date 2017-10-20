@@ -174,25 +174,26 @@ module Sign =
       fun path -> { path ; symbols = Hashtbl.create 37 }
 
     (* [new_static sign name a] creates a new static symbol named [name]  with
-       type [a] the signature [sign]. *)
-    let new_static : t -> string -> term -> unit =
+       type [a] the signature [sign]. The created symbol is also returned. *)
+    let new_static : t -> string -> term -> sym =
       fun sign sym_name sym_type ->
         if Hashtbl.mem sign.symbols sym_name then
           wrn "Redefinition of %s.\n" sym_name;
         let sym_path = sign.path in
         let sym = { sym_name ; sym_type ; sym_path } in
-        Hashtbl.add sign.symbols sym_name (Sym(sym))
+        Hashtbl.add sign.symbols sym_name (Sym(sym)); sym
 
     (* [new_definable sign name a] creates a new definable symbol (without any
-       reduction rule) named [name] with type [a] the signature [sign]. *)
-    let new_definable : t -> string -> term -> unit =
+       reduction rule) named [name] with type [a] in the signature [sign]. The
+       created symbol is also returned. *)
+    let new_definable : t -> string -> term -> def =
       fun sign def_name def_type ->
         if Hashtbl.mem sign.symbols def_name then
           wrn "Redefinition of %s.\n" def_name;
         let def_path = sign.path in
         let def_rules = ref [] in
         let def = { def_name ; def_type ; def_rules ; def_path } in
-        Hashtbl.add sign.symbols def_name (Def(def))
+        Hashtbl.add sign.symbols def_name (Def(def)); def
 
     (* [find sign name] looks for a symbol named [name] in signature [sign] if
        there is one. The exception [Not_found] is raised if there is none. *)
@@ -385,11 +386,11 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t), `Func)   ->
         let (x,t) = Bindlib.unbind mkfree t in
-        pformat "λ%s:%a.%a" (name x) (print `Func) a (print `Func) t
+        pformat "%s:%a => %a" (name x) (print `Func) a (print `Func) t
     | (Prod(a,b), `Func)   ->
         let (x,c) = Bindlib.unbind mkfree b in
         let x = if Bindlib.binder_occur b then (name x) ^ ":" else "" in
-        pformat "%s%a ⇒ %a" x (print `Appl) a (print `Func) c
+        pformat "%s%a -> %a" x (print `Appl) a (print `Func) c
     (* Anything else needs parentheses. *)
     | (_        , _    )   -> pformat "(%a)" (print `Func) t
   in
@@ -721,7 +722,7 @@ type p_term =
   | P_Vari of string list * string
   | P_Type
   | P_Prod of string * p_term * p_term
-  | P_Abst of string * p_term * p_term
+  | P_Abst of string * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
 
@@ -741,7 +742,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Atom
       -> P_Type
   (* Product *)
-  | x:{ident ":"}?["_"] a:(expr `Appl) "⇒" b:(expr `Func)
+  | x:{ident ":"}?["_"] a:(expr `Appl) "->" b:(expr `Func)
       when p = `Func
       -> P_Prod(x,a,b)
   (* Wildcard *)
@@ -749,7 +750,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Atom
       -> P_Wild
   (* Abstraction *)
-  | "λ" x:ident ":" a:(expr `Func) "." t:(expr `Func)
+  | x:ident a:{":" (expr `Func)}? "=>" t:(expr `Func)
       when p = `Func
       -> P_Abst(x,a,t)
   (* Application *)
@@ -769,25 +770,37 @@ let expr = expr `Func
 
 type p_item =
   | NewSym of bool * string * p_term
-  | Rules  of (string list * p_term * p_term) list
+  | Defin  of string * p_term option * p_term
+  | Rules  of ((string * p_term option) list * p_term * p_term) list
   | Check  of p_term * p_term
   | Infer  of p_term
   | Eval   of p_term
   | Conv   of p_term * p_term
+  | Name   of string
+  | Step   of p_term
 
 let parser def =
   | "def" -> true
   | EMPTY -> false
 
-let parser rule = "[" xs:ident* "]" t:expr "→" u:expr
+let parser ty_ident = id:ident a:{":" expr}?
+
+let parser context =
+  | EMPTY                         -> []
+  | x:ty_ident xs:{"," ty_ident}* -> x::xs
+
+let parser rule = "[" xs:context "]" t:expr "-->" u:expr
 
 let parser toplevel =
-  | d:def x:ident ":" a:expr   -> NewSym(d,x,a)
-  | rs:rule+                   -> Rules(rs)
-  | "#CHECK" t:expr "," a:expr -> Check(t,a)
-  | "#INFER" t:expr            -> Infer(t)
-  | "#EVAL" t:expr             -> Eval(t)
-  | "#CONV" t:expr "," u:expr  -> Conv(t,u)
+  | d:def x:ident ":" a:expr                -> NewSym(d,x,a)
+  | "def" x:ident a:{":" expr}? ":=" t:expr -> Defin(x,a,t)
+  | rs:rule+                                -> Rules(rs)
+  | "#CHECK" t:expr "," a:expr              -> Check(t,a)
+  | "#INFER" t:expr                         -> Infer(t)
+  | "#EVAL" t:expr                          -> Eval(t)
+  | "#CONV" t:expr "," u:expr               -> Conv(t,u)
+  | "#NAME" id:ident                        -> Name(id)
+  | "#STEP" t:expr                          -> Step(t)
 
 let parser full = {l:toplevel "."}*
 
@@ -800,16 +813,22 @@ let blank buf pos =
     let next = (buf1, pos1) in
     match (state, c) with
     (* Basic blancs. *)
-    | (`Ini, ' ' )
-    | (`Ini, '\t')
-    | (`Ini, '\r')
-    | (`Ini, '\n') -> fn `Ini curr next
-    (* Comment. *)
-    | (`Ini, '/' ) -> fn `Opn curr next
-    | (`Opn, '/' ) -> let p = normalize buf1 (line_length buf1) in fn `Ini p p
+    | (`Ini, ' '   )
+    | (`Ini, '\t'  )
+    | (`Ini, '\r'  )
+    | (`Ini, '\n'  ) -> fn `Ini curr next
+    (* Opening comment. *)
+    | (`Ini, '('   ) -> fn `Opn curr next
+    | (`Opn, ';'   ) -> fn `Com curr next
+    (* Closing comment. *)
+    | (`Com, ';'   ) -> fn `Cls curr next
+    | (`Cls, ')'   ) -> fn `Ini curr next
+    | (`Cls, _     ) -> fn `Com curr next
     (* Other. *)
-    | (`Opn, _   ) -> prev
-    | (`Ini, _   ) -> curr
+    | (`Com, '\255') -> fatal "Unclosed comment...\n"
+    | (`Com, _     ) -> fn `Com curr next
+    | (`Opn, _     ) -> prev
+    | (`Ini, _     ) -> curr
   in
   fn `Ini (buf, pos) (buf, pos)
 
@@ -832,7 +851,7 @@ let compile_ref : (bool -> string -> Sign.t) ref =
 
 let load_signature : string list -> Sign.t = fun fs ->
   try Hashtbl.find loaded fs with Not_found ->
-  let file = (String.concat "/" fs) ^ ".lp" in
+  let file = (String.concat "/" fs) ^ ".dk" in
   !compile_ref false file
 
 let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
@@ -859,7 +878,12 @@ let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
           _Prod (build vars a) x f
       | P_Abst(x,a,t) ->
           let f v = build ((x,v)::vars) t in
-          _Abst (build vars a) x f
+          let a =
+            match a with
+            | None    -> Bindlib.box (Unif(ref None))
+            | Some(a) -> build vars a
+          in
+          _Abst a x f
       | P_Appl(t,u)   ->
           _Appl (build vars t) (build vars u)
       | P_Wild        ->
@@ -912,6 +936,50 @@ let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
 
 (* Interpret a whole file *)
 let handle_file : Sign.t -> string -> unit = fun sign fname ->
+  let check_rule (xs,t,u) =
+    let xs = List.map fst xs in (* FIXME keep type annotation. *)
+    (* Scoping the LHS and RHS. *)
+    let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
+    let (s, l, wcs) = to_tbox_wc ~vars sign t in
+    let arity = List.length l in
+    let l = Bindlib.box_list l in
+    let u = to_tbox false vars sign u in
+    (* Building the definition. *)
+    let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
+    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
+    (* Constructing the typing context and the terms. *)
+    let xs = Array.to_list xs in
+    let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
+    let u = Bindlib.unbox u in
+    (* Check that the LHS is a pattern and build the rule. *)
+    let rule = { lhs ; rhs ; arity } in
+    let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
+    (* Infer the type of the LHS and the constraints. *)
+    let (tt, tt_constrs) =
+      try infer_with_constrs sign ctx t with Not_found ->
+        fatal "Unable to infer the type of [%a]\n" pp t
+    in
+    (* Infer the type of the RHS and the constraints. *)
+    let (tu, tu_constrs) =
+      try infer_with_constrs sign ctx u with Not_found ->
+        fatal "Unable to infer the type of [%a]\n" pp u
+    in
+    (* Checking the implication of constraints. *)
+    let check_constraint (a,b) =
+      if not (eq_modulo_constrs tt_constrs a b) then
+        fatal "A constraint is not satisfied...\n"
+    in
+    List.iter check_constraint tu_constrs;
+    (* Checking if the rule is well-typed. *)
+    if not (eq_modulo_constrs tt_constrs tt tu) then
+      begin
+        err "Infered type for LHS: %a\n" pp tt;
+        err "Infered type for RHS: %a\n" pp tu;
+        fatal "[%a → %a] is ill-typed\n" pp t pp u
+      end;
+    (s,t,u,rule)
+  in
   let handle_item : p_item -> unit = fun it ->
     match it with
     | NewSym(d,x,a) ->
@@ -923,51 +991,30 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         in
         let kind = if d then "defi" else "symb" in
         out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
-        if d then Sign.new_definable sign x a else Sign.new_static sign x a
-    | Rules(rs)     ->
-        let check_rule (xs,t,u) =
-          (* Scoping the LHS and RHS. *)
-          let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-          let (s, l, wcs) = to_tbox_wc ~vars sign t in
-          let arity = List.length l in
-          let l = Bindlib.box_list l in
-          let u = to_tbox false vars sign u in
-          (* Building the definition. *)
-          let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-          let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
-          let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
-          (* Constructing the typing context and the terms. *)
-          let xs = Array.to_list xs in
-          let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-          let u = Bindlib.unbox u in
-          (* Check that the LHS is a pattern and build the rule. *)
-          let rule = { lhs ; rhs ; arity } in
-          let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
-          (* Infer the type of the LHS and the constraints. *)
-          let (tt, tt_constrs) =
-            try infer_with_constrs sign ctx t with Not_found ->
-              fatal "Unable to infer the type of [%a]\n" pp t
-          in
-          (* Infer the type of the RHS and the constraints. *)
-          let (tu, tu_constrs) =
-            try infer_with_constrs sign ctx u with Not_found ->
-              fatal "Unable to infer the type of [%a]\n" pp u
-          in
-          (* Checking the implication of constraints. *)
-          let check_constraint (a,b) =
-            if not (eq_modulo_constrs tt_constrs a b) then
-              fatal "A constraint is not satisfied...\n"
-          in
-          List.iter check_constraint tu_constrs;
-          (* Checking if the rule is well-typed. *)
-          if not (eq_modulo_constrs tt_constrs tt tu) then
-            begin
-              err "Infered type for LHS: %a\n" pp tt;
-              err "Infered type for RHS: %a\n" pp tu;
-              fatal "[%a → %a] is ill-typed\n" pp t pp u
-            end;
-          (s,t,u,rule)
+        if d then ignore (Sign.new_definable sign x a)
+        else ignore (Sign.new_static sign x a)
+    | Defin(x,a,t) ->
+        let t = to_term sign t in
+        let a =
+          match a with
+          | None   -> infer sign Ctxt.empty t
+          | Some a -> to_term sign a
         in
+        let sort =
+          if has_type sign Ctxt.empty a Type then "Type" else
+          if has_type sign Ctxt.empty a Kind then "Kind" else
+          fatal "%s is neither of type Type nor Kind.\n" x
+        in
+        out "(defi) %s : %a (of sort %s)\n" x pp a sort;
+        let s = Sign.new_definable sign x a in
+        out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
+        let rule =
+          let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
+          let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
+          {arity = 0; lhs ; rhs}
+        in
+        s.def_rules := !(s.def_rules) @ [rule]
+    | Rules(rs)     ->
         (* Adding all the rules. *)
         let add_rule (s,t,u,rule) =
           out "  - %a → %a\n" pp t pp u;
@@ -993,11 +1040,13 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let u = to_term sign u in
         if eq_modulo t u then out "(conv) OK\n"
         else err "cannot convert %a and %a...\n" pp t pp u
+    | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
+    | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
   List.iter handle_item (parse_file fname)
 
 let obj_file : string -> string = fun file ->
-  Filename.chop_extension file ^ ".lpo"
+  Filename.chop_extension file ^ ".dko"
 
 let module_path : string -> string list = fun file ->
   let base = Filename.chop_extension (Filename.basename file) in

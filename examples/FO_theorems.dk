@@ -1,0 +1,93 @@
+#NAME FO_theorems.
+
+(;  Imports from FO theory  ;)
+def Prop  := examples::firstOrder::Prop.
+def prf   := examples::firstOrder::prf.
+def or    := examples::firstOrder::or.
+def imp   := examples::firstOrder::imp.
+def not   := examples::firstOrder::not.
+def false := examples::firstOrder::false.
+def or_intro_1 := examples::firstOrder::or_intro_1.
+def or_intro_2 := examples::firstOrder::or_intro_2.
+
+
+(;  Encoded proposition families corresponding to:
+  Law of Excluded Middle
+  Double Negation Elimination
+  Peirce Law
+;)
+def prop_lem    := A : Prop             => or A (not A).
+def prop_dne    := A : Prop             => imp (not (not A)) A.
+def prop_peirce := A : Prop => B : Prop => imp (imp (imp A B) A) A.
+
+(;  Propositions in Dedukti's logic (Types)  ;)
+def lem    := A : Prop             -> prf (prop_lem    A  ).
+def dne    := A : Prop             -> prf (prop_dne    A  ).
+def peirce := A : Prop -> B : Prop -> prf (prop_peirce A B).
+
+(;  Theorems to prove in Dedukti's logic (Types)  ;)
+def    lem_imp_dne    := lem    -> dne.
+def peirce_imp_dne    := peirce -> dne.
+def    dne_imp_lem    := dne    -> lem.
+def    lem_imp_peirce := lem    -> peirce.
+def peirce_imp_lem    := peirce -> lem.
+
+
+(;  Proofs of the above theorems  ;)
+
+def lem_imp_dne_prf : lem_imp_dne :=
+  lem_prf : (A : Prop -> prf (prop_lem A)) =>
+  A : Prop =>
+  p : prf (not (not A)) =>
+  (lem_prf A) A (x : prf A => x)
+				(y : prf (not A) => (p y) A)
+.
+
+def peirce_imp_dne_prf : peirce_imp_dne :=
+  peirce_prf : (A : Prop -> B : Prop -> prf (prop_peirce A B)) =>
+  A : Prop =>
+  p : prf (not (not A)) =>
+  peirce_prf A false
+			 (q: prf (not A) =>
+			  (p q) A)
+.
+
+def dne_imp_lem_prf : dne_imp_lem :=
+  dne_prf : (A : Prop -> prf (prop_dne A)) =>
+  A : Prop =>
+  dne_prf (prop_lem A)
+		  (p : prf (not (prop_lem A)) =>
+		   p (or_intro_2 A (not A)
+			   (q : prf A => p (or_intro_1 A (not A) q))
+			 )
+		  )
+.
+
+def lem_imp_peirce_prf : lem_imp_peirce :=
+  lem_prf : (A : Prop -> prf (prop_lem A))  =>
+  A : Prop =>
+  B : Prop =>
+    (lem_prf A)
+    (prop_peirce A B)
+    (x : prf A => f : (((prf A) -> prf B) -> prf A) => x)
+    (
+      f : ((prf A) -> P : Prop -> prf P) =>
+  	  g : (((prf A) -> prf B) -> prf A) =>
+	    g (x : prf A => f x B)
+	)
+.
+
+def peirce_imp_lem_prf : peirce_imp_lem :=
+  peirce_prf : (A : Prop -> B : Prop -> prf (prop_peirce A B)) =>
+  A : Prop =>
+    peirce_prf
+	  (prop_lem A)
+	  false
+	  (
+	    p : prf (not (prop_lem A)) =>
+	    or_intro_2 A (not A)
+		  (q : prf A => p (or_intro_1 A (not A) q))
+	  )
+.
+
+

@@ -1,5 +1,5 @@
 QUIET = --quiet
-TESTFILES = $(wildcard tests/*.lp) $(wildcard examples/*.lp)
+TESTFILES = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
 
 all: lambdapi tests
 
@@ -22,5 +22,5 @@ clean:
 
 distclean: clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.lpo" -exec rm {} \;
+	@find . -type f -name "*.dko" -exec rm {} \;
 	@rm -f lambdapi
