@@ -8,12 +8,12 @@ let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
 let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
-(* [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
+(* [wrn fmt] prints a yellow warning message with [Printf] format [fmt].  Note
    that the output buffer is flushed by the function. *)
 let wrn : ('a, out_channel, unit) format -> 'a =
   fun fmt -> Printf.eprintf (yel fmt)
 
-(* [err fmt] prints a red error message with [Printf] format [fmt]. Note that
+(* [err fmt] prints a red error message with [Printf] format [fmt].  Note that
    the output buffer is flushed by the function. *)
 let err : ('a, out_channel, unit) format -> 'a =
   fun fmt -> Printf.eprintf (red fmt)
@@ -47,16 +47,16 @@ let set_debug : string -> unit =
   in
   String.iter enable
 
-(* [log name fmt] prints a message in the log with the [Printf] format [fmt].
-   The message is identified with the  name (or flag) [name], and coloured in
-   cyan. Note that the  output buffer is flushed by the  function, and that a
+(* [log name fmt] prints a message in the log with the [Printf] format  [fmt].
+   The message is identified with the name (or flag) [name],  and coloured  in
+   cyan. Note that the  output buffer is flushed by the  function,  and that a
    newline character ['\n'] is appended to the output. *)
 let log : string -> ('a, out_channel, unit) format -> 'a =
   fun name fmt -> Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
-(* [out  fmt] prints an output  message with the [Printf]  format [fmt]. Note
-   that the output buffer is flushed by the function, and that the message is
-   displayed in magenta whenever a debugging mode is enabled. *)
+(* [out fmt] prints an output message with the [Printf] format [fmt]. Note the
+   output buffer is flushed by the function, and that the message is displayed
+   in magenta whenever a debugging mode is enabled. *)
 let out : ('a, out_channel, unit) format -> 'a =
   fun fmt ->
     let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
@@ -78,33 +78,40 @@ type term =
   | Prod of term * (term, term) Bindlib.binder
   (* Abstraction. *)
   | Abst of term * (term, term) Bindlib.binder
-  (* Application. The bool is true for rigid terms. Evaluation marks
-     the terms whose head are a static symbol to avoid useless copies *)
+  (* Application. *)
   | Appl of bool * term * term
   (* Unification variable. *)
   | Unif of term option ref
   (* Pattern variable. *)
   | PVar of term option ref
 
+(* NOTE: the boolean in application nodes is set to true for rigid terms. They
+   are marked as such during evaluation for terms having a  static  symbol  at
+   their head. This helps avoiding useless copies. *)
 
- (* Representation of a reduction rule.  The [arity] is the minimal number of
-    arguments that are  required for the rule to apply.  The definition [lhs]
-    and [rhs] binds the context of the rule to its LHS and RHS. *)
+(* Representation of a reduction rule.  The [arity] corresponds to the minimal
+   number of arguments that are required for the rule to apply. The definition
+   of a rule is split into a left-hand side [lhs] and a right-and sides [rhs].
+   The variables of the context are bound on both sides of the rule. Note that
+   the left-hand side is given as a list of arguments for the definable symbol
+   on which the rule is defined. The symbol is not given in the type of rules,
+   as rules will be stored in the definition of symbols. *)
  and rule =
   { lhs   : (term, term list) Bindlib.mbinder
   ; rhs   : (term, term) Bindlib.mbinder
   ; arity : int }
 
-(* NOTE: to check if a rule [r] can  be applied on a term [t] using the above
-   representation is  really easy. First,  one should substitute  the [r.lhs]
-   binder  (with the  [Bindlib.msubst] function)  using an  array of  pattern
-   variables (of  size [Bindlib.mbinder_arity r.lhs])  to obtain a  term list
-   [lhs].  To  check if  [r] applies  on a  term whose  head is  the intended
-   symbol, one should test equality  (with unification) between [lhs] and the
-   arguments of [t]. If  they are equal then the rule  applies and the result
-   of the  application is exactly [rhs],  substituted with the same  array of
-   pattern variables  that have now  been instanciated by the  equality test.
-   Otherwise the rule does not apply. *)
+(* NOTE: to check if a rule [r] applies on a term [t] using our representation
+   is really easy.  First,  one should substitute the [r.lhs] binder (with the
+   [Bindlib.msubst] function) using an array of pattern variables  (which size
+   should be [Bindlib.mbinder_arity r.lhs]) to obtain a term list [lhs]. Then,
+   to check if [r] applies on a the term [t] (which head should be the symbol)
+   one should test equality (with unification) between [lhs] and the arguments
+   of [t]. If they are equal then the rule applies and the term obtained after
+   the application is computed by substituting [r.rhs] with the same array  of
+   pattern variables that was used for [l.rhs] (at this point, all the pattern
+   variables should have been instanciated by the equality test). If [lhs] and
+   the arguments of [t] are not equal, then the rule does not apply. *)
 
 (**** Symbols (static or definable) *****************************************)
 
@@ -114,19 +121,17 @@ and sym =
   ; sym_type  : term
   ; sym_path  : string list }
 
-(* Representation of  a definable symbol. Note that it  carries its reduction
-   rules in a reference, that should be updated when new rules are added. *)
-
+(* Representation of a definable symbol,  which carries its reduction rules in
+   a reference. It should be updated to add new rules. *)
 and def =
   { def_name  : string
   ; def_type  : term
   ; def_rules : rule list ref
   ; def_path  : string list }
 
-(* NOTE: the [path]  stored in a symbol corresponds to  its "module path". In
-   the  current implementation,  the module  path [["dira";  "dirb"; "file"]]
-   corresponds to the  file ["dira/dirb/file.lp"]. It is printed  and read in
-   the source code as ["dira::dirb::file"] *)
+(* NOTE: the [path] that is stored in a symbol corresponds to a "module path".
+   The path [["a"; "b"; "f"]] corresponds to file ["a/b/f.lp"].  It is printed
+   and read in the source code as ["dira::dirb::file"]. *)
 
 (* Representation of a (static or definable) symbol. *)
 and symbol = Sym of sym | Def of def
@@ -138,12 +143,12 @@ let symbol_type : symbol -> term =
     | Sym(sym) -> sym.sym_type
     | Def(def) -> def.def_type
 
-(* Reference containing the module path of the current file. This is used to
-   only print the symbol name for the current module. *)
+(* Reference containing the module path of the current file. It is useful when
+   printing symbol names to avoid giving the full path for local symbols. *)
 let current_module : string list ref = ref []
 
-(* [symbol_name s] returns the full name of the given symbol [s] (including
-   the module path). *)
+(* [symbol_name s] returns the full name of the given symbol [s] (including if
+   the symbol does not come from the current module. *)
 let symbol_name : symbol -> string = fun s ->
   let (path, name) =
     match s with
@@ -164,7 +169,7 @@ module Sign =
     let create : string list -> t =
       fun path -> { path ; symbols = Hashtbl.create 37 }
 
-    (* [new_static sign name a] creates a new static symbol named [name] with
+    (* [new_static sign name a] creates a new static symbol named [name]  with
        type [a] the signature [sign]. *)
     let new_static : t -> string -> term -> unit =
       fun sign sym_name sym_type ->
@@ -174,8 +179,8 @@ module Sign =
         let sym = { sym_name ; sym_type ; sym_path } in
         Hashtbl.add sign.symbols sym_name (Sym(sym))
 
-    (* [new_definable sign name a] creates a new definable symbol (with no
-       reduction rules) named [name] with type [a] the signature [sign]. *)
+    (* [new_definable sign name a] creates a new definable symbol (without any
+       reduction rule) named [name] with type [a] the signature [sign]. *)
     let new_definable : t -> string -> term -> unit =
       fun sign def_name def_type ->
         if Hashtbl.mem sign.symbols def_name then
@@ -185,8 +190,8 @@ module Sign =
         let def = { def_name ; def_type ; def_rules ; def_path } in
         Hashtbl.add sign.symbols def_name (Def(def))
 
-    (* [find sign name] looks for a symbol named [name] in the signature
-       [sign]. If none is found, the exception [Not_found] is raised. *)
+    (* [find sign name] looks for a symbol named [name] in signature [sign] if
+       there is one. The exception [Not_found] is raised if there is none. *)
     let find : t -> string -> symbol =
       fun sign name -> Hashtbl.find sign.symbols name
 
@@ -209,8 +214,8 @@ module Sign =
 
 module Ctxt =
   struct
-    (* Representation of a typing context, associating a [term] (or rather,
-       type) to free variables. *)
+    (* Representation of a typing context, associating a [term] (or type),  to
+       the free variables. *)
     type t = (term Bindlib.var * term) list
 
     (* [empty] is the empty context. *)
@@ -220,15 +225,15 @@ module Ctxt =
     let add : term Bindlib.var -> term -> t -> t =
       fun x a ctx -> (x,a)::ctx
 
-    (* [find x ctx] looks for the type of varaible [x] in context [ctx]. The
-       exception [Not_found] is raised if [x] does not appear in [ctx]. *)
+    (* [find x ctx] returns the type of variable [x] in the context [ctx] when
+       the variable appears inthe context. [Not_found] is raised otherwise. *)
     let find : term Bindlib.var -> t -> term = fun x ctx ->
       snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
   end
 
 (**** Unification variables management **************************************)
 
-(* [unfold t] unfolds the toplevel unification and pattern variables in [t].*)
+(* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
   | Unif({contents = Some(t)}) -> unfold t
@@ -246,10 +251,12 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> true (* forbid unif to absord PVar to guaranty that
-                           pattern variables do not escape rewriting *)
+  | PVar(_)     -> true
 
-(* [unify r t] tries to unify [r] with [t], and returns a boolean indicating
+(* NOTE: pattern variable prevent unification to guarantee that they cannot be
+   absorbed by unification varialbes (and do not escape rewriting code). *)
+
+(* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
    whether it succeeded or not. *)
 let unify : term option ref -> term -> bool =
   fun r a ->
@@ -266,7 +273,7 @@ type tbox = term Bindlib.bindbox
 let mkfree : tvar -> term =
   fun x -> Vari(x)
 
-(* [_Vari x] injects  the free variable [x] into the  bindbox, thus making it
+(* [_Vari x] injects the free variable [x] into the bindbox, so that it may be
    available for binding. *)
 let _Vari : tvar -> tbox =
   Bindlib.box_of_var
@@ -281,36 +288,35 @@ let _Kind : tbox = Bindlib.box Kind
 let _Symb : symbol -> tbox =
   fun s -> Bindlib.box (Symb(s))
 
-(* [_Symb_find sign name] finds the symbol [s] with the given [name] in the
-   signature [sign], and injects the constructor [Symb(s] into the [bindbox]
-   type. The exception [Not_found] is raised if no such symbol is found. *)
+(* [_Symb_find sign name] finds the symbol [s] with the given [name] in [sign]
+   and injects the constructor [Symb(s)] into the [bindbox] type.  [Not_found]
+   is raised if no such symbol is found. *)
 let _Symb_find : Sign.t -> string -> tbox =
   fun sign n -> _Symb (Sign.find sign n)
 
-(* [_Appl t u] lifts an application to the [bindbox] type, given two boxed
-   terms [t] and [u]. *)
+(* [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(false,t,u))
 
-(* [_Prod a x f] lifts a dependent product node to the [bindbox] type, given
-   a boxed term [a] (the type of the domain), the prefered name for the bound
-   variable [x], and function [f] to build the [binder] (codomain). *)
+(* [_Prod a x f] lifts a dependent product node to the [bindbox] type, given a
+   boxed term [a] (the type of the domain),  a prefered name [x] for the bound
+   variable, and function [f] to build the [binder] (codomain). *)
 let _Prod : tbox -> string -> (tvar -> tbox) -> tbox =
   fun a x f ->
     let b = Bindlib.vbind mkfree x f in
     Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
 
-(* [_Abst a x f] lifts an abstraction node to the [bindbox] type, given a
-   boxed term [a] (the type of the bound varialbe), the prefered name for the
-   bound variable [x], and the function [f] to build the [binder]. *)
+(* [_Abst a x f] lifts an abstraction node to the [bindbox] type, given a term
+   [a] (which is the type of the bound variable),  the prefered name [x] to be
+   used for the bound variable, and the function [f] to build the [binder]. *)
 let _Abst : tbox -> string -> (tvar -> tbox) -> tbox =
   fun a x f ->
     let b = Bindlib.vbind mkfree x f in
     Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
 
-(* [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering all of
-   its free variables, making them available for binding. Note that at the
-   same time, names are automatically updated by [Bindlib]. *)
+(* [lift t] lifts a [term] [t] to the [bindbox] type,  thus gathering its free
+   variables, making them available for binding.  At the same time,  the names
+   of the bound variables are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
   let t = unfold t in
   match t with
@@ -326,13 +332,13 @@ let rec lift : term -> tbox = fun t ->
   | Unif(_)     -> Bindlib.box t (* Variable not instanciated. *)
   | PVar(_)     -> Bindlib.box t (* Variable not instanciated. *)
 
-(* [update_names t] updates the names of the bound variables of [t] to avoid
-   "visual capture" while printing. Note that with [Bindlib], no capture is
-   actually possible as binders are represented as OCaml function (HOAS). *)
+(* [update_names t] updates the names of the bound variables of [t] to prevent
+   "visual capture" while printing. Note that with [Bindlib],  real capture is
+   not possible as binders are represented as OCaml function (HOAS). *)
 let update_names : term -> term = fun t -> Bindlib.unbox (lift t)
 
-(* [get_args  t] returns a  tuple [(hd,args)] where [hd]  if the head  of the
-term and [args] its arguments. *)
+(* [get_args t] returns a tuple [(hd,args)] where [hd] if the head of the term
+   and [args] its arguments. *)
 let get_args : term -> term * term list = fun t ->
   let rec get acc t =
     match unfold t with
@@ -340,10 +346,10 @@ let get_args : term -> term * term list = fun t ->
     | t           -> (t, acc)
   in get [] t
 
-(*  [add_args ~rigid  hd  args]  reconstructs the  application  (this is  the
-   inverse function  of [get_args]).  The optional  argument [rigid], [false]
-   by  default, is  used by  evaluation to  mark rigid  terms whose  head are
-   static symbol and avoid copying them repeatedly. *)
+(* [add_args ~rigid hd args] builds the application of a term [hd] to the list
+   of its arguments [args] (this is the inverse of [get_args]).  Note that the
+   optional [rigid] argument ([false] by default) can be used to mark as rigid
+   terms whose head are static symbol, to avoid copying them repeatedly. *)
 let add_args : ?rigid:bool -> term -> term list -> term =
   fun ?(rigid=false) t args ->
     let rec add_args t args =
@@ -409,16 +415,16 @@ let print_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
 (* Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
 
-(* [eq_binder  eq b1 b2] tests  equality of two binders  by substituting them
-   with the  same free variable,  and testing  equality of the  obtained term
-   using the [eq] function. *)
+(* [eq_binder eq b1 b2] tests the equality of two binders by substituting them
+   with the same free variable, and testing the equality of the obtained terms
+   with the [eq] function. *)
 let eq_binder : term eq -> (term, term) Bindlib.binder eq =
   fun eq f g -> f == g ||
     let x = mkfree (Bindlib.new_var mkfree "_eq_binder_") in
     eq (Bindlib.subst f x) (Bindlib.subst g x)
 
-(* [eq  t u]  tests the  equality of the  terms [t]  and [u],  while possibly
-   instantiating unification variables. *)
+(* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
+   be instantiated in the process. *)
 let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
   if !debug then log "equa" "%a =!= %a" print_term a print_term b;
   let rec eq a b = a == b ||
@@ -448,10 +454,10 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     end;
   res
 
-(* [eval  t]: returns  a weak  head normal  form of  [t]. Some  arguments are
-   evaluated if they  might be used in pattern matching.  Their evaluation is
-   kept.   Therefore,  this   function  does  a  bit  more   than  weak  head
-   reduction.  *)
+(* [eval t]: returns a weak head normal form of [t].  Note that some arguments
+   are evaluated if they might be used to allow the application of a rewriting
+   rule. As their evaluation is kept, so this function does more normalisation
+   that the usual weak head normalisation. *)
 let rec eval : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" print_term t;
   (* eval_aux avaluates a term with a stack of arguments *)
