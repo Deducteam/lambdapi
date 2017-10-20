@@ -95,6 +95,9 @@ type term =
   | Appl of bool * term * term
   (* Unification variable. *)
   | Unif of term option ref
+  (* Pattern variable. *)
+  | PVar of term option ref
+
 
 (* Representation of a reduction rule. The [arity] is the minimal number of
    arguments that are required for the rule to apply. The definition [lhs]
@@ -237,7 +240,8 @@ module Ctxt =
 (* [unfold t] unfolds the toplevel unification variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({contents = Some(t)}) -> t
+  | Unif({contents = Some(t)}) -> unfold t
+  | PVar({contents = Some(t)}) -> unfold t
   | _                          -> t
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
@@ -247,12 +251,13 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
   (** if the term is normal, it can not contains unification variables
       introduced by substitution *)
-  | Appl(n,t,u) -> not n && (occurs r t || occurs r u)
+  | Appl(n,t,u) -> occurs r t || occurs r u
   | Unif(u)     -> u == r
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
+  | PVar(_)     -> false
 
 (* [unify r t] tries to unify [r] with [t], and returns a boolean indicating
    whether it succeeded or not. *)
@@ -329,6 +334,7 @@ let rec lift : term -> tbox = fun t ->
                      (fun x -> lift (Bindlib.subst t (mkfree x)))
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(_)     -> Bindlib.box t (* Variable not instanciated. *)
+  | PVar(_)     -> Bindlib.box t (* Variable not instanciated. *)
 
 (* [update_names t] updates the names of the bound variables of [t] to avoid
    "visual capture" while printing. Note that with [Bindlib], no capture is
@@ -351,6 +357,7 @@ let print_term : out_channel -> term -> unit = fun oc t ->
     | (Kind     , _    )   -> pstring "Kind"
     | (Symb(s)  , _    )   -> pstring (symbol_name s)
     | (Unif(_)  , _    )   -> pstring "?"
+    | (PVar(_)  , _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
     | (Appl(_,t,u), `Func) -> pformat "%a %a" (print `Appl) t (print `Atom) u
@@ -406,6 +413,7 @@ let eq : term -> term -> bool = fun a b ->
     | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
     | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
+    | (PVar(r)      , b            ) -> r := Some b; true
     | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
     | (Unif(r)      , b            ) -> unify r b
     | (a            , Unif(r)      ) -> unify r a
@@ -456,7 +464,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
           let rs = List.filter (fun r -> r.arity <= nb_args) !(s.def_rules) in
           let match_term ts rule =
             let ar = Bindlib.mbinder_arity rule.lhs in
-            let uvars = Array.init ar (fun _ -> Unif(ref None)) in
+            let uvars = Array.init ar (fun _ -> PVar(ref None)) in
             let l = Bindlib.msubst rule.lhs uvars in
             (*if !debug_eval then FIXME: put a printable form in the
                                          rule record ?
@@ -519,6 +527,8 @@ let eq_modulo : Sign.t -> term -> term -> bool = fun sign a b ->
       | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
       | (Unif(r)      , b            ) -> unify r b
       | (a            , Unif(r)      ) -> unify r a
+      | (PVar(_)      , _            ) -> assert false
+      | (_            , PVar(_)      ) -> assert false
       | (_            , _            ) -> false
     end &&
     try List.for_all2 (if !rigid then eq else eq_mod) argsa argsb
@@ -582,6 +592,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                            raise Not_found
                      end
       | Unif(_)   -> assert false
+      | PVar(_)   -> assert false
     in
     if !debug_infer then
       log "INFR" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
