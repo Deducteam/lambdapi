@@ -429,11 +429,18 @@ let get_args : term -> term * term list = fun t ->
   in
   get [] t
 
-let rec add_args : bool -> term -> term list -> term =
-  fun b t l ->
+let rec add_args : term -> term list -> term =
+  fun t l ->
   match l with
   | [] -> t
-  | x::l -> add_args b (Appl(b,t,x)) l
+  | x::l -> add_args (Appl(false,t,x)) l
+
+let rec add_normal_args : term -> term list -> term =
+  fun t l ->
+  match l with
+  | [] -> t
+  | x::l -> add_normal_args (Appl(true,t,x)) l
+
 
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
@@ -443,7 +450,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     match (t, stk) with
     (* Push. *)
     | (Appl(n,f,u) , stk    ) ->
-       if n then add_args true t stk (* normal!*)
+       if n then add_normal_args t stk (* normal!*)
        else eval_aux sign f (eval_aux sign u [] :: stk)
     (* Beta. *)
     | (Abst(_,f)   , v::stk ) -> eval_aux sign (Bindlib.subst f v) stk
@@ -478,11 +485,11 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
               if nb > 1 then wrn "%i rules apply...\n%!" nb
             end;
           match ts with
-          | []         -> add_args true t stk
+          | []         -> add_args t stk
           | (t,stk)::_ -> eval_aux sign t stk
         end
     (* In head normal form. *)
-    | (t           , stk    ) -> add_args true t stk
+    | (t           , stk    ) -> add_normal_args t stk
   in
   let u = eval_aux sign t [] in
   if !debug_eval then log "eval" "produced %a" print_term u; u
@@ -928,7 +935,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let u = Bindlib.unbox u in
         (* Check that the LHS is a pattern and build the rule. *)
         let rule = { lhs ; rhs ; ari } in
-        let t = add_args false (Symb(Def s)) (Bindlib.unbox l) in
+        let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
         (* Infer the type of the LHS and the constraints. *)
         let (tt, tt_constrs) =
           try infer_with_constrs sign ctx t with Not_found ->
