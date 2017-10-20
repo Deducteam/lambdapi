@@ -489,7 +489,8 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
           | (t,stk)::_ -> eval_aux sign t stk
         end
     (* In head normal form. *)
-    | (t           , stk    ) -> add_normal_args t stk
+    | (Symb(Sym _), stk    ) -> add_normal_args t stk
+    | (t          , stk    ) -> add_args t stk
   in
   let u = eval_aux sign t [] in
   if !debug_eval then log "eval" "produced %a" print_term u; u
