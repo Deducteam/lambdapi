@@ -522,6 +522,26 @@ let eval : term -> term = fun t ->
 
 (**** Equality modulo conversion ********************************************)
 
+(* Representation of equality constraints. *)
+type constrs = (term * term) list
+
+(* If [constraints] is set to [None], then typechecking is in regular mode. If
+   it is set to [Some(l)] then it is in constraint mode, which means that when
+   equality fails, an equality constraint is added to [constrs] instead of the
+   equality function giving up. *)
+let constraints = ref None
+
+(* NOTE: constraint mode is only used when type-cheching the left-hand side of
+   reduction rules (see function [infer_with_constrs] for mode switching). *)
+
+(* [add_constraint a b] adds an equality constraint between [a] and [b] if the
+   program is in regular mode. In this case it returns [true].  If the program
+   is in regular mode, then [false] is returned immediately. *)
+let add_constraint : term -> term -> bool = fun a b ->
+  match !constraints with
+  | None    -> false
+  | Some(l) -> constraints := Some((eval a, eval b)::l); true
+
 (* [eq_module t u] computes the equality of [t] and [u], modulo the conversion
    rule (i.e., the reduction rules for the definable symbols). Unification can
    be triggered by this function as it calls [eq]. *)
@@ -542,19 +562,13 @@ let eq_modulo : term -> term -> bool = fun a b ->
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq_mod t f && eq_mod u g
     | (_            , _            ) -> false
   in
-  let res = eq a b || eq_mod a b in
+  let res = eq a b || eq_mod a b || add_constraint a b in
   if !debug then log "equa" (r_or_g res "%a == %a") pp_term a pp_term b;
   res
 
+(**** Type inference ********************************************************)
+
 (**** TODO cleaning and comments from here on *******************************)
-
-type constrs = (term * term) list
-
-let constraints = ref None
-let add_constraint : term -> term -> bool = fun a b ->
-  match !constraints with
-  | None    -> false
-  | Some(l) -> constraints := Some((eval a, eval b)::l); true
 
 (* Judgements *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
@@ -607,7 +621,6 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   a
 
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
-  let eq_modulo a b = eq_modulo a b || add_constraint a b in
   let rec has_type ctx t a =
     match (unfold t, eval a) with
     (* Sort *)
