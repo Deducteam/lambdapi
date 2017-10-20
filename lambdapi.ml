@@ -96,12 +96,13 @@ type term =
   (* Unification variable. *)
   | Unif of term option ref
 
-(* Representation of a reduction rule. The [ari] is the minimal number of
+(* Representation of a reduction rule. The [arity] is the minimal number of
    arguments that are required for the rule to apply. The definition [lhs]
    and [rhs] binds the context of the rule to its LHS and RHS. *)
-and rule = { lhs : (term, term list) Bindlib.mbinder
-           ; rhs : (term, term) Bindlib.mbinder
-           ; ari : int }
+and rule =
+  { lhs   : (term, term list) Bindlib.mbinder
+  ; rhs   : (term, term) Bindlib.mbinder
+  ; arity : int }
 
 (* NOTE: to check if a rule [r] can be applied on a term [t] using the above
    representation is really easy. First, one should substitute the [r.defin]
@@ -426,21 +427,15 @@ let get_args : term -> term * term list = fun t ->
     match unfold t with
     | Appl(_,t,u) -> get (u::acc) t
     | t           -> (t, acc)
-  in
-  get [] t
+  in get [] t
 
-let rec add_args : term -> term list -> term =
-  fun t l ->
-  match l with
-  | [] -> t
-  | x::l -> add_args (Appl(false,t,x)) l
-
-let rec add_normal_args : term -> term list -> term =
-  fun t l ->
-  match l with
-  | [] -> t
-  | x::l -> add_normal_args (Appl(true,t,x)) l
-
+let add_args : ?normal:bool -> term -> term list -> term =
+  fun ?(normal=false) t args ->
+    let rec add_args t args =
+      match args with
+      | []      -> t
+      | u::args -> add_args (Appl(normal,t,u)) args
+    in add_args t args
 
 (* Evaluation *)
 let rec eval : Sign.t -> term -> term = fun sign t ->
@@ -450,7 +445,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     match (t, stk) with
     (* Push. *)
     | (Appl(n,f,u) , stk    ) ->
-       if n then add_normal_args t stk (* normal!*)
+       if n then add_args ~normal:true t stk (* normal!*)
        else eval_aux sign f (eval_aux sign u [] :: stk)
     (* Beta. *)
     | (Abst(_,f)   , v::stk ) -> eval_aux sign (Bindlib.subst f v) stk
@@ -458,7 +453,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
     | (Symb(Def(s)), stk    ) ->
         begin
           let nb_args = List.length stk in
-          let rs = List.filter (fun r -> r.ari <= nb_args) !(s.def_rules) in
+          let rs = List.filter (fun r -> r.arity <= nb_args) !(s.def_rules) in
           let match_term ts rule =
             let ar = Bindlib.mbinder_arity rule.lhs in
             let uvars = Array.init ar (fun _ -> Unif(ref None)) in
@@ -489,7 +484,7 @@ let rec eval : Sign.t -> term -> term = fun sign t ->
           | (t,stk)::_ -> eval_aux sign t stk
         end
     (* In head normal form. *)
-    | (Symb(Sym _), stk    ) -> add_normal_args t stk
+    | (Symb(Sym _), stk    ) -> add_args ~normal:true t stk
     | (t          , stk    ) -> add_args t stk
   in
   let u = eval_aux sign t [] in
@@ -923,7 +918,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         (* Scoping the LHS and RHS. *)
         let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
         let (s, l, wcs) = to_tbox_wc ~vars sign t in
-        let ari = List.length l in
+        let arity = List.length l in
         let l = Bindlib.box_list l in
         let u = to_tbox false vars sign u in
         (* Building the definition. *)
@@ -935,7 +930,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
         let u = Bindlib.unbox u in
         (* Check that the LHS is a pattern and build the rule. *)
-        let rule = { lhs ; rhs ; ari } in
+        let rule = { lhs ; rhs ; arity } in
         let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
         (* Infer the type of the LHS and the constraints. *)
         let (tt, tt_constrs) =
