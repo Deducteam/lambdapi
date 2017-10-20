@@ -456,6 +456,31 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
 
 (**** Evaluatin function (with rewriting) ***********************************)
 
+(* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
+   the stack [stk]. The possible abstract machine states (see [eval_stk]) with
+   which to continue are returned. *)
+let match_rules : def -> term list -> (term * term list) list = fun s stk ->
+  let nb_args = List.length stk in
+  let match_rule acc r =
+    (* First check that we have enough arguments. *)
+    if r.arity > nb_args then acc else
+    (* Substitute the left-hand side of [r] with pattern variables *)
+    let new_pvar _ = PVar(ref None) in
+    let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
+    let lhs = Bindlib.msubst r.lhs uvars in
+    if !debug_eval then log "eval" "RULE trying rule [%a]" print_rule (s,r);
+    (* Match each argument of the lhs with the terms in the stack. *)
+    let rec match_args lhs stk =
+      match (lhs, stk) with
+      | ([]    , stk   ) -> (Bindlib.msubst r.rhs uvars, stk) :: acc
+      | (t::lhs, v::stk) ->
+          if eq ~rewrite:true t v then match_args lhs stk else acc
+      | (_     , _     ) -> assert false
+    in
+    match_args lhs stk
+  in
+  List.fold_left match_rule [] !(s.def_rules)
+
 (* [eval_stk t stk] evaluates the term [t] using the stack [stk], which may be
    seen as a list of arguments for [t]. *)
 let rec eval_stk : term -> term list -> term = fun t stk ->
@@ -468,43 +493,16 @@ let rec eval_stk : term -> term list -> term = fun t stk ->
   (* Try to rewrite. *)
   | (Symb(Def(s))   , stk    ) ->
       begin
-        let nb_args = List.length stk in
-        (*  Application  of one  rule:  if  the  rule applies,  if  returns
-           ([rhs,stk]::ts) where [rhs] is the  instanciated rhs of the rule
-           and [stk] are the arguments unused in the stack.   It returns ts
-           unchanged is the rule does not apply. *)
-        let match_term ts rule =
-          if rule.arity > nb_args then ts else
-          (* substitute the [lhs] of the rule with pattern variables *)
-          let ar = Bindlib.mbinder_arity rule.lhs in
-          let uvars = Array.init ar (fun _ -> PVar(ref None)) in
-          let l = Bindlib.msubst rule.lhs uvars in
-          if !debug_eval then log "eval" "RULE %a" print_rule (s,rule);
-          (* match each argument of the lhs with the terms in the stack.
-             returns the pair with the rhs of the rule and the unused
-             part of the stack *)
-          let rec match_args l stk =
-            match (l, stk) with
-            | ([]  , stk   ) ->
-               let r = Bindlib.msubst rule.rhs uvars in
-               (r, stk)::ts
-            | (t::l, v::stk) ->
-               if eq ~rewrite:true t v then match_args l stk else ts
-            | (_, _     ) ->
-               assert false
-          in
-          match_args l stk
-        in
-        (** We try to apply each rule *)
-        let ts = List.fold_left match_term [] !(s.def_rules) in
-        if !debug_eval then
-          begin
-            let nb = List.length ts in
-            if nb > 1 then wrn "%i rules apply...\n%!" nb
-          end;
-        match ts with
-        | []         -> add_args t stk (** no rule, we are finished *)
-        | (t,stk)::_ -> eval_stk t stk (** continue evaluation *)
+        match match_rules s stk with
+        | []          ->
+            (* No rule applies. *)
+            add_args t stk
+        | (t,stk)::rs ->
+            (* At least one rule applies. *)
+            if !debug_eval && rs <> [] then
+              wrn "%i rules apply...\n%!" (List.length rs);
+            (* Just use the first one. *)
+            eval_stk t stk
       end
   (* The head of the term is rigid, mark it as such. *)
   | (Symb(Sym _)    , stk    ) -> add_args ~rigid:true t stk
