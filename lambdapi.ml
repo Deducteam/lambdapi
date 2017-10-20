@@ -257,7 +257,7 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> false
+  | PVar(_)     -> true (* forbid unif to absord PVar *)
 
 (* [unify r t] tries to unify [r] with [t], and returns a boolean indicating
    whether it succeeded or not. *)
