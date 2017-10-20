@@ -419,7 +419,7 @@ let eq_binder : term eq -> (term, term) Bindlib.binder eq =
 
 (* [eq  t u]  tests the  equality of the  terms [t]  and [u],  while possibly
    instantiating unification variables. *)
-let eq : term -> term -> bool = fun a b ->
+let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
   if !debug then log "equa" "%a =!= %a" print_term a print_term b;
   let rec eq a b = a == b ||
     match (unfold a, unfold b) with
@@ -431,6 +431,8 @@ let eq : term -> term -> bool = fun a b ->
     | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
     | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
+    | (Unif(_)      , _            )
+    | (_            , Unif(_)      ) when rewrite -> assert false
     | (_            , PVar(_)      ) -> assert false
     | (PVar(r)      , b            ) -> r := Some b; true
     | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
@@ -488,7 +490,7 @@ let rec eval : term -> term = fun t ->
                  let r = Bindlib.msubst rule.rhs uvars in
                  (r, stk)::ts
               | (t::l, v::stk) ->
-                 if eq t v then match_args l stk else ts
+                 if eq ~rewrite:true t v then match_args l stk else ts
               | (_, _     ) ->
                  assert false
             in
@@ -547,7 +549,7 @@ let eq_modulo : term -> term -> bool = fun a b ->
       | (_            , PVar(_)      ) -> assert false
       | (_            , _            ) -> false
     end &&
-    try List.for_all2 (if !rigid then eq else eq_mod) argsa argsb
+    try List.for_all2 (if !rigid then eq ~rewrite:false else eq_mod) argsa argsb
     with Invalid_argument(_) -> false
   in
   let res = eq_mod a b in
