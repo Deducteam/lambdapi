@@ -395,6 +395,9 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
   in
   print `Func oc (update_names t)
 
+(* Short synonym for [pp_term]. *)
+let pp = pp_term
+
 (* [pp_ctxt oc ctx] pretty-prints the context [ctx] to the channel [oc]. *)
 let pp_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
   let pstring = output_string oc in
@@ -403,8 +406,8 @@ let pp_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
   let rec print oc ls =
     match ls with
     | []          -> pstring "∅"
-    | [(x,a)]     -> pformat "%s : %a" (name x) pp_term a
-    | (x,a)::ctx  -> pformat "%a, %s : %a" print ctx (name x) pp_term a
+    | [(x,a)]     -> pformat "%s : %a" (name x) pp a
+    | (x,a)::ctx  -> pformat "%a, %s : %a" print ctx (name x) pp a
   in print oc ctx
 
 let print_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
@@ -412,7 +415,7 @@ let print_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
   let (xs,lhs) = Bindlib.unmbind mkfree rule.lhs in
   let lhs = add_args (Symb(Def def)) lhs in
   let rhs = Bindlib.msubst rule.rhs (Array.map mkfree xs) in
-  pformat "%a → %a" pp_term lhs pp_term rhs
+  pformat "%a → %a" pp lhs pp rhs
 
 (**** Strict equality (no conversion) with unification **********************)
 
@@ -430,7 +433,7 @@ let eq_binder : term eq -> (term, term) Bindlib.binder eq =
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
    be instantiated in the process. *)
 let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
-  if !debug then log "equa" "%a =!= %a" pp_term a pp_term b;
+  if !debug then log "equa" "%a =!= %a" pp a pp b;
   let rec eq a b = a == b ||
     match (unfold a, unfold b) with
     | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
@@ -451,8 +454,7 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (_            , _            ) -> false
   in
   let res = eq a b in
-  if !debug then log "equa" (r_or_g res "%a =!= %a") pp_term a pp_term b;
-  res
+  if !debug then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
 
 (**** Evaluatin function (with rewriting) ***********************************)
 
@@ -516,9 +518,9 @@ let rec eval_stk : term -> term list -> term = fun t stk ->
    rule. As their evaluation is kept, so this function does more normalisation
    that the usual weak head normalisation. *)
 let eval : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating %a" pp_term t;
+  if !debug_eval then log "eval" "evaluating %a" pp t;
   let u = eval_stk t [] in
-  if !debug_eval then log "eval" "produced %a" pp_term u; u
+  if !debug_eval then log "eval" "produced %a" pp u; u
 
 (**** Equality modulo conversion ********************************************)
 
@@ -546,7 +548,7 @@ let add_constraint : term -> term -> bool = fun a b ->
    rule (i.e., the reduction rules for the definable symbols). Unification can
    be triggered by this function as it calls [eq]. *)
 let eq_modulo : term -> term -> bool = fun a b ->
-  if !debug then log "equa" "%a == %a" pp_term a pp_term b;
+  if !debug then log "equa" "%a == %a" pp a pp b;
   let rec eq_mod a b =
     let a = eval a in
     let b = eval b in
@@ -563,8 +565,7 @@ let eq_modulo : term -> term -> bool = fun a b ->
     | (_            , _            ) -> false
   in
   let res = eq a b || eq_mod a b || add_constraint a b in
-  if !debug then log "equa" (r_or_g res "%a == %a") pp_term a pp_term b;
-  res
+  if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res
 
 (**** Type inference ********************************************************)
 
@@ -573,7 +574,7 @@ let eq_modulo : term -> term -> bool = fun a b ->
 (* Judgements *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
-    if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp_term t;
+    if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
     let a =
       match unfold t with
       | Vari(x)   -> Ctxt.find x ctx
@@ -585,7 +586,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
             match infer (Ctxt.add x a ctx) bx with
             | Kind -> Kind
             | Type -> Type
-            | _    -> err "Expected Type / Kind for [%a]...\n" pp_term bx;
+            | _    -> err "Expected Type / Kind for [%a]...\n" pp bx;
                       raise Not_found
           end
       | Abst(a,t) ->
@@ -597,25 +598,22 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
             match unfold (infer ctx t) with
             | Prod(a,b) when has_type sign ctx u a -> Bindlib.subst b u
             | Prod(a,_)                            ->
-                err "Cannot show [%a : %a]...\n" pp_term u pp_term a;
+                err "Cannot show [%a : %a]...\n" pp u pp a;
                 raise Not_found
             | a                                    ->
-                err "Product expected for [%a], found [%a]...\n"
-                  pp_term t pp_term a;
+                err "Product expected for [%a], found [%a]...\n" pp t pp a;
                 raise Not_found
           end
       | Kind      -> assert false
       | Unif(_)   -> assert false
       | PVar(_)   -> assert false
     in
-    if !debug_infr then
-      log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term a;
+    if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
   in
-  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp_term t;
+  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
   let res = infer ctx t in
-  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term res;
-  res
+  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res; res
 
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
@@ -660,10 +658,9 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     (* No rule apply. *)
     | (_        , _        ) -> false
   in
-  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term a;
+  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
   let res = has_type ctx t a in
-  if !debug then
-    log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp_term t pp_term a;
+  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
   res
 
 let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
@@ -674,12 +671,12 @@ let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
     constraints := None;
     if !debug_patt then
       begin
-        log "patt" "inferred type [%a] for [%a]" pp_term a pp_term t;
+        log "patt" "inferred type [%a] for [%a]" pp a pp t;
         let fn (x,a) =
-          log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) pp_term a
+          log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) pp a
         in
         List.iter fn ctx;
-        let fn (a,b) = log "patt" "  where\t%a == %a" pp_term a pp_term b in
+        let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
         List.iter fn cnstrs
       end;
     (a, cnstrs)
@@ -705,7 +702,7 @@ let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
         | (_            , Vari(x)      ) when argsb = [] ->
             build_sub ((x,a)::acc) cs
         | (a            , b            ) ->
-            wrn "Not implemented [%a] [%a]...\n%!" pp_term a pp_term b;
+            wrn "Not implemented [%a] [%a]...\n%!" pp a pp b;
             build_sub acc cs
   in
   let sub = build_sub [] cs in
@@ -909,7 +906,7 @@ let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
   with
     Exit ->
       let t = Bindlib.unbox (to_tbox true vars sign t) in
-      fatal "%a is not a valid pattern...\n" pp_term t
+      fatal "%a is not a valid pattern...\n" pp t
 
 (* Interpret a whole file *)
 let handle_file : Sign.t -> string -> unit = fun sign fname ->
@@ -923,7 +920,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
           fatal "%s is neither of type Type nor Kind.\n" x
         in
         let kind = if d then "defi" else "symb" in
-        out "(%s) %s : %a (of sort %s)\n" kind x pp_term a sort;
+        out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
         if d then Sign.new_definable sign x a else Sign.new_static sign x a
     | Rule(xs,t,u) ->
         (* Scoping the LHS and RHS. *)
@@ -946,12 +943,12 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         (* Infer the type of the LHS and the constraints. *)
         let (tt, tt_constrs) =
           try infer_with_constrs sign ctx t with Not_found ->
-            fatal "Unable to infer the type of [%a]\n" pp_term t
+            fatal "Unable to infer the type of [%a]\n" pp t
         in
         (* Infer the type of the RHS and the constraints. *)
         let (tu, tu_constrs) =
           try infer_with_constrs sign ctx u with Not_found ->
-            fatal "Unable to infer the type of [%a]\n" pp_term u
+            fatal "Unable to infer the type of [%a]\n" pp u
         in
         (* Checking the implication of constraints. *)
         let check_constraint (a,b) =
@@ -962,38 +959,33 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         (* Checking if the rule is well-typed. *)
         if eq_modulo_constrs tt_constrs tt tu then
           begin
-            out "(rule) %a → %a\n" pp_term t pp_term u;
+            out "(rule) %a → %a\n" pp t pp u;
             s.def_rules := !(s.def_rules) @ [rule]
           end
         else
           begin
-            err "Infered type for LHS: %a\n" pp_term tt;
-            err "Infered type for RHS: %a\n" pp_term tu;
-            fatal "[%a → %a] is ill-typed\n" pp_term t pp_term u
+            err "Infered type for LHS: %a\n" pp tt;
+            err "Infered type for RHS: %a\n" pp tu;
+            fatal "[%a → %a] is ill-typed\n" pp t pp u
           end
     | Check(t,a)   ->
         let t = to_term sign t in
         let a = to_term sign a in
-        if has_type sign Ctxt.empty t a then
-          out "(chck) %a : %a\n" pp_term t pp_term a
-        else
-          fatal "%a does not have type %a...\n" pp_term t pp_term a
+        if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
+        else fatal "%a does not have type %a...\n" pp t pp a
     | Infer(t)     ->
         let t = to_term sign t in
         begin
-          try
-            let a = infer sign Ctxt.empty t in
-            out "(infr) %a : %a\n" pp_term t pp_term a
-          with Not_found -> err "%a : unable to infer\n%!" pp_term t
+          try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
+          with Not_found -> err "%a : unable to infer\n%!" pp t
         end
     | Eval(t)      ->
-        let t = to_term sign t in
-        out "(eval) %a\n" pp_term (eval t)
+        out "(eval) %a\n" pp (eval (to_term sign t))
     | Conv(t,u)    ->
         let t = to_term sign t in
         let u = to_term sign u in
         if eq_modulo t u then out "(conv) OK\n"
-        else err "cannot convert %a and %a...\n" pp_term t pp_term u
+        else err "cannot convert %a and %a...\n" pp t pp u
   in
   List.iter handle_item (parse_file fname)
 
