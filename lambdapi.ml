@@ -613,9 +613,9 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
     eval a
   in
   if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp_term t;
-  let a = infer ctx t in
-  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term a;
-  a
+  let res = infer ctx t in
+  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp_term t pp_term res;
+  res
 
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
