@@ -769,7 +769,7 @@ let expr = expr `Func
 
 type p_item =
   | NewSym of bool * string * p_term
-  | Rule   of string list * p_term * p_term
+  | Rules  of (string list * p_term * p_term) list
   | Check  of p_term * p_term
   | Infer  of p_term
   | Eval   of p_term
@@ -779,13 +779,15 @@ let parser def =
   | "def" -> true
   | EMPTY -> false
 
+let parser rule = "[" xs:ident* "]" t:expr "→" u:expr
+
 let parser toplevel =
-  | d:def x:ident ":" a:expr            -> NewSym(d,x,a)
-  | "[" xs:ident* "]" t:expr "→" u:expr -> Rule(xs,t,u)
-  | "#CHECK" t:expr "," a:expr          -> Check(t,a)
-  | "#INFER" t:expr                     -> Infer(t)
-  | "#EVAL" t:expr                      -> Eval(t)
-  | "#CONV" t:expr "," u:expr           -> Conv(t,u)
+  | d:def x:ident ":" a:expr   -> NewSym(d,x,a)
+  | rs:rule+                   -> Rules(rs)
+  | "#CHECK" t:expr "," a:expr -> Check(t,a)
+  | "#INFER" t:expr            -> Infer(t)
+  | "#EVAL" t:expr             -> Eval(t)
+  | "#CONV" t:expr "," u:expr  -> Conv(t,u)
 
 let parser full = {l:toplevel "."}*
 
@@ -922,66 +924,71 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let kind = if d then "defi" else "symb" in
         out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
         if d then Sign.new_definable sign x a else Sign.new_static sign x a
-    | Rule(xs,t,u) ->
-        (* Scoping the LHS and RHS. *)
-        let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-        let (s, l, wcs) = to_tbox_wc ~vars sign t in
-        let arity = List.length l in
-        let l = Bindlib.box_list l in
-        let u = to_tbox false vars sign u in
-        (* Building the definition. *)
-        let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-        let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
-        let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
-        (* Constructing the typing context and the terms. *)
-        let xs = Array.to_list xs in
-        let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-        let u = Bindlib.unbox u in
-        (* Check that the LHS is a pattern and build the rule. *)
-        let rule = { lhs ; rhs ; arity } in
-        let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
-        (* Infer the type of the LHS and the constraints. *)
-        let (tt, tt_constrs) =
-          try infer_with_constrs sign ctx t with Not_found ->
-            fatal "Unable to infer the type of [%a]\n" pp t
+    | Rules(rs)     ->
+        let check_rule (xs,t,u) =
+          (* Scoping the LHS and RHS. *)
+          let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
+          let (s, l, wcs) = to_tbox_wc ~vars sign t in
+          let arity = List.length l in
+          let l = Bindlib.box_list l in
+          let u = to_tbox false vars sign u in
+          (* Building the definition. *)
+          let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
+          let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
+          let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
+          (* Constructing the typing context and the terms. *)
+          let xs = Array.to_list xs in
+          let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
+          let u = Bindlib.unbox u in
+          (* Check that the LHS is a pattern and build the rule. *)
+          let rule = { lhs ; rhs ; arity } in
+          let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
+          (* Infer the type of the LHS and the constraints. *)
+          let (tt, tt_constrs) =
+            try infer_with_constrs sign ctx t with Not_found ->
+              fatal "Unable to infer the type of [%a]\n" pp t
+          in
+          (* Infer the type of the RHS and the constraints. *)
+          let (tu, tu_constrs) =
+            try infer_with_constrs sign ctx u with Not_found ->
+              fatal "Unable to infer the type of [%a]\n" pp u
+          in
+          (* Checking the implication of constraints. *)
+          let check_constraint (a,b) =
+            if not (eq_modulo_constrs tt_constrs a b) then
+              fatal "A constraint is not satisfied...\n"
+          in
+          List.iter check_constraint tu_constrs;
+          (* Checking if the rule is well-typed. *)
+          if not (eq_modulo_constrs tt_constrs tt tu) then
+            begin
+              err "Infered type for LHS: %a\n" pp tt;
+              err "Infered type for RHS: %a\n" pp tu;
+              fatal "[%a → %a] is ill-typed\n" pp t pp u
+            end;
+          (s,t,u,rule)
         in
-        (* Infer the type of the RHS and the constraints. *)
-        let (tu, tu_constrs) =
-          try infer_with_constrs sign ctx u with Not_found ->
-            fatal "Unable to infer the type of [%a]\n" pp u
+        (* Adding all the rules. *)
+        let add_rule (s,t,u,rule) =
+          out "  - %a → %a\n" pp t pp u;
+          s.def_rules := !(s.def_rules) @ [rule]
         in
-        (* Checking the implication of constraints. *)
-        let check_constraint (a,b) =
-          if not (eq_modulo_constrs tt_constrs a b) then
-            fatal "A constraint is not satisfied...\n"
-        in
-        List.iter check_constraint tu_constrs;
-        (* Checking if the rule is well-typed. *)
-        if eq_modulo_constrs tt_constrs tt tu then
-          begin
-            out "(rule) %a → %a\n" pp t pp u;
-            s.def_rules := !(s.def_rules) @ [rule]
-          end
-        else
-          begin
-            err "Infered type for LHS: %a\n" pp tt;
-            err "Infered type for RHS: %a\n" pp tu;
-            fatal "[%a → %a] is ill-typed\n" pp t pp u
-          end
-    | Check(t,a)   ->
+        out "(rule) Adding the rules:\n";
+        List.iter add_rule (List.map check_rule rs)
+    | Check(t,a)    ->
         let t = to_term sign t in
         let a = to_term sign a in
         if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
         else fatal "%a does not have type %a...\n" pp t pp a
-    | Infer(t)     ->
+    | Infer(t)      ->
         let t = to_term sign t in
         begin
           try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
           with Not_found -> err "%a : unable to infer\n%!" pp t
         end
-    | Eval(t)      ->
+    | Eval(t)       ->
         out "(eval) %a\n" pp (eval (to_term sign t))
-    | Conv(t,u)    ->
+    | Conv(t,u)     ->
         let t = to_term sign t in
         let u = to_term sign u in
         if eq_modulo t u then out "(conv) OK\n"

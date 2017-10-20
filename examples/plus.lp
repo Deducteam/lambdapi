@@ -3,8 +3,8 @@ Z   : nat.
 S   : nat ⇒ nat.
 
 def plus : nat ⇒ nat ⇒ nat.
-[m]   plus Z (S m) → S m.
-[n]   plus n Z → n.
+[m]   plus Z (S m) → S m
+[n]   plus n Z → n
 [n m] plus (S n) (S m) → S (S m).
 
 e : nat ⇒ Type.
