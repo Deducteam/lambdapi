@@ -8,6 +8,10 @@ let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
 let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
 let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 
+(* [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true], and
+   in red otherwise. *)
+let r_or_g cond = if cond then gre else red
+
 (* [wrn fmt] prints a yellow warning message with [Printf] format [fmt].  Note
    that the output buffer is flushed by the function. *)
 let wrn : ('a, out_channel, unit) format -> 'a =
@@ -448,10 +452,7 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
   in
   let res = eq a b in
   if !debug then
-    begin
-      let c = if res then gre else red in
-      log "equa" (c "%a =!= %a") print_term a print_term b;
-    end;
+    log "equa" (r_or_g res "%a =!= %a") print_term a print_term b;
   res
 
 (**** Evaluatin function (with rewriting) ***********************************)
@@ -511,7 +512,7 @@ let rec eval_stk : term -> term list -> term = fun t stk ->
   (* In head normal form. *)
   | (t              , stk    ) -> add_args t stk
 
-(* [eval t]: returns a weak head normal form of [t].  Note that some arguments
+(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
    are evaluated if they might be used to allow the application of a rewriting
    rule. As their evaluation is kept, so this function does more normalisation
    that the usual weak head normalisation. *)
@@ -520,51 +521,34 @@ let eval : term -> term = fun t ->
   let u = eval_stk t [] in
   if !debug_eval then log "eval" "produced %a" print_term u; u
 
-(**** TODO cleaning and comments from here on *******************************)
+(**** Equality modulo conversion ********************************************)
 
-(* Equality *)
+(* [eq_module t u] computes the equality of [t] and [u], modulo the conversion
+   rule (i.e., the reduction rules for the definable symbols). Unification can
+   be triggered by this function as it calls [eq]. *)
 let eq_modulo : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a == %a" print_term a print_term b;
-  let rec get_head acc t =
-    match unfold t with
-    | Appl(_,t,u) -> get_head (u::acc) t
-    | t           -> (t, acc)
-  in
-  let rec eq_mod a b = eq a b ||
+  let rec eq_mod a b =
     let a = eval a in
     let b = eval b in
     eq a b ||
-    let (ha, argsa) = get_head [] a in
-    let (hb, argsb) = get_head [] b in
-    let rigid = ref true in
-    begin
-      match (ha, hb) with
-      | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
-      | (Type         , Type         ) -> true
-      | (Kind         , Kind         ) -> true
-      | (Symb(Sym(sa)), Symb(Sym(sb))) -> rigid := false; sa == sb
-      | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
-      | (Prod(a,f)    , Prod(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
-      | (Abst(a,f)    , Abst(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
-      | (Appl(_)      , _            ) -> assert false
-      | (_            , Appl(_)      ) -> assert false
-      | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
-      | (Unif(r)      , b            ) -> unify r b
-      | (a            , Unif(r)      ) -> unify r a
-      | (PVar(_)      , _            ) -> assert false
-      | (_            , PVar(_)      ) -> assert false
-      | (_            , _            ) -> false
-    end &&
-    try List.for_all2 (if !rigid then eq ~rewrite:false else eq_mod) argsa argsb
-    with Invalid_argument(_) -> false
+    match (a, b) with
+    | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
+    | (Type         , Type         ) -> true
+    | (Kind         , Kind         ) -> true
+    | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
+    | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
+    | (Prod(a,f)    , Prod(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
+    | (Abst(a,f)    , Abst(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
+    | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq_mod t f && eq_mod u g
+    | (_            , _            ) -> false
   in
-  let res = eq_mod a b in
+  let res = eq a b || eq_mod a b in
   if !debug then
-    begin
-      let c = if res then gre else red in
-      log "equa" (c "%a == %a") print_term a print_term b;
-    end;
+    log "equa" (r_or_g res "%a == %a") print_term a print_term b;
   res
+
+(**** TODO cleaning and comments from here on *******************************)
 
 type constrs = (term * term) list
 
@@ -682,7 +666,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     log "type" "%a ⊢ %a : %a" print_ctxt ctx print_term t print_term a;
   let res = has_type ctx t a in
   if !debug then
-    log "type" ((if res then gre else red) "%a ⊢ %a : %a")
+    log "type" (r_or_g res "%a ⊢ %a : %a")
       print_ctxt ctx print_term t print_term a;
   res
 
