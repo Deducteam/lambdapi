@@ -726,11 +726,17 @@ type p_term =
   | P_Appl of p_term * p_term
   | P_Wild
 
-let check_not_reserved id =
-  if List.mem id ["Type"] then Earley.give_up ()
+let lambdas : (string * p_term) list -> p_term -> p_term =
+  List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t))
 
-let parser ident = id:''[a-zA-Z0-9][_a-zA-Z0-9]*'' ->
+let check_not_reserved id =
+  if List.mem id ["Type"; "_"] then Earley.give_up ()
+
+let parser ident = id:''[_a-zA-Z0-9]+'' ->
   check_not_reserved id; id
+
+let parser wildcard =
+  s:''[_][_a-zA-Z0-9]*'' -> if s <> "_" then Earley.give_up ()
 
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
@@ -746,7 +752,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Func
       -> P_Prod(x,a,b)
   (* Wildcard *)
-  | "_"
+  | wildcard
       when p = `Atom
       -> P_Wild
   (* Abstraction *)
@@ -791,9 +797,16 @@ let parser context =
 
 let parser rule = "[" xs:context "]" t:expr "-->" u:expr
 
+let parser def_arg = "(" ident ":" expr ")"
+
+let parser def_def =
+  | xs:{"(" ident ":" expr ")"}* ":=" t:expr -> lambdas xs t
+
 let parser toplevel =
-  | d:def x:ident ":" a:expr                -> NewSym(d,x,a)
-  | "def" x:ident a:{":" expr}? ":=" t:expr -> Defin(x,a,t)
+  | x:ident ":" a:expr                      -> NewSym(false,x,a)
+  | "def" x:ident ":" a:expr                -> NewSym(true ,x,a)
+  | "def" x:ident ":" a:expr ":=" t:expr    -> Defin(x,Some(a),t)
+  | "def" x:ident t:def_def                 -> Defin(x,None   ,t)
   | rs:rule+                                -> Rules(rs)
   | "#CHECK" t:expr "," a:expr              -> Check(t,a)
   | "#INFER" t:expr                         -> Infer(t)
@@ -801,6 +814,7 @@ let parser toplevel =
   | "#CONV" t:expr "," u:expr               -> Conv(t,u)
   | "#NAME" id:ident                        -> Name(id)
   | "#STEP" t:expr                          -> Step(t)
+  | "#SNF"  t:expr                          -> Eval(t)
 
 let parser full = {l:toplevel "."}*
 
