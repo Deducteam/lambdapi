@@ -2,4 +2,4 @@
 
 A:Type.
 F:(A->A)->A.
-f := F (x=>x).
+def f := F (x=>x).
