@@ -12,7 +12,8 @@ imp:Prop->Prop->Prop.
 [A:Prop,B:Prop] prf (imp A B) --> prf A -> prf B.
 
 False:Prop.
-def not := A:Prop => imp A False.
+def not (A:Prop) := imp A False.
+
 
 in : Set -> Set -> Prop.
 empty : Set.
