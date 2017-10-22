@@ -1054,7 +1054,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let t = to_term sign t in
         begin
           try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
-          with Not_found -> err "%a : unable to infer\n%!" pp t
+          with Not_found -> fatal "%a : unable to infer\n%!" pp t
         end
     | Eval(t)       ->
         out "(eval) %a\n" pp (eval (to_term sign t))
@@ -1062,7 +1062,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
         let t = to_term sign t in
         let u = to_term sign u in
         if eq_modulo t u then out "(conv) OK\n"
-        else err "cannot convert %a and %a...\n" pp t pp u
+        else fatal "cannot convert %a and %a...\n" pp t pp u
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
