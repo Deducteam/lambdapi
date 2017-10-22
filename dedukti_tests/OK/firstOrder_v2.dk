@@ -1,0 +1,75 @@
+#NAME Prop.
+
+Prop: Type.
+def prf : Prop -> Type.
+Term: Type.
+
+(; *** Declarations ;)
+
+true : Prop.
+false : Prop.
+imp : Prop -> Prop -> Prop.
+forall: (Term -> Prop) -> Prop.
+
+(; *** Definitions ;)
+
+def not : Prop -> Prop := A:Prop => imp A false.
+def or  : Prop -> Prop -> Prop := A:Prop => B:Prop => imp (not A) B.
+def and : Prop -> Prop -> Prop := A:Prop => B:Prop => not (imp A (not B)).
+def exists: (Term -> Prop) -> Prop := P:(Term -> Prop) => not (forall (t:Term => not (P t))).
+
+(; *** Axioms ;)
+
+true_intro : prf true.
+false_elim : A:Prop -> prf false -> prf A.
+[A,B] prf (imp A B) --> prf A -> prf B.
+[P]  prf (forall P) --> t:Term -> prf (P t).
+
+lem: A:Prop -> B:Prop -> prf (imp A B) -> prf (imp (not A) B) -> prf B.
+
+(; *** Theorems ;)
+
+(; implication ;)
+def imp_elim  : A:Prop -> B:Prop -> prf (imp A B) -> prf A -> prf B
+:= A:Prop => B:Prop => p:prf (imp A B) => p.
+
+def imp_intro : A:Prop -> B:Prop -> (prf A -> prf B) -> prf (imp A B)
+:= A:Prop => B:Prop => p:(prf A -> prf B) => p.
+
+(; disjunction ;)
+def or_intro_1 : A:Prop -> B:Prop -> prf A -> prf (or A B)
+:= A:Prop => B:Prop => p:prf A => q:prf (not A) => false_elim B (q p).
+
+def or_intro_2 : A:Prop -> B:Prop -> prf B -> prf (or A B)
+:= A:Prop => B:Prop => p:prf B => q:prf (not A) => p.
+
+def or_elim : A:Prop -> B:Prop -> C:Prop -> prf (imp A C) -> prf (imp B C) -> prf (or A B) -> prf C
+:= A:Prop => B:Prop => C:Prop => p1:prf (imp A C) => p2:prf (imp B C) => q:prf (or A B) =>
+	lem A C p1 (x:prf (not A) =>  p2 (q x)).
+
+(; conjunction ;)
+def and_intro  : A:Prop -> B:Prop -> prf A -> prf B -> prf (and A B)
+:= A:Prop => B:Prop => a:prf A => b:prf B => p:prf (imp A (not B)) => p a b.
+
+def and_elim_1 : A:Prop -> B:Prop -> prf (and A B) -> prf A
+:= A:Prop => B:Prop => p:prf (and A B) =>
+	lem A A (q:prf A => q) (q:prf (not A) => false_elim A (p (x:prf A => false_elim (not B) (q x)))).
+
+def and_elim_2 : A:Prop -> B:Prop -> prf (and A B) -> prf B
+:= A:Prop => B:Prop => p:prf (and A B) =>
+	lem B B (q:prf B => q) (q:prf (not B) => false_elim B (p (x:prf A => q))).
+
+(; Universal quantificator ;)
+def forall_intro: P:(Term->Prop) -> (t:Term -> prf (P t)) -> prf (forall P)
+:= P:(Term->Prop) => p:(t:Term -> prf (P t)) => p.
+
+def forall_elim: P:(Term->Prop) -> t:Term -> p:prf (forall P) -> prf (P t)
+:= P:(Term->Prop) => t:Term => p:prf (forall P) => p t.
+
+(; Existential quantificator ;)
+def exists_intro: P:(Term->Prop) -> t:Term -> prf (P t) -> prf (exists P)
+:= P:(Term -> Prop) => t:Term => p:prf (P t) => q:prf (forall (u:Term => not (P u))) => q t p.
+
+e: (Term -> Prop) -> Term. (;Hilbert operator;)
+exists_elim: P:(Term->Prop) -> prf (exists P) -> prf (P (e P)).
+

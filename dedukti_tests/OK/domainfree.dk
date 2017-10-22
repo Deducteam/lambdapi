@@ -1,0 +1,5 @@
+#NAME df.
+
+A:Type.
+F:(A->A)->A.
+f := F (x=>x).

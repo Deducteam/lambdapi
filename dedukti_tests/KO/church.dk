@@ -1,0 +1,40 @@
+#NAME Church.
+
+type : Type.
+arr : type -> type -> type.
+def e : type -> Type.
+[a : type, b : type] e (arr a b) --> e a -> e b.
+
+def numeral : Type := A : type -> (e A -> e A) -> (e A -> e A).
+
+def zero : numeral := A : type => f : (e A -> e A) => x : e A => x.
+def one : numeral := A : type => f : (e A -> e A) => x : e A => f x.
+def two : numeral := A : type => f : (e A -> e A) => x : e A => f (f x).
+def three : numeral := A : type => f : (e A -> e A) => x : e A => f (f (f x)).
+def four : numeral := A : type => f : (e A -> e A) => x : e A => f (f (f (f x))).
+
+def plus : numeral -> numeral -> numeral :=
+m : numeral => n : numeral => A : type => f : (e A -> e A) => x : e A => m A f (n A f x).
+
+def times : numeral -> numeral -> numeral :=
+m : numeral => n : numeral => A : type => f : (e A -> e A) => x : e A => m A (n A f) x.
+
+def power : numeral -> numeral -> numeral :=
+m : numeral => n : numeral => A : type => n (arr A A) (m A).
+
+def test : numeral := power two (plus one (times three four)).
+def test_ : numeral := power two (plus (times four four) one).
+
+P : numeral -> Type.
+P2: n:numeral -> P n -> Type.
+
+y : P test_.
+z: P2 test y.
+
+#NORMALIZE zero.
+#NORMALIZE one.
+#NORMALIZE two.
+#NORMALIZE three.
+#NORMALIZE four.
+
+#NORMALIZE plus one (times three four).

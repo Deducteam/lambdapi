@@ -1,0 +1,5 @@
+#NAME subst.
+
+A : Type.
+x : A.
+t : (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => (x : A => A) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x) x.

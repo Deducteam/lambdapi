@@ -1,0 +1,14 @@
+#NAME bug.
+
+A : Type.
+
+def F : (A -> A) -> A -> A.
+
+a : A.
+[f] F (x => f x) _ --> a.
+
+g : A -> A.
+def test (b : A) := F (x => g x) b.
+
+#SNF test.
+#CONV test, b : A => a. (; Answer must be YES ;)

@@ -1,0 +1,46 @@
+#NAME zen.
+
+A : Type.
+
+def e0 : A -> A.
+
+i1 : (A -> A) -> A.
+def e1 : A -> A -> A.
+
+i2 : (A -> A) -> A.
+def e2 : A -> A -> A.
+
+def e3 : A -> A.
+
+[a] e0 (e1 _ a) --> a.
+[a,b] e1 (i1 a) b --> a b.
+[a,b] e2 (e0 a) b --> e0 a
+[a,b] e2 (i2 a) b --> a b.
+[b] e3 (i1 (a => e1 a b)) --> b.
+
+b : A.
+
+def f (x : A -> A -> A) := i2 (a => e3 (i1 (x a))).
+
+def pr1 (a : A) (c : A) :=
+  e1
+    (i1
+      (g =>
+       e1
+         g
+         (i2
+           (__ =>
+            e0
+              (e1
+                (i1
+                  (d =>
+                   e1 g
+                     (i2 (__ => d)))) b)))))
+    (i1
+      (e => e1 c (e2 e a))).
+
+(; pr2 is the normal form of pr1. ;)
+def pr2 (__ : A) (c : A) := e1 c b.
+
+#CONV pr1, pr2.                 (; Answer must be YES ;)
+#CONV f pr1, f pr2.             (; Answer must be YES ;)

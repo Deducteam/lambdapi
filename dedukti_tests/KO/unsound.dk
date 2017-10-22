@@ -1,0 +1,20 @@
+#NAME Unsound.
+
+X:Type.
+Nat:Type.
+Bool:Type.
+false:Bool.
+
+A:Type.
+[] A --> Bool.
+[] A --> Nat.
+
+
+g:X->Nat.
+f:Nat->X.
+
+l1 := x:Nat => g (f x). 
+l2 := y:A => l1 y. 
+ap := l2 false.
+
+

@@ -1,0 +1,9 @@
+#NAME abs.
+A:Type.
+y:A.
+P:A->Type.
+p:P y.
+id: x:A -> P x -> P x.
+def T: P y.
+(; [ ] T --> (z => id z p) y. ;)
+[ ] T --> (z:A => id z p) y.
