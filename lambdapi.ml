@@ -34,10 +34,11 @@ let debug      = ref false
 let debug_eval = ref false
 let debug_infr = ref false
 let debug_patt = ref false
+let debug_type = ref false
 
 (* [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_infr || !debug_patt
+  !debug || !debug_eval || !debug_infr || !debug_patt || !debug_type
 
 (* [set_debug str] enables debugging flags according to [str]. *)
 let set_debug : string -> unit =
@@ -47,6 +48,7 @@ let set_debug : string -> unit =
     | 'e' -> debug_eval := true
     | 'i' -> debug_infr := true
     | 'p' -> debug_patt := true
+    | 't' -> debug_type := true
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable
@@ -618,7 +620,10 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
 
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
-    match (unfold t, eval a) with
+    let t = unfold t in
+    let a = eval a in
+    if !debug_type then log "TYPE" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
+    match (t, a) with
     (* Sort *)
     | (Type     , Kind     ) -> true
     (* Variable *)
@@ -641,8 +646,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
         has_type ctx a Type && has_type ctx_x bx Kind
     (* Abstraction and Abstraction 2 *)
     | (Abst(a,t), Prod(c,b)) ->
-        let (x,bx) = Bindlib.unbind mkfree b in
-        let tx = Bindlib.subst t (mkfree x) in
+        let (x,tx) = Bindlib.unbind mkfree t in
+        let bx = Bindlib.subst b (mkfree x) in
         let ctx_x = Ctxt.add x a ctx in
         eq_modulo a c && has_type ctx a Type
         && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
@@ -654,7 +659,11 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
           | Prod(a,ba) as tt ->
               eq_modulo (Bindlib.subst ba u) b
               && has_type ctx t tt && has_type ctx u a
-          | _          -> false
+          | Unif(r)    as tt ->
+              let a = Bindlib.box (Unif(ref None)) in
+              r := Some (Bindlib.unbox (_Prod a "_" (fun _ -> lift b)));
+              has_type ctx t tt && has_type ctx u (Bindlib.unbox a)
+          | _                -> false
         end
     (* No rule apply. *)
     | (_        , _        ) -> false
@@ -1118,7 +1127,8 @@ let _ =
     [ "a : general debug informations"
     ; "e : extra debugging informations for equality"
     ; "i : extra debugging informations for inference"
-    ; "p : extra debugging informations for patterns" ]
+    ; "p : extra debugging informations for patterns"
+    ; "t : extra debugging informations for typing" ]
   in
   let flags = List.map (fun s -> String.make 18 ' ' ^ s) flags in
   let flags = String.concat "\n" flags in
