@@ -1,0 +1,11 @@
+
+Term : Type.
+
+def App : Term -> Term -> Term.
+def Abs : (Term -> Term) -> Term.
+
+[a,b] App (Abs a) b --> a b.
+[b] Abs (a:Term => App b a) --> b.
+
+#CONV Abs (a:Term => Abs (b:Term => App a b)), Abs (a:Term => a).
+#CONV Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b))), Abs (a:Term => a).
