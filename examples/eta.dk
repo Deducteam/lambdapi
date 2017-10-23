@@ -5,28 +5,30 @@ def App : Term -> Term -> Term.
 def Abs : (Term -> Term) -> Term.
 
 [a,b] App (Abs a) b --> a b.
-[b] Abs (a:Term => App b a) --> b.
+[b] Abs (a => App b a) --> b.
 
-def App2 : Term -> Term -> Term-> Term := x:Term => y:Term => z:Term => App (App x y) z.
+def App2 : Term -> Term -> Term-> Term := x => y => z => App (App x y) z.
 
-def 0 : Term := Abs (f:Term => Abs (x:Term => x)).
-def S : Term := Abs (n:Term => Abs (f:Term => Abs (x:Term => App f (App2 n f x)))).
+def 0 : Term := Abs (f => Abs (x => x)).
+def S : Term := Abs (n => Abs (f => Abs (x => App f (App2 n f x)))).
 
+(;
 def 1 := App S 0.
 def 2 := App S 1.
 def 3 := App S 2.
 def 4 := App S 3.
 def 5 := App S 4.
 
-def plus  : Term := Abs (m:Term => Abs (n:Term => Abs (f:Term => Abs (x:Term =>
+def plus  : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
   App2 m f (App2 n f x))))).
-def times : Term := Abs (m:Term => Abs (n:Term => Abs (f:Term => Abs (x:Term =>
+def times : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
   App2 m (App n f) x)))).
-def power : Term := Abs (m:Term => Abs (n:Term => App n m)).
+def power : Term := Abs (m => Abs (n => App n m)).
 
 #CONV App2 plus 2 3, App2 plus 3 2.
 #CONV App2 times 2 3, App2 times 3 2.
 #CONV App2 power (App2 times 3 4), App2 power (App2 times 4 3).
 
-#CONV Abs (a:Term => Abs (b:Term => App a b)), Abs (a:Term => a).
-#CONV Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b))), Abs (a:Term => a).
+#CONV Abs (a => Abs (b => App a b)), Abs (a => a).
+#CONV Abs (a => Abs (b => App a (App (Abs (a => a)) b))), Abs (a => a).
+;)

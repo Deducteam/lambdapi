@@ -1029,6 +1029,8 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
           fatal "%s is neither of type Type nor Kind.\n" x
         in
         out "(defi) %s : %a (of sort %s)\n" x pp a sort;
+        if not (has_type sign Ctxt.empty t a) then
+          fatal "Cannot type the definition of %s...\n" x;
         let s = Sign.new_definable sign x a in
         out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
         let rule =
