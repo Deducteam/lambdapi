@@ -12,7 +12,6 @@ def App2 : Term -> Term -> Term-> Term := x => y => z => App (App x y) z.
 def 0 : Term := Abs (f => Abs (x => x)).
 def S : Term := Abs (n => Abs (f => Abs (x => App f (App2 n f x)))).
 
-(;
 def 1 := App S 0.
 def 2 := App S 1.
 def 3 := App S 2.
@@ -29,6 +28,6 @@ def power : Term := Abs (m => Abs (n => App n m)).
 #CONV App2 times 2 3, App2 times 3 2.
 #CONV App2 power (App2 times 3 4), App2 power (App2 times 4 3).
 
-#CONV Abs (a => Abs (b => App a b)), Abs (a => a).
-#CONV Abs (a => Abs (b => App a (App (Abs (a => a)) b))), Abs (a => a).
-;)
+#CONV Abs (a:Term => Abs (b:Term => App a b)), Abs (a:Term => a).
+#CONV Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b))),
+      Abs (a:Term => a).
