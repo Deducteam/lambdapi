@@ -2,6 +2,7 @@ QUIET = --quiet
 TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
+SHELL = /bin/bash
 
 all: lambdapi unit_tests tests
 
