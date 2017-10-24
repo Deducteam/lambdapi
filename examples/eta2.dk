@@ -11,7 +11,7 @@ def Ab2 : b:(type -> type) -> (a:type -> typed (b a)) -> typed (all b).
 def Ap2 : b:(type -> type) -> typed (all b) -> a:type -> typed (b a).
 
 [A,B,a,b] App A B (Abs A B a) b --> a b.
-[A,B,b] Abs A B (a:A => App A B b a) --> b.
+[A,B,b] Abs A B (a:typed A => App A B b a) --> b.
 [A,a,b] Ap2 A (Ab2 A b) a --> b a.
 [A,b] Ab2 A (a:type => Ap2 A b a) --> b.
 
