@@ -39,7 +39,7 @@ def 8 := App N N S 7.
 
 def 1b := Ab2 (a:type => arr (arr a a) (arr a a)) (a0:type => Abs (arr a0 a0) (arr a0 a0) (f:typed (arr a0 a0) => f)).
 
-#EVAL 1.
+(;#EVAL 1.;)
 #CONV 1, 1b.
 
 (;
