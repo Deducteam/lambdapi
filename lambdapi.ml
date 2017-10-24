@@ -258,7 +258,7 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> true
+  | PVar(_)     -> true (* PVar not allowed in Unif *)
 
 (* NOTE: pattern variable prevent unification to guarantee that they cannot be
    absorbed by unification varialbes (and do not escape rewriting code). *)
@@ -447,10 +447,8 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
     | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (Unif(_)      , _            )
-    | (_            , Unif(_)      ) when rewrite -> assert false
     | (_            , PVar(_)      ) -> assert false
-    | (PVar(r)      , b            ) -> r := Some b; true
+    | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
     | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
     | (Unif(r)      , b            ) -> unify r b
     | (a            , Unif(r)      ) -> unify r a
