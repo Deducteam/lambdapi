@@ -35,7 +35,6 @@ unit_tests: lambdapi
 		  && echo -e "\033[0;31mKO\033[0m" || echo -e "\033[0;32mOK\033[0m" ; \
 	done
 
-
 clean:
 	@rm -f *.cmi *.cmo *.cmx *.o
 
@@ -43,3 +42,19 @@ distclean: clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
 	@rm -f lambdapi
+
+# Install for the vim mode (in the user's directory).
+.PHONY: install_vim
+VIMDIR = $(HOME)/.vim
+install_vim: editors/vim/ftdetect/dedukti.vim editors/vim/syntax/dedukti.vim
+ifeq ($(wildcard $(VIMDIR)/.),)
+	@echo -e "\e[36mWill not install vim mode.\e[39m"
+else
+	install -d $(VIMDIR)/syntax
+	install -d $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/syntax/dedukti.vim $(VIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/dedukti.vim $(VIMDIR)/ftdetect
+	@echo -e "\e[36mVim mode installed.\e[39m"
+endif
+
+
