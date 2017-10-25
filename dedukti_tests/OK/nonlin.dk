@@ -1,0 +1,19 @@
+#NAME nonlin.
+
+Nat : Type.
+
+(; Constructeurs ;)
+
+0 : Nat.
+S : Nat -> Nat.
+
+def plus : Nat -> Nat -> Nat.
+[n] plus 0 n --> n
+[m, n] plus (S m) n --> S (plus m n)
+[n] plus n 0--> n
+[m, n] plus m (S n) --> S (plus m n).
+
+def eq : (Nat -> Nat) -> (Nat -> Nat) -> Nat.
+[f] eq f f --> 0.
+
+#CONV eq (n:Nat => plus (S n) n) (n:Nat => plus n (S n)), 0.
