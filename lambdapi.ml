@@ -929,6 +929,23 @@ let blank buf pos =
 let parse_file : string -> p_item list =
   Earley.(handle_exception (parse_file full blank))
 
+(**** Earley compilation / module support ***********************************)
+
+(* [!compile_ref modpath] compiles the module corresponding to the module path
+   [modpath], if necessary. This function is stored in a reference as we can't
+   define it yet (we could alternatively use mutual definitions). *)
+let compile_ref : (string list -> Sign.t) ref = ref (fun _ -> assert false)
+
+(* [loaded] is a hashtable associating module paths to signatures. A signature
+   will be mapped to a given module path only if it was already compiled. *)
+let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
+
+(* [load_signature modpath] returns the signature corresponding to the  module
+   path [modpath].  Note that compilation may be required if this is the first
+   time that the corresponding module is required. *)
+let load_signature : string list -> Sign.t = fun fs ->
+  try Hashtbl.find loaded fs with Not_found -> !compile_ref fs
+
 (**** Scoping ***************************************************************)
 
 (* TODO cleaning and comments from here... *)
@@ -941,16 +958,6 @@ let new_wildcard : unit -> tbox = fun () ->
   wildcards := x :: !wildcards; Bindlib.box_of_var x
 
 type env = (string * tvar) list
-
-let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
-
-let compile_ref : (bool -> string -> Sign.t) ref =
-  ref (fun _ _ -> assert false)
-
-let load_signature : string list -> Sign.t = fun fs ->
-  try Hashtbl.find loaded fs with Not_found ->
-  let file = (String.concat "/" fs) ^ ".dk" in
-  !compile_ref false file
 
 let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
   fun allow_wild vars sign t ->
@@ -1145,7 +1152,8 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
   in
   List.iter handle_item (parse_file fname)
 
-let compile : bool -> string -> Sign.t = fun force file ->
+let compile : bool -> string list -> Sign.t = fun force fs ->
+  let file = String.concat "/" fs ^ src_extension in
   if not (Sys.file_exists file) then fatal "File not found: %s\n" file;
   let obj = Filename.chop_extension file ^ obj_extension in
   let fs = module_path file in
@@ -1167,12 +1175,12 @@ let compile : bool -> string -> Sign.t = fun force file ->
     let sign = Sign.read obj in
     Hashtbl.add loaded fs sign; sign
 
-let _ = compile_ref := compile
+let _ = compile_ref := compile false
 
 let compile file =
   let fs = module_path file in
   current_module := fs;
-  ignore (compile true file)
+  ignore (compile true fs)
 
 (* TODO cleaning and comments until here... *)
 
