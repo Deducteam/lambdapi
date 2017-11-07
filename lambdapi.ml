@@ -260,7 +260,7 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Symb(_)     -> false
   | PVar(_)     -> true (* PVar not allowed in Unif *)
 
-(* NOTE: pattern variable prevent unification to guarantee that they cannot be
+(* NOTE: pattern variables prevent unification to ensure that they  cannot  be
    absorbed by unification varialbes (and do not escape rewriting code). *)
 
 (* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
@@ -325,16 +325,15 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox =
    variables, making them available for binding.  At the same time,  the names
    of the bound variables are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
+  let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   let t = unfold t in
   match t with
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b)
-                     (fun x -> lift (Bindlib.subst b (mkfree x)))
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t)
-                     (fun x -> lift (Bindlib.subst t (mkfree x)))
+  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(_)     -> Bindlib.box t (* Variable not instanciated. *)
   | PVar(_)     -> Bindlib.box t (* Variable not instanciated. *)
@@ -568,29 +567,30 @@ let eq_modulo : term -> term -> bool = fun a b ->
   let res = eq a b || eq_mod a b || add_constraint a b in
   if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res
 
-(**** Type inference ********************************************************)
+(**** Type inference and type-checking **************************************)
 
-(**** TODO cleaning and comments from here on *******************************)
-
-(* Judgements *)
+(* [infer sign ctx t] tries to infer a type for the term [t], in context [ctx]
+   and with the signature [sign].  The exception [Not_found] is raised when no
+   suitable type is found. *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
     if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
     let a =
       match unfold t with
-      | Vari(x)   -> Ctxt.find x ctx
-      | Type      -> Kind
-      | Symb(s)   -> symbol_type s
-      | Prod(a,b) ->
+      | Vari(x)     -> Ctxt.find x ctx
+      | Type        -> Kind
+      | Symb(s)     -> symbol_type s
+      | Prod(a,b)   ->
           let (x,bx) = Bindlib.unbind mkfree b in
           begin
             match infer (Ctxt.add x a ctx) bx with
             | Kind -> Kind
             | Type -> Type
-            | _    -> err "Expected Type / Kind for [%a]...\n" pp bx;
+            | a    -> err "Type or Kind expected for [%a], found [%a]...\n"
+                        pp bx pp a;
                       raise Not_found
           end
-      | Abst(a,t) ->
+      | Abst(a,t)   ->
           let (x,tx) = Bindlib.unbind mkfree t in
           let b = infer (Ctxt.add x a ctx) tx in
           Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
@@ -605,9 +605,9 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                 err "Product expected for [%a], found [%a]...\n" pp t pp a;
                 raise Not_found
           end
-      | Kind      -> assert false
-      | Unif(_)   -> assert false
-      | PVar(_)   -> assert false
+      | Kind        -> assert false
+      | Unif(_)     -> assert false
+      | PVar(_)     -> assert false
     in
     if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
@@ -616,6 +616,8 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let res = infer ctx t in
   if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res; res
 
+(* [has_type sign ctx t a] checks whether the term [t] has type [a] in context
+   [ctx] and with the signature [sign]. *)
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
     let t = unfold t in
@@ -651,7 +653,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
         && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
         && has_type ctx_x tx bx
     (* Application *)
-    | (Appl(_,t,u), b        ) ->
+    | (Appl(_,t,u), b      ) ->
         begin
           match infer sign ctx t with
           | Prod(a,ba) as tt ->
@@ -671,6 +673,12 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
   res
 
+(**** Handling of constraints for typing rewriting rules ********************)
+
+(* [infer_with_constrs sign ctx t] is similar to [infer sign ctx t], but it is
+   run in constraint mode (see [constraints]).  In case of success a couple of
+   a type and a set of constraints is returned. In case of failure [Not_found]
+   is raised. *)
 let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
   fun sign ctx t ->
     constraints := Some [];
@@ -689,7 +697,11 @@ let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
       end;
     (a, cnstrs)
 
-let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
+(* [subst_from_constrs cs] builds a //typing substitution// from the  list  of
+   constraints [cs].  The returned substitution is given by a couple of arrays
+   [(xs,ts)] of the same length. The array [ts] contains the terms that should
+   be substituted to the corresponding variables of [xs]. *)
+let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
   let rec build_sub acc cs =
     match cs with
     | []        -> acc
@@ -716,15 +728,19 @@ let sub_from_constrs : constrs -> tvar array * term array = fun cs ->
   let sub = build_sub [] cs in
   (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
 
+(* [eq_modulo_constrs cs t u] checks if [t] and [u] are equal modulo rewriting
+   given a list of constraints [cs] (assumed to be all satisfied). *)
 let eq_modulo_constrs : constrs -> term -> term -> bool =
   fun constrs a b -> eq_modulo a b ||
-    let (xs,sub) = sub_from_constrs constrs in
+    let (xs,sub) = subst_from_constrs constrs in
     let p = Bindlib.box_pair (lift a) (lift b) in
     let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
     let (a,b) = Bindlib.msubst p sub in
     eq_modulo a b
 
-(* Parser *)
+(**** Parser for terms (and types) ******************************************)
+
+(* Parser-level representation of terms (and patterns). *)
 type p_term =
   | P_Vari of string list * string
   | P_Type
@@ -733,43 +749,47 @@ type p_term =
   | P_Appl of p_term * p_term
   | P_Wild
 
-let lambdas : (string * p_term) list -> p_term -> p_term =
-  List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t))
+(* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
+   path) and for symbols.  The [P_Wild] corresponds to a wildard,  when a term
+   is considered as a pattern. *)
 
-let check_not_reserved id =
-  if List.mem id ["Type"; "_"] then Earley.give_up ()
-
+(* [ident] is an atomic parser for an identifier (for example, variable name).
+   It accepts (and returns as its semantic value) any non-empty strings formed
+   of letters, decimal digits, and the ['_'] character. Note that ["Type"] and
+   ["_"] are reserved identifiers, and they are thus rejected. *)
 let parser ident = id:''[_a-zA-Z0-9]+'' ->
-  check_not_reserved id; id
+  if List.mem id ["Type"; "_"] then Earley.give_up (); id
 
-let parser wildcard =
-  s:''[_][_a-zA-Z0-9]*'' -> if s <> "_" then Earley.give_up ()
+(* [_wild_] is an atomic parser for the special ["_"] identifier. Note that it
+   is only accepted if it is not followed by an identifier character. *)
+let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
+  if s <> "_" then Earley.give_up ()
 
+(* [_Type_] is an atomic parser for the special ["Type"] identifier. Note that
+   it is only accepted when it is not followed an identifier character. *)
+let parser _Type_ = s:''[T][y][p][e][_a-zA-Z0-9]*'' ->
+  if s <> "Type" then Earley.give_up ()
+
+(* [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | fs:{ident "::"}* x:ident
-      when p = `Atom
-      -> P_Vari(fs,x)
+      when p = `Atom -> P_Vari(fs,x)
   (* Type constant *)
-  | "Type"
-      when p = `Atom
-      -> P_Type
+  | _Type_
+      when p = `Atom -> P_Type
   (* Product *)
   | x:{ident ":"}?["_"] a:(expr `Appl) "->" b:(expr `Func)
-      when p = `Func
-      -> P_Prod(x,a,b)
+      when p = `Func -> P_Prod(x,a,b)
   (* Wildcard *)
-  | wildcard
-      when p = `Atom
-      -> P_Wild
+  | _wild_
+      when p = `Atom -> P_Wild
   (* Abstraction *)
   | x:ident a:{":" (expr `Func)}? "=>" t:(expr `Func)
-      when p = `Func
-      -> P_Abst(x,a,t)
+      when p = `Func -> P_Abst(x,a,t)
   (* Application *)
   | t:(expr `Appl) u:(expr `Atom)
-      when p = `Appl
-      -> P_Appl(t,u)
+      when p = `Appl -> P_Appl(t,u)
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom
@@ -779,12 +799,21 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Atom)
       when p = `Appl
 
+(* [expr] is the entry point of the parser for expressions, including terms as
+   well as types and patterns. *)
 let expr = expr `Func
 
+(**** Parser for toplevel items *********************************************)
+
+(* Representation of a toplevel item (symbol definition, command, ...). *)
 type p_item =
+  (* New symbol (static or definable). *)
   | NewSym of bool * string * p_term
-  | Defin  of string * p_term option * p_term
+  (* New rewriting rules. *)
   | Rules  of ((string * p_term option) list * p_term * p_term) list
+  (* New definable symbol with its definition. *)
+  | Defin  of string * p_term option * p_term
+  (* Commands. *)
   | Check  of p_term * p_term
   | Infer  of p_term
   | Eval   of p_term
@@ -792,23 +821,20 @@ type p_item =
   | Name   of string
   | Step   of p_term
 
-let parser def =
-  | "def" -> true
-  | EMPTY -> false
-
+(* [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
 
-let parser context =
-  | EMPTY                         -> []
-  | x:ty_ident xs:{"," ty_ident}* -> x::xs
+(* [context] is a parser for a rewriting rule context. *)
+let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 
+(* [rule] is a parser for a single rewriting rule. *)
 let parser rule = "[" xs:context "]" t:expr "-->" u:expr
 
-let parser def_arg = "(" ident ":" expr ")"
+(* [def_def] is a parser for one specifc syntax of symbol definition. *)
+let parser def_def = xs:{"(" ident ":" expr ")"}* ":=" t:expr ->
+  List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t)) xs t
 
-let parser def_def =
-  | xs:{"(" ident ":" expr ")"}* ":=" t:expr -> lambdas xs t
-
+(* [toplevel] parses a single toplevel item. *)
 let parser toplevel =
   | x:ident ":" a:expr                      -> NewSym(false,x,a)
   | "def" x:ident ":" a:expr                -> NewSym(true ,x,a)
@@ -823,7 +849,11 @@ let parser toplevel =
   | "#STEP" t:expr                          -> Step(t)
   | "#SNF"  t:expr                          -> Eval(t)
 
+(* [full] is the main entry point of the parser. It accepts a list of toplevel
+   items, each teminated by a ['.']. *)
 let parser full = {l:toplevel "."}*
+
+(**** Main parsing functions ************************************************)
 
 (** Blank function for basic blank characters (' ', '\t', '\r' and '\n')
     and line comments starting with "//". *)
@@ -853,8 +883,15 @@ let blank buf pos =
   in
   fn `Ini (buf, pos) (buf, pos)
 
+(* [parse_file fname] attempts to parse the file [fname],  to obtain a list of
+   toplevel items. In case of failure, a standard parse error message is shown
+   and then [exit 1] is called. *)
 let parse_file : string -> p_item list =
   Earley.(handle_exception (parse_file full blank))
+
+(**** Scoping ***************************************************************)
+
+(* TODO cleaning and comments from here... *)
 
 let wildcards : tvar list ref = ref []
 let wildcard_counter = ref (-1)
@@ -1120,7 +1157,10 @@ let compile file =
   current_module := fs;
   ignore (compile true file)
 
-(* Run files *)
+(* TODO cleaning and comments until here... *)
+
+(**** Main program, handling of command line arguments **********************)
+
 let _ =
   let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p]] [--quiet] [FILE] ..." in
   let flags =
