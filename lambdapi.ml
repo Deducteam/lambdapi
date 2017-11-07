@@ -1002,14 +1002,11 @@ let to_tbox : ?vars:env -> Sign.t -> p_term -> tbox =
 let to_term : ?vars:env -> Sign.t -> p_term -> term =
   fun ?(vars=[]) sign t -> Bindlib.unbox (scope None vars sign t)
 
-(* TODO cleaning and comments from here... *)
+(* Representation of a pattern as a head symbol, list of argument and array of
+   variables corresponding to wildcards. *)
+type patt = def * tbox list * tvar array
 
-let wildcards : tvar list ref = ref []
-let wildcard_counter = ref (-1)
-let new_wildcard : unit -> tbox = fun () ->
-  incr wildcard_counter;
-  let x = Bindlib.new_var mkfree (Printf.sprintf "#%i#" !wildcard_counter) in
-  wildcards := x :: !wildcards; Bindlib.box_of_var x
+(* TODO cleaning and comments from here... *)
 
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def = fun hd ->
@@ -1018,8 +1015,16 @@ let pattern_data : term -> def = fun hd ->
   | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | _            -> raise Exit
 
-let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
-  fun ?(vars=[]) sign t ->
+let to_patt : env -> Sign.t -> p_term -> patt =
+  let wildcards : tvar list ref = ref [] in
+  let wildcard_counter = ref (-1) in
+  let new_wildcard : unit -> tbox = fun () ->
+    incr wildcard_counter;
+    let x = Printf.sprintf "#%i#" !wildcard_counter in
+    let x = Bindlib.new_var mkfree x in
+    wildcards := x :: !wildcards; Bindlib.box_of_var x
+  in
+  fun vars sign t ->
   let rec fn acc t =
     match t with
     | P_Vari([],x)  ->
@@ -1055,7 +1060,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     let xs = List.map fst xs in (* FIXME keep type annotation. *)
     (* Scoping the LHS and RHS. *)
     let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-    let (s, l, wcs) = to_tbox_wc ~vars sign t in
+    let (s, l, wcs) = to_patt vars sign t in
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~vars sign u in
