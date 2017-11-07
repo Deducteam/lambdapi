@@ -202,7 +202,7 @@ let symbol_name : symbol -> string = fun s ->
     | Def(def) -> (def.def_path, def.def_name)
   in
   if path = !current_module then name
-  else String.concat "::" (path @ [name])
+  else String.concat "." (path @ [name])
 
 (**** Signature *************************************************************)
 
@@ -800,6 +800,14 @@ type p_term =
 let parser ident = id:''[_a-zA-Z0-9]+'' ->
   if List.mem id ["Type"; "_"] then Earley.give_up (); id
 
+(* [qident] is an atomic parser for a qualified identifier (e.g. an identifier
+   that may be preceeded by a module path. The different parts of the path and
+   the identifier are build as for [ident] and separated by a ['.']. *)
+let parser qident = id:''\([_a-zA-Z0-9]+[.]\)*[_a-zA-Z0-9]+'' ->
+  let fs = List.rev (String.split_on_char '.' id) in
+  let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
+  if List.mem id ["Type"; "_"] then Earley.give_up (); (fs,x)
+
 (* [_wild_] is an atomic parser for the special ["_"] identifier. Note that it
    is only accepted if it is not followed by an identifier character. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
@@ -813,7 +821,7 @@ let parser _Type_ = s:''[T][y][p][e][_a-zA-Z0-9]*'' ->
 (* [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
-  | fs:{ident "::"}* x:ident
+  | (fs,x):qident
       when p = `Atom -> P_Vari(fs,x)
   (* Type constant *)
   | _Type_
@@ -971,7 +979,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Vari(fs,x)  ->
           begin
             try _Symb_find (load_signature fs) x with Not_found ->
-              let x = String.concat "::" (fs @ [x]) in
+              let x = String.concat "." (fs @ [x]) in
               fatal "Unbound symbol %S...\n%!" x
           end
       | P_Type        -> _Type
