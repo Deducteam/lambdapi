@@ -1028,121 +1028,123 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
 
 (* TODO cleaning and comments from here... *)
 
-(* Interpret a whole file *)
-let handle_file : Sign.t -> string -> unit = fun sign fname ->
-  let check_rule (xs,t,u) =
-    let xs = List.map fst xs in (* FIXME keep type annotation. *)
-    (* Scoping the LHS and RHS. *)
-    let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-    let (s, l, wcs) = to_patt vars sign t in
-    let arity = List.length l in
-    let l = Bindlib.box_list l in
-    let u = to_tbox ~vars sign u in
-    (* Building the definition. *)
-    let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
-    (* Constructing the typing context and the terms. *)
-    let xs = Array.to_list xs in
-    let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-    let u = Bindlib.unbox u in
-    (* Check that the LHS is a pattern and build the rule. *)
-    let rule = { lhs ; rhs ; arity } in
-    let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
-    (* Infer the type of the LHS and the constraints. *)
-    let (tt, tt_constrs) =
-      try infer_with_constrs sign ctx t with Not_found ->
-        fatal "Unable to infer the type of [%a]\n" pp t
-    in
-    (* Infer the type of the RHS and the constraints. *)
-    let (tu, tu_constrs) =
-      try infer_with_constrs sign ctx u with Not_found ->
-        fatal "Unable to infer the type of [%a]\n" pp u
-    in
-    (* Checking the implication of constraints. *)
-    let check_constraint (a,b) =
-      if not (eq_modulo_constrs tt_constrs a b) then
-        fatal "A constraint is not satisfied...\n"
-    in
-    List.iter check_constraint tu_constrs;
-    (* Checking if the rule is well-typed. *)
-    if not (eq_modulo_constrs tt_constrs tt tu) then
-      begin
-        err "Infered type for LHS: %a\n" pp tt;
-        err "Infered type for RHS: %a\n" pp tu;
-        fatal "[%a → %a] is ill-typed\n" pp t pp u
-      end;
-    (s,t,u,rule)
+let check_rule sign (xs,t,u) =
+  let xs = List.map fst xs in (* FIXME keep type annotation. *)
+  (* Scoping the LHS and RHS. *)
+  let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
+  let (s, l, wcs) = to_patt vars sign t in
+  let arity = List.length l in
+  let l = Bindlib.box_list l in
+  let u = to_tbox ~vars sign u in
+  (* Building the definition. *)
+  let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
+  let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
+  let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
+  (* Constructing the typing context and the terms. *)
+  let xs = Array.to_list xs in
+  let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
+  let u = Bindlib.unbox u in
+  (* Check that the LHS is a pattern and build the rule. *)
+  let rule = { lhs ; rhs ; arity } in
+  let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
+  (* Infer the type of the LHS and the constraints. *)
+  let (tt, tt_constrs) =
+    try infer_with_constrs sign ctx t with Not_found ->
+      fatal "Unable to infer the type of [%a]\n" pp t
   in
-  let handle_item : p_item -> unit = fun it ->
-    match it with
-    | NewSym(d,x,a) ->
-        let a = to_term sign a in
-        let sort =
-          if has_type sign Ctxt.empty a Type then "Type" else
-          if has_type sign Ctxt.empty a Kind then "Kind" else
-          fatal "%s is neither of type Type nor Kind.\n" x
-        in
-        let kind = if d then "defi" else "symb" in
-        out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
-        if d then ignore (Sign.new_definable sign x a)
-        else ignore (Sign.new_static sign x a)
-    | Defin(x,a,t) ->
-        let t = to_term sign t in
-        let a =
-          match a with
-          | None   -> infer sign Ctxt.empty t
-          | Some a -> to_term sign a
-        in
-        let sort =
-          if has_type sign Ctxt.empty a Type then "Type" else
-          if has_type sign Ctxt.empty a Kind then "Kind" else
-          fatal "%s is neither of type Type nor Kind.\n" x
-        in
-        out "(defi) %s : %a (of sort %s)\n" x pp a sort;
-        if not (has_type sign Ctxt.empty t a) then
-          fatal "Cannot type the definition of %s...\n" x;
-        let s = Sign.new_definable sign x a in
-        out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
-        let rule =
-          let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
-          let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
-          {arity = 0; lhs ; rhs}
-        in
+  (* Infer the type of the RHS and the constraints. *)
+  let (tu, tu_constrs) =
+    try infer_with_constrs sign ctx u with Not_found ->
+      fatal "Unable to infer the type of [%a]\n" pp u
+  in
+  (* Checking the implication of constraints. *)
+  let check_constraint (a,b) =
+    if not (eq_modulo_constrs tt_constrs a b) then
+      fatal "A constraint is not satisfied...\n"
+  in
+  List.iter check_constraint tu_constrs;
+  (* Checking if the rule is well-typed. *)
+  if not (eq_modulo_constrs tt_constrs tt tu) then
+    begin
+      err "Infered type for LHS: %a\n" pp tt;
+      err "Infered type for RHS: %a\n" pp tu;
+      fatal "[%a → %a] is ill-typed\n" pp t pp u
+    end;
+  (s,t,u,rule)
+
+let handle_item : Sign.t -> p_item -> unit = fun sign it ->
+  match it with
+  | NewSym(d,x,a) ->
+      let a = to_term sign a in
+      let sort =
+        if has_type sign Ctxt.empty a Type then "Type" else
+        if has_type sign Ctxt.empty a Kind then "Kind" else
+        fatal "%s is neither of type Type nor Kind.\n" x
+      in
+      let kind = if d then "defi" else "symb" in
+      out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
+      if d then ignore (Sign.new_definable sign x a)
+      else ignore (Sign.new_static sign x a)
+  | Defin(x,a,t) ->
+      let t = to_term sign t in
+      let a =
+        match a with
+        | None   -> infer sign Ctxt.empty t
+        | Some a -> to_term sign a
+      in
+      let sort =
+        if has_type sign Ctxt.empty a Type then "Type" else
+        if has_type sign Ctxt.empty a Kind then "Kind" else
+        fatal "%s is neither of type Type nor Kind.\n" x
+      in
+      out "(defi) %s : %a (of sort %s)\n" x pp a sort;
+      if not (has_type sign Ctxt.empty t a) then
+        fatal "Cannot type the definition of %s...\n" x;
+      let s = Sign.new_definable sign x a in
+      out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
+      let rule =
+        let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
+        let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
+        {arity = 0; lhs ; rhs}
+      in
+      s.def_rules := !(s.def_rules) @ [rule]
+  | Rules(rs)     ->
+      (* Adding all the rules. *)
+      let add_rule (s,t,u,rule) =
+        out "  - %a → %a\n" pp t pp u;
         s.def_rules := !(s.def_rules) @ [rule]
-    | Rules(rs)     ->
-        (* Adding all the rules. *)
-        let add_rule (s,t,u,rule) =
-          out "  - %a → %a\n" pp t pp u;
-          s.def_rules := !(s.def_rules) @ [rule]
-        in
-        out "(rule) Adding the rules:\n";
-        List.iter add_rule (List.map check_rule rs)
-    | Check(t,a)    ->
-        let t = to_term sign t in
-        let a = to_term sign a in
-        if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
-        else fatal "%a does not have type %a...\n" pp t pp a
-    | Infer(t)      ->
-        let t = to_term sign t in
-        begin
-          try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
-          with Not_found -> fatal "%a : unable to infer\n%!" pp t
-        end
-    | Eval(t)       ->
-        out "(eval) %a\n" pp (eval (to_term sign t))
-    | Conv(t,u)     ->
-        let t = to_term sign t in
-        let u = to_term sign u in
-        if eq_modulo t u then out "(conv) OK\n"
-        else fatal "cannot convert %a and %a...\n" pp t pp u
-    | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
-    | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
-  in
-  try List.iter handle_item (parse_file fname) with e ->
-    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+      in
+      out "(rule) Adding the rules:\n";
+      List.iter add_rule (List.map (check_rule sign) rs)
+  | Check(t,a)    ->
+      let t = to_term sign t in
+      let a = to_term sign a in
+      if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
+      else fatal "%a does not have type %a...\n" pp t pp a
+  | Infer(t)      ->
+      let t = to_term sign t in
+      begin
+        try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
+        with Not_found -> fatal "%a : unable to infer\n%!" pp t
+      end
+  | Eval(t)       ->
+      out "(eval) %a\n" pp (eval (to_term sign t))
+  | Conv(t,u)     ->
+      let t = to_term sign t in
+      let u = to_term sign u in
+      if eq_modulo t u then out "(conv) OK\n"
+      else fatal "cannot convert %a and %a...\n" pp t pp u
+  | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
+  | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
 
 (* TODO cleaning and comments until here... *)
+
+(* [handle_file sign fname] parses and interprets the file [fname] with [sign]
+   as its signature. All exceptions are handled, and errors lead to (graceful)
+   failure of the whole program. *)
+let handle_file : Sign.t -> string -> unit = fun sign fname ->
+  try List.iter (handle_item sign) (parse_file fname)
+  with e -> fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
 
 (**** Main compilation functions ********************************************)
 
