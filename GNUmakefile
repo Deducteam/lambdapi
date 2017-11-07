@@ -32,7 +32,7 @@ unit_tests: lambdapi
 	@for file in $(KO_TESTFILES) ; do \
 		echo -n "$$file " ; \
 		./lambdapi $(QUIET) $$file 2> /dev/null \
-		  && echo -e "\033[0;31mKO\033[0m" || echo -e "\033[0;32mOK\033[0m" ; \
+		  && echo -e "\033[0;31mOK\033[0m" || echo -e "\033[0;32mKO\033[0m" ; \
 	done
 
 clean:
