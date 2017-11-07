@@ -795,15 +795,15 @@ type p_term =
 
 (* [ident] is an atomic parser for an identifier (for example, variable name).
    It accepts (and returns as its semantic value) any non-empty strings formed
-   of letters, decimal digits, and the ['_'] character. Note that ["Type"] and
-   ["_"] are reserved identifiers, and they are thus rejected. *)
-let parser ident = id:''[_a-zA-Z0-9]+'' ->
+   of letters,  decimal digits, and the ['_'] and ['''] characters.  Note that
+   ["Type"] and ["_"] are reserved identifiers, and they are thus rejected. *)
+let parser ident = id:''[_'a-zA-Z0-9]+'' ->
   if List.mem id ["Type"; "_"] then Earley.give_up (); id
 
 (* [qident] is an atomic parser for a qualified identifier (e.g. an identifier
    that may be preceeded by a module path. The different parts of the path and
    the identifier are build as for [ident] and separated by a ['.']. *)
-let parser qident = id:''\([_a-zA-Z0-9]+[.]\)*[_a-zA-Z0-9]+'' ->
+let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   let fs = List.rev (String.split_on_char '.' id) in
   let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
   if List.mem id ["Type"; "_"] then Earley.give_up (); (fs,x)
@@ -1170,6 +1170,7 @@ let compile : bool -> string list -> Sign.t = fun force modpath ->
     begin
       out "Loading file [%s]\n%!" src;
       let sign = Sign.create modpath in
+      Hashtbl.add loaded modpath sign;
       handle_file sign src;
       Sign.write sign obj;
       out "Done with file [%s]\n%!" src; sign
