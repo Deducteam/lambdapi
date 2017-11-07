@@ -26,6 +26,46 @@ let err : ('a, out_channel, unit) format -> 'a =
 let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
   fun fmt -> Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
 
+(**** File utilities ********************************************************)
+
+(* Current file name extensions. *)
+let src_extension : string = ".dk"
+let obj_extension : string = ".dko"
+
+(* [module_path path] computes the module path corresponding to [path],  which
+   sould be a relative path to a source file (not using [".."]).  The returned
+   module path is formed using the subdirectories and it is  terminated by the
+   file name (without extension). Note that the file name sould have extension
+   [src_extension]. *)
+let module_path : string -> string list = fun fname ->
+  if not (Filename.check_suffix fname src_extension) then
+    fatal "Invalid extension for %S (expected %S)...\n" fname src_extension;
+  let base = Filename.chop_extension (Filename.basename fname) in
+  let dir = Filename.dirname fname in
+  let rec build_path acc dir =
+    let dirbase = Filename.basename dir in
+    let dirdir  = Filename.dirname  dir in
+    if dirbase = "." then acc else build_path (dirbase::acc) dirdir
+  in
+  build_path [base] dir
+
+(* [mod_time fname] returns the modification time of file [fname]  represented
+   as a [float]. [neg_infinity] is returned if the file does not exist. *)
+let mod_time : string -> float = fun fname ->
+  if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
+
+(* [binary_time] is the modification time of the compiled program. *)
+let binary_time : float = mod_time "/proc/self/exe"
+
+(* [more_recent source target] checks whether the [target] (produced from  the
+   [source] file) should be produced again.  This is the case when [source] is
+   more recent than [target], or when the binary of the program is more recent
+   than [target]. *)
+let more_recent : string -> string -> bool = fun source target ->
+  let s_time = mod_time source in
+  let t_time = mod_time target in
+  s_time > t_time || binary_time > t_time
+
 (**** Debugging messages management *****************************************)
 
 (* Various debugging / message flags. *)
@@ -1105,32 +1145,9 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
   in
   List.iter handle_item (parse_file fname)
 
-let obj_file : string -> string = fun file ->
-  Filename.chop_extension file ^ ".dko"
-
-let module_path : string -> string list = fun file ->
-  let base = Filename.chop_extension (Filename.basename file) in
-  let dir  = Filename.dirname  file in
-  let rec build_path acc dir =
-    let dirbase = Filename.basename dir in
-    let dirdir  = Filename.dirname  dir in
-    if dirbase = "." then acc else build_path (dirbase::acc) dirdir
-  in
-  build_path [base] dir
-
-let mod_time : string -> float = fun fname ->
-  if Sys.file_exists fname then Unix.((stat fname).st_mtime)
-  else neg_infinity
-
-let binary_time : float = mod_time "/proc/self/exe"
-
-let more_recent source target =
-  mod_time source > mod_time target
-  || binary_time > mod_time target
-
 let compile : bool -> string -> Sign.t = fun force file ->
   if not (Sys.file_exists file) then fatal "File not found: %s\n" file;
-  let obj = obj_file file in
+  let obj = Filename.chop_extension file ^ obj_extension in
   let fs = module_path file in
   if more_recent file obj || (force && not (Hashtbl.mem loaded fs)) then
     begin
@@ -1162,7 +1179,7 @@ let compile file =
 (**** Main program, handling of command line arguments **********************)
 
 let _ =
-  let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p]] [--quiet] [FILE] ..." in
+  let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p|t]] [--quiet] [FILE] ..." in
   let flags =
     [ "a : general debug informations"
     ; "e : extra debugging informations for equality"
