@@ -950,6 +950,58 @@ let load_signature : string list -> Sign.t = fun modpath ->
 
 (**** Scoping ***************************************************************)
 
+(* Representation of an environment for variables. *)
+type env = (string * tvar) list
+
+(* [scope new_wildcard env sign t] transforms the parsing level term [t]  into
+   an actual term, using the free variables of the environement [env], and the
+   symbols of the signature [sign].  If a function is given in [new_wildcard],
+   then it is called on [P_Wild] nodes. This will only be allowed when reading
+   a term as a pattern. *)
+let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
+  fun new_wildcard vars sign t ->
+    let rec scope vars t =
+      match t with
+      | P_Vari([],x)  ->
+          begin
+            try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
+            try _Symb_find sign x with Not_found ->
+            fatal "Unbound variable or symbol %S...\n%!" x
+          end
+      | P_Vari(fs,x)  ->
+          begin
+            try _Symb_find (load_signature fs) x with Not_found ->
+              let x = String.concat "::" (fs @ [x]) in
+              fatal "Unbound symbol %S...\n%!" x
+          end
+      | P_Type        -> _Type
+      | P_Prod(x,a,b) ->
+          let f v = scope (if x = "_" then vars else (x,v)::vars) b in
+          _Prod (scope vars a) x f
+      | P_Abst(x,a,t) ->
+          let f v = scope ((x,v)::vars) t in
+          let a =
+            match a with
+            | None    -> Bindlib.box (Unif(ref None))
+            | Some(a) -> scope vars a
+          in
+          _Abst a x f
+      | P_Appl(t,u)   -> _Appl (scope vars t) (scope vars u)
+      | P_Wild        ->
+          match new_wildcard with
+          | None    -> fatal "\"_\" not allowed in terms...\n"
+          | Some(f) -> f ()
+    in
+    scope vars t
+
+ (* [to_tbox ~vars sign t] is a convenient interface for [scope]. *)
+let to_tbox : ?vars:env -> Sign.t -> p_term -> tbox =
+  fun ?(vars=[]) sign t -> scope None vars sign t
+
+(* [to_term ~vars sign t] composes [to_tbox] with [Bindlib.unbox]. *)
+let to_term : ?vars:env -> Sign.t -> p_term -> term =
+  fun ?(vars=[]) sign t -> Bindlib.unbox (scope None vars sign t)
+
 (* TODO cleaning and comments from here... *)
 
 let wildcards : tvar list ref = ref []
@@ -958,50 +1010,6 @@ let new_wildcard : unit -> tbox = fun () ->
   incr wildcard_counter;
   let x = Bindlib.new_var mkfree (Printf.sprintf "#%i#" !wildcard_counter) in
   wildcards := x :: !wildcards; Bindlib.box_of_var x
-
-type env = (string * tvar) list
-
-let to_tbox : bool -> env -> Sign.t -> p_term -> tbox =
-  fun allow_wild vars sign t ->
-    let rec build vars t =
-      match t with
-      | P_Vari([],x)  ->
-          begin
-            try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
-            try _Symb_find sign x with Not_found ->
-            fatal "Unbound variable %S...\n%!" x
-          end
-      | P_Vari(fs,x)  ->
-          begin
-            let sign = load_signature fs in
-            try _Symb_find sign x with Not_found ->
-              let x = String.concat "::" (fs @ [x]) in
-              fatal "Unbound symbol %S...\n%!" x
-          end
-      | P_Type        ->
-          _Type
-      | P_Prod(x,a,b) ->
-          let f v = build (if x = "_" then vars else (x,v)::vars) b in
-          _Prod (build vars a) x f
-      | P_Abst(x,a,t) ->
-          let f v = build ((x,v)::vars) t in
-          let a =
-            match a with
-            | None    -> Bindlib.box (Unif(ref None))
-            | Some(a) -> build vars a
-          in
-          _Abst a x f
-      | P_Appl(t,u)   ->
-          _Appl (build vars t) (build vars u)
-      | P_Wild        ->
-          if not allow_wild then fatal "\"_\" not allowed in terms...\n";
-          new_wildcard ()
-    in
-    build vars t
-
-let to_term : ?vars:env -> Sign.t -> p_term -> term =
-  fun ?(vars=[]) sign t -> Bindlib.unbox (to_tbox false vars sign t)
-
 
 (* Check that the given term is a pattern and returns its data. *)
 let pattern_data : term -> def = fun hd ->
@@ -1028,7 +1036,7 @@ let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
            fatal "Unbound symbol %S...\n%!" x
        in (root, acc)
     | P_Appl(t,u) ->
-       fn (to_tbox true vars sign u::acc) t
+       fn (scope (Some new_wildcard) vars sign u::acc) t
     | _ -> raise Exit
   in
   wildcards := []; wildcard_counter := -1;
@@ -1038,7 +1046,7 @@ let to_tbox_wc : ?vars:env -> Sign.t -> p_term -> def * tbox list * tvar array =
     (s, args, Array.of_list !wildcards)
   with
     Exit ->
-      let t = Bindlib.unbox (to_tbox true vars sign t) in
+      let t = Bindlib.unbox (scope (Some new_wildcard) vars sign t) in
       fatal "%a is not a valid pattern...\n" pp t
 
 (* Interpret a whole file *)
@@ -1050,7 +1058,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     let (s, l, wcs) = to_tbox_wc ~vars sign t in
     let arity = List.length l in
     let l = Bindlib.box_list l in
-    let u = to_tbox false vars sign u in
+    let u = to_tbox ~vars sign u in
     (* Building the definition. *)
     let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
     let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
