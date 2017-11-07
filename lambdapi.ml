@@ -943,8 +943,10 @@ let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
 (* [load_signature modpath] returns the signature corresponding to the  module
    path [modpath].  Note that compilation may be required if this is the first
    time that the corresponding module is required. *)
-let load_signature : string list -> Sign.t = fun fs ->
-  try Hashtbl.find loaded fs with Not_found -> !compile_ref fs
+let load_signature : string list -> Sign.t = fun modpath ->
+  try Hashtbl.find loaded modpath with Not_found ->
+    let sign = !compile_ref modpath in
+    Hashtbl.add loaded modpath sign; sign
 
 (**** Scoping ***************************************************************)
 
@@ -1150,39 +1152,43 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
-  List.iter handle_item (parse_file fname)
-
-let compile : bool -> string list -> Sign.t = fun force fs ->
-  let file = String.concat "/" fs ^ src_extension in
-  if not (Sys.file_exists file) then fatal "File not found: %s\n" file;
-  let obj = Filename.chop_extension file ^ obj_extension in
-  let fs = module_path file in
-  if more_recent file obj || (force && not (Hashtbl.mem loaded fs)) then
-    begin
-      out "Loading file [%s]\n%!" file;
-      let sign = Sign.create fs in
-      begin
-        try handle_file sign file with e ->
-          fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
-      end;
-      Sign.write sign obj;
-      Hashtbl.add loaded fs sign;
-      out "Done with file [%s]\n%!" file;
-      sign
-    end
-  else
-    try Hashtbl.find loaded fs with Not_found ->
-    let sign = Sign.read obj in
-    Hashtbl.add loaded fs sign; sign
-
-let _ = compile_ref := compile false
-
-let compile file =
-  let fs = module_path file in
-  current_module := fs;
-  ignore (compile true fs)
+  try List.iter handle_item (parse_file fname) with e ->
+    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
 
 (* TODO cleaning and comments until here... *)
+
+(**** Main compilation functions ********************************************)
+
+(* [compile force modpath] compiles the file correspinding to the module  path
+   [modpath] if it is necessary, or if [force] is [true] ([force] is typically
+   used to force the compilation of the files given on the command line). Note
+   that the produced signature is registered in [loaded] before being returned
+   and it is also stored into an object file. *)
+let compile : bool -> string list -> Sign.t = fun force modpath ->
+  let base = String.concat "/" modpath in
+  let src = base ^ src_extension in
+  let obj = base ^ obj_extension in
+  if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
+  if more_recent src obj || force then
+    begin
+      out "Loading file [%s]\n%!" src;
+      let sign = Sign.create modpath in
+      handle_file sign src;
+      Sign.write sign obj;
+      out "Done with file [%s]\n%!" src; sign
+    end
+  else Sign.read obj
+
+(* Setting the compilation function since it is now available. *)
+let _ = compile_ref := compile false
+
+(* [compile fname] compile the source file [fname], marking it as the  current
+   module (see [current_module]). Note that compilation is forced, even if the
+   file has already been compiled. *)
+let compile fname =
+  let modpath = module_path fname in
+  current_module := modpath;
+  ignore (compile true modpath)
 
 (**** Main program, handling of command line arguments **********************)
 
