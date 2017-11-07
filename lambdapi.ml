@@ -1006,53 +1006,27 @@ let to_term : ?vars:env -> Sign.t -> p_term -> term =
    variables corresponding to wildcards. *)
 type patt = def * tbox list * tvar array
 
-(* TODO cleaning and comments from here... *)
-
-(* Check that the given term is a pattern and returns its data. *)
-let pattern_data : term -> def = fun hd ->
-  match unfold hd with
-  | Symb(Def(s)) -> s
-  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
-  | _            -> raise Exit
-
-let to_patt : env -> Sign.t -> p_term -> patt =
-  let wildcards : tvar list ref = ref [] in
-  let wildcard_counter = ref (-1) in
-  let new_wildcard : unit -> tbox = fun () ->
-    incr wildcard_counter;
-    let x = Printf.sprintf "#%i#" !wildcard_counter in
+(* [to_patt env sign t] transforms the parsing level term [t] into a  pattern.
+   Note that here, [t] may contain wildcards. The function also checks that it
+   has a definable symbol as a head term, and gracefully fails otherwise. *)
+let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
+  let wildcards = ref [] in
+  let counter = ref 0 in
+  let new_wildcard () =
+    let x = "#" ^ string_of_int !counter ^ "#" in
     let x = Bindlib.new_var mkfree x in
-    wildcards := x :: !wildcards; Bindlib.box_of_var x
+    incr counter; wildcards := x :: !wildcards; Bindlib.box_of_var x
   in
-  fun vars sign t ->
-  let rec fn acc t =
-    match t with
-    | P_Vari([],x)  ->
-       let root =
-         try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
-           try _Symb_find sign x with Not_found ->
-             fatal "Unbound variable %S...\n%!" x
-       in (root, acc)
-    | P_Vari(fs,x)  ->
-       let root =
-         let sign = load_signature fs in
-         try _Symb_find sign x with Not_found ->
-           let x = String.concat "::" (fs @ [x]) in
-           fatal "Unbound symbol %S...\n%!" x
-       in (root, acc)
-    | P_Appl(t,u) ->
-       fn (scope (Some new_wildcard) vars sign u::acc) t
-    | _ -> raise Exit
-  in
-  wildcards := []; wildcard_counter := -1;
-  try
-    let (hd,args) = fn [] t in
-    let s = pattern_data (Bindlib.unbox hd) in
-    (s, args, Array.of_list !wildcards)
-  with
-    Exit ->
-      let t = Bindlib.unbox (scope (Some new_wildcard) vars sign t) in
-      fatal "%a is not a valid pattern...\n" pp t
+  let t = Bindlib.unbox (scope (Some new_wildcard) vars sign t) in
+  let (head, args) = get_args t in
+  match head with
+  | Symb(Def(s)) -> (s, List.map lift args, Array.of_list !wildcards)
+  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | _            -> fatal "%a is not a valid pattern...\n" pp t
+
+(**** Interpretation of commands ********************************************)
+
+(* TODO cleaning and comments from here... *)
 
 (* Interpret a whole file *)
 let handle_file : Sign.t -> string -> unit = fun sign fname ->
