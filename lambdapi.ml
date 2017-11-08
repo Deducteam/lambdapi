@@ -1039,7 +1039,7 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
 
 (* [scope_rule sign r] scopes a parsing level reduction rule,  producing every
    element that is necessary to check its type. This includes its context, the
-   symbol, the LHS and RHS as terms (for printing) and the rule. *)
+   symbol, the LHS and RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let scope_opt sign a =
