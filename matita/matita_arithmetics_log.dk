@@ -1,0 +1,3556 @@
+(; This file was automatically generated from Matita. ;)
+
+#NAME matita_arithmetics_log.
+
+def log :
+      _p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      _n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      cic.Term univs.Type0 matita_arithmetics_nat.nat :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      matita_arithmetics_minimization.max n
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n).
+
+def tech_log :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p n)
+           (matita_arithmetics_minimization.max (matita_arithmetics_nat.S n)
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      matita_basics_logic.eq_ind_r
+        (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+        matita_basics_bool.false
+        (x : cic.Term univs.Type0 matita_basics_bool.bool =>
+         __ :
+           cic.Term cic.prop
+             (matita_basics_logic.eq
+                (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool) x
+                matita_basics_bool.false) =>
+         matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p n)
+           (matita_basics_bool.match_bool univs.Type0
+              (_0 : cic.Term univs.Type0 matita_basics_bool.bool =>
+               matita_arithmetics_nat.nat)
+              n
+              (matita_arithmetics_minimization.max' n
+                 (x0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  matita_arithmetics_nat.leb
+                    (matita_arithmetics_exp.exp p x0) n)
+                 matita_arithmetics_nat.O)
+              x))
+        (matita_basics_logic.refl
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p n))
+        (matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p n) n)
+        (matita_arithmetics_nat.not_le_to_leb_false
+           (matita_arithmetics_exp.exp p n) n
+           (matita_arithmetics_nat.lt_to_not_le n
+              (matita_arithmetics_exp.exp p n)
+              (matita_arithmetics_exp.lt_m_exp_nm p n lt1p))).
+
+def le_exp_log :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_exp.exp p (matita_arithmetics_log.log p n)) n)
+      :=
+      a : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      matita_arithmetics_nat.leb_true_to_le
+        (matita_arithmetics_exp.exp a (matita_arithmetics_log.log a n)) n
+        (matita_arithmetics_minimization.f_max_true
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp a x) n)
+           n
+           (matita_basics_logic.ex_intro matita_arithmetics_nat.nat
+              (i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               matita_basics_logic.And (matita_arithmetics_nat.lt i n)
+                 (matita_basics_logic.eq
+                    (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                    (matita_arithmetics_nat.leb
+                       (matita_arithmetics_exp.exp a i) n)
+                    matita_basics_bool.true))
+              matita_arithmetics_nat.O
+              (matita_basics_logic.conj
+                 (matita_arithmetics_nat.lt matita_arithmetics_nat.O n)
+                 (matita_basics_logic.eq
+                    (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                    (matita_arithmetics_nat.leb
+                       (matita_arithmetics_exp.exp a matita_arithmetics_nat.O)
+                       n)
+                    matita_basics_bool.true)
+                 posn
+                 (matita_arithmetics_nat.le_to_leb_true
+                    (matita_arithmetics_exp.exp a matita_arithmetics_nat.O) n
+                    posn)))).
+
+def log_SO :
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log n
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           matita_arithmetics_nat.O)
+      :=
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1n :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) =>
+      matita_basics_logic.sym_eq
+        (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+        matita_arithmetics_nat.O
+        (matita_arithmetics_log.log n
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+        (matita_arithmetics_nat.le_n_O_to_eq
+           (matita_arithmetics_log.log n
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           (matita_arithmetics_exp.le_exp_to_le n
+              (matita_arithmetics_log.log n
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              matita_arithmetics_nat.O lt1n
+              (matita_arithmetics_nat.le_n
+                 (matita_arithmetics_exp.exp n
+                    (matita_arithmetics_log.log n
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O)))))).
+
+def lt_to_log_O :
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) ->
+      __1 : cic.Term cic.prop (matita_arithmetics_nat.lt m n) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log n m) matita_arithmetics_nat.O)
+      :=
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      posm :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) =>
+      ltnm : cic.Term cic.prop (matita_arithmetics_nat.lt m n) =>
+      matita_basics_logic.sym_eq
+        (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+        matita_arithmetics_nat.O (matita_arithmetics_log.log n m)
+        (matita_arithmetics_nat.le_n_O_to_eq (matita_arithmetics_log.log n m)
+           (matita_arithmetics_nat.le_S_S_to_le
+              (matita_arithmetics_log.log n m) matita_arithmetics_nat.O
+              (matita_arithmetics_exp.lt_exp_to_lt n
+                 (matita_arithmetics_log.log n m)
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.le_to_lt_to_lt
+                    matita_arithmetics_nat.O m n
+                    (matita_arithmetics_nat.le_O_n m) ltnm)
+                 (matita_basics_logic.eq_ind
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    n
+                    (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     _x_2 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            n x_1) =>
+                     matita_arithmetics_nat.lt
+                       (matita_arithmetics_exp.exp n
+                          (matita_arithmetics_log.log n m))
+                       x_1)
+                    (matita_arithmetics_nat.le_to_lt_to_lt
+                       (matita_arithmetics_exp.exp n
+                          (matita_arithmetics_log.log n m))
+                       m n (matita_arithmetics_log.le_exp_log n m posm) ltnm)
+                    (matita_arithmetics_nat.plus n matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.plus_n_O n))))).
+
+def lt_log_n_n :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n)
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      matita_basics_logic.Or_ind
+        (matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n)
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p n) n)
+        (_x_170 :
+           cic.Term cic.prop
+             (matita_basics_logic.Or
+                (matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n)
+                (matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2
+                      matita_arithmetics_nat.nat)
+                   (matita_arithmetics_log.log p n) n)) =>
+         matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n)
+        (_x_171 :
+           cic.Term cic.prop
+             (matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n) =>
+         _x_171)
+        (Hn :
+           cic.Term cic.prop
+             (matita_basics_logic.eq
+                (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                (matita_arithmetics_log.log p n) n) =>
+         matita_basics_logic.False_ind
+           (_x_66 : cic.Term cic.prop matita_basics_logic.False =>
+            matita_arithmetics_nat.lt (matita_arithmetics_log.log p n) n)
+           (matita_basics_logic.absurd
+              (matita_arithmetics_nat.le (matita_arithmetics_exp.exp p n) n)
+              (matita_basics_logic.eq_ind
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_log.log p n)
+                 (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  _x_2 :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         (matita_arithmetics_log.log p n) x_1) =>
+                  matita_arithmetics_nat.le
+                    (matita_arithmetics_exp.exp p x_1) n)
+                 (matita_arithmetics_log.le_exp_log p n posn) n Hn)
+              (matita_arithmetics_nat.lt_to_not_le n
+                 (matita_arithmetics_exp.exp p n)
+                 (matita_arithmetics_exp.lt_m_exp_nm p n lt1p))))
+        (matita_arithmetics_nat.le_to_or_lt_eq
+           (matita_arithmetics_log.log p n) n
+           (matita_arithmetics_minimization.le_max_n
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)
+              n)).
+
+def lt_O_log :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) ->
+      __1 : cic.Term cic.prop (matita_arithmetics_nat.le p n) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.lt matita_arithmetics_nat.O
+           (matita_arithmetics_log.log p n))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) =>
+      lepn : cic.Term cic.prop (matita_arithmetics_nat.le p n) =>
+      matita_arithmetics_nat.not_lt_to_le
+        (matita_arithmetics_minimization.max' n
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)
+           matita_arithmetics_nat.O)
+        (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+        (matita_basics_logic.nmk
+           (matita_arithmetics_nat.lt
+              (matita_arithmetics_minimization.max' n
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+                    n)
+                 matita_arithmetics_nat.O)
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           (H :
+              cic.Term cic.prop
+                (matita_arithmetics_nat.lt
+                   (matita_arithmetics_minimization.max' n
+                      (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                       matita_arithmetics_nat.leb
+                         (matita_arithmetics_exp.exp p x) n)
+                      matita_arithmetics_nat.O)
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O)) =>
+            matita_basics_logic.eq_ind
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) p
+              (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               _x_2 :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      p x_1) =>
+               cic.prod cic.prop cic.prop
+                 (matita_basics_logic.eq
+                    (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                    (matita_arithmetics_nat.leb x_1 n)
+                    matita_basics_bool.false)
+                 (__ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_basics_bool.bool)
+                         (matita_arithmetics_nat.leb x_1 n)
+                         matita_basics_bool.false) =>
+                  matita_basics_logic.False))
+              (matita_basics_logic.eq_ind_r
+                 (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                 matita_basics_bool.true
+                 (x : cic.Term univs.Type0 matita_basics_bool.bool =>
+                  __ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_basics_bool.bool)
+                         x matita_basics_bool.true) =>
+                  cic.prod cic.prop cic.prop
+                    (matita_basics_logic.eq
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_basics_bool.bool)
+                       x matita_basics_bool.false)
+                    (__1 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_basics_bool.bool)
+                            x matita_basics_bool.false) =>
+                     matita_basics_logic.False))
+                 (H0 :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_basics_bool.bool)
+                         matita_basics_bool.true matita_basics_bool.false) =>
+                  matita_basics_bool.bool_discr matita_basics_bool.true
+                    matita_basics_bool.false H0
+                    (cic.lift cic.prop univs.Type1 matita_basics_logic.False))
+                 (matita_arithmetics_nat.leb p n)
+                 (matita_arithmetics_nat.le_to_leb_true p n lepn))
+              (matita_arithmetics_exp.exp p
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              (matita_arithmetics_exp.exp_n_1 p)
+              (matita_arithmetics_minimization.lt_max_to_false
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+                    n)
+                 n (matita_arithmetics_nat.S matita_arithmetics_nat.O) lt1p H))).
+
+def le_log_n_n :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le (matita_arithmetics_log.log p n) n)
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_arithmetics_nat.match_nat cic.prop
+        (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.le (matita_arithmetics_log.log p __) __)
+        (matita_arithmetics_nat.le_n
+           (matita_arithmetics_log.log p matita_arithmetics_nat.O))
+        (m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.lt_to_le
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.S m))
+           (matita_arithmetics_nat.S m)
+           (matita_arithmetics_log.lt_log_n_n p (matita_arithmetics_nat.S m)
+              lt1p (matita_arithmetics_nat.lt_O_S m)))
+        n.
+
+def let_clause_1033 :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      x2515 : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      x2516 : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           x2515
+           (matita_arithmetics_nat.plus
+              (matita_arithmetics_nat.times x2516
+                 (matita_arithmetics_div_and_mod.div x2515 x2516))
+              (matita_arithmetics_div_and_mod.mod x2515 x2516)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      x2515 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      x2516 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      matita_basics_logic.rewrite_l
+        (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+        (matita_arithmetics_nat.times
+           (matita_arithmetics_div_and_mod.div x2515 x2516) x2516)
+        (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         cic.lift cic.prop univs.Type2
+           ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+             matita_basics_logic.eq
+               (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+               x2515
+               (matita_arithmetics_nat.plus x
+                  (matita_arithmetics_div_and_mod.mod x2515 x2516)))
+              __))
+        (matita_arithmetics_div_and_mod.div_mod x2515 x2516)
+        (matita_arithmetics_nat.times x2516
+           (matita_arithmetics_div_and_mod.div x2515 x2516))
+        (matita_arithmetics_nat.commutative_times
+           (matita_arithmetics_div_and_mod.div x2515 x2516) x2516).
+
+def lt_exp_log :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.lt n
+           (matita_arithmetics_exp.exp p
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p n))))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_arithmetics_nat.match_nat cic.prop
+        (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.lt __
+           (matita_arithmetics_exp.exp p
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p __))))
+        (matita_basics_logic.eq_ind
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) p
+           (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            _x_2 :
+              cic.Term cic.prop
+                (matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2
+                      matita_arithmetics_nat.nat)
+                   p x_1) =>
+            matita_arithmetics_nat.le
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O) x_1)
+           (matita_arithmetics_nat.lt_to_le
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O) p lt1p)
+           (matita_arithmetics_nat.plus p matita_arithmetics_nat.O)
+           (matita_arithmetics_nat.plus_n_O p))
+        (m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.not_le_to_lt
+           (matita_arithmetics_exp.exp p
+              (matita_arithmetics_nat.S
+                 (matita_arithmetics_log.log p (matita_arithmetics_nat.S m))))
+           (matita_arithmetics_nat.S m)
+           (matita_arithmetics_nat.leb_false_to_not_le
+              (matita_arithmetics_exp.exp p
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S m))))
+              (matita_arithmetics_nat.S m)
+              (matita_arithmetics_minimization.lt_max_to_false
+                 (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  matita_arithmetics_nat.leb
+                    (matita_arithmetics_exp.exp p __)
+                    (matita_arithmetics_nat.S m))
+                 (matita_arithmetics_nat.S (matita_arithmetics_nat.S m))
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S m)))
+                 (matita_arithmetics_nat.le_S_S
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S m)))
+                    (matita_arithmetics_nat.S m)
+                    (matita_arithmetics_log.lt_log_n_n p
+                       (matita_arithmetics_nat.S m) lt1p
+                       (matita_arithmetics_nat.lt_O_S m)))
+                 (matita_basics_logic.eq_ind
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S m))
+                    (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     _x_2 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            (matita_arithmetics_log.log p
+                               (matita_arithmetics_nat.S m))
+                            x_1) =>
+                     matita_arithmetics_nat.lt x_1
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_nat.S m))))
+                    (matita_basics_logic.eq_coerc
+                       (cic.lift cic.prop univs.Type0
+                          (matita_arithmetics_nat.lt
+                             (matita_arithmetics_div_and_mod.mod
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m))
+                                matita_arithmetics_nat.O)
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_nat.plus
+                                   (matita_arithmetics_div_and_mod.mod
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O)
+                                   (matita_arithmetics_nat.times
+                                      matita_arithmetics_nat.O
+                                      (matita_arithmetics_div_and_mod.div
+                                         (matita_arithmetics_log.log p
+                                            (matita_arithmetics_nat.S m))
+                                         matita_arithmetics_nat.O)))
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))))
+                       (cic.lift cic.prop univs.Type0
+                          (matita_arithmetics_nat.lt
+                             (matita_arithmetics_log.log p
+                                (matita_arithmetics_nat.S m))
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m)))))
+                       (matita_arithmetics_nat.lt_plus_Sn_r
+                          (matita_arithmetics_div_and_mod.mod
+                             (matita_arithmetics_log.log p
+                                (matita_arithmetics_nat.S m))
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_nat.times
+                             matita_arithmetics_nat.O
+                             (matita_arithmetics_div_and_mod.div
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m))
+                                matita_arithmetics_nat.O))
+                          matita_arithmetics_nat.O)
+                       (matita_basics_logic.rewrite_l
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_nat.S m))
+                          (__ :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           cic.lift cic.prop univs.Type2
+                             ((x :
+                                 cic.Term univs.Type0
+                                   matita_arithmetics_nat.nat =>
+                               matita_basics_logic.eq
+                                 (cic.lift (cic.succ univs.Type0) univs.Type2
+                                    (cic.univ univs.Type0))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.lt
+                                       (matita_arithmetics_div_and_mod.mod
+                                          (matita_arithmetics_log.log p
+                                             (matita_arithmetics_nat.S m))
+                                          matita_arithmetics_nat.O)
+                                       (matita_arithmetics_nat.plus x
+                                          (matita_arithmetics_nat.S
+                                             matita_arithmetics_nat.O))))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.lt
+                                       (matita_arithmetics_log.log p
+                                          (matita_arithmetics_nat.S m))
+                                       (matita_arithmetics_nat.S
+                                          (matita_arithmetics_log.log p
+                                             (matita_arithmetics_nat.S m))))))
+                                __))
+                          (matita_basics_logic.rewrite_l
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             (matita_arithmetics_log.log p
+                                (matita_arithmetics_nat.S m))
+                             (__ :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              cic.lift cic.prop univs.Type2
+                                ((x :
+                                    cic.Term univs.Type0
+                                      matita_arithmetics_nat.nat =>
+                                  matita_basics_logic.eq
+                                    (cic.lift (cic.succ univs.Type0)
+                                       univs.Type2 (cic.univ univs.Type0))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.lt x
+                                          (matita_arithmetics_nat.plus
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))
+                                             (matita_arithmetics_nat.S
+                                                matita_arithmetics_nat.O))))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.lt
+                                          (matita_arithmetics_log.log p
+                                             (matita_arithmetics_nat.S m))
+                                          (matita_arithmetics_nat.S
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))))))
+                                   __))
+                             (matita_basics_logic.rewrite_l
+                                (cic.lift univs.Type0 univs.Type2
+                                   matita_arithmetics_nat.nat)
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m)))
+                                (__ :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 cic.lift cic.prop univs.Type2
+                                   ((x :
+                                       cic.Term univs.Type0
+                                         matita_arithmetics_nat.nat =>
+                                     matita_basics_logic.eq
+                                       (cic.lift (cic.succ univs.Type0)
+                                          univs.Type2 (cic.univ univs.Type0))
+                                       (cic.lift cic.prop univs.Type0
+                                          (matita_arithmetics_nat.lt
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))
+                                             x))
+                                       (cic.lift cic.prop univs.Type0
+                                          (matita_arithmetics_nat.lt
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))
+                                             (matita_arithmetics_nat.S
+                                                (matita_arithmetics_log.log p
+                                                   (matita_arithmetics_nat.S
+                                                      m))))))
+                                      __))
+                                (matita_basics_logic.refl
+                                   (cic.lift (cic.succ univs.Type0)
+                                      univs.Type2 (cic.univ univs.Type0))
+                                   (cic.lift cic.prop univs.Type0
+                                      (matita_arithmetics_nat.lt
+                                         (matita_arithmetics_log.log p
+                                            (matita_arithmetics_nat.S m))
+                                         (matita_arithmetics_nat.S
+                                            (matita_arithmetics_log.log p
+                                               (matita_arithmetics_nat.S m))))))
+                                (matita_arithmetics_nat.plus
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   (matita_arithmetics_nat.S
+                                      matita_arithmetics_nat.O))
+                                (matita_basics_logic.rewrite_r
+                                   (cic.lift univs.Type0 univs.Type2
+                                      matita_arithmetics_nat.nat)
+                                   (matita_arithmetics_nat.plus
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O)
+                                   (__ :
+                                      cic.Term univs.Type0
+                                        matita_arithmetics_nat.nat =>
+                                    cic.lift cic.prop univs.Type2
+                                      ((x :
+                                          cic.Term univs.Type0
+                                            matita_arithmetics_nat.nat =>
+                                        matita_basics_logic.eq
+                                          (cic.lift univs.Type0 univs.Type2
+                                             matita_arithmetics_nat.nat)
+                                          (matita_arithmetics_nat.S x)
+                                          (matita_arithmetics_nat.plus
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))
+                                             (matita_arithmetics_nat.S
+                                                matita_arithmetics_nat.O)))
+                                         __))
+                                   (matita_arithmetics_nat.plus_n_Sm
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O)
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   (matita_arithmetics_nat.plus_n_O
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m)))))
+                             (matita_arithmetics_div_and_mod.mod
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m))
+                                matita_arithmetics_nat.O)
+                             (matita_basics_logic.rewrite_r
+                                (cic.lift univs.Type0 univs.Type2
+                                   matita_arithmetics_nat.nat)
+                                (matita_arithmetics_nat.plus
+                                   matita_arithmetics_nat.O
+                                   (matita_arithmetics_div_and_mod.mod
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O))
+                                (__ :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 cic.lift cic.prop univs.Type2
+                                   ((x :
+                                       cic.Term univs.Type0
+                                         matita_arithmetics_nat.nat =>
+                                     matita_basics_logic.eq
+                                       (cic.lift univs.Type0 univs.Type2
+                                          matita_arithmetics_nat.nat)
+                                       (matita_arithmetics_log.log p
+                                          (matita_arithmetics_nat.S m))
+                                       x)
+                                      __))
+                                (matita_basics_logic.rewrite_l
+                                   (cic.lift univs.Type0 univs.Type2
+                                      matita_arithmetics_nat.nat)
+                                   (matita_arithmetics_nat.plus
+                                      (matita_arithmetics_div_and_mod.mod
+                                         (matita_arithmetics_log.log p
+                                            (matita_arithmetics_nat.S m))
+                                         matita_arithmetics_nat.O)
+                                      matita_arithmetics_nat.O)
+                                   (__ :
+                                      cic.Term univs.Type0
+                                        matita_arithmetics_nat.nat =>
+                                    cic.lift cic.prop univs.Type2
+                                      ((x :
+                                          cic.Term univs.Type0
+                                            matita_arithmetics_nat.nat =>
+                                        matita_basics_logic.eq
+                                          (cic.lift univs.Type0 univs.Type2
+                                             matita_arithmetics_nat.nat)
+                                          (matita_arithmetics_log.log p
+                                             (matita_arithmetics_nat.S m))
+                                          x)
+                                         __))
+                                   (matita_basics_logic.rewrite_r
+                                      (cic.lift univs.Type0 univs.Type2
+                                         matita_arithmetics_nat.nat)
+                                      (matita_arithmetics_nat.times
+                                         matita_arithmetics_nat.O
+                                         (matita_arithmetics_div_and_mod.div
+                                            (matita_arithmetics_log.log p
+                                               (matita_arithmetics_nat.S m))
+                                            matita_arithmetics_nat.O))
+                                      (__ :
+                                         cic.Term univs.Type0
+                                           matita_arithmetics_nat.nat =>
+                                       cic.lift cic.prop univs.Type2
+                                         ((x :
+                                             cic.Term univs.Type0
+                                               matita_arithmetics_nat.nat =>
+                                           matita_basics_logic.eq
+                                             (cic.lift univs.Type0
+                                                univs.Type2
+                                                matita_arithmetics_nat.nat)
+                                             (matita_arithmetics_log.log p
+                                                (matita_arithmetics_nat.S m))
+                                             (matita_arithmetics_nat.plus
+                                                (matita_arithmetics_div_and_mod.mod
+                                                   (matita_arithmetics_log.log
+                                                      p
+                                                      (matita_arithmetics_nat.S
+                                                         m))
+                                                   matita_arithmetics_nat.O)
+                                                x))
+                                            __))
+                                      (matita_basics_logic.rewrite_l
+                                         (cic.lift univs.Type0 univs.Type2
+                                            matita_arithmetics_nat.nat)
+                                         (matita_arithmetics_nat.plus
+                                            (matita_arithmetics_nat.times
+                                               matita_arithmetics_nat.O
+                                               (matita_arithmetics_div_and_mod.div
+                                                  (matita_arithmetics_log.log
+                                                     p
+                                                     (matita_arithmetics_nat.S
+                                                        m))
+                                                  matita_arithmetics_nat.O))
+                                            (matita_arithmetics_div_and_mod.mod
+                                               (matita_arithmetics_log.log p
+                                                  (matita_arithmetics_nat.S m))
+                                               matita_arithmetics_nat.O))
+                                         (__ :
+                                            cic.Term univs.Type0
+                                              matita_arithmetics_nat.nat =>
+                                          cic.lift cic.prop univs.Type2
+                                            ((x :
+                                                cic.Term univs.Type0
+                                                  matita_arithmetics_nat.nat =>
+                                              matita_basics_logic.eq
+                                                (cic.lift univs.Type0
+                                                   univs.Type2
+                                                   matita_arithmetics_nat.nat)
+                                                (matita_arithmetics_log.log p
+                                                   (matita_arithmetics_nat.S
+                                                      m))
+                                                x)
+                                               __))
+                                         (matita_arithmetics_log.let_clause_1033
+                                            p n lt1p m
+                                            (matita_arithmetics_log.log p
+                                               (matita_arithmetics_nat.S m))
+                                            matita_arithmetics_nat.O)
+                                         (matita_arithmetics_nat.plus
+                                            (matita_arithmetics_div_and_mod.mod
+                                               (matita_arithmetics_log.log p
+                                                  (matita_arithmetics_nat.S m))
+                                               matita_arithmetics_nat.O)
+                                            (matita_arithmetics_nat.times
+                                               matita_arithmetics_nat.O
+                                               (matita_arithmetics_div_and_mod.div
+                                                  (matita_arithmetics_log.log
+                                                     p
+                                                     (matita_arithmetics_nat.S
+                                                        m))
+                                                  matita_arithmetics_nat.O)))
+                                         (matita_arithmetics_nat.commutative_plus
+                                            (matita_arithmetics_nat.times
+                                               matita_arithmetics_nat.O
+                                               (matita_arithmetics_div_and_mod.div
+                                                  (matita_arithmetics_log.log
+                                                     p
+                                                     (matita_arithmetics_nat.S
+                                                        m))
+                                                  matita_arithmetics_nat.O))
+                                            (matita_arithmetics_div_and_mod.mod
+                                               (matita_arithmetics_log.log p
+                                                  (matita_arithmetics_nat.S m))
+                                               matita_arithmetics_nat.O)))
+                                      matita_arithmetics_nat.O
+                                      (matita_arithmetics_nat.times_O_n
+                                         (matita_arithmetics_div_and_mod.div
+                                            (matita_arithmetics_log.log p
+                                               (matita_arithmetics_nat.S m))
+                                            matita_arithmetics_nat.O)))
+                                   (matita_arithmetics_nat.plus
+                                      matita_arithmetics_nat.O
+                                      (matita_arithmetics_div_and_mod.mod
+                                         (matita_arithmetics_log.log p
+                                            (matita_arithmetics_nat.S m))
+                                         matita_arithmetics_nat.O))
+                                   (matita_arithmetics_nat.commutative_plus
+                                      (matita_arithmetics_div_and_mod.mod
+                                         (matita_arithmetics_log.log p
+                                            (matita_arithmetics_nat.S m))
+                                         matita_arithmetics_nat.O)
+                                      matita_arithmetics_nat.O))
+                                (matita_arithmetics_div_and_mod.mod
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   matita_arithmetics_nat.O)
+                                (matita_arithmetics_nat.plus_O_n
+                                   (matita_arithmetics_div_and_mod.mod
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O))))
+                          (matita_arithmetics_nat.plus
+                             (matita_arithmetics_div_and_mod.mod
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m))
+                                matita_arithmetics_nat.O)
+                             (matita_arithmetics_nat.times
+                                matita_arithmetics_nat.O
+                                (matita_arithmetics_div_and_mod.div
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   matita_arithmetics_nat.O)))
+                          (matita_basics_logic.rewrite_l
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_nat.times
+                                   matita_arithmetics_nat.O
+                                   (matita_arithmetics_div_and_mod.div
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O))
+                                (matita_arithmetics_div_and_mod.mod
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   matita_arithmetics_nat.O))
+                             (__ :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              cic.lift cic.prop univs.Type2
+                                ((x :
+                                    cic.Term univs.Type0
+                                      matita_arithmetics_nat.nat =>
+                                  matita_basics_logic.eq
+                                    (cic.lift univs.Type0 univs.Type2
+                                       matita_arithmetics_nat.nat)
+                                    (matita_arithmetics_log.log p
+                                       (matita_arithmetics_nat.S m))
+                                    x)
+                                   __))
+                             (matita_arithmetics_log.let_clause_1033 p n lt1p
+                                m
+                                (matita_arithmetics_log.log p
+                                   (matita_arithmetics_nat.S m))
+                                matita_arithmetics_nat.O)
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_div_and_mod.mod
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   matita_arithmetics_nat.O)
+                                (matita_arithmetics_nat.times
+                                   matita_arithmetics_nat.O
+                                   (matita_arithmetics_div_and_mod.div
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O)))
+                             (matita_arithmetics_nat.commutative_plus
+                                (matita_arithmetics_nat.times
+                                   matita_arithmetics_nat.O
+                                   (matita_arithmetics_div_and_mod.div
+                                      (matita_arithmetics_log.log p
+                                         (matita_arithmetics_nat.S m))
+                                      matita_arithmetics_nat.O))
+                                (matita_arithmetics_div_and_mod.mod
+                                   (matita_arithmetics_log.log p
+                                      (matita_arithmetics_nat.S m))
+                                   matita_arithmetics_nat.O)))))
+                    (matita_arithmetics_minimization.max
+                       (matita_arithmetics_nat.S (matita_arithmetics_nat.S m))
+                       (x :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        matita_arithmetics_nat.leb
+                          (matita_arithmetics_exp.exp p x)
+                          (matita_arithmetics_nat.S m)))
+                    (matita_arithmetics_log.tech_log p
+                       (matita_arithmetics_nat.S m) lt1p
+                       (matita_arithmetics_nat.lt_O_S m))))))
+        n.
+
+def log_times1 :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      __2 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.times n m))
+           (matita_arithmetics_nat.S
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p m))))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      posm :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) =>
+      matita_arithmetics_minimization.f_false_to_le_max
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+           (matita_arithmetics_nat.times n m))
+        (matita_arithmetics_nat.times n m)
+        (matita_arithmetics_nat.S
+           (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+              (matita_arithmetics_log.log p m)))
+        (matita_basics_logic.ex_intro matita_arithmetics_nat.nat
+           (i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_basics_logic.And
+              (matita_arithmetics_nat.lt i (matita_arithmetics_nat.times n m))
+              (matita_basics_logic.eq
+                 (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                 (matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p i)
+                    (matita_arithmetics_nat.times n m))
+                 matita_basics_bool.true))
+           matita_arithmetics_nat.O
+           (matita_basics_logic.conj
+              (matita_arithmetics_nat.lt matita_arithmetics_nat.O
+                 (matita_arithmetics_nat.times n m))
+              (matita_basics_logic.eq
+                 (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                 (matita_arithmetics_nat.leb
+                    (matita_arithmetics_exp.exp p matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.times n m))
+                 matita_basics_bool.true)
+              (matita_basics_logic.eq_ind_r
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.times matita_arithmetics_nat.O
+                    matita_arithmetics_nat.O)
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  __ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         x
+                         (matita_arithmetics_nat.times
+                            matita_arithmetics_nat.O matita_arithmetics_nat.O)) =>
+                  matita_arithmetics_nat.lt x
+                    (matita_arithmetics_nat.times n m))
+                 (matita_arithmetics_nat.lt_times matita_arithmetics_nat.O n
+                    matita_arithmetics_nat.O m posn posm)
+                 matita_arithmetics_nat.O
+                 (matita_arithmetics_nat.times_n_O matita_arithmetics_nat.O))
+              (matita_arithmetics_nat.le_to_leb_true
+                 (matita_arithmetics_exp.exp p matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.times n m)
+                 (matita_basics_logic.eq_ind_r
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_nat.times matita_arithmetics_nat.O
+                       matita_arithmetics_nat.O)
+                    (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     __ :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            x
+                            (matita_arithmetics_nat.times
+                               matita_arithmetics_nat.O
+                               matita_arithmetics_nat.O)) =>
+                     matita_arithmetics_nat.le (matita_arithmetics_nat.S x)
+                       (matita_arithmetics_nat.times n m))
+                    (matita_arithmetics_nat.lt_times matita_arithmetics_nat.O
+                       n matita_arithmetics_nat.O m posn posm)
+                    matita_arithmetics_nat.O
+                    (matita_arithmetics_nat.times_n_O
+                       matita_arithmetics_nat.O)))))
+        (i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         Hm :
+           cic.Term cic.prop
+             (matita_arithmetics_nat.lt
+                (matita_arithmetics_nat.S
+                   (matita_arithmetics_nat.plus
+                      (matita_arithmetics_log.log p n)
+                      (matita_arithmetics_log.log p m)))
+                i) =>
+         matita_arithmetics_nat.lt_to_leb_false
+           (matita_arithmetics_exp.exp p i)
+           (matita_arithmetics_nat.times n m)
+           (matita_arithmetics_nat.lt_to_le_to_lt
+              (matita_arithmetics_nat.times n m)
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p n)))
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m))))
+              (matita_arithmetics_exp.exp p i)
+              (matita_arithmetics_nat.lt_times n
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p n)))
+                 m
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m)))
+                 (matita_arithmetics_log.lt_exp_log p n lt1p)
+                 (matita_arithmetics_log.lt_exp_log p m lt1p))
+              (matita_basics_logic.eq_ind
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p n))
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m))))
+                 (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  _x_2 :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         (matita_arithmetics_exp.exp p
+                            (matita_arithmetics_nat.plus
+                               (matita_arithmetics_nat.S
+                                  (matita_arithmetics_log.log p n))
+                               (matita_arithmetics_nat.S
+                                  (matita_arithmetics_log.log p m))))
+                         x_1) =>
+                  matita_arithmetics_nat.le x_1
+                    (matita_arithmetics_exp.exp p i))
+                 (matita_arithmetics_exp.le_exp
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p n))
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m)))
+                    i p
+                    (matita_arithmetics_nat.lt_to_le
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O) p
+                       lt1p)
+                    (matita_basics_logic.eq_ind
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.plus
+                             (matita_arithmetics_minimization.max' n
+                                (x :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 matita_arithmetics_nat.leb
+                                   (matita_arithmetics_exp.exp p x) n)
+                                matita_arithmetics_nat.O)
+                             (matita_arithmetics_minimization.max' m
+                                (x :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 matita_arithmetics_nat.leb
+                                   (matita_arithmetics_exp.exp p x) m)
+                                matita_arithmetics_nat.O)))
+                       (x_1 :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        _x_2 :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               (matita_arithmetics_nat.S
+                                  (matita_arithmetics_nat.plus
+                                     (matita_arithmetics_minimization.max' n
+                                        (x :
+                                           cic.Term univs.Type0
+                                             matita_arithmetics_nat.nat =>
+                                         matita_arithmetics_nat.leb
+                                           (matita_arithmetics_exp.exp p x) n)
+                                        matita_arithmetics_nat.O)
+                                     (matita_arithmetics_minimization.max' m
+                                        (x :
+                                           cic.Term univs.Type0
+                                             matita_arithmetics_nat.nat =>
+                                         matita_arithmetics_nat.leb
+                                           (matita_arithmetics_exp.exp p x) m)
+                                        matita_arithmetics_nat.O)))
+                               x_1) =>
+                        matita_arithmetics_nat.le
+                          (matita_arithmetics_nat.S x_1) i)
+                       Hm
+                       (matita_arithmetics_nat.plus
+                          (matita_arithmetics_minimization.max' n
+                             (x :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              matita_arithmetics_nat.leb
+                                (matita_arithmetics_exp.exp p x) n)
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_minimization.max' m
+                                (x :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 matita_arithmetics_nat.leb
+                                   (matita_arithmetics_exp.exp p x) m)
+                                matita_arithmetics_nat.O)))
+                       (matita_arithmetics_nat.plus_n_Sm
+                          (matita_arithmetics_minimization.max' n
+                             (x :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              matita_arithmetics_nat.leb
+                                (matita_arithmetics_exp.exp p x) n)
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_minimization.max' m
+                             (x :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              matita_arithmetics_nat.leb
+                                (matita_arithmetics_exp.exp p x) m)
+                             matita_arithmetics_nat.O))))
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p n)))
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m))))
+                 (matita_arithmetics_exp.exp_plus_times p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p n))
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m)))))).
+
+def log_times :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.times n m))
+           (matita_arithmetics_nat.S
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p m))))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_arithmetics_nat.match_nat cic.prop
+        (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.times __ m))
+           (matita_arithmetics_nat.S
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p __)
+                 (matita_arithmetics_log.log p m))))
+        (matita_basics_logic.eq_coerc
+           (cic.lift cic.prop univs.Type0
+              (matita_arithmetics_nat.le
+                 (matita_arithmetics_nat.minus
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m)))
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m)))
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m)))))
+           (cic.lift cic.prop univs.Type0
+              (matita_arithmetics_nat.le
+                 (matita_arithmetics_log.log p
+                    (matita_arithmetics_nat.times matita_arithmetics_nat.O m))
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                       (matita_arithmetics_log.log p m)))))
+           (matita_arithmetics_nat.minus_le
+              (matita_arithmetics_nat.plus
+                 (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.S (matita_arithmetics_log.log p m)))
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p m)))
+           (matita_basics_logic.rewrite_l
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+              (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               cic.lift cic.prop univs.Type2
+                 ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                   matita_basics_logic.eq
+                     (cic.lift (cic.succ univs.Type0) univs.Type2
+                        (cic.univ univs.Type0))
+                     (cic.lift cic.prop univs.Type0
+                        (matita_arithmetics_nat.le x
+                           (matita_arithmetics_nat.plus
+                              (matita_arithmetics_log.log p
+                                 matita_arithmetics_nat.O)
+                              (matita_arithmetics_nat.S
+                                 (matita_arithmetics_log.log p m)))))
+                     (cic.lift cic.prop univs.Type0
+                        (matita_arithmetics_nat.le
+                           (matita_arithmetics_log.log p
+                              (matita_arithmetics_nat.times
+                                 matita_arithmetics_nat.O m))
+                           (matita_arithmetics_nat.S
+                              (matita_arithmetics_nat.plus
+                                 (matita_arithmetics_log.log p
+                                    matita_arithmetics_nat.O)
+                                 (matita_arithmetics_log.log p m))))))
+                    __))
+              (matita_basics_logic.rewrite_r
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.times m matita_arithmetics_nat.O)
+                 (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  cic.lift cic.prop univs.Type2
+                    ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                      matita_basics_logic.eq
+                        (cic.lift (cic.succ univs.Type0) univs.Type2
+                           (cic.univ univs.Type0))
+                        (cic.lift cic.prop univs.Type0
+                           (matita_arithmetics_nat.le
+                              (matita_arithmetics_log.log p
+                                 matita_arithmetics_nat.O)
+                              (matita_arithmetics_nat.plus
+                                 (matita_arithmetics_log.log p
+                                    matita_arithmetics_nat.O)
+                                 (matita_arithmetics_nat.S
+                                    (matita_arithmetics_log.log p m)))))
+                        (cic.lift cic.prop univs.Type0
+                           (matita_arithmetics_nat.le
+                              (matita_arithmetics_log.log p x)
+                              (matita_arithmetics_nat.S
+                                 (matita_arithmetics_nat.plus
+                                    (matita_arithmetics_log.log p
+                                       matita_arithmetics_nat.O)
+                                    (matita_arithmetics_log.log p m))))))
+                       __))
+                 (matita_basics_logic.rewrite_l
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    matita_arithmetics_nat.O
+                    (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     cic.lift cic.prop univs.Type2
+                       ((x :
+                           cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                         matita_basics_logic.eq
+                           (cic.lift (cic.succ univs.Type0) univs.Type2
+                              (cic.univ univs.Type0))
+                           (cic.lift cic.prop univs.Type0
+                              (matita_arithmetics_nat.le
+                                 (matita_arithmetics_log.log p
+                                    matita_arithmetics_nat.O)
+                                 (matita_arithmetics_nat.plus
+                                    (matita_arithmetics_log.log p
+                                       matita_arithmetics_nat.O)
+                                    (matita_arithmetics_nat.S
+                                       (matita_arithmetics_log.log p m)))))
+                           (cic.lift cic.prop univs.Type0
+                              (matita_arithmetics_nat.le
+                                 (matita_arithmetics_log.log p x)
+                                 (matita_arithmetics_nat.S
+                                    (matita_arithmetics_nat.plus
+                                       (matita_arithmetics_log.log p
+                                          matita_arithmetics_nat.O)
+                                       (matita_arithmetics_log.log p m))))))
+                          __))
+                    (matita_basics_logic.rewrite_r
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.plus
+                          (matita_arithmetics_log.log p m)
+                          (matita_arithmetics_log.log p
+                             matita_arithmetics_nat.O))
+                       (__ :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        cic.lift cic.prop univs.Type2
+                          ((x :
+                              cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                            matita_basics_logic.eq
+                              (cic.lift (cic.succ univs.Type0) univs.Type2
+                                 (cic.univ univs.Type0))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le
+                                    (matita_arithmetics_log.log p
+                                       matita_arithmetics_nat.O)
+                                    (matita_arithmetics_nat.plus
+                                       (matita_arithmetics_log.log p
+                                          matita_arithmetics_nat.O)
+                                       (matita_arithmetics_nat.S
+                                          (matita_arithmetics_log.log p m)))))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le
+                                    (matita_arithmetics_log.log p
+                                       matita_arithmetics_nat.O)
+                                    (matita_arithmetics_nat.S x))))
+                             __))
+                       (matita_basics_logic.rewrite_r
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_nat.plus
+                             (matita_arithmetics_log.log p m)
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_log.log p
+                                   matita_arithmetics_nat.O)))
+                          (__ :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           cic.lift cic.prop univs.Type2
+                             ((x :
+                                 cic.Term univs.Type0
+                                   matita_arithmetics_nat.nat =>
+                               matita_basics_logic.eq
+                                 (cic.lift (cic.succ univs.Type0) univs.Type2
+                                    (cic.univ univs.Type0))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.le
+                                       (matita_arithmetics_log.log p
+                                          matita_arithmetics_nat.O)
+                                       (matita_arithmetics_nat.plus
+                                          (matita_arithmetics_log.log p
+                                             matita_arithmetics_nat.O)
+                                          (matita_arithmetics_nat.S
+                                             (matita_arithmetics_log.log p m)))))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.le
+                                       (matita_arithmetics_log.log p
+                                          matita_arithmetics_nat.O)
+                                       x)))
+                                __))
+                          (matita_basics_logic.rewrite_r
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_log.log p m)
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_log.log p
+                                      matita_arithmetics_nat.O)))
+                             (__ :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              cic.lift cic.prop univs.Type2
+                                ((x :
+                                    cic.Term univs.Type0
+                                      matita_arithmetics_nat.nat =>
+                                  matita_basics_logic.eq
+                                    (cic.lift (cic.succ univs.Type0)
+                                       univs.Type2 (cic.univ univs.Type0))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le
+                                          (matita_arithmetics_log.log p
+                                             matita_arithmetics_nat.O)
+                                          x))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le
+                                          (matita_arithmetics_log.log p
+                                             matita_arithmetics_nat.O)
+                                          (matita_arithmetics_nat.plus
+                                             (matita_arithmetics_log.log p m)
+                                             (matita_arithmetics_nat.S
+                                                (matita_arithmetics_log.log p
+                                                   matita_arithmetics_nat.O))))))
+                                   __))
+                             (matita_basics_logic.refl
+                                (cic.lift (cic.succ univs.Type0) univs.Type2
+                                   (cic.univ univs.Type0))
+                                (cic.lift cic.prop univs.Type0
+                                   (matita_arithmetics_nat.le
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O)
+                                      (matita_arithmetics_nat.plus
+                                         (matita_arithmetics_log.log p m)
+                                         (matita_arithmetics_nat.S
+                                            (matita_arithmetics_log.log p
+                                               matita_arithmetics_nat.O))))))
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_log.log p
+                                   matita_arithmetics_nat.O)
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_log.log p m)))
+                             (matita_basics_logic.rewrite_l
+                                (cic.lift univs.Type0 univs.Type2
+                                   matita_arithmetics_nat.nat)
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_nat.plus
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O)
+                                      (matita_arithmetics_log.log p m)))
+                                (__ :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 cic.lift cic.prop univs.Type2
+                                   ((x :
+                                       cic.Term univs.Type0
+                                         matita_arithmetics_nat.nat =>
+                                     matita_basics_logic.eq
+                                       (cic.lift univs.Type0 univs.Type2
+                                          matita_arithmetics_nat.nat)
+                                       x
+                                       (matita_arithmetics_nat.plus
+                                          (matita_arithmetics_log.log p m)
+                                          (matita_arithmetics_nat.S
+                                             (matita_arithmetics_log.log p
+                                                matita_arithmetics_nat.O))))
+                                      __))
+                                (matita_basics_logic.rewrite_l
+                                   (cic.lift univs.Type0 univs.Type2
+                                      matita_arithmetics_nat.nat)
+                                   (matita_arithmetics_nat.plus
+                                      (matita_arithmetics_log.log p m)
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O))
+                                   (__ :
+                                      cic.Term univs.Type0
+                                        matita_arithmetics_nat.nat =>
+                                    cic.lift cic.prop univs.Type2
+                                      ((x :
+                                          cic.Term univs.Type0
+                                            matita_arithmetics_nat.nat =>
+                                        matita_basics_logic.eq
+                                          (cic.lift univs.Type0 univs.Type2
+                                             matita_arithmetics_nat.nat)
+                                          (matita_arithmetics_nat.S x)
+                                          (matita_arithmetics_nat.plus
+                                             (matita_arithmetics_log.log p m)
+                                             (matita_arithmetics_nat.S
+                                                (matita_arithmetics_log.log p
+                                                   matita_arithmetics_nat.O))))
+                                         __))
+                                   (matita_arithmetics_nat.plus_n_Sm
+                                      (matita_arithmetics_log.log p m)
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O))
+                                   (matita_arithmetics_nat.plus
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O)
+                                      (matita_arithmetics_log.log p m))
+                                   (matita_arithmetics_nat.commutative_plus
+                                      (matita_arithmetics_log.log p m)
+                                      (matita_arithmetics_log.log p
+                                         matita_arithmetics_nat.O)))
+                                (matita_arithmetics_nat.plus
+                                   (matita_arithmetics_log.log p
+                                      matita_arithmetics_nat.O)
+                                   (matita_arithmetics_nat.S
+                                      (matita_arithmetics_log.log p m)))
+                                (matita_arithmetics_nat.plus_n_Sm
+                                   (matita_arithmetics_log.log p
+                                      matita_arithmetics_nat.O)
+                                   (matita_arithmetics_log.log p m))))
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.plus
+                                (matita_arithmetics_log.log p m)
+                                (matita_arithmetics_log.log p
+                                   matita_arithmetics_nat.O)))
+                          (matita_arithmetics_nat.plus_n_Sm
+                             (matita_arithmetics_log.log p m)
+                             (matita_arithmetics_log.log p
+                                matita_arithmetics_nat.O)))
+                       (matita_arithmetics_nat.plus
+                          (matita_arithmetics_log.log p
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_log.log p m))
+                       (matita_arithmetics_nat.commutative_plus
+                          (matita_arithmetics_log.log p
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_log.log p m)))
+                    (matita_arithmetics_nat.times m matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.times_n_O m))
+                 (matita_arithmetics_nat.times matita_arithmetics_nat.O m)
+                 (matita_arithmetics_nat.commutative_times
+                    matita_arithmetics_nat.O m))
+              (matita_arithmetics_nat.minus
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p m)))
+                 (matita_arithmetics_nat.S (matita_arithmetics_log.log p m)))
+              (matita_arithmetics_nat.minus_plus_m_m
+                 (matita_arithmetics_log.log p matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.S (matita_arithmetics_log.log p m)))))
+        (n0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.match_nat cic.prop
+           (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.le
+              (matita_arithmetics_log.log p
+                 (matita_arithmetics_nat.times (matita_arithmetics_nat.S n0)
+                    __))
+              (matita_arithmetics_nat.S
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S n0))
+                    (matita_arithmetics_log.log p __))))
+           (matita_basics_logic.eq_ind
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              matita_arithmetics_nat.O
+              (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               _x_2 :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      matita_arithmetics_nat.O x_1) =>
+               matita_arithmetics_nat.le (matita_arithmetics_log.log p x_1)
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       (matita_arithmetics_log.log p matita_arithmetics_nat.O))))
+              (matita_arithmetics_nat.le_O_n
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       (matita_arithmetics_log.log p matita_arithmetics_nat.O))))
+              (matita_arithmetics_nat.times (matita_arithmetics_nat.S n0)
+                 matita_arithmetics_nat.O)
+              (matita_arithmetics_nat.times_n_O (matita_arithmetics_nat.S n0)))
+           (m0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_log.log_times1 p (matita_arithmetics_nat.S n0)
+              (matita_arithmetics_nat.S m0) lt1p
+              (matita_arithmetics_nat.lt_O_S n0)
+              (matita_arithmetics_nat.lt_O_S m0))
+           m)
+        n.
+
+def log_times_l :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) ->
+      __2 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+              (matita_arithmetics_log.log p m))
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.times n m)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      posm :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_arithmetics_minimization.true_to_le_max
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+           (matita_arithmetics_nat.times n m))
+        (matita_arithmetics_nat.times n m)
+        (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+           (matita_arithmetics_log.log p m))
+        (matita_arithmetics_nat.match_le
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O) cic.prop
+           (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            _0 :
+              cic.Term cic.prop
+                (matita_arithmetics_nat.le
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O) __) =>
+            matita_arithmetics_nat.lt
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p __)
+                 (matita_arithmetics_log.log p m))
+              (matita_arithmetics_nat.times __ m))
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              matita_arithmetics_nat.O
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x matita_arithmetics_nat.O) =>
+               matita_arithmetics_nat.lt
+                 (matita_arithmetics_nat.plus x
+                    (matita_arithmetics_log.log p m))
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O) m))
+              (matita_basics_logic.eq_ind_r
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.times m
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  __ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         x
+                         (matita_arithmetics_nat.times m
+                            (matita_arithmetics_nat.S
+                               matita_arithmetics_nat.O))) =>
+                  matita_arithmetics_nat.lt
+                    (matita_arithmetics_nat.plus matita_arithmetics_nat.O
+                       (matita_arithmetics_log.log p m))
+                    x)
+                 (matita_basics_logic.eq_ind
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    m
+                    (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     _x_2 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            m x_1) =>
+                     matita_arithmetics_nat.lt
+                       (matita_arithmetics_nat.plus matita_arithmetics_nat.O
+                          (matita_arithmetics_log.log p m))
+                       x_1)
+                    (matita_arithmetics_log.lt_log_n_n p m lt1p posm)
+                    (matita_arithmetics_nat.times m
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                    (matita_arithmetics_nat.times_n_1 m))
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O) m)
+                 (matita_arithmetics_nat.commutative_times
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O) m))
+              (matita_arithmetics_log.log p
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              (matita_arithmetics_log.log_SO p lt1p))
+           (n0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            posn0 :
+              cic.Term cic.prop
+                (matita_arithmetics_nat.le
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O) n0) =>
+            matita_arithmetics_nat.match_le
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O) cic.prop
+              (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               _0 :
+                 cic.Term cic.prop
+                   (matita_arithmetics_nat.le
+                      (matita_arithmetics_nat.S matita_arithmetics_nat.O) __) =>
+               matita_arithmetics_nat.lt
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S n0))
+                    (matita_arithmetics_log.log p __))
+                 (matita_arithmetics_nat.times (matita_arithmetics_nat.S n0)
+                    __))
+              (matita_basics_logic.eq_ind_r
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 matita_arithmetics_nat.O
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  __ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         x matita_arithmetics_nat.O) =>
+                  matita_arithmetics_nat.lt
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       x)
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S n0)
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+                 (matita_basics_logic.eq_ind
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_log.log p
+                       (matita_arithmetics_nat.S n0))
+                    (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     _x_2 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            (matita_arithmetics_log.log p
+                               (matita_arithmetics_nat.S n0))
+                            x_1) =>
+                     matita_arithmetics_nat.lt x_1
+                       (matita_arithmetics_nat.times
+                          (matita_arithmetics_nat.S n0)
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+                    (matita_basics_logic.eq_ind
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.S n0)
+                       (x_1 :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        _x_2 :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               (matita_arithmetics_nat.S n0) x_1) =>
+                        matita_arithmetics_nat.lt
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_nat.S n0))
+                          x_1)
+                       (matita_arithmetics_log.lt_log_n_n p
+                          (matita_arithmetics_nat.S n0) lt1p
+                          (matita_arithmetics_nat.lt_O_S n0))
+                       (matita_arithmetics_nat.times
+                          (matita_arithmetics_nat.S n0)
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       (matita_arithmetics_nat.times_n_1
+                          (matita_arithmetics_nat.S n0)))
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       matita_arithmetics_nat.O)
+                    (matita_arithmetics_nat.plus_n_O
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))))
+                 (matita_arithmetics_log.log p
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 (matita_arithmetics_log.log_SO p lt1p))
+              (m1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               lem1 :
+                 cic.Term cic.prop
+                   (matita_arithmetics_nat.le
+                      (matita_arithmetics_nat.S matita_arithmetics_nat.O) m1) =>
+               matita_arithmetics_nat.transitive_le
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S m1))))
+                 (matita_arithmetics_nat.plus (matita_arithmetics_nat.S n0)
+                    (matita_arithmetics_nat.S m1))
+                 (matita_arithmetics_nat.times (matita_arithmetics_nat.S n0)
+                    (matita_arithmetics_nat.S m1))
+                 (matita_arithmetics_nat.le_S_S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S m1)))
+                    (matita_arithmetics_nat.plus n0
+                       (matita_arithmetics_nat.S m1))
+                    (matita_arithmetics_nat.le_plus
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S n0))
+                       n0
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_nat.S m1))
+                       (matita_arithmetics_nat.S m1)
+                       (matita_arithmetics_nat.le_S_S_to_le
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_nat.S n0))
+                          n0
+                          (matita_arithmetics_log.lt_log_n_n p
+                             (matita_arithmetics_nat.S n0) lt1p
+                             (matita_arithmetics_nat.lt_O_S n0)))
+                       (matita_arithmetics_minimization.le_max_n
+                          (x :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           matita_arithmetics_nat.leb
+                             (matita_arithmetics_exp.exp p x)
+                             (matita_arithmetics_nat.S m1))
+                          (matita_arithmetics_nat.S m1))))
+                 (matita_arithmetics_nat.le_S_S
+                    (matita_arithmetics_nat.plus n0
+                       (matita_arithmetics_nat.S m1))
+                    (matita_arithmetics_nat.plus m1
+                       (matita_arithmetics_nat.times n0
+                          (matita_arithmetics_nat.S m1)))
+                    (matita_basics_logic.eq_ind_r
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.plus
+                          (matita_arithmetics_nat.S m1) n0)
+                       (x :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        __ :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               x
+                               (matita_arithmetics_nat.plus
+                                  (matita_arithmetics_nat.S m1) n0)) =>
+                        matita_arithmetics_nat.le x
+                          (matita_arithmetics_nat.plus m1
+                             (matita_arithmetics_nat.times n0
+                                (matita_arithmetics_nat.S m1))))
+                       (matita_basics_logic.eq_ind_r
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_nat.plus m1
+                             (matita_arithmetics_nat.S n0))
+                          (x :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           __ :
+                             cic.Term cic.prop
+                               (matita_basics_logic.eq
+                                  (cic.lift univs.Type0 univs.Type2
+                                     matita_arithmetics_nat.nat)
+                                  x
+                                  (matita_arithmetics_nat.plus m1
+                                     (matita_arithmetics_nat.S n0))) =>
+                           matita_arithmetics_nat.le x
+                             (matita_arithmetics_nat.plus m1
+                                (matita_arithmetics_nat.times n0
+                                   (matita_arithmetics_nat.S m1))))
+                          (matita_arithmetics_nat.monotonic_le_plus_r m1
+                             (matita_arithmetics_nat.S n0)
+                             (matita_arithmetics_nat.times n0
+                                (matita_arithmetics_nat.S m1))
+                             (matita_basics_logic.eq_ind_r
+                                (cic.lift univs.Type0 univs.Type2
+                                   matita_arithmetics_nat.nat)
+                                (matita_arithmetics_nat.times n0
+                                   (matita_arithmetics_nat.S
+                                      matita_arithmetics_nat.O))
+                                (x :
+                                   cic.Term univs.Type0
+                                     matita_arithmetics_nat.nat =>
+                                 __ :
+                                   cic.Term cic.prop
+                                     (matita_basics_logic.eq
+                                        (cic.lift univs.Type0 univs.Type2
+                                           matita_arithmetics_nat.nat)
+                                        x
+                                        (matita_arithmetics_nat.times n0
+                                           (matita_arithmetics_nat.S
+                                              matita_arithmetics_nat.O))) =>
+                                 matita_arithmetics_nat.le
+                                   (matita_arithmetics_nat.S x)
+                                   (matita_arithmetics_nat.times n0
+                                      (matita_arithmetics_nat.S m1)))
+                                (matita_arithmetics_nat.monotonic_lt_times_r
+                                   n0 posn0
+                                   (matita_arithmetics_nat.S
+                                      matita_arithmetics_nat.O)
+                                   (matita_arithmetics_nat.S m1)
+                                   (matita_arithmetics_nat.le_S_S
+                                      (matita_arithmetics_nat.S
+                                         matita_arithmetics_nat.O)
+                                      m1 lem1))
+                                n0 (matita_arithmetics_nat.times_n_1 n0)))
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.plus m1 n0))
+                          (matita_arithmetics_nat.plus_n_Sm m1 n0))
+                       (matita_arithmetics_nat.plus n0
+                          (matita_arithmetics_nat.S m1))
+                       (matita_arithmetics_nat.commutative_plus n0
+                          (matita_arithmetics_nat.S m1)))))
+              m posm)
+           n posn)
+        (matita_arithmetics_nat.le_to_leb_true
+           (matita_arithmetics_exp.exp p
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p m)))
+           (matita_arithmetics_nat.times n m)
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_log.log p n))
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_log.log p m)))
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x
+                      (matita_arithmetics_nat.times
+                         (matita_arithmetics_exp.exp p
+                            (matita_arithmetics_log.log p n))
+                         (matita_arithmetics_exp.exp p
+                            (matita_arithmetics_log.log p m)))) =>
+               matita_arithmetics_nat.le x (matita_arithmetics_nat.times n m))
+              (matita_arithmetics_nat.le_times
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_log.log p n))
+                 n
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_log.log p m))
+                 m (matita_arithmetics_log.le_exp_log p n posn)
+                 (matita_arithmetics_log.le_exp_log p m posm))
+              (matita_arithmetics_exp.exp p
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_log.log p n)
+                    (matita_arithmetics_log.log p m)))
+              (matita_arithmetics_exp.exp_plus_times p
+                 (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p m)))).
+
+def log_exp :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+                 m))
+           (matita_arithmetics_nat.plus n (matita_arithmetics_log.log p m)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posm :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) =>
+      matita_arithmetics_minimization.max_spec_to_max
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+           (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n) m))
+        (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n) m)
+        (matita_arithmetics_nat.plus n (matita_arithmetics_log.log p m))
+        (matita_arithmetics_minimization.found_max_spec
+           (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n) m)
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+                 m))
+           (matita_arithmetics_nat.plus n (matita_arithmetics_log.log p m))
+           (matita_arithmetics_nat.nat_ind
+              (_x_365 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               matita_arithmetics_nat.lt
+                 (matita_arithmetics_nat.plus _x_365
+                    (matita_arithmetics_log.log p m))
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p _x_365) m))
+              (matita_basics_logic.eq_ind
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                 (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  _x_2 :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                         x_1) =>
+                  matita_arithmetics_nat.lt
+                    (matita_arithmetics_nat.plus matita_arithmetics_nat.O
+                       (matita_arithmetics_log.log p m))
+                    (matita_arithmetics_nat.times x_1 m))
+                 (matita_basics_logic.eq_ind_r
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_nat.times m
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                    (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     __ :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            x
+                            (matita_arithmetics_nat.times m
+                               (matita_arithmetics_nat.S
+                                  matita_arithmetics_nat.O))) =>
+                     matita_arithmetics_nat.lt
+                       (matita_arithmetics_nat.plus matita_arithmetics_nat.O
+                          (matita_arithmetics_log.log p m))
+                       x)
+                    (matita_basics_logic.eq_ind
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       m
+                       (x_1 :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        _x_2 :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               m x_1) =>
+                        matita_arithmetics_nat.lt
+                          (matita_arithmetics_nat.plus
+                             matita_arithmetics_nat.O
+                             (matita_arithmetics_log.log p m))
+                          x_1)
+                       (matita_arithmetics_log.lt_log_n_n p m lt1p posm)
+                       (matita_arithmetics_nat.times m
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       (matita_arithmetics_nat.times_n_1 m))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O) m)
+                    (matita_arithmetics_nat.commutative_times
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O) m))
+                 (matita_arithmetics_exp.exp p matita_arithmetics_nat.O)
+                 (matita_arithmetics_exp.exp_n_O p))
+              (a : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               Hind :
+                 cic.Term cic.prop
+                   (matita_arithmetics_nat.lt
+                      (matita_arithmetics_nat.plus a
+                         (matita_arithmetics_log.log p m))
+                      (matita_arithmetics_nat.times
+                         (matita_arithmetics_exp.exp p a) m)) =>
+               matita_arithmetics_nat.lt_to_le_to_lt
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus a
+                       (matita_arithmetics_log.log p m)))
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_exp.exp p a) m))
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S a))
+                    m)
+                 (matita_arithmetics_nat.le_S_S
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_nat.plus a
+                          (matita_arithmetics_log.log p m)))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_exp.exp p a) m)
+                    Hind)
+                 (matita_basics_logic.eq_ind_r
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_nat.times p
+                       (matita_arithmetics_exp.exp p a))
+                    (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     __ :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            x
+                            (matita_arithmetics_nat.times p
+                               (matita_arithmetics_exp.exp p a))) =>
+                     matita_arithmetics_nat.le
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_exp.exp p a) m))
+                       (matita_arithmetics_nat.times x m))
+                    (matita_basics_logic.eq_ind_r
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.times p
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_exp.exp p a) m))
+                       (x :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        __ :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               x
+                               (matita_arithmetics_nat.times p
+                                  (matita_arithmetics_nat.times
+                                     (matita_arithmetics_exp.exp p a) m))) =>
+                        matita_arithmetics_nat.le
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_exp.exp p a) m))
+                          x)
+                       (matita_basics_logic.eq_ind_r
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_exp.exp p a) m)
+                             (matita_arithmetics_nat.S
+                                matita_arithmetics_nat.O))
+                          (x :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           __ :
+                             cic.Term cic.prop
+                               (matita_basics_logic.eq
+                                  (cic.lift univs.Type0 univs.Type2
+                                     matita_arithmetics_nat.nat)
+                                  x
+                                  (matita_arithmetics_nat.times
+                                     (matita_arithmetics_nat.times
+                                        (matita_arithmetics_exp.exp p a) m)
+                                     (matita_arithmetics_nat.S
+                                        matita_arithmetics_nat.O))) =>
+                           matita_arithmetics_nat.le
+                             (matita_arithmetics_nat.S x)
+                             (matita_arithmetics_nat.times p
+                                (matita_arithmetics_nat.times
+                                   (matita_arithmetics_exp.exp p a) m)))
+                          (matita_basics_logic.eq_ind_r
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O)
+                                (matita_arithmetics_nat.times
+                                   (matita_arithmetics_exp.exp p a) m))
+                             (x :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              __ :
+                                cic.Term cic.prop
+                                  (matita_basics_logic.eq
+                                     (cic.lift univs.Type0 univs.Type2
+                                        matita_arithmetics_nat.nat)
+                                     x
+                                     (matita_arithmetics_nat.times
+                                        (matita_arithmetics_nat.S
+                                           matita_arithmetics_nat.O)
+                                        (matita_arithmetics_nat.times
+                                           (matita_arithmetics_exp.exp p a) m))) =>
+                              matita_arithmetics_nat.le
+                                (matita_arithmetics_nat.S x)
+                                (matita_arithmetics_nat.times p
+                                   (matita_arithmetics_nat.times
+                                      (matita_arithmetics_exp.exp p a) m)))
+                             (matita_arithmetics_nat.monotonic_lt_times_l
+                                (matita_arithmetics_nat.times
+                                   (matita_arithmetics_exp.exp p a) m)
+                                (matita_basics_logic.eq_ind_r
+                                   (cic.lift univs.Type0 univs.Type2
+                                      matita_arithmetics_nat.nat)
+                                   (matita_arithmetics_nat.times
+                                      matita_arithmetics_nat.O
+                                      matita_arithmetics_nat.O)
+                                   (x :
+                                      cic.Term univs.Type0
+                                        matita_arithmetics_nat.nat =>
+                                    __ :
+                                      cic.Term cic.prop
+                                        (matita_basics_logic.eq
+                                           (cic.lift univs.Type0 univs.Type2
+                                              matita_arithmetics_nat.nat)
+                                           x
+                                           (matita_arithmetics_nat.times
+                                              matita_arithmetics_nat.O
+                                              matita_arithmetics_nat.O)) =>
+                                    matita_arithmetics_nat.lt x
+                                      (matita_arithmetics_nat.times
+                                         (matita_arithmetics_exp.exp p a) m))
+                                   (matita_arithmetics_nat.lt_times
+                                      matita_arithmetics_nat.O
+                                      (matita_arithmetics_exp.exp p a)
+                                      matita_arithmetics_nat.O m
+                                      (matita_arithmetics_exp.lt_O_exp p a
+                                         (matita_arithmetics_nat.lt_to_le
+                                            (matita_arithmetics_nat.S
+                                               matita_arithmetics_nat.O)
+                                            p lt1p))
+                                      posm)
+                                   matita_arithmetics_nat.O
+                                   (matita_arithmetics_nat.times_n_O
+                                      matita_arithmetics_nat.O))
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O)
+                                p lt1p)
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_nat.times
+                                   (matita_arithmetics_exp.exp p a) m)
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             (matita_arithmetics_nat.commutative_times
+                                (matita_arithmetics_nat.times
+                                   (matita_arithmetics_exp.exp p a) m)
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O)))
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_exp.exp p a) m)
+                          (matita_arithmetics_nat.times_n_1
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_exp.exp p a) m)))
+                       (matita_arithmetics_nat.times
+                          (matita_arithmetics_nat.times p
+                             (matita_arithmetics_exp.exp p a))
+                          m)
+                       (matita_arithmetics_nat.associative_times p
+                          (matita_arithmetics_exp.exp p a) m))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_exp.exp p a) p)
+                    (matita_arithmetics_nat.commutative_times
+                       (matita_arithmetics_exp.exp p a) p)))
+              n)
+           (matita_arithmetics_nat.le_to_leb_true
+              (matita_arithmetics_exp.exp p
+                 (matita_arithmetics_nat.plus n
+                    (matita_arithmetics_log.log p m)))
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+                 m)
+              (matita_basics_logic.eq_ind_r
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p n)
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_log.log p m)))
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  __ :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         x
+                         (matita_arithmetics_nat.times
+                            (matita_arithmetics_exp.exp p n)
+                            (matita_arithmetics_exp.exp p
+                               (matita_arithmetics_log.log p m)))) =>
+                  matita_arithmetics_nat.le x
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_exp.exp p n) m))
+                 (matita_arithmetics_nat.monotonic_le_times_r
+                    (matita_arithmetics_exp.exp p n)
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_log.log p m))
+                    m (matita_arithmetics_log.le_exp_log p m posm))
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.plus n
+                       (matita_arithmetics_log.log p m)))
+                 (matita_arithmetics_exp.exp_plus_times p n
+                    (matita_arithmetics_log.log p m))))
+           (i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            Hi :
+              cic.Term cic.prop
+                (matita_arithmetics_nat.lt
+                   (matita_arithmetics_nat.plus n
+                      (matita_arithmetics_log.log p m))
+                   i) =>
+            Hm :
+              cic.Term cic.prop
+                (matita_arithmetics_nat.lt i
+                   (matita_arithmetics_nat.times
+                      (matita_arithmetics_exp.exp p n) m)) =>
+            matita_arithmetics_nat.lt_to_leb_false
+              (matita_arithmetics_exp.exp p i)
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+                 m)
+              (matita_arithmetics_nat.lt_to_le_to_lt
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p n) m)
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp p n)
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m))))
+                 (matita_arithmetics_exp.exp p i)
+                 (matita_arithmetics_nat.monotonic_lt_times_r
+                    (matita_arithmetics_exp.exp p n)
+                    (matita_arithmetics_exp.lt_O_exp p n
+                       (matita_arithmetics_nat.lt_to_le
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                          p lt1p))
+                    m
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m)))
+                    (matita_arithmetics_log.lt_exp_log p m lt1p))
+                 (matita_basics_logic.eq_ind
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.plus n
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_log.log p m))))
+                    (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     _x_2 :
+                       cic.Term cic.prop
+                         (matita_basics_logic.eq
+                            (cic.lift univs.Type0 univs.Type2
+                               matita_arithmetics_nat.nat)
+                            (matita_arithmetics_exp.exp p
+                               (matita_arithmetics_nat.plus n
+                                  (matita_arithmetics_nat.S
+                                     (matita_arithmetics_log.log p m))))
+                            x_1) =>
+                     matita_arithmetics_nat.le x_1
+                       (matita_arithmetics_exp.exp p i))
+                    (matita_arithmetics_exp.le_exp
+                       (matita_arithmetics_nat.plus n
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_log.log p m)))
+                       i p
+                       (matita_arithmetics_nat.lt_to_le
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                          p lt1p)
+                       (matita_basics_logic.eq_coerc
+                          (cic.lift cic.prop univs.Type0
+                             (matita_arithmetics_nat.le
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_nat.plus n
+                                      (matita_arithmetics_log.log p m)))
+                                i))
+                          (cic.lift cic.prop univs.Type0
+                             (matita_arithmetics_nat.le
+                                (matita_arithmetics_nat.plus n
+                                   (matita_arithmetics_nat.S
+                                      (matita_arithmetics_log.log p m)))
+                                i))
+                          Hi
+                          (matita_basics_logic.rewrite_r
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             (matita_arithmetics_nat.plus n
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_log.log p m)))
+                             (__ :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              cic.lift cic.prop univs.Type2
+                                ((x :
+                                    cic.Term univs.Type0
+                                      matita_arithmetics_nat.nat =>
+                                  matita_basics_logic.eq
+                                    (cic.lift (cic.succ univs.Type0)
+                                       univs.Type2 (cic.univ univs.Type0))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le x i))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le
+                                          (matita_arithmetics_nat.plus n
+                                             (matita_arithmetics_nat.S
+                                                (matita_arithmetics_log.log p
+                                                   m)))
+                                          i)))
+                                   __))
+                             (matita_basics_logic.refl
+                                (cic.lift (cic.succ univs.Type0) univs.Type2
+                                   (cic.univ univs.Type0))
+                                (cic.lift cic.prop univs.Type0
+                                   (matita_arithmetics_nat.le
+                                      (matita_arithmetics_nat.plus n
+                                         (matita_arithmetics_nat.S
+                                            (matita_arithmetics_log.log p m)))
+                                      i)))
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.plus n
+                                   (matita_arithmetics_log.log p m)))
+                             (matita_arithmetics_nat.plus_n_Sm n
+                                (matita_arithmetics_log.log p m)))))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_exp.exp p n)
+                       (matita_arithmetics_exp.exp p
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_log.log p m))))
+                    (matita_arithmetics_exp.exp_plus_times p n
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p m))))))).
+
+def eq_log_exp :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p (matita_arithmetics_exp.exp p n)) n)
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_basics_logic.eq_ind_r
+        (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+        (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         __ :
+           cic.Term cic.prop
+             (matita_basics_logic.eq
+                (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                x
+                (matita_arithmetics_nat.times
+                   (matita_arithmetics_exp.exp p n)
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O))) =>
+         matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log p x) n)
+        (matita_basics_logic.eq_ind_r
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_nat.plus n
+              (matita_arithmetics_log.log p
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            __ :
+              cic.Term cic.prop
+                (matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2
+                      matita_arithmetics_nat.nat)
+                   x
+                   (matita_arithmetics_nat.plus n
+                      (matita_arithmetics_log.log p
+                         (matita_arithmetics_nat.S matita_arithmetics_nat.O)))) =>
+            matita_basics_logic.eq
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) x
+              n)
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              matita_arithmetics_nat.O
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x matita_arithmetics_nat.O) =>
+               matita_basics_logic.eq
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.plus n x) n)
+              (matita_basics_logic.rewrite_l
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 n
+                 (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  cic.lift cic.prop univs.Type2
+                    ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                      matita_basics_logic.eq
+                        (cic.lift univs.Type0 univs.Type2
+                           matita_arithmetics_nat.nat)
+                        x n)
+                       __))
+                 (matita_basics_logic.refl
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    n)
+                 (matita_arithmetics_nat.plus n matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.plus_n_O n))
+              (matita_arithmetics_log.log p
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              (matita_arithmetics_log.log_SO p lt1p))
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp p n)
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+           (matita_arithmetics_log.log_exp p n
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O) lt1p
+              (matita_arithmetics_nat.lt_O_S matita_arithmetics_nat.O)))
+        (matita_arithmetics_exp.exp p n)
+        (matita_arithmetics_nat.times_n_1 (matita_arithmetics_exp.exp p n)).
+
+def log_exp1 :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p (matita_arithmetics_exp.exp n m))
+           (matita_arithmetics_nat.times m
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p n))))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_arithmetics_nat.nat_ind
+        (_x_365 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_exp.exp n _x_365))
+           (matita_arithmetics_nat.times _x_365
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p n))))
+        (matita_arithmetics_nat.le_x_times_x
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_exp.exp n matita_arithmetics_nat.O)))
+        (m0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         Hind :
+           cic.Term cic.prop
+             (matita_arithmetics_nat.le
+                (matita_arithmetics_log.log p
+                   (matita_arithmetics_exp.exp n m0))
+                (matita_arithmetics_nat.times m0
+                   (matita_arithmetics_nat.S (matita_arithmetics_log.log p n)))) =>
+         matita_arithmetics_nat.transitive_le
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_exp.exp n (matita_arithmetics_nat.S m0)))
+           (matita_arithmetics_nat.S
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p
+                    (matita_arithmetics_exp.exp n m0))))
+           (matita_arithmetics_nat.times (matita_arithmetics_nat.S m0)
+              (matita_arithmetics_nat.S (matita_arithmetics_log.log p n)))
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_nat.times n
+                 (matita_arithmetics_exp.exp n m0))
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x
+                      (matita_arithmetics_nat.times n
+                         (matita_arithmetics_exp.exp n m0))) =>
+               matita_arithmetics_nat.le (matita_arithmetics_log.log p x)
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.plus
+                       (matita_arithmetics_log.log p n)
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_exp.exp n m0)))))
+              (matita_arithmetics_log.log_times p n
+                 (matita_arithmetics_exp.exp n m0) lt1p)
+              (matita_arithmetics_nat.times (matita_arithmetics_exp.exp n m0)
+                 n)
+              (matita_arithmetics_nat.commutative_times
+                 (matita_arithmetics_exp.exp n m0) n))
+           (matita_arithmetics_nat.le_S_S
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p
+                    (matita_arithmetics_exp.exp n m0)))
+              (matita_arithmetics_nat.plus (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_nat.times m0
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p n))))
+              (matita_arithmetics_nat.monotonic_le_plus_r
+                 (matita_arithmetics_log.log p n)
+                 (matita_arithmetics_log.log p
+                    (matita_arithmetics_exp.exp n m0))
+                 (matita_arithmetics_nat.times m0
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p n)))
+                 Hind)))
+        m.
+
+def log_exp2 :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_nat.times m (matita_arithmetics_log.log p n))
+           (matita_arithmetics_log.log p (matita_arithmetics_exp.exp n m)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      ltp1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      matita_arithmetics_nat.le_S_S_to_le
+        (matita_arithmetics_nat.times m (matita_arithmetics_log.log p n))
+        (matita_arithmetics_log.log p (matita_arithmetics_exp.exp n m))
+        (matita_arithmetics_exp.lt_exp_to_lt p
+           (matita_arithmetics_nat.times m (matita_arithmetics_log.log p n))
+           (matita_arithmetics_nat.S
+              (matita_arithmetics_log.log p (matita_arithmetics_exp.exp n m)))
+           (matita_arithmetics_nat.lt_to_le
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O) p ltp1)
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_nat.times (matita_arithmetics_log.log p n)
+                 m)
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x
+                      (matita_arithmetics_nat.times
+                         (matita_arithmetics_log.log p n) m)) =>
+               matita_arithmetics_nat.lt (matita_arithmetics_exp.exp p x)
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.S
+                       (matita_arithmetics_log.log p
+                          (matita_arithmetics_exp.exp n m)))))
+              (matita_basics_logic.eq_ind
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_exp.exp
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_log.log p n))
+                    m)
+                 (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  _x_2 :
+                    cic.Term cic.prop
+                      (matita_basics_logic.eq
+                         (cic.lift univs.Type0 univs.Type2
+                            matita_arithmetics_nat.nat)
+                         (matita_arithmetics_exp.exp
+                            (matita_arithmetics_exp.exp p
+                               (matita_arithmetics_log.log p n))
+                            m)
+                         x_1) =>
+                  matita_arithmetics_nat.lt x_1
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_exp.exp n m)))))
+                 (matita_arithmetics_nat.le_to_lt_to_lt
+                    (matita_arithmetics_exp.exp
+                       (matita_arithmetics_exp.exp p
+                          (matita_arithmetics_log.log p n))
+                       m)
+                    (matita_arithmetics_exp.exp n m)
+                    (matita_arithmetics_exp.exp p
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_log.log p
+                             (matita_arithmetics_exp.exp n m))))
+                    (matita_arithmetics_nat.nat_ind
+                       (_x_365 :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        matita_arithmetics_nat.le
+                          (matita_arithmetics_exp.exp
+                             (matita_arithmetics_exp.exp p
+                                (matita_arithmetics_log.log p n))
+                             _x_365)
+                          (matita_arithmetics_exp.exp n _x_365))
+                       (matita_arithmetics_nat.le_n
+                          (matita_arithmetics_exp.exp
+                             (matita_arithmetics_exp.exp p
+                                (matita_arithmetics_log.log p n))
+                             matita_arithmetics_nat.O))
+                       (m0 :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        Hind :
+                          cic.Term cic.prop
+                            (matita_arithmetics_nat.le
+                               (matita_arithmetics_exp.exp
+                                  (matita_arithmetics_exp.exp p
+                                     (matita_arithmetics_log.log p n))
+                                  m0)
+                               (matita_arithmetics_exp.exp n m0)) =>
+                        matita_arithmetics_nat.le_times
+                          (matita_arithmetics_exp.exp
+                             (matita_arithmetics_exp.exp p
+                                (matita_arithmetics_log.log p n))
+                             m0)
+                          (matita_arithmetics_exp.exp n m0)
+                          (matita_arithmetics_exp.exp p
+                             (matita_arithmetics_log.log p n))
+                          n Hind (matita_arithmetics_log.le_exp_log p n posn))
+                       m)
+                    (matita_arithmetics_log.lt_exp_log p
+                       (matita_arithmetics_exp.exp n m) ltp1))
+                 (matita_arithmetics_exp.exp p
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_log.log p n) m))
+                 (matita_arithmetics_exp.exp_exp_times p
+                    (matita_arithmetics_log.log p n) m))
+              (matita_arithmetics_nat.times m
+                 (matita_arithmetics_log.log p n))
+              (matita_arithmetics_nat.commutative_times m
+                 (matita_arithmetics_log.log p n)))).
+
+def le_log_S :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le (matita_arithmetics_log.log p n)
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.S n)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      matita_basics_bool.match_bool cic.prop
+        (__ : cic.Term univs.Type0 matita_basics_bool.bool =>
+         matita_arithmetics_nat.le
+           (matita_arithmetics_minimization.max' n
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)
+              matita_arithmetics_nat.O)
+           (matita_basics_bool.match_bool univs.Type0
+              (_0 : cic.Term univs.Type0 matita_basics_bool.bool =>
+               matita_arithmetics_nat.nat)
+              n
+              (matita_arithmetics_minimization.max' n
+                 (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                  matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+                    (matita_arithmetics_nat.S n))
+                 matita_arithmetics_nat.O)
+              __))
+        (matita_arithmetics_minimization.le_max_n
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)
+           n)
+        (matita_arithmetics_minimization.le_max_f_max_g
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x) n)
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p x)
+              (matita_arithmetics_nat.S n))
+           n
+           (i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            ltin : cic.Term cic.prop (matita_arithmetics_nat.lt i n) =>
+            H :
+              cic.Term cic.prop
+                (matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2 matita_basics_bool.bool)
+                   (matita_arithmetics_nat.leb
+                      (matita_arithmetics_exp.exp p i) n)
+                   matita_basics_bool.true) =>
+            matita_arithmetics_nat.le_to_leb_true
+              (matita_arithmetics_exp.exp p i) (matita_arithmetics_nat.S n)
+              (matita_arithmetics_nat.le_S (matita_arithmetics_exp.exp p i) n
+                 (matita_arithmetics_nat.leb_true_to_le
+                    (matita_arithmetics_exp.exp p i) n
+                    (matita_basics_logic.rewrite_r
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_basics_bool.bool)
+                       matita_basics_bool.true
+                       (__ : cic.Term univs.Type0 matita_basics_bool.bool =>
+                        cic.lift cic.prop univs.Type2
+                          ((x :
+                              cic.Term univs.Type0 matita_basics_bool.bool =>
+                            matita_basics_logic.eq
+                              (cic.lift univs.Type0 univs.Type2
+                                 matita_basics_bool.bool)
+                              x matita_basics_bool.true)
+                             __))
+                       (matita_basics_logic.refl
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_basics_bool.bool)
+                          matita_basics_bool.true)
+                       (matita_arithmetics_nat.leb
+                          (matita_arithmetics_exp.exp p i) n)
+                       H)))))
+        (matita_arithmetics_nat.leb (matita_arithmetics_exp.exp p n)
+           (matita_arithmetics_nat.S n)).
+
+def le_log :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 : cic.Term cic.prop (matita_arithmetics_nat.le n m) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le (matita_arithmetics_log.log p n)
+           (matita_arithmetics_log.log p m))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      lenm : cic.Term cic.prop (matita_arithmetics_nat.le n m) =>
+      matita_arithmetics_nat.le_ind n
+        (x_417 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         _x_418 : cic.Term cic.prop (matita_arithmetics_nat.le n x_417) =>
+         matita_arithmetics_nat.le (matita_arithmetics_log.log p n)
+           (matita_arithmetics_log.log p x_417))
+        (matita_arithmetics_nat.le_n (matita_arithmetics_log.log p n))
+        (m0 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         lenm0 : cic.Term cic.prop (matita_arithmetics_nat.le n m0) =>
+         Hind :
+           cic.Term cic.prop
+             (matita_arithmetics_nat.le (matita_arithmetics_log.log p n)
+                (matita_arithmetics_log.log p m0)) =>
+         matita_arithmetics_nat.transitive_le
+           (matita_arithmetics_log.log p n) (matita_arithmetics_log.log p m0)
+           (matita_arithmetics_log.log p (matita_arithmetics_nat.S m0)) Hind
+           (matita_arithmetics_log.le_log_S p m0 lt1p))
+        m lenm.
+
+def log_div :
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) ->
+      __1 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) ->
+      __2 : cic.Term cic.prop (matita_arithmetics_nat.le m n) ->
+      cic.Term cic.prop
+        (matita_arithmetics_nat.le
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_div_and_mod.div n m))
+           (matita_arithmetics_nat.minus (matita_arithmetics_log.log p n)
+              (matita_arithmetics_log.log p m)))
+      :=
+      p : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1p :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) p) =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O m) =>
+      lemn : cic.Term cic.prop (matita_arithmetics_nat.le m n) =>
+      matita_arithmetics_nat.le_plus_to_minus_r
+        (matita_arithmetics_log.log p
+           (matita_arithmetics_div_and_mod.div n m))
+        (matita_arithmetics_log.log p m) (matita_arithmetics_log.log p n)
+        (matita_arithmetics_nat.transitive_le
+           (matita_arithmetics_nat.plus
+              (matita_arithmetics_log.log p
+                 (matita_arithmetics_div_and_mod.div n m))
+              (matita_arithmetics_log.log p m))
+           (matita_arithmetics_log.log p
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_div_and_mod.div n m) m))
+           (matita_arithmetics_log.log p n)
+           (matita_arithmetics_log.log_times_l p
+              (matita_arithmetics_div_and_mod.div n m) m
+              (matita_arithmetics_div_and_mod.le_times_to_le_div n m
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O) posn
+                 (matita_basics_logic.eq_coerc
+                    (cic.lift cic.prop univs.Type0
+                       (matita_arithmetics_nat.le m n))
+                    (cic.lift cic.prop univs.Type0
+                       (matita_arithmetics_nat.le
+                          (matita_arithmetics_nat.times m
+                             (matita_arithmetics_nat.S
+                                matita_arithmetics_nat.O))
+                          n))
+                    lemn
+                    (matita_basics_logic.rewrite_l
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.plus m
+                          (matita_arithmetics_nat.times m
+                             matita_arithmetics_nat.O))
+                       (__ :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        cic.lift cic.prop univs.Type2
+                          ((x :
+                              cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                            matita_basics_logic.eq
+                              (cic.lift (cic.succ univs.Type0) univs.Type2
+                                 (cic.univ univs.Type0))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le m n))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le x n)))
+                             __))
+                       (matita_basics_logic.rewrite_l
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          matita_arithmetics_nat.O
+                          (__ :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           cic.lift cic.prop univs.Type2
+                             ((x :
+                                 cic.Term univs.Type0
+                                   matita_arithmetics_nat.nat =>
+                               matita_basics_logic.eq
+                                 (cic.lift (cic.succ univs.Type0) univs.Type2
+                                    (cic.univ univs.Type0))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.le m n))
+                                 (cic.lift cic.prop univs.Type0
+                                    (matita_arithmetics_nat.le
+                                       (matita_arithmetics_nat.plus m x) n)))
+                                __))
+                          (matita_basics_logic.rewrite_l
+                             (cic.lift univs.Type0 univs.Type2
+                                matita_arithmetics_nat.nat)
+                             m
+                             (__ :
+                                cic.Term univs.Type0
+                                  matita_arithmetics_nat.nat =>
+                              cic.lift cic.prop univs.Type2
+                                ((x :
+                                    cic.Term univs.Type0
+                                      matita_arithmetics_nat.nat =>
+                                  matita_basics_logic.eq
+                                    (cic.lift (cic.succ univs.Type0)
+                                       univs.Type2 (cic.univ univs.Type0))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le m n))
+                                    (cic.lift cic.prop univs.Type0
+                                       (matita_arithmetics_nat.le x n)))
+                                   __))
+                             (matita_basics_logic.refl
+                                (cic.lift (cic.succ univs.Type0) univs.Type2
+                                   (cic.univ univs.Type0))
+                                (cic.lift cic.prop univs.Type0
+                                   (matita_arithmetics_nat.le m n)))
+                             (matita_arithmetics_nat.plus m
+                                matita_arithmetics_nat.O)
+                             (matita_arithmetics_nat.plus_n_O m))
+                          (matita_arithmetics_nat.times m
+                             matita_arithmetics_nat.O)
+                          (matita_arithmetics_nat.times_n_O m))
+                       (matita_arithmetics_nat.times m
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       (matita_arithmetics_nat.times_n_Sm m
+                          matita_arithmetics_nat.O))))
+              posn lt1p)
+           (matita_arithmetics_log.le_log p
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_div_and_mod.div n m) m)
+              n lt1p
+              (matita_basics_logic.eq_coerc
+                 (cic.lift cic.prop univs.Type0
+                    (matita_arithmetics_nat.le
+                       (matita_arithmetics_nat.minus n
+                          (matita_arithmetics_div_and_mod.mod n m))
+                       n))
+                 (cic.lift cic.prop univs.Type0
+                    (matita_arithmetics_nat.le
+                       (matita_arithmetics_nat.times
+                          (matita_arithmetics_div_and_mod.div n m) m)
+                       n))
+                 (matita_arithmetics_nat.minus_le n
+                    (matita_arithmetics_div_and_mod.mod n m))
+                 (matita_basics_logic.rewrite_r
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    (matita_arithmetics_nat.times m
+                       (matita_arithmetics_div_and_mod.div n m))
+                    (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                     cic.lift cic.prop univs.Type2
+                       ((x :
+                           cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                         matita_basics_logic.eq
+                           (cic.lift (cic.succ univs.Type0) univs.Type2
+                              (cic.univ univs.Type0))
+                           (cic.lift cic.prop univs.Type0
+                              (matita_arithmetics_nat.le
+                                 (matita_arithmetics_nat.minus n
+                                    (matita_arithmetics_div_and_mod.mod n m))
+                                 n))
+                           (cic.lift cic.prop univs.Type0
+                              (matita_arithmetics_nat.le x n)))
+                          __))
+                    (matita_basics_logic.rewrite_l
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.times m
+                          (matita_arithmetics_div_and_mod.div n m))
+                       (__ :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        cic.lift cic.prop univs.Type2
+                          ((x :
+                              cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                            matita_basics_logic.eq
+                              (cic.lift (cic.succ univs.Type0) univs.Type2
+                                 (cic.univ univs.Type0))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le x n))
+                              (cic.lift cic.prop univs.Type0
+                                 (matita_arithmetics_nat.le
+                                    (matita_arithmetics_nat.times m
+                                       (matita_arithmetics_div_and_mod.div n
+                                          m))
+                                    n)))
+                             __))
+                       (matita_basics_logic.refl
+                          (cic.lift (cic.succ univs.Type0) univs.Type2
+                             (cic.univ univs.Type0))
+                          (cic.lift cic.prop univs.Type0
+                             (matita_arithmetics_nat.le
+                                (matita_arithmetics_nat.times m
+                                   (matita_arithmetics_div_and_mod.div n m))
+                                n)))
+                       (matita_arithmetics_nat.minus n
+                          (matita_arithmetics_div_and_mod.mod n m))
+                       (matita_basics_logic.rewrite_l
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_div_and_mod.div n m) m)
+                          (__ :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           cic.lift cic.prop univs.Type2
+                             ((x :
+                                 cic.Term univs.Type0
+                                   matita_arithmetics_nat.nat =>
+                               matita_basics_logic.eq
+                                 (cic.lift univs.Type0 univs.Type2
+                                    matita_arithmetics_nat.nat)
+                                 x
+                                 (matita_arithmetics_nat.minus n
+                                    (matita_arithmetics_div_and_mod.mod n m)))
+                                __))
+                          (matita_arithmetics_div_and_mod.eq_times_div_minus_mod
+                             n m)
+                          (matita_arithmetics_nat.times m
+                             (matita_arithmetics_div_and_mod.div n m))
+                          (matita_arithmetics_nat.commutative_times
+                             (matita_arithmetics_div_and_mod.div n m) m)))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_div_and_mod.div n m) m)
+                    (matita_arithmetics_nat.commutative_times
+                       (matita_arithmetics_div_and_mod.div n m) m))))).
+
+def log_n_n :
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log n n)
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+      :=
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1n :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) =>
+      matita_basics_logic.eq_ind_r
+        (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+        (matita_arithmetics_exp.exp n
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+        (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         __ :
+           cic.Term cic.prop
+             (matita_basics_logic.eq
+                (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                x
+                (matita_arithmetics_exp.exp n
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O))) =>
+         matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log n x)
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+        (matita_basics_logic.eq_ind_r
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_nat.times
+              (matita_arithmetics_exp.exp n
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            __ :
+              cic.Term cic.prop
+                (matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2
+                      matita_arithmetics_nat.nat)
+                   x
+                   (matita_arithmetics_nat.times
+                      (matita_arithmetics_exp.exp n
+                         (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                      (matita_arithmetics_nat.S matita_arithmetics_nat.O))) =>
+            matita_basics_logic.eq
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_log.log n x)
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           (matita_basics_logic.eq_ind_r
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_nat.plus
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                 (matita_arithmetics_log.log n
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+              (x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               __ :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      x
+                      (matita_arithmetics_nat.plus
+                         (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                         (matita_arithmetics_log.log n
+                            (matita_arithmetics_nat.S
+                               matita_arithmetics_nat.O)))) =>
+               matita_basics_logic.eq
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 x (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              (matita_basics_logic.refl
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 (matita_arithmetics_nat.plus
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                    (matita_arithmetics_log.log n
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O))))
+              (matita_arithmetics_log.log n
+                 (matita_arithmetics_nat.times
+                    (matita_arithmetics_exp.exp n
+                       (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+              (matita_arithmetics_log.log_exp n
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O) lt1n
+                 (matita_arithmetics_nat.lt_O_S matita_arithmetics_nat.O)))
+           (matita_arithmetics_exp.exp n
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+           (matita_arithmetics_nat.times_n_1
+              (matita_arithmetics_exp.exp n
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))))
+        n (matita_arithmetics_exp.exp_n_1 n).
+
+def log_i_2n :
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      i : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) ->
+      __1 : cic.Term cic.prop (matita_arithmetics_nat.lt n i) ->
+      __2 :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.le i
+             (matita_arithmetics_nat.times
+                (matita_arithmetics_nat.S
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                n)) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_log.log i
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 n))
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+      :=
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      i : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      lt1n :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt
+             (matita_arithmetics_nat.S matita_arithmetics_nat.O) n) =>
+      ltni : cic.Term cic.prop (matita_arithmetics_nat.lt n i) =>
+      lei :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.le i
+             (matita_arithmetics_nat.times
+                (matita_arithmetics_nat.S
+                   (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                n)) =>
+      (a : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+       b : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+       leab : cic.Term cic.prop (matita_arithmetics_nat.le a b) =>
+       leba : cic.Term cic.prop (matita_arithmetics_nat.le b a) =>
+       matita_basics_logic.match_Or (matita_arithmetics_nat.lt a b)
+         (matita_basics_logic.eq
+            (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) a b)
+         cic.prop
+         (__ :
+            cic.Term cic.prop
+              (matita_basics_logic.Or (matita_arithmetics_nat.lt a b)
+                 (matita_basics_logic.eq
+                    (cic.lift univs.Type0 univs.Type2
+                       matita_arithmetics_nat.nat)
+                    a b)) =>
+          matita_basics_logic.eq
+            (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) a b)
+         (ltab : cic.Term cic.prop (matita_arithmetics_nat.lt a b) =>
+          matita_basics_logic.False_ind
+            (_x_66 : cic.Term cic.prop matita_basics_logic.False =>
+             matita_basics_logic.eq
+               (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+               a b)
+            (matita_basics_logic.absurd (matita_arithmetics_nat.lt a b) ltab
+               (matita_arithmetics_nat.le_to_not_lt b a leba)))
+         (auto :
+            cic.Term cic.prop
+              (matita_basics_logic.eq
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 a b) =>
+          matita_basics_logic.rewrite_l
+            (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat) a
+            (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+             cic.lift cic.prop univs.Type2
+               ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                 matita_basics_logic.eq
+                   (cic.lift univs.Type0 univs.Type2
+                      matita_arithmetics_nat.nat)
+                   a x)
+                  __))
+            (matita_basics_logic.refl
+               (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+               a)
+            b auto)
+         (matita_arithmetics_nat.le_to_or_lt_eq a b leab))
+        (matita_arithmetics_log.log i
+           (matita_arithmetics_nat.times
+              (matita_arithmetics_nat.S
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+              n))
+        (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+        (matita_arithmetics_nat.not_lt_to_le
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+           (matita_arithmetics_log.log i
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 n))
+           (matita_basics_logic.nmk
+              (matita_arithmetics_nat.lt
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                 (matita_arithmetics_log.log i
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       n)))
+              (H :
+                 cic.Term cic.prop
+                   (matita_arithmetics_nat.lt
+                      (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+                      (matita_arithmetics_log.log i
+                         (matita_arithmetics_nat.times
+                            (matita_arithmetics_nat.S
+                               (matita_arithmetics_nat.S
+                                  matita_arithmetics_nat.O))
+                            n))) =>
+               matita_basics_logic.absurd
+                 (matita_arithmetics_nat.le
+                    (matita_arithmetics_exp.exp i
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       n))
+                 (matita_arithmetics_nat.transitive_le
+                    (matita_arithmetics_exp.exp i
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+                    (matita_arithmetics_exp.exp i
+                       (matita_arithmetics_log.log i
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             n)))
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       n)
+                    (matita_arithmetics_exp.le_exp
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       (matita_arithmetics_log.log i
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             n))
+                       i (matita_arithmetics_nat.ltn_to_ltO n i ltni) H)
+                    (matita_arithmetics_log.le_exp_log i
+                       (matita_arithmetics_nat.times
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.S
+                                matita_arithmetics_nat.O))
+                          n)
+                       (matita_basics_logic.eq_ind_r
+                          (cic.lift univs.Type0 univs.Type2
+                             matita_arithmetics_nat.nat)
+                          (matita_arithmetics_nat.times
+                             matita_arithmetics_nat.O
+                             matita_arithmetics_nat.O)
+                          (x :
+                             cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                           __ :
+                             cic.Term cic.prop
+                               (matita_basics_logic.eq
+                                  (cic.lift univs.Type0 univs.Type2
+                                     matita_arithmetics_nat.nat)
+                                  x
+                                  (matita_arithmetics_nat.times
+                                     matita_arithmetics_nat.O
+                                     matita_arithmetics_nat.O)) =>
+                           matita_arithmetics_nat.lt x
+                             (matita_arithmetics_nat.times
+                                (matita_arithmetics_nat.S
+                                   (matita_arithmetics_nat.S
+                                      matita_arithmetics_nat.O))
+                                n))
+                          (matita_arithmetics_nat.lt_times
+                             matita_arithmetics_nat.O
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             matita_arithmetics_nat.O n
+                             (matita_arithmetics_nat.lt_O_S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             (matita_arithmetics_nat.lt_to_le
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O)
+                                n lt1n))
+                          matita_arithmetics_nat.O
+                          (matita_arithmetics_nat.times_n_O
+                             matita_arithmetics_nat.O))))
+                 (matita_arithmetics_nat.lt_to_not_le
+                    (matita_arithmetics_nat.times
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                       n)
+                    (matita_arithmetics_exp.exp i
+                       (matita_arithmetics_nat.S
+                          (matita_arithmetics_nat.S matita_arithmetics_nat.O)))
+                    (matita_basics_logic.eq_ind_r
+                       (cic.lift univs.Type0 univs.Type2
+                          matita_arithmetics_nat.nat)
+                       (matita_arithmetics_nat.times i i)
+                       (x :
+                          cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                        __ :
+                          cic.Term cic.prop
+                            (matita_basics_logic.eq
+                               (cic.lift univs.Type0 univs.Type2
+                                  matita_arithmetics_nat.nat)
+                               x (matita_arithmetics_nat.times i i)) =>
+                        matita_arithmetics_nat.lt
+                          (matita_arithmetics_nat.times
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             n)
+                          x)
+                       (matita_arithmetics_nat.lt_times
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.S
+                                matita_arithmetics_nat.O))
+                          i n i
+                          (matita_arithmetics_nat.le_to_lt_to_lt
+                             (matita_arithmetics_nat.S
+                                (matita_arithmetics_nat.S
+                                   matita_arithmetics_nat.O))
+                             n i lt1n ltni)
+                          (matita_arithmetics_nat.le_to_lt_to_lt n n i
+                             (matita_arithmetics_nat.le_n n) ltni))
+                       (matita_arithmetics_exp.exp i
+                          (matita_arithmetics_nat.S
+                             (matita_arithmetics_nat.S
+                                matita_arithmetics_nat.O)))
+                       (matita_arithmetics_exp.exp_2 i))))))
+        (matita_arithmetics_nat.transitive_le
+           (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+           (matita_arithmetics_log.log i i)
+           (matita_arithmetics_log.log i
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 n))
+           (matita_basics_logic.eq_ind
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              (matita_arithmetics_log.log i i)
+              (x_1 : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               _x_2 :
+                 cic.Term cic.prop
+                   (matita_basics_logic.eq
+                      (cic.lift univs.Type0 univs.Type2
+                         matita_arithmetics_nat.nat)
+                      (matita_arithmetics_log.log i i) x_1) =>
+               matita_arithmetics_nat.le x_1 (matita_arithmetics_log.log i i))
+              (matita_arithmetics_nat.le_n (matita_arithmetics_log.log i i))
+              (matita_arithmetics_nat.S matita_arithmetics_nat.O)
+              (matita_arithmetics_log.log_n_n i
+                 (matita_arithmetics_nat.transitive_lt
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O) n i
+                    lt1n ltni)))
+           (matita_arithmetics_log.le_log i i
+              (matita_arithmetics_nat.times
+                 (matita_arithmetics_nat.S
+                    (matita_arithmetics_nat.S matita_arithmetics_nat.O))
+                 n)
+              (matita_arithmetics_nat.transitive_lt
+                 (matita_arithmetics_nat.S matita_arithmetics_nat.O) n i lt1n
+                 ltni)
+              lei)).
+
+def exp_n_O :
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
+      __ :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) ->
+      cic.Term cic.prop
+        (matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_exp.exp matita_arithmetics_nat.O n)
+           matita_arithmetics_nat.O)
+      :=
+      n : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+      posn :
+        cic.Term cic.prop
+          (matita_arithmetics_nat.lt matita_arithmetics_nat.O n) =>
+      matita_arithmetics_nat.lt_O_n_elim n posn
+        (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_basics_logic.eq
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_exp.exp matita_arithmetics_nat.O __)
+           matita_arithmetics_nat.O)
+        (m : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+         matita_basics_logic.rewrite_r
+           (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+           (matita_arithmetics_nat.times matita_arithmetics_nat.O
+              (matita_arithmetics_exp.exp matita_arithmetics_nat.O m))
+           (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+            cic.lift cic.prop univs.Type2
+              ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                matita_basics_logic.eq
+                  (cic.lift univs.Type0 univs.Type2
+                     matita_arithmetics_nat.nat)
+                  x matita_arithmetics_nat.O)
+                 __))
+           (matita_basics_logic.rewrite_l
+              (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+              matita_arithmetics_nat.O
+              (__ : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+               cic.lift cic.prop univs.Type2
+                 ((x : cic.Term univs.Type0 matita_arithmetics_nat.nat =>
+                   matita_basics_logic.eq
+                     (cic.lift univs.Type0 univs.Type2
+                        matita_arithmetics_nat.nat)
+                     x matita_arithmetics_nat.O)
+                    __))
+              (matita_basics_logic.refl
+                 (cic.lift univs.Type0 univs.Type2 matita_arithmetics_nat.nat)
+                 matita_arithmetics_nat.O)
+              (matita_arithmetics_nat.times matita_arithmetics_nat.O
+                 (matita_arithmetics_exp.exp matita_arithmetics_nat.O m))
+              (matita_arithmetics_nat.times_O_n
+                 (matita_arithmetics_exp.exp matita_arithmetics_nat.O m)))
+           (matita_arithmetics_nat.times
+              (matita_arithmetics_exp.exp matita_arithmetics_nat.O m)
+              matita_arithmetics_nat.O)
+           (matita_arithmetics_nat.commutative_times
+              (matita_arithmetics_exp.exp matita_arithmetics_nat.O m)
+              matita_arithmetics_nat.O)).
+
+

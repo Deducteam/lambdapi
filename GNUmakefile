@@ -1,5 +1,6 @@
 QUIET = --quiet
 TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
+MATITAFILES  = $(wildcard matita/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
@@ -20,6 +21,14 @@ tests: lambdapi
 	done
 	@echo -n "Number of lines: "
 	@wc -l lambdapi.ml | cut -d ' ' -f 1
+
+.PHONY: matita
+matita: lambdapi
+	@echo "## Timing on matita ##"
+	@cd matita && time for file in $(MATITAFILES) ; do \
+		echo "$$file" ; \
+		../lambdapi $(QUIET) ../$$file ; \
+	done
 
 unit_tests: lambdapi
 	@echo "## OK tests ##"

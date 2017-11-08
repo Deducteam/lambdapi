@@ -1,0 +1,17 @@
+(; This file was automatically generated from Matita. ;)
+
+#NAME univs.
+
+def Type0 : cic.Sort := cic.type cic.z.
+
+def Type1 : cic.Sort := cic.succ univs.Type0.
+
+def Type2 : cic.Sort := cic.succ univs.Type1.
+
+def Type3 : cic.Sort := cic.succ univs.Type2.
+
+def Type4 : cic.Sort := cic.succ univs.Type3.
+
+def Type5 : cic.Sort := cic.succ univs.Type4.
+
+
