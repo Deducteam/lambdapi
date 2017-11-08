@@ -1127,8 +1127,8 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
     s.def_rules := !(s.def_rules) @ [rule];
     out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
 
-(* TODO cleaning and comments from here... *)
-
+(* [check_rule sign r] check whether the rule [r] is well-typed in the signat-
+   ure [sign]. The program fails gracefully in case of error. *)
 let check_rule sign (ctx, s, t, u, rule) =
   (* Infer the type of the LHS and the constraints. *)
   let (tt, tt_constrs) =
@@ -1153,18 +1153,21 @@ let check_rule sign (ctx, s, t, u, rule) =
       err "Infered type for RHS: %a\n" pp tu;
       fatal "[%a → %a] is ill-typed\n" pp t pp u
     end;
+  (* Adding the rule. *)
   (s,t,u,rule)
 
+(* [handle_rules sign rs] scopes the rules of [rs] first, then check that they
+   are well-typed, and finally add them to the corresponding symbol. Note that
+   the program fails gracefully in case of error. *)
 let handle_rules = fun sign rs ->
   let rs = List.map (scope_rule sign) rs in
+  let rs = List.map (check_rule sign) rs in
+  out "(rule) Adding the rules:\n";
   let add_rule (s,t,u,rule) =
     out "  - %a → %a\n" pp t pp u;
     s.def_rules := !(s.def_rules) @ [rule]
   in
-  out "(rule) Adding the rules:\n";
-  List.iter add_rule (List.map (check_rule sign) rs)
-
-(* TODO cleaning and comments until here... *)
+  List.iter add_rule rs
 
 (* [handle_check sign t a] scopes the term [t] and the type [a],  and attempts
    to show that [t] has type [a] in the signature [sign]*)
