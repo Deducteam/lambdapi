@@ -859,7 +859,7 @@ type p_item =
   (* New symbol (static or definable). *)
   | NewSym of bool * string * p_term
   (* New rewriting rules. *)
-  | Rules  of ((string * p_term option) list * p_term * p_term) list
+  | Rules  of p_rule list
   (* New definable symbol with its definition. *)
   | Defin  of string * p_term option * p_term
   (* Commands. *)
@@ -869,6 +869,9 @@ type p_item =
   | Conv   of p_term * p_term
   | Name   of string
   | Step   of p_term
+
+(* Representation of a reduction rule, with its context. *)
+and p_rule = (string * p_term option) list * p_term * p_term
 
 (* [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -1034,6 +1037,44 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
   | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | _            -> fatal "%a is not a valid pattern...\n" pp t
 
+(* [scope_rule sign r] scopes a parsing level reduction rule,  producing every
+   element that is necessary to check its type. This includes its context, the
+   symbol, the LHS and RHS as terms (for printing) and the rule. *)
+let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
+  fun sign (xs_ty_map,t,u) ->
+    let scope_opt sign a =
+      match a with
+      | None    -> None
+      | Some(a) -> Some(to_term sign a)
+    in
+    let xs_ty_map = List.map (fun (x,a) -> (x, scope_opt sign a)) xs_ty_map in
+    let xs = List.map fst xs_ty_map in
+    (* Scoping the LHS and RHS. *)
+    let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
+    let (s, l, wcs) = to_patt vars sign t in
+    let arity = List.length l in
+    let l = Bindlib.box_list l in
+    let u = to_tbox ~vars sign u in
+    (* Building the definition. *)
+    let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
+    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
+    (* Constructing the typing context. *)
+    let ty_map = List.map (fun (x,a) -> (List.assoc x vars, a)) xs_ty_map in
+    let type_of x =
+      try
+        match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
+        | None    -> raise Not_found
+        | Some(a) -> a
+      with Not_found -> Unif(ref None)
+    in
+    let xs = Array.to_list xs in
+    let ctx = List.map (fun x -> (x, type_of x)) xs in
+    (* Constructing the rule. *)
+    let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
+    let u = Bindlib.unbox u in
+    (ctx, s, t, u, { lhs ; rhs ; arity })
+
 (**** Interpretation of commands ********************************************)
 
 (* [sort_type sign x a] finds out the sort of the type [a],  which corresponds
@@ -1088,25 +1129,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
 
 (* TODO cleaning and comments from here... *)
 
-let check_rule sign (xs,t,u) =
-  let xs = List.map fst xs in (* FIXME keep type annotation. *)
-  (* Scoping the LHS and RHS. *)
-  let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
-  let (s, l, wcs) = to_patt vars sign t in
-  let arity = List.length l in
-  let l = Bindlib.box_list l in
-  let u = to_tbox ~vars sign u in
-  (* Building the definition. *)
-  let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-  let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
-  let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
-  (* Constructing the typing context and the terms. *)
-  let xs = Array.to_list xs in
-  let ctx = List.map (fun x -> (x, Unif(ref None))) xs in
-  let u = Bindlib.unbox u in
-  (* Check that the LHS is a pattern and build the rule. *)
-  let rule = { lhs ; rhs ; arity } in
-  let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
+let check_rule sign (ctx, s, t, u, rule) =
   (* Infer the type of the LHS and the constraints. *)
   let (tt, tt_constrs) =
     try infer_with_constrs sign ctx t with Not_found ->
@@ -1133,6 +1156,7 @@ let check_rule sign (xs,t,u) =
   (s,t,u,rule)
 
 let handle_rules = fun sign rs ->
+  let rs = List.map (scope_rule sign) rs in
   let add_rule (s,t,u,rule) =
     out "  - %a → %a\n" pp t pp u;
     s.def_rules := !(s.def_rules) @ [rule]
