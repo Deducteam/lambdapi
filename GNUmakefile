@@ -1,6 +1,6 @@
 QUIET = --quiet
 TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
-MATITAFILES  = $(wildcard matita/*.dk)
+MATITAFILES  = $(shell cat matita/DEPEND)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
@@ -24,11 +24,18 @@ tests: lambdapi
 
 .PHONY: matita
 matita: lambdapi
-	@echo "## Timing on matita ##"
+	@echo "## Compiling matita library ##"
+	@rm -f matita/*.dko
 	@cd matita && time for file in $(MATITAFILES) ; do \
 		echo "$$file" ; \
-		../lambdapi $(QUIET) ../$$file ; \
+		../lambdapi $(QUIET) $$file || exit 1; \
 	done
+
+.PHONY: matita_dedukti
+matita_dedukti:
+	@echo "## Compiling matita library (with Dedukti) ##"
+	@rm -f matita/*.dko
+	@cd matita && time dkcheck -e -nl $(MATITAFILES)
 
 unit_tests: lambdapi
 	@echo "## OK tests ##"

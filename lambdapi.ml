@@ -1042,12 +1042,6 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
    symbol, the LHS and RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
-    let scope_opt sign a =
-      match a with
-      | None    -> None
-      | Some(a) -> Some(to_term sign a)
-    in
-    let xs_ty_map = List.map (fun (x,a) -> (x, scope_opt sign a)) xs_ty_map in
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
     let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
@@ -1060,16 +1054,18 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
     (* Constructing the typing context. *)
-    let ty_map = List.map (fun (x,a) -> (List.assoc x vars, a)) xs_ty_map in
-    let type_of x =
-      try
-        match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
-        | None    -> raise Not_found
-        | Some(a) -> a
-      with Not_found -> Unif(ref None)
+    let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
+    let add_var ctx x =
+      let a =
+        try
+          match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
+          | None    -> raise Not_found
+          | Some(a) -> to_term ~vars sign a (* FIXME *)
+        with Not_found -> Unif(ref None)
+      in
+      Ctxt.add x a ctx
     in
-    let xs = Array.to_list xs in
-    let ctx = List.map (fun x -> (x, type_of x)) xs in
+    let ctx = Array.fold_left add_var Ctxt.empty xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
