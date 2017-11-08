@@ -1,0 +1,71 @@
+#NAME cic.
+
+Nat : Type.
+
+z : Nat.
+s : Nat -> Nat.
+
+def m : Nat -> Nat -> Nat.
+[i : Nat] m i z --> i.
+[j : Nat] m z j --> j.
+[i : Nat, j : Nat] m (s i) (s j) --> s (m i j).
+
+(; Sorts ;)
+
+Sort : Type.
+
+prop : Sort.
+type : Nat -> Sort.
+
+(; Universe successors ;)
+def succ : Sort -> Sort.
+[] succ prop --> type z.
+[i : Nat] succ (type i) --> type (s i).
+
+(; Universe cumulativity ;)
+def next : Sort -> Sort.
+[] next prop --> type z.
+[i : Nat] next (type i) --> type (s i).
+
+(; Universe product rules ;)
+def rule : Sort -> Sort -> Sort.
+[s1 : Sort] rule s1 prop --> prop.
+[s2 : Sort] rule prop s2 --> s2.
+[i : Nat, j : Nat] rule (type i) (type j) --> type (m i j).
+
+def max : Sort -> Sort -> Sort.
+[s1 : Sort] max s1 prop --> s1.
+[s2 : Sort] max prop s2 --> s2.
+[i : Nat, j : Nat] max (type i) (type j) --> type (m i j).
+
+(; Types and terms ;)
+
+Univ : s : Sort -> Type.
+def Term : s : Sort -> a : Univ s -> Type.
+
+univ : s : Sort -> Univ (succ s).
+def lift : s1 : Sort -> s2 : Sort -> a : Univ s1 -> Univ (max s1 s2).
+def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ (rule s1 s2).
+
+[s : Sort] Term _ (univ s) --> Univ s.
+[s1 : Sort, s2 : Sort, a : Univ s1] Term _ (lift s1 s2 a) --> Term s1 a.
+[s1 : Sort, s2 : Sort, a : Univ s1, b : (Term s1 a -> Univ s2)]
+  Term _ (prod s1 s2 a b) --> x : Term s1 a -> Term s2 (b x).
+
+(; Canonicity rules ;)
+
+[s : Sort] max s s --> s.
+[s1 : Sort, s2 : Sort, s3 : Sort] max (max s1 s2) s3 --> max s1 (max s2 s3).
+[s1 : Sort, s2 : Sort, s3 : Sort] rule (max s1 s3) s2 --> max (rule s1 s2) (rule s3 s2).
+[s1 : Sort, s2 : Sort, s3 : Sort] rule s1 (max s2 s3) --> max (rule s1 s2) (rule s1 s3).
+
+[s : Sort, a : Univ s] lift s s a --> a.
+[s1 : Sort, s2 : Sort, s3 : Sort, a : Univ s1]
+  lift _ s3 (lift s1 s2 a) -->
+  lift s1 (max s2 s3) a.
+[s1 : Sort, s2 : Sort, s3 : Sort, a : Univ s1, b : Term s1 a -> Univ s2]
+  prod _ s2 (lift s1 s3 a) b -->
+  lift (rule s1 s2) (rule s3 s2) (prod s1 s2 a b).
+[s1 : Sort, s2 : Sort, s3 : Sort, a : Univ s1, b : Term s1 a -> Univ s2]
+  prod s1 _ a (x => lift s2 s3 (b x)) -->
+  lift (rule s1 s2) (rule s1 s3) (prod s1 s2 a (x => b x)).

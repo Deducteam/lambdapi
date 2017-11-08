@@ -3,4 +3,4 @@ lambda.dk (line 12):
   + [f,arg] App _ _ (Lam _ _ f) arg --> f arg.
 
 FO_theorems.dk (lines 4 to 11):
-  "FO." := "examples::firstOrder::"
+  "FO." := "examples.firstOrder."

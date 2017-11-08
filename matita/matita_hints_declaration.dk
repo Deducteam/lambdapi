@@ -1,0 +1,46 @@
+(; This file was automatically generated from Matita. ;)
+
+#NAME matita_hints_declaration.
+
+def hint_declaration_Type0 :
+      A : cic.Univ univs.Type0 ->
+      _a : cic.Term univs.Type0 A ->
+      _b : cic.Term univs.Type0 A -> cic.Univ univs.Type0 :=
+      A : cic.Univ univs.Type0 =>
+      a : cic.Term univs.Type0 A =>
+      b : cic.Term univs.Type0 A => cic.univ cic.prop.
+
+def hint_declaration_Type1 :
+      A : cic.Univ univs.Type1 ->
+      _a : cic.Term univs.Type1 A ->
+      _b : cic.Term univs.Type1 A -> cic.Univ univs.Type0 :=
+      A : cic.Univ univs.Type1 =>
+      a : cic.Term univs.Type1 A =>
+      b : cic.Term univs.Type1 A => cic.univ cic.prop.
+
+def hint_declaration_Type2 :
+      _a : cic.Univ univs.Type2 ->
+      _b : cic.Univ univs.Type2 -> cic.Univ univs.Type0 :=
+      a : cic.Univ univs.Type2 =>
+      b : cic.Univ univs.Type2 => cic.univ cic.prop.
+
+def hint_declaration_CProp0 :
+      A : cic.Univ cic.prop ->
+      _a : cic.Term cic.prop A ->
+      _b : cic.Term cic.prop A -> cic.Univ univs.Type0 :=
+      A : cic.Univ cic.prop =>
+      a : cic.Term cic.prop A => b : cic.Term cic.prop A => cic.univ cic.prop.
+
+def hint_declaration_CProp1 :
+      A : cic.Univ cic.prop ->
+      _a : cic.Term cic.prop A ->
+      _b : cic.Term cic.prop A -> cic.Univ univs.Type0 :=
+      A : cic.Univ cic.prop =>
+      a : cic.Term cic.prop A => b : cic.Term cic.prop A => cic.univ cic.prop.
+
+def hint_declaration_CProp2 :
+      _a : cic.Univ cic.prop ->
+      _b : cic.Univ cic.prop -> cic.Univ univs.Type0 :=
+      a : cic.Univ cic.prop => b : cic.Univ cic.prop => cic.univ cic.prop.
+
+

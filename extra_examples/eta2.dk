@@ -1,0 +1,67 @@
+#NAME eta2.
+
+type : Type.
+arr : type -> type -> type.
+all : (type -> type) -> type.
+
+typed : type -> Type.
+def App : a:type -> b:type -> typed (arr a b)  -> typed a -> typed b.
+def Abs : a:type -> b:type -> (typed a -> typed b) -> typed (arr a b).
+def Ab2 : b:(type -> type) -> (a:type -> typed (b a)) -> typed (all b).
+def Ap2 : b:(type -> type) -> typed (all b) -> a:type -> typed (b a).
+
+[A,B,a,b] App A B (Abs A B a) b --> a b.
+[A,B,b] Abs A B (a:typed A => App A B b a) --> b.
+[A,a,b] Ap2 A (Ab2 A b) a --> b a.
+[A,b] Ab2 A (a:type => Ap2 A b a) --> b.
+
+def App2 : a:type -> b:type -> c:type -> typed (arr a (arr b c)) -> typed a -> typed b -> typed c
+  := a => b => c => f:typed (arr a (arr b c)) => g:typed a => h:typed b => App b c (App a (arr b c) f g) h.
+
+def N : type := all (a => arr (arr a a) (arr a a)).
+def nat : Type := typed N.
+
+def 0 : nat := Ab2 (a => arr (arr a a) (arr a a)) (a => Abs (arr a a) (arr a a) (f:typed (arr a a) => Abs a a (x:typed a => x))).
+def S : typed (arr N N) :=
+    Abs N N (n =>  Ab2 (a => arr (arr a a) (arr a a)) (a =>
+      Abs (arr a a) (arr a a) (f:typed (arr a a) => Abs a a (x:typed a => App a a f (App2 (arr a a) a a
+                                  (Ap2 (a => arr (arr a a) (arr a a)) n a) f x))))).
+
+
+def 1 := App N N S 0.
+def 2 := App N N S 1.
+def 3 := App N N S 2.
+def 4 := App N N S 3.
+def 5 := App N N S 4.
+def 6 := App N N S 5.
+def 7 := App N N S 6.
+def 8 := App N N S 7.
+
+def 1b := Ab2 (a:type => arr (arr a a) (arr a a)) (a0:type => Abs (arr a0 a0) (arr a0 a0) (f:typed (arr a0 a0) => f)).
+
+(;#EVAL 1.;)
+#CONV 1, 1b.
+
+(;
+def 2 := App S 1.
+def 3 := App S 2.
+def 4 := App S 3.
+def 5 := App S 4.
+def 6 := App S 5.
+def 7 := App S 6.
+def 8 := App S 7.
+
+def plus  : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
+  App2 m f (App2 n f x))))).
+def times : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
+  App2 m (App n f) x)))).
+def power : Term := Abs (m => Abs (n => App n m)).
+
+#CONV App2 plus 2 3, App2 plus 3 2.
+#CONV App2 times 2 3, App2 times 3 2.
+#CONV App2 power (App2 times 8 7), App2 power (App2 times 7 8).
+
+#CONV Abs (a:Term => Abs (b:Term => App a b)), Abs (a:Term => a).
+#CONV Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b))),
+      Abs (a:Term => a).
+;)
