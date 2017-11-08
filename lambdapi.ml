@@ -957,9 +957,7 @@ let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
    time that the corresponding module is required. *)
 let load_signature : Sign.t -> string list -> Sign.t = fun sign modpath ->
   if Stack.top current_module = modpath then sign else
-  try Hashtbl.find loaded modpath with Not_found ->
-    let sign = !compile_ref modpath in
-    Hashtbl.add loaded modpath sign; sign
+  try Hashtbl.find loaded modpath with Not_found -> !compile_ref modpath
 
 (**** Scoping ***************************************************************)
 
@@ -1216,38 +1214,43 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
 
 (**** Main compilation functions ********************************************)
 
-(* [compile force modpath] compiles the file correspinding to the module  path
-   [modpath] if it is necessary, or if [force] is [true] ([force] is typically
-   used to force the compilation of the files given on the command line). Note
-   that the produced signature is registered in [loaded] before being returned
-   and it is also stored into an object file. *)
-let compile : bool -> string list -> Sign.t = fun force modpath ->
+(* [compile modpath] compiles the file correspinding to module path  [modpath]
+   if necessary (i.e., if no corresponding binary file exists).  Note that the
+   produced signature is stored into an object file, and in [loaded] before it
+   is returned. *)
+let compile : string list -> Sign.t = fun modpath ->
   Stack.push modpath current_module;
   let base = String.concat "/" modpath in
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
   let sign =
-    if more_recent src obj || force then
+    if more_recent src obj then
       begin
         out "Loading file [%s]\n%!" src;
         let sign = Sign.create modpath in
         handle_file sign src;
         Sign.write sign obj;
+        Hashtbl.add loaded modpath sign;
         out "Done with file [%s]\n%!" src; sign
       end
-    else Sign.read obj
+    else
+      begin
+        out "Already compiled [%s]\n%!" obj;
+        let sign = Sign.read obj in
+        Hashtbl.add loaded modpath sign;
+        out "Done with file [%s]\n%!" src; sign
+      end
   in
   ignore (Stack.pop current_module); sign
 
 (* Setting the compilation function since it is now available. *)
-let _ = compile_ref := compile false
+let _ = compile_ref := compile
 
-(* [compile fname] forces the compilation of the source file [fname],  even if
-   an object file is already present. *)
+(* [compile fname] compiles the source file [fname]. *)
 let compile fname =
   let modpath = module_path fname in
-  ignore (compile true modpath)
+  ignore (compile modpath)
 
 (**** Main program, handling of command line arguments **********************)
 

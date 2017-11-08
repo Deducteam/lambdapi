@@ -26,19 +26,13 @@ tests: lambdapi
 matita: lambdapi
 	@echo "## Compiling matita library ##"
 	@rm -f matita/*.dko
-	@cd matita && time for file in $(MATITAFILES) ; do \
-		echo "$$file" ; \
-		../lambdapi $(QUIET) $$file || exit 1; \
-	done
+	@cd matita && time ../lambdapi $(QUIET) $(MATITAFILES)
 
 .PHONY: matita_dedukti
 matita_dedukti:
 	@echo "## Compiling matita library (with Dedukti) ##"
 	@rm -f matita/*.dko
-	@cd matita && time for file in $(MATITAFILES) ; do \
-		echo "$$file" ; \
-		dkcheck -nl -e $$file ; \
-	done
+	@cd matita && time dkcheck -nl -e $(MATITAFILES)
 
 unit_tests: lambdapi
 	@echo "## OK tests ##"
