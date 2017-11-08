@@ -1036,6 +1036,56 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
 
 (**** Interpretation of commands ********************************************)
 
+(* [sort_type sign x a] finds out the sort of the type [a],  which corresponds
+   to variable [x]. The result may be either [Type] or [Kind]. If [a] is not a
+   well-sorted type, then the program fails gracefully. *)
+let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
+  if has_type sign Ctxt.empty a Type then Type else
+  if has_type sign Ctxt.empty a Kind then Kind else
+  fatal "%s is neither of type Type nor Kind.\n" x
+
+(* [handle_newsym sign is_definable x a] scopes the type [a] in the  signature
+   [sign], and defines a new symbol named [x] with the obtained type.  It will
+   be definable if [is_definable] is true, and static otherwise. Note that the
+   function will fail gracefully if the type corresponding to [a] has not sort
+   [Type] or [Kind]. *)
+let handle_newsym : Sign.t -> bool -> string -> p_term -> unit =
+  fun sign is_definable x a ->
+    let a = to_term sign a in
+    let sort = sort_type sign x a in
+    if is_definable then
+      let _ = Sign.new_definable sign x a in
+      out "(defi) %s : %a (sort %a)\n" x pp a pp sort
+    else
+      let _ = Sign.new_static sign x a in
+      out "(stat) %s : %a (sort %a)\n" x pp a pp sort
+
+(* [handle_defin sign x a t] scopes the type [a] and the term [t] in signature
+   [sign], and creates a new definable symbol with name [a], type [a] (when it
+   is given, or an infered type), and definition [t]. This amounts to defining
+   a symbol with a single reduction rule for the standalone symbol. In case of
+   error (typing, sorting, ...) the program fails gracefully. *)
+let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
+  fun sign x a t ->
+    let t = to_term sign t in
+    let a =
+      match a with
+      | None   -> infer sign Ctxt.empty t
+      | Some a -> to_term sign a
+    in
+    let sort = sort_type sign x a in
+    out "(defi) %s : %a (of sort %a)\n" x pp a pp sort;
+    if not (has_type sign Ctxt.empty t a) then
+      fatal "Cannot type the definition of %s...\n" x;
+    let s = Sign.new_definable sign x a in
+    let rule =
+      let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
+      let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
+      {arity = 0; lhs ; rhs}
+    in
+    s.def_rules := !(s.def_rules) @ [rule];
+    out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
+
 (* TODO cleaning and comments from here... *)
 
 let check_rule sign (xs,t,u) =
@@ -1082,79 +1132,64 @@ let check_rule sign (xs,t,u) =
     end;
   (s,t,u,rule)
 
-let handle_item : Sign.t -> p_item -> unit = fun sign it ->
-  match it with
-  | NewSym(d,x,a) ->
-      let a = to_term sign a in
-      let sort =
-        if has_type sign Ctxt.empty a Type then "Type" else
-        if has_type sign Ctxt.empty a Kind then "Kind" else
-        fatal "%s is neither of type Type nor Kind.\n" x
-      in
-      let kind = if d then "defi" else "symb" in
-      out "(%s) %s : %a (of sort %s)\n" kind x pp a sort;
-      if d then ignore (Sign.new_definable sign x a)
-      else ignore (Sign.new_static sign x a)
-  | Defin(x,a,t) ->
-      let t = to_term sign t in
-      let a =
-        match a with
-        | None   -> infer sign Ctxt.empty t
-        | Some a -> to_term sign a
-      in
-      let sort =
-        if has_type sign Ctxt.empty a Type then "Type" else
-        if has_type sign Ctxt.empty a Kind then "Kind" else
-        fatal "%s is neither of type Type nor Kind.\n" x
-      in
-      out "(defi) %s : %a (of sort %s)\n" x pp a sort;
-      if not (has_type sign Ctxt.empty t a) then
-        fatal "Cannot type the definition of %s...\n" x;
-      let s = Sign.new_definable sign x a in
-      out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
-      let rule =
-        let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
-        let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
-        {arity = 0; lhs ; rhs}
-      in
-      s.def_rules := !(s.def_rules) @ [rule]
-  | Rules(rs)     ->
-      (* Adding all the rules. *)
-      let add_rule (s,t,u,rule) =
-        out "  - %a → %a\n" pp t pp u;
-        s.def_rules := !(s.def_rules) @ [rule]
-      in
-      out "(rule) Adding the rules:\n";
-      List.iter add_rule (List.map (check_rule sign) rs)
-  | Check(t,a)    ->
-      let t = to_term sign t in
-      let a = to_term sign a in
-      if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
-      else fatal "%a does not have type %a...\n" pp t pp a
-  | Infer(t)      ->
-      let t = to_term sign t in
-      begin
-        try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
-        with Not_found -> fatal "%a : unable to infer\n%!" pp t
-      end
-  | Eval(t)       ->
-      out "(eval) %a\n" pp (eval (to_term sign t))
-  | Conv(t,u)     ->
-      let t = to_term sign t in
-      let u = to_term sign u in
-      if eq_modulo t u then out "(conv) OK\n"
-      else fatal "cannot convert %a and %a...\n" pp t pp u
-  | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
-  | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
+let handle_rules = fun sign rs ->
+  let add_rule (s,t,u,rule) =
+    out "  - %a → %a\n" pp t pp u;
+    s.def_rules := !(s.def_rules) @ [rule]
+  in
+  out "(rule) Adding the rules:\n";
+  List.iter add_rule (List.map (check_rule sign) rs)
 
 (* TODO cleaning and comments until here... *)
+
+(* [handle_check sign t a] scopes the term [t] and the type [a],  and attempts
+   to show that [t] has type [a] in the signature [sign]*)
+let handle_check : Sign.t -> p_term -> p_term -> unit = fun sign t a ->
+  let t = to_term sign t in
+  let a = to_term sign a in
+  if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
+  else fatal "%a does not have type %a...\n" pp t pp a
+
+(* [handle_infer sign t] scopes [t] and attempts to infer its type with [sign]
+   as the signature. *)
+let handle_infer : Sign.t -> p_term -> unit = fun sign t ->
+  let t = to_term sign t in
+  try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
+  with Not_found -> fatal "%a : unable to infer\n%!" pp t
+
+(* [handle_eval sign t] scopes (in the signature [sign] and evaluates the term
+   [t]. Note that the term is not typed prior to evaluation. *)
+let handle_eval : Sign.t -> p_term -> unit = fun sign t ->
+  let t = to_term sign t in
+  out "(eval) %a\n" pp (eval t)
+
+(* [handle_conv sign t u] checks the convertibility between the terms [t]  and
+   [u] (they are scoped in the signature [sign]). The program fails gracefully
+   if the check fails. *)
+let handle_conv : Sign.t -> p_term -> p_term -> unit = fun sign t u ->
+  let t = to_term sign t in
+  let u = to_term sign u in
+  if eq_modulo t u then out "(conv) OK\n"
+  else fatal "cannot convert %a and %a...\n" pp t pp u
 
 (* [handle_file sign fname] parses and interprets the file [fname] with [sign]
    as its signature. All exceptions are handled, and errors lead to (graceful)
    failure of the whole program. *)
 let handle_file : Sign.t -> string -> unit = fun sign fname ->
-  try List.iter (handle_item sign) (parse_file fname)
-  with e -> fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+  let handle_item it =
+    match it with
+    | NewSym(d,x,a) -> handle_newsym sign d x a
+    | Defin(x,a,t)  -> handle_defin sign x a t
+    | Rules(rs)     -> handle_rules sign rs
+    | Check(t,a)    -> handle_check sign t a
+    | Infer(t)      -> handle_infer sign t
+    | Eval(t)       -> handle_eval sign t
+    | Conv(t,u)     -> handle_conv sign t u
+    | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
+    | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
+  in
+  try List.iter handle_item (parse_file fname) with e ->
+    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
 
 (**** Main compilation functions ********************************************)
 
