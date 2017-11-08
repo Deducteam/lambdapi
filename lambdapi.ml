@@ -189,9 +189,10 @@ let symbol_type : symbol -> term =
     | Sym(sym) -> sym.sym_type
     | Def(def) -> def.def_type
 
-(* Reference containing the module path of the current file. It is useful when
-   printing symbol names to avoid giving the full path for local symbols. *)
-let current_module : string list ref = ref []
+(* Stack of module paths. The module path at the top of the stack  corresponds
+   to the current module. It is useful to avoid printing the full path for the
+   local symbols. *)
+let current_module : string list Stack.t = Stack.create ()
 
 (* [symbol_name s] returns the full name of the given symbol [s] (including if
    the symbol does not come from the current module. *)
@@ -201,7 +202,7 @@ let symbol_name : symbol -> string = fun s ->
     | Sym(sym) -> (sym.sym_path, sym.sym_name)
     | Def(def) -> (def.def_path, def.def_name)
   in
-  if path = !current_module then name
+  if path = Stack.top current_module then name
   else String.concat "." (path @ [name])
 
 (**** Signature *************************************************************)
@@ -951,7 +952,8 @@ let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
 (* [load_signature modpath] returns the signature corresponding to the  module
    path [modpath].  Note that compilation may be required if this is the first
    time that the corresponding module is required. *)
-let load_signature : string list -> Sign.t = fun modpath ->
+let load_signature : Sign.t -> string list -> Sign.t = fun sign modpath ->
+  if Stack.top current_module = modpath then sign else
   try Hashtbl.find loaded modpath with Not_found ->
     let sign = !compile_ref modpath in
     Hashtbl.add loaded modpath sign; sign
@@ -978,7 +980,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           end
       | P_Vari(fs,x)  ->
           begin
-            try _Symb_find (load_signature fs) x with Not_found ->
+            try _Symb_find (load_signature sign fs) x with Not_found ->
               let x = String.concat "." (fs @ [x]) in
               fatal "Unbound symbol %S...\n%!" x
           end
@@ -1162,30 +1164,31 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
    that the produced signature is registered in [loaded] before being returned
    and it is also stored into an object file. *)
 let compile : bool -> string list -> Sign.t = fun force modpath ->
+  Stack.push modpath current_module;
   let base = String.concat "/" modpath in
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if more_recent src obj || force then
-    begin
-      out "Loading file [%s]\n%!" src;
-      let sign = Sign.create modpath in
-      Hashtbl.add loaded modpath sign;
-      handle_file sign src;
-      Sign.write sign obj;
-      out "Done with file [%s]\n%!" src; sign
-    end
-  else Sign.read obj
+  let sign =
+    if more_recent src obj || force then
+      begin
+        out "Loading file [%s]\n%!" src;
+        let sign = Sign.create modpath in
+        handle_file sign src;
+        Sign.write sign obj;
+        out "Done with file [%s]\n%!" src; sign
+      end
+    else Sign.read obj
+  in
+  ignore (Stack.pop current_module); sign
 
 (* Setting the compilation function since it is now available. *)
 let _ = compile_ref := compile false
 
-(* [compile fname] compile the source file [fname], marking it as the  current
-   module (see [current_module]). Note that compilation is forced, even if the
-   file has already been compiled. *)
+(* [compile fname] forces the compilation of the source file [fname],  even if
+   an object file is already present. *)
 let compile fname =
   let modpath = module_path fname in
-  current_module := modpath;
   ignore (compile true modpath)
 
 (**** Main program, handling of command line arguments **********************)
