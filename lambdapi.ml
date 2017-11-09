@@ -127,13 +127,13 @@ type term =
   (* Application. *)
   | Appl of bool * term * term
   (* Unification variable. *)
-  | Unif of term option ref
-  (* Pattern variable. *)
-  | PVar of term option ref
+  | Unif of bool * term option ref
 
-(* NOTE: the boolean in application nodes is set to true for rigid terms. They
-   are marked as such during evaluation for terms having a  static  symbol  at
-   their head. This helps avoiding useless copies. *)
+(* NOTE: the boolean in the [Appl] constructor is set to true for rigid terms.
+   They are marked as such during evaluation for terms having a static  symbol
+   at their head (this helps avoiding useless copies).  The boolean in  [Unif]
+   constructor is set to true if the unification variable is used for matching
+   a pattern. *)
 
 (* Representation of a reduction rule.  The [arity] corresponds to the minimal
    number of arguments that are required for the rule to apply. The definition
@@ -284,9 +284,8 @@ module Ctxt =
 (* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({contents = Some(t)}) -> unfold t
-  | PVar({contents = Some(t)}) -> unfold t
-  | _                          -> t
+  | Unif(_, {contents = Some(t)}) -> unfold t
+  | _                             -> t
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
 let rec occurs : term option ref -> term -> bool = fun r t ->
@@ -294,12 +293,11 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(n,t,u) -> occurs r t || occurs r u
-  | Unif(u)     -> u == r
+  | Unif(pat,u) -> pat || u == r
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> true (* PVar not allowed in Unif *)
 
 (* NOTE: pattern variables prevent unification to ensure that they  cannot  be
    absorbed by unification varialbes (and do not escape rewriting code). *)
@@ -376,8 +374,7 @@ let rec lift : term -> tbox = fun t ->
   | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
   | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(_)     -> Bindlib.box t (* Variable not instanciated. *)
-  | PVar(_)     -> Bindlib.box t (* Variable not instanciated. *)
+  | Unif(_,_)   -> Bindlib.box t (* Not instanciated. *)
 
 (* [update_names t] updates the names of the bound variables of [t] to prevent
    "visual capture" while printing. Note that with [Bindlib],  real capture is
@@ -420,8 +417,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type     , _    )   -> pstring "Type"
     | (Kind     , _    )   -> pstring "Kind"
     | (Symb(s)  , _    )   -> pstring (symbol_name s)
-    | (Unif(_)  , _    )   -> pstring "?"
-    | (PVar(_)  , _    )   -> pstring "?"
+    | (Unif(_,_), _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
     | (Appl(_,t,u), `Func) -> pformat "%a %a" (print `Appl) t (print `Atom) u
@@ -487,11 +483,11 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
     | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (_            , PVar(_)      ) -> assert false
-    | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
-    | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
-    | (Unif(r)      , b            ) -> unify r b
-    | (a            , Unif(r)      ) -> unify r a
+    | (_            , Unif(true,_) ) -> assert false
+    | (Unif(true,r) , b            ) -> assert rewrite; r := Some b; true
+    | (Unif(_,r1)   , Unif(_,r2)   ) when r1 == r2 -> true
+    | (Unif(_,r)    , b            ) -> unify r b
+    | (a            , Unif(_,r)    ) -> unify r a
     | (_            , _            ) -> false
   in
   let res = eq a b in
@@ -508,7 +504,7 @@ let match_rules : def -> term list -> (term * term list) list = fun s stk ->
     (* First check that we have enough arguments. *)
     if r.arity > nb_args then acc else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let new_pvar _ = PVar(ref None) in
+    let new_pvar _ = Unif(true, ref None) in
     let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
     let lhs = Bindlib.msubst r.lhs uvars in
     if !debug_eval then log "eval" "RULE trying rule [%a]" print_rule (s,r);
@@ -647,8 +643,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                 raise Not_found
           end
       | Kind        -> assert false
-      | Unif(_)     -> assert false
-      | PVar(_)     -> assert false
+      | Unif(_,_)   -> assert false
     in
     if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
@@ -697,14 +692,14 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     | (Appl(_,t,u), b      ) ->
         begin
           match infer sign ctx t with
-          | Prod(a,ba) as tt ->
+          | Prod(a,ba)    as tt ->
               eq_modulo (Bindlib.subst ba u) b
               && has_type ctx t tt && has_type ctx u a
-          | Unif(r)    as tt ->
-              let a = Bindlib.box (Unif(ref None)) in
+          | Unif(false,r) as tt ->
+              let a = Bindlib.box (Unif(false, ref None)) in
               r := Some (Bindlib.unbox (_Prod a "_" (fun _ -> lift b)));
               has_type ctx t tt && has_type ctx u (Bindlib.unbox a)
-          | _                -> false
+          | _                   -> false
         end
     (* No rule apply. *)
     | (_        , _        ) -> false
@@ -993,7 +988,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let f v = scope ((x,v)::vars) t in
           let a =
             match a with
-            | None    -> Bindlib.box (Unif(ref None))
+            | None    -> Bindlib.box (Unif(false, ref None))
             | Some(a) -> scope vars a
           in
           _Abst a x f
@@ -1059,7 +1054,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
           | None    -> raise Not_found
           | Some(a) -> to_term ~vars sign a (* FIXME *)
-        with Not_found -> Unif(ref None)
+        with Not_found -> Unif(false, ref None)
       in
       Ctxt.add x a ctx
     in
@@ -1087,13 +1082,9 @@ let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
 let handle_newsym : Sign.t -> bool -> string -> p_term -> unit =
   fun sign is_definable x a ->
     let a = to_term sign a in
-    let sort = sort_type sign x a in
-    if is_definable then
-      let _ = Sign.new_definable sign x a in
-      out "(defi) %s : %a (sort %a)\n" x pp a pp sort
-    else
-      let _ = Sign.new_static sign x a in
-      out "(stat) %s : %a (sort %a)\n" x pp a pp sort
+    let _ = sort_type sign x a in
+    if is_definable then ignore (Sign.new_definable sign x a)
+    else ignore (Sign.new_static sign x a)
 
 (* [handle_defin sign x a t] scopes the type [a] and the term [t] in signature
    [sign], and creates a new definable symbol with name [a], type [a] (when it
@@ -1108,8 +1099,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       | None   -> infer sign Ctxt.empty t
       | Some a -> to_term sign a
     in
-    let sort = sort_type sign x a in
-    out "(defi) %s : %a (of sort %a)\n" x pp a pp sort;
+    let _ = sort_type sign x a in
     if not (has_type sign Ctxt.empty t a) then
       fatal "Cannot type the definition of %s...\n" x;
     let s = Sign.new_definable sign x a in
@@ -1118,8 +1108,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
       {arity = 0; lhs ; rhs}
     in
-    s.def_rules := !(s.def_rules) @ [rule];
-    out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
+    s.def_rules := !(s.def_rules) @ [rule]
 
 (* [check_rule sign r] check whether the rule [r] is well-typed in the signat-
    ure [sign]. The program fails gracefully in case of error. *)
@@ -1156,9 +1145,7 @@ let check_rule sign (ctx, s, t, u, rule) =
 let handle_rules = fun sign rs ->
   let rs = List.map (scope_rule sign) rs in
   let rs = List.map (check_rule sign) rs in
-  out "(rule) Adding the rules:\n";
   let add_rule (s,t,u,rule) =
-    out "  - %a → %a\n" pp t pp u;
     s.def_rules := !(s.def_rules) @ [rule]
   in
   List.iter add_rule rs
@@ -1168,8 +1155,8 @@ let handle_rules = fun sign rs ->
 let handle_check : Sign.t -> p_term -> p_term -> unit = fun sign t a ->
   let t = to_term sign t in
   let a = to_term sign a in
-  if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
-  else fatal "%a does not have type %a...\n" pp t pp a
+  if not (has_type sign Ctxt.empty t a) then
+    fatal "%a does not have type %a...\n" pp t pp a
 
 (* [handle_infer sign t] scopes [t] and attempts to infer its type with [sign]
    as the signature. *)
