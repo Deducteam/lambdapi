@@ -69,7 +69,7 @@ let more_recent : string -> string -> bool = fun source target ->
 (**** Debugging messages management *****************************************)
 
 (* Various debugging / message flags. *)
-let quiet      = ref false
+let verbose    = ref 1
 let debug      = ref false
 let debug_eval = ref false
 let debug_infr = ref false
@@ -100,13 +100,13 @@ let set_debug : string -> unit =
 let log : string -> ('a, out_channel, unit) format -> 'a =
   fun name fmt -> Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
-(* [out fmt] prints an output message with the [Printf] format [fmt]. Note the
-   output buffer is flushed by the function, and that the message is displayed
-   in magenta whenever a debugging mode is enabled. *)
-let out : ('a, out_channel, unit) format -> 'a =
-  fun fmt ->
-    let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-    if !quiet then Printf.ifprintf stdout fmt else Printf.printf fmt
+(* [out lvl fmt] prints an output message with the [Printf] format [fmt], when
+   [lvl] is strictly greater than the verbosity level. Note that the output is
+   flushed by the function,  and that the message is displayed in magenta when
+   a debugging mode is enabled. *)
+let out : int -> ('a, out_channel, unit) format -> 'a = fun lvl fmt ->
+  let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
+  if lvl > !verbose then Printf.ifprintf stdout fmt else Printf.printf fmt
 
 (**** Abstract syntax of the language ***************************************)
 
@@ -1162,14 +1162,14 @@ let handle_check : Sign.t -> p_term -> p_term -> unit = fun sign t a ->
    as the signature. *)
 let handle_infer : Sign.t -> p_term -> unit = fun sign t ->
   let t = to_term sign t in
-  try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
+  try out 2 "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
   with Not_found -> fatal "%a : unable to infer\n%!" pp t
 
 (* [handle_eval sign t] scopes (in the signature [sign] and evaluates the term
    [t]. Note that the term is not typed prior to evaluation. *)
 let handle_eval : Sign.t -> p_term -> unit = fun sign t ->
   let t = to_term sign t in
-  out "(eval) %a\n" pp (eval t)
+  out 2 "(eval) %a\n" pp (eval t)
 
 (* [handle_conv sign t u] checks the convertibility between the terms [t]  and
    [u] (they are scoped in the signature [sign]). The program fails gracefully
@@ -1177,7 +1177,7 @@ let handle_eval : Sign.t -> p_term -> unit = fun sign t ->
 let handle_conv : Sign.t -> p_term -> p_term -> unit = fun sign t u ->
   let t = to_term sign t in
   let u = to_term sign u in
-  if eq_modulo t u then out "(conv) OK\n"
+  if eq_modulo t u then out 2 "(conv) OK\n"
   else fatal "cannot convert %a and %a...\n" pp t pp u
 
 (* [handle_file sign fname] parses and interprets the file [fname] with [sign]
@@ -1214,21 +1214,20 @@ let compile : string list -> Sign.t = fun modpath ->
   let sign =
     if more_recent src obj then
       begin
-        out "Loading file [%s]\n%!" src;
+        out 1 "Loading file [%s]\n%!" src;
         let sign = Sign.create modpath in
         handle_file sign src;
         Sign.write sign obj;
-        Hashtbl.add loaded modpath sign;
-        out "Done with file [%s]\n%!" src; sign
+        Hashtbl.add loaded modpath sign; sign
       end
     else
       begin
-        out "Already compiled [%s]\n%!" obj;
+        out 1 "Already compiled [%s]\n%!" obj;
         let sign = Sign.read obj in
-        Hashtbl.add loaded modpath sign;
-        out "Done with file [%s]\n%!" src; sign
+        Hashtbl.add loaded modpath sign; sign
       end
   in
+  out 1 "Done with file [%s]\n%!" src;
   ignore (Stack.pop current_module); sign
 
 (* Setting the compilation function since it is now available. *)
@@ -1242,21 +1241,28 @@ let compile fname =
 (**** Main program, handling of command line arguments **********************)
 
 let _ =
-  let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p|t]] [--quiet] [FILE] ..." in
-  let flags =
-    [ "a : general debug informations"
-    ; "e : extra debugging informations for equality"
-    ; "i : extra debugging informations for inference"
-    ; "p : extra debugging informations for patterns"
-    ; "t : extra debugging informations for typing" ]
+  let debug_doc =
+    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
+      [ "a : general debug informations"
+      ; "e : extra debugging informations for equality"
+      ; "i : extra debugging informations for inference"
+      ; "p : extra debugging informations for patterns"
+      ; "t : extra debugging informations for typing" ]
+    in "<str> enable debugging modes:\n" ^ String.concat "\n" flags
   in
-  let flags = List.map (fun s -> String.make 18 ' ' ^ s) flags in
-  let flags = String.concat "\n" flags in
+  let verbose_doc =
+    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
+      [ "0 (or less) : no output at all"
+      ; "1 : only file loading information (default)"
+      ; "2 : show the results of commands" ]
+    in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
+  in
   let spec =
-    [ ("--debug", Arg.String set_debug, "<str> Set debugging mode:\n" ^ flags)
-    ; ("--quiet", Arg.Set quiet       , " Disable output") ]
+    [ ("--debug"  , Arg.String set_debug  , debug_doc  )
+    ; ("--verbose", Arg.Int ((:=) verbose), verbose_doc) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
-  Arg.parse (Arg.align spec) anon usage;
+  let summary = " [--debug [a|e|i|p|t]] [--verbose N] [FILE] ..." in
+  Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
   List.iter compile (List.rev !files)
