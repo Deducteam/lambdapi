@@ -224,7 +224,8 @@ module Sign =
           wrn "Redefinition of %s.\n" sym_name;
         let sym_path = sign.path in
         let sym = { sym_name ; sym_type ; sym_path } in
-        Hashtbl.add sign.symbols sym_name (Sym(sym)); sym
+        Hashtbl.add sign.symbols sym_name (Sym(sym));
+        out 2 "(stat) %s\n" sym_name; sym
 
     (* [new_definable sign name a] creates a new definable symbol (without any
        reduction rule) named [name] with type [a] in the signature [sign]. The
@@ -236,7 +237,8 @@ module Sign =
         let def_path = sign.path in
         let def_rules = ref [] in
         let def = { def_name ; def_type ; def_rules ; def_path } in
-        Hashtbl.add sign.symbols def_name (Def(def)); def
+        Hashtbl.add sign.symbols def_name (Def(def));
+        out 2 "(defi) %s\n" def_name; def
 
     (* [find sign name] looks for a symbol named [name] in signature [sign] if
        there is one. The exception [Not_found] is raised if there is none. *)
@@ -864,6 +866,7 @@ type p_item =
   | Conv   of p_term * p_term
   | Name   of string
   | Step   of p_term
+  | Debug  of string
 
 (* Representation of a reduction rule, with its context. *)
 and p_rule = (string * p_term option) list * p_term * p_term
@@ -895,6 +898,7 @@ let parser toplevel =
   | "#NAME" id:ident                        -> Name(id)
   | "#STEP" t:expr                          -> Step(t)
   | "#SNF"  t:expr                          -> Eval(t)
+  | "#DEBUG" s:''[a-z]+''                   -> Debug(s)
 
 (* [full] is the main entry point of the parser. It accepts a list of toplevel
    items, each teminated by a ['.']. *)
@@ -1048,7 +1052,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
     (* Constructing the typing context. *)
     let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
-    let add_var ctx x =
+    let add_var (vars, ctx) x =
       let a =
         try
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
@@ -1056,9 +1060,9 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           | Some(a) -> to_term ~vars sign a (* FIXME *)
         with Not_found -> Unif(false, ref None)
       in
-      Ctxt.add x a ctx
+      ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
-    let ctx = Array.fold_left add_var Ctxt.empty xs in
+    let (_, ctx) = Array.fold_left add_var ([], Ctxt.empty) xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
@@ -1193,6 +1197,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Infer(t)      -> handle_infer sign t
     | Eval(t)       -> handle_eval sign t
     | Conv(t,u)     -> handle_conv sign t u
+    | Debug(s)      -> set_debug s
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in

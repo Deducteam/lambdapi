@@ -26,7 +26,7 @@ tests: lambdapi
 matita: lambdapi
 	@echo "## Compiling matita library ##"
 	@rm -f $(MATITAFILES:.dk=.dko)
-	@cd matita && time ../lambdapi --verbose 1 $(MATITAFILES)
+	@cd matita && time ../lambdapi --verbose 2 $(MATITAFILES)
 
 .PHONY: matita_dedukti
 matita_dedukti:
