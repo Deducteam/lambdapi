@@ -69,7 +69,7 @@ let more_recent : string -> string -> bool = fun source target ->
 (**** Debugging messages management *****************************************)
 
 (* Various debugging / message flags. *)
-let quiet      = ref false
+let verbose    = ref 1
 let debug      = ref false
 let debug_eval = ref false
 let debug_infr = ref false
@@ -100,13 +100,13 @@ let set_debug : string -> unit =
 let log : string -> ('a, out_channel, unit) format -> 'a =
   fun name fmt -> Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
-(* [out fmt] prints an output message with the [Printf] format [fmt]. Note the
-   output buffer is flushed by the function, and that the message is displayed
-   in magenta whenever a debugging mode is enabled. *)
-let out : ('a, out_channel, unit) format -> 'a =
-  fun fmt ->
-    let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-    if !quiet then Printf.ifprintf stdout fmt else Printf.printf fmt
+(* [out lvl fmt] prints an output message with the [Printf] format [fmt], when
+   [lvl] is strictly greater than the verbosity level. Note that the output is
+   flushed by the function,  and that the message is displayed in magenta when
+   a debugging mode is enabled. *)
+let out : int -> ('a, out_channel, unit) format -> 'a = fun lvl fmt ->
+  let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
+  if lvl > !verbose then Printf.ifprintf stdout fmt else Printf.printf fmt
 
 (**** Abstract syntax of the language ***************************************)
 
@@ -127,13 +127,13 @@ type term =
   (* Application. *)
   | Appl of bool * term * term
   (* Unification variable. *)
-  | Unif of term option ref
-  (* Pattern variable. *)
-  | PVar of term option ref
+  | Unif of bool * term option ref
 
-(* NOTE: the boolean in application nodes is set to true for rigid terms. They
-   are marked as such during evaluation for terms having a  static  symbol  at
-   their head. This helps avoiding useless copies. *)
+(* NOTE: the boolean in the [Appl] constructor is set to true for rigid terms.
+   They are marked as such during evaluation for terms having a static  symbol
+   at their head (this helps avoiding useless copies).  The boolean in  [Unif]
+   constructor is set to true if the unification variable is used for matching
+   a pattern. *)
 
 (* Representation of a reduction rule.  The [arity] corresponds to the minimal
    number of arguments that are required for the rule to apply. The definition
@@ -224,7 +224,8 @@ module Sign =
           wrn "Redefinition of %s.\n" sym_name;
         let sym_path = sign.path in
         let sym = { sym_name ; sym_type ; sym_path } in
-        Hashtbl.add sign.symbols sym_name (Sym(sym)); sym
+        Hashtbl.add sign.symbols sym_name (Sym(sym));
+        out 2 "(stat) %s\n" sym_name; sym
 
     (* [new_definable sign name a] creates a new definable symbol (without any
        reduction rule) named [name] with type [a] in the signature [sign]. The
@@ -236,7 +237,8 @@ module Sign =
         let def_path = sign.path in
         let def_rules = ref [] in
         let def = { def_name ; def_type ; def_rules ; def_path } in
-        Hashtbl.add sign.symbols def_name (Def(def)); def
+        Hashtbl.add sign.symbols def_name (Def(def));
+        out 2 "(defi) %s\n" def_name; def
 
     (* [find sign name] looks for a symbol named [name] in signature [sign] if
        there is one. The exception [Not_found] is raised if there is none. *)
@@ -284,9 +286,8 @@ module Ctxt =
 (* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({contents = Some(t)}) -> unfold t
-  | PVar({contents = Some(t)}) -> unfold t
-  | _                          -> t
+  | Unif(_, {contents = Some(t)}) -> unfold t
+  | _                             -> t
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
 let rec occurs : term option ref -> term -> bool = fun r t ->
@@ -294,12 +295,11 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
   | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(n,t,u) -> occurs r t || occurs r u
-  | Unif(u)     -> u == r
+  | Unif(pat,u) -> pat || u == r
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> true (* PVar not allowed in Unif *)
 
 (* NOTE: pattern variables prevent unification to ensure that they  cannot  be
    absorbed by unification varialbes (and do not escape rewriting code). *)
@@ -376,8 +376,7 @@ let rec lift : term -> tbox = fun t ->
   | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
   | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(_)     -> Bindlib.box t (* Variable not instanciated. *)
-  | PVar(_)     -> Bindlib.box t (* Variable not instanciated. *)
+  | Unif(_,_)   -> Bindlib.box t (* Not instanciated. *)
 
 (* [update_names t] updates the names of the bound variables of [t] to prevent
    "visual capture" while printing. Note that with [Bindlib],  real capture is
@@ -420,8 +419,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type     , _    )   -> pstring "Type"
     | (Kind     , _    )   -> pstring "Kind"
     | (Symb(s)  , _    )   -> pstring (symbol_name s)
-    | (Unif(_)  , _    )   -> pstring "?"
-    | (PVar(_)  , _    )   -> pstring "?"
+    | (Unif(_,_), _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
     | (Appl(_,t,u), `Func) -> pformat "%a %a" (print `Appl) t (print `Atom) u
@@ -487,11 +485,11 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
     | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (_            , PVar(_)      ) -> assert false
-    | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
-    | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
-    | (Unif(r)      , b            ) -> unify r b
-    | (a            , Unif(r)      ) -> unify r a
+    | (_            , Unif(true,_) ) -> assert false
+    | (Unif(true,r) , b            ) -> assert rewrite; r := Some b; true
+    | (Unif(_,r1)   , Unif(_,r2)   ) when r1 == r2 -> true
+    | (Unif(_,r)    , b            ) -> unify r b
+    | (a            , Unif(_,r)    ) -> unify r a
     | (_            , _            ) -> false
   in
   let res = eq a b in
@@ -508,7 +506,7 @@ let match_rules : def -> term list -> (term * term list) list = fun s stk ->
     (* First check that we have enough arguments. *)
     if r.arity > nb_args then acc else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let new_pvar _ = PVar(ref None) in
+    let new_pvar _ = Unif(true, ref None) in
     let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
     let lhs = Bindlib.msubst r.lhs uvars in
     if !debug_eval then log "eval" "RULE trying rule [%a]" print_rule (s,r);
@@ -647,8 +645,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                 raise Not_found
           end
       | Kind        -> assert false
-      | Unif(_)     -> assert false
-      | PVar(_)     -> assert false
+      | Unif(_,_)   -> assert false
     in
     if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
@@ -697,14 +694,14 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     | (Appl(_,t,u), b      ) ->
         begin
           match infer sign ctx t with
-          | Prod(a,ba) as tt ->
+          | Prod(a,ba)    as tt ->
               eq_modulo (Bindlib.subst ba u) b
               && has_type ctx t tt && has_type ctx u a
-          | Unif(r)    as tt ->
-              let a = Bindlib.box (Unif(ref None)) in
+          | Unif(false,r) as tt ->
+              let a = Bindlib.box (Unif(false, ref None)) in
               r := Some (Bindlib.unbox (_Prod a "_" (fun _ -> lift b)));
               has_type ctx t tt && has_type ctx u (Bindlib.unbox a)
-          | _                -> false
+          | _                   -> false
         end
     (* No rule apply. *)
     | (_        , _        ) -> false
@@ -869,6 +866,7 @@ type p_item =
   | Conv   of p_term * p_term
   | Name   of string
   | Step   of p_term
+  | Debug  of string
 
 (* Representation of a reduction rule, with its context. *)
 and p_rule = (string * p_term option) list * p_term * p_term
@@ -900,6 +898,7 @@ let parser toplevel =
   | "#NAME" id:ident                        -> Name(id)
   | "#STEP" t:expr                          -> Step(t)
   | "#SNF"  t:expr                          -> Eval(t)
+  | "#DEBUG" s:''[a-z]+''                   -> Debug(s)
 
 (* [full] is the main entry point of the parser. It accepts a list of toplevel
    items, each teminated by a ['.']. *)
@@ -957,9 +956,7 @@ let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
    time that the corresponding module is required. *)
 let load_signature : Sign.t -> string list -> Sign.t = fun sign modpath ->
   if Stack.top current_module = modpath then sign else
-  try Hashtbl.find loaded modpath with Not_found ->
-    let sign = !compile_ref modpath in
-    Hashtbl.add loaded modpath sign; sign
+  try Hashtbl.find loaded modpath with Not_found -> !compile_ref modpath
 
 (**** Scoping ***************************************************************)
 
@@ -995,7 +992,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let f v = scope ((x,v)::vars) t in
           let a =
             match a with
-            | None    -> Bindlib.box (Unif(ref None))
+            | None    -> Bindlib.box (Unif(false, ref None))
             | Some(a) -> scope vars a
           in
           _Abst a x f
@@ -1042,12 +1039,6 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
    symbol, the LHS and RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
-    let scope_opt sign a =
-      match a with
-      | None    -> None
-      | Some(a) -> Some(to_term sign a)
-    in
-    let xs_ty_map = List.map (fun (x,a) -> (x, scope_opt sign a)) xs_ty_map in
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
     let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
@@ -1060,16 +1051,18 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
     (* Constructing the typing context. *)
-    let ty_map = List.map (fun (x,a) -> (List.assoc x vars, a)) xs_ty_map in
-    let type_of x =
-      try
-        match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
-        | None    -> raise Not_found
-        | Some(a) -> a
-      with Not_found -> Unif(ref None)
+    let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
+    let add_var (vars, ctx) x =
+      let a =
+        try
+          match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
+          | None    -> raise Not_found
+          | Some(a) -> to_term ~vars sign a (* FIXME *)
+        with Not_found -> Unif(false, ref None)
+      in
+      ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
-    let xs = Array.to_list xs in
-    let ctx = List.map (fun x -> (x, type_of x)) xs in
+    let (_, ctx) = Array.fold_left add_var ([], Ctxt.empty) xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
@@ -1093,13 +1086,9 @@ let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
 let handle_newsym : Sign.t -> bool -> string -> p_term -> unit =
   fun sign is_definable x a ->
     let a = to_term sign a in
-    let sort = sort_type sign x a in
-    if is_definable then
-      let _ = Sign.new_definable sign x a in
-      out "(defi) %s : %a (sort %a)\n" x pp a pp sort
-    else
-      let _ = Sign.new_static sign x a in
-      out "(stat) %s : %a (sort %a)\n" x pp a pp sort
+    let _ = sort_type sign x a in
+    if is_definable then ignore (Sign.new_definable sign x a)
+    else ignore (Sign.new_static sign x a)
 
 (* [handle_defin sign x a t] scopes the type [a] and the term [t] in signature
    [sign], and creates a new definable symbol with name [a], type [a] (when it
@@ -1114,8 +1103,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       | None   -> infer sign Ctxt.empty t
       | Some a -> to_term sign a
     in
-    let sort = sort_type sign x a in
-    out "(defi) %s : %a (of sort %a)\n" x pp a pp sort;
+    let _ = sort_type sign x a in
     if not (has_type sign Ctxt.empty t a) then
       fatal "Cannot type the definition of %s...\n" x;
     let s = Sign.new_definable sign x a in
@@ -1124,8 +1112,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
       {arity = 0; lhs ; rhs}
     in
-    s.def_rules := !(s.def_rules) @ [rule];
-    out "(rule) %s → %a\n" (symbol_name (Def(s))) pp t;
+    s.def_rules := !(s.def_rules) @ [rule]
 
 (* [check_rule sign r] check whether the rule [r] is well-typed in the signat-
    ure [sign]. The program fails gracefully in case of error. *)
@@ -1162,9 +1149,7 @@ let check_rule sign (ctx, s, t, u, rule) =
 let handle_rules = fun sign rs ->
   let rs = List.map (scope_rule sign) rs in
   let rs = List.map (check_rule sign) rs in
-  out "(rule) Adding the rules:\n";
   let add_rule (s,t,u,rule) =
-    out "  - %a → %a\n" pp t pp u;
     s.def_rules := !(s.def_rules) @ [rule]
   in
   List.iter add_rule rs
@@ -1174,21 +1159,21 @@ let handle_rules = fun sign rs ->
 let handle_check : Sign.t -> p_term -> p_term -> unit = fun sign t a ->
   let t = to_term sign t in
   let a = to_term sign a in
-  if has_type sign Ctxt.empty t a then out "(chck) %a : %a\n" pp t pp a
-  else fatal "%a does not have type %a...\n" pp t pp a
+  if not (has_type sign Ctxt.empty t a) then
+    fatal "%a does not have type %a...\n" pp t pp a
 
 (* [handle_infer sign t] scopes [t] and attempts to infer its type with [sign]
    as the signature. *)
 let handle_infer : Sign.t -> p_term -> unit = fun sign t ->
   let t = to_term sign t in
-  try out "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
+  try out 2 "(infr) %a : %a\n" pp t pp (infer sign Ctxt.empty t)
   with Not_found -> fatal "%a : unable to infer\n%!" pp t
 
 (* [handle_eval sign t] scopes (in the signature [sign] and evaluates the term
    [t]. Note that the term is not typed prior to evaluation. *)
 let handle_eval : Sign.t -> p_term -> unit = fun sign t ->
   let t = to_term sign t in
-  out "(eval) %a\n" pp (eval t)
+  out 2 "(eval) %a\n" pp (eval t)
 
 (* [handle_conv sign t u] checks the convertibility between the terms [t]  and
    [u] (they are scoped in the signature [sign]). The program fails gracefully
@@ -1196,7 +1181,7 @@ let handle_eval : Sign.t -> p_term -> unit = fun sign t ->
 let handle_conv : Sign.t -> p_term -> p_term -> unit = fun sign t u ->
   let t = to_term sign t in
   let u = to_term sign u in
-  if eq_modulo t u then out "(conv) OK\n"
+  if eq_modulo t u then out 2 "(conv) OK\n"
   else fatal "cannot convert %a and %a...\n" pp t pp u
 
 (* [handle_file sign fname] parses and interprets the file [fname] with [sign]
@@ -1212,6 +1197,7 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Infer(t)      -> handle_infer sign t
     | Eval(t)       -> handle_eval sign t
     | Conv(t,u)     -> handle_conv sign t u
+    | Debug(s)      -> set_debug s
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
@@ -1220,57 +1206,68 @@ let handle_file : Sign.t -> string -> unit = fun sign fname ->
 
 (**** Main compilation functions ********************************************)
 
-(* [compile force modpath] compiles the file correspinding to the module  path
-   [modpath] if it is necessary, or if [force] is [true] ([force] is typically
-   used to force the compilation of the files given on the command line). Note
-   that the produced signature is registered in [loaded] before being returned
-   and it is also stored into an object file. *)
-let compile : bool -> string list -> Sign.t = fun force modpath ->
+(* [compile modpath] compiles the file correspinding to module path  [modpath]
+   if necessary (i.e., if no corresponding binary file exists).  Note that the
+   produced signature is stored into an object file, and in [loaded] before it
+   is returned. *)
+let compile : string list -> Sign.t = fun modpath ->
   Stack.push modpath current_module;
   let base = String.concat "/" modpath in
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
   let sign =
-    if more_recent src obj || force then
+    if more_recent src obj then
       begin
-        out "Loading file [%s]\n%!" src;
+        out 1 "Loading file [%s]\n%!" src;
         let sign = Sign.create modpath in
         handle_file sign src;
         Sign.write sign obj;
-        out "Done with file [%s]\n%!" src; sign
+        Hashtbl.add loaded modpath sign; sign
       end
-    else Sign.read obj
+    else
+      begin
+        out 1 "Already compiled [%s]\n%!" obj;
+        let sign = Sign.read obj in
+        Hashtbl.add loaded modpath sign; sign
+      end
   in
+  out 1 "Done with file [%s]\n%!" src;
   ignore (Stack.pop current_module); sign
 
 (* Setting the compilation function since it is now available. *)
-let _ = compile_ref := compile false
+let _ = compile_ref := compile
 
-(* [compile fname] forces the compilation of the source file [fname],  even if
-   an object file is already present. *)
+(* [compile fname] compiles the source file [fname]. *)
 let compile fname =
   let modpath = module_path fname in
-  ignore (compile true modpath)
+  ignore (compile modpath)
 
 (**** Main program, handling of command line arguments **********************)
 
 let _ =
-  let usage = Sys.argv.(0) ^ " [--debug [a|e|i|p|t]] [--quiet] [FILE] ..." in
-  let flags =
-    [ "a : general debug informations"
-    ; "e : extra debugging informations for equality"
-    ; "i : extra debugging informations for inference"
-    ; "p : extra debugging informations for patterns"
-    ; "t : extra debugging informations for typing" ]
+  let debug_doc =
+    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
+      [ "a : general debug informations"
+      ; "e : extra debugging informations for equality"
+      ; "i : extra debugging informations for inference"
+      ; "p : extra debugging informations for patterns"
+      ; "t : extra debugging informations for typing" ]
+    in "<str> enable debugging modes:\n" ^ String.concat "\n" flags
   in
-  let flags = List.map (fun s -> String.make 18 ' ' ^ s) flags in
-  let flags = String.concat "\n" flags in
+  let verbose_doc =
+    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
+      [ "0 (or less) : no output at all"
+      ; "1 : only file loading information (default)"
+      ; "2 : show the results of commands" ]
+    in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
+  in
   let spec =
-    [ ("--debug", Arg.String set_debug, "<str> Set debugging mode:\n" ^ flags)
-    ; ("--quiet", Arg.Set quiet       , " Disable output") ]
+    [ ("--debug"  , Arg.String set_debug  , debug_doc  )
+    ; ("--verbose", Arg.Int ((:=) verbose), verbose_doc) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
-  Arg.parse (Arg.align spec) anon usage;
+  let summary = " [--debug [a|e|i|p|t]] [--verbose N] [FILE] ..." in
+  Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
   List.iter compile (List.rev !files)

@@ -1,6 +1,5 @@
-QUIET = --quiet
 TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
-MATITAFILES  = $(wildcard matita/*.dk)
+MATITAFILES  = $(shell cat matita/DEPEND)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
@@ -15,32 +14,39 @@ lambdapi: lambdapi.ml
 .PHONY: tests
 tests: lambdapi
 	@echo "## Timing on examples ##"
+	@rm -f $(TESTFILES:.dk=.dko)
 	@time for file in $(TESTFILES) ; do \
 		echo "$$file" ; \
-		./lambdapi $(QUIET) $$file ; \
+		./lambdapi --verbose 0 $$file ; \
 	done
 	@echo -n "Number of lines: "
 	@wc -l lambdapi.ml | cut -d ' ' -f 1
 
 .PHONY: matita
 matita: lambdapi
-	@echo "## Timing on matita ##"
-	@cd matita && time for file in $(MATITAFILES) ; do \
-		echo "$$file" ; \
-		../lambdapi $(QUIET) ../$$file ; \
-	done
+	@echo "## Compiling matita library ##"
+	@rm -f $(MATITAFILES:.dk=.dko)
+	@cd matita && time ../lambdapi --verbose 2 $(MATITAFILES)
+
+.PHONY: matita_dedukti
+matita_dedukti:
+	@echo "## Compiling matita library (with Dedukti) ##"
+	@rm -f matita/*.dko
+	@cd matita && time dkcheck -nl -e $(MATITAFILES)
 
 unit_tests: lambdapi
 	@echo "## OK tests ##"
+	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
 		echo -n "Testing file \"$$file\" " ; \
-		./lambdapi $(QUIET) $$file 2> /dev/null \
+		./lambdapi --verbose 0 $$file 2> /dev/null \
 		  && echo -e "\033[0;32mOK\033[0m" || echo -e "\033[0;31mKO\033[0m" ; \
 	done
 	@echo "## KO tests ##"
+	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
 		echo -n "$$file " ; \
-		./lambdapi $(QUIET) $$file 2> /dev/null \
+		./lambdapi --verbose 0 $$file 2> /dev/null \
 		  && echo -e "\033[0;31mOK\033[0m" || echo -e "\033[0;32mKO\033[0m" ; \
 	done
 
