@@ -1,3 +1,15 @@
+(**** Standard library extensions *******************************************)
+
+module Array =
+  struct
+    include Array
+
+    let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
+      fun f a1 a2 ->
+        let f x y = if not (f x y) then raise Exit in
+        try iter2 f a1 a2; true with Exit -> false
+  end
+
 (**** Colorful error / warning messages *************************************)
 
 (* Format transformers (colors). *)
@@ -113,7 +125,7 @@ let out : int -> ('a, out_channel, unit) format -> 'a = fun lvl fmt ->
 (* Type of terms (and types). *)
 type term =
   (* Free variable. *)
-  | Vari of term Bindlib.var
+  | Vari of tvar
   (* "Type" constant. *)
   | Type
   (* "Kind" constant. *)
@@ -127,9 +139,13 @@ type term =
   (* Application. *)
   | Appl of bool * term * term
   (* Unification variable. *)
-  | Unif of term option ref
+  | Unif of unif * term array
   (* Pattern variable. *)
   | PVar of term option ref
+
+ and tvar = term Bindlib.var
+
+ and unif = (term, term) Bindlib.mbinder option ref
 
 (* NOTE: the boolean in the [Appl] constructor is set to true for rigid terms.
    They are marked as such during evaluation for terms having a static  symbol
@@ -286,17 +302,17 @@ module Ctxt =
 (* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({contents = Some(t)}) -> unfold t
-  | PVar({contents = Some(t)}) -> unfold t
-  | _                          -> t
+  | Unif({contents = Some(f)}, e) -> unfold (Bindlib.msubst f e)
+  | PVar({contents = Some(t)})    -> unfold t
+  | _                             -> t
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
-let rec occurs : term option ref -> term -> bool = fun r t ->
+let rec occurs : unif -> term -> bool = fun r t ->
   match unfold t with
   | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(n,t,u) -> occurs r t || occurs r u
-  | Unif(u)     -> u == r
+  | Unif(u,e)   -> u == r || Array.exists (occurs r) e
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
@@ -306,17 +322,22 @@ let rec occurs : term option ref -> term -> bool = fun r t ->
 (* NOTE: pattern variables prevent unification to ensure that they  cannot  be
    absorbed by unification varialbes (and do not escape rewriting code). *)
 
+let lift_ref = ref (fun _ -> assert false)
+
 (* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
    whether it succeeded or not. *)
-let unify : term option ref -> term -> bool =
-  fun r a ->
+let unify : unif -> term array -> term -> bool =
+  fun r env a ->
     assert (!r = None);
-    not (occurs r a) && (r := Some(a); true)
+    not (occurs r a) &&
+      let to_var t = match t with Vari v -> v | _ -> assert false in
+      let vars = Array.map to_var env in
+      let b = Bindlib.bind_mvar vars (!lift_ref a) in
+      r := Some(Bindlib.unbox b); true
 
 (**** Smart constructors and other Bindlib-related things *******************)
 
-(* Short names for variables and boxed terms. *)
-type tvar = term Bindlib.var
+(* Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
 
 (* Injection of [Bindlib] variables into terms. *)
@@ -381,6 +402,8 @@ let rec lift : term -> tbox = fun t ->
   | Unif(_)     -> Bindlib.box t (* Not instanciated. *)
   | PVar(_)     -> Bindlib.box t (* Not instanciated. *)
 
+let _ = lift_ref := lift
+
 (* [update_names t] updates the names of the bound variables of [t] to prevent
    "visual capture" while printing. Note that with [Bindlib],  real capture is
    not possible as binders are represented as OCaml function (HOAS). *)
@@ -409,6 +432,17 @@ let add_args : ?rigid:bool -> term -> term list -> term =
 
 (**** Printing functions (should come early for debuging) *******************)
 
+type 'a pp = out_channel -> 'a -> unit
+
+let pp_list : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
+  match l with
+  | []    -> ()
+  | e::es -> let fn e = Printf.fprintf oc "%s%a" sep pp_elt e in
+             pp_elt oc e; List.iter fn es
+
+let pp_array : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
+  pp_list pp_elt sep oc (Array.to_list a)
+
 (* [pp_term oc t] pretty-prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
   let pstring = output_string oc in
@@ -422,7 +456,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type     , _    )   -> pstring "Type"
     | (Kind     , _    )   -> pstring "Kind"
     | (Symb(s)  , _    )   -> pstring (symbol_name s)
-    | (Unif(_)  , _    )   -> pstring "?"
+    | (Unif(_,e), _    )   -> pformat "?[%a]" (pp_array (print `Appl) ", ") e
     | (PVar(_)  , _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
@@ -491,9 +525,9 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
     | (_            , PVar(_)      ) -> assert false
     | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
-    | (Unif(r1)     , Unif(r2)     ) when r1 == r2 -> true
-    | (Unif(r)      , b            ) -> unify r b
-    | (a            , Unif(r)      ) -> unify r a
+    | (Unif(r1,e1)  , Unif(r2,e2)  ) when r1 == r2 -> Array.for_all2 eq e1 e2
+    | (Unif(r,e)    , b            ) -> unify r e b
+    | (a            , Unif(r,e)    ) -> unify r e a
     | (_            , _            ) -> false
   in
   let res = eq a b in
@@ -699,14 +733,16 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     | (Appl(_,t,u), b      ) ->
         begin
           match infer sign ctx t with
-          | Prod(a,ba) as tt ->
+          | Prod(a,ba)  as tt ->
               eq_modulo (Bindlib.subst ba u) b
               && has_type ctx t tt && has_type ctx u a
-          | Unif(r)    as tt ->
-              let a = Bindlib.box (Unif(ref None)) in
-              r := Some (Bindlib.unbox (_Prod a "_" (fun _ -> lift b)));
-              has_type ctx t tt && has_type ctx u (Bindlib.unbox a)
-          | _                -> false
+          | Unif(r,env) as tt ->
+              let a = Unif(ref None, env) in
+              let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
+              let b = Prod(a, Bindlib.unbox b) in
+              assert(unify r env b);
+              has_type ctx t tt && has_type ctx u a
+          | _                  -> false
         end
     (* No rule apply. *)
     | (_        , _        ) -> false
@@ -997,7 +1033,9 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let f v = scope ((x,v)::vars) t in
           let a =
             match a with
-            | None    -> Bindlib.box (Unif(ref None))
+            | None    -> let fn (_,x) = mkfree x in
+                         let vars = List.map fn vars in
+                         Bindlib.box (Unif(ref None, Array.of_list vars))
             | Some(a) -> scope vars a
           in
           _Abst a x f
@@ -1063,11 +1101,16 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
           | None    -> raise Not_found
           | Some(a) -> to_term ~vars sign a (* FIXME *)
-        with Not_found -> Unif(ref None)
+        with Not_found ->
+          let fn (_,x) = mkfree x in
+          let vars = List.map fn vars in
+          Unif(ref None, Array.of_list vars)
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
-    let (_, ctx) = Array.fold_left add_var ([], Ctxt.empty) xs in
+    let wcs = Array.to_list wcs in
+    let wcs = List.map (fun x -> (Bindlib.name_of x, x)) wcs in
+    let (_, ctx) = Array.fold_left add_var (wcs, Ctxt.empty) xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
