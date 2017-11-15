@@ -634,7 +634,7 @@ let add_constraint : term -> term -> bool = fun a b ->
   match !constraints with
   | None    -> false
   | Some(l) ->
-      if !debug then log "cnst" "constraint [%a == %a] found." pp a pp b;
+      if !debug then log "cnst" "adding constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
 let eq_modulo : term -> term -> bool = fun a b ->
@@ -733,20 +733,14 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     (* Symbol *)
     | (Symb(s)  , a        ) -> eq_modulo (symbol_type s) a
     (* Product *)
-    | (Prod(a,b), Type     ) ->
+    | (Prod(a,b), s        ) ->
         let (x,bx) = Bindlib.unbind mkfree b in
         let ctx_x =
           if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
         in
-        has_type ctx a Type && has_type ctx_x bx Type
-    (* Product 2 *)
-    | (Prod(a,b), Kind     ) ->
-        let (x,bx) = Bindlib.unbind mkfree b in
-        let ctx_x =
-          if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
-        in
-        has_type ctx a Type && has_type ctx_x bx Kind
-    (* Abstraction and Abstraction 2 *)
+        has_type ctx a Type && has_type ctx_x bx s
+        && (eq s Type || eq s Kind)
+    (* Abstraction *)
     | (Abst(a,t), Prod(c,b)) ->
         let (x,tx) = Bindlib.unbind mkfree t in
         let bx = Bindlib.subst b (mkfree x) in
