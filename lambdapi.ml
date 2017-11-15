@@ -221,6 +221,10 @@ let symbol_name : symbol -> string = fun s ->
   if path = Stack.top current_module then name
   else String.concat "." (path @ [name])
 
+(* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
+let add_rule : def -> rule -> unit = fun def r ->
+  def.def_rules := !(def.def_rules) @ [r]
+
 (**** Signature *************************************************************)
 
 module Sign =
@@ -456,7 +460,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type     , _    )   -> pstring "Type"
     | (Kind     , _    )   -> pstring "Kind"
     | (Symb(s)  , _    )   -> pstring (symbol_name s)
-    | (Unif(_,e), _    )   -> pformat "?[%a]" (pp_array (print `Appl) ", ") e
+    | (Unif(_,e), _    )   -> pformat "?[%a]" (pp_array (print `Appl) ",") e
     | (PVar(_)  , _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
@@ -533,13 +537,51 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
   let res = eq a b in
   if !debug then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
 
-(**** Evaluatin function (with rewriting) ***********************************)
+(**** Evaluation function (with rewriting) **********************************)
+
+let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
+  let t = unfold t in
+  match (t, stk) with
+  (* Push argument to the stack. *)
+  | (Appl(false,f,u), stk    ) -> whnf_stk f (u :: stk)
+  (* Beta reduction. *)
+  | (Abst(_,f)      , u::stk ) -> whnf_stk (Bindlib.subst f u) stk
+  (* Try to rewrite. *)
+  | (Symb(Def(s))   , stk    ) ->
+      begin
+        match match_rules s stk with
+        | []          ->
+            (* No rule applies. *)
+            (t, stk)
+        | (t,stk)::rs ->
+            (* At least one rule applies. *)
+            if !debug_eval && rs <> [] then
+              wrn "%i rules apply...\n%!" (List.length rs);
+            (* Just use the first one. *)
+            whnf_stk t stk
+      end
+  (* The head of the term is rigid, mark it as such. *)
+  | (Symb(Sym _)    , stk    ) -> (t, stk) (* Rigid. *)
+  (* This application was marked as rigid. *)
+  | (Appl(true ,_,_), stk    ) -> (t, stk) (* Rigid. *)
+  (* In head normal form. *)
+  | (_              , _      ) -> (t, stk)
 
 (* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
    the stack [stk]. The possible abstract machine states (see [eval_stk]) with
    which to continue are returned. *)
-let match_rules : def -> term list -> (term * term list) list = fun s stk ->
+and match_rules : def -> term list -> (term * term list) list = fun s stk ->
   let nb_args = List.length stk in
+  let rec eval_args n stk =
+    match (n, stk) with
+    | (0, stk   ) -> stk
+    | (_, []    ) -> assert false
+    | (n, u::stk) -> let (u,s) = whnf_stk u [] in
+                     add_args u s :: eval_args (n-1) stk
+  in
+  let max_req acc r = if r.arity <= nb_args then max r.arity acc else acc in
+  let n = List.fold_left max_req 0 !(s.def_rules) in
+  let stk = eval_args n stk in
   let match_rule acc r =
     (* First check that we have enough arguments. *)
     if r.arity > nb_args then acc else
@@ -551,7 +593,8 @@ let match_rules : def -> term list -> (term * term list) list = fun s stk ->
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args lhs stk =
       match (lhs, stk) with
-      | ([]    , stk   ) -> (Bindlib.msubst r.rhs uvars, stk) :: acc
+      | ([]    , stk   ) ->
+          (Bindlib.msubst r.rhs (Array.map unfold uvars), stk) :: acc
       | (t::lhs, v::stk) ->
           if eq ~rewrite:true t v then match_args lhs stk else acc
       | (_     , _     ) -> assert false
@@ -560,43 +603,14 @@ let match_rules : def -> term list -> (term * term list) list = fun s stk ->
   in
   List.fold_left match_rule [] !(s.def_rules)
 
-(* [eval_stk t stk] evaluates the term [t] using the stack [stk], which may be
-   seen as a list of arguments for [t]. *)
-let rec eval_stk : term -> term list -> term = fun t stk ->
-  let t = unfold t in
-  match (t, stk) with
-  (* Evaluate argument and push it to the stack. *)
-  | (Appl(false,f,u), stk    ) -> eval_stk f ((eval_stk u []) :: stk)
-  (* Beta. *)
-  | (Abst(_,f)      , v::stk ) -> eval_stk (Bindlib.subst f v) stk
-  (* Try to rewrite. *)
-  | (Symb(Def(s))   , stk    ) ->
-      begin
-        match match_rules s stk with
-        | []          ->
-            (* No rule applies. *)
-            add_args t stk
-        | (t,stk)::rs ->
-            (* At least one rule applies. *)
-            if !debug_eval && rs <> [] then
-              wrn "%i rules apply...\n%!" (List.length rs);
-            (* Just use the first one. *)
-            eval_stk t stk
-      end
-  (* The head of the term is rigid, mark it as such. *)
-  | (Symb(Sym _)    , stk    ) -> add_args ~rigid:true t stk
-  (* This application was marked as rigid. *)
-  | (Appl(true ,f,u), stk    ) -> add_args ~rigid:true t stk
-  (* In head normal form. *)
-  | (t              , stk    ) -> add_args t stk
-
 (* [eval t] returns a weak head normal form of [t].  Note that some  arguments
    are evaluated if they might be used to allow the application of a rewriting
    rule. As their evaluation is kept, so this function does more normalisation
    that the usual weak head normalisation. *)
 let eval : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
-  let u = eval_stk t [] in
+  let (u, stk) = whnf_stk t [] in
+  let u = add_args u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
 
 (**** Equality modulo conversion ********************************************)
@@ -619,30 +633,41 @@ let constraints = ref None
 let add_constraint : term -> term -> bool = fun a b ->
   match !constraints with
   | None    -> false
-  | Some(l) -> constraints := Some((eval a, eval b)::l); true
+  | Some(l) ->
+      if !debug then log "cnst" "constraint [%a == %a] found." pp a pp b;
+      constraints := Some((a, b)::l); true
 
-(* [eq_module t u] computes the equality of [t] and [u], modulo the conversion
-   rule (i.e., the reduction rules for the definable symbols). Unification can
-   be triggered by this function as it calls [eq]. *)
 let eq_modulo : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a == %a" pp a pp b;
-  let rec eq_mod a b =
-    let a = eval a in
-    let b = eval b in
-    eq a b ||
-    match (a, b) with
-    | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
-    | (Type         , Type         ) -> true
-    | (Kind         , Kind         ) -> true
-    | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
-    | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
-    | (Prod(a,f)    , Prod(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
-    | (Abst(a,f)    , Abst(b,g)    ) -> eq_mod a b && eq_binder eq_mod f g
-    | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq_mod t f && eq_mod u g
-    | (_            , _            ) -> false
+  let rec eq_modulo l =
+    match l with
+    | []                   -> true
+    | (a,b)::l when eq a b -> eq_modulo l
+    | (a,b)::l             ->
+        let (a,sa) = whnf_stk a [] in
+        let (b,sb) = whnf_stk b [] in
+        let rec sync acc la lb =
+          match (la, lb) with
+          | ([]   , []   ) -> (a, b, List.rev acc)
+          | (a::la, b::lb) -> sync ((a,b)::acc) la lb
+          | (la   , []   ) -> (add_args a (List.rev la), b, acc)
+          | ([]   , lb   ) -> (a, add_args b (List.rev lb), acc)
+        in
+        let (a,b,l) = sync [] (List.rev sa) (List.rev sb) in
+        if !debug then log "EQUA" "matching (%a, %a)." pp a pp b;
+        match (unfold a, unfold b) with
+        | (a          , b          ) when eq a b -> eq_modulo l
+        | (Appl(_,_,_), Appl(_,_,_)) -> eq_modulo ((a,b)::l)
+        | (Abst(_,ba) , Abst(_,bb) ) ->
+            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
+            eq_modulo ((Bindlib.subst ba x, Bindlib.subst bb x)::l)
+        | (Prod(aa,ba), Prod(ab,bb)) ->
+            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
+            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
+        | (a          , b          ) -> add_constraint a b && eq_modulo l
   in
-  let res = eq a b || eq_mod a b || add_constraint a b in
-  if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res
+  let res = eq_modulo [(a,b)] in
+  if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
 
 (**** Type inference and type-checking **************************************)
 
@@ -1066,7 +1091,7 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
   let wildcards = ref [] in
   let counter = ref 0 in
   let new_wildcard () =
-    let x = "#" ^ string_of_int !counter ^ "#" in
+    let x = "#" ^ string_of_int !counter in
     let x = Bindlib.new_var mkfree x in
     incr counter; wildcards := x :: !wildcards; Bindlib.box_of_var x
   in
@@ -1160,7 +1185,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
       {arity = 0; lhs ; rhs}
     in
-    s.def_rules := !(s.def_rules) @ [rule]
+    add_rule s rule
 
 (* [check_rule sign r] check whether the rule [r] is well-typed in the signat-
    ure [sign]. The program fails gracefully in case of error. *)
@@ -1198,7 +1223,7 @@ let handle_rules = fun sign rs ->
   let rs = List.map (scope_rule sign) rs in
   let rs = List.map (check_rule sign) rs in
   let add_rule (s,t,u,rule) =
-    s.def_rules := !(s.def_rules) @ [rule]
+    add_rule s rule
   in
   List.iter add_rule rs
 
