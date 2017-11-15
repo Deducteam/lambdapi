@@ -653,14 +653,15 @@ let eq_modulo : term -> term -> bool = fun a b ->
           | (la   , []   ) -> (add_args a (List.rev la), b, acc)
           | ([]   , lb   ) -> (a, add_args b (List.rev lb), acc)
         in
-        let (a,b,l) = sync [] (List.rev sa) (List.rev sb) in
-        if !debug then log "EQUA" "matching (%a, %a)." pp a pp b;
-        match (unfold a, unfold b) with
-        | (a          , b          ) when eq a b -> eq_modulo l
+        let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
+        let a = unfold a in
+        let b = unfold b in
+        match (a, b) with
+        | (_          , _          ) when eq a b -> eq_modulo l
         | (Appl(_,_,_), Appl(_,_,_)) -> eq_modulo ((a,b)::l)
-        | (Abst(_,ba) , Abst(_,bb) ) ->
+        | (Abst(aa,ba), Abst(ab,bb) ) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
-            eq_modulo ((Bindlib.subst ba x, Bindlib.subst bb x)::l)
+            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
         | (Prod(aa,ba), Prod(ab,bb)) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
             eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
@@ -725,46 +726,51 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     let t = unfold t in
     let a = eval a in
     if !debug_type then log "TYPE" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
-    match (t, a) with
-    (* Sort *)
-    | (Type     , Kind     ) -> true
-    (* Variable *)
-    | (Vari(x)  , a        ) -> eq_modulo (Ctxt.find x ctx) a
-    (* Symbol *)
-    | (Symb(s)  , a        ) -> eq_modulo (symbol_type s) a
-    (* Product *)
-    | (Prod(a,b), s        ) ->
-        let (x,bx) = Bindlib.unbind mkfree b in
-        let ctx_x =
-          if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
-        in
-        has_type ctx a Type && has_type ctx_x bx s
-        && (eq s Type || eq s Kind)
-    (* Abstraction *)
-    | (Abst(a,t), Prod(c,b)) ->
-        let (x,tx) = Bindlib.unbind mkfree t in
-        let bx = Bindlib.subst b (mkfree x) in
-        let ctx_x = Ctxt.add x a ctx in
-        eq_modulo a c && has_type ctx a Type
-        && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
-        && has_type ctx_x tx bx
-    (* Application *)
-    | (Appl(_,t,u), b      ) ->
-        begin
-          match infer sign ctx t with
-          | Prod(a,ba)  as tt ->
-              eq_modulo (Bindlib.subst ba u) b
-              && has_type ctx t tt && has_type ctx u a
-          | Unif(r,env) as tt ->
-              let a = Unif(ref None, env) in
-              let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
-              let b = Prod(a, Bindlib.unbox b) in
-              assert(unify r env b);
-              has_type ctx t tt && has_type ctx u a
-          | _                  -> false
-        end
-    (* No rule apply. *)
-    | (_        , _        ) -> false
+    let res =
+      match (t, a) with
+      (* Sort *)
+      | (Type     , Kind     ) -> true
+      (* Variable *)
+      | (Vari(x)  , a        ) -> eq_modulo (Ctxt.find x ctx) a
+      (* Symbol *)
+      | (Symb(s)  , a        ) -> eq_modulo (symbol_type s) a
+      (* Product *)
+      | (Prod(a,b), s        ) ->
+          let (x,bx) = Bindlib.unbind mkfree b in
+          let ctx_x =
+            if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
+          in
+          has_type ctx a Type && has_type ctx_x bx s
+          && (eq s Type || eq s Kind)
+      (* Abstraction *)
+      | (Abst(a,t), Prod(c,b)) ->
+          let (x,tx) = Bindlib.unbind mkfree t in
+          let bx = Bindlib.subst b (mkfree x) in
+          let ctx_x = Ctxt.add x a ctx in
+          eq_modulo a c && has_type ctx a Type
+          && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
+          && has_type ctx_x tx bx
+      (* Application *)
+      | (Appl(_,t,u), b      ) ->
+          begin
+            match infer sign ctx t with
+            | Prod(a,ba)  as tt ->
+                eq_modulo (Bindlib.subst ba u) b
+                && has_type ctx t tt && has_type ctx u a
+            | Unif(r,env) as tt ->
+                let a = Unif(ref None, env) in
+                let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
+                let b = Prod(a, Bindlib.unbox b) in
+                assert(unify r env b);
+                has_type ctx t tt && has_type ctx u a
+            | _                  -> false
+          end
+      (* No rule apply. *)
+      | (_        , _        ) -> false
+    in
+    if !debug_type then
+      log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
+    res
   in
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
   let res = has_type ctx t a in
