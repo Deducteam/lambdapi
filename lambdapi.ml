@@ -122,6 +122,9 @@ let out : int -> ('a, out_channel, unit) format -> 'a = fun lvl fmt ->
 
 (**** Abstract syntax of the language ***************************************)
 
+type info =
+  { closed : bool }
+
 (* Type of terms (and types). *)
 type term =
   (* Free variable. *)
@@ -133,11 +136,11 @@ type term =
   (* Symbol (static or definable). *)
   | Symb of symbol
   (* Dependent product. *)
-  | Prod of term * (term, term) Bindlib.binder
+  | Prod of info * term * (term, term) Bindlib.binder
   (* Abstraction. *)
-  | Abst of term * (term, term) Bindlib.binder
+  | Abst of info * term * (term, term) Bindlib.binder
   (* Application. *)
-  | Appl of bool * term * term
+  | Appl of info * term * term
   (* Unification variable. *)
   | Unif of unif * term array
   (* Pattern variable. *)
@@ -313,15 +316,15 @@ let rec unfold : term -> term = fun t ->
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
 let rec occurs : unif -> term -> bool = fun r t ->
   match unfold t with
-  | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
-  | Appl(n,t,u) -> occurs r t || occurs r u
+  | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Appl(_,t,u) -> occurs r t || occurs r u
   | Unif(u,e)   -> u == r || Array.exists (occurs r) e
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> true
+  | PVar(_)     -> assert false
 
 (* NOTE: pattern variables prevent unification to ensure that they  cannot  be
    absorbed by unification varialbes (and do not escape rewriting code). *)
@@ -345,13 +348,11 @@ let unify : unif -> term array -> term -> bool =
 type tbox = term Bindlib.bindbox
 
 (* Injection of [Bindlib] variables into terms. *)
-let mkfree : tvar -> term =
-  fun x -> Vari(x)
+let mkfree : tvar -> term = fun x -> Vari(x)
 
 (* [_Vari x] injects the free variable [x] into the bindbox, so that it may be
    available for binding. *)
-let _Vari : tvar -> tbox =
-  Bindlib.box_of_var
+let _Vari : tvar -> tbox = Bindlib.box_of_var
 
 (* [_Type] injects the constructor [Type] in the [bindbox] type. *)
 let _Type : tbox = Bindlib.box Type
@@ -360,34 +361,40 @@ let _Type : tbox = Bindlib.box Type
 let _Kind : tbox = Bindlib.box Kind
 
 (* [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
-let _Symb : symbol -> tbox =
-  fun s -> Bindlib.box (Symb(s))
+let _Symb : symbol -> tbox = fun s -> Bindlib.box (Symb(s))
 
 (* [_Symb_find sign name] finds the symbol [s] with the given [name] in [sign]
    and injects the constructor [Symb(s)] into the [bindbox] type.  [Not_found]
    is raised if no such symbol is found. *)
-let _Symb_find : Sign.t -> string -> tbox =
-  fun sign n -> _Symb (Sign.find sign n)
+let _Symb_find : Sign.t -> string -> tbox = fun sign n ->
+  _Symb (Sign.find sign n)
 
 (* [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
-let _Appl : tbox -> tbox -> tbox =
-  Bindlib.box_apply2 (fun t u -> Appl(false,t,u))
+let _Appl : tbox -> tbox -> tbox = fun t u ->
+  let closed = Bindlib.is_closed t && Bindlib.is_closed u in
+  Bindlib.box_apply2 (fun t u -> Appl({closed},t,u)) t u
 
 (* [_Prod a x f] lifts a dependent product node to the [bindbox] type, given a
    boxed term [a] (the type of the domain),  a prefered name [x] for the bound
    variable, and function [f] to build the [binder] (codomain). *)
-let _Prod : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f ->
-    let b = Bindlib.vbind mkfree x f in
-    Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
+let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
+  let b = Bindlib.vbind mkfree x f in
+  let closed = Bindlib.is_closed a && Bindlib.is_closed b in
+  Bindlib.box_apply2 (fun a b -> Prod({closed},a,b)) a b
 
 (* [_Abst a x f] lifts an abstraction node to the [bindbox] type, given a term
    [a] (which is the type of the bound variable),  the prefered name [x] to be
    used for the bound variable, and the function [f] to build the [binder]. *)
-let _Abst : tbox -> string -> (tvar -> tbox) -> tbox =
-  fun a x f ->
-    let b = Bindlib.vbind mkfree x f in
-    Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
+let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
+  let b = Bindlib.vbind mkfree x f in
+  let closed = Bindlib.is_closed a && Bindlib.is_closed b in
+  Bindlib.box_apply2 (fun a b -> Abst({closed},a,b)) a b
+
+let _Unif : unif -> tbox array -> tbox =
+  let dummy = Bindlib.box_of_var (Bindlib.new_var mkfree "__dummy__") in
+  fun r ar ->
+    let ar = Bindlib.box_array ar in
+    Bindlib.box_apply2 (fun ar _ -> Unif(r,ar)) ar dummy
 
 (* [lift t] lifts a [term] [t] to the [bindbox] type,  thus gathering its free
    variables, making them available for binding.  At the same time,  the names
@@ -400,11 +407,14 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Prod(i,_,_) when i.closed -> Bindlib.box t
+  | Prod(i,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Abst(i,_,_) when i.closed -> Bindlib.box t
+  | Abst(i,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Appl(i,_,_) when i.closed -> Bindlib.box t
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(_)     -> Bindlib.box t (* Not instanciated. *)
-  | PVar(_)     -> Bindlib.box t (* Not instanciated. *)
+  | Unif(r,m)   -> _Unif r (Array.map lift m) (* Not instanciated *)
+  | PVar(_)     -> Bindlib.box t (* Not instanciated *)
 
 let _ = lift_ref := lift
 
@@ -422,17 +432,32 @@ let get_args : term -> term * term list = fun t ->
     | t           -> (t, acc)
   in get [] t
 
-(* [add_args ~rigid hd args] builds the application of a term [hd] to the list
-   of its arguments [args] (this is the inverse of [get_args]).  Note that the
-   optional [rigid] argument ([false] by default) can be used to mark as rigid
-   terms whose head are static symbol, to avoid copying them repeatedly. *)
-let add_args : ?rigid:bool -> term -> term list -> term =
-  fun ?(rigid=false) t args ->
-    let rec add_args t args =
-      match args with
-      | []      -> t
-      | u::args -> add_args (Appl(rigid,t,u)) args
-    in add_args t args
+let rec is_closed : term -> bool = fun t ->
+  match unfold t with
+  | Vari(_)     -> false
+  | Prod(i,_,_) -> i.closed
+  | Abst(i,_,_) -> i.closed
+  | Appl(i,_,_) -> i.closed
+  | Unif(_,m)   -> Array.for_all is_closed m
+  | PVar(_)     -> assert false
+  | _           -> true
+
+let appl : term -> term -> term = fun t u ->
+  let closed = is_closed t && is_closed u in
+  Appl({closed},t,u)
+
+let prod : term -> (term, term) Bindlib.binder -> term = fun a b ->
+  let closed = is_closed a && Bindlib.binder_closed b in
+  Prod({closed},a,b) 
+
+(* [add_args hd args] builds the application of a term [hd] to the list of its
+   arguments [args] (this is the inverse of [get_args]). *)
+let add_args : term -> term list -> term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | u::args -> add_args (appl t u) args
+  in add_args t args
 
 (**** Printing functions (should come early for debuging) *******************)
 
@@ -456,25 +481,25 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     let t = unfold t in
     match (t, p) with
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)  , _    )   -> pstring (name x)
-    | (Type     , _    )   -> pstring "Type"
-    | (Kind     , _    )   -> pstring "Kind"
-    | (Symb(s)  , _    )   -> pstring (symbol_name s)
-    | (Unif(_,e), _    )   -> pformat "?[%a]" (pp_array (print `Appl) ",") e
-    | (PVar(_)  , _    )   -> pstring "?"
+    | (Vari(x)    , _    )   -> pstring (name x)
+    | (Type       , _    )   -> pstring "Type"
+    | (Kind       , _    )   -> pstring "Kind"
+    | (Symb(s)    , _    )   -> pstring (symbol_name s)
+    | (Unif(_,e)  , _    )   -> pformat "?[%a]" (pp_array (print `Appl) ",") e
+    | (PVar(_)    , _    )   -> pstring "?"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
     | (Appl(_,t,u), `Func) -> pformat "%a %a" (print `Appl) t (print `Atom) u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(a,t), `Func)   ->
+    | (Abst(_,a,t), `Func)   ->
         let (x,t) = Bindlib.unbind mkfree t in
         pformat "%s:%a => %a" (name x) (print `Func) a (print `Func) t
-    | (Prod(a,b), `Func)   ->
+    | (Prod(_,a,b), `Func)   ->
         let (x,c) = Bindlib.unbind mkfree b in
         let x = if Bindlib.binder_occur b then (name x) ^ ":" else "" in
         pformat "%s%a -> %a" x (print `Appl) a (print `Func) c
     (* Anything else needs parentheses. *)
-    | (_        , _    )   -> pformat "(%a)" (print `Func) t
+    | (_          , _    )   -> pformat "(%a)" (print `Func) t
   in
   print `Func oc (update_names t)
 
@@ -524,8 +549,8 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Kind         , Kind         ) -> true
     | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
     | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
-    | (Prod(a,f)    , Prod(b,g)    ) -> eq a b && eq_binder eq f g
-    | (Abst(a,f)    , Abst(b,g)    ) -> eq a b && eq_binder eq f g
+    | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder eq f g
+    | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder eq f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
     | (_            , PVar(_)      ) -> assert false
     | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
@@ -543,11 +568,11 @@ let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
   let t = unfold t in
   match (t, stk) with
   (* Push argument to the stack. *)
-  | (Appl(false,f,u), stk    ) -> whnf_stk f (u :: stk)
+  | (Appl(_,f,u) , stk    ) -> whnf_stk f (u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,f)      , u::stk ) -> whnf_stk (Bindlib.subst f u) stk
+  | (Abst(_,_,f) , u::stk ) -> whnf_stk (Bindlib.subst f u) stk
   (* Try to rewrite. *)
-  | (Symb(Def(s))   , stk    ) ->
+  | (Symb(Def(s)), stk    ) ->
       begin
         match match_rules s stk with
         | []          ->
@@ -560,12 +585,8 @@ let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
             (* Just use the first one. *)
             whnf_stk t stk
       end
-  (* The head of the term is rigid, mark it as such. *)
-  | (Symb(Sym _)    , stk    ) -> (t, stk) (* Rigid. *)
-  (* This application was marked as rigid. *)
-  | (Appl(true ,_,_), stk    ) -> (t, stk) (* Rigid. *)
   (* In head normal form. *)
-  | (_              , _      ) -> (t, stk)
+  | (_           , _      ) -> (t, stk)
 
 (* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
    the stack [stk]. The possible abstract machine states (see [eval_stk]) with
@@ -657,15 +678,15 @@ let eq_modulo : term -> term -> bool = fun a b ->
         let a = unfold a in
         let b = unfold b in
         match (a, b) with
-        | (_          , _          ) when eq a b -> eq_modulo l
-        | (Appl(_,_,_), Appl(_,_,_)) -> eq_modulo ((a,b)::l)
-        | (Abst(aa,ba), Abst(ab,bb) ) ->
+        | (_            , _            ) when eq a b -> eq_modulo l
+        | (Appl(_,_,_)  , Appl(_,_,_)  ) -> eq_modulo ((a,b)::l)
+        | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
             eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
-        | (Prod(aa,ba), Prod(ab,bb)) ->
+        | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
             eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
-        | (a          , b          ) -> add_constraint a b && eq_modulo l
+        | (a            , b            ) -> add_constraint a b && eq_modulo l
   in
   let res = eq_modulo [(a,b)] in
   if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
@@ -683,7 +704,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
       | Vari(x)     -> Ctxt.find x ctx
       | Type        -> Kind
       | Symb(s)     -> symbol_type s
-      | Prod(a,b)   ->
+      | Prod(_,a,b) ->
           let (x,bx) = Bindlib.unbind mkfree b in
           begin
             match infer (Ctxt.add x a ctx) bx with
@@ -693,18 +714,18 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
                         pp bx pp a;
                       raise Not_found
           end
-      | Abst(a,t)   ->
+      | Abst(_,a,t) ->
           let (x,tx) = Bindlib.unbind mkfree t in
           let b = infer (Ctxt.add x a ctx) tx in
-          Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+          prod a (Bindlib.unbox (Bindlib.bind_var x (lift b)))
       | Appl(_,t,u) ->
           begin
             match unfold (infer ctx t) with
-            | Prod(a,b) when has_type sign ctx u a -> Bindlib.subst b u
-            | Prod(a,_)                            ->
+            | Prod(_,a,b) when has_type sign ctx u a -> Bindlib.subst b u
+            | Prod(_,a,_)                            ->
                 err "Cannot show [%a : %a]...\n" pp u pp a;
                 raise Not_found
-            | a                                    ->
+            | a                                      ->
                 err "Product expected for [%a], found [%a]...\n" pp t pp a;
                 raise Not_found
           end
@@ -729,13 +750,13 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     let res =
       match (t, a) with
       (* Sort *)
-      | (Type     , Kind     ) -> true
+      | (Type       , Kind       ) -> true
       (* Variable *)
-      | (Vari(x)  , a        ) -> eq_modulo (Ctxt.find x ctx) a
+      | (Vari(x)    , a          ) -> eq_modulo (Ctxt.find x ctx) a
       (* Symbol *)
-      | (Symb(s)  , a        ) -> eq_modulo (symbol_type s) a
+      | (Symb(s)    , a          ) -> eq_modulo (symbol_type s) a
       (* Product *)
-      | (Prod(a,b), s        ) ->
+      | (Prod(_,a,b), s          ) ->
           let (x,bx) = Bindlib.unbind mkfree b in
           let ctx_x =
             if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
@@ -743,7 +764,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
           has_type ctx a Type && has_type ctx_x bx s
           && (eq s Type || eq s Kind)
       (* Abstraction *)
-      | (Abst(a,t), Prod(c,b)) ->
+      | (Abst(_,a,t), Prod(_,c,b)) ->
           let (x,tx) = Bindlib.unbind mkfree t in
           let bx = Bindlib.subst b (mkfree x) in
           let ctx_x = Ctxt.add x a ctx in
@@ -751,22 +772,23 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
           && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
           && has_type ctx_x tx bx
       (* Application *)
-      | (Appl(_,t,u), b      ) ->
+      | (Appl(_,t,u), b          ) ->
           begin
-            match infer sign ctx t with
-            | Prod(a,ba)  as tt ->
+            let tt = infer sign ctx t in
+            match tt with
+            | Prod(_,a,ba) ->
                 eq_modulo (Bindlib.subst ba u) b
                 && has_type ctx t tt && has_type ctx u a
-            | Unif(r,env) as tt ->
+            | Unif(r,env)  ->
                 let a = Unif(ref None, env) in
                 let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
-                let b = Prod(a, Bindlib.unbox b) in
+                let b = prod a (Bindlib.unbox b) in
                 assert(unify r env b);
                 has_type ctx t tt && has_type ctx u a
-            | _                  -> false
+            | _            -> false
           end
       (* No rule apply. *)
-      | (_        , _        ) -> false
+      | (_          , _          ) -> false
     in
     if !debug_type then
       log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
@@ -1058,9 +1080,9 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let f v = scope ((x,v)::vars) t in
           let a =
             match a with
-            | None    -> let fn (_,x) = mkfree x in
+            | None    -> let fn (_,x) = Bindlib.box_of_var x in
                          let vars = List.map fn vars in
-                         Bindlib.box (Unif(ref None, Array.of_list vars))
+                         _Unif (ref None) (Array.of_list vars)
             | Some(a) -> scope vars a
           in
           _Abst a x f
@@ -1127,9 +1149,9 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           | None    -> raise Not_found
           | Some(a) -> to_term ~vars sign a (* FIXME *)
         with Not_found ->
-          let fn (_,x) = mkfree x in
+          let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in
-          Unif(ref None, Array.of_list vars)
+          Bindlib.unbox (_Unif (ref None) (Array.of_list vars))
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
@@ -1332,7 +1354,7 @@ let _ =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ "0 (or less) : no output at all"
       ; "1 : only file loading information (default)"
-      ; "2 : show the results of commands" ]
+      ; "2 (or more) : show the results of commands" ]
     in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
   in
   let spec =
