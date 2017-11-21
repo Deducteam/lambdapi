@@ -8,14 +8,17 @@ let src_extension : string = ".dk"
 (** [obj_extension] is the expected extension for binary (object) files. *)
 let obj_extension : string = ".dko"
 
-(** [module_path path] computes the "module path" corresponding to a (relatve)
+(** Representation of a module path (roughly, a file path). *)
+type module_path = string list
+
+(** [module_path path] computes the [module_path] corresponding to a (relatve)
     file [path], which should not use [".."]. The returned list is formed with
     the subdirectories along the [path], and it is terminated by the file name
     (without extension). Although it is removed, the extension should be given
     on the file name, and it should correspond to [src_extension]. When [path]
-    is invalid, [Invalid_argument "Invalid path"] is raised. *)
-let module_path : string -> string list = fun fname ->
-  let check p = if not p then invalid_arg "Invalid path" in
+    is invalid, [Invalid_argument "invalid module path"] is raised. *)
+let module_path : string -> module_path = fun fname ->
+  let check p = if not p then invalid_arg "invalid module path" in
   check (Filename.check_suffix fname src_extension);
   check (Filename.is_relative fname);
   let base = Filename.chop_extension (Filename.basename fname) in

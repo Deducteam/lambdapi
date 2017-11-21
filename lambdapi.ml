@@ -40,12 +40,12 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Vari([],x)  ->
           begin
             try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
-            try Sign._Symb_find sign x with Not_found ->
+            try _Symb (Sign.find sign x) with Not_found ->
             fatal "Unbound variable or symbol %S...\n%!" x
           end
       | P_Vari(fs,x)  ->
           begin
-            try Sign._Symb_find (load_signature sign fs) x with Not_found ->
+            try _Symb (Sign.find (load_signature sign fs) x) with Not_found ->
               let x = String.concat "." (fs @ [x]) in
               fatal "Unbound symbol %S...\n%!" x
           end

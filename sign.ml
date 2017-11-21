@@ -1,8 +1,9 @@
 open Console
+open Files
 open Terms
 
 (* Representation of a signature (roughly, a set of symbols). *)
-type t = { symbols : (string, symbol) Hashtbl.t ; path : string list }
+type t = { symbols : (string, symbol) Hashtbl.t ; path : module_path }
 
 (* [create path] creates an empty signature with module path [path]. *)
 let create : string list -> t =
@@ -50,9 +51,3 @@ let read : string -> t =
     let ic = open_in fname in
     let sign = Marshal.from_channel ic in
     close_in ic; sign
-
-(* [_Symb_find sign name] finds the symbol [s] with the given [name] in [sign]
-   and injects the constructor [Symb(s)] into the [bindbox] type.  [Not_found]
-   is raised if no such symbol is found. *)
-let _Symb_find : t -> string -> tbox = fun sign n ->
-  _Symb (find sign n)
