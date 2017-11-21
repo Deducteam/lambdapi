@@ -9,10 +9,6 @@ if exists("b:current_syntax")
   finish
 endif
 
-" Comments
-syn keyword Todo contained TODO FIXME NOTE
-syn region Comment start="(;" end=";)" contains=Todo
-
 " Keywords
 syntax keyword Type Type
 syntax keyword Keyword def
@@ -33,3 +29,9 @@ syntax match Include "#NAME"
 syntax match Include "#STEP"
 syntax match Include "#CONV"
 syntax match Include "#INFER"
+
+" Comments
+syn keyword Todo contained TODO FIXME NOTE
+syn region Comment start="(;" end=";)" contains=Todo
+
+
