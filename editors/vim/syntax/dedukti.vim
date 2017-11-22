@@ -29,6 +29,7 @@ syntax match Include "#NAME"
 syntax match Include "#STEP"
 syntax match Include "#CONV"
 syntax match Include "#INFER"
+syntax match Include "#REQUIRE"
 
 " Comments
 syn keyword Todo contained TODO FIXME NOTE

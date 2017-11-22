@@ -1,6 +1,5 @@
 (** Main program. *)
 
-open Extra
 open Console
 open Files
 open Terms
@@ -137,7 +136,7 @@ let rec handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Eval(t)       -> handle_eval sign t
     | Conv(t,u)     -> handle_conv sign t u
     | Debug(s)      -> set_debug s
-    | Load(path)    -> ignore (compile path)
+    | Require(path) -> ignore (compile path)
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
@@ -183,8 +182,7 @@ let compile fname =
   in
   ignore (compile modpath)
 
-(**** Main program, handling of command line arguments **********************)
-
+(* Main program. *)
 let _ =
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)

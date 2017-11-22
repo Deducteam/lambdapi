@@ -74,20 +74,20 @@ let expr = expr `Func
 (* Representation of a toplevel item (symbol definition, command, ...). *)
 type p_item =
   (* New symbol (static or definable). *)
-  | NewSym of bool * string * p_term
+  | NewSym  of bool * string * p_term
   (* New rewriting rules. *)
-  | Rules  of p_rule list
+  | Rules   of p_rule list
   (* New definable symbol with its definition. *)
-  | Defin  of string * p_term option * p_term
+  | Defin   of string * p_term option * p_term
   (* Commands. *)
-  | Check  of p_term * p_term
-  | Infer  of p_term
-  | Eval   of p_term
-  | Conv   of p_term * p_term
-  | Name   of string
-  | Step   of p_term
-  | Debug  of string
-  | Load   of string list
+  | Check   of p_term * p_term
+  | Infer   of p_term
+  | Eval    of p_term
+  | Conv    of p_term * p_term
+  | Name    of string
+  | Step    of p_term
+  | Debug   of string
+  | Require of string list
 
 (* Representation of a reduction rule, with its context. *)
 and p_rule = (string * p_term option) list * p_term * p_term
@@ -123,7 +123,7 @@ let parser toplevel =
   | "#STEP" t:expr                          -> Step(t)
   | "#SNF"  t:expr                          -> Eval(t)
   | "#DEBUG" s:''[a-z]+''                   -> Debug(s)
-  | "#LOAD" path:mod_path                   -> Load(path)
+  | "#REQUIRE" path:mod_path                -> Require(path)
 
 (* [full] is the main entry point of the parser. It accepts a list of toplevel
    items, each teminated by a ['.']. *)
