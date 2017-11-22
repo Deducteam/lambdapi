@@ -63,14 +63,14 @@ type term =
 (* Representation of a static symbol. *)
 and sym =
   { sym_name  : string
-  ; sym_type  : term
+  ; mutable sym_type  : term
   ; sym_path  : string list }
 
 (* Representation of a definable symbol,  which carries its reduction rules in
    a reference. It should be updated to add new rules. *)
 and def =
   { def_name  : string
-  ; def_type  : term
+  ; mutable def_type  : term
   ; def_rules : rule list ref
   ; def_path  : string list }
 

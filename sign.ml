@@ -15,7 +15,12 @@ type t =
    required modules, on which the current signature depends, to an association
    list mapping definable symbols (given in these modules) to additional rules
    (defined in the current signature, for symbols defined elsewhere. *)
-   
+
+(** [find sign name] finds the symbol named [name] in [sign] if it exists, and
+    raises the [Not_found] exception otherwise. *)
+let find : t -> string -> symbol =
+  fun sign name -> Hashtbl.find sign.symbols name
+
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
@@ -31,6 +36,69 @@ let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun path ->
   { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
+
+(** [link sign] establishes physical links between equal symbols. *)
+let link : t -> unit = fun sign ->
+  (* FIXME does not seem to work properly. *)
+  let rec link_term t =
+    let link_binder b =
+      let (x,t) = Bindlib.unbind mkfree b in
+      Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
+    in
+    match unfold t with
+    | Vari(x)     -> t
+    | Type        -> t
+    | Kind        -> t
+    | Symb(s)     -> Symb(link_symb s)
+    | Prod(i,a,b) -> Prod(i, link_term a, link_binder b)
+    | Abst(i,a,t) -> Abst(i, link_term a, link_binder t)
+    | Appl(i,t,u) -> Appl(i, link_term t, link_term u)
+    | Unif(r,m)   -> Unif(r, Array.map link_term m)
+    | PVar(_)     -> t
+  and link_rule r =
+    let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
+    let lhs = List.map link_term lhs in
+    let lhs = Bindlib.box_list (List.map lift lhs) in
+    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs lhs) in
+    let (xs, rhs) = Bindlib.unmbind mkfree r.rhs in
+    let rhs = lift (link_term rhs) in
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
+    {r with lhs ; rhs}
+  and link_symb s =
+    let (name, path) =
+      match s with
+      | Sym(s) -> (s.sym_name, s.sym_path)
+      | Def(s) -> (s.def_name, s.def_path)
+    in
+    if path = sign.path then s else
+    try
+      let sign = Hashtbl.find loaded path in
+      try find sign name with Not_found -> assert false
+    with Not_found -> assert false
+  in
+  let fn _ sym =
+    match sym with
+    | Sym(s) -> s.sym_type <- link_term s.sym_type
+    | Def(s) -> s.def_type <- link_term s.def_type;
+                s.def_rules := List.map link_rule !(s.def_rules)
+  in
+  (* Iterate instead !!!! *)
+  Hashtbl.iter fn sign.symbols;
+  let gn path ls =
+    let sign = try Hashtbl.find loaded path with Not_found -> assert false in
+    let h (n,rs) =
+      let rs = List.map link_rule rs in
+      let _ =
+        match find sign n with
+        | Sym(s) -> assert false
+        | Def(s) -> s.def_rules := !(s.def_rules) @ rs
+      in
+      (n, rs)
+    in
+    Some(List.map h ls)
+  in
+  Hashtbl.filter_map_inplace gn sign.deps;
+  wrn "Link OK\n%!"
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
@@ -55,11 +123,6 @@ let new_definable : t -> string -> term -> def =
     let def = { def_name ; def_type ; def_rules ; def_path } in
     Hashtbl.add sign.symbols def_name (Def(def));
     out 2 "(defi) %s\n" def_name; def
-
-(** [find sign name] finds the symbol named [name] in [sign] if it exists, and
-    raises the [Not_found] exception otherwise. *)
-let find : t -> string -> symbol =
-  fun sign name -> Hashtbl.find sign.symbols name
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit =

@@ -136,43 +136,52 @@ let rec handle_file : Sign.t -> string -> unit = fun sign fname ->
     | Eval(t)       -> handle_eval sign t
     | Conv(t,u)     -> handle_conv sign t u
     | Debug(s)      -> set_debug s
-    | Require(path) -> ignore (compile path)
+    | Require(path) -> handle_require sign path
     | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
     | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
   in
   try List.iter handle_item (parse_file fname) with e ->
     fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
 
+and handle_require : Sign.t -> module_path -> unit = fun sign path ->
+  let open Sign in
+  if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
+  compile path
+
 (**** Main compilation functions ********************************************)
 
 (* [compile modpath] compiles the file correspinding to module path  [modpath]
    if necessary (i.e., if no corresponding binary file exists).  Note that the
-   produced signature is stored into an object file, and in [loaded] before it
-   is returned. *)
-and compile : string list -> Sign.t = fun modpath ->
-  Stack.push modpath Sign.loading;
+   produced signature is stored into an object file, and in [loaded]. *)
+and compile : string list -> unit = fun modpath ->
   let base = String.concat "/" modpath in
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  let sign =
-    if more_recent src obj then
-      begin
-        out 1 "Loading file [%s]\n%!" src;
-        let sign = Sign.create modpath in
-        handle_file sign src;
-        Sign.write sign obj;
-        Hashtbl.add Sign.loaded modpath sign; sign
-      end
-    else
-      begin
-        out 1 "Already compiled [%s]\n%!" obj;
-        let sign = Sign.read obj in
-        Hashtbl.add Sign.loaded modpath sign; sign
-      end
-  in
-  out 1 "Done with file [%s]\n%!" src;
-  ignore (Stack.pop Sign.loading); sign
+  if Hashtbl.mem Sign.loaded modpath then
+    out 1 "Already loaded file [%s]\n%!" src
+  else
+    begin
+      Stack.push modpath Sign.loading;
+      if more_recent src obj then
+        begin
+          out 1 "Loading file [%s]\n%!" src;
+          let sign = Sign.create modpath in
+          Hashtbl.add Sign.loaded modpath sign;
+          handle_file sign src;
+          Sign.write sign obj
+        end
+      else
+        begin
+          out 1 "Already compiled [%s]\n%!" obj;
+          let sign = Sign.read obj in
+          Hashtbl.iter (fun mp _ -> compile mp) Sign.(sign.deps);
+          Hashtbl.add Sign.loaded modpath sign;
+          Sign.link sign
+        end;
+      out 1 "Done with file [%s]\n%!" src;
+      ignore (Stack.pop Sign.loading)
+    end
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile fname =
@@ -180,7 +189,7 @@ let compile fname =
     try module_path fname with Invalid_argument _ ->
     fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
   in
-  ignore (compile modpath)
+  compile modpath
 
 (* Main program. *)
 let _ =
