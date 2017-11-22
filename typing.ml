@@ -2,6 +2,7 @@ open Extra
 open Console
 open Files
 open Terms
+open Print
 open Eq
 open Eval
 open Conv
@@ -11,7 +12,7 @@ open Conv
    suitable type is found. *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
-    if !debug_infr then log "INFR" "%a ⊢ %a : ?" Ctxt.pp ctx pp t;
+    if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
     let a =
       match unfold t with
       | Vari(x)     -> Ctxt.find x ctx
@@ -46,12 +47,12 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
       | Unif(_)     -> assert false
       | PVar(_)     -> assert false
     in
-    if !debug_infr then log "INFR" "%a ⊢ %a : %a" Ctxt.pp ctx pp t pp a;
+    if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
   in
-  if !debug then log "infr" "%a ⊢ %a : ?" Ctxt.pp ctx pp t;
+  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
   let res = infer ctx t in
-  if !debug then log "infr" "%a ⊢ %a : %a" Ctxt.pp ctx pp t pp res; res
+  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res; res
 
 (* [has_type sign ctx t a] checks whether the term [t] has type [a] in context
    [ctx] and with the signature [sign]. *)
@@ -59,7 +60,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
   let rec has_type ctx t a =
     let t = unfold t in
     let a = eval a in
-    if !debug_type then log "TYPE" "%a ⊢ %a : %a" Ctxt.pp ctx pp t pp a;
+    if !debug_type then log "TYPE" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     let res =
       match (t, a) with
       (* Sort *)
@@ -104,12 +105,12 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
       | (_          , _          ) -> false
     in
     if !debug_type then
-      log "TYPE" (r_or_g res "%a ⊢ %a : %a") Ctxt.pp ctx pp t pp a;
+      log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
     res
   in
-  if !debug then log "type" "%a ⊢ %a : %a" Ctxt.pp ctx pp t pp a;
+  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
   let res = has_type ctx t a in
-  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") Ctxt.pp ctx pp t pp a;
+  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
   res
 
 (* [infer_with_constrs sign ctx t] is similar to [infer sign ctx t], but it is

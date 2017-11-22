@@ -18,8 +18,3 @@ let add : tvar -> term -> t -> t =
     and raises [Not_found] otherwise. *)
 let find : tvar -> t -> term = fun x ctx ->
   snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
-
-(** [pp oc ctx] pretty-prints the context [ctx] to the channel [oc]. *)
-let pp : out_channel -> t -> unit = fun oc ctx ->
-  let pp_e oc (x,a) = Printf.fprintf oc "%s : %a" (Bindlib.name_of x) pp a in
-  if ctx = [] then output_string oc "∅" else List.pp pp_e ", " oc ctx

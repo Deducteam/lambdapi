@@ -1,6 +1,7 @@
 open Extra
 open Console
 open Terms
+open Print
 
 (* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
 let rec occurs : unif -> term -> bool = fun r t ->

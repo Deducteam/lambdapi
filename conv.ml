@@ -1,6 +1,7 @@
 open Extra
 open Console
 open Terms
+open Print
 open Eq
 open Eval
 

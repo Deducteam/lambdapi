@@ -3,6 +3,7 @@ open Console
 open Files
 open Terms
 open Typing
+open Print
 open Parser
 
 (**** Early compilation / module support ************************************)
@@ -12,16 +13,12 @@ open Parser
    define it yet (we could alternatively use mutual definitions). *)
 let compile_ref : (string list -> Sign.t) ref = ref (fun _ -> assert false)
 
-(* [loaded] is a hashtable associating module paths to signatures. A signature
-   will be mapped to a given module path only if it was already compiled. *)
-let loaded : (string list, Sign.t) Hashtbl.t = Hashtbl.create 7
-
 (* [load_signature modpath] returns the signature corresponding to the  module
    path [modpath].  Note that compilation may be required if this is the first
    time that the corresponding module is required. *)
 let load_signature : Sign.t -> string list -> Sign.t = fun sign modpath ->
   if Stack.top current_module = modpath then sign else
-  try Hashtbl.find loaded modpath with Not_found -> !compile_ref modpath
+  try Hashtbl.find Sign.loaded modpath with Not_found -> !compile_ref modpath
 
 (**** Scoping ***************************************************************)
 
@@ -295,13 +292,13 @@ let compile : string list -> Sign.t = fun modpath ->
         let sign = Sign.create modpath in
         handle_file sign src;
         Sign.write sign obj;
-        Hashtbl.add loaded modpath sign; sign
+        Hashtbl.add Sign.loaded modpath sign; sign
       end
     else
       begin
         out 1 "Already compiled [%s]\n%!" obj;
         let sign = Sign.read obj in
-        Hashtbl.add loaded modpath sign; sign
+        Hashtbl.add Sign.loaded modpath sign; sign
       end
   in
   out 1 "Done with file [%s]\n%!" src;

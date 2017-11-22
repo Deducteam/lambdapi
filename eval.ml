@@ -1,6 +1,7 @@
 open Extra
 open Console
 open Terms
+open Print
 open Eq
 
 let rec whnf_stk : term -> term list -> term * term list = fun t stk ->

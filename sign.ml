@@ -5,11 +5,18 @@ open Files
 open Terms
 
 (** Representation of a signature (roughly, a set of symbols). *)
-type t = { symbols : (string, symbol) Hashtbl.t ; path : module_path }
+type t =
+  { symbols : (string, symbol) Hashtbl.t
+  ; path    : module_path
+  ; deps    : (module_path, (string * rule list) list) Hashtbl.t }
 
-(* [create path] creates an empty signature with module path [path]. *)
-let create : string list -> t =
-  fun path -> { path ; symbols = Hashtbl.create 37 }
+(** [loaded] stores the signatures of the known (already compiled) modules. *)
+let loaded : (module_path, t) Hashtbl.t =
+  Hashtbl.create 7
+
+(** [create path] creates an empty signature with module path [path]. *)
+let create : module_path -> t = fun path ->
+  { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
