@@ -87,6 +87,7 @@ type p_item =
   | Name   of string
   | Step   of p_term
   | Debug  of string
+  | Load   of string list
 
 (* Representation of a reduction rule, with its context. *)
 and p_rule = (string * p_term option) list * p_term * p_term
@@ -104,6 +105,9 @@ let parser rule = "[" xs:context "]" t:expr "-->" u:expr
 let parser def_def = xs:{"(" ident ":" expr ")"}* ":=" t:expr ->
   List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t)) xs t
 
+let parser mod_path = path:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
+  String.split_on_char '.' path
+
 (* [toplevel] parses a single toplevel item. *)
 let parser toplevel =
   | x:ident ":" a:expr                      -> NewSym(false,x,a)
@@ -119,6 +123,7 @@ let parser toplevel =
   | "#STEP" t:expr                          -> Step(t)
   | "#SNF"  t:expr                          -> Eval(t)
   | "#DEBUG" s:''[a-z]+''                   -> Debug(s)
+  | "#LOAD" path:mod_path                   -> Load(path)
 
 (* [full] is the main entry point of the parser. It accepts a list of toplevel
    items, each teminated by a ['.']. *)

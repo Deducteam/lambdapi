@@ -88,22 +88,6 @@ let symbol_type : symbol -> term =
     | Sym(sym) -> sym.sym_type
     | Def(def) -> def.def_type
 
-(* Stack of module paths. The module path at the top of the stack  corresponds
-   to the current module. It is useful to avoid printing the full path for the
-   local symbols. *)
-let current_module : string list Stack.t = Stack.create ()
-
-(* [symbol_name s] returns the full name of the given symbol [s] (including if
-   the symbol does not come from the current module. *)
-let symbol_name : symbol -> string = fun s ->
-  let (path, name) =
-    match s with
-    | Sym(sym) -> (sym.sym_path, sym.sym_name)
-    | Def(def) -> (def.def_path, def.def_name)
-  in
-  if path = Stack.top current_module then name
-  else String.concat "." (path @ [name])
-
 (* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
 let add_rule : def -> rule -> unit = fun def r ->
   def.def_rules := !(def.def_rules) @ [r]

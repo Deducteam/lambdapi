@@ -4,15 +4,29 @@ open Console
 open Files
 open Terms
 
-(** Representation of a signature (roughly, a set of symbols). *)
+(** Representation of a signature. It roughly corresponds to a set of symbols,
+    defined in a single module (or file). *)
 type t =
   { symbols : (string, symbol) Hashtbl.t
   ; path    : module_path
   ; deps    : (module_path, (string * rule list) list) Hashtbl.t }
 
-(** [loaded] stores the signatures of the known (already compiled) modules. *)
-let loaded : (module_path, t) Hashtbl.t =
-  Hashtbl.create 7
+(* NOTE the [deps] field contains a hashtable binding the [module_path] of the
+   required modules, on which the current signature depends, to an association
+   list mapping definable symbols (given in these modules) to additional rules
+   (defined in the current signature, for symbols defined elsewhere. *)
+   
+(** [loading] contains the [module_path] of the signatures (or files) that are
+    being processed. They are stored in a stack due to dependencies. Note that
+    the topmost element corresponds to the current module.  If a [module_path]
+    appears twice in the stack, then there is a circular dependency. *)
+let loading : module_path Stack.t = Stack.create ()
+
+(** [loaded] stores the signatures of the known (already compiled) modules. An
+    important invariant is that all the occurences of a single symbol sould be
+    physically equal (across different signatures). This requires copying when
+    loading an object file. *)
+let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun path ->
@@ -23,7 +37,7 @@ let create : module_path -> t = fun path ->
 let new_static : t -> string -> term -> sym =
   fun sign sym_name sym_type ->
     if Hashtbl.mem sign.symbols sym_name then
-      wrn "Redefinition of %s.\n" sym_name;
+      wrn "Redefinition of symbol %S.\n" sym_name;
     let sym_path = sign.path in
     let sym = { sym_name ; sym_type ; sym_path } in
     Hashtbl.add sign.symbols sym_name (Sym(sym));
@@ -35,7 +49,7 @@ let new_static : t -> string -> term -> sym =
 let new_definable : t -> string -> term -> def =
   fun sign def_name def_type ->
     if Hashtbl.mem sign.symbols def_name then
-      wrn "Redefinition of %s.\n" def_name;
+      wrn "Redefinition of symbol %S.\n" def_name;
     let def_path = sign.path in
     let def_rules = ref [] in
     let def = { def_name ; def_type ; def_rules ; def_path } in

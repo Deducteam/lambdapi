@@ -1,3 +1,4 @@
+#LOAD examples.firstOrder.
 #NAME FO_theorems.
 
 (;  Imports from FO theory  ;)
