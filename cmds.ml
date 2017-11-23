@@ -100,7 +100,7 @@ let rec handle_import : Sign.t -> module_path -> unit = fun sign path ->
   let open Sign in
   if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
-  compile path
+  compile false path
 
 (** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
     signature [sign]. The program fails gracefully in case of error. *)
@@ -123,39 +123,37 @@ and handle_cmds : Sign.t -> p_cmd list -> unit = fun sign cmds ->
   try List.iter handle_cmd cmds with e ->
     fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
 
-(** [handle_file sign fname] parses the file [fname] and interprets it. *)
- and handle_file : Sign.t -> string -> unit = fun sign fname ->
-   handle_cmds sign (parse_file fname)
-
-(** [compile path] compiles the file corresponding to [module_path] [path], if
-    necessary (no corresponding object file exists, or must be updated),  thus
-    producing a signature that is stored in the corresponding object file. *)
-and compile : string list -> unit = fun path ->
+(** [compile force path] compiles the file corresponding to [path], when it is
+    necessary (the corresponding object file does not exist,  must be updated,
+    or [force] is [true]).  In that case,  the produced signature is stored in
+    the corresponding object file. *)
+and compile : bool -> string list -> unit = fun force path ->
   let base = String.concat "/" path in
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Hashtbl.mem Sign.loaded path then
-    out 1 "Already loaded file [%s]\n%!" src
+  if Hashtbl.mem Sign.loaded path then out 1 "Already loaded [%s]\n%!" src
   else
     begin
-      Stack.push path Sign.loading;
-      if more_recent src obj then
+      if force || more_recent src obj then
         begin
-          out 1 "Loading file [%s]\n%!" src;
+          let forced = if force then " (forced)" else "" in
+          out 1 "Compiling [%s]%s\n%!" src forced;
+          Stack.push path Sign.loading;
           let sign = Sign.create path in
           Hashtbl.add Sign.loaded path sign;
-          handle_file sign src;
-          Sign.write sign obj
+          handle_cmds sign (parse_file src);
+          Sign.write sign obj;
+          ignore (Stack.pop Sign.loading);
+          out 1 "Compiled [%s]\n%!" src;
         end
       else
         begin
-          out 1 "Already compiled [%s]\n%!" obj;
+          out 1 "Loading [%s]\n%!" src;
           let sign = Sign.read obj in
-          Hashtbl.iter (fun mp _ -> compile mp) Sign.(sign.deps);
+          Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
           Hashtbl.add Sign.loaded path sign;
-          Sign.link sign
+          Sign.link sign;
+          out 1 "Loaded [%s]\n%!" obj;
         end;
-      out 1 "Done with file [%s]\n%!" src;
-      ignore (Stack.pop Sign.loading)
     end

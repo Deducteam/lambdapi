@@ -2,11 +2,6 @@
 
 open Console
 open Files
-open Terms
-open Typing
-open Print
-open Parser
-open Scope
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
@@ -15,7 +10,7 @@ let compile : string -> unit = fun fname ->
     fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
   in
   Hashtbl.clear Sign.loaded;
-  Cmds.compile modpath
+  Cmds.compile true modpath
 
 (* Main program. *)
 let _ =

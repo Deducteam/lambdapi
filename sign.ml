@@ -134,7 +134,9 @@ let read : string -> t =
     let sign = Marshal.from_channel ic in
     close_in ic; sign
 
-(* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
+(** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
+    the rule does not correspond to a symbol of the current signature,  it  is
+    also stored in the dependencies. *)
 let add_rule : t -> def -> rule -> unit = fun sign def r ->
   def.def_rules <- def.def_rules @ [r];
   if def.def_path <> sign.path then
