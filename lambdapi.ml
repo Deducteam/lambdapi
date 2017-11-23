@@ -142,6 +142,7 @@ let rec handle_file : Sign.t -> string -> unit = fun sign fname ->
 
 and handle_require : Sign.t -> module_path -> unit = fun sign path ->
   let open Sign in
+  if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
   compile path
 
