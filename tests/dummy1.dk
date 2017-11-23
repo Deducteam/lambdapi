@@ -1,0 +1,7 @@
+N : Type.
+z : N.
+s : N -> N.
+
+def plus : N -> N -> N.
+
+[n] plus z n --> n.
