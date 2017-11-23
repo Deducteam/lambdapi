@@ -88,7 +88,11 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
       (* Application *)
       | (Appl(_,t,u), b          ) ->
           begin
-            let tt = infer sign ctx t in
+            let tt =
+              try infer sign ctx t with Not_found ->
+                wrn "Cannot infer the type of [%a]\n%!" pp t;
+                raise Not_found
+            in
             match tt with
             | Prod(_,a,ba)  ->
                 eq_modulo (Bindlib.subst ba u) b
@@ -109,7 +113,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
     res
   in
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
-  let res = has_type ctx t a in
+  let res = try has_type ctx t a with Not_found -> false in
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
   res
 
