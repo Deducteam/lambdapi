@@ -8,14 +8,6 @@ open Print
 open Parser
 open Scope
 
-(* [sort_type sign x a] finds out the sort of the type [a],  which corresponds
-   to variable [x]. The result may be either [Type] or [Kind]. If [a] is not a
-   well-sorted type, then the program fails gracefully. *)
-let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
-  if has_type sign Ctxt.empty a Type then Type else
-  if has_type sign Ctxt.empty a Kind then Kind else
-  fatal "%s is neither of type Type nor Kind.\n" x
-
 (* [handle_newsym sign is_definable x a] scopes the type [a] in the  signature
    [sign], and defines a new symbol named [x] with the obtained type.  It will
    be definable if [is_definable] is true, and static otherwise. Note that the

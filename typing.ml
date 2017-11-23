@@ -175,3 +175,11 @@ let eq_modulo_constrs : constrs -> term -> term -> bool =
     let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
     let (a,b) = Bindlib.msubst p sub in
     eq_modulo a b
+
+(* [sort_type sign x a] finds out the sort of the type [a],  which corresponds
+   to variable [x]. The result may be either [Type] or [Kind]. If [a] is not a
+   well-sorted type, then the program fails gracefully. *)
+let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
+  if has_type sign Ctxt.empty a Type then Type else
+  if has_type sign Ctxt.empty a Kind then Kind else
+  fatal "%s is neither of type Type nor Kind.\n" x
