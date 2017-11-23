@@ -6,14 +6,14 @@ open Terms
 open Print
 open Parser
 
-(* Representation of an environment for variables. *)
+(** Representation of an environment for variables. *)
 type env = (string * tvar) list
 
-(* [scope new_wildcard env sign t] transforms the parsing level term [t]  into
-   an actual term, using the free variables of the environement [env], and the
-   symbols of the signature [sign].  If a function is given in [new_wildcard],
-   then it is called on [P_Wild] nodes. This will only be allowed when reading
-   a term as a pattern. *)
+(** [scope new_wildcard env sign t] transforms the parsing level term [t] into
+    an actual term using the free variables of the environement [env], and the
+    symbols of the signature [sign]. If a function is given in [new_wildcard],
+    then it is called on [P_Wild] nodes. This is only allowed when considering
+    [t] as a pattern. *)
 let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
   fun new_wildcard vars sign t ->
     let rec scope vars t =
@@ -57,21 +57,21 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
     in
     scope vars t
 
- (* [to_tbox ~vars sign t] is a convenient interface for [scope]. *)
+(** [to_tbox ~vars sign t] is a convenient interface for [scope]. *)
 let to_tbox : ?vars:env -> Sign.t -> p_term -> tbox =
   fun ?(vars=[]) sign t -> scope None vars sign t
 
-(* [to_term ~vars sign t] composes [to_tbox] with [Bindlib.unbox]. *)
+(** [to_term ~vars sign t] composes [to_tbox] with [Bindlib.unbox]. *)
 let to_term : ?vars:env -> Sign.t -> p_term -> term =
   fun ?(vars=[]) sign t -> Bindlib.unbox (scope None vars sign t)
 
-(* Representation of a pattern as a head symbol, list of argument and array of
-   variables corresponding to wildcards. *)
+(** Representation of a pattern as its head symbol, the list of its arguments,
+    and an array of variables corresponding to wildcards. *)
 type patt = def * tbox list * tvar array
 
-(* [to_patt env sign t] transforms the parsing level term [t] into a  pattern.
-   Note that here, [t] may contain wildcards. The function also checks that it
-   has a definable symbol as a head term, and gracefully fails otherwise. *)
+(** [to_patt env sign t] transforms the parsing level term [t] into a pattern.
+    Note that [t] may contain wildcards. The function also checks that it  has
+    a definable symbol as a head term, and gracefully fails otherwise. *)
 let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
   let wildcards = ref [] in
   let counter = ref 0 in
@@ -87,9 +87,9 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
   | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | _            -> fatal "%a is not a valid pattern...\n" pp t
 
-(* [scope_rule sign r] scopes a parsing level reduction rule,  producing every
-   element that is necessary to check its type. This includes its context, the
-   symbol, the LHS and RHS as terms and the rule. *)
+(** [scope_rule sign r] scopes a parsing level reduction rule, producing every
+    element that is necessary to check its type and print error messages. This
+    includes the context the symbol, the LHS / RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let xs = List.map fst xs_ty_map in
