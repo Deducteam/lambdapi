@@ -50,7 +50,7 @@ let handle_defin : Sign.t -> string -> p_term option -> p_term -> unit =
       let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
       {arity = 0; lhs ; rhs}
     in
-    add_rule s rule
+    Sign.add_rule sign s rule
 
 (* [check_rule sign r] check whether the rule [r] is well-typed in the signat-
    ure [sign]. The program fails gracefully in case of error. *)
@@ -87,10 +87,7 @@ let check_rule sign (ctx, s, t, u, rule) =
 let handle_rules = fun sign rs ->
   let rs = List.map (scope_rule sign) rs in
   let rs = List.map (check_rule sign) rs in
-  let add_rule (s,t,u,rule) =
-    add_rule s rule
-  in
-  List.iter add_rule rs
+  List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
 
 (* [handle_check sign t a] scopes the term [t] and the type [a],  and attempts
    to show that [t] has type [a] in the signature [sign]*)

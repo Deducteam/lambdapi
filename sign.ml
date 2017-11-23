@@ -9,7 +9,7 @@ open Terms
 type t =
   { symbols : (string, symbol) Hashtbl.t
   ; path    : module_path
-  ; deps    : (module_path, (string * rule list) list) Hashtbl.t }
+  ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    required modules, on which the current signature depends, to an association
@@ -84,14 +84,14 @@ let link : t -> unit = fun sign ->
   Hashtbl.iter fn sign.symbols;
   let gn path ls =
     let sign = try Hashtbl.find loaded path with Not_found -> assert false in
-    let h (n,rs) =
-      let rs = List.map link_rule rs in
+    let h (n, r) =
+      let r = link_rule r in
       let _ =
         match find sign n with
         | Sym(s) -> assert false
-        | Def(s) -> s.def_rules := !(s.def_rules) @ rs
+        | Def(s) -> s.def_rules := !(s.def_rules) @ [r]
       in
-      (n, rs)
+      (n, r)
     in
     Some(List.map h ls)
   in
@@ -134,3 +134,13 @@ let read : string -> t =
     let ic = open_in fname in
     let sign = Marshal.from_channel ic in
     close_in ic; sign
+
+(* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
+let add_rule : t -> def -> rule -> unit = fun sign def r ->
+  def.def_rules := !(def.def_rules) @ [r];
+  if def.def_path <> sign.path then
+    let m =
+      try Hashtbl.find sign.deps def.def_path
+      with Not_found -> assert false
+    in
+    Hashtbl.replace sign.deps def.def_path ((def.def_name, r) :: m)

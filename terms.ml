@@ -88,10 +88,6 @@ let symbol_type : symbol -> term =
     | Sym(sym) -> sym.sym_type
     | Def(def) -> def.def_type
 
-(* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
-let add_rule : def -> rule -> unit = fun def r ->
-  def.def_rules := !(def.def_rules) @ [r]
-
 (* Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
 
