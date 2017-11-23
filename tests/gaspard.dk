@@ -1,0 +1,9 @@
+#NAME test.
+
+U : Type.    foo : U.
+e : U -> Type.
+c : x : U -> e x.
+
+def aux : (t : U -> e t) -> U.
+[] aux (t => c _) --> foo.
+
