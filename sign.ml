@@ -79,7 +79,7 @@ let link : t -> unit = fun sign ->
     match sym with
     | Sym(s) -> s.sym_type <- link_term s.sym_type
     | Def(s) -> s.def_type <- link_term s.def_type;
-                s.def_rules := List.map link_rule !(s.def_rules)
+                s.def_rules <- List.map link_rule s.def_rules
   in
   Hashtbl.iter fn sign.symbols;
   let gn path ls =
@@ -89,7 +89,7 @@ let link : t -> unit = fun sign ->
       let _ =
         match find sign n with
         | Sym(s) -> assert false
-        | Def(s) -> s.def_rules := !(s.def_rules) @ [r]
+        | Def(s) -> s.def_rules <- s.def_rules @ [r]
       in
       (n, r)
     in
@@ -116,8 +116,7 @@ let new_definable : t -> string -> term -> def =
     if Hashtbl.mem sign.symbols def_name then
       wrn "Redefinition of symbol %S.\n" def_name;
     let def_path = sign.path in
-    let def_rules = ref [] in
-    let def = { def_name ; def_type ; def_rules ; def_path } in
+    let def = { def_name ; def_type ; def_rules = [] ; def_path } in
     Hashtbl.add sign.symbols def_name (Def(def));
     out 2 "(defi) %s\n" def_name; def
 
@@ -137,7 +136,7 @@ let read : string -> t =
 
 (* [add_rule def r] adds the new rule [r] to the definable symbol [def]. *)
 let add_rule : t -> def -> rule -> unit = fun sign def r ->
-  def.def_rules := !(def.def_rules) @ [r];
+  def.def_rules <- def.def_rules @ [r];
   if def.def_path <> sign.path then
     let m =
       try Hashtbl.find sign.deps def.def_path

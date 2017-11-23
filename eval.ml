@@ -41,7 +41,7 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
                      add_args u s :: eval_args (n-1) stk
   in
   let max_req acc r = if r.arity <= nb_args then max r.arity acc else acc in
-  let n = List.fold_left max_req 0 !(s.def_rules) in
+  let n = List.fold_left max_req 0 s.def_rules in
   let stk = eval_args n stk in
   let match_rule acc r =
     (* First check that we have enough arguments. *)
@@ -62,7 +62,7 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
     in
     match_args lhs stk
   in
-  List.fold_left match_rule [] !(s.def_rules)
+  List.fold_left match_rule [] s.def_rules
 
 (* [eval t] returns a weak head normal form of [t].  Note that some  arguments
    are evaluated if they might be used to allow the application of a rewriting
