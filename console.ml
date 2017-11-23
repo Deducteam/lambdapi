@@ -38,15 +38,16 @@ let debug_type = ref false
 let debug_enabled : unit -> bool = fun () ->
   !debug || !debug_eval || !debug_infr || !debug_patt || !debug_type
 
-(** [set_debug str] enables debugging flags according to [str]. *)
-let set_debug : string -> unit =
+(** [set_debug value str] sets the debugging flags corresponding to characters
+    of [str] to [value]. *)
+let set_debug : bool -> string -> unit = fun value ->
   let enable c =
     match c with
-    | 'a' -> debug      := true
-    | 'e' -> debug_eval := true
-    | 'i' -> debug_infr := true
-    | 'p' -> debug_patt := true
-    | 't' -> debug_type := true
+    | 'a' -> debug      := value
+    | 'e' -> debug_eval := value
+    | 'i' -> debug_infr := value
+    | 'p' -> debug_patt := value
+    | 't' -> debug_type := value
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable

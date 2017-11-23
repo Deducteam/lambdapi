@@ -117,17 +117,18 @@ let handle_conv : Sign.t -> p_term -> p_term -> unit = fun sign t u ->
 let rec handle_file : Sign.t -> string -> unit = fun sign fname ->
   let handle_item it =
     match it with
-    | NewSym(d,x,a) -> handle_newsym sign d x a
-    | Defin(x,a,t)  -> handle_defin sign x a t
-    | Rules(rs)     -> handle_rules sign rs
-    | Check(t,a)    -> handle_check sign t a
-    | Infer(t)      -> handle_infer sign t
-    | Eval(t)       -> handle_eval sign t
-    | Conv(t,u)     -> handle_conv sign t u
-    | Debug(s)      -> set_debug s
-    | Require(path) -> handle_require sign path
-    | Name(_)       -> if !debug then wrn "#NAME directive not implemented.\n"
-    | Step(_)       -> if !debug then wrn "#STEP directive not implemented.\n"
+    | P_NewSym(x,a)  -> handle_newsym sign false x a
+    | P_NewDef(x,a)  -> handle_newsym sign true  x a
+    | P_Defin(x,a,t) -> handle_defin sign x a t
+    | P_Rules(rs)    -> handle_rules sign rs
+    | P_Import(path) -> handle_require sign path
+    | P_Debug(b,s)   -> set_debug b s
+    | P_Verb(n)      -> verbose := n
+    | P_Check(t,a)   -> handle_check sign t a
+    | P_Infer(t)     -> handle_infer sign t
+    | P_Eval(t)      -> handle_eval sign t
+    | P_Conv(t,u)    -> handle_conv sign t u
+    | P_Other(c)     -> if !debug then wrn "%S command not implemented.\n" c
   in
   try List.iter handle_item (parse_file fname) with e ->
     fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
@@ -201,8 +202,8 @@ let _ =
     in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
   in
   let spec =
-    [ ("--debug"  , Arg.String set_debug  , debug_doc  )
-    ; ("--verbose", Arg.Int ((:=) verbose), verbose_doc) ]
+    [ ("--debug"  , Arg.String (set_debug true), debug_doc  )
+    ; ("--verbose", Arg.Int ((:=) verbose)     , verbose_doc) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
