@@ -204,4 +204,6 @@ let add_args : term -> term list -> term = fun t args ->
 
 (** [symbol_type s] returns the type of the given symbol [s]. *)
 let symbol_type : symbol -> term = fun s ->
-  match s with Sym(s) -> s.sym_type | Def(d) -> d.def_type
+  match s with
+  | Sym(s) -> s.sym_type
+  | Def(d) -> d.def_type
