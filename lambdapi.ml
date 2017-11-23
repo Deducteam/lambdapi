@@ -189,6 +189,7 @@ let compile fname =
     try module_path fname with Invalid_argument _ ->
     fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
   in
+  Hashtbl.clear Sign.loaded;
   compile modpath
 
 (* Main program. *)

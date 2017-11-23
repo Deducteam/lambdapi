@@ -39,7 +39,6 @@ let create : module_path -> t = fun path ->
 
 (** [link sign] establishes physical links between equal symbols. *)
 let link : t -> unit = fun sign ->
-  (* FIXME does not seem to work properly. *)
   let rec link_term t =
     let link_binder b =
       let (x,t) = Bindlib.unbind mkfree b in
@@ -82,7 +81,6 @@ let link : t -> unit = fun sign ->
     | Def(s) -> s.def_type <- link_term s.def_type;
                 s.def_rules := List.map link_rule !(s.def_rules)
   in
-  (* Iterate instead !!!! *)
   Hashtbl.iter fn sign.symbols;
   let gn path ls =
     let sign = try Hashtbl.find loaded path with Not_found -> assert false in
@@ -97,8 +95,7 @@ let link : t -> unit = fun sign ->
     in
     Some(List.map h ls)
   in
-  Hashtbl.filter_map_inplace gn sign.deps;
-  wrn "Link OK\n%!"
+  Hashtbl.filter_map_inplace gn sign.deps
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
