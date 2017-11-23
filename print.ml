@@ -48,7 +48,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     (* Anything else needs parentheses. *)
     | (_          , _    )   -> pformat "(%a)" (pp `Func) t
   in
-  pp `Func oc (update_names t)
+  pp `Func oc (Bindlib.unbox (lift t))
 
 (** [pp] is a short synonym of [pp_term]. *)
 let pp : out_channel -> term -> unit = pp_term

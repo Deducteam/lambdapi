@@ -81,6 +81,13 @@ type term =
  and info =
   { closed : bool (** Set to [true] if the corresponding term is closed. *) }
 
+(** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
+let rec unfold : term -> term = fun t ->
+  match t with
+  | Unif(_, {contents = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
+  | PVar({contents = Some(t)})        -> unfold t
+  | _                                 -> t
+
 (** Short name for term variables. *)
 type tvar = term Bindlib.var
 
@@ -132,16 +139,9 @@ let _Unif : unif -> tbox array -> tbox = fun r ar ->
   let closed = Array.for_all Bindlib.is_closed ar in
   Bindlib.box_apply (fun ar -> Unif({closed},r,ar)) (Bindlib.box_array ar)
 
-(* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Unif(_, {contents = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
-  | PVar({contents = Some(t)})        -> unfold t
-  | _                                 -> t
-
-(* [lift t] lifts a [term] [t] to the [bindbox] type,  thus gathering its free
-   variables, making them available for binding.  At the same time,  the names
-   of the bound variables are automatically updated by [Bindlib]. *)
+(** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
+    variables, making them available for binding. At the same time,  the names
+    of the bound variables are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   let t = unfold t in
@@ -157,23 +157,11 @@ let rec lift : term -> tbox = fun t ->
   | Appl(i,_,_) when i.closed -> Bindlib.box t
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(i,_,_) when i.closed -> Bindlib.box t
-  | Unif(_,r,m) -> _Unif r (Array.map lift m) (* Not instanciated *)
-  | PVar(_)     -> Bindlib.box t (* Not instanciated *)
+  | Unif(_,r,m) -> _Unif r (Array.map lift m)
+  | PVar(_)     -> assert false
 
-(* [update_names t] updates the names of the bound variables of [t] to prevent
-   "visual capture" while printing. Note that with [Bindlib],  real capture is
-   not possible as binders are represented as OCaml function (HOAS). *)
-let update_names : term -> term = fun t -> Bindlib.unbox (lift t)
-
-(* [get_args t] returns a tuple [(hd,args)] where [hd] if the head of the term
-   and [args] its arguments. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get acc t =
-    match unfold t with
-    | Appl(_,t,u) -> get (u::acc) t
-    | t           -> (t, acc)
-  in get [] t
-
+(** [is_closed t] tests whether the term [t] is closed,  using the information
+    stored in the [info] elements. *)
 let rec is_closed : term -> bool = fun t ->
   match unfold t with
   | Vari(_)     -> false
@@ -184,16 +172,29 @@ let rec is_closed : term -> bool = fun t ->
   | PVar(_)     -> assert false
   | _           -> true
 
+(** [appl t u] builds the application of the terms [t] and [u] (outside of the
+    [bindbox] type), computing the correct value for the [closed] field. *)
 let appl : term -> term -> term = fun t u ->
   let closed = is_closed t && is_closed u in
   Appl({closed},t,u)
 
+(** [prod a b] builds the product type of domain [a] and codomain [b] (outside 
+    of the [bindbox] type), computing the correct value for [closed]. *)
 let prod : term -> (term, term) Bindlib.binder -> term = fun a b ->
   let closed = is_closed a && Bindlib.binder_closed b in
   Prod({closed},a,b) 
 
-(* [add_args hd args] builds the application of a term [hd] to the list of its
-   arguments [args] (this is the inverse of [get_args]). *)
+(** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
+    and [args] is the list of its arguments. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get_args acc t =
+    match unfold t with
+    | Appl(_,t,u) -> get_args (u::acc) t
+    | t           -> (t, acc)
+  in get_args [] t
+
+(** [add_args h args] builds the application of a term [h] to a list [args] of
+    of arguments. This function is the inverse of [get_args]. *)
 let add_args : term -> term list -> term = fun t args ->
   let rec add_args t args =
     match args with
@@ -201,6 +202,6 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (appl t u) args
   in add_args t args
 
-(* [symbol_type s] returns the type of the given symbol [s]. *)
+(** [symbol_type s] returns the type of the given symbol [s]. *)
 let symbol_type : symbol -> term = fun s ->
   match s with Sym(s) -> s.sym_type | Def(d) -> d.def_type
