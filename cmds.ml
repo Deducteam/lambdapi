@@ -1,0 +1,161 @@
+(** Toplevel commands. *)
+
+open Console
+open Parser
+open Scope
+open Files
+open Terms
+open Print
+
+(** [handle_newsym sign n a] extends the signature [sign] with a static symbol
+    named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
+    the program fails gracefully. *)
+let handle_newsym : Sign.t -> string -> term -> unit = fun sign n a ->
+  ignore (Typing.sort_type sign n a); ignore (Sign.new_static sign n a)
+
+(** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
+    with type [a] (and no reduction rule). If [a] does not have sort [Type] or
+    [Kind], then the program fails gracefully. *)
+let handle_newdef : Sign.t -> string -> term -> unit = fun sign n a ->
+  ignore (Typing.sort_type sign n a); ignore (Sign.new_definable sign n a)
+
+(** [handle_defin sign x a t] extends [sign] with a definable symbol with name
+    [n] and type [a], and then adds a simple rewriting rule to  [t]. Note that
+    this amounts to defining a symbol with a single reduction rule. In case of
+    error (typing, sorting, ...) the program fails gracefully. *)
+let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
+  ignore (Typing.sort_type sg x a);
+  if not (Typing.has_type sg Ctxt.empty t a) then
+    fatal "Cannot type the definition of %s...\n" x;
+  let s = Sign.new_definable sg x a in
+  let rule =
+    let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
+    let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
+    {arity = 0; lhs ; rhs}
+  in
+  Sign.add_rule sg s rule
+
+(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
+    [sign]. The program fails gracefully in case of error. *)
+let check_rule sign (ctx, s, t, u, rule) =
+  (* Infer the type of the LHS and the constraints. *)
+  let (tt, tt_constrs) =
+    try Typing.infer_with_constrs sign ctx t with Not_found ->
+      fatal "Unable to infer the type of [%a]\n" pp t
+  in
+  (* Infer the type of the RHS and the constraints. *)
+  let (tu, tu_constrs) =
+    try Typing.infer_with_constrs sign ctx u with Not_found ->
+      fatal "Unable to infer the type of [%a]\n" pp u
+  in
+  (* Checking the implication of constraints. *)
+  let check_constraint (a,b) =
+    if not (Typing.eq_modulo_constrs tt_constrs a b) then
+      fatal "A constraint is not satisfied...\n"
+  in
+  List.iter check_constraint tu_constrs;
+  (* Checking if the rule is well-typed. *)
+  if not (Typing.eq_modulo_constrs tt_constrs tt tu) then
+    begin
+      err "Infered type for LHS: %a\n" pp tt;
+      err "Infered type for RHS: %a\n" pp tu;
+      fatal "[%a → %a] is ill-typed\n" pp t pp u
+    end;
+  (* Adding the rule. *)
+  (s,t,u,rule)
+
+(** [handle_rules sign rs] check that the rules of [rs] are well-typed, before
+    adding them to the corresponding symbol. The program fails gracefully when
+    an error occurs. *)
+let handle_rules = fun sign rs ->
+  let rs = List.map (check_rule sign) rs in
+  List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
+
+(** [handle_check sign t a] attempts to show that [t] has type [a], in [sign].
+    In case of failure, the program fails gracefully. *)
+let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
+  if not (Typing.has_type sign Ctxt.empty t a) then
+    fatal "%a does not have type %a...\n" pp t pp a
+
+(** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
+    of error, the program fails gracefully. *)
+let handle_infer : Sign.t -> term -> unit = fun sign t ->
+  try out 2 "(infr) %a : %a\n" pp t pp (Typing.infer sign Ctxt.empty t)
+  with Not_found -> fatal "%a : unable to infer\n%!" pp t
+
+(** [handle_eval sign t] evaluates the term [t]. *)
+let handle_eval : Sign.t -> term -> unit = fun sign t ->
+  (* FIXME check typing? *)
+  out 2 "(eval) %a\n" pp (Eval.eval t)
+
+(** [handle_conv sign t u] checks the convertibility of the terms [t] and [u].
+    The program fails gracefully if the check is not successful. *)
+let handle_conv : Sign.t -> term -> term -> unit = fun sign t u ->
+  if Conv.eq_modulo t u then out 2 "(conv) OK\n"
+  else fatal "cannot convert %a and %a...\n" pp t pp u
+
+(** [handle_import sign path] compiles the signature corresponding to  [path],
+    if necessary, so that it becomes available for further commands. *)
+let rec handle_import : Sign.t -> module_path -> unit = fun sign path ->
+  let open Sign in
+  if path = sign.path then fatal "Cannot require the current module...\n%!";
+  if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
+  compile path
+
+(** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
+    signature [sign]. The program fails gracefully in case of error. *)
+and handle_cmds : Sign.t -> p_cmd list -> unit = fun sign cmds ->
+  let handle_cmd cmd =
+    match scope_cmd sign cmd with
+    | NewSym(n,a)  -> handle_newsym sign n a
+    | NewDef(n,a)  -> handle_newdef sign n a
+    | Rules(rs)    -> handle_rules sign rs
+    | Defin(n,a,t) -> handle_defin sign n a t
+    | Import(path) -> handle_import sign path
+    | Debug(v,s)   -> set_debug v s
+    | Verb(n)      -> verbose := n
+    | Check(t,a)   -> handle_check sign t a
+    | Infer(t)     -> handle_infer sign t
+    | Eval(t)      -> handle_eval sign t
+    | Conv(a,b)    -> handle_conv sign a b
+    | Other(c)     -> if !debug then wrn "Command %S not implemented.\n" c
+  in
+  try List.iter handle_cmd cmds with e ->
+    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+
+(** [handle_file sign fname] parses the file [fname] and interprets it. *)
+ and handle_file : Sign.t -> string -> unit = fun sign fname ->
+   handle_cmds sign (parse_file fname)
+
+(** [compile path] compiles the file corresponding to [module_path] [path], if
+    necessary (no corresponding object file exists, or must be updated),  thus
+    producing a signature that is stored in the corresponding object file. *)
+and compile : string list -> unit = fun path ->
+  let base = String.concat "/" path in
+  let src = base ^ src_extension in
+  let obj = base ^ obj_extension in
+  if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
+  if Hashtbl.mem Sign.loaded path then
+    out 1 "Already loaded file [%s]\n%!" src
+  else
+    begin
+      Stack.push path Sign.loading;
+      if more_recent src obj then
+        begin
+          out 1 "Loading file [%s]\n%!" src;
+          let sign = Sign.create path in
+          Hashtbl.add Sign.loaded path sign;
+          handle_file sign src;
+          Sign.write sign obj
+        end
+      else
+        begin
+          out 1 "Already compiled [%s]\n%!" obj;
+          let sign = Sign.read obj in
+          Hashtbl.iter (fun mp _ -> compile mp) Sign.(sign.deps);
+          Hashtbl.add Sign.loaded path sign;
+          Sign.link sign
+        end;
+      out 1 "Done with file [%s]\n%!" src;
+      ignore (Stack.pop Sign.loading)
+    end

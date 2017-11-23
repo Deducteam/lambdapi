@@ -1,10 +1,8 @@
 (** Scoping. *)
 
-open Extra
 open Console
 open Files
 open Terms
-open Typing
 open Print
 open Parser
 
@@ -127,3 +125,56 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
     (ctx, s, t, u, { lhs ; rhs ; arity })
+
+(** Representation of a toplevel command. *)
+type cmd =
+  (** Static symbol declaration. *)
+  | NewSym of string * term
+  (** Definable symbol declaration. *)
+  | NewDef of string * term
+  (** Rewriting rules declaration. *)
+  | Rules  of (Ctxt.t * def * term * term * rule) list
+  (** Quick definition. *)
+  | Defin  of string * term * term
+  (** Import an external signature. *)
+  | Import of module_path
+  (** Set debugging flags. *)
+  | Debug  of bool * string
+  (** Set the verbosity level. *)
+  | Verb   of int
+  (** Type-checking command. *)
+  | Check  of term * term
+  (** Type inference command. *)
+  | Infer  of term
+  (** Normalisation command. *)
+  | Eval   of term
+  (** Convertibility command. *)
+  | Conv   of term * term
+  (** Unimplemented command. *)
+  | Other  of string
+
+(** [scope_cmd sign cmd] scopes the parser level command [cmd],  using [sign].
+    In case of error, the program gracefully fails. *)
+let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
+  match cmd with
+  | P_NewSym(x,a)  -> NewSym(x, to_term sign a)
+  | P_NewDef(x,a)  -> NewDef(x, to_term sign a)
+  | P_Defin(x,a,t) ->
+      begin
+        let t = to_term sign t in
+        let a =
+          match a with
+          | None    -> Typing.infer sign Ctxt.empty t
+          | Some(a) -> to_term sign a
+        in
+        Defin(x, a, t)
+      end
+  | P_Rules(rs)    -> Rules(List.map (scope_rule sign) rs)
+  | P_Import(path) -> Import(path)
+  | P_Debug(b,s)   -> Debug(b,s)
+  | P_Verb(n)      -> Verb(n)
+  | P_Check(t,a)   -> Check(to_term sign t, to_term sign a)
+  | P_Infer(t)     -> Infer(to_term sign t)
+  | P_Eval(t)      -> Eval(to_term sign t)
+  | P_Conv(t,u)    -> Conv(to_term sign t, to_term sign u)
+  | P_Other(c)     -> Other(c)
