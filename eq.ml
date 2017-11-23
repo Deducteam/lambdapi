@@ -9,7 +9,7 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(_,t,u) -> occurs r t || occurs r u
-  | Unif(u,e)   -> u == r || Array.exists (occurs r) e
+  | Unif(_,u,e) -> u == r || Array.exists (occurs r) e
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
@@ -28,6 +28,7 @@ let unify : unif -> term array -> term -> bool =
       let to_var t = match t with Vari v -> v | _ -> assert false in
       let vars = Array.map to_var env in
       let b = Bindlib.bind_mvar vars (lift a) in
+      assert (Bindlib.is_closed b);
       r := Some(Bindlib.unbox b); true
 
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
@@ -47,9 +48,9 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
     | (_            , PVar(_)      ) -> assert false
     | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
-    | (Unif(r1,e1)  , Unif(r2,e2)  ) when r1 == r2 -> Array.for_all2 eq e1 e2
-    | (Unif(r,e)    , b            ) -> unify r e b
-    | (a            , Unif(r,e)    ) -> unify r e a
+    | (Unif(_,r1,e1), Unif(_,r2,e2)) when r1 == r2 -> Array.for_all2 eq e1 e2
+    | (Unif(_,r,e)  , b            ) -> unify r e b
+    | (a            , Unif(_,r,e)  ) -> unify r e a
     | (_            , _            ) -> false
   in
   let res = eq a b in

@@ -19,7 +19,7 @@ type term =
   (** Application. *)
   | Appl of info * term * term
   (** Unification variable (used for inference). *)
-  | Unif of unif * term array
+  | Unif of info * unif * term array
   (** Pattern variable (used for pattern-matching). *)
   | PVar of term option ref
 
@@ -127,22 +127,17 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
 (** [_Unif r ar] lifts a unification variable to the [bindbox] type, given its
     pointer [r] and environment [ar]. The unification variable should not have
     been already instanciated when calling this function. *)
-let _Unif : unif -> tbox array -> tbox =
-  let dummy = Bindlib.box_of_var (Bindlib.new_var mkfree "__dummy__") in
-  fun r ar ->
-    assert(!r = None);
-    let ar = Bindlib.box_array ar in
-    Bindlib.box_apply2 (fun ar _ -> Unif(r,ar)) ar dummy
-
-(* NOTE here we use a [dummy] variable so that unification variables that have
-   not been instanciated are considered open by bindlib. *)
+let _Unif : unif -> tbox array -> tbox = fun r ar ->
+  assert(!r = None);
+  let closed = Array.for_all Bindlib.is_closed ar in
+  Bindlib.box_apply (fun ar -> Unif({closed},r,ar)) (Bindlib.box_array ar)
 
 (* [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({contents = Some(f)}, e) -> unfold (Bindlib.msubst f e)
-  | PVar({contents = Some(t)})    -> unfold t
-  | _                             -> t
+  | Unif(_, {contents = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
+  | PVar({contents = Some(t)})        -> unfold t
+  | _                                 -> t
 
 (* [lift t] lifts a [term] [t] to the [bindbox] type,  thus gathering its free
    variables, making them available for binding.  At the same time,  the names
@@ -156,12 +151,13 @@ let rec lift : term -> tbox = fun t ->
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
   | Prod(i,_,_) when i.closed -> Bindlib.box t
-  | Prod(i,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Prod(_,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
   | Abst(i,_,_) when i.closed -> Bindlib.box t
-  | Abst(i,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Abst(_,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(i,_,_) when i.closed -> Bindlib.box t
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(r,m)   -> _Unif r (Array.map lift m) (* Not instanciated *)
+  | Unif(i,_,_) when i.closed -> Bindlib.box t
+  | Unif(_,r,m) -> _Unif r (Array.map lift m) (* Not instanciated *)
   | PVar(_)     -> Bindlib.box t (* Not instanciated *)
 
 (* [update_names t] updates the names of the bound variables of [t] to prevent
@@ -184,7 +180,7 @@ let rec is_closed : term -> bool = fun t ->
   | Prod(i,_,_) -> i.closed
   | Abst(i,_,_) -> i.closed
   | Appl(i,_,_) -> i.closed
-  | Unif(_,m)   -> Array.for_all is_closed m
+  | Unif(i,_,m) -> i.closed
   | PVar(_)     -> assert false
   | _           -> true
 

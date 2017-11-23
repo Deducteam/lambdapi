@@ -90,16 +90,16 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
           begin
             let tt = infer sign ctx t in
             match tt with
-            | Prod(_,a,ba) ->
+            | Prod(_,a,ba)  ->
                 eq_modulo (Bindlib.subst ba u) b
                 && has_type ctx t tt && has_type ctx u a
-            | Unif(r,env)  ->
-                let a = Unif(ref None, env) in
+            | Unif(i,r,env) ->
+                let a = Unif(i, ref None, env) in
                 let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
                 let b = prod a (Bindlib.unbox b) in
                 assert(unify r env b);
                 has_type ctx t tt && has_type ctx u a
-            | _            -> false
+            | _             -> false
           end
       (* No rule apply. *)
       | (_          , _          ) -> false
