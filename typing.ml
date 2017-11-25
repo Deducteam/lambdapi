@@ -3,9 +3,7 @@ open Console
 open Files
 open Terms
 open Print
-open Eq
 open Eval
-open Conv
 
 (* [infer sign ctx t] tries to infer a type for the term [t], in context [ctx]
    and with the signature [sign].  The exception [Not_found] is raised when no

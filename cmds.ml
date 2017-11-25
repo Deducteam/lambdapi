@@ -91,7 +91,7 @@ let handle_eval : Sign.t -> term -> unit = fun sign t ->
 (** [handle_conv sign t u] checks the convertibility of the terms [t] and [u].
     The program fails gracefully if the check is not successful. *)
 let handle_conv : Sign.t -> term -> term -> unit = fun sign t u ->
-  if Conv.eq_modulo t u then out 2 "(conv) OK\n"
+  if Eval.eq_modulo t u then out 2 "(conv) OK\n"
   else fatal "cannot convert %a and %a...\n" pp t pp u
 
 (** [handle_import sign path] compiles the signature corresponding to  [path],

@@ -2,7 +2,59 @@ open Extra
 open Console
 open Terms
 open Print
-open Eq
+
+(* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
+let rec occurs : unif -> term -> bool = fun r t ->
+  match unfold t with
+  | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Appl(_,t,u) -> occurs r t || occurs r u
+  | Unif(_,u,e) -> u == r || Array.exists (occurs r) e
+  | Type        -> false
+  | Kind        -> false
+  | Vari(_)     -> false
+  | Symb(_)     -> false
+  | PVar(_)     -> assert false
+
+(* NOTE: pattern variables prevent unification to ensure that they  cannot  be
+   absorbed by unification varialbes (and do not escape rewriting code). *)
+
+(* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
+   whether it succeeded or not. *)
+let unify : unif -> term array -> term -> bool =
+  fun r env a ->
+    assert (!r = None);
+    not (occurs r a) &&
+      let to_var t = match t with Vari v -> v | _ -> assert false in
+      let vars = Array.map to_var env in
+      let b = Bindlib.bind_mvar vars (lift a) in
+      assert (Bindlib.is_closed b);
+      r := Some(Bindlib.unbox b); true
+
+(* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
+   be instantiated in the process. *)
+let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
+  if !debug then log "equa" "%a =!= %a" pp a pp b;
+  let rec eq a b = a == b ||
+    let eq_binder = Bindlib.eq_binder mkfree eq in
+    match (unfold a, unfold b) with
+    | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
+    | (Type         , Type         ) -> true
+    | (Kind         , Kind         ) -> true
+    | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
+    | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
+    | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder f g
+    | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
+    | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
+    | (_            , PVar(_)      ) -> assert false
+    | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
+    | (Unif(_,r1,e1), Unif(_,r2,e2)) when r1 == r2 -> Array.for_all2 eq e1 e2
+    | (Unif(_,r,e)  , b            ) -> unify r e b
+    | (a            , Unif(_,r,e)  ) -> unify r e a
+    | (_            , _            ) -> false
+  in
+  let res = eq a b in
+  if !debug then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
 
 let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
   let t = unfold t in
@@ -73,3 +125,58 @@ let eval : term -> term = fun t ->
   let (u, stk) = whnf_stk t [] in
   let u = add_args u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
+
+(* Representation of equality constraints. *)
+type constrs = (term * term) list
+
+(* If [constraints] is set to [None], then typechecking is in regular mode. If
+   it is set to [Some(l)] then it is in constraint mode, which means that when
+   equality fails, an equality constraint is added to [constrs] instead of the
+   equality function giving up. *)
+let constraints = ref None
+
+(* NOTE: constraint mode is only used when type-cheching the left-hand side of
+   reduction rules (see function [infer_with_constrs] for mode switching). *)
+
+(* [add_constraint a b] adds an equality constraint between [a] and [b] if the
+   program is in regular mode. In this case it returns [true].  If the program
+   is in regular mode, then [false] is returned immediately. *)
+let add_constraint : term -> term -> bool = fun a b ->
+  match !constraints with
+  | None    -> false
+  | Some(l) ->
+      if !debug then log "cnst" "adding constraint [%a == %a]." pp a pp b;
+      constraints := Some((a, b)::l); true
+
+let eq_modulo : term -> term -> bool = fun a b ->
+  if !debug then log "equa" "%a == %a" pp a pp b;
+  let rec eq_modulo l =
+    match l with
+    | []                   -> true
+    | (a,b)::l when eq a b -> eq_modulo l
+    | (a,b)::l             ->
+        let (a,sa) = whnf_stk a [] in
+        let (b,sb) = whnf_stk b [] in
+        let rec sync acc la lb =
+          match (la, lb) with
+          | ([]   , []   ) -> (a, b, List.rev acc)
+          | (a::la, b::lb) -> sync ((a,b)::acc) la lb
+          | (la   , []   ) -> (add_args a (List.rev la), b, acc)
+          | ([]   , lb   ) -> (a, add_args b (List.rev lb), acc)
+        in
+        let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
+        let a = unfold a in
+        let b = unfold b in
+        match (a, b) with
+        | (_            , _            ) when eq a b -> eq_modulo l
+        | (Appl(_,_,_)  , Appl(_,_,_)  ) -> eq_modulo ((a,b)::l)
+        | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
+            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
+            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
+        | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
+            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
+            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
+        | (a            , b            ) -> add_constraint a b && eq_modulo l
+  in
+  let res = eq_modulo [(a,b)] in
+  if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
