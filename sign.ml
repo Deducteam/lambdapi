@@ -139,6 +139,7 @@ let read : string -> t =
     also stored in the dependencies. *)
 let add_rule : t -> def -> rule -> unit = fun sign def r ->
   def.def_rules <- def.def_rules @ [r];
+  out 2 "(rule) added a rule for symbol %s\n" def.def_name;
   if def.def_path <> sign.path then
     let m =
       try Hashtbl.find sign.deps def.def_path

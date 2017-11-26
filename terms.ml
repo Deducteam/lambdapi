@@ -139,6 +139,12 @@ let _Unif : unif -> tbox array -> tbox = fun r ar ->
   let closed = Array.for_all Bindlib.is_closed ar in
   Bindlib.box_apply (fun ar -> Unif({closed},r,ar)) (Bindlib.box_array ar)
 
+(** [_PVar r] lifts a pattern variable to the [bindbox] type given its pointer
+    [r], which should not have been already instanciated. *)
+let _PVar : term option ref -> tbox =
+  let dummy = Bindlib.box_of_var (Bindlib.new_var mkfree "_dummy_") in
+  fun r -> assert(!r = None); Bindlib.box_apply (fun _ -> PVar(r)) dummy
+
 (** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
     variables, making them available for binding. At the same time,  the names
     of the bound variables are automatically updated by [Bindlib]. *)
@@ -158,7 +164,7 @@ let rec lift : term -> tbox = fun t ->
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(i,_,_) when i.closed -> Bindlib.box t
   | Unif(_,r,m) -> _Unif r (Array.map lift m)
-  | PVar(_)     -> assert false
+  | PVar(r)     -> _PVar r
 
 (** [is_closed t] tests whether the term [t] is closed,  using the information
     stored in the [info] elements. *)
