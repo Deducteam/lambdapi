@@ -56,6 +56,28 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
   let res = eq a b in
   if !debug then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
 
+(* Representation of equality constraints. *)
+type constrs = (term * term) list
+
+(* If [constraints] is set to [None], then typechecking is in regular mode. If
+   it is set to [Some(l)] then it is in constraint mode, which means that when
+   equality fails, an equality constraint is added to [constrs] instead of the
+   equality function giving up. *)
+let constraints = ref None
+
+(* NOTE: constraint mode is only used when type-cheching the left-hand side of
+   reduction rules (see function [infer_with_constrs] for mode switching). *)
+
+(* [add_constraint a b] adds an equality constraint between [a] and [b] if the
+   program is in regular mode. In this case it returns [true].  If the program
+   is in regular mode, then [false] is returned immediately. *)
+let add_constraint : term -> term -> bool = fun a b ->
+  match !constraints with
+  | None    -> false
+  | Some(l) ->
+      if !debug then log "cnst" "adding constraint [%a == %a]." pp a pp b;
+      constraints := Some((a, b)::l); true
+
 let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
   let t = unfold t in
   match (t, stk) with
@@ -116,39 +138,7 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
   in
   List.fold_left match_rule [] s.def_rules
 
-(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
-   are evaluated if they might be used to allow the application of a rewriting
-   rule. As their evaluation is kept, so this function does more normalisation
-   that the usual weak head normalisation. *)
-let eval : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating %a" pp t;
-  let (u, stk) = whnf_stk t [] in
-  let u = add_args u stk in
-  if !debug_eval then log "eval" "produced %a" pp u; u
-
-(* Representation of equality constraints. *)
-type constrs = (term * term) list
-
-(* If [constraints] is set to [None], then typechecking is in regular mode. If
-   it is set to [Some(l)] then it is in constraint mode, which means that when
-   equality fails, an equality constraint is added to [constrs] instead of the
-   equality function giving up. *)
-let constraints = ref None
-
-(* NOTE: constraint mode is only used when type-cheching the left-hand side of
-   reduction rules (see function [infer_with_constrs] for mode switching). *)
-
-(* [add_constraint a b] adds an equality constraint between [a] and [b] if the
-   program is in regular mode. In this case it returns [true].  If the program
-   is in regular mode, then [false] is returned immediately. *)
-let add_constraint : term -> term -> bool = fun a b ->
-  match !constraints with
-  | None    -> false
-  | Some(l) ->
-      if !debug then log "cnst" "adding constraint [%a == %a]." pp a pp b;
-      constraints := Some((a, b)::l); true
-
-let eq_modulo : term -> term -> bool = fun a b ->
+and eq_modulo : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -180,3 +170,13 @@ let eq_modulo : term -> term -> bool = fun a b ->
   in
   let res = eq_modulo [(a,b)] in
   if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
+
+(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
+   are evaluated if they might be used to allow the application of a rewriting
+   rule. As their evaluation is kept, so this function does more normalisation
+   that the usual weak head normalisation. *)
+let eval : term -> term = fun t ->
+  if !debug_eval then log "eval" "evaluating %a" pp t;
+  let (u, stk) = whnf_stk t [] in
+  let u = add_args u stk in
+  if !debug_eval then log "eval" "produced %a" pp u; u
