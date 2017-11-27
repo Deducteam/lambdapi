@@ -1,6 +1,6 @@
-open Extra
+(** Type-checking and inference. *)
+
 open Console
-open Files
 open Terms
 open Print
 open Eval
@@ -10,34 +10,38 @@ open Eval
    suitable type is found. *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   let rec infer ctx t =
+    let t = unfold t in
     if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
     let a =
-      match unfold t with
+      match t with
       | Vari(x)     -> Ctxt.find x ctx
       | Type        -> Kind
       | Symb(s)     -> symbol_type s
       | Prod(_,a,b) ->
-          let (x,bx) = Bindlib.unbind mkfree b in
           begin
-            match infer (Ctxt.add x a ctx) bx with
+            let (x,b) = Bindlib.unbind mkfree b in
+            match unfold (infer (Ctxt.add x a ctx) b) with
             | Kind -> Kind
             | Type -> Type
-            | a    -> err "Type or Kind expected for [%a], found [%a]...\n"
-                        pp bx pp a;
+            | c    -> err "Sort expected for [%a], found [%a]...\n" pp b pp c;
                       raise Not_found
           end
       | Abst(_,a,t) ->
-          let (x,tx) = Bindlib.unbind mkfree t in
-          let b = infer (Ctxt.add x a ctx) tx in
-          prod a (Bindlib.unbox (Bindlib.bind_var x (lift b)))
+          begin
+            let (x,tx) = Bindlib.unbind mkfree t in
+            let b = infer (Ctxt.add x a ctx) tx in
+            prod a (Bindlib.unbox (Bindlib.bind_var x (lift b)))
+          end
       | Appl(_,t,u) ->
           begin
-            match unfold (infer ctx t) with
-            | Prod(_,a,b) when has_type sign ctx u a -> Bindlib.subst b u
-            | Prod(_,a,_)                            ->
-                err "Cannot show [%a : %a]...\n" pp u pp a;
-                raise Not_found
-            | a                                      ->
+            match infer ctx t with
+            | Prod(_,a,b) ->
+                if has_type sign ctx u a then Bindlib.subst b u else
+                begin
+                  err "Cannot show [%a : %a]...\n" pp u pp a;
+                  raise Not_found
+                end
+            | a           ->
                 err "Product expected for [%a], found [%a]...\n" pp t pp a;
                 raise Not_found
           end
@@ -50,7 +54,8 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
   in
   if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
   let res = infer ctx t in
-  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res; res
+  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res;
+  res
 
 (* [has_type sign ctx t a] checks whether the term [t] has type [a] in context
    [ctx] and with the signature [sign]. *)
