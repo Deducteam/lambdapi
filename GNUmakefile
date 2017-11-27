@@ -19,8 +19,8 @@ tests: lambdapi.native
 		echo "$$file" ; \
 		./lambdapi.native --verbose 0 $$file ; \
 	done
-	@echo "Number of lines: "
-	@wc -l *.ml | sort -n
+	@echo -n "Number of lines:"
+	@wc -l *.ml | tail -n 1
 
 .PHONY: matita
 matita: lambdapi.native
