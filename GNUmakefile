@@ -1,6 +1,6 @@
 OCAMLBUILD   = ocamlbuild -use-ocamlfind -quiet
 TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
-MATITAFILES  = $(shell cat matita/DEPEND)
+MATITAFILES  = $(wildcard matita/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
@@ -23,16 +23,9 @@ tests: lambdapi.native
 	@wc -l *.ml | tail -n 1
 
 .PHONY: matita
-matita: lambdapi.native
+matita: lambdapi.native $(MATITAFILES)
 	@echo "## Compiling matita library ##"
-	@rm -f $(MATITAFILES:.dk=.dko)
-	@cd matita && time ../lambdapi.native --verbose 2 $(MATITAFILES)
-
-.PHONY: matita_dedukti
-matita_dedukti:
-	@echo "## Compiling matita library (with Dedukti) ##"
-	@rm -f matita/*.dko
-	@cd matita && time dkcheck -nl -e $(MATITAFILES)
+	@cd matita && ../lambdapi.native --verbose 2 matita.dk
 
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"

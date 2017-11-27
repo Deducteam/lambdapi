@@ -1,5 +1,10 @@
 (; This file was automatically generated from Matita. ;)
 
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_relations.
+
 #NAME matita_basics_bool.
 
 bool : cic.Univ univs.Type0.

@@ -1,5 +1,9 @@
 (; This file was automatically generated from Matita. ;)
 
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_logic.
+
 #NAME matita_basics_relations.
 
 def predicate : __ : cic.Univ univs.Type0 -> cic.Univ univs.Type0 :=
