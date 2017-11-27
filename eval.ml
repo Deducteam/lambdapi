@@ -14,10 +14,7 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Kind        -> false
   | Vari(_)     -> false
   | Symb(_)     -> false
-  | PVar(_)     -> assert false
-
-(* NOTE: pattern variables prevent unification to ensure that they  cannot  be
-   absorbed by unification varialbes (and do not escape rewriting code). *)
+  | ITag(_)     -> false
 
 (* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
    whether it succeeded or not. *)
@@ -28,9 +25,11 @@ let unify : unif -> term array -> term -> bool = fun r env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   assert (Bindlib.is_closed b); r := Some(Bindlib.unbox b); true
 
+type eval_fun = term -> term list -> term * term list
+
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
    be instantiated in the process. *)
-let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
+let eq : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a =!= %a" pp a pp b;
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
@@ -43,11 +42,10 @@ let eq : ?rewrite: bool -> term -> term -> bool = fun ?(rewrite=false) a b ->
     | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder f g
     | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (_            , PVar(_)      ) -> assert false
-    | (PVar(r)      , b            ) -> assert rewrite; r := Some b; true
     | (Unif(_,r1,e1), Unif(_,r2,e2)) when r1 == r2 -> Array.for_all2 eq e1 e2
     | (Unif(_,r,e)  , b            ) -> unify r e b
     | (a            , Unif(_,r,e)  ) -> unify r e a
+    | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
   in
   let res = eq a b in
@@ -118,7 +116,7 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
     (* First check that we have enough arguments. *)
     if r.arity > nb_args then acc else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let new_pvar _ = PVar(ref None) in
+    let new_pvar i = ITag(i) in
     let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
     let lhs = Bindlib.msubst r.lhs uvars in
     if !debug_eval then log "eval" "RULE trying rule [%a]" pp_rule (s,r);
@@ -128,12 +126,32 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
       | ([]    , stk   ) ->
           (Bindlib.msubst r.rhs (Array.map unfold uvars), stk) :: acc
       | (t::lhs, v::stk) ->
-          if eq ~rewrite:true t v then match_args lhs stk else acc
+          if matching uvars t v then match_args lhs stk else acc
       | (_     , _     ) -> assert false
     in
     match_args lhs stk
   in
   List.fold_left match_rule [] s.def_rules
+
+and matching ar pat t =
+  let t = unfold t in
+  match (pat, t) with
+  | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
+      let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+      matching ar a1 a2 && matching ar b1 b2
+  | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
+      let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+      matching ar t1 t2
+  | (Appl(_,t1,u1), Appl(_,t2,u2)) -> matching ar t1 t2 && matching ar u1 u2
+  | (Unif(_,_,_)  , _            ) -> assert false
+  | (_            , Unif(_,_,_)  ) -> assert false
+  | (Type         , Type         ) -> true
+  | (Kind         , Kind         ) -> true
+  | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
+  | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
+  | (ITag(i)      , _            ) ->
+      if ar.(i) = ITag(i) then (ar.(i) <- t; true) else eq_modulo ar.(i) t
+  | (_            , _            ) -> false
 
 and eq_modulo : term -> term -> bool = fun a b ->
   if !debug then log "equa" "%a == %a" pp a pp b;

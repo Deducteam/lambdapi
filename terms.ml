@@ -20,8 +20,8 @@ type term =
   | Appl of info * term * term
   (** Unification variable (used for inference). *)
   | Unif of info * unif * term array
-  (** Pattern variable (used for pattern-matching). *)
-  | PVar of term option ref
+  (** Integer tag (used for pattern-matching). *)
+  | ITag of int
 
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
@@ -85,7 +85,6 @@ type term =
 let rec unfold : term -> term = fun t ->
   match t with
   | Unif(_, {contents = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
-  | PVar({contents = Some(t)})        -> unfold t
   | _                                 -> t
 
 (** Short name for term variables. *)
@@ -139,11 +138,7 @@ let _Unif : unif -> tbox array -> tbox = fun r ar ->
   let closed = Array.for_all Bindlib.is_closed ar in
   Bindlib.box_apply (fun ar -> Unif({closed},r,ar)) (Bindlib.box_array ar)
 
-(** [_PVar r] lifts a pattern variable to the [bindbox] type given its pointer
-    [r], which should not have been already instanciated. *)
-let _PVar : term option ref -> tbox =
-  let dummy = Bindlib.box_of_var (Bindlib.new_var mkfree "_dummy_") in
-  fun r -> assert(!r = None); Bindlib.box_apply (fun _ -> PVar(r)) dummy
+let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
 
 (** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
     variables, making them available for binding. At the same time,  the names
@@ -164,7 +159,7 @@ let rec lift : term -> tbox = fun t ->
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(i,_,_) when i.closed -> Bindlib.box t
   | Unif(_,r,m) -> _Unif r (Array.map lift m)
-  | PVar(r)     -> _PVar r
+  | ITag(i)     -> _ITag i
 
 (** [is_closed t] tests whether the term [t] is closed,  using the information
     stored in the [info] elements. *)
@@ -175,7 +170,6 @@ let rec is_closed : term -> bool = fun t ->
   | Abst(i,_,_) -> i.closed
   | Appl(i,_,_) -> i.closed
   | Unif(i,_,m) -> i.closed
-  | PVar(_)     -> assert false
   | _           -> true
 
 (** [appl t u] builds the application of the terms [t] and [u] (outside of the

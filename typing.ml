@@ -43,7 +43,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
           end
       | Kind        -> assert false
       | Unif(_)     -> assert false
-      | PVar(_)     -> assert false
+      | ITag(_)     -> assert false
     in
     if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
     eval a
