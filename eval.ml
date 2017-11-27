@@ -21,15 +21,12 @@ let rec occurs : unif -> term -> bool = fun r t ->
 
 (* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
    whether it succeeded or not. *)
-let unify : unif -> term array -> term -> bool =
-  fun r env a ->
-    assert (!r = None);
-    not (occurs r a) &&
-      let to_var t = match t with Vari v -> v | _ -> assert false in
-      let vars = Array.map to_var env in
-      let b = Bindlib.bind_mvar vars (lift a) in
-      assert (Bindlib.is_closed b);
-      r := Some(Bindlib.unbox b); true
+let unify : unif -> term array -> term -> bool = fun r env a ->
+  assert (!r = None);
+  not (occurs r a) &&
+  let to_var t = match t with Vari v -> v | _ -> assert false in
+  let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
+  assert (Bindlib.is_closed b); r := Some(Bindlib.unbox b); true
 
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
    be instantiated in the process. *)
