@@ -23,7 +23,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   (* Sort *)
   | Type        -> eq_modulo c Kind
   (* Variable *)
-  | Vari(x)     -> (try eq_modulo (Ctxt.find x ctx) c with _ ->
+  | Vari(x)     -> (try eq_modulo (Ctxt.find x ctx) c with Not_found ->
                       wrn "BUG0 (%a not in context) \n" pp_tvar x; false)
   (* Symbol *)
   | Symb(s)     -> eq_modulo (symbol_type s) c

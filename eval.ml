@@ -29,7 +29,7 @@ let unify : unif -> term array -> term -> bool = fun u env a ->
   not (occurs u a) &&
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
-  assert (Bindlib.is_closed b); set_unif u (Bindlib.unbox b); true
+  Bindlib.is_closed b && (set_unif u (Bindlib.unbox b); true)
 
 type eval_fun = term -> term list -> term * term list
 
@@ -49,7 +49,7 @@ let eq : term -> term -> bool = fun a b ->
     | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
     | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> Array.for_all2 eq e1 e2
-    | (Unif(u,e)    , b            ) -> unify u e b
+    | (Unif(u,e)    , b            ) when unify u e b -> true
     | (a            , Unif(u,e)    ) -> unify u e a
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
