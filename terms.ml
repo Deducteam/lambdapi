@@ -20,7 +20,7 @@ type term =
   (** Application. *)
   | Appl of info * term * term
   (** Unification variable (used for inference). *)
-  | Unif of info * unif * term array
+  | Unif of unif * term array
   (** Integer tag (used for pattern-matching). *)
   | ITag of int
 
@@ -95,8 +95,8 @@ let new_unif : unit -> unif =
 (** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif(_, {value = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
-  | _                              -> t
+  | Unif({value = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
+  | _                           -> t
 
 (** Short name for term variables. *)
 type tvar = term Bindlib.var
@@ -146,8 +146,7 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
     when calling this function. *)
 let _Unif : unif -> tbox array -> tbox = fun u ar ->
   assert(u.value = None);
-  let closed = Array.for_all Bindlib.is_closed ar in
-  Bindlib.box_apply (fun ar -> Unif({closed},u,ar)) (Bindlib.box_array ar)
+  Bindlib.box_apply (fun ar -> Unif(u,ar)) (Bindlib.box_array ar)
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
 
@@ -156,20 +155,18 @@ let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
     of the bound variables are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
-  let t = unfold t in
-  match t with
+  match unfold t with
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(i,_,_) when i.closed -> Bindlib.box t
+  (*| Prod(i,_,_) when i.closed -> Bindlib.box t*) (* FIXME buggy *)
   | Prod(_,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
   | Abst(i,_,_) when i.closed -> Bindlib.box t
   | Abst(_,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(i,_,_) when i.closed -> Bindlib.box t
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(i,_,_) when i.closed -> Bindlib.box t
-  | Unif(_,r,m) -> _Unif r (Array.map lift m)
+  | Unif(r,m)   -> _Unif r (Array.map lift m)
   | ITag(i)     -> _ITag i
 
 (** [is_closed t] tests whether the term [t] is closed,  using the information
@@ -180,7 +177,7 @@ let rec is_closed : term -> bool = fun t ->
   | Prod(i,_,_) -> i.closed
   | Abst(i,_,_) -> i.closed
   | Appl(i,_,_) -> i.closed
-  | Unif(i,_,m) -> i.closed
+  | Unif(_,ar)  -> Array.for_all is_closed ar
   | _           -> true
 
 (** [appl t u] builds the application of the terms [t] and [u] (outside of the

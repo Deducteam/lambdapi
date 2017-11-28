@@ -35,7 +35,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type       , _    ) -> pstring "Type"
     | (Kind       , _    ) -> pstring "Kind"
     | (Symb(s)    , _    ) -> pp_symbol oc s
-    | (Unif(_,u,e), _    ) -> pformat "?%i[%a]" u.key
+    | (Unif(u,e)  , _    ) -> pformat "?%i[%a]" u.key
                                 (Array.pp (pp `Appl) ",") e
     | (ITag(i)    , _    ) -> pformat "[%i]" i
     (* Applications are printed when priority is above [`Appl]. *)

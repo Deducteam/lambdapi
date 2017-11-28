@@ -45,9 +45,9 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
       begin
         let (x,tx) = unbind mkfree t in
         match eval c with
-        | Unif(i,r,e) ->
+        | Unif(r,e)   ->
             let r1 = new_unif () in
-            let fn x = Unif(i, r1, Array.append e [|x|]) in
+            let fn x = Unif(r1, Array.append e [|x|]) in
             let bx = box_apply fn (box_of_var x) in
             let b = unbox (bind_var x bx) in
             let c = prod a b in
@@ -84,26 +84,26 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   | Appl(_,t,u) ->
       begin
         match infer sign ctx t with
-        | Some(Prod(_,a,ba))  ->
+        | Some(Prod(_,a,ba)) ->
             eq_modulo (Bindlib.subst ba u) c
             && has_type sign ctx u a
-        | Some(Unif(i,r,env)) ->
-            let a = Unif(i, new_unif (), env) in
+        | Some(Unif(r,env))  ->
+            let a = Unif(new_unif (), env) in
             let b = Bindlib.bind mkfree "_" (fun _ -> lift c) in
             let b = prod a (Bindlib.unbox b) in
             assert(unify r env b);
             has_type sign ctx u a
-        | Some(a)             ->
+        | Some(a)            ->
             err "Product type expected for [%a], found [%a]..." pp t pp a;
             false
-        | None                ->
+        | None               ->
             wrn "Cannot infer the type of [%a]\n%!" pp t;
             false
       end
   (* No rule apply. *)
   | Kind        -> assert false
   | ITag(_)     -> assert false
-  | Unif(_,_,_) -> assert false
+  | Unif(_,_)   -> assert false
   in
   if !debug_type then
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;

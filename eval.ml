@@ -15,7 +15,7 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(_,t,u) -> occurs r t || occurs r u
-  | Unif(_,u,e) -> u == r || Array.exists (occurs r) e
+  | Unif(u,e)   -> u == r || Array.exists (occurs r) e
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
@@ -48,9 +48,9 @@ let eq : term -> term -> bool = fun a b ->
     | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder f g
     | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (Unif(_,u1,e1), Unif(_,u2,e2)) when u1 == u2 -> Array.for_all2 eq e1 e2
-    | (Unif(_,u,e)  , b            ) -> unify u e b
-    | (a            , Unif(_,u,e)  ) -> unify u e a
+    | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> Array.for_all2 eq e1 e2
+    | (Unif(u,e)    , b            ) -> unify u e b
+    | (a            , Unif(u,e)    ) -> unify u e a
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
   in
@@ -152,8 +152,8 @@ and matching ar pat t =
       let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
       matching ar t1 t2
   | (Appl(_,t1,u1), Appl(_,t2,u2)) -> matching ar t1 t2 && matching ar u1 u2
-  | (Unif(_,_,_)  , _            ) -> assert false
-  | (_            , Unif(_,_,_)  ) -> assert false
+  | (Unif(_,_)    , _            ) -> assert false
+  | (_            , Unif(_,_)    ) -> assert false
   | (Type         , Type         ) -> true
   | (Kind         , Kind         ) -> true
   | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2

@@ -52,7 +52,7 @@ let link : t -> unit = fun sign ->
     | Prod(i,a,b) -> Prod(i, link_term a, link_binder b)
     | Abst(i,a,t) -> Abst(i, link_term a, link_binder t)
     | Appl(i,t,u) -> Appl(i, link_term t, link_term u)
-    | Unif(i,r,m) -> Unif(i, r, Array.map link_term m)
+    | Unif(_,_)   -> assert false
     | ITag(_)     -> assert false
   and link_rule r =
     let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
