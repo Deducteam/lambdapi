@@ -14,7 +14,7 @@ T : Bool.
 F : Bool.
 
 list : type.
-def List := esp list.
+def List := eps list.
 Nil : List.
 Cons : Nat -> List -> List.
 
