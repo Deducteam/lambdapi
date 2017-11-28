@@ -1,0 +1,43 @@
+#NAME LogiqueCombinatoire.
+
+Lamt : Type.
+Varia : Type.
+
+Var : Varia -> Lamt.
+def App : Lamt -> Lamt -> Lamt.
+Abst : Varia -> Lamt -> Lamt.
+
+X1 : Varia.
+X2 : Varia.
+
+I : Lamt.
+S : Lamt.
+K : Lamt.
+
+[x]       App I x                 --> x.
+[x, y]    App (App K x) y         --> x.
+[x, y, z] App (App (App S x) y) z --> App (App x z) (App y z).
+
+def trad_lam2CL : Lamt -> Lamt.
+[]        trad_lam2CL I                   --> I.
+[]        trad_lam2CL S                   --> S.
+[]        trad_lam2CL K                   --> K.
+[x]       trad_lam2CL (Var x)             --> (Var x).
+[x, y]    trad_lam2CL (App x y)           --> App (trad_lam2CL x) (trad_lam2CL y).
+[x]       trad_lam2CL (Abst x I)          --> App K I.
+[x]       trad_lam2CL (Abst x K)          --> App K K.
+[x]       trad_lam2CL (Abst x S)          --> App K S.
+[x]       trad_lam2CL (Abst x (Var x))    --> I.
+[x, y]    trad_lam2CL (Abst x (Var y))    --> App K (Var y).
+[x, t, u] trad_lam2CL (Abst x (App t u))  --> App (App S (trad_lam2CL (Abst x t))) (trad_lam2CL (Abst x u)).
+[x, y, t] trad_lam2CL (Abst x (Abst y t)) --> trad_lam2CL (Abst x (trad_lam2CL (Abst y t))).
+
+def A := Abst X1 (App (Var X2) (App (Var X1) (Var X1))).
+def C := Abst X2 (App A A).
+t : Lamt.
+
+def B := Abst X1 (Abst X2 (App (Var X2) (App (App (Var X1) (Var X1)) (Var X2)))).
+def Y := App B B.
+
+#SNF (trad_lam2CL B).
+#SNF (trad_lam2CL Y).

@@ -1,0 +1,71 @@
+#NAME test.
+
+Term : Type.
+Prop: Type.
+def prf: Prop -> Type.
+anyterm: Term.
+
+not: Prop -> Prop.
+def notc: Prop -> Prop :=
+  A:Prop => not (not (not (not (not A)))).
+True: Prop.
+def Truec: Prop := not (not (True)).
+False: Prop.
+def Falsec: Prop := not (not (False)).
+and: Prop -> Prop -> Prop.
+def andc: Prop -> Prop -> Prop :=
+  A:Prop => B:Prop => not (not (and (not (not A)) (not (not B)))).
+or: Prop -> Prop -> Prop.
+def orc: Prop -> Prop -> Prop :=
+  A:Prop => B:Prop => not (not (or (not (not A)) (not (not B)))).
+imply: Prop -> Prop -> Prop.
+def implyc: Prop -> Prop -> Prop :=
+  A:Prop => B:Prop => not (not (imply (not (not A)) (not (not B)))).
+forall: (Term -> Prop) -> Prop.
+def forallc: (Term -> Prop) -> Prop :=
+  P:(Term -> Prop) =>
+  not (not (forall (x:Term => not (not (P x))))).
+exists: (Term -> Prop) -> Prop.
+def existsc: (Term -> Prop) -> Prop :=
+  P:(Term -> Prop) =>
+  not (not (exists (x:Term => not (not (P x))))).
+equal: Term -> Term -> Prop.
+def equalc: Term -> Term -> Prop :=
+  a:Term => b:Term => not (not (equal a b)).
+def equiv: Prop -> Prop -> Prop :=
+  A:Prop => B:Prop => and (imply A B) (imply B A).
+
+
+[] prf True --> P:Prop -> (prf P -> prf P)
+[] prf False --> P:Prop -> prf P
+[A, B] prf (and A B) --> P:Prop -> (prf A -> prf B -> prf P) -> prf P
+[A, B] prf (or A B) --> P:Prop -> (prf A -> prf P) -> (prf B -> prf P) -> prf P
+[A, B] prf (imply A B) --> prf A -> prf B
+[A] prf (not A) --> prf A -> prf False
+[A] prf (forall A) --> x:Term -> prf (A x)
+[A] prf (exists A) -->
+P:Prop -> (x:Term -> prf (A x) -> prf P) -> prf P
+[x,y] prf (equal x y) --> P:(Term -> Prop) -> prf (imply (P x) (P y)).
+
+def leq : Term -> Term -> Prop.
+one : Term.
+c : Term -> Term.
+def test : Term -> Prop.
+def complement : Term -> Term -> Prop.
+def addition : Term -> Term -> Term.
+zero : Term.
+def multiplication : Term -> Term -> Term.
+[B, A] leq A B --> (equal (addition A B) B).
+[X0] test X0 --> (exists (X1:Term => (complement X1 X0))).
+[X0, X1] complement X1 X0 --> (and (equal (multiplication X0 X1) zero) (and (equal (multiplication X1 X0) zero) (equal (addition X0 X1) one))).
+[C, B, A] addition A (addition B C) --> (addition (addition A B) C)
+[A] addition A zero --> A.
+[C, B, A] multiplication A (multiplication B C) --> (multiplication (multiplication A B) C)
+[A] multiplication A one --> A
+[A] multiplication one A --> A
+[C, B, A] multiplication A (addition B C) --> (addition (multiplication A B) (multiplication A C))
+[C, B, A] multiplication (addition A B) C --> (addition (multiplication A C) (multiplication B C))
+[A] multiplication A zero --> zero
+[A] multiplication zero A --> zero.
+def conjecture_proof : prf (imply (forall (A:Term => (forall (B:Term => (equal (addition A B) (addition B A)))))) (imply (forall (X0:Term => (forall (X1:Term => (imply (exists (X1:Term => (and (equal (multiplication X0 X1) zero) (and (equal (multiplication X1 X0) zero) (equal (addition X0 X1) one))))) (equiv (equal (c X0) X1) (and (equal (multiplication X1 X0) zero) (and (equal (multiplication X0 X1) zero) (equal (addition X1 X0) one))))))))) (imply (forall (X0:Term => (imply (not (exists (X1:Term => (and (equal (multiplication X0 X1) zero) (and (equal (multiplication X1 X0) zero) (equal (addition X0 X1) one)))))) (equal (c X0) zero)))) (equalc (c one) zero)))) :=
+(H0 : prf (forall (A:Term => (forall (B:Term => (equal (addition A B) (addition B A)))))) => (H1 : prf (forall (X0:Term => (forall (X1:Term => (imply (exists (X1:Term => (and (equal (multiplication X0 X1) zero) (and (equal (multiplication X1 X0) zero) (equal (addition X0 X1) one))))) (equiv (equal (c X0) X1) (and (equal (multiplication X1 X0) zero) (and (equal (multiplication X0 X1) zero) (equal (addition X1 X0) one))))))))) => (H2 : prf (forall (X0:Term => (imply (not (exists (X1:Term => (and (equal (multiplication X0 X1) zero) (and (equal (multiplication X1 X0) zero) (equal (addition X0 X1) one)))))) (equal (c X0) zero)))) => (H3 : prf (not (equal (c one) zero)) => (H3 ((H2 one) (H4 : prf (exists (X1:Term => (and (equal X1 zero) (and (equal X1 zero) (equal (addition one X1) one))))) => ((((H1 one) (c one)) H4) False (H5 : prf (imply (equal (c one) (c one)) (and (equal (c one) zero) (and (equal (c one) zero) (equal (addition (c one) one) one)))) => H6 : prf (imply (and (equal (c one) zero) (and (equal (c one) zero) (equal (addition (c one) one) one))) (equal (c one) (c one))) => ((H5 (P9 : (Term -> Prop) => (H10 : prf (P9 (c one)) => H10))) False (H7 : prf (equal (c one) zero) => H8 : prf (and (equal (c one) zero) (equal (addition (c one) one) one)) => (H8 False (H11 : prf (equal (c one) zero) => H12 : prf (equal (addition (c one) one) one) => (H3 H11)))))))))))))).

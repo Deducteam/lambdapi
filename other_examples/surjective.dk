@@ -1,0 +1,11 @@
+#NAME sp.
+
+T:Type.
+Pairs:Type.
+def p1:Pairs->T.
+def p2:Pairs->T.
+def mk:T->T->Pairs.
+
+[a] p1 (mk a _) --> a.
+[b] p2 (mk _ b) --> b.
+[p] mk (p1 p) (p2 p) --> p.

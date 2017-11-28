@@ -1,0 +1,9 @@
+#NAME essai.
+
+A : Type.
+B : Type.
+
+C : ((A -> B) -> B) -> A.
+
+def e : A -> B.
+[f] e (C f) --> f e.

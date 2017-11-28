@@ -1,0 +1,9 @@
+#NAME lambdaCalculi.
+
+def lamt : Type.
+[] lamt --> lamt -> lamt.
+
+def delta : lamt := (x => x x).
+def omega : lamt := delta delta.
+
+#HNF (x: lamt => (y: lamt => y)) omega.

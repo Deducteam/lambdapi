@@ -1,0 +1,33 @@
+#NAME part42.
+
+o : Type.
+
+s : Type.
+P : s -> o.
+
+imp : o -> o -> o.
+
+def eps : o -> Type.
+
+[x, y] eps (imp x y) --> (eps x) -> (eps y).
+
+and: o -> o -> o.
+[x, y] eps (and x y) --> z:o -> (eps x -> eps y -> eps z) -> eps z.
+
+def top : o.
+[ ] eps top --> z:o -> (eps z) -> (eps z).
+
+def bot : o.
+[ ] eps bot --> z:o -> (eps z).
+
+def not : o -> o := x:o => imp x bot.
+
+def or : o -> o -> o.
+[x, y] eps (or x y)
+        --> z:o -> (eps x -> eps z) -> (eps y -> eps z) -> eps z.
+
+def fa_s : (s -> o) -> o.
+[y] eps (fa_s y) --> x:s -> eps (y x).
+
+def ex_s : (s -> o) -> o.
+[y] eps (ex_s y) --> z:o -> (x:s -> eps (y x) -> (eps z)) -> eps z.

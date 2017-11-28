@@ -1,0 +1,9 @@
+#NAME rule_name.
+
+nat : Type.
+
+0 : nat.
+
+def plus : nat -> nat -> nat.
+
+{plus_0_n} [n] plus 0 n --> n.

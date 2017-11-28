@@ -1,0 +1,154 @@
+#NAME nat_prop.
+
+(;-------------------------------------------;)
+(;          Nat as first order terms         ;)
+(;-------------------------------------------;)
+
+def N := FO.Term.
+
+0 : N.
+S : N -> N.
+
+def pred : N -> N.
+[]  pred 0     --> 0
+[n] pred (S n) --> n.
+
+def plus : N -> N -> N.
+[m]   plus 0     m --> m
+[n,m] plus (S n) m --> S (plus n m)
+[n]   plus n     0 --> n.
+
+def times : N -> N -> N.
+[m]   times 0     m     --> 0
+[n,m] times (S n) m     --> plus m (times n m).
+
+def exp : N -> N -> N.
+[n]   exp n 0     --> S 0
+[n,m] exp n (S m) --> times n (exp n m).
+
+
+def fact : N -> N.
+[]  fact 0     --> S 0
+[n] fact (S n) --> times (S n) (fact n).
+
+def ack : N -> N -> N.
+[m]   ack 0     m     --> S m
+[n]   ack (S n) 0     --> ack n (S 0)
+[n,m] ack (S n) (S m) --> ack n (ack (S n) m).
+
+
+(;-------------------------------------------;)
+(;        Shortnames for common nats         ;)
+(;-------------------------------------------;)
+
+def 1 := S 0.
+def 2 := S 1.
+def 3 := S 2.
+def 4 := S 3.
+def 5 := S 4.
+def 6 := S 5.
+def 7 := S 6.
+def 8 := S 7.
+def 9 := S 8.
+def 10 := S 9.
+def 100  := exp 10 2.
+def 1000 := exp 10 3.
+
+
+(;-------------------------------------------;)
+(;      Shortnames for logic operators       ;)
+(;-------------------------------------------;)
+
+def prf := FO.prf.
+def Prop := FO.Prop.
+def eq := FO.equals.
+
+
+(;-------------------------------------------;)
+(;          Nat as an inductive type         ;)
+(;-------------------------------------------;)
+
+def N_ind_prop :
+  P : (N -> Prop) ->
+  prf (P 0) ->
+  (n : N -> prf (P n) -> prf (P (S n))) ->
+  (n : N -> prf (P n)).
+[P0]         N_ind_prop _ P0 _   0     --> P0.
+[P,P0,ind,n] N_ind_prop P P0 ind (S n) --> ind n (N_ind_prop P P0 ind n).
+
+
+(;-------------------------------------------;)
+(;           A couple of theorems            ;)
+(;-------------------------------------------;)
+
+def is_pos : N -> Prop := (n:N => FO.exists (m : N => eq (S m) n)).
+def    succ_is_pos_thm : Prop := FO.forall (n : N => is_pos (S n)).
+def sum_pos_is_pos_thm : Prop :=
+  FO.forall (n : N => FO.imp (is_pos n)
+							 (FO.forall (m : N => is_pos (plus n m)))).
+def fact_is_pos_thm : Prop := FO.forall (n : N => (is_pos (fact n))).
+def  ack_is_pos_thm : Prop := FO.forall (n : N => FO.forall (m : N => (is_pos (ack n m)))).
+
+
+(;-------------------------------------------;)
+(;        Proofs for theses theorems         ;)
+(;-------------------------------------------;)
+
+def succ_is_pos : prf succ_is_pos_thm :=
+  n : N =>
+  P : Prop =>
+  f : (m : N -> prf (eq (S m) (S n)) -> prf P) =>
+  f n (Q : (N -> Prop) => p : prf (Q (S n)) => p).
+
+def    1_is_pos : prf (is_pos 1)    := succ_is_pos 0.
+def f100_is_pos : prf (is_pos (fact 100)) := succ_is_pos (pred (fact 100)).
+
+def sum_pos_is_pos : prf sum_pos_is_pos_thm :=
+  n : N =>
+  p : prf (is_pos n) =>
+  m : N =>
+  p (is_pos (plus n m))
+    (
+	  x : N =>
+	  q : prf (eq (S x) n) =>
+	  q (y : N => is_pos (plus y m)) (succ_is_pos (plus x m))
+    )
+.
+
+def fact_is_pos : prf fact_is_pos_thm :=
+  N_ind_prop
+	(n : N => is_pos (fact n))
+	1_is_pos
+	(
+	  n : N =>
+	  p : prf (is_pos (fact n)) =>
+	  sum_pos_is_pos (fact n) p (times n (fact n))
+	)
+.
+
+def f100_is_pos2 : prf (is_pos (fact 100)) := fact_is_pos 100.
+
+def ack_is_pos : prf ack_is_pos_thm :=
+  N_ind_prop
+	(n : N => FO.forall (m : N => is_pos (ack n m)))
+	(m : N => (succ_is_pos m))
+	(
+	  n : N =>
+	  p : prf (FO.forall (m : N => (is_pos (ack n m)))) =>
+	  N_ind_prop
+		(m : N => is_pos (ack (S n) m))
+		(p 1)
+		(
+		  m : N =>
+		  q : prf (is_pos (ack (S n) m)) =>
+		  p (ack (S n) m)
+		)
+	)
+.
+
+
+
+(; 
+#WHNF fact_is_pos (exp 10 2).
+#WHNF ack_is_pos 3 4.
+(;;)

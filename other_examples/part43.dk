@@ -1,0 +1,59 @@
+#NAME part43.
+
+nat : Type.
+
+  o : Type.
+
+  imp : o -> o -> o.
+
+  def eps : o -> Type.
+
+  [x, y] eps (imp x y) --> (eps x) -> (eps y).
+
+  and: o -> o -> o.
+  [x, y] eps (and x y) --> z:o -> (eps x -> eps y -> eps z) -> eps z.
+
+  def top : o.
+  [ ] eps top --> z:o -> (eps z) -> (eps z).
+
+  def bot : o.
+  [ ] eps bot --> z:o -> (eps z).
+
+  def not : o -> o := x:o => imp x bot.
+
+  def or : o -> o -> o.
+  [x, y] eps (or x y)
+          --> z:o -> (eps x -> eps z) -> (eps y -> eps z) -> eps z.
+
+  def fa_nat : (nat -> o) -> o.
+  [y] eps (fa_nat y) --> x:nat -> eps (y x).
+
+  def ex_nat : (nat -> o) -> o.
+  [y] eps (ex_nat y) --> z:o -> (x:nat -> eps (y x) -> (eps z)) -> eps z.
+
+0 : nat.
+S : nat -> nat.
+def plus : nat -> nat -> nat.
+def times : nat -> nat -> nat.
+def equal : nat -> nat -> o.
+N : nat -> o.
+[y] plus 0 y --> y
+[x, y] plus (S x) y --> S (plus x y).
+[y] times 0 y --> 0
+[x, y] times (S x) y --> plus (times x y) y.
+[ ] equal 0 0 --> top
+[x] equal (S x) 0 --> bot
+[y] equal 0 (S y) --> bot
+[x, y] equal (S x) (S y) --> equal x y.
+[n] eps (N n) -->
+  k:(nat->o) -> eps (k 0) ->
+  eps ( fa_nat (y:nat => imp (N y) (imp (k y) (k (S y))) ) ) ->
+  eps (k n).
+
+def tt : eps top := z:o => p:eps z => p.
+
+def k := x:nat => equal (plus x 0) x.
+
+def z_r_neutral : eps ( fa_nat ( x => imp (N x) (k x)))
+                := x:nat => p:eps (N x) =>
+                   p k tt (y:nat => q: eps (N y) => r:eps (k y) => r).

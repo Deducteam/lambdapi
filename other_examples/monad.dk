@@ -1,0 +1,16 @@
+#NAME Monad.
+
+type : Type.
+eval : type -> Type.
+M : type -> type.
+
+return : A : type -> (eval A) -> eval (M A).
+
+def bind : A : type -> B : type -> ((eval A) -> eval (M B)) -> eval (M A) -> eval (M B).
+
+[A,B,x,k] bind A B k (return {A} x) --> k x.
+[A,B,e] bind A B (return {B}) e --> e.
+[A,B,C,e,k,l] bind C B l (bind A {C} k e) --> bind A B (x => bind C B l (k x)) e.
+
+def comp : A : type -> B : type -> C : type -> ((eval A) -> eval (M B)) -> ((eval B) -> eval (M C)) -> (eval A) -> eval (M C)
+	 := A => B => C => f => g => a => bind B C g (f a).

@@ -1,5 +1,8 @@
 OCAMLBUILD   = ocamlbuild -use-ocamlfind -quiet
-TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
+TESTFILES    = $(wildcard tests/*.dk) \
+							 $(wildcard examples/*.dk) \
+							 $(wildcard other_examples/*.dk) \
+							 $(wildcard dedukti_tests/OK/*.dk)
 MATITAFILES  = $(wildcard matita/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)

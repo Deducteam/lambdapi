@@ -1,0 +1,19 @@
+#NAME part6.
+
+type : Type.
+o : type.
+i : type.
+arrow : type -> type -> type.
+
+def term : type -> Type.
+imp : term o -> term o -> term o.
+forall : a : type -> (term a -> term o) -> term o.
+
+[a, b] term (arrow a b) --> term a -> term b.
+
+
+def eps : term o -> Type.
+
+[p, q] eps (imp p q) --> eps p -> eps q.
+[a, p] eps (forall a p) --> x : term a -> eps (p x).
+

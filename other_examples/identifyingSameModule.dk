@@ -1,0 +1,14 @@
+#NAME qualpat.
+
+T : Type.
+a : T.
+
+(; Be careful, using identifiers qualified with
+   the current module name is very bad practice.
+   Two reasons for this: scoping is not yet ok
+   with qualified names and scoping, once fixed,
+   will fail in this situation.
+   This test will be removed in the future. ;)
+
+def f : T -> qualpat.T.
+[] f qualpat.a --> a.

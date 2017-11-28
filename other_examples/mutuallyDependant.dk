@@ -1,0 +1,8 @@
+#NAME MutuallyDependant.
+
+Tree     : Type.
+ListTree : Type.
+
+node      : ListTree -> Tree.
+nil_tree  : ListTree.
+cons_tree : Tree -> ListTree -> ListTree.

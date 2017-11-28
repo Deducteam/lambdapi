@@ -1,0 +1,11 @@
+#NAME sze.
+
+o : Type.
+
+c : o->o.
+def a : o.
+
+[] a--> c a.
+
+def f : o -> o.
+[] f (c a)-->f a.

@@ -1,0 +1,37 @@
+#NAME vt.
+
+Bool : Type.
+Nat : Type.
+
+true : Bool.
+false : Bool.
+
+0 : Nat.
+S : Nat -> Nat.
+
+def isZero : Nat -> Bool.
+[] isZero 0 --> true
+[] isZero (S _) --> false.
+
+def pred : Nat -> Nat.
+[] pred 0 --> 0
+[x] pred (S x) --> x.
+
+def ifThenElse : Bool -> Nat -> Nat -> Nat.
+[a] ifThenElse true a _ --> a
+[b] ifThenElse false _ b --> b.
+
+(;
+def reduceToZero : Nat -> Nat.
+[x] reduceToZero x --> ifThenElse (isZero x) 0 (reduceToZero (pred x)).
+;)
+(;
+def reduceToZero : Nat -> Nat.
+def aux : Nat -> Bool -> Nat.
+[] aux _ true --> 0
+[x] aux x false --> reduceToZero (pred x).
+[x] reduceToZero x --> aux x (isZero x).
+;)
+def reduceToZero : Nat -> Nat.
+[] reduceToZero 0 --> 0
+[x] reduceToZero (S x) --> reduceToZero x.

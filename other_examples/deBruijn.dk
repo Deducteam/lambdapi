@@ -1,0 +1,55 @@
+#NAME DeBruijn.
+
+N : Type.
+0 : N.
+S : N -> N.
+
+def pred : N -> N.
+[n] pred (S n) --> n.
+
+DB : Type.
+Var : N -> DB.
+Lam : DB -> DB.
+App : DB -> DB -> DB.
+
+(; Take two Nat and three DB and return the first DB in case of equality, the second DB if the first Nat is smaller and the third DB if the first Nat is greater ;)
+def comp : N -> N -> DB -> DB -> DB -> DB.
+[a]             comp 0     0     a _ _ --> a.
+[b]             comp 0     (S _) _ b _ --> b.
+[c]             comp (S _) 0     _ _ c --> c.
+[m, n, a, b, c] comp (S m) (S n) a b c --> comp m n a b c.
+
+def beta : DB -> DB.
+def betaNF : DB -> DB.
+def subst : N -> DB -> DB -> DB.
+
+[x]   beta (Var x)   --> Var x.
+[x]   beta (Lam x)   --> Lam (beta x).
+[f,x] beta (App f x) --> betaNF (App (beta f) (beta x)).
+
+[f,x]   betaNF (App (Lam f) x)   --> beta (subst 0 x f)
+[n,x]   betaNF (App (Var n) x)   --> App (Var n) x
+[x,y,z] betaNF (App (App x y) z) --> App (App x y) z. 
+
+[n,x,m]   subst n x (Var m)   --> comp m n x (Var m) (Var (pred m))
+[n,x,m]   subst n x (Lam m)   --> Lam (subst (S n) x m)
+[n,x,f,y] subst n x (App f y) --> App (subst n x f) (subst n x y).
+
+def delta := Lam (App (Var 0) (Var 0)).
+
+#NSTEPS #2 beta (App delta delta).
+#NSTEPS #19 beta (App delta delta).
+#NSTEPS #36 beta (App delta delta).
+
+def id :=  Lam (Var 0).
+
+#SNF beta (App id id).
+#SNF beta (App id delta).
+#SNF beta (App delta id).
+
+def left := Lam (Lam (Var (S 0))).
+def right := Lam (Lam (Var 0)).
+
+#SNF beta (App left id).
+#SNF beta (App (App left id) (App delta delta)).
+#SNF beta (Lam (App (Lam (Var (S 0))) id)).

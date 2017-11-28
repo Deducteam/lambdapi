@@ -1,0 +1,27 @@
+#NAME Produit.
+
+type : Type.
+eval : type -> Type.
+
+Unit : type.
+
+Prod : type -> type -> type.
+Pair : A : type -> B : type -> eval A -> eval B -> eval (Prod A B).
+
+Nat : type.
+Bool : type.
+
+0 : eval Nat.
+S : eval Nat -> eval Nat.
+
+True : eval Bool.
+False : eval Bool.
+
+def Bool_ : n : eval Nat -> type.
+[]  Bool_ 0     --> Unit.
+[n] Bool_ (S n) --> Prod Bool (Bool_ n).
+
+def and_ : n : eval Nat -> eval (Bool_ n) -> eval Bool.
+[]    and_ 0     _                  --> True.
+[n,x] and_ (S n) (Pair _ _ True  x) --> and_ n x.
+[n]   and_ (S n) (Pair _ _ False _) --> False.

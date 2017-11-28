@@ -1,0 +1,213 @@
+#NAME ExamplesBJO.
+
+type : Type.
+arrow : type -> type -> type.
+def eval : type -> Type.
+[a, b] eval (arrow a b) --> eval a -> eval b.
+
+bool     : type.
+nat      : type.
+listNat  : type.
+tree     : type.
+listTree : type.
+data     : type.
+proc     : type.
+ord      : type.
+term     : type.
+form     : type.
+r        : type.
+def Bool     : Type := eval bool.
+def Nat      : Type := eval nat.
+def ListNat  : Type := eval listNat.
+def Tree     : Type := eval tree.
+def ListTree : Type := eval listTree.
+def Data     : Type := eval data.
+def Proc     : Type := eval proc.
+def Ord      : Type := eval ord.
+def Term     : Type := eval term.
+def Form     : Type := eval form.
+def R        : Type := eval r.
+
+true  : Bool.
+false : Bool.
+
+0 : Nat.
+s : Nat -> Nat.
+
+nil  : ListNat.
+cons : Nat -> ListNat -> ListNat.
+
+node      : ListTree -> Tree.
+nil_tree  : ListTree.
+cons_tree : Tree -> ListTree -> ListTree.
+
+delta     : Proc.
+seq       : Proc -> Proc -> Proc.
+plus_proc : Proc -> Proc -> Proc.
+sigma     : (Data -> Proc) -> Proc.
+
+0_ord : Ord.
+s_ord : Ord -> Ord.
+lim   : (Nat -> Ord) -> Ord.
+
+or_form  : Form -> Form -> Form.
+neg_form : Form -> Form.
+forall   : (Term -> Form) -> Form.
+
+0_r    : R.
+1_r    : R.
+plus_r : R-> R -> R.
+cos    : R -> R.
+ln     : R -> R.
+
+def natrec : A : type -> eval A -> (Nat -> eval A -> eval A) -> Nat -> eval A.
+[x, y]       natrec _ x y 0     --> x.
+[A, x, y, n] natrec A x y (s n) --> y n (natrec A x y n).
+
+def iota : Nat -> Ord.
+[]  iota 0     --> 0_ord.
+[n] iota (s n) --> s_ord (iota n).
+
+def plus : Nat -> Nat -> Nat.
+[x]    plus x 0     --> x.
+[x, y] plus x (s y) --> s (plus x y).
+
+def plus_ord : Ord -> Ord -> Ord.
+[x]    plus_ord x 0_ord     --> x.
+[x, y] plus_ord x (s_ord y) --> s_ord (plus_ord x y).
+[x, f] plus_ord x (lim f)   --> lim(n : Nat => plus_ord x (f n)).
+
+def append : ListNat -> ListNat -> ListNat.
+[l]          append nil           l  --> l.
+[x, l, l_]   append (cons x l)    l_ --> cons x (append l l_).
+[l, l_, ll]  append (append l l_) ll --> append l (append l_ ll).
+
+def map : (Nat -> Nat) -> ListNat -> ListNat.
+[f]        map f        nil           --> nil.
+[f, x, l]  map f        (cons x l)    --> cons (f x) (map f l).
+[f, l, l_] map f        (append l l_) --> append (map f l) (map f l_).
+[l]        map (x => x) l             --> l.
+
+def Ack : Nat -> Nat -> Nat.
+[y]    Ack 0     y     --> s y.
+[x]    Ack (s x) 0     --> Ack x (s 0).
+[x, y] Ack (s x) (s y) --> Ack x (Ack (s x) y).
+
+def Bin : Nat -> Nat -> Nat.
+[n]    Bin 0     n     --> s 0.
+[m]    Bin (s m) 0     --> s 0.
+[m, n] Bin (s m) (s n) --> plus (Bin m (s n)) (Bin (s m) n).
+
+def ordrec : A : type -> eval A -> (Ord -> eval A -> eval A) -> ((Nat -> Ord) -> (Nat -> eval A) -> eval A) -> Ord -> eval A.
+[x, y, z]       ordrec _ x y z 0_ord     --> x.
+[A, x, y, z, n] ordrec A x y z (s_ord n) --> y n (ordrec A x y z n).
+[A, x, y, z, f] ordrec A x y z (lim f)   --> z f (n => ordrec A x y z (f n)).
+
+def treerec : A : type -> (ListTree -> eval A -> eval A) -> eval A -> (Tree -> ListTree -> eval A -> eval A -> eval A) -> Tree -> eval A.
+def listtreerec : A : type -> (ListTree -> eval A -> eval A) -> eval A -> (Tree -> ListTree -> eval A -> eval A -> eval A) -> ListTree -> eval A.
+[A, x, y, z, l]    treerec     A x y z (node l)        --> x l (listtreerec A x y z l).
+[x, y, z]          listtreerec _ x y z nil_tree        --> y.
+[A, x, y, z, t, l] listtreerec A x y z (cons_tree t l) --> z t l (treerec A x y z t) (listtreerec A x y z l).
+
+def foldl : (Nat -> Nat -> Nat) -> Nat -> ListNat -> Nat.
+[f, x]       foldl f x nil        --> x.
+[f, x, y, l] foldl f x (cons y l) --> foldl f (f x y) l.
+
+def sum : ListNat -> Nat := l => foldl plus 0 l.
+
+def moins : Nat -> Nat -> Nat.
+[y]    moins 0     y     --> 0.
+[x]    moins (s x) 0     --> s x.
+[x, y] moins (s x) (s y) --> moins x y.
+
+def div : Nat -> Nat -> Nat.
+[x]    div x     0     --> x.
+[y]    div 0     (s y) --> 0.
+[x, y] div (s x) (s y) --> s (div (moins x y) (s y)).
+
+def inf : Nat -> Nat -> Bool.
+[y]    inf 0     y     --> true.
+[x]    inf (s x) 0     --> false.
+[x, y] inf (s x) (s y) --> inf x y.
+
+(;
+def eqType : n : Nat -> Type.
+[]  eqType 0     --> A : type -> eval A -> eval A.
+[n] eqType (s n) --> A : type -> eval A -> eval A -> eqType n.
+(; ;)
+
+(; Not allowed due to arity mismatching
+def eq : n : Nat -> eqType n.
+[A, x]        eq 0     A x   --> x
+[A, x, n, tl] eq (s n) A x x --> eq n.
+(; ;)
+
+(; Hence, we define eq1 in a non-dependant type (in fact, a bit dependant, encoding polymorphism) ;)
+def eq1 : A : type -> eval A -> eval A -> B : type -> eval B -> eval B.
+[A, x, B, y] eq1 A x x B y --> y.
+
+(; A non-confluent, very frustrating version (we end catch in a eq1 bool false true listNat l with no way to chose the other branch) ;)
+def insertBJO : Nat -> ListNat -> ListNat.
+[x] insertBJO x nil --> cons x nil.
+[x, y, l] insertBJO x (cons y l) --> eq1 bool (inf x y) true  listNat (cons x (cons y l)).
+[x, y, l] insertBJO x (cons y l) --> eq1 bool (inf x y) false listNat (cons y (insertBJO x l)).
+
+def insert : Nat -> ListNat -> ListNat.
+def insertBis : Nat -> Nat -> ListNat -> Bool -> ListNat.
+[x]       insert    x nil             --> cons x nil.
+[x, y, l] insert    x (cons y l)      --> insertBis x y l (inf x y).
+[x, y, l] insertBis x       y l  true  --> cons x (cons y l).
+[x, y, l] insertBis x       y l  false --> cons y (insert x l).
+
+int : type.
+def Int := eval int.
+
+0_int : Int.
+def s_int : Int -> Int.
+def p_int : Int -> Int.
+[x] s_int (p_int x) --> x.
+[x] p_int (s_int x) --> x.
+
+
+def neg : Int -> Bool.
+[]  neg 0_int     --> true.
+[x] neg (s_int x) --> false.
+[x] neg (p_int x) --> neg x.
+
+def pos : Int -> Bool.
+[]  pos 0_int     --> true.
+[x] pos (s_int x) --> pos x.
+[x] pos (p_int x) --> false.
+
+def intrecBJO : A : type -> eval A -> (Int -> eval A -> eval A) -> (Int -> eval A -> eval A) -> Int -> eval A.
+[x, y, z]       intrecBJO _ x y z 0_int     --> x.
+[A, x, y, z, n] intrecBJO A x y z (s_int n) --> eq1 bool (pos n) true A (y n (intrecBJO A x y z n)).
+[A, x, y, z, n] intrecBJO A x y z (p_int n) --> eq1 bool (neg n) true A (z n (intrecBJO A x y z n)).
+
+def or : Bool -> Bool -> Bool.
+[]  or true  _ --> true.
+[x] or false x --> x.
+
+def computeNF : Int -> Int.
+def computeBis : Int -> Bool -> Nat -> Int.
+def construct : Bool -> Nat -> Int.
+[x]    computeNF  x                     --> computeBis x true  0.
+[x]    computeBis (p_int x) _     0     --> computeBis x false (s 0).
+[x, n] computeBis (p_int x) true  (s n) --> computeBis x true  n.
+[x, n] computeBis (p_int x) false n     --> computeBis x false (s n).
+[x]    computeBis (s_int x) _     0     --> computeBis x true  (s 0).
+[x, n] computeBis (s_int x) true  n     --> computeBis x true  (s n).
+[x, n] computeBis (s_int x) false (s n) --> computeBis x false n.
+[a, n] computeBis (0_int)   a     n     --> construct a n.
+[]     construct            _     0     --> 0_int.
+[n]    construct            true  (s n) --> s_int (construct true  n).
+[n]    construct            false (s n) --> p_int (construct false n).
+
+def intrec    : A : type -> eval A -> (Int -> eval A -> eval A) -> (Int -> eval A -> eval A) -> Int -> eval A.
+def intrecBis : A : type -> eval A -> (Int -> eval A -> eval A) -> (Int -> eval A -> eval A) -> Int -> eval A.
+[A, x, y, z, n] intrec    A x y z n         --> intrecBis A x y z (computeNF n).
+[x, y, z]       intrecBis _ x y z 0_int     --> x.
+[A, x, y, z, n] intrecBis A x y z (s_int n) --> y n (intrecBis A x y z n).
+[A, x, y, z, n] intrecBis A x y z (p_int n) --> z n (intrecBis A x y z n).
+
+def plus_int_rec : Int -> Int -> Int := x => y => intrec int x (x => y => s_int y) (x => y => p_int y) y.

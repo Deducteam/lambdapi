@@ -1,0 +1,45 @@
+#NAME part72.
+
+label : Type.
+type : Type.
+typenil : type.
+typecons : label -> type -> type -> type.
+
+Preobj : type -> type -> Type.
+
+def Obj (A : type) := Preobj A A.
+
+prenil : A : type -> Preobj A typenil.
+precons : A : type ->
+          B : type ->
+          l : label ->
+          C : type ->
+          (Obj A -> Obj C) ->
+          Preobj A B -> Preobj A (typecons l C B).
+
+mem : label -> type -> type -> Type.
+athead : l : label -> A : type -> B : type -> mem l A (typecons l A B).
+intail : l : label -> A : type -> l' : label -> A' : type -> B : type -> mem l A B -> mem l A (typecons l' A' B).
+
+def preselect : A : type ->
+                B : type ->
+                l : label ->
+                C : type ->
+                mem l C B ->
+                Preobj A B ->
+                (Obj A -> Obj C).
+def preupdate : A : type ->
+                B : type ->
+                l : label ->
+                C : type ->
+                mem l C B ->
+                Preobj A B ->
+                (Obj A -> Obj C) ->
+                Preobj A B.
+
+
+def select (A : type) (l : label) (C : type)
+           (p : mem l C A) (a : Obj A) : Obj C :=
+   preselect A A l C p a a.
+def update (A : type) := preupdate A A.
+

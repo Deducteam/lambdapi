@@ -1,0 +1,24 @@
+#NAME Associativity.
+
+nat : Type.
+0 : nat.
+S : nat -> nat.
+
+def plus: nat -> nat -> nat.
+[y] plus 0 y --> y.
+[x,y] plus (S x) y --> S (plus x y).
+(; The associativity of plus is needed to type the associativity of concat ;)
+[x,y,z] plus (plus x y) z --> plus x (plus y z).
+(; ;)
+
+Vect : nat -> Type.
+
+(; The non-linear version 
+def concat : n : nat -> Vect n -> m : nat -> Vect m -> Vect (plus n m).
+[n1,n2,n3,l1,l2,l3] concat (plus n1 n2) (concat n1 l1 n2 l2) n3 l3 --> concat n1 l1 (plus n2 n3) (concat n2 l2 n3 l3).
+(; ;)
+
+(; The linear version ;)
+def concat : n : nat -> Vect n -> m : nat -> Vect m -> Vect (plus n m).
+[n1,n2,n3,l1,l2,l3] concat _ (concat n1 l1 n2 l2) n3 l3 --> concat n1 l1 (plus n2 n3) (concat n2 l2 n3 l3).
+(; ;)

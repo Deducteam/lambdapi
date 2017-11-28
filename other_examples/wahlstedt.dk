@@ -1,0 +1,79 @@
+#NAME Wahlstedt.
+
+Set : Type.
+
+El : Set -> Type.
+
+Pi : x : Set -> (El x -> Set) -> Set.
+fun : t : Set -> u :  (El t -> Set) -> (x : El t -> El (u x)) -> El (Pi t u).
+
+nat : Set.
+0 : El nat.
+s : El nat -> El nat.
+
+bool : Set.
+true : El bool.
+false : El bool.
+
+top : Set.
+unit : El top.
+
+bot : Set.
+
+list : Set -> Set.
+nil : A : Set -> El (list A).
+cons : A : Set -> El A -> El (list A) -> El (list A).
+
+times : Set -> Set -> Set.
+paire : A : Set -> B : Set -> El A -> El B -> El (times A B).
+def fst : A : Set -> B : Set -> El (times A B) -> El A.
+[x] fst _ _ (paire _ _ x _) --> x.
+def snd : A : Set -> B : Set -> El (times A B) -> El B.
+[y] snd _ _ (paire _ _ _ y) --> y.
+
+plus : Set -> Set -> Set.
+inl : A : Set -> B : Set -> El A -> El (plus A B).
+inr : A : Set -> B : Set -> El B -> El (plus A B).
+
+def length : A : Set -> El (list A) -> El nat.
+[] length _ (nil _) --> 0.
+[A, l] length A (cons _ _ l) --> length A l.
+
+def append : A : Set -> El (list A) -> El (list A) -> El (list A).
+[l] append _ (nil _) l --> l.
+[A, x, l1, l2] append A (cons _ x l1) l2 --> cons A x (append A l1 l2).
+
+def funsplit : A : Set -> F : (El A -> Set) -> G : (El (Pi A F) -> Set) ->
+    (f : (a : El A -> El (F a)) -> El (G (fun A F f))) -> b : El (Pi A F) -> El (G b).
+[g, f] funsplit _ _ _ g (fun _ _ f) --> g f.
+
+def Vec : Set -> El nat -> Set.
+[] Vec _ 0 --> top.
+[A, n] Vec A (s n) --> times A (Vec A n).
+
+def Fin : El nat -> Set.
+[] Fin 0 --> bot.
+[n] Fin (s n) --> plus (Fin n) top.
+
+def index : A : Set -> n : El nat -> El (Fin (s n)) -> El (Vec A (s n)) -> El A.
+[a] index _ 0 _ (paire _ _ a _) --> a.
+[A, n, m, v] index A (s n) (inl _ _ m) (paire _ _ _ v) --> index A n m v.
+[a] index _ (s _) (inr _ _ _) (paire _ _ a _) --> a.
+
+Square : Set -> Set.
+pair : A : Set -> El A -> El A -> El (Square A).
+
+Pow : Set -> Set.
+zeroP : A : Set -> El A -> El (Pow A).
+succP : A : Set -> El (Pow (Square A)) -> El (Pow A).
+
+def aux : A : Set -> B : Set -> (El B -> El (list A)) -> El (Square B) -> El (list A).
+[A, f, x1, x2] aux A _ f (pair _ x1 x2) --> append A (f x1) (f x2).
+
+def flatP : A : Set -> B : Set -> (El B -> El (list A)) -> El (Pow B) -> El (list A).
+[f, b] flatP _ _ f (zeroP _ b) --> f b.
+[A, B, f, psa] flatP A B f (succP _ psa) --> flatP A (Square B) (x => aux A B f x) psa.
+
+def flatPow : A : Set -> El (Pow A) -> El (list A).
+[A, p] flatPow A p --> flatP A A (x => cons A x (nil A)) p.
+

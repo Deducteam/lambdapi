@@ -1,0 +1,70 @@
+#NAME part5.
+
+  o : Type.
+
+  s : Type.
+
+  imp : o -> o -> o.
+  
+  def eps : o -> Type.
+
+  [x, y] eps (imp x y) --> (eps x) -> (eps y).
+
+  and: o -> o -> o.
+  [x, y] eps (and x y) --> z:o -> (eps x -> eps y -> eps z) -> eps z.
+
+  def top : o.
+  [ ] eps top --> z:o -> (eps z) -> (eps z).
+
+  def bot : o.
+  [ ] eps bot --> z:o -> (eps z).
+
+  def not : o -> o := x:o => imp x bot.
+
+  def or : o -> o -> o.
+  [x, y] eps (or x y)
+          --> z:o -> (eps x -> eps z) -> (eps y -> eps z) -> eps z.
+
+  def fa_s : (s -> o) -> o.
+  [y] eps (fa_s y) --> x:s -> eps (y x).
+
+  def ex_s : (s -> o) -> o.
+  [y] eps (ex_s y) --> z:o -> (x:s -> eps (y x) -> (eps z)) -> eps z.
+
+alpha : Type.
+def atom : alpha -> o.
+def atom_c : alpha -> o := p: alpha => not (not (atom p)).
+def top_c : o := not (not top).
+def bot_c : o := not (not bot).
+def not_c : o -> o := x:o => (not (not (not x))).
+def and_c : o -> o -> o := x:o => y:o => not (not (and x y)).
+def or_c  : o -> o -> o := x:o => y:o => not (not (or x y)).
+def imp_c : o -> o -> o := x:o => y:o => not (not (imp x y)).
+def fa_s_c : (s -> o) -> o := x:(s -> o) => not (not (fa_s x)).
+def ex_s_c : (s -> o) -> o := x:(s -> o) => not (not (ex_s x)).
+
+def lem : p : alpha -> eps (or_c (atom_c p) (not_c (atom_c p))) :=
+ p => h0 : (eps (or (atom_c p) (not_c (atom_c p))) -> eps bot) =>
+ (h1 : eps (not (atom_c p)) =>
+  h0 (z =>
+      h_left =>
+      h_right =>
+      h_right (h => h h1)))
+ (h2 : eps (atom_c p) =>
+  h0 (z =>
+      h_left =>
+      h_right =>
+      h_left h2)).
+
+def Ror : A : o -> B : o ->
+          (eps A -> eps bot) ->
+          (eps B -> eps bot) ->
+          eps (or_c A B) -> eps bot
+   := A => B => HNA => HNB => HNNAB => HNNAB (HAB => HAB bot HNA HNB).
+
+
+def mem : s -> s -> alpha.
+
+def union : s -> s -> s.
+[a, b, x] atom (mem x (union a b))
+            --> (or (atom_c (mem x a)) (atom_c (mem x b))).

@@ -1,0 +1,7 @@
+#NAME Abstraction.
+
+A : Type.
+f: A -> A -> A.
+
+def g: A -> (A -> A).
+[x] g x --> (y => f y x).

@@ -1,0 +1,39 @@
+#NAME fixpoint.
+
+N : Type.
+0 : N.
+S : N -> N.
+
+def plus : N -> N -> N.
+[m]   plus 0     m --> m
+[n,m] plus (S n) m --> S (plus n m)
+[n]   plus n     0 --> n.
+
+def times : N -> N -> N.
+[m]   times 0     m     --> 0
+[n,m] times (S n) m     --> plus m (times n m).
+
+def 1 := S 0.
+def 2 := S 1.
+def 3 := S 2.
+def 4 := S 3.
+def 5 := S 4.
+def 6 := S 5.
+def 7 := S 6.
+def 8 := S 7.
+def 9 := S 8.
+def 10 := S 9.
+def 100  := times 10 10.
+def 1000 := times 10 100.
+
+def fix2 : ( (N -> N) -> (N -> N)) -> N -> N.
+[f] fix2 f --> f (fix2 f).
+
+def fac : (N -> N) -> (N -> N).
+[f]   fac f 0     --> S 0
+[f,n] fac f (S n) --> times (S n) (f n).
+
+def ffact := fix2 fac.
+
+#CONV ffact 5  , plus 100 (plus 10 10).
+#CONV ffact 100, plus 100 (plus 10 10).

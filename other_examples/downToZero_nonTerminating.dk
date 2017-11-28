@@ -1,0 +1,13 @@
+#NAME DownToZero.
+
+Nat : Type.
+
+0 : Nat.
+S : Nat -> Nat.
+
+def down : Nat -> Nat.
+[]  down 0     --> 0.
+[n] down (S n) --> down n.
+
+def w : Nat.
+[] w --> S w.

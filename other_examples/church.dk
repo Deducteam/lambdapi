@@ -1,0 +1,32 @@
+#NAME church.
+
+type : Type.
+arr : type -> type -> type.
+def e : type -> Type.
+[a,b] e (arr a b) --> e a -> e b.
+
+N : type.
+z : e N.
+s : e N -> e N.
+
+def numeral : Type := A : type -> (e A -> e A) -> (e A -> e A).
+
+def zero  : numeral := A : type => f : (e A -> e A) => x : e A => x.
+def one   : numeral := A : type => f : (e A -> e A) => f.
+def two   : numeral := A : type => f : (e A -> e A) => x : e A => f (f x).
+def three : numeral := A : type => f : (e A -> e A) => x : e A => f (f (f x)).
+
+def plus : numeral -> numeral -> numeral
+:= m : numeral => n : numeral => A : type => f : (e A -> e A) => x : e A => m A f (n A f x).
+
+def times : numeral -> numeral -> numeral
+:= m : numeral => n : numeral => A : type => f : (e A -> e A) => x : e A => m A (n A f) x.
+
+def power : numeral -> numeral -> numeral
+:= m : numeral => n : numeral => A : type => n (arr A A) (m A).
+
+def four : numeral := plus two two.
+def five : numeral := plus two three.
+
+#CONV 	( power two (times four five) ),
+	( power two (times five four) ).

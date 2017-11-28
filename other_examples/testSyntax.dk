@@ -1,0 +1,12 @@
+#NAME TestSyntax.
+
+o : Type.
+def f : o -> o.
+c : o.
+
+(;
+[x,g] f (g x) --> c.
+[g: o->o] f (g c) --> c.
+[g] f (x => g x c) --> c.
+[g] f (x => g (f x) (f c)) --> c.
+;)

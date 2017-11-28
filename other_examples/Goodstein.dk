@@ -1,0 +1,77 @@
+#NAME Goodstein.
+
+type : Type.
+eps : type -> Type.
+
+nat : type.
+def Nat := eps nat.
+0 : Nat.
+S : Nat -> Nat.
+
+bool : type.
+def Bool := eps bool.
+T : Bool.
+F : Bool.
+
+list : type.
+def List := esp list.
+Nil : List.
+Cons : Nat -> List -> List.
+
+couple : type.
+def Couple := eps couple.
+Pair : Nat -> List -> Couple.
+
+def plus : Nat -> Nat -> Nat.
+[n]   plus 0     n --> n.
+[m,n] plus (S m) n --> S (plus m n).
+
+def moins : Nat -> Nat -> Nat.
+[]    moins 0     _     --> 0.
+[m]   moins m     0     --> m.
+[m,n] moins (S m) (S n) --> moins m n.
+
+def mult : Nat -> Nat -> Nat.
+[]    mult 0     _ --> 0.
+[m,n] mult (S m) n --> plus n (mult m n).
+
+def expo : Nat -> Nat -> Nat.
+[]    expo 0     _ --> S 0.
+[m,n] expo (S m) n --> mult n (expo m n).
+
+def less : Nat -> Nat -> Bool.
+[]    less 0     0     --> F.
+[]    less 0     (S _) --> T.
+[m,n] less (S m) (S n) --> less m n.
+
+def eq : Nat -> Nat -> Bool.
+[]    eq 0     0     --> T.
+[]    eq 0     (S _) --> F.
+[m,n] eq (S m) (S n) --> eq m n.
+
+def quo : Nat -> Nat -> Nat.
+def quo_bis : Nat -> Bool -> Nat -> Nat -> Nat.
+[m,n]   quo m n --> quo_bis 0  (less m n) m n.
+
+[a,m,n] quo_bis a F m n --> quo_bis (S a) (less (moins m n) n) (moins m n) n.
+[a]     quo_bis a T _ _ --> a.
+
+def remainder : Nat -> Nat -> Nat.
+def rmd_bis : Bool -> Nat -> Nat -> Nat.
+[m,n] remainder m n --> rmd_bis (less m n) m n.
+
+[m,n] rmd_bis T m n --> m.
+[m,n] rmd_bis F m n --> rmd_bis (less (moins m n) n) (moins m n) n.
+
+def while : A : type -> (eps A -> Bool) -> (eps A -> eps A) -> eps A -> eps A.
+def while_aux : A : type -> Bool -> (eps A -> Bool) -> (eps A -> eps A) -> eps A -> eps A.
+[A,test,fct,ctx] while A test fct ctx --> while_aux A (test ctx) test fct ctx.
+
+[A,test,fct,ctx] while_aux A T test fct ctx --> while A test fct (fct ctx).
+[ctx]            while_aux _ F _    _   ctx --> ctx.
+
+def fst : Couple -> Nat.
+[n] fst (Pair n _) --> n.
+
+def snd : Couple -> List.
+[l] snd (Pair _ l) --> l.
