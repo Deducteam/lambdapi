@@ -1,10 +1,12 @@
+#REQUIRE other_examples.firstOrder.
+
 #NAME nat_prop.
 
 (;-------------------------------------------;)
 (;          Nat as first order terms         ;)
 (;-------------------------------------------;)
 
-def N := FO.Term.
+def N := other_examples.firstOrder.Term.
 
 0 : N.
 S : N -> N.
@@ -59,9 +61,9 @@ def 1000 := exp 10 3.
 (;      Shortnames for logic operators       ;)
 (;-------------------------------------------;)
 
-def prf := FO.prf.
-def Prop := FO.Prop.
-def eq := FO.equals.
+def prf := other_examples.firstOrder.prf.
+def Prop := other_examples.firstOrder.Prop.
+def eq := other_examples.firstOrder.equals.
 
 
 (;-------------------------------------------;)
@@ -81,13 +83,13 @@ def N_ind_prop :
 (;           A couple of theorems            ;)
 (;-------------------------------------------;)
 
-def is_pos : N -> Prop := (n:N => FO.exists (m : N => eq (S m) n)).
-def    succ_is_pos_thm : Prop := FO.forall (n : N => is_pos (S n)).
+def is_pos : N -> Prop := (n:N => other_examples.firstOrder.exists (m : N => eq (S m) n)).
+def    succ_is_pos_thm : Prop := other_examples.firstOrder.forall (n : N => is_pos (S n)).
 def sum_pos_is_pos_thm : Prop :=
-  FO.forall (n : N => FO.imp (is_pos n)
-							 (FO.forall (m : N => is_pos (plus n m)))).
-def fact_is_pos_thm : Prop := FO.forall (n : N => (is_pos (fact n))).
-def  ack_is_pos_thm : Prop := FO.forall (n : N => FO.forall (m : N => (is_pos (ack n m)))).
+  other_examples.firstOrder.forall (n : N => other_examples.firstOrder.imp (is_pos n)
+							 (other_examples.firstOrder.forall (m : N => is_pos (plus n m)))).
+def fact_is_pos_thm : Prop := other_examples.firstOrder.forall (n : N => (is_pos (fact n))).
+def  ack_is_pos_thm : Prop := other_examples.firstOrder.forall (n : N => other_examples.firstOrder.forall (m : N => (is_pos (ack n m)))).
 
 
 (;-------------------------------------------;)
@@ -101,7 +103,9 @@ def succ_is_pos : prf succ_is_pos_thm :=
   f n (Q : (N -> Prop) => p : prf (Q (S n)) => p).
 
 def    1_is_pos : prf (is_pos 1)    := succ_is_pos 0.
+(; FIXME does not terminate, should fix evaluation.
 def f100_is_pos : prf (is_pos (fact 100)) := succ_is_pos (pred (fact 100)).
+;)
 
 def sum_pos_is_pos : prf sum_pos_is_pos_thm :=
   n : N =>
@@ -130,11 +134,11 @@ def f100_is_pos2 : prf (is_pos (fact 100)) := fact_is_pos 100.
 
 def ack_is_pos : prf ack_is_pos_thm :=
   N_ind_prop
-	(n : N => FO.forall (m : N => is_pos (ack n m)))
+	(n : N => other_examples.firstOrder.forall (m : N => is_pos (ack n m)))
 	(m : N => (succ_is_pos m))
 	(
 	  n : N =>
-	  p : prf (FO.forall (m : N => (is_pos (ack n m)))) =>
+	  p : prf (other_examples.firstOrder.forall (m : N => (is_pos (ack n m)))) =>
 	  N_ind_prop
 		(m : N => is_pos (ack (S n) m))
 		(p 1)

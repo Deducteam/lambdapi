@@ -10,5 +10,5 @@ a : T.
    will fail in this situation.
    This test will be removed in the future. ;)
 
-def f : T -> qualpat.T.
-[] f qualpat.a --> a.
+def f : T -> other_examples.identifyingSameModule.T.
+[] f other_examples.identifyingSameModule.a --> a.
