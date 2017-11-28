@@ -36,24 +36,3 @@ module Array =
     let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
       List.pp pp_elt sep oc (to_list a)
   end
-
-module Bindlib =
-  struct
-    include Bindlib
-
-    (** [unbind2 mkfree f g] is similar to [unbind mkfree f],  but substitutes
-        both [f] and [g] using the same fresh variable. *)
-    let unbind2 : ('a var -> 'a) -> ('a,'b) binder -> ('a,'c) binder
-        -> 'a var * 'b * 'c =
-      fun mkfree b1 b2 ->
-        let x = new_var mkfree (binder_name b1) in
-        let v = mkfree x in
-        (x, subst b1 v, subst b2 v)
-
-    (** [eq_binder eq f g] tests the equality between [f] and [g]. The binders
-        are first substituted with the same fresh variable, and [eq] is called
-        on the resulting terms. *)
-    let eq_binder : ('a var -> 'a) -> 'b eq -> ('a,'b) Bindlib.binder eq =
-      fun mkfree eq f g -> f == g ||
-        let (x,t,u) = unbind2 mkfree f g in eq t u
-  end
