@@ -23,7 +23,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   (* Sort *)
   | Type        -> eq_modulo c Kind
   (* Variable *)
-  | Vari(x)     -> eq_modulo (try Ctxt.find x ctx with _ -> assert false) c
+  | Vari(x)     -> (try eq_modulo (Ctxt.find x ctx) c with _ ->
+                      wrn "BUG0 (%a not in context) \n" pp_tvar x; false)
   (* Symbol *)
   | Symb(s)     -> eq_modulo (symbol_type s) c
   (* Product *)
@@ -37,7 +38,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
         match eval c with
         | Type -> true
         | Kind -> true
-        | _     -> wrn "BUG 1\n"; false
+        | a     -> wrn "BUG1 ([%a] not a sort)\n" pp a; false
       end
   (* Abstraction *)
   | Abst(_,a,t) ->
@@ -59,7 +60,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
               match infer sign ctx_x bx with
               | Some(Type) -> true
               | Some(Kind) -> true
-              | _          -> wrn "BUG 2\n"; false
+              | Some(a)    -> wrn "BUG2 ([%a] not a sort)\n" pp a; false
+              | None       -> wrn "BUG2 (cannot infer sort)\n"; false
             end
         | Prod(_,c,b) ->
             let bx = subst b (mkfree x) in
@@ -71,7 +73,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
               match infer sign ctx_x bx with
               | Some(Type) -> true
               | Some(Kind) -> true
-              | _          -> wrn "BUG 3\n"; false
+              | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
+              | None       -> wrn "BUG3 (cannot infer sort)\n"; false
             end
         | c           ->
             err "Product type expected, found [%a]...\n" pp c;
