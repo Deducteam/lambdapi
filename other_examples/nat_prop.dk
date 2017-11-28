@@ -151,4 +151,4 @@ def ack_is_pos : prf ack_is_pos_thm :=
 (; 
 #WHNF fact_is_pos (exp 10 2).
 #WHNF ack_is_pos 3 4.
-(;;)
+;)
