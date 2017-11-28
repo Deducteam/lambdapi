@@ -20,8 +20,8 @@ let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
   output_string oc full
 
 let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
-  (* output_string oc (Bindlib.name_of x) *)
-  Printf.fprintf oc "%s{%i}" (Bindlib.name_of x) (Bindlib.uid_of x)
+  output_string oc (Bindlib.name_of x)
+  (* Printf.fprintf oc "%s{%i}" (Bindlib.name_of x) (Bindlib.uid_of x) *)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
