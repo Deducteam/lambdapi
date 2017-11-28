@@ -11,7 +11,7 @@ SHELL = /bin/bash
 all: lambdapi.native unit_tests tests
 
 lambdapi.native: $(wildcard *.ml)
-	@echo "[OPT] $^ → $@"
+	@echo "[OPT] $@"
 	@$(OCAMLBUILD) $@
 
 .PHONY: tests

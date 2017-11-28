@@ -110,7 +110,7 @@ let parser ty_ident = id:ident a:{":" expr}?
 let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 
 (** [rule] is a parser for a single rewriting rule. *)
-let parser rule = "[" xs:context "]" t:expr "-->" u:expr
+let parser rule = _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
 
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
 let parser def_def =
@@ -143,6 +143,9 @@ let parser cmd =
   | c:"#NAME" _:ident                    -> P_Other(c)
   | c:"#STEP" _:expr                     -> P_Other(c)
   | c:"#SNF" _:expr                      -> P_Other(c)
+  | c:"#WHNF" _:expr                     -> P_Other(c)
+  | c:"#HNF" _:expr                      -> P_Other(c)
+  | c:"#NSTEPS" "#"-''[0-9]+'' _:expr    -> P_Other(c)
 
 (** Blank function for basic blank characters (' ', '\t', '\r' and '\n')
     and line comments starting with "//". *)
