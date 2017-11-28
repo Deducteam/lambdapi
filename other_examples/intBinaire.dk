@@ -1,12 +1,14 @@
+#REQUIRE other_examples.natBinaire.
+
 #NAME IntBinaire.
 
 Int : Type.
 
-def Nat := Nat.Nat.
-def Bool := Nat.Bool.
+def Nat := other_examples.natBinaire.Nat.
+def Bool := other_examples.natBinaire.Bool.
 
-def T := Nat.T.
-def F := Nat.F.
+def T := other_examples.natBinaire.T.
+def F := other_examples.natBinaire.F.
 
 0 : Int.
 Pos : Nat -> Int.
@@ -19,10 +21,10 @@ def ifThenElse : Bool -> Int -> Int -> Int.
 def plus : Int -> Int -> Int.
 [x]   plus x       0       --> x.
 [y]   plus 0       y       --> y.
-[x,y] plus (Pos x) (Pos y) --> Pos (Nat.plus x y).
-[x,y] plus (Pos x) (Neg y) --> ifThenElse (Nat.greater x y) (Pos (Nat.moins x y)) (ifThenElse (Nat.eq x y) 0 (Neg (Nat.moins y x))).
-[x,y] plus (Neg x) (Pos y) --> ifThenElse (Nat.greater x y) (Neg (Nat.moins x y)) (ifThenElse (Nat.eq x y) 0 (Pos (Nat.moins y x))).
-[x,y] plus (Neg x) (Neg y) --> Neg (Nat.plus x y).
+[x,y] plus (Pos x) (Pos y) --> Pos (other_examples.natBinaire.plus x y).
+[x,y] plus (Pos x) (Neg y) --> ifThenElse (other_examples.natBinaire.greater x y) (Pos (other_examples.natBinaire.moins x y)) (ifThenElse (other_examples.natBinaire.eq x y) 0 (Neg (other_examples.natBinaire.moins y x))).
+[x,y] plus (Neg x) (Pos y) --> ifThenElse (other_examples.natBinaire.greater x y) (Neg (other_examples.natBinaire.moins x y)) (ifThenElse (other_examples.natBinaire.eq x y) 0 (Pos (other_examples.natBinaire.moins y x))).
+[x,y] plus (Neg x) (Neg y) --> Neg (other_examples.natBinaire.plus x y).
 
 def moins : Int -> Int -> Int.
 [x]   moins x 0 --> x.
@@ -32,20 +34,20 @@ def moins : Int -> Int -> Int.
 def mult : Int -> Int -> Int.
 []    mult 0       _       --> 0.
 []    mult _       0       --> 0.
-[x,y] mult (Pos x) (Pos y) --> Pos (Nat.mult x y).
-[x,y] mult (Pos x) (Neg y) --> Neg (Nat.mult x y).
-[x,y] mult (Neg x) (Pos y) --> Neg (Nat.mult x y).
-[x,y] mult (Neg x) (Neg y) --> Pos (Nat.mult x y).
+[x,y] mult (Pos x) (Pos y) --> Pos (other_examples.natBinaire.mult x y).
+[x,y] mult (Pos x) (Neg y) --> Neg (other_examples.natBinaire.mult x y).
+[x,y] mult (Neg x) (Pos y) --> Neg (other_examples.natBinaire.mult x y).
+[x,y] mult (Neg x) (Neg y) --> Pos (other_examples.natBinaire.mult x y).
 
 def geq : Int -> Int -> Bool.
 []    geq 0       0       --> T.
 [y]   geq 0       (Pos y) --> F.
 [y]   geq 0       (Neg y) --> T.
 [x]   geq (Pos x) 0       --> T.
-[x,y] geq (Pos x) (Pos y) --> Nat.geq x y.
+[x,y] geq (Pos x) (Pos y) --> other_examples.natBinaire.geq x y.
 [x,y] geq (Pos x) (Neg y) --> T.
 [x]   geq (Neg x) 0       --> F.
 [x,y] geq (Neg x) (Pos y) --> F.
-[x,y] geq (Neg x) (Neg y) --> Nat.geq y x.
+[x,y] geq (Neg x) (Neg y) --> other_examples.natBinaire.geq y x.
 
-#WHNF mult (Pos (Nat.x2 (Nat.x2plus1 Nat.1))) (Pos (Nat.x2 Nat.1)).
+#WHNF mult (Pos (other_examples.natBinaire.x2 (other_examples.natBinaire.x2plus1 other_examples.natBinaire.1))) (Pos (other_examples.natBinaire.x2 other_examples.natBinaire.1)).
