@@ -63,4 +63,5 @@ let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
 (** [pp_ctxt oc ctx] prints the context [ctx] to the channel [oc]. *)
 let pp_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
   let pp_e oc (x,a) = Printf.fprintf oc "%s : %a" (Bindlib.name_of x) pp a in
-  if ctx = [] then output_string oc "∅" else List.pp pp_e ", " oc ctx
+  if ctx = [] then output_string oc "∅"
+  else List.pp pp_e ", " oc (List.rev ctx)
