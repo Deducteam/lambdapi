@@ -113,8 +113,15 @@ let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 let parser rule = "[" xs:context "]" t:expr "-->" u:expr
 
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
-let parser def_def = xs:{"(" ident ":" expr ")"}* ":=" t:expr ->
-  List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t)) xs t
+let parser def_def =
+  xs:{"(" ident ":" expr ")"}* ao:{":" ao:expr}? ":=" t:expr ->
+    let t = List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t)) xs t in
+    let ao =
+      match ao with
+      | None    -> None
+      | Some(a) -> Some(List.fold_right (fun (x,a) b -> P_Prod(x,a,b)) xs a)
+    in
+    (ao, t)
 
 (** [mod_path] is a parser for a module path. *)
 let parser mod_path = path:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
@@ -124,8 +131,7 @@ let parser mod_path = path:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
 let parser cmd =
   | x:ident ":" a:expr                   -> P_NewSym(x,a)
   | "def" x:ident ":" a:expr             -> P_NewDef(x,a)
-  | "def" x:ident ":" a:expr ":=" t:expr -> P_Defin(x,Some(a),t)
-  | "def" x:ident t:def_def              -> P_Defin(x,None   ,t)
+  | "def" x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
   | rs:rule+                             -> P_Rules(rs)
   | "#REQUIRE" path:mod_path             -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)
