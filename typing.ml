@@ -1,146 +1,150 @@
 (** Type-checking and inference. *)
 
+open Bindlib
 open Console
 open Terms
 open Print
 open Eval
 
 (* [infer sign ctx t] tries to infer a type for the term [t], in context [ctx]
-   and with the signature [sign].  The exception [Not_found] is raised when no
-   suitable type is found. *)
-let rec infer : Sign.t -> Ctxt.t -> term -> term = fun sign ctx t ->
-  let rec infer ctx t =
-    let t = unfold t in
-    if !debug_infr then log "INFR" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
-    let a =
-      match t with
-      | Vari(x)     -> Ctxt.find x ctx
-      | Type        -> Kind
-      | Symb(s)     -> symbol_type s
-      | Prod(_,a,b) ->
-          begin
-            let (x,b) = Bindlib.unbind mkfree b in
-            match unfold (infer (Ctxt.add x a ctx) b) with
-            | Kind -> Kind
-            | Type -> Type
-            | c    -> err "Sort expected for [%a], found [%a]...\n" pp b pp c;
-                      raise Not_found
-          end
-      | Abst(_,a,t) ->
-          begin
-            let (x,tx) = Bindlib.unbind mkfree t in
-            let b = infer (Ctxt.add x a ctx) tx in
-            prod a (Bindlib.unbox (Bindlib.bind_var x (lift b)))
-          end
-      | Appl(_,t,u) ->
-          begin
-            match infer ctx t with
-            | Prod(_,a,b) ->
-                if has_type sign ctx u a then Bindlib.subst b u else
-                begin
-                  err "Cannot show [%a : %a]...\n" pp u pp a;
-                  raise Not_found
-                end
-            | a           ->
-                err "Product expected for [%a], found [%a]...\n" pp t pp a;
-                raise Not_found
-          end
-      | Kind        -> assert false
-      | Unif(_)     -> assert false
-      | ITag(_)     -> assert false
-    in
-    if !debug_infr then log "INFR" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
-    eval a
-  in
-  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
-  let res = infer ctx t in
-  if !debug then log "infr" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp res;
-  res
+   and with the signature [sign]. [Some a] is returned if type [a] is inferred
+   and [None] is returned otherwise. *)
+let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
+  let env = List.map (fun (x,_) -> box_of_var x) ctx in
+  let a = unbox (_Unif (new_unif ()) (Array.of_list env)) in
+  if has_type sign ctx t a then Some(eval a) else None
 
 (* [has_type sign ctx t a] checks whether the term [t] has type [a] in context
    [ctx] and with the signature [sign]. *)
-and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t a ->
-  let rec has_type ctx t a =
-    let t = unfold t in
-    let a = eval a in
-    if !debug_type then log "TYPE" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
-    let res =
-      match (t, a) with
-      (* Sort *)
-      | (Type       , Kind       ) -> true
-      (* Variable *)
-      | (Vari(x)    , a          ) -> eq_modulo (Ctxt.find x ctx) a
-      (* Symbol *)
-      | (Symb(s)    , a          ) -> eq_modulo (symbol_type s) a
-      (* Product *)
-      | (Prod(_,a,b), s          ) ->
-          let (x,bx) = Bindlib.unbind mkfree b in
-          let ctx_x =
-            if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx
-          in
-          has_type ctx a Type && has_type ctx_x bx s
-          && (eq s Type || eq s Kind)
-      (* Abstraction *)
-      | (Abst(_,a,t), Prod(_,c,b)) ->
-          let (x,tx) = Bindlib.unbind mkfree t in
-          let bx = Bindlib.subst b (mkfree x) in
-          let ctx_x = Ctxt.add x a ctx in
-          eq_modulo a c && has_type ctx a Type
-          && (has_type ctx_x bx Type || has_type ctx_x bx Kind)
-          && has_type ctx_x tx bx
-      (* Application *)
-      | (Appl(_,t,u), b          ) ->
-          begin
-            let tt =
-              try infer sign ctx t with Not_found ->
-                wrn "Cannot infer the type of [%a]\n%!" pp t;
-                raise Not_found
-            in
-            match tt with
-            | Prod(_,a,ba)  ->
-                eq_modulo (Bindlib.subst ba u) b
-                && has_type ctx t tt && has_type ctx u a
-            | Unif(i,r,env) ->
-                let a = Unif(i, ref None, env) in
-                let b = Bindlib.bind mkfree "_" (fun _ -> lift b) in
-                let b = prod a (Bindlib.unbox b) in
-                assert(unify r env b);
-                has_type ctx t tt && has_type ctx u a
-            | _             -> false
-          end
-      (* No rule apply. *)
-      | (_          , _          ) -> false
-    in
-    if !debug_type then
-      log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
-    res
+and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
+  if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
+  let res =
+  match unfold t with
+  (* Sort *)
+  | Type        -> eq_modulo c Kind
+  (* Variable *)
+  | Vari(x)     -> eq_modulo (try Ctxt.find x ctx with _ -> assert false) c
+  (* Symbol *)
+  | Symb(s)     -> eq_modulo (symbol_type s) c
+  (* Product *)
+  | Prod(_,a,b) ->
+      let (x,bx) = unbind mkfree b in
+      (* FIXME bug here. *)
+      let ctx_x = if binder_occur b then Ctxt.add x a ctx else ctx in
+      has_type sign ctx a Type &&
+      has_type sign ctx_x bx c &&
+      begin
+        match eval c with
+        | Type -> true
+        | Kind -> true
+        | _     -> wrn "BUG 1\n"; false
+      end
+  (* Abstraction *)
+  | Abst(_,a,t) ->
+      begin
+        let (x,tx) = unbind mkfree t in
+        match eval c with
+        | Unif(i,r,e) ->
+            let r1 = new_unif () in
+            let fn x = Unif(i, r1, Array.append e [|x|]) in
+            let bx = box_apply fn (box_of_var x) in
+            let b = unbox (bind_var x bx) in
+            let c = prod a b in
+            let ctx_x = Ctxt.add x a ctx in
+            let bx = unbox bx in
+            unify r e c &&
+            has_type sign ctx a Type &&
+            has_type sign ctx_x tx bx &&
+            begin
+              match infer sign ctx_x bx with
+              | Some(Type) -> true
+              | Some(Kind) -> true
+              | _          -> wrn "BUG 2\n"; false
+            end
+        | Prod(_,c,b) ->
+            let bx = subst b (mkfree x) in
+            let ctx_x = Ctxt.add x a ctx in
+            eq_modulo a c &&
+            has_type sign ctx a Type &&
+            has_type sign ctx_x tx bx &&
+            begin
+              match infer sign ctx_x bx with
+              | Some(Type) -> true
+              | Some(Kind) -> true
+              | _          -> wrn "BUG 3\n"; false
+            end
+        | c           ->
+            err "Product type expected, found [%a]...\n" pp c;
+            false
+      end
+  (* Application *)
+  | Appl(_,t,u) ->
+      begin
+        match infer sign ctx t with
+        | Some(Prod(_,a,ba))  ->
+            eq_modulo (Bindlib.subst ba u) c
+            && has_type sign ctx u a
+        | Some(Unif(i,r,env)) ->
+            let a = Unif(i, new_unif (), env) in
+            let b = Bindlib.bind mkfree "_" (fun _ -> lift c) in
+            let b = prod a (Bindlib.unbox b) in
+            assert(unify r env b);
+            has_type sign ctx u a
+        | Some(a)             ->
+            err "Product type expected for [%a], found [%a]..." pp t pp a;
+            false
+        | None                ->
+            wrn "Cannot infer the type of [%a]\n%!" pp t;
+            false
+      end
+  (* No rule apply. *)
+  | Kind        -> assert false
+  | ITag(_)     -> assert false
+  | Unif(_,_,_) -> assert false
   in
-  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp a;
-  let res = try has_type ctx t a with Not_found -> false in
-  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a;
+  if !debug_type then
+    log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
+  res
+
+let infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
+  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
+  let res = infer sign ctx t in
+  if !debug then
+    begin
+      match res with
+      | Some(a) -> log "infr" (gre "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a
+      | None    -> err "Cannot infer the type of [%a]\n" pp t
+    end;
+  res
+
+let has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
+  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
+  let res = has_type sign ctx t c in
+  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
 (* [infer_with_constrs sign ctx t] is similar to [infer sign ctx t], but it is
    run in constraint mode (see [constraints]).  In case of success a couple of
-   a type and a set of constraints is returned. In case of failure [Not_found]
-   is raised. *)
-let infer_with_constrs : Sign.t -> Ctxt.t -> term -> term * constrs =
+   a type and a set of constraints is returned. *)
+let infer_with_constrs : Sign.t -> Ctxt.t -> term -> (term * constrs) option =
   fun sign ctx t ->
     constraints := Some [];
-    let a = infer sign ctx t in
-    let cnstrs = match !constraints with Some cs -> cs | None -> [] in
-    constraints := None;
-    if !debug_patt then
-      begin
-        log "patt" "inferred type [%a] for [%a]" pp a pp t;
-        let fn (x,a) =
-          log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) pp a
-        in
-        List.iter fn ctx;
-        let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
-        List.iter fn cnstrs
-      end;
-    (a, cnstrs)
+    match infer sign ctx t with
+    | None   -> constraints := None; None
+    | Some a ->
+        let cnstrs = match !constraints with Some cs -> cs | None -> [] in
+        constraints := None;
+        if !debug_patt then
+        begin
+          log "patt" "inferred type [%a] for [%a]" pp a pp t;
+          let fn (x,a) =
+            log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) pp a
+          in
+          List.iter fn (List.rev ctx);
+          let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
+          List.iter fn cnstrs
+        end;
+        Some(a, cnstrs)
 
 (* [subst_from_constrs cs] builds a //typing substitution// from the  list  of
    constraints [cs].  The returned substitution is given by a couple of arrays
@@ -187,6 +191,8 @@ let eq_modulo_constrs : constrs -> term -> term -> bool =
    to variable [x]. The result may be either [Type] or [Kind]. If [a] is not a
    well-sorted type, then the program fails gracefully. *)
 let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
-  if has_type sign Ctxt.empty a Type then Type else
-  if has_type sign Ctxt.empty a Kind then Kind else
-  fatal "%s is neither of type Type nor Kind.\n" x
+  match infer sign Ctxt.empty a with
+  | Some(Kind) -> Kind
+  | Some(Type) -> Type
+  | Some(a)    -> fatal "%s is neither of type Type nor Kind.\n" x
+  | None       -> fatal "cannot infer the sort of %s.\n" x

@@ -3,7 +3,13 @@ open Console
 open Terms
 open Print
 
-(* [occurs r t] checks whether the unification variable [r] occurs in [t]. *)
+let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
+  assert(u.value = None); u.value <- Some(v);
+  if !debug then
+    let (env,a) = Bindlib.unmbind mkfree v in
+    log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
+
+(* [occurs u t] checks whether the unification variable [u] occurs in [t]. *)
 let rec occurs : unif -> term -> bool = fun r t ->
   match unfold t with
   | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
@@ -16,21 +22,21 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Symb(_)     -> false
   | ITag(_)     -> false
 
-(* [unify r t] tries to unify [r] with [t],  and returns a boolean to indicate
+(* [unify u t] tries to unify [u] with [t],  and returns a boolean to indicate
    whether it succeeded or not. *)
-let unify : unif -> term array -> term -> bool = fun r env a ->
-  assert (!r = None);
-  not (occurs r a) &&
+let unify : unif -> term array -> term -> bool = fun u env a ->
+  assert (u.value = None);
+  not (occurs u a) &&
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
-  assert (Bindlib.is_closed b); r := Some(Bindlib.unbox b); true
+  assert (Bindlib.is_closed b); set_unif u (Bindlib.unbox b); true
 
 type eval_fun = term -> term list -> term * term list
 
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
    be instantiated in the process. *)
 let eq : term -> term -> bool = fun a b ->
-  if !debug then log "equa" "%a =!= %a" pp a pp b;
+  (*if !debug_eq then log "equa" "%a =!= %a" pp a pp b;*)
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
     match (unfold a, unfold b) with
@@ -42,14 +48,17 @@ let eq : term -> term -> bool = fun a b ->
     | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder f g
     | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
     | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (Unif(_,r1,e1), Unif(_,r2,e2)) when r1 == r2 -> Array.for_all2 eq e1 e2
-    | (Unif(_,r,e)  , b            ) -> unify r e b
-    | (a            , Unif(_,r,e)  ) -> unify r e a
+    | (Unif(_,u1,e1), Unif(_,u2,e2)) when u1 == u2 -> Array.for_all2 eq e1 e2
+    | (Unif(_,u,e)  , b            ) -> unify u e b
+    | (a            , Unif(_,u,e)  ) -> unify u e a
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
   in
+  (*
   let res = eq a b in
-  if !debug then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
+  if !debug_eq then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
+  *)
+  eq a b
 
 (* Representation of equality constraints. *)
 type constrs = (term * term) list

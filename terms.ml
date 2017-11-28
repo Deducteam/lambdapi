@@ -1,5 +1,6 @@
 (** Term representation. *)
 
+open Console
 open Files
 
 (** Representation of terms (and type). *)
@@ -69,7 +70,9 @@ type term =
    that its pattern variables should have been substituted at this point. *)
 
 (** Representation of a unification variable (or meta-variable). *)
- and unif = (term, term) Bindlib.mbinder option ref
+ and unif =
+   { key           : int
+   ; mutable value : (term, term) Bindlib.mbinder option }
 
 (* NOTE a unification variables is represented using a multiple binder. Hence,
    it can be instanciated with an open term, which free variables are bound in
@@ -81,11 +84,19 @@ type term =
  and info =
   { closed : bool (** Set to [true] if the corresponding term is closed. *) }
 
+(** [new_unif ()] creates a fresh unification variable. *)
+let new_unif : unit -> unif =
+  let c = ref (-1) in
+  fun () ->
+    incr c;
+    if !debug then log "unif" "?%i created" !c;
+    { key = !c ; value = None }
+
 (** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif(_, {contents = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
-  | _                                 -> t
+  | Unif(_, {value = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
+  | _                              -> t
 
 (** Short name for term variables. *)
 type tvar = term Bindlib.var
@@ -130,13 +141,13 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let closed = Bindlib.is_closed a && Bindlib.is_closed b in
   Bindlib.box_apply2 (fun a b -> Abst({closed},a,b)) a b
 
-(** [_Unif r ar] lifts a unification variable to the [bindbox] type, given its
-    pointer [r] and environment [ar]. The unification variable should not have
-    been already instanciated when calling this function. *)
-let _Unif : unif -> tbox array -> tbox = fun r ar ->
-  assert(!r = None);
+(** [_Unif u ar] lifts a unification variable [u] to the [bindbox] type, given
+    its environment [ar]. The unification variable should not  be instanciated
+    when calling this function. *)
+let _Unif : unif -> tbox array -> tbox = fun u ar ->
+  assert(u.value = None);
   let closed = Array.for_all Bindlib.is_closed ar in
-  Bindlib.box_apply (fun ar -> Unif({closed},r,ar)) (Bindlib.box_array ar)
+  Bindlib.box_apply (fun ar -> Unif({closed},u,ar)) (Bindlib.box_array ar)
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
 

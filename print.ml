@@ -19,34 +19,38 @@ let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
   in
   output_string oc full
 
+let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
+  (* output_string oc (Bindlib.name_of x) *)
+  Printf.fprintf oc "%s{%i}" (Bindlib.name_of x) (Bindlib.uid_of x)
+
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
   let pstring = output_string oc in
   let pformat fmt = Printf.fprintf oc fmt in
-  let name = Bindlib.name_of in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let t = unfold t in
     match (t, p) with
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)    , _    )   -> pstring (name x)
-    | (Type       , _    )   -> pstring "Type"
-    | (Kind       , _    )   -> pstring "Kind"
-    | (Symb(s)    , _    )   -> pp_symbol oc s
-    | (Unif(_,_,e), _    )   -> pformat "?[%a]" (Array.pp (pp `Appl) ",") e
-    | (ITag(i)    , _    )   -> pformat "[%i]" i
+    | (Vari(x)    , _    ) -> pp_tvar oc x
+    | (Type       , _    ) -> pstring "Type"
+    | (Kind       , _    ) -> pstring "Kind"
+    | (Symb(s)    , _    ) -> pp_symbol oc s
+    | (Unif(_,u,e), _    ) -> pformat "?%i[%a]" u.key
+                                (Array.pp (pp `Appl) ",") e
+    | (ITag(i)    , _    ) -> pformat "[%i]" i
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(_,t,u), `Appl)
     | (Appl(_,t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(_,a,t), `Func)   ->
+    | (Abst(_,a,t), `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
-        pformat "%s:%a => %a" (name x) (pp `Func) a (pp `Func) t
-    | (Prod(_,a,b), `Func)   ->
+        pformat "%a:%a => %a" pp_tvar x (pp `Func) a (pp `Func) t
+    | (Prod(_,a,b), `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
-        let x = if Bindlib.binder_occur b then (name x) ^ ":" else "" in
-        pformat "%s%a -> %a" x (pp `Appl) a (pp `Func) c
+        if Bindlib.binder_occur b then pformat "%a:" pp_tvar x;
+        pformat "%a -> %a" (pp `Appl) a (pp `Func) c
     (* Anything else needs parentheses. *)
-    | (_          , _    )   -> pformat "(%a)" (pp `Func) t
+    | (_          , _    ) -> pformat "(%a)" (pp `Func) t
   in
   pp `Func oc (Bindlib.unbox (lift t))
 
@@ -62,6 +66,6 @@ let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
 
 (** [pp_ctxt oc ctx] prints the context [ctx] to the channel [oc]. *)
 let pp_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
-  let pp_e oc (x,a) = Printf.fprintf oc "%s : %a" (Bindlib.name_of x) pp a in
+  let pp_e oc (x,a) = Printf.fprintf oc "%a : %a" pp_tvar x pp a in
   if ctx = [] then output_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)

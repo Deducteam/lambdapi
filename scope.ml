@@ -45,7 +45,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             match a with
             | None    -> let fn (_,x) = Bindlib.box_of_var x in
                          let vars = List.map fn vars in
-                         _Unif (ref None) (Array.of_list vars)
+                         _Unif (new_unif ()) (Array.of_list vars)
             | Some(a) -> scope vars a
           in
           _Abst a x f
@@ -114,7 +114,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
         with Not_found ->
           let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in
-          Bindlib.unbox (_Unif (ref None) (Array.of_list vars))
+          Bindlib.unbox (_Unif (new_unif ()) (Array.of_list vars))
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
@@ -164,7 +164,12 @@ let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
         let t = to_term sign t in
         let a =
           match a with
-          | None    -> Typing.infer sign Ctxt.empty t
+          | None    ->
+              begin
+                match Typing.infer sign Ctxt.empty t with
+                | Some(a) -> a
+                | None    -> fatal "Unable to infer the type of [%a]\n" pp t
+              end
           | Some(a) -> to_term sign a
         in
         Defin(x, a, t)

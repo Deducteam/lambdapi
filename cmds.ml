@@ -40,13 +40,15 @@ let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
 let check_rule sign (ctx, s, t, u, rule) =
   (* Infer the type of the LHS and the constraints. *)
   let (tt, tt_constrs) =
-    try Typing.infer_with_constrs sign ctx t with Not_found ->
-      fatal "Unable to infer the type of [%a]\n" pp t
+    match Typing.infer_with_constrs sign ctx t with
+    | Some(a) -> a
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp t
   in
   (* Infer the type of the RHS and the constraints. *)
   let (tu, tu_constrs) =
-    try Typing.infer_with_constrs sign ctx u with Not_found ->
-      fatal "Unable to infer the type of [%a]\n" pp u
+    match Typing.infer_with_constrs sign ctx u with
+    | Some(a) -> a
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp u
   in
   (* Checking the implication of constraints. *)
   let check_constraint (a,b) =
@@ -80,8 +82,9 @@ let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> unit = fun sign t ->
-  try out 2 "(infr) %a : %a\n" pp t pp (Typing.infer sign Ctxt.empty t)
-  with Not_found -> fatal "%a : unable to infer\n%!" pp t
+  match Typing.infer sign Ctxt.empty t with
+  | Some(a) -> out 2 "(infr) %a : %a\n" pp t pp a
+  | None    -> fatal "%a : unable to infer\n%!" pp t
 
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> unit = fun sign t ->
