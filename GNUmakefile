@@ -8,11 +8,13 @@ OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
 
-all: lambdapi.native unit_tests tests
+all: lambdapi.native unit_tests
 
 lambdapi.native: $(wildcard *.ml)
 	@echo "[OPT] $@"
 	@$(OCAMLBUILD) $@
+	@echo -n "Number of lines:"
+	@wc -l *.ml | tail -n 1
 
 .PHONY: tests
 tests: lambdapi.native
@@ -22,8 +24,6 @@ tests: lambdapi.native
 		echo "$$file" ; \
 		./lambdapi.native --verbose 0 $$file ; \
 	done
-	@echo -n "Number of lines:"
-	@wc -l *.ml | tail -n 1
 
 .PHONY: matita
 matita: lambdapi.native $(MATITAFILES)
