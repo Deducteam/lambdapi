@@ -9,7 +9,10 @@ term : type -> Type.
 def App : a : type -> b : type -> term (arrow a b) -> term a -> term b.
 Lam : a : type -> b : type -> (term a -> term b) -> term (arrow a b).
 
+(; FIXME does not work with the η-expansion.
 [f,arg] App _ _ (Lam _ _ (x => f x)) arg --> f arg.
+;)
+[f,arg] App _ _ (Lam _ _ f) arg --> f arg.
 
 c:term o.
 

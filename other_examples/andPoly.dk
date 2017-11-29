@@ -30,7 +30,8 @@ def and_ : n : Nat -> Bool_ n.
 
 def and_ : n : Nat -> Bool_ n.
 []  and_ 0         --> True.
-[x] and_ (S 0)     --> (x => x).
+[x] and_ (S 0)     --> (x : Bool => x). (; FIXME Bool annotation not required
+by dedukti. ;)
 [n] and_ (S (S n)) --> (x : Bool => y : Bool =>  (and_ (S n) (and x y))).
 (; ;)
 
