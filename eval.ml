@@ -1,15 +1,19 @@
+(** Evaluation and conversion. *)
+
 open Extra
 open Console
 open Terms
 open Print
 
+(** [set_unif u v] sets the value of the unification variable [u] to [v]. Note
+    that [u] should not have already been instanciated. *)
 let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
   assert(u.value = None); u.value <- Some(v);
   if !debug_unif then
     let (env,a) = Bindlib.unmbind mkfree v in
     log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
 
-(* [occurs u t] checks whether the unification variable [u] occurs in [t]. *)
+(** [occurs u t] checks whether the unification variable [u] occurs in [t]. *)
 let rec occurs : unif -> term -> bool = fun r t ->
   match unfold t with
   | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
@@ -22,8 +26,9 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Symb(_)     -> false
   | ITag(_)     -> false
 
-(* [unify u t] tries to unify [u] with [t],  and returns a boolean to indicate
-   whether it succeeded or not. *)
+(** [unify u t] tries to unify [u] with [t], and returns a boolean to indicate
+    whether it succeeded or not. Note that the function also verifies that the
+    body of the unification variable (the binder) is closed. *)
 let unify : unif -> term array -> term -> bool = fun u env a ->
   assert (u.value = None);
   not (occurs u a) &&
@@ -139,23 +144,27 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
 
 and matching ar pat t =
   let t = unfold t in
-  match (pat, t) with
-  | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
-      let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-      matching ar a1 a2 && matching ar b1 b2
-  | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
-      let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
-      matching ar t1 t2
-  | (Appl(_,t1,u1), Appl(_,t2,u2)) -> matching ar t1 t2 && matching ar u1 u2
-  | (Unif(_,_)    , _            ) -> assert false
-  | (_            , Unif(_,_)    ) -> assert false
-  | (Type         , Type         ) -> true
-  | (Kind         , Kind         ) -> true
-  | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-  | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
-  | (ITag(i)      , _            ) ->
-      if ar.(i) = ITag(i) then (ar.(i) <- t; true) else eq_modulo ar.(i) t
-  | (_            , _            ) -> false
+  if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
+  let res =
+    match (pat, t) with
+    | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
+        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+        matching ar a1 a2 && matching ar b1 b2
+    | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
+        let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+        matching ar t1 t2
+    | (Appl(_,t1,u1), Appl(_,t2,u2)) -> matching ar t1 t2 && matching ar u1 u2
+    | (Unif(_,_)    , _            ) -> assert false
+    | (_            , Unif(_,_)    ) -> assert false
+    | (Type         , Type         ) -> true
+    | (Kind         , Kind         ) -> true
+    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
+    | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
+    | (ITag(i)      , _            ) ->
+        if ar.(i) = ITag(i) then (ar.(i) <- t; true) else eq_modulo ar.(i) t
+    | (_            , _            ) -> false
+  in
+  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp t; res
 
 and eq_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
