@@ -71,8 +71,8 @@ type term =
 
 (** Representation of a unification variable (or meta-variable). *)
  and unif =
-   { key           : int
-   ; mutable value : (term, term) Bindlib.mbinder option }
+   { key   : int
+   ; value : (term, term) Bindlib.mbinder option ref }
 
 (* NOTE a unification variables is represented using a multiple binder. Hence,
    it can be instanciated with an open term, which free variables are bound in
@@ -90,13 +90,16 @@ let new_unif : unit -> unif =
   fun () ->
     incr c;
     if !debug_unif then log "unif" "?%i created" !c;
-    { key = !c ; value = None }
+    { key = !c ; value = ref None }
+
+(** [unset u] returns [true] if [u] is not instanciated. *)
+let unset : unif -> bool = fun u -> !(u.value) = None
 
 (** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({value = Some(f)}, ar) -> unfold (Bindlib.msubst f ar)
-  | _                           -> t
+  | Unif({value = {contents = Some(f)}}, ar) -> unfold (Bindlib.msubst f ar)
+  | _                                        -> t
 
 (** Short name for term variables. *)
 type tvar = term Bindlib.var
@@ -145,7 +148,7 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
     its environment [ar]. The unification variable should not  be instanciated
     when calling this function. *)
 let _Unif : unif -> tbox array -> tbox = fun u ar ->
-  assert(u.value = None);
+  assert(unset u);
   Bindlib.box_apply (fun ar -> Unif(u,ar)) (Bindlib.box_array ar)
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))

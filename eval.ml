@@ -8,7 +8,7 @@ open Print
 (** [set_unif u v] sets the value of the unification variable [u] to [v]. Note
     that [u] should not have already been instanciated. *)
 let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
-  assert(u.value = None); u.value <- Some(v);
+  assert(unset u); u.value := Some(v);
   if !debug_unif then
     let (env,a) = Bindlib.unmbind mkfree v in
     log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
@@ -30,7 +30,7 @@ let rec occurs : unif -> term -> bool = fun r t ->
     whether it succeeded or not. Note that the function also verifies that the
     body of the unification variable (the binder) is closed. *)
 let unify : unif -> term array -> term -> bool = fun u env a ->
-  assert (u.value = None);
+  assert(unset u);
   not (occurs u a) &&
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
@@ -54,8 +54,6 @@ let to_prod r e xo =
   let p = Bindlib.unbox (_Prod a x fn) in
   if not (unify r e p) then assert false (* cannot fail *)
 
-(* TODO cleaning from here on. *)
-
 (** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
     the comparison, unification variables may be instanciated. *)
 let eq : term -> term -> bool = fun a b ->
@@ -75,16 +73,19 @@ let eq : term -> term -> bool = fun a b ->
     | (a            , Unif(u,e)    ) -> unify u e a
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
-  in
-  eq a b
+  in eq a b
 
-(* Representation of equality constraints. *)
+(* NOTE it might be a good idea to undo unification variable instanciations in
+   the case where [eq a b] returns [false]. This can be done with "timed refs"
+   but for now, this does not seem to be necessary. *)
+
+(** Representation of equality constraints. *)
 type constrs = (term * term) list
 
-(* If [constraints] is set to [None], then typechecking is in regular mode. If
-   it is set to [Some(l)] then it is in constraint mode, which means that when
-   equality fails, an equality constraint is added to [constrs] instead of the
-   equality function giving up. *)
+(** If [constraints] is set to [None] then typechecking is in regular mode. If
+    it is set to [Some l] then it is in constraint mode, which means that when
+    equality fails a constraint is added to [constrs] instead of the  equality
+    function giving up. *)
 let constraints = ref None
 
 (* NOTE: constraint mode is only used when type-cheching the left-hand side of
@@ -97,8 +98,10 @@ let add_constraint : term -> term -> bool = fun a b ->
   match !constraints with
   | None    -> false
   | Some(l) ->
-      if !debug then log "cnst" "adding constraint [%a == %a]." pp a pp b;
+      if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
+
+(* TODO cleaning from here on. *)
 
 let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
   let t = unfold t in
