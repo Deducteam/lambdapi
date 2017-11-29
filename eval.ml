@@ -5,7 +5,7 @@ open Print
 
 let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
   assert(u.value = None); u.value <- Some(v);
-  if !debug then
+  if !debug_unif then
     let (env,a) = Bindlib.unmbind mkfree v in
     log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
 
@@ -36,7 +36,6 @@ type eval_fun = term -> term list -> term * term list
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
    be instantiated in the process. *)
 let eq : term -> term -> bool = fun a b ->
-  (*if !debug_eq then log "equa" "%a =!= %a" pp a pp b;*)
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
     match (unfold a, unfold b) with
@@ -54,10 +53,6 @@ let eq : term -> term -> bool = fun a b ->
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
   in
-  (*
-  let res = eq a b in
-  if !debug_eq then log "equa" (r_or_g res "%a =!= %a") pp a pp b; res
-  *)
   eq a b
 
 (* Representation of equality constraints. *)
@@ -163,7 +158,7 @@ and matching ar pat t =
   | (_            , _            ) -> false
 
 and eq_modulo : term -> term -> bool = fun a b ->
-  if !debug then log "equa" "%a == %a" pp a pp b;
+  if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []                   -> true
@@ -193,7 +188,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
         | (a            , b            ) -> add_constraint a b && eq_modulo l
   in
   let res = eq_modulo [(a,b)] in
-  if !debug then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
+  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
 
 (* [eval t] returns a weak head normal form of [t].  Note that some  arguments
    are evaluated if they might be used to allow the application of a rewriting

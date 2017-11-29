@@ -89,7 +89,7 @@ let new_unif : unit -> unif =
   let c = ref (-1) in
   fun () ->
     incr c;
-    if !debug then log "unif" "?%i created" !c;
+    if !debug_unif then log "unif" "?%i created" !c;
     { key = !c ; value = None }
 
 (** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)

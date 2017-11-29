@@ -30,10 +30,9 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   (* Product *)
   | Prod(_,a,b) ->
       let (x,bx) = unbind mkfree b in
-      (* FIXME bug here. *)
       let ctx_x = if binder_occur b then Ctxt.add x a ctx else ctx in
-      has_type sign ctx a Type &&
       has_type sign ctx_x bx c &&
+      has_type sign ctx a Type &&
       begin
         match eval c with
         | Type -> true
@@ -54,8 +53,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
             let ctx_x = Ctxt.add x a ctx in
             let bx = unbox bx in
             unify r e c &&
-            has_type sign ctx a Type &&
             has_type sign ctx_x tx bx &&
+            has_type sign ctx a Type &&
             begin
               match infer sign ctx_x bx with
               | Some(Type) -> true
@@ -67,8 +66,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
             let bx = subst b (mkfree x) in
             let ctx_x = Ctxt.add x a ctx in
             eq_modulo a c &&
-            has_type sign ctx a Type &&
             has_type sign ctx_x tx bx &&
+            has_type sign ctx a Type &&
             begin
               match infer sign ctx_x bx with
               | Some(Type) -> true

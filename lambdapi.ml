@@ -17,10 +17,11 @@ let _ =
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ "a : general debug informations"
-      ; "e : extra debugging informations for equality"
-      ; "i : extra debugging informations for inference"
+      ; "e : extra debugging informations for evaluation"
+      ; "u : extra debugging informations for unification"
       ; "p : extra debugging informations for patterns"
-      ; "t : extra debugging informations for typing" ]
+      ; "t : extra debugging informations for typing"
+      ; "q : extra debugging informations for equality" ]
     in "<str> enable debugging modes:\n" ^ String.concat "\n" flags
   in
   let verbose_doc =
@@ -36,6 +37,6 @@ let _ =
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
-  let summary = " [--debug [a|e|i|p|t]] [--verbose N] [FILE] ..." in
+  let summary = " [--debug [a|e|u|p|t|q]] [--verbose N] [FILE] ..." in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
   List.iter compile (List.rev !files)

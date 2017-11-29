@@ -30,13 +30,15 @@ let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
 let verbose    = ref 1
 let debug      = ref false
 let debug_eval = ref false
-let debug_infr = ref false
+let debug_unif = ref false
 let debug_patt = ref false
 let debug_type = ref false
+let debug_equa = ref false
 
 (** [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_infr || !debug_patt || !debug_type
+  !debug || !debug_eval || !debug_unif || !debug_patt ||
+  !debug_type || !debug_equa
 
 (** [set_debug value str] sets the debugging flags corresponding to characters
     of [str] to [value]. *)
@@ -45,9 +47,10 @@ let set_debug : bool -> string -> unit = fun value ->
     match c with
     | 'a' -> debug      := value
     | 'e' -> debug_eval := value
-    | 'i' -> debug_infr := value
+    | 'u' -> debug_unif := value
     | 'p' -> debug_patt := value
     | 't' -> debug_type := value
+    | 'q' -> debug_equa := value
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable
