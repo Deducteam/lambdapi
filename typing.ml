@@ -120,35 +120,31 @@ let has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
-(* TODO cleaning from here on. *)
-
-(* [infer_with_constrs sign ctx t] is similar to [infer sign ctx t], but it is
-   run in constraint mode (see [constraints]).  In case of success a couple of
-   a type and a set of constraints is returned. *)
+(** [infer_with_constrs sign ctx t] is similar to [infer sign ctx t] but it is
+    run in constraint mode (see [constraints]). In case of success a couple of
+    a type and a set of constraints is returned. *)
 let infer_with_constrs : Sign.t -> Ctxt.t -> term -> (term * constrs) option =
   fun sign ctx t ->
-    constraints := Some [];
-    match infer sign ctx t with
-    | None   -> constraints := None; None
-    | Some a ->
-        let cnstrs = match !constraints with Some cs -> cs | None -> [] in
-        constraints := None;
+    match in_constrs_mode (infer sign ctx) t with
+    | (None   , _ ) ->
         if !debug_patt then
-        begin
-          log "patt" "inferred type [%a] for [%a]" pp a pp t;
-          let fn (x,a) =
-            log "patt" "  with\t%s\t: %a" (Bindlib.name_of x) pp a
-          in
-          List.iter fn (List.rev ctx);
-          let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
-          List.iter fn cnstrs
-        end;
-        Some(a, cnstrs)
+          log "patt" "unable to infer a type for [%a]" pp t;
+        None
+    | (Some(a), cs) ->
+        if !debug_patt then
+          begin
+            log "patt" "inferred type [%a] for [%a]" pp a pp t;
+            let fn (x,a) = log "patt" "  with\t%a\t: %a" pp_tvar x pp a in
+            List.iter fn (List.rev ctx);
+            let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
+            List.iter fn cs
+          end;
+        Some(a, cs)
 
-(* [subst_from_constrs cs] builds a //typing substitution// from the  list  of
-   constraints [cs].  The returned substitution is given by a couple of arrays
-   [(xs,ts)] of the same length. The array [ts] contains the terms that should
-   be substituted to the corresponding variables of [xs]. *)
+(** [subst_from_constrs cs] builds a //typing substitution// from the list  of
+    constraints [cs]. The returned substitution is given by a couple of arrays
+    [(xs,ts)] of the same length.  The array [xs] contains the variables to be
+    substituted using the terms of [ts] at the same index. *)
 let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
   let rec build_sub acc cs =
     match cs with
@@ -176,22 +172,21 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
   let sub = build_sub [] cs in
   (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
 
-(* [eq_modulo_constrs cs t u] checks if [t] and [u] are equal modulo rewriting
-   given a list of constraints [cs] (assumed to be all satisfied). *)
-let eq_modulo_constrs : constrs -> term -> term -> bool =
-  fun constrs a b -> eq_modulo a b ||
-    let (xs,sub) = subst_from_constrs constrs in
-    let p = Bindlib.box_pair (lift a) (lift b) in
-    let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
-    let (a,b) = Bindlib.msubst p sub in
-    eq_modulo a b
+(** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
+    modulo rewriting and a list of (valid) constraints [cs]. *)
+let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
+  let (xs,sub) = subst_from_constrs constrs in
+  let p = Bindlib.box_pair (lift a) (lift b) in
+  let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
+  let (a,b) = Bindlib.msubst p sub in
+  eq_modulo a b
 
-(* [sort_type sign x a] finds out the sort of the type [a],  which corresponds
-   to variable [x]. The result may be either [Type] or [Kind]. If [a] is not a
-   well-sorted type, then the program fails gracefully. *)
+(** [sort_type sign x a] finds out the sort of the type [a], which corresponds
+    to variable [x]. The result may be either [Type] or [Kind]. If [a] is  not
+    a well-sorted type, then the program fails gracefully. *)
 let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
   match infer sign Ctxt.empty a with
   | Some(Kind) -> Kind
   | Some(Type) -> Type
-  | Some(a)    -> fatal "%s is neither of type Type nor Kind.\n" x
-  | None       -> fatal "cannot infer the sort of %s.\n" x
+  | Some(s)    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
+  | None       -> fatal "cannot infer the sort of [%a]...\n" pp a

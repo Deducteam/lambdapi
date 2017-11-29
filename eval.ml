@@ -91,6 +91,14 @@ let constraints = ref None
 (* NOTE: constraint mode is only used when type-cheching the left-hand side of
    reduction rules (see function [infer_with_constrs] for mode switching). *)
 
+(** [in_constrs_mode f a] enters constraint mode, runs [f a], exits constraint
+    mode and returns the result of the computation with the constraints. *)
+let in_constrs_mode : ('a -> 'b) -> 'a -> 'b * constrs = fun f a ->
+  constraints := Some([]);
+  let res = f a in
+  let cs = match !constraints with Some(cs) -> cs | None -> assert false in
+  constraints := None; (res, cs)
+
 (* [add_constraint a b] adds an equality constraint between [a] and [b] if the
    program is in regular mode. In this case it returns [true].  If the program
    is in regular mode, then [false] is returned immediately. *)
