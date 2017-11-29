@@ -52,7 +52,7 @@ let to_prod r e xo =
   in
   let x = match xo with Some(x) -> x | None -> "_" in
   let p = Bindlib.unbox (_Prod a x fn) in
-  ignore (unify r e p) (* cannot fail *)
+  if not (unify r e p) then assert false (* cannot fail *)
 
 (* TODO cleaning from here on. *)
 
