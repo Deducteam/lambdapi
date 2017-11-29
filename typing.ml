@@ -45,18 +45,13 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     | Abst(_,a,t) ->
         begin
           let (x,tx) = Bindlib.unbind mkfree t in
-          let c =
-            match eval c with
-            | Unif(r,e) as c ->
-                let rb = new_unif () in
-                let eb = Array.map lift e in
-                let f x = _Unif rb (Array.append eb [|Bindlib.box_of_var x|]) in
-                let p = _Prod (lift a) (Bindlib.binder_name t) f in
-                unify r e (Bindlib.unbox p); unfold c
-            | c              -> c
-          in
-          match c with
-          | Unif(_,_)   -> assert false
+          let c = eval c in
+          begin
+            match c with
+            | Unif(r,e) -> to_prod r e (Some(Bindlib.binder_name t))
+            | _         -> ()
+          end;
+          match unfold c with
           | Prod(_,c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = Ctxt.add x a ctx in
@@ -72,26 +67,28 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
               end
           | c           ->
               err "Product type expected, found [%a]...\n" pp c;
-              false
+              assert(unfold c == c); false
         end
     (* Application *)
     | Appl(_,t,u) ->
         begin
           match infer sign ctx t with
-          | Some(Prod(_,a,ba)) ->
-              eq_modulo (Bindlib.subst ba u) c
-              && has_type sign ctx u a
-          | Some(Unif(r,env))  ->
-              let a = _Unif (new_unif ()) (Array.map lift env) in
-              let b = Bindlib.unbox (_Prod a "_" (fun _ -> lift c)) in
-              assert(unify r env b);
-              has_type sign ctx u (Bindlib.unbox a)
-          | Some(a)            ->
-              err "Product type expected for [%a], found [%a]..." pp t pp a;
-              false
-          | None               ->
-              wrn "Cannot infer the type of [%a]\n%!" pp t;
-              false
+          | None    -> wrn "Cannot infer the type of [%a]\n%!" pp t; false
+          | Some(a) ->
+              begin
+                begin
+                  match a with
+                  | Unif(r,e) -> to_prod r e None
+                  | _         -> ()
+                end;
+                match unfold a with
+                | Prod(_,a,b) ->
+                    eq_modulo (Bindlib.subst b u) c
+                    && has_type sign ctx u a
+                | a           ->
+                    err "Product expected for [%a], found [%a]..." pp t pp a;
+                    assert(unfold c == c); false
+              end
         end
     (* No rule apply. *)
     | Kind        -> assert false
@@ -102,6 +99,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
+(** [infer sign ctx t] is a wrapper function for the [infer] function  defined
+    earlier. It is mainly used to obtain fine-grained logs. *)
 let infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
   if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
   let res = infer sign ctx t in
@@ -113,11 +112,15 @@ let infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
     end;
   res
 
+(** [has_type sign ctx t a] is a wrapper function for the [has_type]  function
+    defined earlier. It is mainly used to obtain fine-grained logs. *)
 let has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
   let res = has_type sign ctx t c in
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
+
+(* TODO cleaning from here on. *)
 
 (* [infer_with_constrs sign ctx t] is similar to [infer sign ctx t], but it is
    run in constraint mode (see [constraints]).  In case of success a couple of

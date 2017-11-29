@@ -36,6 +36,26 @@ let unify : unif -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_unif u (Bindlib.unbox b); true)
 
+(** [to_prod r e xo] instantiates the unification variable [r] (with [e] as an
+    environment) using a product type formed with fresh unification variables.
+    The argument [xo] is used to name the bound variable. Note that the binder
+    (the body) is constant if [xo] is equal to [None]. *)
+let to_prod r e xo =
+  let ra = new_unif () in
+  let rb = new_unif () in
+  let le = Array.map lift e in
+  let a = _Unif ra le in
+  let fn =
+    match xo with
+    | None    -> fun _ -> _Unif rb le
+    | Some(_) -> fun x -> _Unif rb (Array.append le [|Bindlib.box_of_var x|])
+  in
+  let x = match xo with Some(x) -> x | None -> "_" in
+  let p = Bindlib.unbox (_Prod a x fn) in
+  ignore (unify r e p) (* cannot fail *)
+
+(* TODO cleaning from here on. *)
+
 type eval_fun = term -> term list -> term * term list
 
 (* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
