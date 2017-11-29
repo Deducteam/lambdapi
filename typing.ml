@@ -1,21 +1,22 @@
 (** Type-checking and inference. *)
 
-open Bindlib
 open Console
 open Terms
 open Print
 open Eval
 
-(* [infer sign ctx t] tries to infer a type for the term [t], in context [ctx]
-   and with the signature [sign]. [Some a] is returned if type [a] is inferred
-   and [None] is returned otherwise. *)
+(** [infer sign ctx t] tries to infer a type for the term [t] in context [ctx]
+    and with the signature [sign]. If the function is not able to infer a type
+    then [None] is returned. Otherwise, [Some a] is returned, where [a] is the
+    (fully evaluated) infered type. *)
 let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
-  let env = List.map (fun (x,_) -> box_of_var x) ctx in
-  let a = unbox (_Unif (new_unif ()) (Array.of_list env)) in
+  let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
+  let a = Bindlib.unbox (_Unif (new_unif ()) (Array.of_list env)) in
   if has_type sign ctx t a then Some(eval a) else None
 
-(* [has_type sign ctx t a] checks whether the term [t] has type [a] in context
-   [ctx] and with the signature [sign]. *)
+(** [has_type sign ctx t a] tests whether the term [t] has type [a] in context
+    [ctx] and with the signature [sign]. Note that inference can be  performed
+    using an [a] that is a unification variable. *)
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
@@ -29,8 +30,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   | Symb(s)     -> eq_modulo (symbol_type s) c
   (* Product *)
   | Prod(_,a,b) ->
-      let (x,bx) = unbind mkfree b in
-      let ctx_x = if binder_occur b then Ctxt.add x a ctx else ctx in
+      let (x,bx) = Bindlib.unbind mkfree b in
+      let ctx_x = if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx in
       has_type sign ctx_x bx c &&
       has_type sign ctx a Type &&
       begin
@@ -42,13 +43,13 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   (* Abstraction *)
   | Abst(_,a,t) ->
       begin
-        let (x,tx) = unbind mkfree t in
+        let (x,tx) = Bindlib.unbind mkfree t in
         let c =
           match eval c with
           | Unif(r,e) as c ->
               let rb = new_unif () in
               let eb = Array.map lift e in
-              let f x = _Unif rb (Array.append eb [|box_of_var x|]) in
+              let f x = _Unif rb (Array.append eb [|Bindlib.box_of_var x|]) in
               let p = _Prod (lift a) (Bindlib.binder_name t) f in
               unify r e (Bindlib.unbox p); unfold c
           | c              -> c
@@ -56,7 +57,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
         match c with
         | Unif(_,_)   -> assert false
         | Prod(_,c,b) ->
-            let bx = subst b (mkfree x) in
+            let bx = Bindlib.subst b (mkfree x) in
             let ctx_x = Ctxt.add x a ctx in
             eq_modulo a c &&
             has_type sign ctx_x tx bx &&
