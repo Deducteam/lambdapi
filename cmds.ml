@@ -77,7 +77,8 @@ let handle_rules = fun sign rs ->
     In case of failure, the program fails gracefully. *)
 let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
   if not (Typing.has_type sign Ctxt.empty t a) then
-    fatal "%a does not have type %a...\n" pp t pp a
+    fatal "%a does not have type %a...\n" pp t pp a;
+  out 2 "(chck) OK\n"
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
