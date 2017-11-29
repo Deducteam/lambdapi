@@ -265,4 +265,5 @@ def 0_right_neutral : n : Nat ->
 [] 0_right_neutral 0 --> tt
 [n] 0_right_neutral (S n) --> 0_right_neutral n.
 
-#CONV factorielle 14, mult 95 95. (; Answer is of course NO ;)
+(; FIXME if conf fails, the program fails. ;)
+(;#CONV factorielle 14, mult 95 95.;) (; Answer is of course NO ;)
