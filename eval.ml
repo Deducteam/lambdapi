@@ -56,23 +56,21 @@ let to_prod r e xo =
 
 (* TODO cleaning from here on. *)
 
-type eval_fun = term -> term list -> term * term list
-
-(* [eq t u] tests the equality of the terms [t] and [u]. Pattern variables may
-   be instantiated in the process. *)
+(** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
+    the comparison, unification variables may be instanciated. *)
 let eq : term -> term -> bool = fun a b ->
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
     match (unfold a, unfold b) with
-    | (Vari(x)      , Vari(y)      ) -> Bindlib.eq_vars x y
+    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Type         , Type         ) -> true
     | (Kind         , Kind         ) -> true
-    | (Symb(Sym(sa)), Symb(Sym(sb))) -> sa == sb
-    | (Symb(Def(sa)), Symb(Def(sb))) -> sa == sb
-    | (Prod(_,a,f)  , Prod(_,b,g)  ) -> eq a b && eq_binder f g
-    | (Abst(_,a,f)  , Abst(_,b,g)  ) -> eq a b && eq_binder f g
-    | (Appl(_,t,u)  , Appl(_,f,g)  ) -> eq t f && eq u g
-    | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> Array.for_all2 eq e1 e2
+    | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
+    | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
+    | (Prod(_,a1,b1), Prod(_,a2,b2)) -> eq a1 a2 && eq_binder b1 b2
+    | (Abst(_,a1,t1), Abst(_,a2,t2)) -> eq a1 a2 && eq_binder t1 t2
+    | (Appl(_,t1,u1), Appl(_,t2,u2)) -> eq t1 t2 && eq u1 u2
+    | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
     | (Unif(u,e)    , b            ) when unify u e b -> true
     | (a            , Unif(u,e)    ) -> unify u e a
     | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
