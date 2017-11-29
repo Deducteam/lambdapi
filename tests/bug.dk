@@ -1,0 +1,20 @@
+Nat : Type.
+0 : Nat.
+S : Nat -> Nat.
+
+def S_bis : Nat -> Nat.
+[]  S_bis 0         --> S (S 0).
+[]  S_bis (S 0)     --> S (S 0).
+[n] S_bis (S (S n)) --> S (S (S_bis n)).
+
+def 1 := S 0.
+def 2 := S 1.
+def 3 := S 2.
+
+#EVAL S_bis 0.
+#EVAL S_bis 1.
+#EVAL S_bis 2.
+#EVAL S_bis 3.
+
+#CONV S_bis 0, S_bis 1.
+#CONV S_bis 2, S_bis 3.
