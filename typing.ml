@@ -20,82 +20,83 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
 and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
-  match unfold t with
-  (* Sort *)
-  | Type        -> eq_modulo c Kind
-  (* Variable *)
-  | Vari(x)     -> (try eq_modulo (Ctxt.find x ctx) c with Not_found ->
-                      wrn "BUG0 (%a not in context) \n" pp_tvar x; false)
-  (* Symbol *)
-  | Symb(s)     -> eq_modulo (symbol_type s) c
-  (* Product *)
-  | Prod(_,a,b) ->
-      let (x,bx) = Bindlib.unbind mkfree b in
-      let ctx_x = if Bindlib.binder_occur b then Ctxt.add x a ctx else ctx in
-      has_type sign ctx_x bx c &&
-      has_type sign ctx a Type &&
-      begin
-        match eval c with
-        | Type -> true
-        | Kind -> true
-        | a     -> wrn "BUG1 ([%a] not a sort)\n" pp a; false
-      end
-  (* Abstraction *)
-  | Abst(_,a,t) ->
-      begin
-        let (x,tx) = Bindlib.unbind mkfree t in
-        let c =
+    match unfold t with
+    (* Sort *)
+    | Type        ->
+        eq_modulo c Kind
+    (* Variable *)
+    | Vari(x)     ->
+        eq_modulo (try Ctxt.find x ctx with Not_found -> assert false) c
+    (* Symbol *)
+    | Symb(s)     ->
+        eq_modulo (symbol_type s) c
+    (* Product *)
+    | Prod(_,a,b) ->
+        begin
+          let (x,bx) = Bindlib.unbind mkfree b in
+          let uses_x = Bindlib.binder_occur b in
+          has_type sign (if uses_x then Ctxt.add x a ctx else ctx) bx c &&
+          has_type sign ctx a Type &&
           match eval c with
-          | Unif(r,e) as c ->
-              let rb = new_unif () in
-              let eb = Array.map lift e in
-              let f x = _Unif rb (Array.append eb [|Bindlib.box_of_var x|]) in
-              let p = _Prod (lift a) (Bindlib.binder_name t) f in
-              unify r e (Bindlib.unbox p); unfold c
-          | c              -> c
-        in
-        match c with
-        | Unif(_,_)   -> assert false
-        | Prod(_,c,b) ->
-            let bx = Bindlib.subst b (mkfree x) in
-            let ctx_x = Ctxt.add x a ctx in
-            eq_modulo a c &&
-            has_type sign ctx_x tx bx &&
-            has_type sign ctx a Type &&
-            begin
-              match infer sign ctx_x bx with
-              | Some(Type) -> true
-              | Some(Kind) -> true
-              | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
-              | None       -> wrn "BUG3 (cannot infer sort)\n"; false
-            end
-        | c           ->
-            err "Product type expected, found [%a]...\n" pp c;
-            false
-      end
-  (* Application *)
-  | Appl(_,t,u) ->
-      begin
-        match infer sign ctx t with
-        | Some(Prod(_,a,ba)) ->
-            eq_modulo (Bindlib.subst ba u) c
-            && has_type sign ctx u a
-        | Some(Unif(r,env))  ->
-            let a = _Unif (new_unif ()) (Array.map lift env) in
-            let b = Bindlib.unbox (_Prod a "_" (fun _ -> lift c)) in
-            assert(unify r env b);
-            has_type sign ctx u (Bindlib.unbox a)
-        | Some(a)            ->
-            err "Product type expected for [%a], found [%a]..." pp t pp a;
-            false
-        | None               ->
-            wrn "Cannot infer the type of [%a]\n%!" pp t;
-            false
-      end
-  (* No rule apply. *)
-  | Kind        -> assert false
-  | ITag(_)     -> assert false
-  | Unif(_,_)   -> assert false
+          | Type -> true | Kind -> true
+          | c    -> err "[%a] is not a sort...\n" pp c; false
+        end
+    (* Abstraction *)
+    | Abst(_,a,t) ->
+        begin
+          let (x,tx) = Bindlib.unbind mkfree t in
+          let c =
+            match eval c with
+            | Unif(r,e) as c ->
+                let rb = new_unif () in
+                let eb = Array.map lift e in
+                let f x = _Unif rb (Array.append eb [|Bindlib.box_of_var x|]) in
+                let p = _Prod (lift a) (Bindlib.binder_name t) f in
+                unify r e (Bindlib.unbox p); unfold c
+            | c              -> c
+          in
+          match c with
+          | Unif(_,_)   -> assert false
+          | Prod(_,c,b) ->
+              let bx = Bindlib.subst b (mkfree x) in
+              let ctx_x = Ctxt.add x a ctx in
+              eq_modulo a c &&
+              has_type sign ctx_x tx bx &&
+              has_type sign ctx a Type &&
+              begin
+                match infer sign ctx_x bx with
+                | Some(Type) -> true
+                | Some(Kind) -> true
+                | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
+                | None       -> wrn "BUG3 (cannot infer sort)\n"; false
+              end
+          | c           ->
+              err "Product type expected, found [%a]...\n" pp c;
+              false
+        end
+    (* Application *)
+    | Appl(_,t,u) ->
+        begin
+          match infer sign ctx t with
+          | Some(Prod(_,a,ba)) ->
+              eq_modulo (Bindlib.subst ba u) c
+              && has_type sign ctx u a
+          | Some(Unif(r,env))  ->
+              let a = _Unif (new_unif ()) (Array.map lift env) in
+              let b = Bindlib.unbox (_Prod a "_" (fun _ -> lift c)) in
+              assert(unify r env b);
+              has_type sign ctx u (Bindlib.unbox a)
+          | Some(a)            ->
+              err "Product type expected for [%a], found [%a]..." pp t pp a;
+              false
+          | None               ->
+              wrn "Cannot infer the type of [%a]\n%!" pp t;
+              false
+        end
+    (* No rule apply. *)
+    | Kind        -> assert false
+    | ITag(_)     -> assert false
+    | Unif(_,_)   -> assert false
   in
   if !debug_type then
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
