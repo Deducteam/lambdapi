@@ -110,7 +110,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
         try
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
           | None    -> raise Not_found
-          | Some(a) -> to_term ~vars sign a (* FIXME *)
+          | Some(a) -> to_term ~vars sign a (* FIXME order ? *)
         with Not_found ->
           let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in

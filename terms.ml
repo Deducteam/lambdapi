@@ -163,7 +163,7 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(i,_,_) when i.closed -> Bindlib.box t (* FIXME buggy *)
+  | Prod(i,_,_) when i.closed -> Bindlib.box t
   | Prod(_,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
   | Abst(i,_,_) when i.closed -> Bindlib.box t
   | Abst(_,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
