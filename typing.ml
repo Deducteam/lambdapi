@@ -43,25 +43,18 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
   | Abst(_,a,t) ->
       begin
         let (x,tx) = unbind mkfree t in
-        match eval c with
-        | Unif(r,e)   ->
-            let r1 = new_unif () in
-            let fn x = Unif(r1, Array.append e [|x|]) in
-            let bx = box_apply fn (box_of_var x) in
-            let b = unbox (bind_var x bx) in
-            let c = prod a b in
-            let ctx_x = Ctxt.add x a ctx in
-            let bx = unbox bx in
-            unify r e c &&
-            has_type sign ctx_x tx bx &&
-            has_type sign ctx a Type &&
-            begin
-              match infer sign ctx_x bx with
-              | Some(Type) -> true
-              | Some(Kind) -> true
-              | Some(a)    -> wrn "BUG2 ([%a] not a sort)\n" pp a; false
-              | None       -> wrn "BUG2 (cannot infer sort)\n"; false
-            end
+        let c =
+          match eval c with
+          | Unif(r,e) as c ->
+              let rb = new_unif () in
+              let eb = Array.map lift e in
+              let f x = _Unif rb (Array.append eb [|box_of_var x|]) in
+              let p = _Prod (lift a) (Bindlib.binder_name t) f in
+              unify r e (Bindlib.unbox p); unfold c
+          | c              -> c
+        in
+        match c with
+        | Unif(_,_)   -> assert false
         | Prod(_,c,b) ->
             let bx = subst b (mkfree x) in
             let ctx_x = Ctxt.add x a ctx in
@@ -87,11 +80,10 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
             eq_modulo (Bindlib.subst ba u) c
             && has_type sign ctx u a
         | Some(Unif(r,env))  ->
-            let a = Unif(new_unif (), env) in
-            let b = Bindlib.bind mkfree "_" (fun _ -> lift c) in
-            let b = prod a (Bindlib.unbox b) in
+            let a = _Unif (new_unif ()) (Array.map lift env) in
+            let b = Bindlib.unbox (_Prod a "_" (fun _ -> lift c)) in
             assert(unify r env b);
-            has_type sign ctx u a
+            has_type sign ctx u (Bindlib.unbox a)
         | Some(a)            ->
             err "Product type expected for [%a], found [%a]..." pp t pp a;
             false
