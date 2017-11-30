@@ -90,7 +90,7 @@ let handle_infer : Sign.t -> term -> unit = fun sign t ->
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> unit = fun sign t ->
   (* FIXME check typing? *)
-  out 2 "(eval) %a\n" pp (Eval.eval t)
+  out 2 "(eval) %a\n" pp (Eval.whnf t)
 
 (** [handle_conv sign t u] checks the convertibility of the terms [t] and [u].
     The program fails gracefully if the check is not successful. *)

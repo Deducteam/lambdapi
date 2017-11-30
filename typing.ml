@@ -12,7 +12,7 @@ open Eval
 let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
   let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
   let a = Bindlib.unbox (_Unif (new_unif ()) (Array.of_list env)) in
-  if has_type sign ctx t a then Some(eval a) else None
+  if has_type sign ctx t a then Some(whnf a) else None
 
 (** [has_type sign ctx t a] tests whether the term [t] has type [a] in context
     [ctx] and with the signature [sign]. Note that inference can be  performed
@@ -38,7 +38,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
           let uses_x = Bindlib.binder_occur b in
           has_type sign (if uses_x then Ctxt.add x a ctx else ctx) bx c &&
           has_type sign ctx a Type &&
-          match eval c with
+          match whnf c with
           | Type -> true | Kind -> true
           | c    -> err "[%a] is not a sort...\n" pp c; false
         end
@@ -46,7 +46,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     | Abst(_,a,t) ->
         begin
           let (x,tx) = Bindlib.unbind mkfree t in
-          let c = eval c in
+          let c = whnf c in
           begin
             match c with
             | Unif(r,e) -> to_prod r e (Some(Bindlib.binder_name t))

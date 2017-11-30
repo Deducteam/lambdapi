@@ -99,9 +99,9 @@ let in_constrs_mode : ('a -> 'b) -> 'a -> 'b * constrs = fun f a ->
   let cs = match !constraints with Some(cs) -> cs | None -> assert false in
   constraints := None; (res, cs)
 
-(* [add_constraint a b] adds an equality constraint between [a] and [b] if the
-   program is in regular mode. In this case it returns [true].  If the program
-   is in regular mode, then [false] is returned immediately. *)
+(** [add_constraint a b] adds an equality constraint between [a] and [b] while
+    returning [true], when the program is in constraint mode. When the program
+    is in regular mode, the value [false] is immediately returned. *)
 let add_constraint : term -> term -> bool = fun a b ->
   match !constraints with
   | None    -> false
@@ -109,41 +109,42 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
-(* TODO cleaning from here on. *)
-
-let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
-  let t = unfold t in
-  match (t, stk) with
-  (* Push argument to the stack. *)
-  | (Appl(_,f,u) , stk    ) -> whnf_stk f (u :: stk)
-  (* Beta reduction. *)
-  | (Abst(_,_,f) , u::stk ) -> whnf_stk (Bindlib.subst f u) stk
-  (* Try to rewrite. *)
-  | (Symb(Def(s)), stk    ) ->
-      begin
-        match match_rules s stk with
-        | []          ->
-            (* No rule applies. *)
-            (t, stk)
-        | (t,stk)::rs ->
-            (* At least one rule applies. *)
-            if !debug_eval && rs <> [] then
-              wrn "%i rules apply...\n%!" (List.length rs);
-            (* Just use the first one. *)
-            whnf_stk t stk
-      end
-  (* In head normal form. *)
-  | (_           , _      ) -> (t, stk)
-
-(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
-   are evaluated if they might be used to allow the application of a rewriting
-   rule. As their evaluation is kept, so this function does more normalisation
-   that the usual weak head normalisation. *)
-and eval : term -> term = fun t ->
+(** [whnf t] returns (almost) a weak head normal form of [t]. When a reduction
+    rule is matched, the arguments may need to be normalised.  Their evaluated
+    form is kept to avoid useless recomputations. *)
+let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
   let (u, stk) = whnf_stk t [] in
   let u = add_args u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
+
+(** [whnf_stk t stk] performs weak head normalisations of the term [t] applied
+    to the argument list (or stack) [stk]. Note that the normalisation is done
+    in the sense of [whnf]. *)
+and whnf_stk : term -> term list -> term * term list = fun t stk ->
+  match (unfold t, stk) with
+  (* Push argument to the stack. *)
+  | (Appl(_,f,u) , stk    )       -> whnf_stk f (u :: stk)
+  (* Beta reduction. *)
+  | (Abst(_,_,f) , u::stk )       -> whnf_stk (Bindlib.subst f u) stk
+  (* Try to rewrite. *)
+  | (Symb(Def(s)), stk    ) as st ->
+      begin
+        match find_rule s stk with
+        | None        -> st
+        | Some(t,stk) -> whnf_stk t stk
+      end
+  (* In head normal form. *)
+  | (_           , _      ) as st -> st
+
+
+(* TODO cleaning from here on. *)
+
+
+and find_rule : def -> term list -> (term * term list) option = fun s stk ->
+  match match_rules s stk with
+  | []    -> None
+  | st::_ -> Some st
 
 (* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
    the stack [stk]. The possible abstract machine states (see [eval_stk]) with
@@ -185,7 +186,7 @@ and matching ar pat t =
   let t = unfold t in
   if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
   let res =
-    match (pat, eval t) with
+    match (pat, whnf t) with
     | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
         matching ar a1 a2 && matching ar b1 b2
