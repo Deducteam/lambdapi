@@ -175,10 +175,12 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
 (** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
     modulo rewriting and a list of (valid) constraints [cs]. *)
 let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
+  if !debug_patt then log "patt" "%a == %a (with constraints)" pp a pp b;
   let (xs,sub) = subst_from_constrs constrs in
   let p = Bindlib.box_pair (lift a) (lift b) in
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (a,b) = Bindlib.msubst p sub in
+  if !debug_patt then log "patt" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
 (** [sort_type sign x a] finds out the sort of the type [a], which corresponds
