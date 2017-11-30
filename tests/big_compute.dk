@@ -49,8 +49,11 @@ def 7 : Nat := S 6.
 #EVAL (plus (fact 3) (fact 2)).
 #EVAL (plus (fact 2) (fact 3)).
 
+(; FIXME should work.
 #CONV (plus (fact 5) (fact 4)), (plus (fact 4) (fact 5)).
 #CONV (plus (fact seven) (fact six)), (plus (fact six) (fact seven)).
+;)
 
-(; FIXME Takes not long enough ;-) (dedukti: 116 seconds, here < 1 seconds) ;)
+(; FIXME should work
 #CONV (plus (fact seven) (fact eight)), (plus (fact eight) (fact seven)).
+;)

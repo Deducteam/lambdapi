@@ -142,28 +142,10 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
 
 
 and find_rule : def -> term list -> (term * term list) option = fun s stk ->
-  match match_rules s stk with
-  | []    -> None
-  | st::_ -> Some st
-
-(* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
-   the stack [stk]. The possible abstract machine states (see [eval_stk]) with
-   which to continue are returned. *)
-and match_rules : def -> term list -> (term * term list) list = fun s stk ->
   let nb_args = List.length stk in
-  let rec eval_args n stk =
-    match (n, stk) with
-    | (0, stk   ) -> stk
-    | (_, []    ) -> assert false
-    | (n, u::stk) -> let (u,s) = whnf_stk u [] in
-                     add_args u s :: eval_args (n-1) stk
-  in
-  let max_req acc r = if r.arity <= nb_args then max r.arity acc else acc in
-  let n = List.fold_left max_req 0 s.def_rules in
-  let stk = eval_args n stk in
-  let match_rule acc r =
+  let match_rule r =
     (* First check that we have enough arguments. *)
-    if r.arity > nb_args then acc else
+    if r.arity > nb_args then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
     let new_pvar i = ITag(i) in
     let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
@@ -173,14 +155,22 @@ and match_rules : def -> term list -> (term * term list) list = fun s stk ->
     let rec match_args lhs stk =
       match (lhs, stk) with
       | ([]    , stk   ) ->
-          (Bindlib.msubst r.rhs (Array.map unfold uvars), stk) :: acc
+          Some(Bindlib.msubst r.rhs (Array.map unfold uvars), stk)
       | (t::lhs, v::stk) ->
-          if matching uvars t v then match_args lhs stk else acc
+          if matching uvars t v then match_args lhs stk else None
       | (_     , _     ) -> assert false
     in
     match_args lhs stk
   in
-  List.fold_left match_rule [] s.def_rules
+  let rec find rs =
+    match rs with
+    | []    -> None
+    | r::rs ->
+        match match_rule r with
+        | None -> find rs
+        | res  -> res
+  in
+  find s.def_rules
 
 and matching ar pat t =
   let t = unfold t in

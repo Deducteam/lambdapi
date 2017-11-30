@@ -20,6 +20,7 @@ def fact : Nat -> Nat.
 def six   : Nat :=  (S (S (S (S (S (S Z)))))).
 def seven : Nat :=  (S (S (S (S (S (S (S Z))))))).
 
-
+(; FIXME should work
 #CONV	(plus (fact seven) (fact six)),
 	(plus (fact six) (fact seven)).
+;)
