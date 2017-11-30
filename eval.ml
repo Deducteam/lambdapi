@@ -135,6 +135,16 @@ let rec whnf_stk : term -> term list -> term * term list = fun t stk ->
   (* In head normal form. *)
   | (_           , _      ) -> (t, stk)
 
+(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
+   are evaluated if they might be used to allow the application of a rewriting
+   rule. As their evaluation is kept, so this function does more normalisation
+   that the usual weak head normalisation. *)
+and eval : term -> term = fun t ->
+  if !debug_eval then log "eval" "evaluating %a" pp t;
+  let (u, stk) = whnf_stk t [] in
+  let u = add_args u stk in
+  if !debug_eval then log "eval" "produced %a" pp u; u
+
 (* [match_rules s stk] tries to apply the reduction rules of symbol [s]  using
    the stack [stk]. The possible abstract machine states (see [eval_stk]) with
    which to continue are returned. *)
@@ -175,7 +185,7 @@ and matching ar pat t =
   let t = unfold t in
   if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
   let res =
-    match (pat, t) with
+    match (pat, eval t) with
     | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
         matching ar a1 a2 && matching ar b1 b2
@@ -227,13 +237,3 @@ and eq_modulo : term -> term -> bool = fun a b ->
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
-
-(* [eval t] returns a weak head normal form of [t].  Note that some  arguments
-   are evaluated if they might be used to allow the application of a rewriting
-   rule. As their evaluation is kept, so this function does more normalisation
-   that the usual weak head normalisation. *)
-let eval : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating %a" pp t;
-  let (u, stk) = whnf_stk t [] in
-  let u = add_args u stk in
-  if !debug_eval then log "eval" "produced %a" pp u; u
