@@ -139,8 +139,6 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
 
 
 (* TODO cleaning from here on. *)
-
-
 and find_rule : def -> term list -> (term * term list) option = fun s stk ->
   let nb_args = List.length stk in
   let match_rule r =
@@ -173,7 +171,6 @@ and find_rule : def -> term list -> (term * term list) option = fun s stk ->
   find s.def_rules
 
 and matching ar pat t =
-  let t = unfold t in
   if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
   let res =
     match (pat, whnf t) with
