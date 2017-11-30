@@ -205,7 +205,8 @@ and matching ar pat t =
   in
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp t; res
 
-and eq_modulo : term -> term -> bool = fun a b ->
+and eq_modulo : ?constr_on:bool -> term -> term -> bool =
+  fun ?(constr_on=false) a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -233,7 +234,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
         | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
             eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
-        | (a            , b            ) -> add_constraint a b && eq_modulo l
+        | (a            , b            ) ->
+            constr_on && add_constraint a b && eq_modulo l
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
