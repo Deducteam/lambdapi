@@ -35,42 +35,11 @@ let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
   in
   Sign.add_rule sg s rule
 
-(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
-    [sign]. The program fails gracefully in case of error. *)
-let check_rule sign (ctx, s, t, u, rule) =
-  (* Infer the type of the LHS and the constraints. *)
-  let (tt, tt_constrs) =
-    match Typing.infer_with_constrs sign ctx t with
-    | Some(a) -> a
-    | None    -> fatal "Unable to infer the type of [%a]\n" pp t
-  in
-  (* Infer the type of the RHS and the constraints. *)
-  let (tu, tu_constrs) =
-    match Typing.infer_with_constrs sign ctx u with
-    | Some(a) -> a
-    | None    -> fatal "Unable to infer the type of [%a]\n" pp u
-  in
-  (* Checking the implication of constraints. *)
-  let check_constraint (a,b) =
-    if not (Typing.eq_modulo_constrs tt_constrs a b) then
-      fatal "A constraint is not satisfied...\n"
-  in
-  List.iter check_constraint tu_constrs;
-  (* Checking if the rule is well-typed. *)
-  if not (Typing.eq_modulo_constrs tt_constrs tt tu) then
-    begin
-      err "Infered type for LHS: %a\n" pp tt;
-      err "Infered type for RHS: %a\n" pp tu;
-      fatal "[%a → %a] is ill-typed\n" pp t pp u
-    end;
-  (* Adding the rule. *)
-  (s,t,u,rule)
-
 (** [handle_rules sign rs] check that the rules of [rs] are well-typed, before
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
 let handle_rules = fun sign rs ->
-  let rs = List.map (check_rule sign) rs in
+  let rs = List.map (Typing.check_rule sign) rs in
   List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
 
 (** [handle_check sign t a] attempts to show that [t] has type [a], in [sign].

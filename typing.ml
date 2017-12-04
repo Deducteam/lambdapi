@@ -193,3 +193,34 @@ let sort_type : Sign.t -> string -> term -> term = fun sign x a ->
   | Some(Type) -> Type
   | Some(s)    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
   | None       -> fatal "cannot infer the sort of [%a]...\n" pp a
+
+(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
+    [sign]. The program fails gracefully in case of error. *)
+let check_rule sign (ctx, s, t, u, rule) =
+  (* Infer the type of the LHS and the constraints. *)
+  let (tt, tt_constrs) =
+    match infer_with_constrs sign ctx t with
+    | Some(a) -> a
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp t
+  in
+  (* Infer the type of the RHS and the constraints. *)
+  let (tu, tu_constrs) =
+    match infer_with_constrs sign ctx u with
+    | Some(a) -> a
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp u
+  in
+  (* Checking the implication of constraints. *)
+  let check_constraint (a,b) =
+    if not (eq_modulo_constrs tt_constrs a b) then
+      fatal "A constraint is not satisfied...\n"
+  in
+  List.iter check_constraint tu_constrs;
+  (* Checking if the rule is well-typed. *)
+  if not (eq_modulo_constrs tt_constrs tt tu) then
+    begin
+      err "Infered type for LHS: %a\n" pp tt;
+      err "Infered type for RHS: %a\n" pp tu;
+      fatal "[%a → %a] is ill-typed\n" pp t pp u
+    end;
+  (* Adding the rule. *)
+  (s,t,u,rule)
