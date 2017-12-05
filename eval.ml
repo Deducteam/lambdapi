@@ -112,12 +112,16 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
-let add_args : term -> term ref list -> term = fun t args ->
-  let rec add_args t args =
+(* TODO cleaning from here on. *)
+
+type stack = term ref list
+
+let add_stack : term -> stack -> term = fun t args ->
+  let rec add_stack t args =
     match args with
     | []      -> t
-    | u::args -> add_args (appl t !u) args
-  in add_args t args
+    | u::args -> add_stack (appl t !u) args
+  in add_stack t args
 
 (** [whnf t] returns (almost) a weak head normal form of [t]. When a reduction
     rule is matched, the arguments may need to be normalised.  Their evaluated
@@ -125,13 +129,13 @@ let add_args : term -> term ref list -> term = fun t args ->
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
   let (u, stk) = whnf_stk t [] in
-  let u = add_args u stk in
+  let u = add_stack u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
 
 (** [whnf_stk t stk] performs weak head normalisations of the term [t] applied
     to the argument list (or stack) [stk]. Note that the normalisation is done
     in the sense of [whnf]. *)
-and whnf_stk : term -> term ref list -> term * term ref list = fun t stk ->
+and whnf_stk : term -> stack -> term * stack = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
   | (Appl(_,f,u) , stk    )       -> whnf_stk f (ref u :: stk)
@@ -148,8 +152,7 @@ and whnf_stk : term -> term ref list -> term * term ref list = fun t stk ->
   | (_           , _      ) as st -> st
 
 
-(* TODO cleaning from here on. *)
-and find_rule : def -> term ref list -> (term * term ref list) option = fun s stk ->
+and find_rule : def -> stack -> (term * stack) option = fun s stk ->
   let nb_args = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -209,7 +212,9 @@ and matching ar pat t =
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (_            , _            ) -> false
   in
-  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp !t; res
+  if !debug_eval then
+    log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp !t;
+  res
 
 and eq_modulo : ?constr_on:bool -> term -> term -> bool =
   fun ?(constr_on=false) a b ->
@@ -225,8 +230,8 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
           match (la, lb) with
           | ([]   , []   ) -> (a, b, List.rev acc)
           | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
-          | (la   , []   ) -> (add_args a (List.rev la), b, acc)
-          | ([]   , lb   ) -> (a, add_args b (List.rev lb), acc)
+          | (la   , []   ) -> (add_stack a (List.rev la), b, acc)
+          | ([]   , lb   ) -> (a, add_stack b (List.rev lb), acc)
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
         let a = unfold a in
