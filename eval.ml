@@ -179,6 +179,12 @@ and find_rule : def -> term list -> (term * term list) option = fun s stk ->
 and matching ar pat t =
   if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
   let res =
+    match pat with
+    | ITag(i) ->
+        if ar.(i) = ITag(i) then (ar.(i) <- t; true)
+        else eq_modulo ar.(i) t
+    | Wild    -> true
+    | _ ->
     match (pat, whnf t) with
     | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
@@ -194,10 +200,6 @@ and matching ar pat t =
     | (Kind         , Kind         ) -> true
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
-    | (ITag(i)      , _            ) ->
-        if ar.(i) = ITag(i) then (ar.(i) <- t; true)
-        else eq_modulo ar.(i) t
-    | (Wild         , _            ) -> true
     | (_            , _            ) -> false
   in
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp t; res
@@ -235,4 +237,4 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
             constr_on && add_constraint a b && eq_modulo l
   in
   let res = eq_modulo [(a,b)] in
-  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res  
+  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
