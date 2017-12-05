@@ -23,6 +23,8 @@ type term =
   | Unif of unif * term array
   (** Integer tag (used for pattern-matching). *)
   | ITag of int
+  (** Wildcard (used for pattern-matching). *)
+  | Wild
 
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
@@ -153,6 +155,8 @@ let _Unif : unif -> tbox array -> tbox = fun u ar ->
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
 
+let _Wild : tbox = Bindlib.box Wild
+
 (** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
     variables, making them available for binding. At the same time,  the names
     of the bound variables are automatically updated by [Bindlib]. *)
@@ -171,6 +175,7 @@ let rec lift : term -> tbox = fun t ->
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
   | Unif(r,m)   -> _Unif r (Array.map lift m)
   | ITag(i)     -> _ITag i
+  | Wild        -> _Wild
 
 (** [is_closed t] tests whether the term [t] is closed,  using the information
     stored in the [info] elements. *)

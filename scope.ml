@@ -100,10 +100,16 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let l = Bindlib.box_list l in
     let u = to_tbox ~vars sign u in
     (* Building the definition. *)
-    let xs = Array.append (Array.of_list (List.map snd vars)) wcs in
-    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs l) in
+    let xs = Array.of_list (List.map snd vars) in
+    let lhs =
+      let lhs = Bindlib.bind_mvar xs l in
+      let lhs = Bindlib.bind_mvar wcs lhs in
+      let lhs = Bindlib.unbox lhs in
+      Bindlib.msubst lhs (Array.map (fun _ -> Wild) wcs)
+    in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
     (* Constructing the typing context. *)
+    let xs = Array.append xs wcs in
     let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
     let add_var (vars, ctx) x =
       let a =

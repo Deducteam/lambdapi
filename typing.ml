@@ -95,6 +95,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     | Kind        -> assert false
     | ITag(_)     -> assert false
     | Unif(_,_)   -> assert false
+    | Wild        -> assert false
   in
   if !debug_type then
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;

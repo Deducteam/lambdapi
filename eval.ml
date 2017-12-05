@@ -25,6 +25,7 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | Vari(_)     -> false
   | Symb(_)     -> false
   | ITag(_)     -> false
+  | Wild        -> false
 
 (** [unify u t] tries to unify [u] with [t], and returns a boolean to indicate
     whether it succeeded or not. Note that the function also verifies that the
@@ -68,6 +69,8 @@ let eq : term -> term -> bool = fun a b ->
     | (Prod(_,a1,b1), Prod(_,a2,b2)) -> eq a1 a2 && eq_binder b1 b2
     | (Abst(_,a1,t1), Abst(_,a2,t2)) -> eq a1 a2 && eq_binder t1 t2
     | (Appl(_,t1,u1), Appl(_,t2,u2)) -> eq t1 t2 && eq u1 u2
+    | (Wild         , _            ) -> assert false
+    | (_            , Wild         ) -> assert false
     | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
     | (Unif(u,e)    , b            ) when unify u e b -> true
     | (a            , Unif(u,e)    ) -> unify u e a
@@ -146,7 +149,10 @@ and find_rule : def -> term list -> (term * term list) option = fun s stk ->
     if r.arity > nb_args then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
     let new_pvar i = ITag(i) in
-    let uvars = Array.init (Bindlib.mbinder_arity r.lhs) new_pvar in
+    let uvars =
+      let ar = Bindlib.mbinder_arity r.lhs in
+      Array.init ar new_pvar
+    in
     let lhs = Bindlib.msubst r.lhs uvars in
     if !debug_eval then log "eval" "RULE trying rule [%a]" pp_rule (s,r);
     (* Match each argument of the lhs with the terms in the stack. *)
@@ -180,7 +186,8 @@ and matching ar pat t =
     | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
         let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
         matching ar t1 t2
-    | (Appl(_,t1,u1), Appl(_,t2,u2)) -> matching ar t1 t2 && matching ar u1 u2
+    | (Appl(_,t1,u1), Appl(_,t2,u2)) ->
+        matching ar t1 t2 && matching ar u1 u2
     | (Unif(_,_)    , _            ) -> assert false
     | (_            , Unif(_,_)    ) -> assert false
     | (Type         , Type         ) -> true
@@ -188,7 +195,9 @@ and matching ar pat t =
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (ITag(i)      , _            ) ->
-        if ar.(i) = ITag(i) then (ar.(i) <- t; true) else eq_modulo ar.(i) t
+        if ar.(i) = ITag(i) then (ar.(i) <- t; true)
+        else eq_modulo ar.(i) t
+    | (Wild         , _            ) -> true
     | (_            , _            ) -> false
   in
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp t; res
