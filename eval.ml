@@ -112,6 +112,13 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
+let add_args : term -> term ref list -> term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | u::args -> add_args (appl t !u) args
+  in add_args t args
+
 (** [whnf t] returns (almost) a weak head normal form of [t]. When a reduction
     rule is matched, the arguments may need to be normalised.  Their evaluated
     form is kept to avoid useless recomputations. *)
@@ -124,12 +131,12 @@ let rec whnf : term -> term = fun t ->
 (** [whnf_stk t stk] performs weak head normalisations of the term [t] applied
     to the argument list (or stack) [stk]. Note that the normalisation is done
     in the sense of [whnf]. *)
-and whnf_stk : term -> term list -> term * term list = fun t stk ->
+and whnf_stk : term -> term ref list -> term * term ref list = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
-  | (Appl(_,f,u) , stk    )       -> whnf_stk f (u :: stk)
+  | (Appl(_,f,u) , stk    )       -> whnf_stk f (ref u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,_,f) , u::stk )       -> whnf_stk (Bindlib.subst f u) stk
+  | (Abst(_,_,f) , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
   | (Symb(Def(s)), stk    ) as st ->
       begin
@@ -142,7 +149,7 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
 
 
 (* TODO cleaning from here on. *)
-and find_rule : def -> term list -> (term * term list) option = fun s stk ->
+and find_rule : def -> term ref list -> (term * term ref list) option = fun s stk ->
   let nb_args = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -177,23 +184,23 @@ and find_rule : def -> term list -> (term * term list) option = fun s stk ->
   find s.def_rules
 
 and matching ar pat t =
-  if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp t;
+  if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp !t;
   let res =
     match pat with
     | ITag(i) ->
-        if ar.(i) = ITag(i) then (ar.(i) <- t; true)
-        else eq_modulo ar.(i) t
+        if ar.(i) = ITag(i) then (ar.(i) <- !t; true)
+        else eq_modulo ar.(i) !t
     | Wild    -> true
     | _ ->
-    match (pat, whnf t) with
+    match (pat, (t := whnf !t; !t)) with
     | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-        matching ar a1 a2 && matching ar b1 b2
+        matching ar a1 (ref a2) && matching ar b1 (ref b2)
     | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
         let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
-        matching ar t1 t2
+        matching ar t1 (ref t2)
     | (Appl(_,t1,u1), Appl(_,t2,u2)) ->
-        matching ar t1 t2 && matching ar u1 u2
+        matching ar t1 (ref t2) && matching ar u1 (ref u2)
     | (Unif(_,_)    , _            ) -> assert false
     | (_            , Unif(_,_)    ) -> assert false
     | (Type         , Type         ) -> true
@@ -202,7 +209,7 @@ and matching ar pat t =
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (_            , _            ) -> false
   in
-  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp t; res
+  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp !t; res
 
 and eq_modulo : ?constr_on:bool -> term -> term -> bool =
   fun ?(constr_on=false) a b ->
@@ -217,7 +224,7 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         let rec sync acc la lb =
           match (la, lb) with
           | ([]   , []   ) -> (a, b, List.rev acc)
-          | (a::la, b::lb) -> sync ((a,b)::acc) la lb
+          | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
           | (la   , []   ) -> (add_args a (List.rev la), b, acc)
           | ([]   , lb   ) -> (a, add_args b (List.rev lb), acc)
         in
