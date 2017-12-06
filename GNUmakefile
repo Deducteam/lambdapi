@@ -28,7 +28,7 @@ tests: lambdapi.native
 .PHONY: matita
 matita: lambdapi.native $(MATITAFILES)
 	@echo "## Compiling matita library ##"
-	@cd matita && ../lambdapi.native --verbose 2 matita.dk
+	@cd matita && time ../lambdapi.native matita.dk
 
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
