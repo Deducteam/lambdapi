@@ -112,16 +112,19 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
-(* TODO cleaning from here on. *)
-
+(** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = term ref list
 
-let add_stack : term -> stack -> term = fun t args ->
-  let rec add_stack t args =
+(* NOTE the stack contain references so that the computation of arguments when
+   matching reduction rules may be shared. *)
+
+(** [to_term t stk] builds a term from an abstrack machine state [(t,stk)]. *)
+let to_term : term -> stack -> term = fun t args ->
+  let rec to_term t args =
     match args with
     | []      -> t
-    | u::args -> add_stack (appl t !u) args
-  in add_stack t args
+    | u::args -> to_term (appl t !u) args
+  in to_term t args
 
 (** [whnf t] returns (almost) a weak head normal form of [t]. When a reduction
     rule is matched, the arguments may need to be normalised.  Their evaluated
@@ -129,7 +132,7 @@ let add_stack : term -> stack -> term = fun t args ->
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
   let (u, stk) = whnf_stk t [] in
-  let u = add_stack u stk in
+  let u = to_term u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
 
 (** [whnf_stk t stk] performs weak head normalisations of the term [t] applied
@@ -151,51 +154,45 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_           , _      ) as st -> st
 
-
+(** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
+    under the stack [stk]. If such a rule is found, the machine state produced
+    by its application is returned. *)
 and find_rule : def -> stack -> (term * stack) option = fun s stk ->
-  let nb_args = List.length stk in
+  let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
-    if r.arity > nb_args then None else
+    if r.arity > stk_len then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let new_pvar i = ITag(i) in
-    let uvars =
-      let ar = Bindlib.mbinder_arity r.lhs in
-      Array.init ar new_pvar
-    in
-    let lhs = Bindlib.msubst r.lhs uvars in
+    let env = Array.init (Bindlib.mbinder_arity r.lhs) (fun i -> ITag(i)) in
+    let lhs = Bindlib.msubst r.lhs env in
     if !debug_eval then log "eval" "RULE trying rule [%a]" pp_rule (s,r);
     (* Match each argument of the lhs with the terms in the stack. *)
-    let rec match_args lhs stk =
-      match (lhs, stk) with
-      | ([]    , stk   ) ->
-          Some(Bindlib.msubst r.rhs (Array.map unfold uvars), stk)
-      | (t::lhs, v::stk) ->
-          if matching uvars t v then match_args lhs stk else None
-      | (_     , _     ) -> assert false
+    let rec match_args ps ts =
+      match (ps, ts) with
+      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
+      | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
+      | (_    , _    ) -> assert false (* cannot happen *)
     in
     match_args lhs stk
   in
-  let rec find rs =
-    match rs with
-    | []    -> None
-    | r::rs ->
-        match match_rule r with
-        | None -> find rs
-        | res  -> res
-  in
-  find s.def_rules
+  List.map_find match_rule s.def_rules
 
-and matching ar pat t =
-  if !debug_eval then log "matc" "[%a] =~= [%a]" pp pat pp !t;
+(** [matching ar p t] checks that term [t] matches pattern [p]. The values for
+    pattern variables (using the [ITag] node) are stored in [ar], at the index
+    they denote. In case several different values are found for a same pattern
+    variable, equality modulo is computed to check compatibility. *)
+and matching ar p t =
+  if !debug_eval then log "matc" "[%a] =~= [%a]" pp p pp !t;
   let res =
-    match pat with
-    | ITag(i) ->
-        if ar.(i) = ITag(i) then (ar.(i) <- !t; true)
-        else eq_modulo ar.(i) !t
-    | Wild    -> true
-    | _ ->
-    match (pat, (t := whnf !t; !t)) with
+    (* First handle patterns that do not need the evaluated term. *)
+    match p with
+    | ITag(i) when ar.(i) = ITag(i) -> ar.(i) <- !t; true
+    | Wild                          -> true
+    | _                             ->
+    (* Other cases need the term to be evaluated. *)
+    t := whnf !t;
+    match (p, !t) with
+    | (ITag(i)      , t            ) -> eq_modulo ar.(i) t (* t <> ITag(i) *)
     | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
         matching ar a1 (ref a2) && matching ar b1 (ref b2)
@@ -212,12 +209,13 @@ and matching ar pat t =
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (_            , _            ) -> false
   in
-  if !debug_eval then
-    log "matc" (r_or_g res "[%a] =~= [%a]") pp pat pp !t;
-  res
+  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
+(** [eq_modulo ~constr_on a b] tests equality modulo rewriting between [a] and
+    [b]. In the case where [constr_on] is true, and constraint mode is enabled
+    (see [constraints]), constraints are learnt instead of failing. *)
 and eq_modulo : ?constr_on:bool -> term -> term -> bool =
-  fun ?(constr_on=false) a b ->
+    fun ?(constr_on=false) a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -230,15 +228,12 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
           match (la, lb) with
           | ([]   , []   ) -> (a, b, List.rev acc)
           | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
-          | (la   , []   ) -> (add_stack a (List.rev la), b, acc)
-          | ([]   , lb   ) -> (a, add_stack b (List.rev lb), acc)
+          | (la   , []   ) -> (to_term a (List.rev la), b, acc)
+          | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
-        let a = unfold a in
-        let b = unfold b in
-        match (a, b) with
-        | (_            , _            ) when eq a b -> eq_modulo l
-        | (Appl(_,_,_)  , Appl(_,_,_)  ) -> eq_modulo ((a,b)::l)
+        match (unfold a, unfold b) with
+        | (a            , b            ) when eq a b -> eq_modulo l
         | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
             let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
             eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
