@@ -54,7 +54,7 @@ let link : t -> unit = fun sign ->
     | Appl(i,t,u) -> Appl(i, link_term t, link_term u)
     | Unif(_,_)   -> assert false
     | ITag(_)     -> assert false
-    | Wild        -> assert false
+    | Wild        -> Wild
   and link_rule r =
     let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
     let lhs = List.map link_term lhs in
