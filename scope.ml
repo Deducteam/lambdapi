@@ -26,6 +26,12 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           end
       | P_Vari(fs,x)  ->
           begin
+            if not (fs = Sign.(sign.path) || Hashtbl.mem Sign.(sign.deps) fs) then
+              begin
+                let cur = String.concat "." Sign.(sign.path) in
+                let req = String.concat "." fs in
+                fatal "No module %s loaded in %s...\n%!" req cur
+              end;
             try
               let sg = Hashtbl.find Sign.loaded fs in
               try _Symb (Sign.find sg x) with Not_found ->
