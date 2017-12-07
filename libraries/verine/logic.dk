@@ -1,0 +1,26 @@
+#NAME logic.
+Sort: Type.
+Term: Sort -> Type.
+Bool: Sort.
+def Proof: Term Bool -> Type.
+true: Term Bool.
+false: Term Bool.
+not: Term Bool -> Term Bool.
+imply: Term Bool -> Term Bool -> Term Bool.
+and: Term Bool -> Term Bool -> Term Bool.
+or: Term Bool -> Term Bool -> Term Bool.
+xor: Term Bool -> Term Bool -> Term Bool.
+equal: S:Sort -> Term S -> Term S -> Term Bool.
+distinct: S:Sort -> Term S -> Term S -> Term Bool.
+ite: S:Sort -> Term Bool -> Term S -> Term S -> Term S.
+
+[] Proof true --> P: Term Bool -> (Proof P -> Proof P)
+[] Proof false --> P: Term Bool -> Proof P
+[A: Term Bool, B: Term Bool] 
+    Proof (and A B) --> P: Term Bool -> (Proof A -> Proof B -> Proof P) -> Proof P
+[A: Term Bool, B: Term Bool] 
+    Proof (or A B) --> P: Term Bool -> (Proof A -> Proof P) -> (Proof B -> Proof P) -> Proof P
+[A: Term Bool, B: Term Bool] Proof (imply A B) --> Proof A -> Proof B
+[A: Term Bool] Proof (not A) --> Proof A -> Proof false
+[S: Sort, x: Term S, y: Term S] 
+    Proof (equal S x y) --> P:(Term S -> Term Bool) -> Proof (imply (P x) (P y)).

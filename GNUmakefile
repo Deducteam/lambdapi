@@ -39,6 +39,11 @@ holide: lambdapi.native $(wildcard libraries/holide/*.dk)
 	@echo "## Compiling holide library ##"
 	@cd libraries/holide && time ../../lambdapi.native holide.dk
 
+.PHONY: verine
+verine: lambdapi.native $(wildcard libraries/verine/*.dk)
+	@echo "## Compiling verine library ##"
+	@cd libraries/verine && time ../../lambdapi.native verine.dk
+
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)
