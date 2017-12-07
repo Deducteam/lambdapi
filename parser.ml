@@ -40,6 +40,14 @@ let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
 let parser _Type_ = s:''[T][y][p][e][_a-zA-Z0-9]*'' ->
   if s <> "Type" then Earley.give_up ()
 
+(** [_def_] is an atomic parser for the ["def"] keyword. *)
+let parser _def_ = s:''[d][e][f][_a-zA-Z0-9]*'' ->
+  if s <> "def" then Earley.give_up ()
+
+(** [_thm_] is an atomic parser for the ["thm"] keyword. *)
+let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
+  if s <> "thm" then Earley.give_up ()
+
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
@@ -130,9 +138,9 @@ let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
 (** [cmp] parses a single toplevel command. *)
 let parser cmd =
   | x:ident ":" a:expr                   -> P_NewSym(x,a)
-  | "def" x:ident ":" a:expr             -> P_NewDef(x,a)
-  | "def" x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
-  | "thm" x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
+  | _def_ x:ident ":" a:expr             -> P_NewDef(x,a)
+  | _def_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
+  | _thm_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
   | rs:rule+                             -> P_Rules(rs)
   | "#REQUIRE" path:mod_path             -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)
