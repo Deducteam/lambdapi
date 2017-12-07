@@ -1,6 +1,12 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_pidgeon_hole.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_lists_list.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_bounded_quantifiers.
 
 def decidable_mem_nat :
       n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

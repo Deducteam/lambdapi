@@ -1,6 +1,14 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_ord.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_types.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_exp.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_primes.
+#REQUIRE matita_arithmetics_gcd.
 
 def p_ord_aux :
       __ : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

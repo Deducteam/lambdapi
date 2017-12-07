@@ -1,6 +1,9 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_bounded_quantifiers.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_arithmetics_nat.
 
 def decidable_not :
       P : cic.Univ cic.prop ->

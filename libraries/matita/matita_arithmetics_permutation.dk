@@ -1,6 +1,11 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_permutation.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_relations.
+#REQUIRE matita_arithmetics_nat.
 
 def injn :
       __ :

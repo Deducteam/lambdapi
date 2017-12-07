@@ -1,6 +1,19 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_chebyshev_factorization.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_bigops.
+#REQUIRE matita_arithmetics_log.
+#REQUIRE matita_arithmetics_exp.
+#REQUIRE matita_arithmetics_ord.
+#REQUIRE matita_arithmetics_minimization.
+#REQUIRE matita_arithmetics_factorial.
+#REQUIRE matita_arithmetics_sigma_pi.
+#REQUIRE matita_arithmetics_primes.
 
 def eq_pi_p_primeb_divides_b :
       n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

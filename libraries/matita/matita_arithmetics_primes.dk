@@ -1,6 +1,14 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_primes.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_relations.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_minimization.
+#REQUIRE matita_arithmetics_factorial.
 
 divides :
   _n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

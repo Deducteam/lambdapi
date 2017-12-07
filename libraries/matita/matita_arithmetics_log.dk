@@ -1,6 +1,13 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_log.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_exp.
+#REQUIRE matita_arithmetics_minimization.
 
 def log :
       _p : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

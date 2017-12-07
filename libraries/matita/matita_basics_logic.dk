@@ -1,7 +1,7 @@
 (; This file was automatically generated from Matita. ;)
 
+#REQUIRE cic.
 #REQUIRE univs.
-#NAME matita_basics_logic.
 
 eq :
   A : cic.Univ univs.Type2 ->

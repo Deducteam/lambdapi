@@ -1,6 +1,23 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_chebyshev_bertrand.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_primes.
+#REQUIRE matita_arithmetics_exp.
+#REQUIRE matita_arithmetics_log.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_bigops.
+#REQUIRE matita_arithmetics_sigma_pi.
+#REQUIRE matita_arithmetics_factorial.
+#REQUIRE matita_arithmetics_sqrt.
+#REQUIRE matita_arithmetics_minimization.
+#REQUIRE matita_arithmetics_chebyshev_chebyshev_psi.
+#REQUIRE matita_arithmetics_chebyshev_psi_bounds.
+#REQUIRE matita_arithmetics_chebyshev_factorization.
+#REQUIRE matita_arithmetics_chebyshev_chebyshev_theta.
 
 def bertrand :
       _n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->

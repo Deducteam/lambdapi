@@ -1,7 +1,7 @@
 (; This file was automatically generated from Matita. ;)
 
+#REQUIRE cic.
 #REQUIRE univs.
-#NAME matita_hints_declaration.
 
 def hint_declaration_Type0 :
       A : cic.Univ univs.Type0 ->

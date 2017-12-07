@@ -1,6 +1,19 @@
 (; This file was automatically generated from Matita. ;)
 
-#NAME matita_arithmetics_chebyshev_psi_bounds.
+#REQUIRE cic.
+#REQUIRE univs.
+#REQUIRE matita_basics_bool.
+#REQUIRE matita_basics_logic.
+#REQUIRE matita_basics_relations.
+#REQUIRE matita_arithmetics_nat.
+#REQUIRE matita_arithmetics_primes.
+#REQUIRE matita_arithmetics_log.
+#REQUIRE matita_arithmetics_exp.
+#REQUIRE matita_arithmetics_div_and_mod.
+#REQUIRE matita_arithmetics_bigops.
+#REQUIRE matita_arithmetics_sigma_pi.
+#REQUIRE matita_arithmetics_chebyshev_factorization.
+#REQUIRE matita_arithmetics_chebyshev_chebyshev_psi.
 
 def le_B_Psi :
       n : cic.Term univs.Type0 matita_arithmetics_nat.nat ->
