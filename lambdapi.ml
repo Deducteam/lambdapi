@@ -28,7 +28,8 @@ let _ =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ "0 (or less) : no output at all"
       ; "1 : only file loading information (default)"
-      ; "2 (or more) : show the results of commands" ]
+      ; "2 : more file loading information"
+      ; "3 (or more) : show the results of commands" ]
     in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
   in
   let spec =

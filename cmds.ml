@@ -47,24 +47,24 @@ let handle_rules = fun sign rs ->
 let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
   if not (Typing.has_type sign Ctxt.empty t a) then
     fatal "%a does not have type %a...\n" pp t pp a;
-  out 2 "(chck) OK\n"
+  out 3 "(chck) OK\n"
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> unit = fun sign t ->
   match Typing.infer sign Ctxt.empty t with
-  | Some(a) -> out 2 "(infr) %a : %a\n" pp t pp a
+  | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp a
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> unit = fun sign t ->
   (* FIXME check typing? *)
-  out 2 "(eval) %a\n" pp (Eval.whnf t)
+  out 3 "(eval) %a\n" pp (Eval.whnf t)
 
 (** [handle_conv sign t u] checks the convertibility of the terms [t] and [u].
     The program fails gracefully if the check is not successful. *)
 let handle_conv : Sign.t -> term -> term -> unit = fun sign t u ->
-  if Eval.eq_modulo t u then out 2 "(conv) OK\n"
+  if Eval.eq_modulo t u then out 3 "(conv) OK\n"
   else fatal "cannot convert %a and %a...\n" pp t pp u
 
 (** [handle_import sign path] compiles the signature corresponding to  [path],
@@ -105,7 +105,7 @@ and compile : bool -> string list -> unit = fun force path ->
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Hashtbl.mem Sign.loaded path then out 1 "Already loaded [%s]\n%!" src
+  if Hashtbl.mem Sign.loaded path then out 2 "Already loaded [%s]\n%!" src
   else
     begin
       if force || more_recent src obj then
@@ -118,7 +118,7 @@ and compile : bool -> string list -> unit = fun force path ->
           handle_cmds sign (parse_file src);
           Sign.write sign obj;
           ignore (Stack.pop Sign.loading);
-          out 1 "Compiled [%s]\n%!" src;
+          out 2 "Compiled  [%s]\n%!" src;
         end
       else
         begin
@@ -127,6 +127,6 @@ and compile : bool -> string list -> unit = fun force path ->
           Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
           Hashtbl.add Sign.loaded path sign;
           Sign.link sign;
-          out 1 "Loaded [%s]\n%!" obj;
+          out 2 "Loaded  [%s]\n%!" obj;
         end;
     end

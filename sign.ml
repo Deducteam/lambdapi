@@ -107,7 +107,7 @@ let new_static : t -> string -> term -> sym =
     let sym_path = sign.path in
     let sym = { sym_name ; sym_type ; sym_path } in
     Hashtbl.add sign.symbols sym_name (Sym(sym));
-    out 2 "(stat) %s\n" sym_name; sym
+    out 3 "(stat) %s\n" sym_name; sym
 
 (** [new_definable sign name a] creates a fresh definable symbol named [name],
     without any reduction rules, and of type [a] in the signature [sign]. Note
@@ -119,7 +119,7 @@ let new_definable : t -> string -> term -> def =
     let def_path = sign.path in
     let def = { def_name ; def_type ; def_rules = [] ; def_path } in
     Hashtbl.add sign.symbols def_name (Def(def));
-    out 2 "(defi) %s\n" def_name; def
+    out 3 "(defi) %s\n" def_name; def
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit =
@@ -140,7 +140,7 @@ let read : string -> t =
     also stored in the dependencies. *)
 let add_rule : t -> def -> rule -> unit = fun sign def r ->
   def.def_rules <- def.def_rules @ [r];
-  out 2 "(rule) added a rule for symbol %s\n" def.def_name;
+  out 3 "(rule) added a rule for symbol %s\n" def.def_name;
   if def.def_path <> sign.path then
     let m =
       try Hashtbl.find sign.deps def.def_path
