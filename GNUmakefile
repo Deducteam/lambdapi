@@ -44,6 +44,16 @@ verine: lambdapi.native $(wildcard libraries/verine/*.dk)
 	@echo "## Compiling verine library ##"
 	@cd libraries/verine && time ../../lambdapi.native verine.dk
 
+.PHONY: iProverModulo
+ifneq ("$(wildcard libraries/iProverModulo)","")
+iProverModulo: lambdapi.native $(wildcard libraries/iProverModulo/*.dk)
+	@echo "## Compiling iProverModulo library ##"
+	@cd libraries/iProverModulo && time ../../lambdapi.native iProverModulo.dk
+else
+iProverModulo:
+	@echo "You must first run 'libraries/iProverModulo.sh'"
+endif
+
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)
