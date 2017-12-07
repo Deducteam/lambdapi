@@ -132,6 +132,7 @@ let parser cmd =
   | x:ident ":" a:expr                   -> P_NewSym(x,a)
   | "def" x:ident ":" a:expr             -> P_NewDef(x,a)
   | "def" x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
+  | "thm" x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
   | rs:rule+                             -> P_Rules(rs)
   | "#REQUIRE" path:mod_path             -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)

@@ -11,7 +11,7 @@ endif
 
 " Keywords
 syntax keyword Type Type
-syntax keyword Keyword def
+syntax keyword Keyword def thm
 syntax match   Keyword "\["
 syntax match   Keyword "\]"
 syntax match   Keyword "("
