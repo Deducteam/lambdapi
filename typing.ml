@@ -87,7 +87,8 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
                     eq_modulo ~constr_on:true (Bindlib.subst b u) c
                     && has_type sign ctx u a
                 | a           ->
-                    err "Product expected for [%a], found [%a]..." pp t pp a;
+                    err "Product expected for [%a], found [%a]...\n%!"
+                      pp t pp a;
                     assert(unfold c == c); false
               end
         end

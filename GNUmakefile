@@ -34,6 +34,11 @@ focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
 	@echo "## Compiling focalide library ##"
 	@cd libraries/focalide && time ../../lambdapi.native focalide.dk
 
+.PHONY: holide
+holide: lambdapi.native $(wildcard libraries/holide/*.dk)
+	@echo "## Compiling holide library ##"
+	@cd libraries/holide && time ../../lambdapi.native holide.dk
+
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)

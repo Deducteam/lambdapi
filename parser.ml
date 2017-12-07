@@ -124,7 +124,7 @@ let parser def_def =
     (ao, t)
 
 (** [mod_path] is a parser for a module path. *)
-let parser mod_path = path:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
+let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
   String.split_on_char '.' path
 
 (** [cmp] parses a single toplevel command. *)
