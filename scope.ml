@@ -124,9 +124,12 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           | None    -> raise Not_found
           | Some(a) -> to_term ~vars sign a (* FIXME order ? *)
         with Not_found ->
+          (* FIXME order (temporary hack. *)
           let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in
           Bindlib.unbox (_Unif (new_unif ()) (Array.of_list vars))
+          *)
+          Bindlib.unbox (_Unif (new_unif ()) (Array.map Bindlib.box_of_var xs))
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in
