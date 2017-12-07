@@ -3,7 +3,6 @@ TESTFILES    = $(wildcard tests/*.dk) \
 							 $(wildcard examples/*.dk) \
 							 $(wildcard other_examples/*.dk) \
 							 $(wildcard dedukti_tests/OK/*.dk)
-MATITAFILES  = $(wildcard matita/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
 SHELL = /bin/bash
@@ -26,9 +25,9 @@ tests: lambdapi.native
 	done
 
 .PHONY: matita
-matita: lambdapi.native $(MATITAFILES)
+matita: lambdapi.native $(wildcard libraries/matita/*.dk)
 	@echo "## Compiling matita library ##"
-	@cd matita && time ../lambdapi.native matita.dk
+	@cd libraries/matita && time ../../lambdapi.native matita.dk
 
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
