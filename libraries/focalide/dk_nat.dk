@@ -1,0 +1,250 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+
+def Bool : Type := dk_bool.Bool.
+
+Nat : Type.
+
+[] cc.eT (builtins.nat) --> Nat.
+
+def call_by_value_nat : R:cc.uT -> (Nat -> cc.eT R) -> Nat -> cc.eT R.
+
+[f] call_by_value_nat _ f (builtins.0) --> f builtins.0
+[n, f] call_by_value_nat _ f (builtins.S n) --> f (builtins.S n).
+
+def lt : Nat -> Nat -> Bool.
+
+[] lt (builtins.0) (builtins.S _) --> dk_bool.true
+[] lt _ (builtins.0) --> dk_bool.false
+[m, n] lt (builtins.S n) (builtins.S m) --> lt n m.
+
+def gt : Nat -> Nat -> Bool.
+
+[m, n] gt n m --> lt m n.
+
+def leq : Nat -> Nat -> Bool.
+
+[] leq (builtins.0) _ --> dk_bool.true
+[] leq (builtins.S _) (builtins.0) --> dk_bool.false
+[m, n] leq (builtins.S n) (builtins.S m) --> leq n m.
+
+def geq : Nat -> Nat -> Bool.
+
+[m, n] geq n m --> leq m n.
+
+def eq : Nat -> Nat -> Bool.
+
+[m, n] eq n m --> dk_bool.and (leq n m) (geq n m).
+
+def plus : Nat -> Nat -> Nat.
+
+[m] plus (builtins.0) m --> m
+[m, n] plus (builtins.S n) m --> builtins.S (plus n m)
+[n] plus n (builtins.0) --> n
+[m, n] plus n (builtins.S m) --> builtins.S (plus n m).
+
+def mult : Nat -> Nat -> Nat.
+
+[] mult (builtins.0) _ --> builtins.0
+[m, n] mult (builtins.S n) m --> plus (mult n m) m.
+
+def max : Nat -> Nat -> Nat.
+
+[n, m] max m n --> dk_bool.ite builtins.nat (leq m n) n m.
+
+def min : Nat -> Nat -> Nat.
+
+[n, m] min m n --> dk_bool.ite builtins.nat (leq m n) m n.
+
+def mod_aux : Nat -> Nat -> Nat -> Nat.
+
+[r] mod_aux (builtins.0) _ r --> r
+[r, m, n]
+  mod_aux (builtins.S n) m r
+  -->
+  mod_aux n m 
+    (dk_bool.ite builtins.nat (lt (builtins.S r) m) (builtins.S r) builtins.0).
+
+def mod : Nat -> Nat -> Nat.
+
+[m, n] mod n m --> mod_aux n m builtins.0.
+
+def quo_aux : Nat -> Nat -> Nat -> Nat.
+
+[] quo_aux (builtins.0) _ _ --> builtins.0
+[r, m, n]
+  quo_aux (builtins.S n) m r
+  -->
+  dk_bool.ite builtins.nat (lt (builtins.S r) m) 
+    (quo_aux n m (builtins.S r)) (builtins.S (quo_aux n m builtins.0)).
+
+def quo : Nat -> Nat -> Nat.
+
+[m, n] quo n m --> quo_aux n m builtins.0.
+
+def pow : Nat -> Nat -> Nat.
+
+[] pow _ (builtins.0) --> builtins.S builtins.0
+[k, n] pow n (builtins.S k) --> mult n (pow n k).
+
+Digit : cc.uT.
+
+_0 : cc.eT Digit.
+
+_1 : cc.eT Digit.
+
+_2 : cc.eT Digit.
+
+_3 : cc.eT Digit.
+
+_4 : cc.eT Digit.
+
+_5 : cc.eT Digit.
+
+_6 : cc.eT Digit.
+
+_7 : cc.eT Digit.
+
+_8 : cc.eT Digit.
+
+_9 : cc.eT Digit.
+
+def digit_to_nat : (cc.eT Digit) -> Nat.
+
+[] digit_to_nat (_0) --> builtins.0
+[] digit_to_nat (_1) --> builtins.S builtins.0
+[] digit_to_nat (_2) --> builtins.S (builtins.S builtins.0)
+[] digit_to_nat (_3) --> builtins.S (builtins.S (builtins.S builtins.0))
+[]
+  digit_to_nat (_4)
+  -->
+  builtins.S (builtins.S (builtins.S (builtins.S builtins.0)))
+[]
+  digit_to_nat (_5)
+  -->
+  builtins.S (builtins.S (builtins.S (builtins.S (builtins.S builtins.0))))
+[]
+  digit_to_nat (_6)
+  -->
+  builtins.S 
+    (builtins.S 
+       (builtins.S (builtins.S (builtins.S (builtins.S builtins.0)))))
+[]
+  digit_to_nat (_7)
+  -->
+  builtins.S 
+    (builtins.S 
+       (builtins.S 
+          (builtins.S (builtins.S (builtins.S (builtins.S builtins.0))))))
+[]
+  digit_to_nat (_8)
+  -->
+  builtins.S 
+    (builtins.S 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S (builtins.S (builtins.S (builtins.S builtins.0)))))))
+[]
+  digit_to_nat (_9)
+  -->
+  builtins.S 
+    (builtins.S 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S (builtins.S (builtins.S (builtins.S builtins.0)))))))).
+
+def Diglist := cc.eT (builtins.list Digit).
+
+def list_to_nat : Diglist -> Nat.
+
+[] list_to_nat (builtins.nil (Digit)) --> builtins.0
+[l, d]
+  list_to_nat (builtins.cons (Digit) d l)
+  -->
+  plus (digit_to_nat d) 
+    (mult 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S (builtins.S (builtins.S builtins.0)))))))))) 
+       (list_to_nat l)).
+
+def dnil : Diglist := builtins.nil Digit.
+
+def dcons :
+  Diglist -> (cc.eT Digit) -> Diglist
+  :=
+  l:Diglist => d:(cc.eT Digit) => builtins.cons Digit d l.
+
+def nat_to_digit : Nat -> cc.eT Digit.
+
+[] nat_to_digit (builtins.0) --> _0
+[] nat_to_digit (builtins.S (builtins.0)) --> _1
+[] nat_to_digit (builtins.S (builtins.S (builtins.0))) --> _2
+[] nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.0)))) --> _3
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0)))))
+  -->
+  _4
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0))))))
+  -->
+  _5
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0)))))))
+  -->
+  _6
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0))))))))
+  -->
+  _7
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0)))))))))
+  -->
+  _8
+[]
+  nat_to_digit (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.S (builtins.0))))))))))
+  -->
+  _9.
+
+def nat_to_list_aux : Nat -> Diglist.
+
+[] nat_to_list_aux (builtins.0) --> builtins.nil Digit
+[n]
+  nat_to_list_aux (builtins.S n)
+  -->
+  builtins.cons Digit 
+    (nat_to_digit 
+       (mod (builtins.S n) 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S (builtins.S builtins.0)))))))))))) 
+    (nat_to_list_aux 
+       (quo (builtins.S n) 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S (builtins.S builtins.0)))))))))))).
+
+def nat_to_list : Nat -> Diglist.
+
+[] nat_to_list (builtins.0) --> builtins.cons Digit _0 (builtins.nil Digit)
+[n] nat_to_list (builtins.S n) --> nat_to_list_aux (builtins.S n).
+

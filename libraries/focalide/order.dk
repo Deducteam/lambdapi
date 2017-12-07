@@ -1,0 +1,776 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+#REQUIRE dk_tuple.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def Iter_tools__it_order_decreases :
+  _p_Elt_T:cc.uT ->
+  _p_It_T:cc.uT ->
+  _p_It_hasnext:((cc.eT _p_It_T) -> cc.eT basics.bool__t) ->
+  _p_It_meas_fct:((cc.eT _p_It_T) -> cc.eT basics.int__t) ->
+  _p_It_stepp:((cc.eT _p_It_T) -> cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) ->
+  _p_WFOnIt_order_fct:((cc.eT _p_It_T) ->
+                       (cc.eT _p_It_T) -> cc.eT basics.bool__t) ->
+  _p_WFOnIt_order_fct_spec:(dk_logic.eP 
+                              (dk_logic.forall _p_It_T 
+                                 (mi1:(cc.eT _p_It_T) =>
+                                  dk_logic.forall _p_It_T 
+                                    (mi2:(cc.eT _p_It_T) =>
+                                     dk_logic.eqv 
+                                       (dk_logic.ebP 
+                                          (_p_WFOnIt_order_fct mi1 mi2)) 
+                                       (dk_logic.ebP 
+                                          (basics._amper__amper_ 
+                                             (basics._lt__equal_ 
+                                                (dk_int.from_nat builtins.0) 
+                                                (_p_It_meas_fct mi2)) 
+                                             (basics._lt_ 
+                                                (_p_It_meas_fct mi1) 
+                                                (_p_It_meas_fct mi2)))))))) ->
+  abst_mea_decreases:(dk_logic.eP 
+                        (dk_logic.forall _p_It_T 
+                           (it:(cc.eT _p_It_T) =>
+                            dk_logic.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+                              (res:
+                               (cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                               dk_logic.imp 
+                                 (dk_logic.ebP (_p_It_hasnext it)) 
+                                 (dk_logic.imp 
+                                    (dk_logic.ebP 
+                                       (basics._equal_ 
+                                          (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                          (_p_It_stepp it) res)) 
+                                    (dk_logic.ebP 
+                                       (basics._lt_ 
+                                          (_p_It_meas_fct 
+                                             (basics.snd _p_Elt_T _p_It_T res)) 
+                                          (_p_It_meas_fct it)))))))) ->
+  abst_mesure_positive:(dk_logic.eP 
+                          (dk_logic.forall _p_It_T 
+                             (a:(cc.eT _p_It_T) =>
+                              dk_logic.ebP 
+                                (basics._lt__equal_ 
+                                   (dk_int.from_nat builtins.0) 
+                                   (_p_It_meas_fct a))))) ->
+  dk_logic.eP 
+    (dk_logic.forall _p_It_T 
+       (it:(cc.eT _p_It_T) =>
+        dk_logic.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+          (res:(cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+           dk_logic.imp (dk_logic.ebP (_p_It_hasnext it)) 
+             (dk_logic.imp 
+                (dk_logic.ebP 
+                   (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                      (_p_It_stepp it) res)) 
+                (dk_logic.ebP 
+                   (_p_WFOnIt_order_fct (basics.snd _p_Elt_T _p_It_T res) it))))))
+  :=
+  _p_Elt_T:cc.uT =>
+  _p_It_T:cc.uT =>
+  _p_It_hasnext:((cc.eT _p_It_T) -> cc.eT basics.bool__t) =>
+  _p_It_meas_fct:((cc.eT _p_It_T) -> cc.eT basics.int__t) =>
+  _p_It_stepp:((cc.eT _p_It_T) -> cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+  _p_WFOnIt_order_fct:
+  ((cc.eT _p_It_T) -> (cc.eT _p_It_T) -> cc.eT basics.bool__t) =>
+  _p_WFOnIt_order_fct_spec:
+  (dk_logic.eP 
+     (dk_logic.forall _p_It_T 
+        (mi1:(cc.eT _p_It_T) =>
+         dk_logic.forall _p_It_T 
+           (mi2:(cc.eT _p_It_T) =>
+            dk_logic.eqv (dk_logic.ebP (_p_WFOnIt_order_fct mi1 mi2)) 
+              (dk_logic.ebP 
+                 (basics._amper__amper_ 
+                    (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                       (_p_It_meas_fct mi2)) 
+                    (basics._lt_ (_p_It_meas_fct mi1) (_p_It_meas_fct mi2)))))))) =>
+  abst_mea_decreases:
+  (dk_logic.eP 
+     (dk_logic.forall _p_It_T 
+        (it:(cc.eT _p_It_T) =>
+         dk_logic.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+           (res:(cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+            dk_logic.imp (dk_logic.ebP (_p_It_hasnext it)) 
+              (dk_logic.imp 
+                 (dk_logic.ebP 
+                    (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                       (_p_It_stepp it) res)) 
+                 (dk_logic.ebP 
+                    (basics._lt_ 
+                       (_p_It_meas_fct (basics.snd _p_Elt_T _p_It_T res)) 
+                       (_p_It_meas_fct it)))))))) =>
+  abst_mesure_positive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_It_T 
+        (a:(cc.eT _p_It_T) =>
+         dk_logic.ebP 
+           (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+              (_p_It_meas_fct a))))) =>
+  zen.nnpp 
+    (zen.forall _p_It_T 
+       (v_Vac:(zen.term _p_It_T) =>
+        zen.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+          (v_Vbc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+           zen.imp (zen.triangle (focal.is_true (_p_It_hasnext v_Vac))) 
+             (zen.imp 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                         (_p_It_stepp v_Vac) v_Vbc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (_p_WFOnIt_order_fct 
+                         (basics.snd _p_Elt_T _p_It_T v_Vbc) v_Vac))))))) 
+    (v_Vcc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall _p_It_T 
+              (v_Vac:(zen.term _p_It_T) =>
+               zen.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+                 (v_Vbc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                  zen.imp 
+                    (zen.triangle (focal.is_true (_p_It_hasnext v_Vac))) 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ 
+                                (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                (_p_It_stepp v_Vac) v_Vbc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_WFOnIt_order_fct 
+                                (basics.snd _p_Elt_T _p_It_T v_Vbc) v_Vac))))))))) =>
+     zen.Rnotall _p_It_T 
+       (v_Vac:(zen.term _p_It_T) =>
+        zen.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+          (v_Vbc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+           zen.imp (zen.triangle (focal.is_true (_p_It_hasnext v_Vac))) 
+             (zen.imp 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                         (_p_It_stepp v_Vac) v_Vbc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (_p_WFOnIt_order_fct 
+                         (basics.snd _p_Elt_T _p_It_T v_Vbc) v_Vac)))))) 
+       (v_Vdc:(zen.term _p_It_T) =>
+        v_Vec:
+        (zen.proof 
+           (zen.not 
+              (zen.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+                 (v_Vbc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                  zen.imp 
+                    (zen.triangle (focal.is_true (_p_It_hasnext v_Vdc))) 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ 
+                                (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                (_p_It_stepp v_Vdc) v_Vbc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_WFOnIt_order_fct 
+                                (basics.snd _p_Elt_T _p_It_T v_Vbc) v_Vdc)))))))) =>
+        zen.Rnotall (dk_tuple.prod _p_Elt_T _p_It_T) 
+          (v_Vbc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+           zen.imp (zen.triangle (focal.is_true (_p_It_hasnext v_Vdc))) 
+             (zen.imp 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                         (_p_It_stepp v_Vdc) v_Vbc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (_p_WFOnIt_order_fct 
+                         (basics.snd _p_Elt_T _p_It_T v_Vbc) v_Vdc))))) 
+          (v_Vfc:(zen.term (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+           v_Vgc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle (focal.is_true (_p_It_hasnext v_Vdc))) 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ 
+                                (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                (_p_It_stepp v_Vdc) v_Vfc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_WFOnIt_order_fct 
+                                (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc))))))) =>
+           zen.Rnotimply 
+             (zen.triangle (focal.is_true (_p_It_hasnext v_Vdc))) 
+             (zen.imp 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                         (_p_It_stepp v_Vdc) v_Vfc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (_p_WFOnIt_order_fct 
+                         (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc)))) 
+             (v_Vhc:
+              (zen.proof (zen.triangle (focal.is_true (_p_It_hasnext v_Vdc)))) =>
+              v_Vic:
+              (zen.proof 
+                 (zen.not 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ 
+                                (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                (_p_It_stepp v_Vdc) v_Vfc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_WFOnIt_order_fct 
+                                (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc)))))) =>
+              zen.Rnotimply 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                         (_p_It_stepp v_Vdc) v_Vfc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (_p_WFOnIt_order_fct 
+                         (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc))) 
+                (v_Vjc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal 
+                             (dk_tuple.prod _p_Elt_T _p_It_T) 
+                             (_p_It_stepp v_Vdc) v_Vfc)))) =>
+                 v_Vkc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_WFOnIt_order_fct 
+                                (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc))))) =>
+                 zen.Rall _p_It_T 
+                   (v_Vlc:(zen.term _p_It_T) =>
+                    zen.forall _p_It_T 
+                      (v_Vmc:(zen.term _p_It_T) =>
+                       zen.eqv 
+                         (zen.triangle 
+                            (focal.is_true (_p_WFOnIt_order_fct v_Vlc v_Vmc))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics._amper__amper_ 
+                                  (basics._lt__equal_ 
+                                     (dk_int.from_nat builtins.0) 
+                                     (_p_It_meas_fct v_Vmc)) 
+                                  (basics._lt_ (_p_It_meas_fct v_Vlc) 
+                                     (_p_It_meas_fct v_Vmc))))))) 
+                   (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                   (v_Vnc:
+                    (zen.proof 
+                       (zen.forall _p_It_T 
+                          (v_Vmc:(zen.term _p_It_T) =>
+                           zen.eqv 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_WFOnIt_order_fct 
+                                      (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                                      v_Vmc))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics._amper__amper_ 
+                                      (basics._lt__equal_ 
+                                         (dk_int.from_nat builtins.0) 
+                                         (_p_It_meas_fct v_Vmc)) 
+                                      (basics._lt_ 
+                                         (_p_It_meas_fct 
+                                            (basics.snd _p_Elt_T _p_It_T 
+                                               v_Vfc)) (_p_It_meas_fct v_Vmc)))))))) =>
+                    zen.Rall _p_It_T 
+                      (v_Vmc:(zen.term _p_It_T) =>
+                       zen.eqv 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (_p_WFOnIt_order_fct 
+                                  (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vmc))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics._amper__amper_ 
+                                  (basics._lt__equal_ 
+                                     (dk_int.from_nat builtins.0) 
+                                     (_p_It_meas_fct v_Vmc)) 
+                                  (basics._lt_ 
+                                     (_p_It_meas_fct 
+                                        (basics.snd _p_Elt_T _p_It_T v_Vfc)) 
+                                     (_p_It_meas_fct v_Vmc)))))) v_Vdc 
+                      (v_Voc:
+                       (zen.proof 
+                          (zen.eqv 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_WFOnIt_order_fct 
+                                      (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                                      v_Vdc))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics._amper__amper_ 
+                                      (basics._lt__equal_ 
+                                         (dk_int.from_nat builtins.0) 
+                                         (_p_It_meas_fct v_Vdc)) 
+                                      (basics._lt_ 
+                                         (_p_It_meas_fct 
+                                            (basics.snd _p_Elt_T _p_It_T 
+                                               v_Vfc)) (_p_It_meas_fct v_Vdc))))))) =>
+                       zen.Requiv 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (_p_WFOnIt_order_fct 
+                                  (basics.snd _p_Elt_T _p_It_T v_Vfc) v_Vdc))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics._amper__amper_ 
+                                  (basics._lt__equal_ 
+                                     (dk_int.from_nat builtins.0) 
+                                     (_p_It_meas_fct v_Vdc)) 
+                                  (basics._lt_ 
+                                     (_p_It_meas_fct 
+                                        (basics.snd _p_Elt_T _p_It_T v_Vfc)) 
+                                     (_p_It_meas_fct v_Vdc))))) 
+                         (v_Vkc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (_p_WFOnIt_order_fct 
+                                         (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                                         v_Vdc))))) =>
+                          v_Vpc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (basics._amper__amper_ 
+                                         (basics._lt__equal_ 
+                                            (dk_int.from_nat builtins.0) 
+                                            (_p_It_meas_fct v_Vdc)) 
+                                         (basics._lt_ 
+                                            (_p_It_meas_fct 
+                                               (basics.snd _p_Elt_T _p_It_T 
+                                                  v_Vfc)) 
+                                            (_p_It_meas_fct v_Vdc))))))) =>
+                          focal.zenon_focal_notand 
+                            (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                               (_p_It_meas_fct v_Vdc)) 
+                            (basics._lt_ 
+                               (_p_It_meas_fct 
+                                  (basics.snd _p_Elt_T _p_It_T v_Vfc)) 
+                               (_p_It_meas_fct v_Vdc)) 
+                            (v_Vqc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.and 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (basics._lt__equal_ 
+                                               (dk_int.from_nat builtins.0) 
+                                               (_p_It_meas_fct v_Vdc)))) 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (basics._lt_ 
+                                               (_p_It_meas_fct 
+                                                  (basics.snd _p_Elt_T 
+                                                     _p_It_T v_Vfc)) 
+                                               (_p_It_meas_fct v_Vdc))))))) =>
+                             zen.Rnotand 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._lt__equal_ 
+                                        (dk_int.from_nat builtins.0) 
+                                        (_p_It_meas_fct v_Vdc)))) 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._lt_ 
+                                        (_p_It_meas_fct 
+                                           (basics.snd _p_Elt_T _p_It_T v_Vfc)) 
+                                        (_p_It_meas_fct v_Vdc)))) 
+                               (v_Vrc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (basics._lt__equal_ 
+                                               (dk_int.from_nat builtins.0) 
+                                               (_p_It_meas_fct v_Vdc)))))) =>
+                                zen.Rall _p_It_T 
+                                  (v_Vsc:(zen.term _p_It_T) =>
+                                   zen.triangle 
+                                     (focal.is_true 
+                                        (basics._lt__equal_ 
+                                           (dk_int.from_nat builtins.0) 
+                                           (_p_It_meas_fct v_Vsc)))) v_Vdc 
+                                  (v_Vtc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (basics._lt__equal_ 
+                                               (dk_int.from_nat builtins.0) 
+                                               (_p_It_meas_fct v_Vdc))))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (focal.is_true 
+                                           (basics._lt__equal_ 
+                                              (dk_int.from_nat builtins.0) 
+                                              (_p_It_meas_fct v_Vdc)))) 
+                                     v_Vtc v_Vrc) abst_mesure_positive) 
+                               (v_Vuc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (basics._lt_ 
+                                               (_p_It_meas_fct 
+                                                  (basics.snd _p_Elt_T 
+                                                     _p_It_T v_Vfc)) 
+                                               (_p_It_meas_fct v_Vdc)))))) =>
+                                zen.Rall _p_It_T 
+                                  (v_Vac:(zen.term _p_It_T) =>
+                                   zen.forall 
+                                     (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                     (v_Vbc:
+                                      (zen.term 
+                                         (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                                      zen.imp 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (_p_It_hasnext v_Vac))) 
+                                        (zen.imp 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._equal_ 
+                                                    (dk_tuple.prod _p_Elt_T 
+                                                       _p_It_T) 
+                                                    (_p_It_stepp v_Vac) v_Vbc))) 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._lt_ 
+                                                    (_p_It_meas_fct 
+                                                       (basics.snd _p_Elt_T 
+                                                          _p_It_T v_Vbc)) 
+                                                    (_p_It_meas_fct v_Vac))))))) 
+                                  v_Vdc 
+                                  (v_Vvc:
+                                   (zen.proof 
+                                      (zen.forall 
+                                         (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                         (v_Vbc:
+                                          (zen.term 
+                                             (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                                          zen.imp 
+                                            (zen.triangle 
+                                               (focal.is_true 
+                                                  (_p_It_hasnext v_Vdc))) 
+                                            (zen.imp 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._equal_ 
+                                                        (dk_tuple.prod 
+                                                           _p_Elt_T _p_It_T) 
+                                                        (_p_It_stepp v_Vdc) 
+                                                        v_Vbc))) 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._lt_ 
+                                                        (_p_It_meas_fct 
+                                                           (basics.snd 
+                                                              _p_Elt_T 
+                                                              _p_It_T v_Vbc)) 
+                                                        (_p_It_meas_fct v_Vdc)))))))) =>
+                                   zen.Rall (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                     (v_Vbc:
+                                      (zen.term 
+                                         (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                                      zen.imp 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (_p_It_hasnext v_Vdc))) 
+                                        (zen.imp 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._equal_ 
+                                                    (dk_tuple.prod _p_Elt_T 
+                                                       _p_It_T) 
+                                                    (_p_It_stepp v_Vdc) v_Vbc))) 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._lt_ 
+                                                    (_p_It_meas_fct 
+                                                       (basics.snd _p_Elt_T 
+                                                          _p_It_T v_Vbc)) 
+                                                    (_p_It_meas_fct v_Vdc)))))) 
+                                     v_Vfc 
+                                     (v_Vwc:
+                                      (zen.proof 
+                                         (zen.imp 
+                                            (zen.triangle 
+                                               (focal.is_true 
+                                                  (_p_It_hasnext v_Vdc))) 
+                                            (zen.imp 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._equal_ 
+                                                        (dk_tuple.prod 
+                                                           _p_Elt_T _p_It_T) 
+                                                        (_p_It_stepp v_Vdc) 
+                                                        v_Vfc))) 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._lt_ 
+                                                        (_p_It_meas_fct 
+                                                           (basics.snd 
+                                                              _p_Elt_T 
+                                                              _p_It_T v_Vfc)) 
+                                                        (_p_It_meas_fct v_Vdc))))))) =>
+                                      zen.Rimply 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (_p_It_hasnext v_Vdc))) 
+                                        (zen.imp 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._equal_ 
+                                                    (dk_tuple.prod _p_Elt_T 
+                                                       _p_It_T) 
+                                                    (_p_It_stepp v_Vdc) v_Vfc))) 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._lt_ 
+                                                    (_p_It_meas_fct 
+                                                       (basics.snd _p_Elt_T 
+                                                          _p_It_T v_Vfc)) 
+                                                    (_p_It_meas_fct v_Vdc))))) 
+                                        (v_Vxc:
+                                         (zen.proof 
+                                            (zen.not 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (_p_It_hasnext v_Vdc))))) =>
+                                         zen.Raxiom 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (_p_It_hasnext v_Vdc))) 
+                                           v_Vhc v_Vxc) 
+                                        (v_Vyc:
+                                         (zen.proof 
+                                            (zen.imp 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._equal_ 
+                                                        (dk_tuple.prod 
+                                                           _p_Elt_T _p_It_T) 
+                                                        (_p_It_stepp v_Vdc) 
+                                                        v_Vfc))) 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._lt_ 
+                                                        (_p_It_meas_fct 
+                                                           (basics.snd 
+                                                              _p_Elt_T 
+                                                              _p_It_T v_Vfc)) 
+                                                        (_p_It_meas_fct v_Vdc)))))) =>
+                                         zen.Rimply 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._equal_ 
+                                                    (dk_tuple.prod _p_Elt_T 
+                                                       _p_It_T) 
+                                                    (_p_It_stepp v_Vdc) v_Vfc))) 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (basics._lt_ 
+                                                    (_p_It_meas_fct 
+                                                       (basics.snd _p_Elt_T 
+                                                          _p_It_T v_Vfc)) 
+                                                    (_p_It_meas_fct v_Vdc)))) 
+                                           (v_Vzc:
+                                            (zen.proof 
+                                               (zen.not 
+                                                  (zen.triangle 
+                                                     (focal.is_true 
+                                                        (basics.syntactic_equal 
+                                                           (dk_tuple.prod 
+                                                              _p_Elt_T 
+                                                              _p_It_T) 
+                                                           (_p_It_stepp v_Vdc) 
+                                                           v_Vfc))))) =>
+                                            zen.Raxiom 
+                                              (zen.triangle 
+                                                 (focal.is_true 
+                                                    (basics._equal_ 
+                                                       (dk_tuple.prod 
+                                                          _p_Elt_T _p_It_T) 
+                                                       (_p_It_stepp v_Vdc) 
+                                                       v_Vfc))) v_Vjc v_Vzc) 
+                                           (v_Vad:
+                                            (zen.proof 
+                                               (zen.triangle 
+                                                  (focal.is_true 
+                                                     (basics._lt_ 
+                                                        (_p_It_meas_fct 
+                                                           (basics.snd 
+                                                              _p_Elt_T 
+                                                              _p_It_T v_Vfc)) 
+                                                        (_p_It_meas_fct v_Vdc))))) =>
+                                            zen.Raxiom 
+                                              (zen.triangle 
+                                                 (focal.is_true 
+                                                    (basics._lt_ 
+                                                       (_p_It_meas_fct 
+                                                          (basics.snd 
+                                                             _p_Elt_T 
+                                                             _p_It_T v_Vfc)) 
+                                                       (_p_It_meas_fct v_Vdc)))) 
+                                              v_Vad v_Vuc) v_Vyc) v_Vwc) 
+                                     v_Vvc) abst_mea_decreases) v_Vqc) v_Vpc) 
+                         (v_Vbd:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_WFOnIt_order_fct 
+                                      (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                                      v_Vdc)))) =>
+                          v_Vcd:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics._amper__amper_ 
+                                      (basics._lt__equal_ 
+                                         (dk_int.from_nat builtins.0) 
+                                         (_p_It_meas_fct v_Vdc)) 
+                                      (basics._lt_ 
+                                         (_p_It_meas_fct 
+                                            (basics.snd _p_Elt_T _p_It_T 
+                                               v_Vfc)) (_p_It_meas_fct v_Vdc)))))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (_p_WFOnIt_order_fct 
+                                     (basics.snd _p_Elt_T _p_It_T v_Vfc) 
+                                     v_Vdc))) v_Vbd v_Vkc) v_Voc) v_Vnc) 
+                   _p_WFOnIt_order_fct_spec) v_Vic) v_Vgc) v_Vec) v_Vcc).
+
+def Iter_tools__add :
+  _p_Elt_T:cc.uT ->
+  _p_Col_T:cc.uT ->
+  _p_Col_add:((cc.eT _p_Elt_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) ->
+  e:(cc.eT _p_Elt_T) -> c:(cc.eT _p_Col_T) -> cc.eT _p_Col_T
+  :=
+  _p_Elt_T:cc.uT =>
+  _p_Col_T:cc.uT =>
+  _p_Col_add:((cc.eT _p_Elt_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) =>
+  e:(cc.eT _p_Elt_T) => c:(cc.eT _p_Col_T) => _p_Col_add e c.
+
+def Iter_tools__copy_aux :
+  _p_Col_T:cc.uT ->
+  _p_Elt_T:cc.uT ->
+  _p_It_T:cc.uT ->
+  _p_Col_add:((cc.eT _p_Elt_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) ->
+  _p_It_hasnext:((cc.eT _p_It_T) -> cc.eT basics.bool__t) ->
+  _p_It_stepp:((cc.eT _p_It_T) -> cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) ->
+  _p_WFOnIt_order_fct:((cc.eT _p_It_T) ->
+                       (cc.eT _p_It_T) -> cc.eT basics.bool__t) ->
+  _p_WFOnIt_wf_order_fct:(dk_logic.eP 
+                            (basics.is_well_founded _p_It_T 
+                               _p_WFOnIt_order_fct)) ->
+  abst_it_order_decreases:(dk_logic.eP 
+                             (dk_logic.forall _p_It_T 
+                                (it:(cc.eT _p_It_T) =>
+                                 dk_logic.forall 
+                                   (dk_tuple.prod _p_Elt_T _p_It_T) 
+                                   (res:
+                                    (cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                                    dk_logic.imp 
+                                      (dk_logic.ebP (_p_It_hasnext it)) 
+                                      (dk_logic.imp 
+                                         (dk_logic.ebP 
+                                            (basics._equal_ 
+                                               (dk_tuple.prod _p_Elt_T 
+                                                  _p_It_T) (_p_It_stepp it) 
+                                               res)) 
+                                         (dk_logic.ebP 
+                                            (_p_WFOnIt_order_fct 
+                                               (basics.snd _p_Elt_T _p_It_T 
+                                                  res) it))))))) ->
+  (cc.eT _p_Col_T) -> (cc.eT _p_It_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T.
+
+[a, it, b, abst_it_order_decreases, _p_WFOnIt_wf_order_fct, _p_WFOnIt_order_fct, _p_It_stepp, _p_It_hasnext, _p_Col_add, _p_It_T, _p_Elt_T, _p_Col_T]
+  Iter_tools__copy_aux _p_Col_T _p_Elt_T _p_It_T _p_Col_add _p_It_hasnext 
+    _p_It_stepp _p_WFOnIt_order_fct _p_WFOnIt_wf_order_fct 
+    abst_it_order_decreases b it a
+  -->
+  dk_bool.ite _p_Col_T (_p_It_hasnext it) 
+    ((res:(cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+      (_p_Col_T:cc.uT =>
+       _p_Elt_T:cc.uT =>
+       _p_It_T:cc.uT =>
+       _p_Col_add:((cc.eT _p_Elt_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) =>
+       _p_It_hasnext:((cc.eT _p_It_T) -> cc.eT basics.bool__t) =>
+       _p_It_stepp:
+       ((cc.eT _p_It_T) -> cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+       _p_WFOnIt_order_fct:
+       ((cc.eT _p_It_T) -> (cc.eT _p_It_T) -> cc.eT basics.bool__t) =>
+       _p_WFOnIt_wf_order_fct:
+       (dk_logic.eP (basics.is_well_founded _p_It_T _p_WFOnIt_order_fct)) =>
+       abst_it_order_decreases:
+       (dk_logic.eP 
+          (dk_logic.forall _p_It_T 
+             (it:(cc.eT _p_It_T) =>
+              dk_logic.forall (dk_tuple.prod _p_Elt_T _p_It_T) 
+                (res:(cc.eT (dk_tuple.prod _p_Elt_T _p_It_T)) =>
+                 dk_logic.imp (dk_logic.ebP (_p_It_hasnext it)) 
+                   (dk_logic.imp 
+                      (dk_logic.ebP 
+                         (basics._equal_ (dk_tuple.prod _p_Elt_T _p_It_T) 
+                            (_p_It_stepp it) res)) 
+                      (dk_logic.ebP 
+                         (_p_WFOnIt_order_fct 
+                            (basics.snd _p_Elt_T _p_It_T res) it))))))) =>
+       b:(cc.eT _p_Col_T) =>
+       it:(cc.eT _p_It_T) =>
+       a:(cc.eT _p_Col_T) =>
+       dk_builtins.call_by_value _p_Col_T _p_Col_T 
+         (dk_builtins.call_by_value _p_It_T (cc.Arrow _p_Col_T _p_Col_T) 
+            (dk_builtins.call_by_value _p_Col_T 
+               (cc.Arrow _p_It_T (cc.Arrow _p_Col_T _p_Col_T)) 
+               (Iter_tools__copy_aux _p_Col_T _p_Elt_T _p_It_T _p_Col_add 
+                  _p_It_hasnext _p_It_stepp _p_WFOnIt_order_fct 
+                  _p_WFOnIt_wf_order_fct abst_it_order_decreases) b) it) a) 
+        _p_Col_T _p_Elt_T _p_It_T _p_Col_add _p_It_hasnext _p_It_stepp 
+        _p_WFOnIt_order_fct _p_WFOnIt_wf_order_fct abst_it_order_decreases b 
+        (basics.snd _p_Elt_T _p_It_T res) 
+        (_p_Col_add (basics.fst _p_Elt_T _p_It_T res) a)) (_p_It_stepp it)) a.
+
+def Iter_tools__copy :
+  _p_Elt_T:cc.uT ->
+  _p_Col_T:cc.uT ->
+  _p_It_T:cc.uT ->
+  _p_Col_empty:(cc.eT _p_Col_T) ->
+  _p_It_start:((cc.eT _p_Col_T) -> cc.eT _p_It_T) ->
+  abst_copy_aux:((cc.eT _p_Col_T) ->
+                 (cc.eT _p_It_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) ->
+  c:(cc.eT _p_Col_T) -> cc.eT _p_Col_T
+  :=
+  _p_Elt_T:cc.uT =>
+  _p_Col_T:cc.uT =>
+  _p_It_T:cc.uT =>
+  _p_Col_empty:(cc.eT _p_Col_T) =>
+  _p_It_start:((cc.eT _p_Col_T) -> cc.eT _p_It_T) =>
+  abst_copy_aux:
+  ((cc.eT _p_Col_T) -> (cc.eT _p_It_T) -> (cc.eT _p_Col_T) -> cc.eT _p_Col_T) =>
+  c:(cc.eT _p_Col_T) =>
+  abst_copy_aux _p_Col_empty (_p_It_start c) _p_Col_empty.
+

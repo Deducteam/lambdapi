@@ -1,0 +1,53 @@
+#REQUIRE cc.
+
+prod : cc.uT -> cc.uT -> cc.uT.
+
+Prod : cc.uT -> cc.uT -> Type.
+
+[B, A] cc.eT (prod A B) --> Prod A B.
+
+pair : A:cc.uT -> B:cc.uT -> (cc.eT A) -> (cc.eT B) -> Prod A B.
+
+def call_by_value_prod :
+  A:cc.uT ->
+  B:cc.uT -> R:cc.uT -> ((Prod A B) -> cc.eT R) -> (Prod A B) -> cc.eT R.
+
+[b, a, B, A, f, R]
+  call_by_value_prod _ _ R f (pair A B a b) --> f (pair A B a b).
+
+def fst : A:cc.uT -> B:cc.uT -> (Prod A B) -> cc.eT A.
+
+def snd : A:cc.uT -> B:cc.uT -> (Prod A B) -> cc.eT B.
+
+[b, a, B, A] fst _ _ (pair A B a b) --> a.
+
+[b, a, B, A] snd _ _ (pair A B a b) --> b.
+
+def match__pair :
+  A:cc.uT ->
+  B:cc.uT ->
+  C:cc.uT ->
+  (Prod A B) -> ((cc.eT A) -> (cc.eT B) -> cc.eT C) -> (cc.eT C) -> cc.eT C.
+
+[g, f, b, a, B, A, C] match__pair _ _ C (pair A B a b) f g --> f a b.
+
+dprod : A:cc.uT -> ((cc.eT A) -> cc.uT) -> cc.uT.
+
+Dprod : A:cc.uT -> ((cc.eT A) -> cc.uT) -> Type.
+
+[B, A] cc.eT (dprod A B) --> Dprod A B.
+
+dpair :
+  A:cc.uT ->
+  B:((cc.eT A) -> cc.uT) -> a:(cc.eT A) -> (cc.eT (B a)) -> Dprod A B.
+
+def dfst : A:cc.uT -> B:((cc.eT A) -> cc.uT) -> (Dprod A B) -> cc.eT A.
+
+def dsnd :
+  A:cc.uT ->
+  B:((cc.eT A) -> cc.uT) -> t:(Dprod A B) -> cc.eT (B (dfst A B t)).
+
+[b, a, B, A] dfst _ _ (dpair A B a b) --> a.
+
+[b, a, B, A] dsnd _ _ (dpair A B a b) --> b.
+

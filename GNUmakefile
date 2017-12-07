@@ -29,6 +29,11 @@ matita: lambdapi.native $(wildcard libraries/matita/*.dk)
 	@echo "## Compiling matita library ##"
 	@cd libraries/matita && time ../../lambdapi.native matita.dk
 
+.PHONY: focalide
+focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
+	@echo "## Compiling focalide library ##"
+	@cd libraries/focalide && time ../../lambdapi.native focalide.dk
+
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)

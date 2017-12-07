@@ -1,0 +1,172 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_fail.
+#REQUIRE dk_logic.
+#REQUIRE zen.
+#REQUIRE focal.
+
+__flag_t__t : Type.
+
+def flag_t__t : cc.uT.
+
+[] cc.eT (flag_t__t) --> __flag_t__t.
+
+On : cc.eT flag_t__t.
+
+Off : cc.eT flag_t__t.
+
+def match__On :
+  Ret_type:cc.uT ->
+  (cc.eT flag_t__t) -> (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__On Ret_type (On) pattern default --> pattern.
+
+[default, pattern, Ret_type]
+  match__On Ret_type (Off) pattern default --> default.
+
+def match__Off :
+  Ret_type:cc.uT ->
+  (cc.eT flag_t__t) -> (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Off Ret_type (On) pattern default --> default.
+
+[default, pattern, Ret_type]
+  match__Off Ret_type (Off) pattern default --> pattern.
+
+def call_by_value_flag_t__t :
+  R:cc.uT -> ((cc.eT flag_t__t) -> cc.eT R) -> (cc.eT flag_t__t) -> cc.eT R.
+
+[f, R] dk_builtins.call_by_value (flag_t__t) R f (On) --> f On.
+
+[f, R] dk_builtins.call_by_value (flag_t__t) R f (Off) --> f Off.
+
+__answer_t__t : Type.
+
+def answer_t__t : cc.uT.
+
+[] cc.eT (answer_t__t) --> __answer_t__t.
+
+Yes : cc.eT answer_t__t.
+
+No : cc.eT answer_t__t.
+
+Maybe : (cc.eT flag_t__t) -> cc.eT answer_t__t.
+
+def match__Yes :
+  Ret_type:cc.uT ->
+  (cc.eT answer_t__t) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Yes Ret_type (Yes) pattern default --> pattern.
+
+[default, pattern, Ret_type]
+  match__Yes Ret_type (No) pattern default --> default.
+
+[default, pattern, x_0_, Ret_type]
+  match__Yes Ret_type (Maybe x_0_) pattern default --> default.
+
+def match__No :
+  Ret_type:cc.uT ->
+  (cc.eT answer_t__t) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__No Ret_type (Yes) pattern default --> default.
+
+[default, pattern, Ret_type]
+  match__No Ret_type (No) pattern default --> pattern.
+
+[default, pattern, x_0_, Ret_type]
+  match__No Ret_type (Maybe x_0_) pattern default --> default.
+
+def match__Maybe :
+  Ret_type:cc.uT ->
+  (cc.eT answer_t__t) ->
+  ((cc.eT flag_t__t) -> cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Maybe Ret_type (Yes) pattern default --> default.
+
+[default, pattern, Ret_type]
+  match__Maybe Ret_type (No) pattern default --> default.
+
+[default, pattern, x_0_, Ret_type]
+  match__Maybe Ret_type (Maybe x_0_) pattern default --> pattern x_0_.
+
+def call_by_value_answer_t__t :
+  R:cc.uT ->
+  ((cc.eT answer_t__t) -> cc.eT R) -> (cc.eT answer_t__t) -> cc.eT R.
+
+[f, R] dk_builtins.call_by_value (answer_t__t) R f (Yes) --> f Yes.
+
+[f, R] dk_builtins.call_by_value (answer_t__t) R f (No) --> f No.
+
+[x_0_, f, R]
+  dk_builtins.call_by_value (answer_t__t) R f (Maybe x_0_) --> f (Maybe x_0_).
+
+def f :
+  x:(cc.eT answer_t__t) -> cc.eT answer_t__t
+  :=
+  x:(cc.eT answer_t__t) =>
+  match__Yes answer_t__t x Yes 
+    (match__No answer_t__t x No 
+       (match__Maybe answer_t__t x 
+          (pattern_var_0_:(cc.eT flag_t__t) =>
+           (y:(cc.eT flag_t__t) =>
+            dk_bool.ite answer_t__t (basics._equal_ flag_t__t y On) 
+              (Maybe On) (Maybe Off)) pattern_var_0_) 
+          (dk_fail.fail answer_t__t))).
+
+def is_id :
+  dk_logic.eP 
+    (dk_logic.forall answer_t__t 
+       (x:(cc.eT answer_t__t) =>
+        dk_logic.ebP (basics._equal_ answer_t__t (f x) x)))
+  :=
+  (__A_1_LEMMA:
+   (dk_logic.eP (dk_logic.ebP (basics._equal_ answer_t__t (f Yes) Yes))) =>
+   (__A_2_LEMMA:
+    (dk_logic.eP (dk_logic.ebP (basics._equal_ answer_t__t (f No) No))) =>
+    (__A_3_LEMMA:
+     (dk_logic.eP 
+        (dk_logic.forall flag_t__t 
+           (y:(cc.eT flag_t__t) =>
+            dk_logic.ebP (basics._equal_ answer_t__t (f (Maybe y)) (Maybe y))))) =>
+     dk_builtins.magic_prove 
+       (dk_logic.forall answer_t__t 
+          (x:(cc.eT answer_t__t) =>
+           dk_logic.ebP (basics._equal_ answer_t__t (f x) x)))) 
+      (dk_builtins.magic_prove 
+         (dk_logic.forall flag_t__t 
+            (y:(cc.eT flag_t__t) =>
+             dk_logic.ebP 
+               (basics._equal_ answer_t__t (f (Maybe y)) (Maybe y)))))) 
+     (zen.nnpp 
+        (zen.triangle (focal.is_true (basics._equal_ answer_t__t (f No) No))) 
+        (v_Vzb:
+         (zen.proof 
+            (zen.not 
+               (zen.triangle 
+                  (focal.is_true (basics.syntactic_equal answer_t__t No No))))) =>
+         focal.zenon_not_syntactic_equal answer_t__t (f No) No 
+           (v_Vac:
+            (zen.proof (zen.not (zen.triangle (zen.equal answer_t__t No No)))) =>
+            zen.Rnoteq answer_t__t No v_Vac) v_Vzb))) 
+    (zen.nnpp 
+       (zen.triangle (focal.is_true (basics._equal_ answer_t__t (f Yes) Yes))) 
+       (v_Vzb:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true (basics.syntactic_equal answer_t__t Yes Yes))))) =>
+        focal.zenon_not_syntactic_equal answer_t__t (f Yes) Yes 
+          (v_Vac:
+           (zen.proof 
+              (zen.not (zen.triangle (zen.equal answer_t__t Yes Yes)))) =>
+           zen.Rnoteq answer_t__t Yes v_Vac) v_Vzb)).
+

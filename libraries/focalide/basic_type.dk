@@ -1,0 +1,3071 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+#REQUIRE zen.
+#REQUIRE focal.
+#REQUIRE sets.
+
+Int_value__me_as_species : Type.
+
+Int_value__mk_record :
+  Int_value__rf_T:cc.uT ->
+  Int_value__rf_element:(cc.eT Int_value__rf_T) ->
+  Int_value__rf_equal:((cc.eT Int_value__rf_T) ->
+                       (cc.eT Int_value__rf_T) -> cc.eT basics.bool__t) ->
+  Int_value__rf_geq:((cc.eT Int_value__rf_T) ->
+                     (cc.eT Int_value__rf_T) -> cc.eT basics.bool__t) ->
+  Int_value__rf_of_int:((cc.eT basics.int__t) -> cc.eT Int_value__rf_T) ->
+  Int_value__rf_parse:((cc.eT basics.string__t) -> cc.eT Int_value__rf_T) ->
+  Int_value__rf_plus:((cc.eT Int_value__rf_T) ->
+                      (cc.eT Int_value__rf_T) -> cc.eT Int_value__rf_T) ->
+  Int_value__rf_pos:((cc.eT Int_value__rf_T) -> cc.eT basics.bool__t) ->
+  Int_value__rf_print:((cc.eT Int_value__rf_T) -> cc.eT basics.string__t) ->
+  Int_value__rf_different:((cc.eT Int_value__rf_T) ->
+                           (cc.eT Int_value__rf_T) -> cc.eT basics.bool__t) ->
+  Int_value__rf_equal_reflexive:(dk_logic.eP 
+                                   (dk_logic.forall Int_value__rf_T 
+                                      (x:(cc.eT Int_value__rf_T) =>
+                                       dk_logic.ebP (Int_value__rf_equal x x)))) ->
+  Int_value__rf_equal_symmetric:(dk_logic.eP 
+                                   (dk_logic.forall Int_value__rf_T 
+                                      (x:(cc.eT Int_value__rf_T) =>
+                                       dk_logic.forall Int_value__rf_T 
+                                         (y:(cc.eT Int_value__rf_T) =>
+                                          dk_logic.imp 
+                                            (dk_logic.ebP 
+                                               (Int_value__rf_equal x y)) 
+                                            (dk_logic.ebP 
+                                               (Int_value__rf_equal y x)))))) ->
+  Int_value__rf_equal_transitive:(dk_logic.eP 
+                                    (dk_logic.forall Int_value__rf_T 
+                                       (x:(cc.eT Int_value__rf_T) =>
+                                        dk_logic.forall Int_value__rf_T 
+                                          (y:(cc.eT Int_value__rf_T) =>
+                                           dk_logic.forall Int_value__rf_T 
+                                             (z:(cc.eT Int_value__rf_T) =>
+                                              dk_logic.imp 
+                                                (dk_logic.ebP 
+                                                   (Int_value__rf_equal x y)) 
+                                                (dk_logic.imp 
+                                                   (dk_logic.ebP 
+                                                      (Int_value__rf_equal y 
+                                                         z)) 
+                                                   (dk_logic.ebP 
+                                                      (Int_value__rf_equal x 
+                                                         z)))))))) ->
+  Int_value__rf_same_is_not_different:(dk_logic.eP 
+                                         (dk_logic.forall Int_value__rf_T 
+                                            (x:(cc.eT Int_value__rf_T) =>
+                                             dk_logic.forall Int_value__rf_T 
+                                               (y:(cc.eT Int_value__rf_T) =>
+                                                dk_logic.eqv 
+                                                  (dk_logic.ebP 
+                                                     (Int_value__rf_different 
+                                                        x y)) 
+                                                  (dk_logic.not 
+                                                     (dk_logic.ebP 
+                                                        (Int_value__rf_equal 
+                                                           x y))))))) ->
+  Int_value__rf_different_is_complete:(dk_logic.eP 
+                                         (dk_logic.forall Int_value__rf_T 
+                                            (x:(cc.eT Int_value__rf_T) =>
+                                             dk_logic.forall Int_value__rf_T 
+                                               (y:(cc.eT Int_value__rf_T) =>
+                                                dk_logic.forall 
+                                                  Int_value__rf_T 
+                                                  (z:
+                                                   (cc.eT Int_value__rf_T) =>
+                                                   dk_logic.imp 
+                                                     (dk_logic.ebP 
+                                                        (Int_value__rf_different 
+                                                           x y)) 
+                                                     (dk_logic.or 
+                                                        (dk_logic.ebP 
+                                                           (Int_value__rf_different 
+                                                              x z)) 
+                                                        (dk_logic.ebP 
+                                                           (Int_value__rf_different 
+                                                              y z)))))))) ->
+  Int_value__rf_different_is_irreflexive:(dk_logic.eP 
+                                            (dk_logic.forall Int_value__rf_T 
+                                               (x:(cc.eT Int_value__rf_T) =>
+                                                dk_logic.not 
+                                                  (dk_logic.ebP 
+                                                     (Int_value__rf_different 
+                                                        x x))))) ->
+  Int_value__rf_different_is_symmetric:(dk_logic.eP 
+                                          (dk_logic.forall Int_value__rf_T 
+                                             (x:(cc.eT Int_value__rf_T) =>
+                                              dk_logic.forall 
+                                                Int_value__rf_T 
+                                                (y:(cc.eT Int_value__rf_T) =>
+                                                 dk_logic.imp 
+                                                   (dk_logic.ebP 
+                                                      (Int_value__rf_different 
+                                                         x y)) 
+                                                   (dk_logic.ebP 
+                                                      (Int_value__rf_different 
+                                                         y x)))))) ->
+  Int_value__me_as_species.
+
+def proj_Int_value__rf_T : record:Int_value__me_as_species -> cc.uT.
+
+[Int_value__rf_T]
+  proj_Int_value__rf_T (Int_value__mk_record Int_value__rf_T _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_T.
+
+def proj_Int_value__rf_element :
+  record:Int_value__me_as_species -> cc.eT (proj_Int_value__rf_T record).
+
+[Int_value__rf_element]
+  proj_Int_value__rf_element (Int_value__mk_record _ Int_value__rf_element _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_element.
+
+def proj_Int_value__rf_equal :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) ->
+  (cc.eT (proj_Int_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Int_value__rf_equal]
+  proj_Int_value__rf_equal (Int_value__mk_record _ _ Int_value__rf_equal _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_equal.
+
+def proj_Int_value__rf_geq :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) ->
+  (cc.eT (proj_Int_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Int_value__rf_geq]
+  proj_Int_value__rf_geq (Int_value__mk_record _ _ _ Int_value__rf_geq _ _ _ 
+    _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_geq.
+
+def proj_Int_value__rf_of_int :
+  record:Int_value__me_as_species ->
+  (cc.eT basics.int__t) -> cc.eT (proj_Int_value__rf_T record).
+
+[Int_value__rf_of_int]
+  proj_Int_value__rf_of_int (Int_value__mk_record _ _ _ _ 
+    Int_value__rf_of_int _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_of_int.
+
+def proj_Int_value__rf_parse :
+  record:Int_value__me_as_species ->
+  (cc.eT basics.string__t) -> cc.eT (proj_Int_value__rf_T record).
+
+[Int_value__rf_parse]
+  proj_Int_value__rf_parse (Int_value__mk_record _ _ _ _ _ 
+    Int_value__rf_parse _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_parse.
+
+def proj_Int_value__rf_plus :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) ->
+  (cc.eT (proj_Int_value__rf_T record)) ->
+  cc.eT (proj_Int_value__rf_T record).
+
+[Int_value__rf_plus]
+  proj_Int_value__rf_plus (Int_value__mk_record _ _ _ _ _ _ 
+    Int_value__rf_plus _ _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_plus.
+
+def proj_Int_value__rf_pos :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Int_value__rf_pos]
+  proj_Int_value__rf_pos (Int_value__mk_record _ _ _ _ _ _ _ 
+    Int_value__rf_pos _ _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_pos.
+
+def proj_Int_value__rf_print :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) -> cc.eT basics.string__t.
+
+[Int_value__rf_print]
+  proj_Int_value__rf_print (Int_value__mk_record _ _ _ _ _ _ _ _ 
+    Int_value__rf_print _ _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_print.
+
+def proj_Int_value__rf_different :
+  record:Int_value__me_as_species ->
+  (cc.eT (proj_Int_value__rf_T record)) ->
+  (cc.eT (proj_Int_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Int_value__rf_different]
+  proj_Int_value__rf_different (Int_value__mk_record _ _ _ _ _ _ _ _ _ 
+    Int_value__rf_different _ _ _ _ _ _ _)
+  -->
+  Int_value__rf_different.
+
+def proj_Int_value__rf_equal_reflexive :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.ebP (proj_Int_value__rf_equal record x x))).
+
+[Int_value__rf_equal_reflexive]
+  proj_Int_value__rf_equal_reflexive (Int_value__mk_record _ _ _ _ _ _ _ _ _ 
+    _ Int_value__rf_equal_reflexive _ _ _ _ _ _)
+  -->
+  Int_value__rf_equal_reflexive.
+
+def proj_Int_value__rf_equal_symmetric :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.forall (proj_Int_value__rf_T record) 
+          (y:(cc.eT (proj_Int_value__rf_T record)) =>
+           dk_logic.imp (dk_logic.ebP (proj_Int_value__rf_equal record x y)) 
+             (dk_logic.ebP (proj_Int_value__rf_equal record y x))))).
+
+[Int_value__rf_equal_symmetric]
+  proj_Int_value__rf_equal_symmetric (Int_value__mk_record _ _ _ _ _ _ _ _ _ 
+    _ _ Int_value__rf_equal_symmetric _ _ _ _ _)
+  -->
+  Int_value__rf_equal_symmetric.
+
+def proj_Int_value__rf_equal_transitive :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.forall (proj_Int_value__rf_T record) 
+          (y:(cc.eT (proj_Int_value__rf_T record)) =>
+           dk_logic.forall (proj_Int_value__rf_T record) 
+             (z:(cc.eT (proj_Int_value__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Int_value__rf_equal record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP (proj_Int_value__rf_equal record y z)) 
+                   (dk_logic.ebP (proj_Int_value__rf_equal record x z))))))).
+
+[Int_value__rf_equal_transitive]
+  proj_Int_value__rf_equal_transitive (Int_value__mk_record _ _ _ _ _ _ _ _ 
+    _ _ _ _ Int_value__rf_equal_transitive _ _ _ _)
+  -->
+  Int_value__rf_equal_transitive.
+
+def proj_Int_value__rf_same_is_not_different :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.forall (proj_Int_value__rf_T record) 
+          (y:(cc.eT (proj_Int_value__rf_T record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP (proj_Int_value__rf_different record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Int_value__rf_equal record x y)))))).
+
+[Int_value__rf_same_is_not_different]
+  proj_Int_value__rf_same_is_not_different (Int_value__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ Int_value__rf_same_is_not_different _ _ _)
+  -->
+  Int_value__rf_same_is_not_different.
+
+def proj_Int_value__rf_different_is_complete :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.forall (proj_Int_value__rf_T record) 
+          (y:(cc.eT (proj_Int_value__rf_T record)) =>
+           dk_logic.forall (proj_Int_value__rf_T record) 
+             (z:(cc.eT (proj_Int_value__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Int_value__rf_different record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP (proj_Int_value__rf_different record x z)) 
+                   (dk_logic.ebP (proj_Int_value__rf_different record y z))))))).
+
+[Int_value__rf_different_is_complete]
+  proj_Int_value__rf_different_is_complete (Int_value__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ Int_value__rf_different_is_complete _ _)
+  -->
+  Int_value__rf_different_is_complete.
+
+def proj_Int_value__rf_different_is_irreflexive :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.not (dk_logic.ebP (proj_Int_value__rf_different record x x)))).
+
+[Int_value__rf_different_is_irreflexive]
+  proj_Int_value__rf_different_is_irreflexive (Int_value__mk_record _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ Int_value__rf_different_is_irreflexive _)
+  -->
+  Int_value__rf_different_is_irreflexive.
+
+def proj_Int_value__rf_different_is_symmetric :
+  record:Int_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Int_value__rf_T record) 
+       (x:(cc.eT (proj_Int_value__rf_T record)) =>
+        dk_logic.forall (proj_Int_value__rf_T record) 
+          (y:(cc.eT (proj_Int_value__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Int_value__rf_different record x y)) 
+             (dk_logic.ebP (proj_Int_value__rf_different record y x))))).
+
+[Int_value__rf_different_is_symmetric]
+  proj_Int_value__rf_different_is_symmetric (Int_value__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ Int_value__rf_different_is_symmetric)
+  -->
+  Int_value__rf_different_is_symmetric.
+
+def Int_value__element :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S builtins.0).
+
+def Int_value__equal :
+  abst_T:cc.uT ->
+  x:(cc.eT abst_T) -> y:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  x:(cc.eT abst_T) => y:(cc.eT abst_T) => basics.syntactic_equal abst_T x y.
+
+def Int_value__geq :
+  n1:(cc.eT basics.int__t) ->
+  n2:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  n1:(cc.eT basics.int__t) =>
+  n2:(cc.eT basics.int__t) => basics._gt__equal_ n1 n2.
+
+def Int_value__of_int :
+  n:(cc.eT basics.int__t) -> cc.eT basics.int__t
+  :=
+  n:(cc.eT basics.int__t) => n.
+
+def Int_value__parse :
+  x:(cc.eT basics.string__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT basics.string__t) => basics.int_of_string x.
+
+def Int_value__plus :
+  n1:(cc.eT basics.int__t) -> n2:(cc.eT basics.int__t) -> cc.eT basics.int__t
+  :=
+  n1:(cc.eT basics.int__t) => n2:(cc.eT basics.int__t) => basics._plus_ n1 n2.
+
+def Int_value__pos :
+  n:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  n:(cc.eT basics.int__t) => basics._gt_ n (dk_int.from_nat builtins.0).
+
+def Int_value__print :
+  x:(cc.eT basics.int__t) -> cc.eT basics.string__t
+  :=
+  x:(cc.eT basics.int__t) => basics.string_of_int x.
+
+def Int_value__equal_reflexive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (Int_value__equal abst_T x x)))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Int_value__equal abst_T v_Vzb v_Vzb)))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.triangle 
+                 (focal.is_true (Int_value__equal abst_T v_Vzb v_Vzb)))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Int_value__equal abst_T v_Vzb v_Vzb))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true (basics.syntactic_equal abst_T v_Vbc v_Vbc))))) =>
+        focal.zenon_not_syntactic_equal abst_T v_Vbc v_Vbc 
+          (v_Vdc:
+           (zen.proof (zen.not (zen.triangle (zen.equal abst_T v_Vbc v_Vbc)))) =>
+           zen.Rnoteq abst_T v_Vbc v_Vdc) v_Vcc) v_Vac).
+
+def Int_value__equal_symmetric :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (Int_value__equal abst_T x y)) 
+             (dk_logic.ebP (Int_value__equal abst_T y x)))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vac v_Vzb)))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vac v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vac v_Vzb))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vac v_Vcc))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vcc v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vac v_Vcc)))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true (Int_value__equal abst_T v_Vec v_Vcc)))))) =>
+           zen.Rnotimply 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vcc v_Vec))) 
+             (zen.triangle 
+                (focal.is_true (Int_value__equal abst_T v_Vec v_Vcc))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vec v_Vcc))))) =>
+              focal.zenon_syntactic_equal abst_T v_Vcc v_Vec 
+                (v_Vic:
+                 (zen.proof (zen.triangle (zen.equal abst_T v_Vcc v_Vec))) =>
+                 focal.zenon_not_syntactic_equal abst_T v_Vec v_Vcc 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.not (zen.triangle (zen.equal abst_T v_Vec v_Vcc)))) =>
+                    zen.Reqsym abst_T v_Vcc v_Vec v_Vic v_Vjc) v_Vhc) v_Vgc) 
+             v_Vfc) v_Vdc) v_Vbc).
+
+def Int_value__equal_transitive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (Int_value__equal abst_T x y)) 
+                (dk_logic.imp (dk_logic.ebP (Int_value__equal abst_T y z)) 
+                   (dk_logic.ebP (Int_value__equal abst_T x z)))))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Int_value__equal abst_T v_Vdc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vdc v_Vfc)))))))) 
+    (v_Vgc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vdc:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Int_value__equal abst_T v_Vdc v_Vec))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vec v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vdc v_Vfc)))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Int_value__equal abst_T v_Vdc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vdc v_Vfc))))))) 
+       (v_Vhc:(zen.term abst_T) =>
+        v_Vic:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Int_value__equal abst_T v_Vhc v_Vec))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vec v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vhc v_Vfc))))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Int_value__equal abst_T v_Vhc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vhc v_Vfc)))))) 
+          (v_Vjc:(zen.term abst_T) =>
+           v_Vkc:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Int_value__equal abst_T v_Vhc v_Vjc))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vjc v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vhc v_Vfc)))))))) =>
+           zen.Rnotall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Int_value__equal abst_T v_Vhc v_Vjc))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vjc v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vhc v_Vfc))))) 
+             (v_Vlc:(zen.term abst_T) =>
+              v_Vmc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Int_value__equal abst_T v_Vhc v_Vjc))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vjc v_Vlc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vhc v_Vlc))))))) =>
+              zen.Rnotimply 
+                (zen.triangle 
+                   (focal.is_true (Int_value__equal abst_T v_Vhc v_Vjc))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vjc v_Vlc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vhc v_Vlc)))) 
+                (v_Vnc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vhc v_Vjc)))) =>
+                 v_Voc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vjc v_Vlc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Int_value__equal abst_T v_Vhc v_Vlc)))))) =>
+                 zen.Rnotimply 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vjc v_Vlc))) 
+                   (zen.triangle 
+                      (focal.is_true (Int_value__equal abst_T v_Vhc v_Vlc))) 
+                   (v_Vpc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vjc v_Vlc)))) =>
+                    v_Vqc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics.syntactic_equal abst_T v_Vhc v_Vlc))))) =>
+                    focal.zenon_syntactic_equal abst_T v_Vhc v_Vjc 
+                      (v_Vrc:
+                       (zen.proof 
+                          (zen.triangle (zen.equal abst_T v_Vhc v_Vjc))) =>
+                       focal.zenon_syntactic_equal abst_T v_Vjc v_Vlc 
+                         (v_Vsc:
+                          (zen.proof 
+                             (zen.triangle (zen.equal abst_T v_Vjc v_Vlc))) =>
+                          focal.zenon_not_syntactic_equal abst_T v_Vhc v_Vlc 
+                            (v_Vtc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vlc)))) =>
+                             zen.Rsubst abst_T 
+                               (v_Vuc:(zen.term abst_T) =>
+                                zen.triangle (zen.equal abst_T v_Vuc v_Vjc)) 
+                               v_Vhc v_Vhc 
+                               (v_Vvc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                zen.Rcut 
+                                  (zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vhc)) 
+                                  (v_Vwc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                   zen.Rsubst abst_T 
+                                     (v_Vxc:(zen.term abst_T) =>
+                                      zen.triangle 
+                                        (zen.equal abst_T v_Vxc v_Vhc)) 
+                                     v_Vhc v_Vhc 
+                                     (v_Vvc0:
+                                      (zen.proof 
+                                         (zen.not 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                      zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                     (v_Vwc0:
+                                      (zen.proof 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                      zen.Rsubst abst_T 
+                                        (v_Vyc:(zen.term abst_T) =>
+                                         zen.triangle 
+                                           (zen.equal abst_T v_Vhc v_Vyc)) 
+                                        v_Vhc v_Vhc 
+                                        (v_Vvc0:
+                                         (zen.proof 
+                                            (zen.not 
+                                               (zen.triangle 
+                                                  (zen.equal abst_T v_Vhc 
+                                                     v_Vhc)))) =>
+                                         zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                        (v_Vwc0:
+                                         (zen.proof 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                         zen.Raxiom 
+                                           (zen.triangle 
+                                              (zen.equal abst_T v_Vhc v_Vhc)) 
+                                           v_Vwc0 v_Vvc) v_Vwc0) v_Vwc) 
+                                  (v_Vvc0:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                   zen.Rnoteq abst_T v_Vhc v_Vvc0)) 
+                               (v_Vrc0:
+                                (zen.proof 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vjc))) =>
+                                zen.Rsubst abst_T 
+                                  (v_Vyc:(zen.term abst_T) =>
+                                   zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vyc)) v_Vjc 
+                                  v_Vlc 
+                                  (v_Vzc:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vjc v_Vlc)))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vjc v_Vlc)) 
+                                     v_Vsc v_Vzc) 
+                                  (v_Vad:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vlc))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vhc v_Vlc)) 
+                                     v_Vad v_Vtc) v_Vrc0) v_Vrc) v_Vqc) v_Vpc) 
+                      v_Vnc) v_Voc) v_Vmc) v_Vkc) v_Vic) v_Vgc).
+
+def Int_value__collection_create
+  :=
+  Int_value__mk_record basics.int__t Int_value__element 
+    (Int_value__equal basics.int__t) Int_value__geq Int_value__of_int 
+    Int_value__parse Int_value__plus Int_value__pos Int_value__print 
+    (sets.Setoid__different basics.int__t (Int_value__equal basics.int__t)) 
+    (Int_value__equal_reflexive basics.int__t) 
+    (Int_value__equal_symmetric basics.int__t) 
+    (Int_value__equal_transitive basics.int__t) 
+    (sets.Setoid__same_is_not_different basics.int__t 
+       (Int_value__equal basics.int__t)) 
+    (sets.Setoid__different_is_complete basics.int__t 
+       (Int_value__equal basics.int__t) 
+       (sets.Setoid__different basics.int__t (Int_value__equal basics.int__t)) 
+       (Int_value__equal_reflexive basics.int__t) 
+       (Int_value__equal_symmetric basics.int__t) 
+       (Int_value__equal_transitive basics.int__t) 
+       (sets.Setoid__same_is_not_different basics.int__t 
+          (Int_value__equal basics.int__t))) 
+    (sets.Setoid__different_is_irreflexive basics.int__t 
+       (Int_value__equal basics.int__t) 
+       (sets.Setoid__different basics.int__t (Int_value__equal basics.int__t)) 
+       (Int_value__equal_reflexive basics.int__t) 
+       (sets.Setoid__same_is_not_different basics.int__t 
+          (Int_value__equal basics.int__t))) 
+    (sets.Setoid__different_is_symmetric basics.int__t 
+       (Int_value__equal basics.int__t) 
+       (sets.Setoid__different basics.int__t (Int_value__equal basics.int__t)) 
+       (Int_value__equal_symmetric basics.int__t) 
+       (sets.Setoid__same_is_not_different basics.int__t 
+          (Int_value__equal basics.int__t))).
+
+def Coll_int_value__effective_collection := Int_value__collection_create.
+
+def Coll_int_value__me_as_carrier := basics.int__t.
+
+def Coll_int_value__element
+  :=
+  proj_Int_value__rf_element Coll_int_value__effective_collection.
+
+def Coll_int_value__equal
+  :=
+  proj_Int_value__rf_equal Coll_int_value__effective_collection.
+
+def Coll_int_value__geq
+  :=
+  proj_Int_value__rf_geq Coll_int_value__effective_collection.
+
+def Coll_int_value__of_int
+  :=
+  proj_Int_value__rf_of_int Coll_int_value__effective_collection.
+
+def Coll_int_value__parse
+  :=
+  proj_Int_value__rf_parse Coll_int_value__effective_collection.
+
+def Coll_int_value__plus
+  :=
+  proj_Int_value__rf_plus Coll_int_value__effective_collection.
+
+def Coll_int_value__pos
+  :=
+  proj_Int_value__rf_pos Coll_int_value__effective_collection.
+
+def Coll_int_value__print
+  :=
+  proj_Int_value__rf_print Coll_int_value__effective_collection.
+
+def Coll_int_value__different
+  :=
+  proj_Int_value__rf_different Coll_int_value__effective_collection.
+
+def Coll_int_value__equal_reflexive
+  :=
+  proj_Int_value__rf_equal_reflexive Coll_int_value__effective_collection.
+
+def Coll_int_value__equal_symmetric
+  :=
+  proj_Int_value__rf_equal_symmetric Coll_int_value__effective_collection.
+
+def Coll_int_value__equal_transitive
+  :=
+  proj_Int_value__rf_equal_transitive Coll_int_value__effective_collection.
+
+def Coll_int_value__same_is_not_different
+  :=
+  proj_Int_value__rf_same_is_not_different 
+    Coll_int_value__effective_collection.
+
+def Coll_int_value__different_is_complete
+  :=
+  proj_Int_value__rf_different_is_complete 
+    Coll_int_value__effective_collection.
+
+def Coll_int_value__different_is_irreflexive
+  :=
+  proj_Int_value__rf_different_is_irreflexive 
+    Coll_int_value__effective_collection.
+
+def Coll_int_value__different_is_symmetric
+  :=
+  proj_Int_value__rf_different_is_symmetric 
+    Coll_int_value__effective_collection.
+
+Bool_value__me_as_species : Type.
+
+Bool_value__mk_record :
+  Bool_value__rf_T:cc.uT ->
+  Bool_value__rf_element:(cc.eT Bool_value__rf_T) ->
+  Bool_value__rf_equal:((cc.eT Bool_value__rf_T) ->
+                        (cc.eT Bool_value__rf_T) -> cc.eT basics.bool__t) ->
+  Bool_value__rf_of_bool:((cc.eT basics.bool__t) -> cc.eT Bool_value__rf_T) ->
+  Bool_value__rf_parse:((cc.eT basics.string__t) -> cc.eT Bool_value__rf_T) ->
+  Bool_value__rf_different:((cc.eT Bool_value__rf_T) ->
+                            (cc.eT Bool_value__rf_T) -> cc.eT basics.bool__t) ->
+  Bool_value__rf_equal_reflexive:(dk_logic.eP 
+                                    (dk_logic.forall Bool_value__rf_T 
+                                       (x:(cc.eT Bool_value__rf_T) =>
+                                        dk_logic.ebP 
+                                          (Bool_value__rf_equal x x)))) ->
+  Bool_value__rf_equal_symmetric:(dk_logic.eP 
+                                    (dk_logic.forall Bool_value__rf_T 
+                                       (x:(cc.eT Bool_value__rf_T) =>
+                                        dk_logic.forall Bool_value__rf_T 
+                                          (y:(cc.eT Bool_value__rf_T) =>
+                                           dk_logic.imp 
+                                             (dk_logic.ebP 
+                                                (Bool_value__rf_equal x y)) 
+                                             (dk_logic.ebP 
+                                                (Bool_value__rf_equal y x)))))) ->
+  Bool_value__rf_equal_transitive:(dk_logic.eP 
+                                     (dk_logic.forall Bool_value__rf_T 
+                                        (x:(cc.eT Bool_value__rf_T) =>
+                                         dk_logic.forall Bool_value__rf_T 
+                                           (y:(cc.eT Bool_value__rf_T) =>
+                                            dk_logic.forall Bool_value__rf_T 
+                                              (z:(cc.eT Bool_value__rf_T) =>
+                                               dk_logic.imp 
+                                                 (dk_logic.ebP 
+                                                    (Bool_value__rf_equal x y)) 
+                                                 (dk_logic.imp 
+                                                    (dk_logic.ebP 
+                                                       (Bool_value__rf_equal 
+                                                          y z)) 
+                                                    (dk_logic.ebP 
+                                                       (Bool_value__rf_equal 
+                                                          x z)))))))) ->
+  Bool_value__rf_print:((cc.eT Bool_value__rf_T) -> cc.eT basics.string__t) ->
+  Bool_value__rf_same_is_not_different:(dk_logic.eP 
+                                          (dk_logic.forall Bool_value__rf_T 
+                                             (x:(cc.eT Bool_value__rf_T) =>
+                                              dk_logic.forall 
+                                                Bool_value__rf_T 
+                                                (y:
+                                                 (cc.eT Bool_value__rf_T) =>
+                                                 dk_logic.eqv 
+                                                   (dk_logic.ebP 
+                                                      (Bool_value__rf_different 
+                                                         x y)) 
+                                                   (dk_logic.not 
+                                                      (dk_logic.ebP 
+                                                         (Bool_value__rf_equal 
+                                                            x y))))))) ->
+  Bool_value__rf_different_is_complete:(dk_logic.eP 
+                                          (dk_logic.forall Bool_value__rf_T 
+                                             (x:(cc.eT Bool_value__rf_T) =>
+                                              dk_logic.forall 
+                                                Bool_value__rf_T 
+                                                (y:
+                                                 (cc.eT Bool_value__rf_T) =>
+                                                 dk_logic.forall 
+                                                   Bool_value__rf_T 
+                                                   (z:
+                                                    (cc.eT Bool_value__rf_T) =>
+                                                    dk_logic.imp 
+                                                      (dk_logic.ebP 
+                                                         (Bool_value__rf_different 
+                                                            x y)) 
+                                                      (dk_logic.or 
+                                                         (dk_logic.ebP 
+                                                            (Bool_value__rf_different 
+                                                               x z)) 
+                                                         (dk_logic.ebP 
+                                                            (Bool_value__rf_different 
+                                                               y z)))))))) ->
+  Bool_value__rf_different_is_irreflexive:(dk_logic.eP 
+                                             (dk_logic.forall 
+                                                Bool_value__rf_T 
+                                                (x:
+                                                 (cc.eT Bool_value__rf_T) =>
+                                                 dk_logic.not 
+                                                   (dk_logic.ebP 
+                                                      (Bool_value__rf_different 
+                                                         x x))))) ->
+  Bool_value__rf_different_is_symmetric:(dk_logic.eP 
+                                           (dk_logic.forall Bool_value__rf_T 
+                                              (x:(cc.eT Bool_value__rf_T) =>
+                                               dk_logic.forall 
+                                                 Bool_value__rf_T 
+                                                 (y:
+                                                  (cc.eT Bool_value__rf_T) =>
+                                                  dk_logic.imp 
+                                                    (dk_logic.ebP 
+                                                       (Bool_value__rf_different 
+                                                          x y)) 
+                                                    (dk_logic.ebP 
+                                                       (Bool_value__rf_different 
+                                                          y x)))))) ->
+  Bool_value__me_as_species.
+
+def proj_Bool_value__rf_T : record:Bool_value__me_as_species -> cc.uT.
+
+[Bool_value__rf_T]
+  proj_Bool_value__rf_T (Bool_value__mk_record Bool_value__rf_T _ _ _ _ _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_T.
+
+def proj_Bool_value__rf_element :
+  record:Bool_value__me_as_species -> cc.eT (proj_Bool_value__rf_T record).
+
+[Bool_value__rf_element]
+  proj_Bool_value__rf_element (Bool_value__mk_record _ 
+    Bool_value__rf_element _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_element.
+
+def proj_Bool_value__rf_equal :
+  record:Bool_value__me_as_species ->
+  (cc.eT (proj_Bool_value__rf_T record)) ->
+  (cc.eT (proj_Bool_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Bool_value__rf_equal]
+  proj_Bool_value__rf_equal (Bool_value__mk_record _ _ Bool_value__rf_equal 
+    _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_equal.
+
+def proj_Bool_value__rf_of_bool :
+  record:Bool_value__me_as_species ->
+  (cc.eT basics.bool__t) -> cc.eT (proj_Bool_value__rf_T record).
+
+[Bool_value__rf_of_bool]
+  proj_Bool_value__rf_of_bool (Bool_value__mk_record _ _ _ 
+    Bool_value__rf_of_bool _ _ _ _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_of_bool.
+
+def proj_Bool_value__rf_parse :
+  record:Bool_value__me_as_species ->
+  (cc.eT basics.string__t) -> cc.eT (proj_Bool_value__rf_T record).
+
+[Bool_value__rf_parse]
+  proj_Bool_value__rf_parse (Bool_value__mk_record _ _ _ _ 
+    Bool_value__rf_parse _ _ _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_parse.
+
+def proj_Bool_value__rf_different :
+  record:Bool_value__me_as_species ->
+  (cc.eT (proj_Bool_value__rf_T record)) ->
+  (cc.eT (proj_Bool_value__rf_T record)) -> cc.eT basics.bool__t.
+
+[Bool_value__rf_different]
+  proj_Bool_value__rf_different (Bool_value__mk_record _ _ _ _ _ 
+    Bool_value__rf_different _ _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_different.
+
+def proj_Bool_value__rf_equal_reflexive :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.ebP (proj_Bool_value__rf_equal record x x))).
+
+[Bool_value__rf_equal_reflexive]
+  proj_Bool_value__rf_equal_reflexive (Bool_value__mk_record _ _ _ _ _ _ 
+    Bool_value__rf_equal_reflexive _ _ _ _ _ _ _)
+  -->
+  Bool_value__rf_equal_reflexive.
+
+def proj_Bool_value__rf_equal_symmetric :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.forall (proj_Bool_value__rf_T record) 
+          (y:(cc.eT (proj_Bool_value__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Bool_value__rf_equal record x y)) 
+             (dk_logic.ebP (proj_Bool_value__rf_equal record y x))))).
+
+[Bool_value__rf_equal_symmetric]
+  proj_Bool_value__rf_equal_symmetric (Bool_value__mk_record _ _ _ _ _ _ _ 
+    Bool_value__rf_equal_symmetric _ _ _ _ _ _)
+  -->
+  Bool_value__rf_equal_symmetric.
+
+def proj_Bool_value__rf_equal_transitive :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.forall (proj_Bool_value__rf_T record) 
+          (y:(cc.eT (proj_Bool_value__rf_T record)) =>
+           dk_logic.forall (proj_Bool_value__rf_T record) 
+             (z:(cc.eT (proj_Bool_value__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Bool_value__rf_equal record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP (proj_Bool_value__rf_equal record y z)) 
+                   (dk_logic.ebP (proj_Bool_value__rf_equal record x z))))))).
+
+[Bool_value__rf_equal_transitive]
+  proj_Bool_value__rf_equal_transitive (Bool_value__mk_record _ _ _ _ _ _ _ 
+    _ Bool_value__rf_equal_transitive _ _ _ _ _)
+  -->
+  Bool_value__rf_equal_transitive.
+
+def proj_Bool_value__rf_print :
+  record:Bool_value__me_as_species ->
+  (cc.eT (proj_Bool_value__rf_T record)) -> cc.eT basics.string__t.
+
+[Bool_value__rf_print]
+  proj_Bool_value__rf_print (Bool_value__mk_record _ _ _ _ _ _ _ _ _ 
+    Bool_value__rf_print _ _ _ _)
+  -->
+  Bool_value__rf_print.
+
+def proj_Bool_value__rf_same_is_not_different :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.forall (proj_Bool_value__rf_T record) 
+          (y:(cc.eT (proj_Bool_value__rf_T record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP (proj_Bool_value__rf_different record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Bool_value__rf_equal record x y)))))).
+
+[Bool_value__rf_same_is_not_different]
+  proj_Bool_value__rf_same_is_not_different (Bool_value__mk_record _ _ _ _ _ 
+    _ _ _ _ _ Bool_value__rf_same_is_not_different _ _ _)
+  -->
+  Bool_value__rf_same_is_not_different.
+
+def proj_Bool_value__rf_different_is_complete :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.forall (proj_Bool_value__rf_T record) 
+          (y:(cc.eT (proj_Bool_value__rf_T record)) =>
+           dk_logic.forall (proj_Bool_value__rf_T record) 
+             (z:(cc.eT (proj_Bool_value__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Bool_value__rf_different record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP (proj_Bool_value__rf_different record x z)) 
+                   (dk_logic.ebP (proj_Bool_value__rf_different record y z))))))).
+
+[Bool_value__rf_different_is_complete]
+  proj_Bool_value__rf_different_is_complete (Bool_value__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ Bool_value__rf_different_is_complete _ _)
+  -->
+  Bool_value__rf_different_is_complete.
+
+def proj_Bool_value__rf_different_is_irreflexive :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.not 
+          (dk_logic.ebP (proj_Bool_value__rf_different record x x)))).
+
+[Bool_value__rf_different_is_irreflexive]
+  proj_Bool_value__rf_different_is_irreflexive (Bool_value__mk_record _ _ _ 
+    _ _ _ _ _ _ _ _ _ Bool_value__rf_different_is_irreflexive _)
+  -->
+  Bool_value__rf_different_is_irreflexive.
+
+def proj_Bool_value__rf_different_is_symmetric :
+  record:Bool_value__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Bool_value__rf_T record) 
+       (x:(cc.eT (proj_Bool_value__rf_T record)) =>
+        dk_logic.forall (proj_Bool_value__rf_T record) 
+          (y:(cc.eT (proj_Bool_value__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Bool_value__rf_different record x y)) 
+             (dk_logic.ebP (proj_Bool_value__rf_different record y x))))).
+
+[Bool_value__rf_different_is_symmetric]
+  proj_Bool_value__rf_different_is_symmetric (Bool_value__mk_record _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ Bool_value__rf_different_is_symmetric)
+  -->
+  Bool_value__rf_different_is_symmetric.
+
+def Bool_value__element : cc.eT basics.bool__t := dk_bool.true.
+
+def Bool_value__equal :
+  abst_T:cc.uT ->
+  x:(cc.eT abst_T) -> y:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  x:(cc.eT abst_T) => y:(cc.eT abst_T) => basics.syntactic_equal abst_T x y.
+
+def Bool_value__of_bool :
+  b:(cc.eT basics.bool__t) -> cc.eT basics.bool__t
+  :=
+  b:(cc.eT basics.bool__t) => b.
+
+def Bool_value__parse :
+  x:(cc.eT basics.string__t) -> cc.eT basics.bool__t
+  :=
+  x:(cc.eT basics.string__t) =>
+  dk_bool.ite basics.bool__t 
+    (basics.syntactic_equal basics.string__t x 
+       (builtins.string_cons 
+          (builtins.char_of_nat 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+          (builtins.string_cons 
+             (builtins.char_of_nat 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+             (builtins.string_cons 
+                (builtins.char_of_nat 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+                (builtins.string_cons 
+                   (builtins.char_of_nat 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+                   builtins.string_nil))))) dk_bool.true dk_bool.false.
+
+def Bool_value__equal_reflexive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (Bool_value__equal abst_T x x)))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vzb)))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.triangle 
+                 (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vzb)))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vzb))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true (basics.syntactic_equal abst_T v_Vbc v_Vbc))))) =>
+        focal.zenon_not_syntactic_equal abst_T v_Vbc v_Vbc 
+          (v_Vdc:
+           (zen.proof (zen.not (zen.triangle (zen.equal abst_T v_Vbc v_Vbc)))) =>
+           zen.Rnoteq abst_T v_Vbc v_Vdc) v_Vcc) v_Vac).
+
+def Bool_value__equal_symmetric :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (Bool_value__equal abst_T x y)) 
+             (dk_logic.ebP (Bool_value__equal abst_T y x)))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vac v_Vzb)))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vac v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vac v_Vzb))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vac v_Vcc))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vcc v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vac v_Vcc)))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true (Bool_value__equal abst_T v_Vec v_Vcc)))))) =>
+           zen.Rnotimply 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vcc v_Vec))) 
+             (zen.triangle 
+                (focal.is_true (Bool_value__equal abst_T v_Vec v_Vcc))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vec v_Vcc))))) =>
+              focal.zenon_syntactic_equal abst_T v_Vcc v_Vec 
+                (v_Vic:
+                 (zen.proof (zen.triangle (zen.equal abst_T v_Vcc v_Vec))) =>
+                 focal.zenon_not_syntactic_equal abst_T v_Vec v_Vcc 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.not (zen.triangle (zen.equal abst_T v_Vec v_Vcc)))) =>
+                    zen.Reqsym abst_T v_Vcc v_Vec v_Vic v_Vjc) v_Vhc) v_Vgc) 
+             v_Vfc) v_Vdc) v_Vbc).
+
+def Bool_value__equal_transitive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (Bool_value__equal abst_T x y)) 
+                (dk_logic.imp (dk_logic.ebP (Bool_value__equal abst_T y z)) 
+                   (dk_logic.ebP (Bool_value__equal abst_T x z)))))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Bool_value__equal abst_T v_Vdc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vdc v_Vfc)))))))) 
+    (v_Vgc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vdc:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Bool_value__equal abst_T v_Vdc v_Vec))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vec v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vdc v_Vfc)))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Bool_value__equal abst_T v_Vdc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vdc v_Vfc))))))) 
+       (v_Vhc:(zen.term abst_T) =>
+        v_Vic:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Bool_value__equal abst_T v_Vhc v_Vec))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vec v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vhc v_Vfc))))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vec))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vec v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vfc)))))) 
+          (v_Vjc:(zen.term abst_T) =>
+           v_Vkc:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Bool_value__equal abst_T v_Vhc v_Vjc))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vjc v_Vfc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vhc v_Vfc)))))))) =>
+           zen.Rnotall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vjc))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vjc v_Vfc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vfc))))) 
+             (v_Vlc:(zen.term abst_T) =>
+              v_Vmc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Bool_value__equal abst_T v_Vhc v_Vjc))) 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vjc v_Vlc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vhc v_Vlc))))))) =>
+              zen.Rnotimply 
+                (zen.triangle 
+                   (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vjc))) 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vjc v_Vlc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vlc)))) 
+                (v_Vnc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vhc v_Vjc)))) =>
+                 v_Voc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vjc v_Vlc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Bool_value__equal abst_T v_Vhc v_Vlc)))))) =>
+                 zen.Rnotimply 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vjc v_Vlc))) 
+                   (zen.triangle 
+                      (focal.is_true (Bool_value__equal abst_T v_Vhc v_Vlc))) 
+                   (v_Vpc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vjc v_Vlc)))) =>
+                    v_Vqc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics.syntactic_equal abst_T v_Vhc v_Vlc))))) =>
+                    focal.zenon_syntactic_equal abst_T v_Vhc v_Vjc 
+                      (v_Vrc:
+                       (zen.proof 
+                          (zen.triangle (zen.equal abst_T v_Vhc v_Vjc))) =>
+                       focal.zenon_syntactic_equal abst_T v_Vjc v_Vlc 
+                         (v_Vsc:
+                          (zen.proof 
+                             (zen.triangle (zen.equal abst_T v_Vjc v_Vlc))) =>
+                          focal.zenon_not_syntactic_equal abst_T v_Vhc v_Vlc 
+                            (v_Vtc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vlc)))) =>
+                             zen.Rsubst abst_T 
+                               (v_Vuc:(zen.term abst_T) =>
+                                zen.triangle (zen.equal abst_T v_Vuc v_Vjc)) 
+                               v_Vhc v_Vhc 
+                               (v_Vvc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                zen.Rcut 
+                                  (zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vhc)) 
+                                  (v_Vwc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                   zen.Rsubst abst_T 
+                                     (v_Vxc:(zen.term abst_T) =>
+                                      zen.triangle 
+                                        (zen.equal abst_T v_Vxc v_Vhc)) 
+                                     v_Vhc v_Vhc 
+                                     (v_Vvc0:
+                                      (zen.proof 
+                                         (zen.not 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                      zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                     (v_Vwc0:
+                                      (zen.proof 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                      zen.Rsubst abst_T 
+                                        (v_Vyc:(zen.term abst_T) =>
+                                         zen.triangle 
+                                           (zen.equal abst_T v_Vhc v_Vyc)) 
+                                        v_Vhc v_Vhc 
+                                        (v_Vvc0:
+                                         (zen.proof 
+                                            (zen.not 
+                                               (zen.triangle 
+                                                  (zen.equal abst_T v_Vhc 
+                                                     v_Vhc)))) =>
+                                         zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                        (v_Vwc0:
+                                         (zen.proof 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                         zen.Raxiom 
+                                           (zen.triangle 
+                                              (zen.equal abst_T v_Vhc v_Vhc)) 
+                                           v_Vwc0 v_Vvc) v_Vwc0) v_Vwc) 
+                                  (v_Vvc0:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                   zen.Rnoteq abst_T v_Vhc v_Vvc0)) 
+                               (v_Vrc0:
+                                (zen.proof 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vjc))) =>
+                                zen.Rsubst abst_T 
+                                  (v_Vyc:(zen.term abst_T) =>
+                                   zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vyc)) v_Vjc 
+                                  v_Vlc 
+                                  (v_Vzc:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vjc v_Vlc)))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vjc v_Vlc)) 
+                                     v_Vsc v_Vzc) 
+                                  (v_Vad:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vlc))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vhc v_Vlc)) 
+                                     v_Vad v_Vtc) v_Vrc0) v_Vrc) v_Vqc) v_Vpc) 
+                      v_Vnc) v_Voc) v_Vmc) v_Vkc) v_Vic) v_Vgc).
+
+def Bool_value__print :
+  abst_equal:((cc.eT basics.bool__t) ->
+              (cc.eT basics.bool__t) -> cc.eT basics.bool__t) ->
+  x:(cc.eT basics.bool__t) -> cc.eT basics.string__t
+  :=
+  abst_equal:
+  ((cc.eT basics.bool__t) -> (cc.eT basics.bool__t) -> cc.eT basics.bool__t) =>
+  x:(cc.eT basics.bool__t) =>
+  dk_bool.ite basics.string__t (abst_equal x dk_bool.true) 
+    (builtins.string_cons 
+       (builtins.char_of_nat 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+       (builtins.string_cons 
+          (builtins.char_of_nat 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+          (builtins.string_cons 
+             (builtins.char_of_nat 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+             (builtins.string_cons 
+                (builtins.char_of_nat 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+                builtins.string_nil)))) 
+    (builtins.string_cons 
+       (builtins.char_of_nat 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+       (builtins.string_cons 
+          (builtins.char_of_nat 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+          (builtins.string_cons 
+             (builtins.char_of_nat 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+             (builtins.string_cons 
+                (builtins.char_of_nat 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+                (builtins.string_cons 
+                   (builtins.char_of_nat 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+                   builtins.string_nil))))).
+
+def Bool_value__collection_create
+  :=
+  Bool_value__mk_record basics.bool__t Bool_value__element 
+    (Bool_value__equal basics.bool__t) Bool_value__of_bool Bool_value__parse 
+    (sets.Setoid__different basics.bool__t (Bool_value__equal basics.bool__t)) 
+    (Bool_value__equal_reflexive basics.bool__t) 
+    (Bool_value__equal_symmetric basics.bool__t) 
+    (Bool_value__equal_transitive basics.bool__t) 
+    (Bool_value__print (Bool_value__equal basics.bool__t)) 
+    (sets.Setoid__same_is_not_different basics.bool__t 
+       (Bool_value__equal basics.bool__t)) 
+    (sets.Setoid__different_is_complete basics.bool__t 
+       (Bool_value__equal basics.bool__t) 
+       (sets.Setoid__different basics.bool__t 
+          (Bool_value__equal basics.bool__t)) 
+       (Bool_value__equal_reflexive basics.bool__t) 
+       (Bool_value__equal_symmetric basics.bool__t) 
+       (Bool_value__equal_transitive basics.bool__t) 
+       (sets.Setoid__same_is_not_different basics.bool__t 
+          (Bool_value__equal basics.bool__t))) 
+    (sets.Setoid__different_is_irreflexive basics.bool__t 
+       (Bool_value__equal basics.bool__t) 
+       (sets.Setoid__different basics.bool__t 
+          (Bool_value__equal basics.bool__t)) 
+       (Bool_value__equal_reflexive basics.bool__t) 
+       (sets.Setoid__same_is_not_different basics.bool__t 
+          (Bool_value__equal basics.bool__t))) 
+    (sets.Setoid__different_is_symmetric basics.bool__t 
+       (Bool_value__equal basics.bool__t) 
+       (sets.Setoid__different basics.bool__t 
+          (Bool_value__equal basics.bool__t)) 
+       (Bool_value__equal_symmetric basics.bool__t) 
+       (sets.Setoid__same_is_not_different basics.bool__t 
+          (Bool_value__equal basics.bool__t))).
+
+def Coll_bool_value__effective_collection := Bool_value__collection_create.
+
+def Coll_bool_value__me_as_carrier := basics.bool__t.
+
+def Coll_bool_value__element
+  :=
+  proj_Bool_value__rf_element Coll_bool_value__effective_collection.
+
+def Coll_bool_value__equal
+  :=
+  proj_Bool_value__rf_equal Coll_bool_value__effective_collection.
+
+def Coll_bool_value__of_bool
+  :=
+  proj_Bool_value__rf_of_bool Coll_bool_value__effective_collection.
+
+def Coll_bool_value__parse
+  :=
+  proj_Bool_value__rf_parse Coll_bool_value__effective_collection.
+
+def Coll_bool_value__different
+  :=
+  proj_Bool_value__rf_different Coll_bool_value__effective_collection.
+
+def Coll_bool_value__equal_reflexive
+  :=
+  proj_Bool_value__rf_equal_reflexive Coll_bool_value__effective_collection.
+
+def Coll_bool_value__equal_symmetric
+  :=
+  proj_Bool_value__rf_equal_symmetric Coll_bool_value__effective_collection.
+
+def Coll_bool_value__equal_transitive
+  :=
+  proj_Bool_value__rf_equal_transitive Coll_bool_value__effective_collection.
+
+def Coll_bool_value__print
+  :=
+  proj_Bool_value__rf_print Coll_bool_value__effective_collection.
+
+def Coll_bool_value__same_is_not_different
+  :=
+  proj_Bool_value__rf_same_is_not_different 
+    Coll_bool_value__effective_collection.
+
+def Coll_bool_value__different_is_complete
+  :=
+  proj_Bool_value__rf_different_is_complete 
+    Coll_bool_value__effective_collection.
+
+def Coll_bool_value__different_is_irreflexive
+  :=
+  proj_Bool_value__rf_different_is_irreflexive 
+    Coll_bool_value__effective_collection.
+
+def Coll_bool_value__different_is_symmetric
+  :=
+  proj_Bool_value__rf_different_is_symmetric 
+    Coll_bool_value__effective_collection.
+

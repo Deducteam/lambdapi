@@ -1,0 +1,68 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_int.
+#REQUIRE dk_fail.
+
+__flag_t__t : Type.
+
+def flag_t__t : cc.uT.
+
+[] cc.eT (flag_t__t) --> __flag_t__t.
+
+On : cc.eT flag_t__t.
+
+Off : cc.eT flag_t__t.
+
+def match__On :
+  Ret_type:cc.uT ->
+  (cc.eT flag_t__t) -> (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__On Ret_type (On) pattern default --> pattern.
+
+[default, pattern, Ret_type]
+  match__On Ret_type (Off) pattern default --> default.
+
+def match__Off :
+  Ret_type:cc.uT ->
+  (cc.eT flag_t__t) -> (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Off Ret_type (On) pattern default --> default.
+
+[default, pattern, Ret_type]
+  match__Off Ret_type (Off) pattern default --> pattern.
+
+def call_by_value_flag_t__t :
+  R:cc.uT -> ((cc.eT flag_t__t) -> cc.eT R) -> (cc.eT flag_t__t) -> cc.eT R.
+
+[f, R] dk_builtins.call_by_value (flag_t__t) R f (On) --> f On.
+
+[f, R] dk_builtins.call_by_value (flag_t__t) R f (Off) --> f Off.
+
+def constant :
+  x:(cc.eT flag_t__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT flag_t__t) =>
+  match__On basics.int__t x (dk_int.from_nat (builtins.S builtins.0)) 
+    (match__Off basics.int__t x (dk_int.from_nat (builtins.S builtins.0)) 
+       (dk_fail.fail basics.int__t)).
+
+def constant_is_one :
+  dk_logic.eP 
+    (dk_logic.forall flag_t__t 
+       (x:(cc.eT flag_t__t) =>
+        dk_logic.ebP 
+          (basics._equal_ basics.int__t (constant x) 
+             (dk_int.from_nat (builtins.S builtins.0)))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall flag_t__t 
+       (x:(cc.eT flag_t__t) =>
+        dk_logic.ebP 
+          (basics._equal_ basics.int__t (constant x) 
+             (dk_int.from_nat (builtins.S builtins.0))))).
+

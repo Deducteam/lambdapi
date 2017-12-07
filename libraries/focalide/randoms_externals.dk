@@ -1,0 +1,10 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+
+def random_seed := seed:(cc.eT basics.int__t) => dk_builtins.tt.
+
+def random_int := x:(cc.eT basics.int__t) => x.
+
+def random_self_init := x:(cc.eT basics.unit__t) => x.
+

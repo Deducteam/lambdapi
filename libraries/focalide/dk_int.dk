@@ -1,0 +1,121 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_nat.
+
+def Nat : Type := cc.eT builtins.nat.
+
+def B : Type := cc.eT dk_bool.bool.
+
+int : cc.uT.
+
+I : Type.
+
+[] cc.eT (int) --> I.
+
+def Int := I.
+
+def make : Nat -> Nat -> I.
+
+[m, n] make (builtins.S n) (builtins.S m) --> make n m.
+
+def call_by_value_int : R:cc.uT -> (Int -> cc.eT R) -> Int -> cc.eT R.
+
+[m, n, f, R] call_by_value_int R f (make n m) --> f (make n m).
+
+def from_nat : Nat -> I.
+
+[n] from_nat n --> make n builtins.0.
+
+def nat_abs : I -> Nat.
+
+[n] nat_abs (make n (builtins.0)) --> n
+[m] nat_abs (make (builtins.0) m) --> m.
+
+def leq : I -> I -> B.
+
+[q, p, m, n]
+  leq (make n m) (make p q)
+  -->
+  dk_nat.leq (dk_nat.plus n q) (dk_nat.plus m p).
+
+def lt : I -> I -> B.
+
+[q, p, m, n]
+  lt (make n m) (make p q) --> dk_nat.lt (dk_nat.plus n q) (dk_nat.plus m p).
+
+def geq : I -> I -> B.
+
+[j, i] geq i j --> leq j i.
+
+def gt : I -> I -> B.
+
+[j, i] gt i j --> lt j i.
+
+def eq : I -> I -> B.
+
+[j, i] eq i j --> dk_bool.and (leq i j) (geq i j).
+
+def plus : I -> I -> I.
+
+[q, p, m, n]
+  plus (make n m) (make p q) --> make (dk_nat.plus n p) (dk_nat.plus m q).
+
+def opp : I -> I.
+
+[m, n] opp (make n m) --> make m n.
+
+def sub : I -> I -> I.
+
+[j, i] sub i j --> plus i (opp j).
+
+def mult : I -> I -> I.
+
+[q, p, m, n]
+  mult (make n m) (make p q)
+  -->
+  make (dk_nat.plus (dk_nat.mult n p) (dk_nat.mult m q)) 
+    (dk_nat.plus (dk_nat.mult n q) (dk_nat.mult m p)).
+
+def max : I -> I -> I.
+
+[n, m] max m n --> dk_bool.ite int (leq m n) n m.
+
+def min : I -> I -> I.
+
+[n, m] min m n --> dk_bool.ite int (leq m n) m n.
+
+def abs : I -> I.
+
+[i] abs i --> make (nat_abs i) builtins.0.
+
+def mod : I -> I -> I.
+
+[p, n, m]
+  mod (make m n) (make p (builtins.0))
+  -->
+  make (dk_nat.mod m p) (dk_nat.mod n p)
+[p, n, m]
+  mod (make m n) (make (builtins.0) p)
+  -->
+  make (dk_nat.mod m p) (dk_nat.mod n p).
+
+def quo : I -> I -> I.
+
+[p, m]
+  quo (make m (builtins.0)) (make p (builtins.0))
+  -->
+  make (dk_nat.quo m p) builtins.0
+[p, m]
+  quo (make (builtins.0) m) (make (builtins.0) p)
+  -->
+  make (dk_nat.quo m p) builtins.0
+[p, m]
+  quo (make (builtins.0) m) (make p (builtins.0))
+  -->
+  make builtins.0 (dk_nat.quo m p)
+[p, m]
+  quo (make m (builtins.0)) (make (builtins.0) p)
+  -->
+  make builtins.0 (dk_nat.quo m p).
+

@@ -1,0 +1,16 @@
+#REQUIRE cc.
+
+nat : cc.uT.
+0 : cc.eT nat.
+S : cc.eT nat -> cc.eT nat.
+
+char : cc.uT.
+char_of_nat : cc.eT nat -> cc.eT char.
+
+list : cc.uT -> cc.uT.
+nil : A : cc.uT -> cc.eT (list A).
+cons : A : cc.uT -> cc.eT A -> cc.eT (list A) -> cc.eT (list A).
+
+string : cc.uT.
+string_nil : cc.eT string.
+string_cons : cc.eT char -> cc.eT string -> cc.eT string.

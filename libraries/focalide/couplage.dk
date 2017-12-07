@@ -1,0 +1,222 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_logic.
+#REQUIRE dk_tuple.
+#REQUIRE dk_fail.
+
+def Graph__empty :
+  _p_P_T:cc.uT ->
+  cc.eT (basics.list__t (dk_tuple.prod _p_P_T (basics.list__t _p_P_T)))
+  :=
+  _p_P_T:cc.uT => builtins.nil (dk_tuple.prod _p_P_T (basics.list__t _p_P_T)).
+
+__seduce__t : __var_a:cc.uT -> Type.
+
+def seduce__t : __var_a:cc.uT -> cc.uT.
+
+[__var_a] cc.eT (seduce__t __var_a) --> __seduce__t __var_a.
+
+Single : __var_a:cc.uT -> cc.eT (seduce__t __var_a).
+
+Married : __var_a:cc.uT -> (cc.eT __var_a) -> cc.eT (seduce__t __var_a).
+
+def match__Single :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (seduce__t __var_a)) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__Single __var_a Ret_type (Single __var_a) pattern default --> pattern.
+
+[default, pattern, x_0_, Ret_type, __var_a]
+  match__Single __var_a Ret_type (Married __var_a x_0_) pattern default
+  -->
+  default.
+
+def match__Married :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (seduce__t __var_a)) ->
+  ((cc.eT __var_a) -> cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__Married __var_a Ret_type (Single __var_a) pattern default
+  -->
+  default.
+
+[default, pattern, x_0_, Ret_type, __var_a]
+  match__Married __var_a Ret_type (Married __var_a x_0_) pattern default
+  -->
+  pattern x_0_.
+
+def call_by_value_seduce__t :
+  __var_a:cc.uT ->
+  R:cc.uT ->
+  ((cc.eT (seduce__t __var_a)) -> cc.eT R) ->
+  (cc.eT (seduce__t __var_a)) -> cc.eT R.
+
+[f, R, __var_a]
+  dk_builtins.call_by_value (seduce__t __var_a) R f (Single _)
+  -->
+  f (Single __var_a).
+
+[x_0_, f, R, __var_a]
+  dk_builtins.call_by_value (seduce__t __var_a) R f (Married _ x_0_)
+  -->
+  f (Married __var_a x_0_).
+
+def eq_p :
+  __var_a:cc.uT ->
+  m:(cc.eT (seduce__t __var_a)) -> p:(cc.eT __var_a) -> cc.eT basics.bool__t
+  :=
+  __var_a:cc.uT =>
+  m:(cc.eT (seduce__t __var_a)) =>
+  p:(cc.eT __var_a) =>
+  match__Single __var_a basics.bool__t m dk_bool.false 
+    (match__Married __var_a basics.bool__t m 
+       (pattern_var_0_:(cc.eT __var_a) =>
+        (pp:(cc.eT __var_a) => basics._equal_ __var_a p pp) pattern_var_0_) 
+       (dk_fail.fail basics.bool__t)).
+
+def State__add :
+  _p_P_T:cc.uT ->
+  s:(cc.eT 
+       (basics.list__t 
+          (dk_tuple.prod _p_P_T 
+             (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))))) ->
+  p:(cc.eT _p_P_T) ->
+  b:(cc.eT basics.bool__t) ->
+  m:(cc.eT (seduce__t _p_P_T)) ->
+  cc.eT 
+    (basics.list__t 
+       (dk_tuple.prod _p_P_T 
+          (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))))
+  :=
+  _p_P_T:cc.uT =>
+  s:
+  (cc.eT 
+     (basics.list__t 
+        (dk_tuple.prod _p_P_T 
+           (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))))) =>
+  p:(cc.eT _p_P_T) =>
+  b:(cc.eT basics.bool__t) =>
+  m:(cc.eT (seduce__t _p_P_T)) =>
+  builtins.cons 
+    (dk_tuple.prod _p_P_T (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))) 
+    (dk_tuple.pair _p_P_T (dk_tuple.prod basics.bool__t (seduce__t _p_P_T)) 
+       p (dk_tuple.pair basics.bool__t (seduce__t _p_P_T) b m)) s.
+
+def State__empty :
+  _p_P_T:cc.uT ->
+  cc.eT 
+    (basics.list__t 
+       (dk_tuple.prod _p_P_T 
+          (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))))
+  :=
+  _p_P_T:cc.uT =>
+  builtins.nil 
+    (dk_tuple.prod _p_P_T (dk_tuple.prod basics.bool__t (seduce__t _p_P_T))).
+
+def Process__identity :
+  _p_P_T:cc.uT ->
+  _p_S_T:cc.uT -> p:(cc.eT (dk_tuple.prod _p_P_T _p_S_T)) -> cc.eT _p_P_T
+  :=
+  _p_P_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  p:(cc.eT (dk_tuple.prod _p_P_T _p_S_T)) =>
+  dk_tuple.match__pair _p_P_T _p_S_T _p_P_T p 
+    (pattern_var_0_:(cc.eT _p_P_T) =>
+     pattern_var_1_:(cc.eT _p_S_T) =>
+     (id:(cc.eT _p_P_T) => id) pattern_var_0_) (dk_fail.fail _p_P_T).
+
+def Process__register :
+  _p_P_T:cc.uT ->
+  _p_S_T:cc.uT ->
+  _p_S_add:((cc.eT _p_S_T) ->
+            (cc.eT _p_P_T) ->
+            (cc.eT basics.bool__t) ->
+            (cc.eT (seduce__t _p_P_T)) -> cc.eT _p_S_T) ->
+  p:(cc.eT _p_P_T) -> s:(cc.eT _p_S_T) -> cc.eT (dk_tuple.prod _p_P_T _p_S_T)
+  :=
+  _p_P_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  _p_S_add:
+  ((cc.eT _p_S_T) ->
+   (cc.eT _p_P_T) ->
+   (cc.eT basics.bool__t) -> (cc.eT (seduce__t _p_P_T)) -> cc.eT _p_S_T) =>
+  p:(cc.eT _p_P_T) =>
+  s:(cc.eT _p_S_T) =>
+  dk_tuple.pair _p_P_T _p_S_T p (_p_S_add s p dk_bool.false (Single _p_P_T)).
+
+def Process__get_bride :
+  _p_P_T:cc.uT ->
+  _p_S_T:cc.uT ->
+  _p_S_get_bride:((cc.eT _p_S_T) ->
+                  (cc.eT _p_P_T) -> cc.eT (seduce__t _p_P_T)) ->
+  abst_T:cc.uT ->
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) ->
+  s:(cc.eT _p_S_T) -> p:(cc.eT abst_T) -> cc.eT (seduce__t _p_P_T)
+  :=
+  _p_P_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  _p_S_get_bride:
+  ((cc.eT _p_S_T) -> (cc.eT _p_P_T) -> cc.eT (seduce__t _p_P_T)) =>
+  abst_T:cc.uT =>
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) =>
+  s:(cc.eT _p_S_T) => p:(cc.eT abst_T) => _p_S_get_bride s (abst_identity p).
+
+def Process__married :
+  _p_P_T:cc.uT ->
+  _p_S_T:cc.uT ->
+  _p_S_married:((cc.eT _p_S_T) -> (cc.eT _p_P_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) ->
+  s:(cc.eT _p_S_T) -> p:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  _p_P_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  _p_S_married:((cc.eT _p_S_T) -> (cc.eT _p_P_T) -> cc.eT basics.bool__t) =>
+  abst_T:cc.uT =>
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) =>
+  s:(cc.eT _p_S_T) => p:(cc.eT abst_T) => _p_S_married s (abst_identity p).
+
+def Process__p_married :
+  _p_G_T:cc.uT ->
+  _p_P_T:cc.uT ->
+  _p_S_T:cc.uT ->
+  _p_G_neighbour:((cc.eT _p_G_T) ->
+                  (cc.eT _p_P_T) -> (cc.eT _p_P_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) ->
+  abst_get_bride:((cc.eT _p_S_T) ->
+                  (cc.eT abst_T) -> cc.eT (seduce__t _p_P_T)) ->
+  s:(cc.eT _p_S_T) ->
+  g:(cc.eT _p_G_T) ->
+  p_1:(cc.eT abst_T) -> p_2:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  _p_G_T:cc.uT =>
+  _p_P_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  _p_G_neighbour:
+  ((cc.eT _p_G_T) -> (cc.eT _p_P_T) -> (cc.eT _p_P_T) -> cc.eT basics.bool__t) =>
+  abst_T:cc.uT =>
+  abst_identity:((cc.eT abst_T) -> cc.eT _p_P_T) =>
+  abst_get_bride:
+  ((cc.eT _p_S_T) -> (cc.eT abst_T) -> cc.eT (seduce__t _p_P_T)) =>
+  s:(cc.eT _p_S_T) =>
+  g:(cc.eT _p_G_T) =>
+  p_1:(cc.eT abst_T) =>
+  p_2:(cc.eT abst_T) =>
+  (i_1:(cc.eT _p_P_T) =>
+   (i_2:(cc.eT _p_P_T) =>
+    (m_1:(cc.eT (seduce__t _p_P_T)) =>
+     (m_2:(cc.eT (seduce__t _p_P_T)) =>
+      basics._amper__amper_ (_p_G_neighbour g i_1 i_2) 
+        (basics._amper__amper_ (eq_p _p_P_T m_1 i_2) (eq_p _p_P_T m_2 i_1))) 
+       (abst_get_bride s p_2)) (abst_get_bride s p_1)) (abst_identity p_2)) 
+    (abst_identity p_1).
+

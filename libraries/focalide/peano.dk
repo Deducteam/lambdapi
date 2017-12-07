@@ -1,0 +1,1294 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_logic.
+#REQUIRE dk_int.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def Peano__induction :
+  abst_T:cc.uT ->
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_zero:(cc.eT abst_T) ->
+  p:((cc.eT abst_T) -> cc.eT basics.bool__t) -> dk_logic.Prop
+  :=
+  abst_T:cc.uT =>
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_zero:(cc.eT abst_T) =>
+  p:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_logic.imp (dk_logic.ebP (p abst_zero)) 
+    (dk_logic.imp 
+       (dk_logic.forall abst_T 
+          (n:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (p n)) (dk_logic.ebP (p (abst_s n))))) 
+       (dk_logic.forall abst_T (n:(cc.eT abst_T) => dk_logic.ebP (p n)))).
+
+Imp_peano__me_as_species : Type.
+
+Imp_peano__mk_record :
+  Imp_peano__rf_T:cc.uT ->
+  Imp_peano__rf_diff:((cc.eT Imp_peano__rf_T) ->
+                      (cc.eT Imp_peano__rf_T) -> cc.eT basics.bool__t) ->
+  Imp_peano__rf_equal:((cc.eT Imp_peano__rf_T) ->
+                       (cc.eT Imp_peano__rf_T) -> cc.eT basics.bool__t) ->
+  Imp_peano__rf_s:((cc.eT Imp_peano__rf_T) -> cc.eT Imp_peano__rf_T) ->
+  Imp_peano__rf_zero:(cc.eT Imp_peano__rf_T) ->
+  Imp_peano__rf_diff_spec:(dk_logic.eP 
+                             (dk_logic.forall Imp_peano__rf_T 
+                                (x:(cc.eT Imp_peano__rf_T) =>
+                                 dk_logic.forall Imp_peano__rf_T 
+                                   (y:(cc.eT Imp_peano__rf_T) =>
+                                    dk_logic.eqv 
+                                      (dk_logic.ebP (Imp_peano__rf_diff x y)) 
+                                      (dk_logic.not 
+                                         (dk_logic.ebP 
+                                            (Imp_peano__rf_equal x y))))))) ->
+  Imp_peano__rf_equal_reflexive:(dk_logic.eP 
+                                   (dk_logic.forall Imp_peano__rf_T 
+                                      (x:(cc.eT Imp_peano__rf_T) =>
+                                       dk_logic.ebP (Imp_peano__rf_equal x x)))) ->
+  Imp_peano__rf_equal_symmetric:(dk_logic.eP 
+                                   (dk_logic.forall Imp_peano__rf_T 
+                                      (x:(cc.eT Imp_peano__rf_T) =>
+                                       dk_logic.forall Imp_peano__rf_T 
+                                         (y:(cc.eT Imp_peano__rf_T) =>
+                                          dk_logic.imp 
+                                            (dk_logic.ebP 
+                                               (Imp_peano__rf_equal x y)) 
+                                            (dk_logic.ebP 
+                                               (Imp_peano__rf_equal y x)))))) ->
+  Imp_peano__rf_equal_transitive:(dk_logic.eP 
+                                    (dk_logic.forall Imp_peano__rf_T 
+                                       (x:(cc.eT Imp_peano__rf_T) =>
+                                        dk_logic.forall Imp_peano__rf_T 
+                                          (y:(cc.eT Imp_peano__rf_T) =>
+                                           dk_logic.forall Imp_peano__rf_T 
+                                             (z:(cc.eT Imp_peano__rf_T) =>
+                                              dk_logic.imp 
+                                                (dk_logic.and 
+                                                   (dk_logic.ebP 
+                                                      (Imp_peano__rf_equal x 
+                                                         y)) 
+                                                   (dk_logic.ebP 
+                                                      (Imp_peano__rf_equal y 
+                                                         z))) 
+                                                (dk_logic.ebP 
+                                                   (Imp_peano__rf_equal x z))))))) ->
+  Imp_peano__rf_succ_is_an_injection:(dk_logic.eP 
+                                        (dk_logic.forall Imp_peano__rf_T 
+                                           (x:(cc.eT Imp_peano__rf_T) =>
+                                            dk_logic.forall Imp_peano__rf_T 
+                                              (y:(cc.eT Imp_peano__rf_T) =>
+                                               dk_logic.imp 
+                                                 (dk_logic.ebP 
+                                                    (Imp_peano__rf_equal 
+                                                       (Imp_peano__rf_s x) 
+                                                       (Imp_peano__rf_s y))) 
+                                                 (dk_logic.ebP 
+                                                    (Imp_peano__rf_equal x y)))))) ->
+  Imp_peano__rf_induction:(((cc.eT Imp_peano__rf_T) -> cc.eT basics.bool__t) ->
+                           dk_logic.Prop) ->
+  Imp_peano__rf_zero_is_not_successor:(dk_logic.eP 
+                                         (dk_logic.forall Imp_peano__rf_T 
+                                            (x:(cc.eT Imp_peano__rf_T) =>
+                                             dk_logic.not 
+                                               (dk_logic.ebP 
+                                                  (Imp_peano__rf_equal 
+                                                     Imp_peano__rf_zero 
+                                                     (Imp_peano__rf_s x)))))) ->
+  Imp_peano__rf_diff_is_irreflexive:(dk_logic.eP 
+                                       (dk_logic.forall Imp_peano__rf_T 
+                                          (x:(cc.eT Imp_peano__rf_T) =>
+                                           dk_logic.not 
+                                             (dk_logic.ebP 
+                                                (Imp_peano__rf_diff x x))))) ->
+  Imp_peano__rf_diff_is_symmetric:(dk_logic.eP 
+                                     (dk_logic.forall Imp_peano__rf_T 
+                                        (x:(cc.eT Imp_peano__rf_T) =>
+                                         dk_logic.forall Imp_peano__rf_T 
+                                           (y:(cc.eT Imp_peano__rf_T) =>
+                                            dk_logic.imp 
+                                              (dk_logic.not 
+                                                 (dk_logic.ebP 
+                                                    (Imp_peano__rf_diff x y))) 
+                                              (dk_logic.not 
+                                                 (dk_logic.ebP 
+                                                    (Imp_peano__rf_diff y x))))))) ->
+  Imp_peano__me_as_species.
+
+def proj_Imp_peano__rf_T : record:Imp_peano__me_as_species -> cc.uT.
+
+[Imp_peano__rf_T]
+  proj_Imp_peano__rf_T (Imp_peano__mk_record Imp_peano__rf_T _ _ _ _ _ _ _ _ 
+    _ _ _ _ _)
+  -->
+  Imp_peano__rf_T.
+
+def proj_Imp_peano__rf_diff :
+  record:Imp_peano__me_as_species ->
+  (cc.eT (proj_Imp_peano__rf_T record)) ->
+  (cc.eT (proj_Imp_peano__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_peano__rf_diff]
+  proj_Imp_peano__rf_diff (Imp_peano__mk_record _ Imp_peano__rf_diff _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_diff.
+
+def proj_Imp_peano__rf_equal :
+  record:Imp_peano__me_as_species ->
+  (cc.eT (proj_Imp_peano__rf_T record)) ->
+  (cc.eT (proj_Imp_peano__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_peano__rf_equal]
+  proj_Imp_peano__rf_equal (Imp_peano__mk_record _ _ Imp_peano__rf_equal _ _ 
+    _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_equal.
+
+def proj_Imp_peano__rf_s :
+  record:Imp_peano__me_as_species ->
+  (cc.eT (proj_Imp_peano__rf_T record)) ->
+  cc.eT (proj_Imp_peano__rf_T record).
+
+[Imp_peano__rf_s]
+  proj_Imp_peano__rf_s (Imp_peano__mk_record _ _ _ Imp_peano__rf_s _ _ _ _ _ 
+    _ _ _ _ _)
+  -->
+  Imp_peano__rf_s.
+
+def proj_Imp_peano__rf_zero :
+  record:Imp_peano__me_as_species -> cc.eT (proj_Imp_peano__rf_T record).
+
+[Imp_peano__rf_zero]
+  proj_Imp_peano__rf_zero (Imp_peano__mk_record _ _ _ _ Imp_peano__rf_zero _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_zero.
+
+def proj_Imp_peano__rf_diff_spec :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.forall (proj_Imp_peano__rf_T record) 
+          (y:(cc.eT (proj_Imp_peano__rf_T record)) =>
+           dk_logic.eqv (dk_logic.ebP (proj_Imp_peano__rf_diff record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Imp_peano__rf_equal record x y)))))).
+
+[Imp_peano__rf_diff_spec]
+  proj_Imp_peano__rf_diff_spec (Imp_peano__mk_record _ _ _ _ _ 
+    Imp_peano__rf_diff_spec _ _ _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_diff_spec.
+
+def proj_Imp_peano__rf_equal_reflexive :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.ebP (proj_Imp_peano__rf_equal record x x))).
+
+[Imp_peano__rf_equal_reflexive]
+  proj_Imp_peano__rf_equal_reflexive (Imp_peano__mk_record _ _ _ _ _ _ 
+    Imp_peano__rf_equal_reflexive _ _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_equal_reflexive.
+
+def proj_Imp_peano__rf_equal_symmetric :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.forall (proj_Imp_peano__rf_T record) 
+          (y:(cc.eT (proj_Imp_peano__rf_T record)) =>
+           dk_logic.imp (dk_logic.ebP (proj_Imp_peano__rf_equal record x y)) 
+             (dk_logic.ebP (proj_Imp_peano__rf_equal record y x))))).
+
+[Imp_peano__rf_equal_symmetric]
+  proj_Imp_peano__rf_equal_symmetric (Imp_peano__mk_record _ _ _ _ _ _ _ 
+    Imp_peano__rf_equal_symmetric _ _ _ _ _ _)
+  -->
+  Imp_peano__rf_equal_symmetric.
+
+def proj_Imp_peano__rf_equal_transitive :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.forall (proj_Imp_peano__rf_T record) 
+          (y:(cc.eT (proj_Imp_peano__rf_T record)) =>
+           dk_logic.forall (proj_Imp_peano__rf_T record) 
+             (z:(cc.eT (proj_Imp_peano__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.and 
+                   (dk_logic.ebP (proj_Imp_peano__rf_equal record x y)) 
+                   (dk_logic.ebP (proj_Imp_peano__rf_equal record y z))) 
+                (dk_logic.ebP (proj_Imp_peano__rf_equal record x z)))))).
+
+[Imp_peano__rf_equal_transitive]
+  proj_Imp_peano__rf_equal_transitive (Imp_peano__mk_record _ _ _ _ _ _ _ _ 
+    Imp_peano__rf_equal_transitive _ _ _ _ _)
+  -->
+  Imp_peano__rf_equal_transitive.
+
+def proj_Imp_peano__rf_succ_is_an_injection :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.forall (proj_Imp_peano__rf_T record) 
+          (y:(cc.eT (proj_Imp_peano__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (proj_Imp_peano__rf_equal record 
+                   (proj_Imp_peano__rf_s record x) 
+                   (proj_Imp_peano__rf_s record y))) 
+             (dk_logic.ebP (proj_Imp_peano__rf_equal record x y))))).
+
+[Imp_peano__rf_succ_is_an_injection]
+  proj_Imp_peano__rf_succ_is_an_injection (Imp_peano__mk_record _ _ _ _ _ _ 
+    _ _ _ Imp_peano__rf_succ_is_an_injection _ _ _ _)
+  -->
+  Imp_peano__rf_succ_is_an_injection.
+
+def proj_Imp_peano__rf_induction :
+  record:Imp_peano__me_as_species ->
+  ((cc.eT (proj_Imp_peano__rf_T record)) -> cc.eT basics.bool__t) ->
+  dk_logic.Prop.
+
+[Imp_peano__rf_induction]
+  proj_Imp_peano__rf_induction (Imp_peano__mk_record _ _ _ _ _ _ _ _ _ _ 
+    Imp_peano__rf_induction _ _ _)
+  -->
+  Imp_peano__rf_induction.
+
+def proj_Imp_peano__rf_zero_is_not_successor :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.not 
+          (dk_logic.ebP 
+             (proj_Imp_peano__rf_equal record 
+                (proj_Imp_peano__rf_zero record) 
+                (proj_Imp_peano__rf_s record x))))).
+
+[Imp_peano__rf_zero_is_not_successor]
+  proj_Imp_peano__rf_zero_is_not_successor (Imp_peano__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ Imp_peano__rf_zero_is_not_successor _ _)
+  -->
+  Imp_peano__rf_zero_is_not_successor.
+
+def proj_Imp_peano__rf_diff_is_irreflexive :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.not (dk_logic.ebP (proj_Imp_peano__rf_diff record x x)))).
+
+[Imp_peano__rf_diff_is_irreflexive]
+  proj_Imp_peano__rf_diff_is_irreflexive (Imp_peano__mk_record _ _ _ _ _ _ _ 
+    _ _ _ _ _ Imp_peano__rf_diff_is_irreflexive _)
+  -->
+  Imp_peano__rf_diff_is_irreflexive.
+
+def proj_Imp_peano__rf_diff_is_symmetric :
+  record:Imp_peano__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_peano__rf_T record) 
+       (x:(cc.eT (proj_Imp_peano__rf_T record)) =>
+        dk_logic.forall (proj_Imp_peano__rf_T record) 
+          (y:(cc.eT (proj_Imp_peano__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Imp_peano__rf_diff record x y))) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Imp_peano__rf_diff record y x)))))).
+
+[Imp_peano__rf_diff_is_symmetric]
+  proj_Imp_peano__rf_diff_is_symmetric (Imp_peano__mk_record _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ Imp_peano__rf_diff_is_symmetric)
+  -->
+  Imp_peano__rf_diff_is_symmetric.
+
+def Imp_peano__diff :
+  abst_T:cc.uT ->
+  x:(cc.eT abst_T) -> y:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  x:(cc.eT abst_T) =>
+  y:(cc.eT abst_T) =>
+  dk_bool.ite basics.bool__t (basics._equal_ abst_T x y) dk_bool.false 
+    dk_bool.true.
+
+def Imp_peano__equal :
+  abst_T:cc.uT ->
+  x:(cc.eT abst_T) -> y:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  x:(cc.eT abst_T) => y:(cc.eT abst_T) => basics._equal_ abst_T x y.
+
+def Imp_peano__s :
+  x:(cc.eT basics.int__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT basics.int__t) => basics.int_succ x.
+
+def Imp_peano__zero : cc.eT basics.int__t := dk_int.from_nat builtins.0.
+
+def Imp_peano__diff_spec :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.eqv (dk_logic.ebP (Imp_peano__diff abst_T x y)) 
+             (dk_logic.not (dk_logic.ebP (Imp_peano__equal abst_T x y))))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vac))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vzb v_Vac))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vac)))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vac))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vcc v_Vac)))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vac))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vac))))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vec))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vcc v_Vec))))))) =>
+           zen.Rnotequiv 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vec))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vec)))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (dk_bool.ite basics.bool__t 
+                             (basics.syntactic_equal abst_T v_Vcc v_Vec) 
+                             basics.false basics.true))))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vcc v_Vec))))) =>
+              focal.zenon_focal_ite_bool_n 
+                (basics.syntactic_equal abst_T v_Vcc v_Vec) basics.false 
+                basics.true 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+                 v_Vjc:(zen.proof (zen.not zen.False)) =>
+                 zen.Raxiom 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (basics.syntactic_equal abst_T v_Vcc v_Vec))) v_Vic 
+                   v_Vhc) 
+                (v_Vhc0:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vcc v_Vec))))) =>
+                 v_Vkc:(zen.proof (zen.not zen.True)) => zen.Rnottrue v_Vkc) 
+                v_Vgc) 
+             (v_Vlc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (dk_bool.ite basics.bool__t 
+                          (basics.syntactic_equal abst_T v_Vcc v_Vec) 
+                          basics.false basics.true)))) =>
+              v_Vmc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vcc v_Vec)))))) =>
+              zen.Rnotnot 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vec))) 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+                 focal.zenon_focal_ite_bool 
+                   (basics.syntactic_equal abst_T v_Vcc v_Vec) basics.false 
+                   basics.true 
+                   (v_Vic0:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+                    v_Vnc:(zen.proof zen.False) => zen.Rfalse v_Vnc) 
+                   (v_Vhc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics.syntactic_equal abst_T v_Vcc v_Vec))))) =>
+                    v_Voc:(zen.proof zen.True) =>
+                    zen.Raxiom 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal abst_T v_Vcc v_Vec))) 
+                      v_Vic v_Vhc) v_Vlc) v_Vmc) v_Vfc) v_Vdc) v_Vbc).
+
+def Imp_peano__equal_reflexive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (Imp_peano__equal abst_T x x)))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vzb)))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.triangle 
+                 (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vzb)))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vzb))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true (basics.syntactic_equal abst_T v_Vbc v_Vbc))))) =>
+        focal.zenon_not_syntactic_equal abst_T v_Vbc v_Vbc 
+          (v_Vdc:
+           (zen.proof (zen.not (zen.triangle (zen.equal abst_T v_Vbc v_Vbc)))) =>
+           zen.Rnoteq abst_T v_Vbc v_Vdc) v_Vcc) v_Vac).
+
+def Imp_peano__equal_symmetric :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (Imp_peano__equal abst_T x y)) 
+             (dk_logic.ebP (Imp_peano__equal abst_T y x)))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vac v_Vzb)))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vac v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vac v_Vzb))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vac v_Vcc))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vac))) 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vac v_Vcc)))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true (Imp_peano__equal abst_T v_Vec v_Vcc)))))) =>
+           zen.Rnotimply 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vcc v_Vec))) 
+             (zen.triangle 
+                (focal.is_true (Imp_peano__equal abst_T v_Vec v_Vcc))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vec v_Vcc))))) =>
+              focal.zenon_syntactic_equal abst_T v_Vcc v_Vec 
+                (v_Vic:
+                 (zen.proof (zen.triangle (zen.equal abst_T v_Vcc v_Vec))) =>
+                 focal.zenon_not_syntactic_equal abst_T v_Vec v_Vcc 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.not (zen.triangle (zen.equal abst_T v_Vec v_Vcc)))) =>
+                    zen.Reqsym abst_T v_Vcc v_Vec v_Vic v_Vjc) v_Vhc) v_Vgc) 
+             v_Vfc) v_Vdc) v_Vbc).
+
+def Imp_peano__equal_transitive :
+  abst_T:cc.uT ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp 
+                (dk_logic.and (dk_logic.ebP (Imp_peano__equal abst_T x y)) 
+                   (dk_logic.ebP (Imp_peano__equal abst_T y z))) 
+                (dk_logic.ebP (Imp_peano__equal abst_T x z))))))
+  :=
+  abst_T:cc.uT =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.and 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vdc v_Vec))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vec v_Vfc)))) 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vdc v_Vfc))))))) 
+    (v_Vgc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vdc:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vdc v_Vec))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vec v_Vfc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vdc v_Vfc))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vdc:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.and 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vdc v_Vec))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vec v_Vfc)))) 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vdc v_Vfc)))))) 
+       (v_Vhc:(zen.term abst_T) =>
+        v_Vic:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vec:(zen.term abst_T) =>
+                  zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vhc v_Vec))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vec v_Vfc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vhc v_Vfc)))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vec:(zen.term abst_T) =>
+           zen.forall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.and 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vec))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vec v_Vfc)))) 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vfc))))) 
+          (v_Vjc:(zen.term abst_T) =>
+           v_Vkc:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall abst_T 
+                    (v_Vfc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vjc v_Vfc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vhc v_Vfc))))))) =>
+           zen.Rnotall abst_T 
+             (v_Vfc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.and 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vjc v_Vfc)))) 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vfc)))) 
+             (v_Vlc:(zen.term abst_T) =>
+              v_Vmc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Imp_peano__equal abst_T v_Vjc v_Vlc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vhc v_Vlc)))))) =>
+              zen.Rnotimply 
+                (zen.and 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vjc v_Vlc)))) 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vlc))) 
+                (v_Vnc:
+                 (zen.proof 
+                    (zen.and 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Imp_peano__equal abst_T v_Vjc v_Vlc))))) =>
+                 v_Voc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vhc v_Vlc))))) =>
+                 zen.Rand 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vhc v_Vjc))) 
+                   (zen.triangle 
+                      (focal.is_true (Imp_peano__equal abst_T v_Vjc v_Vlc))) 
+                   (v_Vpc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vhc v_Vjc)))) =>
+                    v_Vqc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vjc v_Vlc)))) =>
+                    focal.zenon_syntactic_equal abst_T v_Vhc v_Vjc 
+                      (v_Vrc:
+                       (zen.proof 
+                          (zen.triangle (zen.equal abst_T v_Vhc v_Vjc))) =>
+                       focal.zenon_syntactic_equal abst_T v_Vjc v_Vlc 
+                         (v_Vsc:
+                          (zen.proof 
+                             (zen.triangle (zen.equal abst_T v_Vjc v_Vlc))) =>
+                          focal.zenon_not_syntactic_equal abst_T v_Vhc v_Vlc 
+                            (v_Vtc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vlc)))) =>
+                             zen.Rsubst abst_T 
+                               (v_Vuc:(zen.term abst_T) =>
+                                zen.triangle (zen.equal abst_T v_Vuc v_Vjc)) 
+                               v_Vhc v_Vhc 
+                               (v_Vvc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                zen.Rcut 
+                                  (zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vhc)) 
+                                  (v_Vwc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                   zen.Rsubst abst_T 
+                                     (v_Vxc:(zen.term abst_T) =>
+                                      zen.triangle 
+                                        (zen.equal abst_T v_Vxc v_Vhc)) 
+                                     v_Vhc v_Vhc 
+                                     (v_Vvc0:
+                                      (zen.proof 
+                                         (zen.not 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                      zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                     (v_Vwc0:
+                                      (zen.proof 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                      zen.Rsubst abst_T 
+                                        (v_Vyc:(zen.term abst_T) =>
+                                         zen.triangle 
+                                           (zen.equal abst_T v_Vhc v_Vyc)) 
+                                        v_Vhc v_Vhc 
+                                        (v_Vvc0:
+                                         (zen.proof 
+                                            (zen.not 
+                                               (zen.triangle 
+                                                  (zen.equal abst_T v_Vhc 
+                                                     v_Vhc)))) =>
+                                         zen.Rnoteq abst_T v_Vhc v_Vvc0) 
+                                        (v_Vwc0:
+                                         (zen.proof 
+                                            (zen.triangle 
+                                               (zen.equal abst_T v_Vhc v_Vhc))) =>
+                                         zen.Raxiom 
+                                           (zen.triangle 
+                                              (zen.equal abst_T v_Vhc v_Vhc)) 
+                                           v_Vwc0 v_Vvc) v_Vwc0) v_Vwc) 
+                                  (v_Vvc0:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vhc v_Vhc)))) =>
+                                   zen.Rnoteq abst_T v_Vhc v_Vvc0)) 
+                               (v_Vrc0:
+                                (zen.proof 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vhc v_Vjc))) =>
+                                zen.Rsubst abst_T 
+                                  (v_Vyc:(zen.term abst_T) =>
+                                   zen.triangle 
+                                     (zen.equal abst_T v_Vhc v_Vyc)) v_Vjc 
+                                  v_Vlc 
+                                  (v_Vzc:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal abst_T v_Vjc v_Vlc)))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vjc v_Vlc)) 
+                                     v_Vsc v_Vzc) 
+                                  (v_Vad:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (zen.equal abst_T v_Vhc v_Vlc))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (zen.equal abst_T v_Vhc v_Vlc)) 
+                                     v_Vad v_Vtc) v_Vrc0) v_Vrc) v_Voc) v_Vqc) 
+                      v_Vpc) v_Vnc) v_Vmc) v_Vkc) v_Vic) v_Vgc).
+
+def Imp_peano__succ_is_an_injection :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal (abst_s x) (abst_s y))) 
+             (dk_logic.ebP (abst_equal x y)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal (abst_s x) (abst_s y))) 
+             (dk_logic.ebP (abst_equal x y))))).
+
+def Imp_peano__zero_is_not_successor :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_zero:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.not (dk_logic.ebP (abst_equal abst_zero (abst_s x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_s:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_zero:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.not (dk_logic.ebP (abst_equal abst_zero (abst_s x))))).
+
+def Imp_peano__diff_is_irreflexive :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.not (dk_logic.ebP (Imp_peano__diff abst_T x x))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.not 
+          (zen.triangle (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vzb))))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.not 
+                 (zen.triangle 
+                    (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vzb))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.not 
+          (zen.triangle (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vzb)))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true (Imp_peano__diff abst_T v_Vbc v_Vbc)))))) =>
+        zen.Rnotnot 
+          (zen.triangle (focal.is_true (Imp_peano__diff abst_T v_Vbc v_Vbc))) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.triangle 
+                 (focal.is_true 
+                    (dk_bool.ite basics.bool__t 
+                       (basics.syntactic_equal abst_T v_Vbc v_Vbc) 
+                       basics.false basics.true)))) =>
+           focal.zenon_focal_ite_bool 
+             (basics.syntactic_equal abst_T v_Vbc v_Vbc) basics.false 
+             basics.true 
+             (v_Vec:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics.syntactic_equal abst_T v_Vbc v_Vbc)))) =>
+              v_Vfc:(zen.proof zen.False) => zen.Rfalse v_Vfc) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal abst_T v_Vbc v_Vbc))))) =>
+              v_Vhc:(zen.proof zen.True) =>
+              focal.zenon_not_syntactic_equal abst_T v_Vbc v_Vbc 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.not (zen.triangle (zen.equal abst_T v_Vbc v_Vbc)))) =>
+                 zen.Rnoteq abst_T v_Vbc v_Vic) v_Vgc) v_Vdc) v_Vcc) v_Vac).
+
+def Imp_peano__diff_is_symmetric :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_equal_symmetric:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.forall abst_T 
+                                (y:(cc.eT abst_T) =>
+                                 dk_logic.imp 
+                                   (dk_logic.ebP (abst_equal x y)) 
+                                   (dk_logic.ebP (abst_equal y x)))))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp 
+             (dk_logic.not (dk_logic.ebP (Imp_peano__diff abst_T x y))) 
+             (dk_logic.not (dk_logic.ebP (Imp_peano__diff abst_T y x))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.forall abst_T 
+           (y:(cc.eT abst_T) =>
+            dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+              (dk_logic.ebP (abst_equal y x)))))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac)))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vac v_Vzb))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac)))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vac v_Vzb))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vzb v_Vac)))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vac v_Vzb)))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vac)))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vac v_Vcc)))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vac)))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vac v_Vcc))))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vec)))) 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vec v_Vcc))))))) =>
+           zen.Rnotimply 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vcc v_Vec)))) 
+             (zen.not 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vec v_Vcc)))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (dk_bool.ite basics.bool__t 
+                             (basics.syntactic_equal abst_T v_Vcc v_Vec) 
+                             basics.false basics.true))))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true (Imp_peano__diff abst_T v_Vec v_Vcc)))))) =>
+              zen.Rnotnot 
+                (zen.triangle 
+                   (focal.is_true (Imp_peano__diff abst_T v_Vec v_Vcc))) 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (dk_bool.ite basics.bool__t 
+                             (basics.syntactic_equal abst_T v_Vec v_Vcc) 
+                             basics.false basics.true)))) =>
+                 focal.zenon_focal_ite_bool_n 
+                   (basics.syntactic_equal abst_T v_Vcc v_Vec) basics.false 
+                   basics.true 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal abst_T v_Vcc v_Vec)))) =>
+                    v_Vkc:(zen.proof (zen.not zen.False)) =>
+                    focal.zenon_syntactic_equal abst_T v_Vcc v_Vec 
+                      (v_Vlc:
+                       (zen.proof 
+                          (zen.triangle (zen.equal abst_T v_Vcc v_Vec))) =>
+                       focal.zenon_focal_ite_bool 
+                         (basics.syntactic_equal abst_T v_Vec v_Vcc) 
+                         basics.false basics.true 
+                         (v_Vmc:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics.syntactic_equal abst_T v_Vec v_Vcc)))) =>
+                          v_Vnc:(zen.proof zen.False) => zen.Rfalse v_Vnc) 
+                         (v_Voc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (basics.syntactic_equal abst_T v_Vec 
+                                         v_Vcc))))) =>
+                          v_Vpc:(zen.proof zen.True) =>
+                          focal.zenon_not_syntactic_equal abst_T v_Vec v_Vcc 
+                            (v_Vqc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vec v_Vcc)))) =>
+                             zen.Reqsym abst_T v_Vcc v_Vec v_Vlc v_Vqc) v_Voc) 
+                         v_Vic) v_Vjc) 
+                   (v_Vrc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics.syntactic_equal abst_T v_Vcc v_Vec))))) =>
+                    v_Vsc:(zen.proof (zen.not zen.True)) =>
+                    zen.Rnottrue v_Vsc) v_Vgc) v_Vhc) v_Vfc) v_Vdc) v_Vbc).
+
+def Imp_peano__collection_create
+  :=
+  Imp_peano__mk_record basics.int__t (Imp_peano__diff basics.int__t) 
+    (Imp_peano__equal basics.int__t) Imp_peano__s Imp_peano__zero 
+    (Imp_peano__diff_spec basics.int__t) 
+    (Imp_peano__equal_reflexive basics.int__t) 
+    (Imp_peano__equal_symmetric basics.int__t) 
+    (Imp_peano__equal_transitive basics.int__t) 
+    (Imp_peano__succ_is_an_injection basics.int__t 
+       (Imp_peano__equal basics.int__t) Imp_peano__s) 
+    (Peano__induction basics.int__t Imp_peano__s Imp_peano__zero) 
+    (Imp_peano__zero_is_not_successor basics.int__t 
+       (Imp_peano__equal basics.int__t) Imp_peano__s Imp_peano__zero) 
+    (Imp_peano__diff_is_irreflexive basics.int__t 
+       (Imp_peano__equal basics.int__t) 
+       (Imp_peano__equal_reflexive basics.int__t)) 
+    (Imp_peano__diff_is_symmetric basics.int__t 
+       (Imp_peano__equal basics.int__t) 
+       (Imp_peano__equal_symmetric basics.int__t)).
+
+def Coll_peano__effective_collection := Imp_peano__collection_create.
+
+def Coll_peano__me_as_carrier := basics.int__t.
+
+def Coll_peano__diff
+  :=
+  proj_Imp_peano__rf_diff Coll_peano__effective_collection.
+
+def Coll_peano__equal
+  :=
+  proj_Imp_peano__rf_equal Coll_peano__effective_collection.
+
+def Coll_peano__s := proj_Imp_peano__rf_s Coll_peano__effective_collection.
+
+def Coll_peano__zero
+  :=
+  proj_Imp_peano__rf_zero Coll_peano__effective_collection.
+
+def Coll_peano__diff_spec
+  :=
+  proj_Imp_peano__rf_diff_spec Coll_peano__effective_collection.
+
+def Coll_peano__equal_reflexive
+  :=
+  proj_Imp_peano__rf_equal_reflexive Coll_peano__effective_collection.
+
+def Coll_peano__equal_symmetric
+  :=
+  proj_Imp_peano__rf_equal_symmetric Coll_peano__effective_collection.
+
+def Coll_peano__equal_transitive
+  :=
+  proj_Imp_peano__rf_equal_transitive Coll_peano__effective_collection.
+
+def Coll_peano__succ_is_an_injection
+  :=
+  proj_Imp_peano__rf_succ_is_an_injection Coll_peano__effective_collection.
+
+def Coll_peano__induction
+  :=
+  proj_Imp_peano__rf_induction Coll_peano__effective_collection.
+
+def Coll_peano__zero_is_not_successor
+  :=
+  proj_Imp_peano__rf_zero_is_not_successor Coll_peano__effective_collection.
+
+def Coll_peano__diff_is_irreflexive
+  :=
+  proj_Imp_peano__rf_diff_is_irreflexive Coll_peano__effective_collection.
+
+def Coll_peano__diff_is_symmetric
+  :=
+  proj_Imp_peano__rf_diff_is_symmetric Coll_peano__effective_collection.
+
+def Peano_Arith__plus_commutative :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.ebP (abst_equal (abst_plus x y) (abst_plus y x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.ebP (abst_equal (abst_plus x y) (abst_plus y x))))).
+

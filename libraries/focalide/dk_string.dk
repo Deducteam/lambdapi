@@ -1,0 +1,58 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_char.
+#REQUIRE dk_int.
+
+String : Type.
+
+[] cc.eT (builtins.string) --> String.
+
+def call_by_value_string :
+  R:cc.uT -> (String -> cc.eT R) -> String -> cc.eT R.
+
+[f] call_by_value_string _ f (builtins.string_nil) --> f builtins.string_nil
+[s, c, f]
+  call_by_value_string _ f (builtins.string_cons c s)
+  -->
+  f (builtins.string_cons c s).
+
+def equal : String -> String -> dk_bool.Bool.
+
+[] equal (builtins.string_nil) (builtins.string_nil) --> dk_bool.true
+[] equal (builtins.string_nil) (builtins.string_cons _ _) --> dk_bool.false
+[] equal (builtins.string_cons _ _) (builtins.string_nil) --> dk_bool.false
+[s2, c2, s1, c1]
+  equal (builtins.string_cons c1 s1) (builtins.string_cons c2 s2)
+  -->
+  dk_bool.and (dk_char.equal c1 c2) (equal s1 s2).
+
+def append : String -> String -> String.
+
+[s] append (builtins.string_nil) s --> s
+[s2, s1, c]
+  append (builtins.string_cons c s1) s2
+  -->
+  builtins.string_cons c (append s1 s2).
+
+def lt : String -> String -> dk_bool.Bool.
+
+[] lt (builtins.string_nil) (builtins.string_nil) --> dk_bool.false
+[s, c] lt (builtins.string_nil) (builtins.string_cons c s) --> dk_bool.true
+[s, c] lt (builtins.string_cons c s) (builtins.string_nil) --> dk_bool.false
+[s2, c2, s1, c1]
+  lt (builtins.string_cons c1 s1) (builtins.string_cons c2 s2)
+  -->
+  dk_bool.or (dk_char.lt c1 c2) 
+    (dk_bool.and (dk_char.equal c1 c2) (lt s1 s2)).
+
+def of_int :
+  n:(cc.eT dk_int.int) -> String
+  :=
+  n:(cc.eT dk_int.int) => builtins.string_nil.
+
+def to_int :
+  s:String -> cc.eT dk_int.int
+  :=
+  s:String => dk_int.make builtins.0 builtins.0.
+

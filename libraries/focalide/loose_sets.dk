@@ -1,0 +1,102 @@
+#REQUIRE cc.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_fail.
+#REQUIRE basics.
+
+__set_t__t : __var_a:cc.uT -> Type.
+
+def set_t__t : __var_a:cc.uT -> cc.uT.
+
+[__var_a] cc.eT (set_t__t __var_a) --> __set_t__t __var_a.
+
+Empty : __var_a:cc.uT -> cc.eT (set_t__t __var_a).
+
+Elem :
+  __var_a:cc.uT ->
+  (cc.eT __var_a) -> (cc.eT (set_t__t __var_a)) -> cc.eT (set_t__t __var_a).
+
+def match__Empty :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (set_t__t __var_a)) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__Empty __var_a Ret_type (Empty __var_a) pattern default --> pattern.
+
+[default, pattern, x_1_, x_0_, Ret_type, __var_a]
+  match__Empty __var_a Ret_type (Elem __var_a x_0_ x_1_) pattern default
+  -->
+  default.
+
+def match__Elem :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (set_t__t __var_a)) ->
+  ((cc.eT __var_a) -> (cc.eT (set_t__t __var_a)) -> cc.eT Ret_type) ->
+  (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__Elem __var_a Ret_type (Empty __var_a) pattern default --> default.
+
+[default, pattern, x_1_, x_0_, Ret_type, __var_a]
+  match__Elem __var_a Ret_type (Elem __var_a x_0_ x_1_) pattern default
+  -->
+  pattern x_0_ x_1_.
+
+def call_by_value_set_t__t :
+  __var_a:cc.uT ->
+  R:cc.uT ->
+  ((cc.eT (set_t__t __var_a)) -> cc.eT R) ->
+  (cc.eT (set_t__t __var_a)) -> cc.eT R.
+
+[f, R, __var_a]
+  dk_builtins.call_by_value (set_t__t __var_a) R f (Empty _)
+  -->
+  f (Empty __var_a).
+
+[x_1_, x_0_, f, R, __var_a]
+  dk_builtins.call_by_value (set_t__t __var_a) R f (Elem _ x_0_ x_1_)
+  -->
+  f (Elem __var_a x_0_ x_1_).
+
+def is_empty :
+  __var_a:cc.uT -> s:(cc.eT (set_t__t __var_a)) -> cc.eT basics.bool__t
+  :=
+  __var_a:cc.uT =>
+  s:(cc.eT (set_t__t __var_a)) =>
+  basics._equal_ (set_t__t __var_a) s (Empty __var_a).
+
+def add :
+  __var_a:cc.uT ->
+  x:(cc.eT __var_a) ->
+  s:(cc.eT (set_t__t __var_a)) -> cc.eT (set_t__t __var_a)
+  :=
+  __var_a:cc.uT =>
+  x:(cc.eT __var_a) => s:(cc.eT (set_t__t __var_a)) => Elem __var_a x s.
+
+def belongs :
+  __var_a:cc.uT ->
+  x:(cc.eT __var_a) -> s:(cc.eT (set_t__t __var_a)) -> cc.eT basics.bool__t.
+
+[s, x, __var_a]
+  belongs __var_a x s
+  -->
+  match__Empty __var_a basics.bool__t s dk_bool.false 
+    (match__Elem __var_a basics.bool__t s 
+       (pattern_var_0_:(cc.eT __var_a) =>
+        pattern_var_1_:(cc.eT (set_t__t __var_a)) =>
+        (e:(cc.eT __var_a) =>
+         (s:(cc.eT (set_t__t __var_a)) =>
+          dk_bool.ite basics.bool__t (basics._equal_ __var_a e x) 
+            dk_bool.true 
+            ((__var_a:cc.uT =>
+              x:(cc.eT __var_a) =>
+              s:(cc.eT (set_t__t __var_a)) =>
+              dk_builtins.call_by_value (set_t__t __var_a) basics.bool__t 
+                (dk_builtins.call_by_value __var_a 
+                   (cc.Arrow (set_t__t __var_a) basics.bool__t) 
+                   (belongs __var_a) x) s) __var_a x s)) pattern_var_1_) 
+          pattern_var_0_) (dk_fail.fail basics.bool__t)).
+

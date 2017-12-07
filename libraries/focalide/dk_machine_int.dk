@@ -1,0 +1,198 @@
+#REQUIRE dk_bool.
+#REQUIRE dk_nat.
+#REQUIRE builtins.
+#REQUIRE cc.
+#REQUIRE dk_binary_nat.
+
+def Bool : Type := dk_bool.Bool.
+
+def UNat : Type := dk_nat.Nat.
+
+def UO : UNat := builtins.0.
+
+def US : UNat -> UNat := builtins.S.
+
+Mint : UNat -> cc.uT.
+
+MInt : UNat -> Type.
+
+[N] cc.eT (Mint N) --> MInt N.
+
+O : MInt UO.
+
+S0 : N:UNat -> (MInt N) -> MInt (US N).
+
+S1 : N:UNat -> (MInt N) -> MInt (US N).
+
+def call_by_value_Mint :
+  N:UNat -> R:cc.uT -> ((MInt N) -> cc.eT R) -> (MInt N) -> cc.eT R.
+
+[f] call_by_value_Mint (builtins.0) _ f (O) --> f O.
+
+[n, N, f] call_by_value_Mint (builtins.S _) _ f (S0 N n) --> f (S0 N n)
+[n, N, f] call_by_value_Mint (builtins.S _) _ f (S1 N n) --> f (S1 N n).
+
+def zero : N:UNat -> MInt N.
+
+[] zero (builtins.0) --> O
+[N] zero (builtins.S N) --> S0 N (zero N).
+
+def bound : N:UNat -> MInt N.
+
+[] bound (builtins.0) --> O
+[N] bound (builtins.S N) --> S1 N (bound N).
+
+def downcast : N:UNat -> (MInt (US N)) -> MInt N.
+
+[] downcast (builtins.0) _ --> O
+[n, N] downcast (builtins.S _) (S0 (builtins.S N) n) --> S0 N (downcast N n)
+[n, N] downcast (builtins.S _) (S1 (builtins.S N) n) --> S1 N (downcast N n).
+
+def double :
+  N:UNat -> (MInt N) -> MInt N
+  :=
+  N:UNat => n:(MInt N) => downcast N (S0 N n).
+
+def succ : N:UNat -> (MInt N) -> MInt N.
+
+[] succ (builtins.0) (O) --> O[n, N] succ (builtins.S _) (S0 N n) --> S1 N n
+[n, N] succ (builtins.S _) (S1 N n) --> S0 N (succ N n).
+
+def pred : N:UNat -> (MInt N) -> MInt N.
+
+[] pred (builtins.0) (O) --> O[n, N] pred (builtins.S _) (S1 N n) --> S0 N n
+[n, N] pred (builtins.S _) (S0 N n) --> S1 N (pred N n).
+
+def plus : N:UNat -> (MInt N) -> (MInt N) -> MInt N.
+
+[] plus (builtins.0) (O) (O) --> O
+[m, n, N] plus (builtins.S N) (S0 _ n) (S0 _ m) --> S0 N (plus N n m)
+[m, n, N] plus (builtins.S N) (S0 _ n) (S1 _ m) --> S1 N (plus N n m)
+[m, n, N] plus (builtins.S N) (S1 _ n) (S0 _ m) --> S1 N (plus N n m)
+[m, n, N]
+  plus (builtins.S N) (S1 _ n) (S1 _ m) --> S0 N (succ N (plus N n m)).
+
+def complement : N:UNat -> (MInt N) -> MInt N.
+
+[] complement (builtins.0) (O) --> O
+[n, N] complement (builtins.S _) (S0 N n) --> S1 N (complement N n)
+[n, N] complement (builtins.S _) (S1 N n) --> S0 N (complement N n).
+
+def opp : N:UNat -> (MInt N) -> MInt N.
+
+[n, N] opp N n --> succ N (complement N n).
+
+def sub : N:UNat -> (MInt N) -> (MInt N) -> MInt N.
+
+[m, n, N] sub N n m --> plus N n (opp N m).
+
+def mult : N:UNat -> (MInt N) -> (MInt N) -> MInt N.
+
+[] mult (builtins.0) (O) (O) --> O
+[m, n, N]
+  mult (builtins.S N) (S0 _ n) (S0 _ m) --> double (US N) (S0 N (mult N n m))
+[m, n, N]
+  mult (builtins.S N) (S0 _ n) (S1 _ m)
+  -->
+  S0 N (plus N (double N (mult N n m)) n)
+[m, n, N]
+  mult (builtins.S N) (S1 _ n) (S0 _ m)
+  -->
+  S0 N (plus N m (double N (mult N n m)))
+[m, n, N]
+  mult (builtins.S N) (S1 _ n) (S1 _ m)
+  -->
+  S1 N (plus N (double N (mult N n m)) (plus N n m)).
+
+def equal : N:UNat -> (MInt N) -> (MInt N) -> Bool.
+
+[] equal (builtins.0) (O) (O) --> dk_bool.true
+[m, n, N] equal (builtins.S N) (S0 _ n) (S0 _ m) --> equal N n m
+[m, n, N] equal (builtins.S N) (S1 _ n) (S1 _ m) --> equal N n m
+[] equal _ (S0 _ _) (S1 _ _) --> dk_bool.false
+[] equal _ (S1 _ _) (S0 _ _) --> dk_bool.false.
+
+def unsigned_lt : N:UNat -> (MInt N) -> (MInt N) -> Bool.
+
+def unsigned_leq : N:UNat -> (MInt N) -> (MInt N) -> Bool.
+
+[] unsigned_lt (builtins.0) (O) (O) --> dk_bool.false
+[m, n, N] unsigned_lt (builtins.S N) (S0 _ n) (S0 _ m) --> unsigned_lt N n m
+[m, n, N] unsigned_lt (builtins.S N) (S1 _ n) (S1 _ m) --> unsigned_lt N n m
+[m, n, N] unsigned_lt (builtins.S N) (S0 _ n) (S1 _ m) --> unsigned_leq N n m
+[m, n, N] unsigned_lt (builtins.S N) (S1 _ n) (S0 _ m) --> unsigned_lt N n m.
+
+[] unsigned_leq (builtins.0) (O) (O) --> dk_bool.true
+[m, n, N]
+  unsigned_leq (builtins.S N) (S0 _ n) (S0 _ m) --> unsigned_leq N n m
+[m, n, N]
+  unsigned_leq (builtins.S N) (S1 _ n) (S1 _ m) --> unsigned_leq N n m
+[m, n, N]
+  unsigned_leq (builtins.S N) (S0 _ n) (S1 _ m) --> unsigned_leq N n m
+[m, n, N] unsigned_leq (builtins.S N) (S1 _ n) (S0 _ m) --> unsigned_lt N n m.
+
+def unsigned_gt :
+  N:UNat -> (MInt N) -> (MInt N) -> Bool
+  :=
+  N:UNat => n:(MInt N) => m:(MInt N) => unsigned_lt N m n.
+
+def unsigned_geq :
+  N:UNat -> (MInt N) -> (MInt N) -> Bool
+  :=
+  N:UNat => n:(MInt N) => m:(MInt N) => unsigned_leq N m n.
+
+def positive : N:UNat -> (MInt N) -> Bool.
+
+[] positive (builtins.0) (O) --> dk_bool.true
+[] positive (builtins.S (builtins.0)) (S0 (builtins.0) (O)) --> dk_bool.true
+[] positive (builtins.S (builtins.0)) (S1 (builtins.0) (O)) --> dk_bool.false
+[n, N]
+  positive (builtins.S (builtins.S _)) (S0 (builtins.S N) n)
+  -->
+  positive (builtins.S N) n
+[n, N]
+  positive (builtins.S (builtins.S _)) (S1 (builtins.S N) n)
+  -->
+  positive (builtins.S N) n.
+
+def signed_leq :
+  N:UNat -> n:(MInt N) -> m:(MInt N) -> Bool
+  :=
+  N:UNat =>
+  n:(MInt N) =>
+  m:(MInt N) =>
+  dk_bool.iteb (dk_bool.and (positive N m) (dk_bool.not (positive N n))) 
+    dk_bool.true 
+    (dk_bool.iteb (dk_bool.and (positive N n) (dk_bool.not (positive N m))) 
+       dk_bool.false (positive N (sub N m n))).
+
+def signed_geq :
+  N:UNat -> n:(MInt N) -> m:(MInt N) -> Bool
+  :=
+  N:UNat => n:(MInt N) => m:(MInt N) => signed_leq N m n.
+
+def signed_lt :
+  N:UNat -> n:(MInt N) -> m:(MInt N) -> Bool
+  :=
+  N:UNat => n:(MInt N) => m:(MInt N) => dk_bool.not (signed_geq N m n).
+
+def signed_gt :
+  N:UNat -> n:(MInt N) -> m:(MInt N) -> Bool
+  :=
+  N:UNat => n:(MInt N) => m:(MInt N) => dk_bool.not (signed_leq N m n).
+
+def cast_peano : N:UNat -> n:UNat -> MInt N.
+
+[N] cast_peano N (builtins.0) --> zero N
+[n, N] cast_peano N (builtins.S n) --> succ N (cast_peano N n).
+
+def cast_bnat : N:UNat -> bn:dk_binary_nat.BNat -> MInt N.
+
+[N] cast_bnat N (dk_binary_nat.O) --> zero N
+[] cast_bnat (builtins.0) _ --> O.
+
+[bn, N]
+  cast_bnat (builtins.S N) (dk_binary_nat.S0 bn) --> S0 N (cast_bnat N bn)
+[bn, N]
+  cast_bnat (builtins.S N) (dk_binary_nat.S1 bn) --> S1 N (cast_bnat N bn).
+

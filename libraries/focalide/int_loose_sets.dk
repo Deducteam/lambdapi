@@ -1,0 +1,595 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_logic.
+#REQUIRE dk_int.
+#REQUIRE loose_sets.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def add_except_0 :
+  x:(cc.eT basics.int__t) ->
+  s:(cc.eT (loose_sets.set_t__t basics.int__t)) ->
+  cc.eT (loose_sets.set_t__t basics.int__t)
+  :=
+  x:(cc.eT basics.int__t) =>
+  s:(cc.eT (loose_sets.set_t__t basics.int__t)) =>
+  dk_bool.ite (loose_sets.set_t__t basics.int__t) 
+    (basics._equal_ basics.int__t x (dk_int.from_nat builtins.0)) s 
+    (loose_sets.add basics.int__t x s).
+
+def zero_not_added :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (x:(cc.eT basics.int__t) =>
+        dk_logic.forall (loose_sets.set_t__t basics.int__t) 
+          (s:(cc.eT (loose_sets.set_t__t basics.int__t)) =>
+           dk_logic.imp 
+             (dk_logic.and 
+                (dk_logic.ebP (loose_sets.is_empty basics.int__t s)) 
+                (dk_logic.ebP 
+                   (basics._equal_ basics.int__t x 
+                      (dk_int.from_nat builtins.0)))) 
+             (dk_logic.ebP 
+                (loose_sets.is_empty basics.int__t (add_except_0 x s))))))
+  :=
+  zen.nnpp 
+    (zen.forall basics.int__t 
+       (v_Vdc:(zen.term basics.int__t) =>
+        zen.forall (loose_sets.set_t__t basics.int__t) 
+          (v_Vec:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+           zen.imp 
+             (zen.and 
+                (zen.triangle 
+                   (focal.is_true (loose_sets.is_empty basics.int__t v_Vec))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ basics.int__t v_Vdc 
+                         (dk_int.from_nat builtins.0))))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (loose_sets.is_empty basics.int__t 
+                      (add_except_0 v_Vdc v_Vec))))))) 
+    (v_Vfc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall basics.int__t 
+              (v_Vdc:(zen.term basics.int__t) =>
+               zen.forall (loose_sets.set_t__t basics.int__t) 
+                 (v_Vec:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+                  zen.imp 
+                    (zen.and 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t v_Vec))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vdc 
+                                (dk_int.from_nat builtins.0))))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t 
+                             (add_except_0 v_Vdc v_Vec))))))))) =>
+     zen.Rnotall basics.int__t 
+       (v_Vdc:(zen.term basics.int__t) =>
+        zen.forall (loose_sets.set_t__t basics.int__t) 
+          (v_Vec:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+           zen.imp 
+             (zen.and 
+                (zen.triangle 
+                   (focal.is_true (loose_sets.is_empty basics.int__t v_Vec))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ basics.int__t v_Vdc 
+                         (dk_int.from_nat builtins.0))))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (loose_sets.is_empty basics.int__t 
+                      (add_except_0 v_Vdc v_Vec)))))) 
+       (v_Vgc:(zen.term basics.int__t) =>
+        v_Vhc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall (loose_sets.set_t__t basics.int__t) 
+                 (v_Vec:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+                  zen.imp 
+                    (zen.and 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t v_Vec))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vgc 
+                                (dk_int.from_nat builtins.0))))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t 
+                             (add_except_0 v_Vgc v_Vec)))))))) =>
+        zen.Rnotall (loose_sets.set_t__t basics.int__t) 
+          (v_Vec:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+           zen.imp 
+             (zen.and 
+                (zen.triangle 
+                   (focal.is_true (loose_sets.is_empty basics.int__t v_Vec))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ basics.int__t v_Vgc 
+                         (dk_int.from_nat builtins.0))))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (loose_sets.is_empty basics.int__t 
+                      (add_except_0 v_Vgc v_Vec))))) 
+          (v_Vic:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+           v_Vjc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.and 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t v_Vic))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vgc 
+                                (dk_int.from_nat builtins.0))))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t 
+                             (add_except_0 v_Vgc v_Vic))))))) =>
+           zen.Rnotimply 
+             (zen.and 
+                (zen.triangle 
+                   (focal.is_true (loose_sets.is_empty basics.int__t v_Vic))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ basics.int__t v_Vgc 
+                         (dk_int.from_nat builtins.0))))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (loose_sets.is_empty basics.int__t 
+                      (add_except_0 v_Vgc v_Vic)))) 
+             (v_Vkc:
+              (zen.proof 
+                 (zen.and 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t v_Vic))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._equal_ basics.int__t v_Vgc 
+                             (dk_int.from_nat builtins.0)))))) =>
+              v_Vlc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t 
+                             (dk_bool.ite 
+                                (loose_sets.set_t__t basics.int__t) 
+                                (basics.syntactic_equal basics.int__t v_Vgc 
+                                   (dk_int.from_nat builtins.0)) v_Vic 
+                                (loose_sets.add basics.int__t v_Vgc v_Vic))))))) =>
+              zen.Rand 
+                (zen.triangle 
+                   (focal.is_true (loose_sets.is_empty basics.int__t v_Vic))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ basics.int__t v_Vgc 
+                         (dk_int.from_nat builtins.0)))) 
+                (v_Vmc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (loose_sets.is_empty basics.int__t v_Vic)))) =>
+                 v_Vnc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal basics.int__t v_Vgc 
+                             (dk_int.from_nat builtins.0))))) =>
+                 focal.zenon_syntactic_equal basics.int__t v_Vgc 
+                   (dk_int.from_nat builtins.0) 
+                   (v_Voc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (zen.equal basics.int__t v_Vgc 
+                             (dk_int.from_nat builtins.0)))) =>
+                    zen.Rsubst basics.bool__t 
+                      (v_Vpc:(zen.term basics.bool__t) =>
+                       zen.triangle (focal.is_true v_Vpc)) 
+                      (loose_sets.is_empty basics.int__t v_Vic) 
+                      (loose_sets.is_empty basics.int__t 
+                         (dk_bool.ite (loose_sets.set_t__t basics.int__t) 
+                            (basics.syntactic_equal basics.int__t v_Vgc 
+                               (dk_int.from_nat builtins.0)) v_Vic 
+                            (loose_sets.add basics.int__t v_Vgc v_Vic))) 
+                      (v_Vqc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (zen.equal basics.bool__t 
+                                   (loose_sets.is_empty basics.int__t v_Vic) 
+                                   (loose_sets.is_empty basics.int__t 
+                                      (dk_bool.ite 
+                                         (loose_sets.set_t__t basics.int__t) 
+                                         (basics.syntactic_equal 
+                                            basics.int__t v_Vgc 
+                                            (dk_int.from_nat builtins.0)) 
+                                         v_Vic 
+                                         (loose_sets.add basics.int__t v_Vgc 
+                                            v_Vic))))))) =>
+                       zen.Rsubst (loose_sets.set_t__t basics.int__t) 
+                         (v_Vrc:
+                          (zen.term (loose_sets.set_t__t basics.int__t)) =>
+                          zen.not 
+                            (zen.triangle 
+                               (zen.equal basics.bool__t 
+                                  (loose_sets.is_empty basics.int__t v_Vrc) 
+                                  (loose_sets.is_empty basics.int__t 
+                                     (dk_bool.ite 
+                                        (loose_sets.set_t__t basics.int__t) 
+                                        (basics.syntactic_equal 
+                                           basics.int__t v_Vgc 
+                                           (dk_int.from_nat builtins.0)) 
+                                        v_Vic 
+                                        (loose_sets.add basics.int__t v_Vgc 
+                                           v_Vic)))))) v_Vic 
+                         (dk_bool.ite (loose_sets.set_t__t basics.int__t) 
+                            (basics.syntactic_equal basics.int__t v_Vgc 
+                               (dk_int.from_nat builtins.0)) v_Vic 
+                            (loose_sets.add basics.int__t v_Vgc v_Vic)) 
+                         (v_Vsc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (zen.equal 
+                                      (loose_sets.set_t__t basics.int__t) 
+                                      v_Vic 
+                                      (dk_bool.ite 
+                                         (loose_sets.set_t__t basics.int__t) 
+                                         (basics.syntactic_equal 
+                                            basics.int__t v_Vgc 
+                                            (dk_int.from_nat builtins.0)) 
+                                         v_Vic 
+                                         (loose_sets.add basics.int__t v_Vgc 
+                                            v_Vic)))))) =>
+                          focal.zenon_focal_ite_rel_nr 
+                            (loose_sets.set_t__t basics.int__t) 
+                            (loose_sets.set_t__t basics.int__t) 
+                            (v_Vtc:
+                             (zen.term (loose_sets.set_t__t basics.int__t)) =>
+                             v_Vuc:
+                             (zen.term (loose_sets.set_t__t basics.int__t)) =>
+                             zen.triangle 
+                               (zen.equal 
+                                  (loose_sets.set_t__t basics.int__t) v_Vtc 
+                                  v_Vuc)) v_Vic 
+                            (basics.syntactic_equal basics.int__t v_Vgc 
+                               (dk_int.from_nat builtins.0)) v_Vic 
+                            (loose_sets.add basics.int__t v_Vgc v_Vic) 
+                            (v_Vnc:
+                             (zen.proof 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (basics.syntactic_equal basics.int__t 
+                                         v_Vgc (dk_int.from_nat builtins.0))))) =>
+                             v_Vvc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal 
+                                         (loose_sets.set_t__t basics.int__t) 
+                                         v_Vic v_Vic)))) =>
+                             zen.Rnoteq (loose_sets.set_t__t basics.int__t) 
+                               v_Vic v_Vvc) 
+                            (v_Vwc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (focal.is_true 
+                                         (basics.syntactic_equal 
+                                            basics.int__t v_Vgc 
+                                            (dk_int.from_nat builtins.0)))))) =>
+                             v_Vxc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal 
+                                         (loose_sets.set_t__t basics.int__t) 
+                                         v_Vic 
+                                         (loose_sets.add basics.int__t v_Vgc 
+                                            v_Vic))))) =>
+                             focal.zenon_not_syntactic_equal basics.int__t 
+                               v_Vgc (dk_int.from_nat builtins.0) 
+                               (v_Vyc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (zen.equal basics.int__t v_Vgc 
+                                            (dk_int.from_nat builtins.0))))) =>
+                                zen.Raxiom 
+                                  (zen.triangle 
+                                     (zen.equal basics.int__t v_Vgc 
+                                        (dk_int.from_nat builtins.0))) v_Voc 
+                                  v_Vyc) v_Vwc) v_Vsc) 
+                         (v_Vzc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (zen.equal basics.bool__t 
+                                      (loose_sets.is_empty basics.int__t 
+                                         (dk_bool.ite 
+                                            (loose_sets.set_t__t 
+                                               basics.int__t) 
+                                            (basics.syntactic_equal 
+                                               basics.int__t v_Vgc 
+                                               (dk_int.from_nat builtins.0)) 
+                                            v_Vic 
+                                            (loose_sets.add basics.int__t 
+                                               v_Vgc v_Vic))) 
+                                      (loose_sets.is_empty basics.int__t 
+                                         (dk_bool.ite 
+                                            (loose_sets.set_t__t 
+                                               basics.int__t) 
+                                            (basics.syntactic_equal 
+                                               basics.int__t v_Vgc 
+                                               (dk_int.from_nat builtins.0)) 
+                                            v_Vic 
+                                            (loose_sets.add basics.int__t 
+                                               v_Vgc v_Vic))))))) =>
+                          zen.Rnoteq basics.bool__t 
+                            (loose_sets.is_empty basics.int__t 
+                               (dk_bool.ite 
+                                  (loose_sets.set_t__t basics.int__t) 
+                                  (basics.syntactic_equal basics.int__t 
+                                     v_Vgc (dk_int.from_nat builtins.0)) 
+                                  v_Vic 
+                                  (loose_sets.add basics.int__t v_Vgc v_Vic))) 
+                            v_Vzc) v_Vqc) 
+                      (v_Vad:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (loose_sets.is_empty basics.int__t 
+                                   (dk_bool.ite 
+                                      (loose_sets.set_t__t basics.int__t) 
+                                      (basics.syntactic_equal basics.int__t 
+                                         v_Vgc (dk_int.from_nat builtins.0)) 
+                                      v_Vic 
+                                      (loose_sets.add basics.int__t v_Vgc 
+                                         v_Vic)))))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (loose_sets.is_empty basics.int__t 
+                                  (dk_bool.ite 
+                                     (loose_sets.set_t__t basics.int__t) 
+                                     (basics.syntactic_equal basics.int__t 
+                                        v_Vgc (dk_int.from_nat builtins.0)) 
+                                     v_Vic 
+                                     (loose_sets.add basics.int__t v_Vgc 
+                                        v_Vic))))) v_Vad v_Vlc) v_Vmc) v_Vnc) 
+                v_Vkc) v_Vjc) v_Vhc) v_Vfc).
+
+def zero_not_added_weaker :
+  dk_logic.eP 
+    (dk_logic.forall (loose_sets.set_t__t basics.int__t) 
+       (s:(cc.eT (loose_sets.set_t__t basics.int__t)) =>
+        dk_logic.imp (dk_logic.ebP (loose_sets.is_empty basics.int__t s)) 
+          (dk_logic.ebP 
+             (loose_sets.is_empty basics.int__t 
+                (add_except_0 (dk_int.from_nat builtins.0) s)))))
+  :=
+  zen.nnpp 
+    (zen.forall (loose_sets.set_t__t basics.int__t) 
+       (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+        zen.imp 
+          (zen.triangle 
+             (focal.is_true (loose_sets.is_empty basics.int__t v_Vzb))) 
+          (zen.triangle 
+             (focal.is_true 
+                (loose_sets.is_empty basics.int__t 
+                   (add_except_0 (dk_int.from_nat builtins.0) v_Vzb)))))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall (loose_sets.set_t__t basics.int__t) 
+              (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+               zen.imp 
+                 (zen.triangle 
+                    (focal.is_true (loose_sets.is_empty basics.int__t v_Vzb))) 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (loose_sets.is_empty basics.int__t 
+                          (add_except_0 (dk_int.from_nat builtins.0) v_Vzb)))))))) =>
+     zen.Rnotall (loose_sets.set_t__t basics.int__t) 
+       (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+        zen.imp 
+          (zen.triangle 
+             (focal.is_true (loose_sets.is_empty basics.int__t v_Vzb))) 
+          (zen.triangle 
+             (focal.is_true 
+                (loose_sets.is_empty basics.int__t 
+                   (add_except_0 (dk_int.from_nat builtins.0) v_Vzb))))) 
+       (v_Vbc:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.imp 
+                 (zen.triangle 
+                    (focal.is_true (loose_sets.is_empty basics.int__t v_Vbc))) 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (loose_sets.is_empty basics.int__t 
+                          (add_except_0 (dk_int.from_nat builtins.0) v_Vbc))))))) =>
+        zen.Rnotimply 
+          (zen.triangle 
+             (focal.is_true (loose_sets.is_empty basics.int__t v_Vbc))) 
+          (zen.triangle 
+             (focal.is_true 
+                (loose_sets.is_empty basics.int__t 
+                   (add_except_0 (dk_int.from_nat builtins.0) v_Vbc)))) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.triangle 
+                 (focal.is_true (loose_sets.is_empty basics.int__t v_Vbc)))) =>
+           v_Vec:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (loose_sets.is_empty basics.int__t 
+                          (add_except_0 (dk_int.from_nat builtins.0) v_Vbc)))))) =>
+           zen.Rall basics.int__t 
+             (v_Vfc:(zen.term basics.int__t) =>
+              zen.forall (loose_sets.set_t__t basics.int__t) 
+                (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+                 zen.imp 
+                   (zen.and 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (loose_sets.is_empty basics.int__t v_Vzb))) 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ basics.int__t v_Vfc 
+                               (dk_int.from_nat builtins.0))))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (loose_sets.is_empty basics.int__t 
+                            (add_except_0 v_Vfc v_Vzb)))))) 
+             (dk_int.from_nat builtins.0) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.forall (loose_sets.set_t__t basics.int__t) 
+                    (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+                     zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (loose_sets.is_empty basics.int__t v_Vzb))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics._equal_ basics.int__t 
+                                   (dk_int.from_nat builtins.0) 
+                                   (dk_int.from_nat builtins.0))))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t 
+                                (add_except_0 (dk_int.from_nat builtins.0) 
+                                   v_Vzb))))))) =>
+              zen.Rall (loose_sets.set_t__t basics.int__t) 
+                (v_Vzb:(zen.term (loose_sets.set_t__t basics.int__t)) =>
+                 zen.imp 
+                   (zen.and 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (loose_sets.is_empty basics.int__t v_Vzb))) 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ basics.int__t 
+                               (dk_int.from_nat builtins.0) 
+                               (dk_int.from_nat builtins.0))))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (loose_sets.is_empty basics.int__t 
+                            (add_except_0 (dk_int.from_nat builtins.0) v_Vzb))))) 
+                v_Vbc 
+                (v_Vhc:
+                 (zen.proof 
+                    (zen.imp 
+                       (zen.and 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (loose_sets.is_empty basics.int__t v_Vbc))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics._equal_ basics.int__t 
+                                   (dk_int.from_nat builtins.0) 
+                                   (dk_int.from_nat builtins.0))))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t 
+                                (add_except_0 (dk_int.from_nat builtins.0) 
+                                   v_Vbc)))))) =>
+                 zen.Rimply 
+                   (zen.and 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (loose_sets.is_empty basics.int__t v_Vbc))) 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ basics.int__t 
+                               (dk_int.from_nat builtins.0) 
+                               (dk_int.from_nat builtins.0))))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (loose_sets.is_empty basics.int__t 
+                            (add_except_0 (dk_int.from_nat builtins.0) v_Vbc)))) 
+                   (v_Vic:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.and 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (loose_sets.is_empty basics.int__t v_Vbc))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics._equal_ basics.int__t 
+                                      (dk_int.from_nat builtins.0) 
+                                      (dk_int.from_nat builtins.0))))))) =>
+                    zen.Rnotand 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (loose_sets.is_empty basics.int__t v_Vbc))) 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ basics.int__t 
+                               (dk_int.from_nat builtins.0) 
+                               (dk_int.from_nat builtins.0)))) 
+                      (v_Vjc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (loose_sets.is_empty basics.int__t v_Vbc))))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (loose_sets.is_empty basics.int__t v_Vbc))) 
+                         v_Vdc v_Vjc) 
+                      (v_Vkc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (basics.syntactic_equal basics.int__t 
+                                      (dk_int.from_nat builtins.0) 
+                                      (dk_int.from_nat builtins.0)))))) =>
+                       focal.zenon_not_syntactic_equal basics.int__t 
+                         (dk_int.from_nat builtins.0) 
+                         (dk_int.from_nat builtins.0) 
+                         (v_Vlc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (zen.equal basics.int__t 
+                                      (dk_int.from_nat builtins.0) 
+                                      (dk_int.from_nat builtins.0))))) =>
+                          zen.Rnoteq basics.int__t 
+                            (dk_int.from_nat builtins.0) v_Vlc) v_Vkc) v_Vic) 
+                   (v_Vmc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (loose_sets.is_empty basics.int__t 
+                                (add_except_0 (dk_int.from_nat builtins.0) 
+                                   v_Vbc))))) =>
+                    zen.Raxiom 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (loose_sets.is_empty basics.int__t 
+                               (add_except_0 (dk_int.from_nat builtins.0) 
+                                  v_Vbc)))) v_Vmc v_Vec) v_Vhc) v_Vgc) 
+             zero_not_added) v_Vcc) v_Vac).
+

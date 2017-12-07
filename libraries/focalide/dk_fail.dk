@@ -1,0 +1,4 @@
+#REQUIRE cc.
+
+fail : A:cc.uT -> cc.eT A.
+

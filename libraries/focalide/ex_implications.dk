@@ -1,0 +1,22 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+
+def implications :
+  dk_logic.eP 
+    (dk_logic.forall basics.bool__t 
+       (a:(cc.eT basics.bool__t) =>
+        dk_logic.forall basics.bool__t 
+          (b:(cc.eT basics.bool__t) =>
+           dk_logic.imp (dk_logic.ebP a) 
+             (dk_logic.imp (dk_logic.ebP b) (dk_logic.ebP a)))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.bool__t 
+       (a:(cc.eT basics.bool__t) =>
+        dk_logic.forall basics.bool__t 
+          (b:(cc.eT basics.bool__t) =>
+           dk_logic.imp (dk_logic.ebP a) 
+             (dk_logic.imp (dk_logic.ebP b) (dk_logic.ebP a))))).
+

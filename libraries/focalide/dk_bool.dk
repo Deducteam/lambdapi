@@ -1,0 +1,84 @@
+#REQUIRE cc.
+
+bool : cc.uT.
+
+def Bool : Type := cc.eT bool.
+
+true : Bool.
+
+false : Bool.
+
+def call_by_value_bool : R:cc.uT -> (Bool -> cc.eT R) -> Bool -> cc.eT R.
+
+[f] call_by_value_bool _ f (true) --> f true
+[f] call_by_value_bool _ f (false) --> f false.
+
+def match :
+  P:(Bool -> cc.uT) ->
+  (cc.eT (P true)) -> (cc.eT (P false)) -> b:Bool -> cc.eT (P b).
+
+[H] match _ H _ (true) --> H
+[H] match _ _ H (false) --> H.
+
+def ite : A:cc.uT -> Bool -> (cc.eT A) -> (cc.eT A) -> cc.eT A.
+
+[y, x, b, A] ite A b x y --> match (b:Bool => A) x y b.
+
+def match__true : Bool -> A:cc.uT -> (cc.eT A) -> (cc.eT A) -> cc.eT A.
+
+[e, t, A, b] match__true b A t e --> ite A b t e.
+
+def match__false : Bool -> A:cc.uT -> (cc.eT A) -> (cc.eT A) -> cc.eT A.
+
+[e, t, A, b] match__false b A t e --> ite A b e t.
+
+def iteb : Bool -> Bool -> Bool -> Bool := ite bool.
+
+def not : Bool -> Bool.
+
+[] not (true) --> false[] not (false) --> true
+[b] not (not b) --> b.
+
+def and : Bool -> Bool -> Bool.
+
+[b] and b (true) --> b[b] and (true) b --> b[] and _ (false) --> false
+[] and (false) _ --> false.
+
+def or : Bool -> Bool -> Bool.
+
+[] or _ (true) --> true[] or (true) _ --> true[b] or b (false) --> b
+[b] or (false) b --> b.
+
+def xor : Bool -> Bool -> Bool.
+
+[b] xor b (true) --> not b[b] xor (true) b --> not b[b] xor b (false) --> b
+[b] xor (false) b --> b.
+
+def imp : Bool -> Bool -> Bool.
+
+[] imp _ (true) --> true[b] imp (true) b --> b[b] imp b (false) --> not b
+[] imp (false) _ --> true.
+
+def eqv : Bool -> Bool -> Bool.
+
+[b] eqv b (true) --> b[b] eqv (true) b --> b[b] eqv b (false) --> not b
+[b] eqv (false) b --> not b.
+
+[b3, b2, b1] and b1 (and b2 b3) --> and (and b1 b2) b3.
+
+[b3, b2, b1] or b1 (or b2 b3) --> or (or b1 b2) b3.
+
+[b3, b2, b1] xor b1 (xor b2 b3) --> xor (xor b1 b2) b3.
+
+[b3, b2, b1] and b1 (or b2 b3) --> or (and b1 b2) (and b1 b3).
+
+[b3, b2, b1] and (or b1 b2) b3 --> or (and b1 b3) (and b2 b3).
+
+[b2, b1] not (and b1 b2) --> or (not b1) (not b2).
+
+[b2, b1] not (or b1 b2) --> and (not b1) (not b2).
+
+[b2, b1] not (xor b1 b2) --> eqv (not b1) (not b2).
+
+[b2, b1] not (eqv b1 b2) --> xor (not b1) (not b2).
+

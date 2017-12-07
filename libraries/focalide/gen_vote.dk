@@ -1,0 +1,49 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_logic.
+#REQUIRE dk_tuple.
+
+def Gen_voter__diag :
+  _p_V_T:cc.uT ->
+  _p_S_T:cc.uT -> p:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_S_T
+  :=
+  _p_V_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  p:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) => basics.snd _p_V_T _p_S_T p.
+
+def Gen_voter__value :
+  _p_V_T:cc.uT ->
+  _p_S_T:cc.uT -> p:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_V_T
+  :=
+  _p_V_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  p:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) => basics.fst _p_V_T _p_S_T p.
+
+def Gen_voter__compatible :
+  _p_V_T:cc.uT ->
+  _p_S_T:cc.uT ->
+  _p_V_consistency_rule:((cc.eT _p_V_T) ->
+                         (cc.eT _p_V_T) -> cc.eT basics.bool__t) ->
+  _p_S_valid:((cc.eT _p_S_T) -> cc.eT basics.bool__t) ->
+  abst_diag:((cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_S_T) ->
+  abst_value:((cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_V_T) ->
+  s1:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) ->
+  s2:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> dk_logic.Prop
+  :=
+  _p_V_T:cc.uT =>
+  _p_S_T:cc.uT =>
+  _p_V_consistency_rule:
+  ((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) =>
+  _p_S_valid:((cc.eT _p_S_T) -> cc.eT basics.bool__t) =>
+  abst_diag:((cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_S_T) =>
+  abst_value:((cc.eT (dk_tuple.prod _p_V_T _p_S_T)) -> cc.eT _p_V_T) =>
+  s1:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) =>
+  s2:(cc.eT (dk_tuple.prod _p_V_T _p_S_T)) =>
+  dk_logic.or 
+    (dk_logic.and (dk_logic.ebP (_p_S_valid (abst_diag s1))) 
+       (dk_logic.and (dk_logic.ebP (_p_S_valid (abst_diag s2))) 
+          (dk_logic.ebP 
+             (_p_V_consistency_rule (abst_value s1) (abst_value s2))))) 
+    (dk_logic.and (dk_logic.not (dk_logic.ebP (_p_S_valid (abst_diag s1)))) 
+       (dk_logic.not (dk_logic.ebP (_p_S_valid (abst_diag s2))))).
+

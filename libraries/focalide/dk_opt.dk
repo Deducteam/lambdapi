@@ -1,0 +1,35 @@
+#REQUIRE cc.
+
+option : cc.uT -> cc.uT.
+
+Option : cc.uT -> Type.
+
+[A] cc.eT (option A) --> Option A.
+
+None : A:cc.uT -> Option A.
+
+Some : A:cc.uT -> (cc.eT A) -> Option A.
+
+def call_by_value_option :
+  A:cc.uT -> R:cc.uT -> ((Option A) -> cc.eT R) -> (Option A) -> cc.eT R.
+
+[A, f, R] call_by_value_option _ R f (None A) --> f (None A)
+[a, A, f, R] call_by_value_option _ R f (Some A a) --> f (Some A a).
+
+def match_option :
+  A:cc.uT ->
+  P:((Option A) -> cc.uT) ->
+  (cc.eT (P (None A))) ->
+  (a:(cc.eT A) -> cc.eT (P (Some A a))) -> o:(Option A) -> cc.eT (P o).
+
+[A, Hsome, Hnone, P] match_option _ P Hnone Hsome (None A) --> Hnone
+[a, A, Hsome, Hnone, P] match_option _ P Hnone Hsome (Some A a) --> Hsome a.
+
+def simple_match_option :
+  A:cc.uT ->
+  return:cc.uT ->
+  (cc.eT return) ->
+  (a:(cc.eT A) -> cc.eT return) -> o:(Option A) -> cc.eT return
+  :=
+  A:cc.uT => return:cc.uT => match_option A (_x:(cc.eT (option A)) => return).
+

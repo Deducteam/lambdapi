@@ -1,0 +1,2415 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+#REQUIRE sets.
+
+Imp_requests__me_as_species : Type.
+
+Imp_requests__mk_record :
+  Imp_requests__rf_T:cc.uT ->
+  Imp_requests__rf_element:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_equal:((cc.eT Imp_requests__rf_T) ->
+                          (cc.eT Imp_requests__rf_T) -> cc.eT basics.bool__t) ->
+  Imp_requests__rf_inconsistent:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_moving:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_moving_time_out:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_normal_switched:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_parse:((cc.eT basics.string__t) ->
+                          cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_print:((cc.eT Imp_requests__rf_T) ->
+                          cc.eT basics.string__t) ->
+  Imp_requests__rf_reverse_switched:(cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_different:((cc.eT Imp_requests__rf_T) ->
+                              (cc.eT Imp_requests__rf_T) ->
+                              cc.eT basics.bool__t) ->
+  Imp_requests__rf_equal_reflexive:(dk_logic.eP 
+                                      (dk_logic.forall Imp_requests__rf_T 
+                                         (x:(cc.eT Imp_requests__rf_T) =>
+                                          dk_logic.ebP 
+                                            (Imp_requests__rf_equal x x)))) ->
+  Imp_requests__rf_equal_symmetric:(dk_logic.eP 
+                                      (dk_logic.forall Imp_requests__rf_T 
+                                         (x:(cc.eT Imp_requests__rf_T) =>
+                                          dk_logic.forall Imp_requests__rf_T 
+                                            (y:(cc.eT Imp_requests__rf_T) =>
+                                             dk_logic.imp 
+                                               (dk_logic.ebP 
+                                                  (Imp_requests__rf_equal x y)) 
+                                               (dk_logic.ebP 
+                                                  (Imp_requests__rf_equal y x)))))) ->
+  Imp_requests__rf_equal_transitive:(dk_logic.eP 
+                                       (dk_logic.forall Imp_requests__rf_T 
+                                          (x:(cc.eT Imp_requests__rf_T) =>
+                                           dk_logic.forall 
+                                             Imp_requests__rf_T 
+                                             (y:(cc.eT Imp_requests__rf_T) =>
+                                              dk_logic.forall 
+                                                Imp_requests__rf_T 
+                                                (z:
+                                                 (cc.eT Imp_requests__rf_T) =>
+                                                 dk_logic.imp 
+                                                   (dk_logic.ebP 
+                                                      (Imp_requests__rf_equal 
+                                                         x y)) 
+                                                   (dk_logic.imp 
+                                                      (dk_logic.ebP 
+                                                         (Imp_requests__rf_equal 
+                                                            y z)) 
+                                                      (dk_logic.ebP 
+                                                         (Imp_requests__rf_equal 
+                                                            x z)))))))) ->
+  Imp_requests__rf_diff_moving_inconsistent:(dk_logic.eP 
+                                               (dk_logic.not 
+                                                  (dk_logic.ebP 
+                                                     (Imp_requests__rf_equal 
+                                                        Imp_requests__rf_moving 
+                                                        Imp_requests__rf_inconsistent)))) ->
+  Imp_requests__rf_diff_inconsistent_moving_time_out:(dk_logic.eP 
+                                                        (dk_logic.not 
+                                                           (dk_logic.ebP 
+                                                              (Imp_requests__rf_equal 
+                                                                 Imp_requests__rf_inconsistent 
+                                                                 Imp_requests__rf_moving_time_out)))) ->
+  Imp_requests__rf_diff_moving_moving_time_out:(dk_logic.eP 
+                                                  (dk_logic.not 
+                                                     (dk_logic.ebP 
+                                                        (Imp_requests__rf_equal 
+                                                           Imp_requests__rf_moving 
+                                                           Imp_requests__rf_moving_time_out)))) ->
+  Imp_requests__rf_diff_normal_switched_inconsistent:(dk_logic.eP 
+                                                        (dk_logic.not 
+                                                           (dk_logic.ebP 
+                                                              (Imp_requests__rf_equal 
+                                                                 Imp_requests__rf_normal_switched 
+                                                                 Imp_requests__rf_inconsistent)))) ->
+  Imp_requests__rf_diff_normal_switched_moving:(dk_logic.eP 
+                                                  (dk_logic.not 
+                                                     (dk_logic.ebP 
+                                                        (Imp_requests__rf_equal 
+                                                           Imp_requests__rf_normal_switched 
+                                                           Imp_requests__rf_moving)))) ->
+  Imp_requests__rf_diff_normal_switched_moving_time_out:(dk_logic.eP 
+                                                           (dk_logic.not 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_requests__rf_equal 
+                                                                    Imp_requests__rf_normal_switched 
+                                                                    Imp_requests__rf_moving_time_out)))) ->
+  Imp_requests__rf_diff_normal_switched_reverse_switched:(dk_logic.eP 
+                                                            (dk_logic.not 
+                                                               (dk_logic.ebP 
+                                                                  (Imp_requests__rf_equal 
+                                                                    Imp_requests__rf_normal_switched 
+                                                                    Imp_requests__rf_reverse_switched)))) ->
+  Imp_requests__rf_diff_reverse_switched_inconsistent:(dk_logic.eP 
+                                                         (dk_logic.not 
+                                                            (dk_logic.ebP 
+                                                               (Imp_requests__rf_equal 
+                                                                  Imp_requests__rf_reverse_switched 
+                                                                  Imp_requests__rf_inconsistent)))) ->
+  Imp_requests__rf_diff_reverse_switched_moving:(dk_logic.eP 
+                                                   (dk_logic.not 
+                                                      (dk_logic.ebP 
+                                                         (Imp_requests__rf_equal 
+                                                            Imp_requests__rf_reverse_switched 
+                                                            Imp_requests__rf_moving)))) ->
+  Imp_requests__rf_diff_reverse_switched_moving_time_out:(dk_logic.eP 
+                                                            (dk_logic.not 
+                                                               (dk_logic.ebP 
+                                                                  (Imp_requests__rf_equal 
+                                                                    Imp_requests__rf_reverse_switched 
+                                                                    Imp_requests__rf_moving_time_out)))) ->
+  Imp_requests__rf_set:((cc.eT basics.int__t) -> cc.eT Imp_requests__rf_T) ->
+  Imp_requests__rf_same_is_not_different:(dk_logic.eP 
+                                            (dk_logic.forall 
+                                               Imp_requests__rf_T 
+                                               (x:
+                                                (cc.eT Imp_requests__rf_T) =>
+                                                dk_logic.forall 
+                                                  Imp_requests__rf_T 
+                                                  (y:
+                                                   (cc.eT Imp_requests__rf_T) =>
+                                                   dk_logic.eqv 
+                                                     (dk_logic.ebP 
+                                                        (Imp_requests__rf_different 
+                                                           x y)) 
+                                                     (dk_logic.not 
+                                                        (dk_logic.ebP 
+                                                           (Imp_requests__rf_equal 
+                                                              x y))))))) ->
+  Imp_requests__rf_different_is_complete:(dk_logic.eP 
+                                            (dk_logic.forall 
+                                               Imp_requests__rf_T 
+                                               (x:
+                                                (cc.eT Imp_requests__rf_T) =>
+                                                dk_logic.forall 
+                                                  Imp_requests__rf_T 
+                                                  (y:
+                                                   (cc.eT Imp_requests__rf_T) =>
+                                                   dk_logic.forall 
+                                                     Imp_requests__rf_T 
+                                                     (z:
+                                                      (cc.eT 
+                                                         Imp_requests__rf_T) =>
+                                                      dk_logic.imp 
+                                                        (dk_logic.ebP 
+                                                           (Imp_requests__rf_different 
+                                                              x y)) 
+                                                        (dk_logic.or 
+                                                           (dk_logic.ebP 
+                                                              (Imp_requests__rf_different 
+                                                                 x z)) 
+                                                           (dk_logic.ebP 
+                                                              (Imp_requests__rf_different 
+                                                                 y z)))))))) ->
+  Imp_requests__rf_different_is_irreflexive:(dk_logic.eP 
+                                               (dk_logic.forall 
+                                                  Imp_requests__rf_T 
+                                                  (x:
+                                                   (cc.eT Imp_requests__rf_T) =>
+                                                   dk_logic.not 
+                                                     (dk_logic.ebP 
+                                                        (Imp_requests__rf_different 
+                                                           x x))))) ->
+  Imp_requests__rf_different_is_symmetric:(dk_logic.eP 
+                                             (dk_logic.forall 
+                                                Imp_requests__rf_T 
+                                                (x:
+                                                 (cc.eT Imp_requests__rf_T) =>
+                                                 dk_logic.forall 
+                                                   Imp_requests__rf_T 
+                                                   (y:
+                                                    (cc.eT Imp_requests__rf_T) =>
+                                                    dk_logic.imp 
+                                                      (dk_logic.ebP 
+                                                         (Imp_requests__rf_different 
+                                                            x y)) 
+                                                      (dk_logic.ebP 
+                                                         (Imp_requests__rf_different 
+                                                            y x)))))) ->
+  Imp_requests__me_as_species.
+
+def proj_Imp_requests__rf_T : record:Imp_requests__me_as_species -> cc.uT.
+
+[Imp_requests__rf_T]
+  proj_Imp_requests__rf_T (Imp_requests__mk_record Imp_requests__rf_T _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_T.
+
+def proj_Imp_requests__rf_element :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_element]
+  proj_Imp_requests__rf_element (Imp_requests__mk_record _ 
+    Imp_requests__rf_element _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Imp_requests__rf_element.
+
+def proj_Imp_requests__rf_equal :
+  record:Imp_requests__me_as_species ->
+  (cc.eT (proj_Imp_requests__rf_T record)) ->
+  (cc.eT (proj_Imp_requests__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_requests__rf_equal]
+  proj_Imp_requests__rf_equal (Imp_requests__mk_record _ _ 
+    Imp_requests__rf_equal _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _)
+  -->
+  Imp_requests__rf_equal.
+
+def proj_Imp_requests__rf_inconsistent :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_inconsistent]
+  proj_Imp_requests__rf_inconsistent (Imp_requests__mk_record _ _ _ 
+    Imp_requests__rf_inconsistent _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_requests__rf_inconsistent.
+
+def proj_Imp_requests__rf_moving :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_moving]
+  proj_Imp_requests__rf_moving (Imp_requests__mk_record _ _ _ _ 
+    Imp_requests__rf_moving _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_moving.
+
+def proj_Imp_requests__rf_moving_time_out :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_moving_time_out]
+  proj_Imp_requests__rf_moving_time_out (Imp_requests__mk_record _ _ _ _ _ 
+    Imp_requests__rf_moving_time_out _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Imp_requests__rf_moving_time_out.
+
+def proj_Imp_requests__rf_normal_switched :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_normal_switched]
+  proj_Imp_requests__rf_normal_switched (Imp_requests__mk_record _ _ _ _ _ _ 
+    Imp_requests__rf_normal_switched _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_requests__rf_normal_switched.
+
+def proj_Imp_requests__rf_parse :
+  record:Imp_requests__me_as_species ->
+  (cc.eT basics.string__t) -> cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_parse]
+  proj_Imp_requests__rf_parse (Imp_requests__mk_record _ _ _ _ _ _ _ 
+    Imp_requests__rf_parse _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_parse.
+
+def proj_Imp_requests__rf_print :
+  record:Imp_requests__me_as_species ->
+  (cc.eT (proj_Imp_requests__rf_T record)) -> cc.eT basics.string__t.
+
+[Imp_requests__rf_print]
+  proj_Imp_requests__rf_print (Imp_requests__mk_record _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_print _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_print.
+
+def proj_Imp_requests__rf_reverse_switched :
+  record:Imp_requests__me_as_species ->
+  cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_reverse_switched]
+  proj_Imp_requests__rf_reverse_switched (Imp_requests__mk_record _ _ _ _ _ 
+    _ _ _ _ Imp_requests__rf_reverse_switched _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_requests__rf_reverse_switched.
+
+def proj_Imp_requests__rf_different :
+  record:Imp_requests__me_as_species ->
+  (cc.eT (proj_Imp_requests__rf_T record)) ->
+  (cc.eT (proj_Imp_requests__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_requests__rf_different]
+  proj_Imp_requests__rf_different (Imp_requests__mk_record _ _ _ _ _ _ _ _ _ 
+    _ Imp_requests__rf_different _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_different.
+
+def proj_Imp_requests__rf_equal_reflexive :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.ebP (proj_Imp_requests__rf_equal record x x))).
+
+[Imp_requests__rf_equal_reflexive]
+  proj_Imp_requests__rf_equal_reflexive (Imp_requests__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ Imp_requests__rf_equal_reflexive _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_requests__rf_equal_reflexive.
+
+def proj_Imp_requests__rf_equal_symmetric :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.forall (proj_Imp_requests__rf_T record) 
+          (y:(cc.eT (proj_Imp_requests__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Imp_requests__rf_equal record x y)) 
+             (dk_logic.ebP (proj_Imp_requests__rf_equal record y x))))).
+
+[Imp_requests__rf_equal_symmetric]
+  proj_Imp_requests__rf_equal_symmetric (Imp_requests__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ Imp_requests__rf_equal_symmetric _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_requests__rf_equal_symmetric.
+
+def proj_Imp_requests__rf_equal_transitive :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.forall (proj_Imp_requests__rf_T record) 
+          (y:(cc.eT (proj_Imp_requests__rf_T record)) =>
+           dk_logic.forall (proj_Imp_requests__rf_T record) 
+             (z:(cc.eT (proj_Imp_requests__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Imp_requests__rf_equal record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP (proj_Imp_requests__rf_equal record y z)) 
+                   (dk_logic.ebP (proj_Imp_requests__rf_equal record x z))))))).
+
+[Imp_requests__rf_equal_transitive]
+  proj_Imp_requests__rf_equal_transitive (Imp_requests__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ Imp_requests__rf_equal_transitive _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_requests__rf_equal_transitive.
+
+def proj_Imp_requests__rf_diff_moving_inconsistent :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_moving record) 
+             (proj_Imp_requests__rf_inconsistent record)))).
+
+[Imp_requests__rf_diff_moving_inconsistent]
+  proj_Imp_requests__rf_diff_moving_inconsistent (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_requests__rf_diff_moving_inconsistent _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_moving_inconsistent.
+
+def proj_Imp_requests__rf_diff_inconsistent_moving_time_out :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_inconsistent record) 
+             (proj_Imp_requests__rf_moving_time_out record)))).
+
+[Imp_requests__rf_diff_inconsistent_moving_time_out]
+  proj_Imp_requests__rf_diff_inconsistent_moving_time_out (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_inconsistent_moving_time_out _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_requests__rf_diff_inconsistent_moving_time_out.
+
+def proj_Imp_requests__rf_diff_moving_moving_time_out :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_moving record) 
+             (proj_Imp_requests__rf_moving_time_out record)))).
+
+[Imp_requests__rf_diff_moving_moving_time_out]
+  proj_Imp_requests__rf_diff_moving_moving_time_out (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_moving_moving_time_out _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_moving_moving_time_out.
+
+def proj_Imp_requests__rf_diff_normal_switched_inconsistent :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_normal_switched record) 
+             (proj_Imp_requests__rf_inconsistent record)))).
+
+[Imp_requests__rf_diff_normal_switched_inconsistent]
+  proj_Imp_requests__rf_diff_normal_switched_inconsistent (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_normal_switched_inconsistent _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_normal_switched_inconsistent.
+
+def proj_Imp_requests__rf_diff_normal_switched_moving :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_normal_switched record) 
+             (proj_Imp_requests__rf_moving record)))).
+
+[Imp_requests__rf_diff_normal_switched_moving]
+  proj_Imp_requests__rf_diff_normal_switched_moving (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_normal_switched_moving _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_normal_switched_moving.
+
+def proj_Imp_requests__rf_diff_normal_switched_moving_time_out :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_normal_switched record) 
+             (proj_Imp_requests__rf_moving_time_out record)))).
+
+[Imp_requests__rf_diff_normal_switched_moving_time_out]
+  proj_Imp_requests__rf_diff_normal_switched_moving_time_out (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_normal_switched_moving_time_out _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_normal_switched_moving_time_out.
+
+def proj_Imp_requests__rf_diff_normal_switched_reverse_switched :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_normal_switched record) 
+             (proj_Imp_requests__rf_reverse_switched record)))).
+
+[Imp_requests__rf_diff_normal_switched_reverse_switched]
+  proj_Imp_requests__rf_diff_normal_switched_reverse_switched (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_normal_switched_reverse_switched _ _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_normal_switched_reverse_switched.
+
+def proj_Imp_requests__rf_diff_reverse_switched_inconsistent :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_reverse_switched record) 
+             (proj_Imp_requests__rf_inconsistent record)))).
+
+[Imp_requests__rf_diff_reverse_switched_inconsistent]
+  proj_Imp_requests__rf_diff_reverse_switched_inconsistent (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_reverse_switched_inconsistent _ _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_reverse_switched_inconsistent.
+
+def proj_Imp_requests__rf_diff_reverse_switched_moving :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_reverse_switched record) 
+             (proj_Imp_requests__rf_moving record)))).
+
+[Imp_requests__rf_diff_reverse_switched_moving]
+  proj_Imp_requests__rf_diff_reverse_switched_moving (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_reverse_switched_moving _ _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_reverse_switched_moving.
+
+def proj_Imp_requests__rf_diff_reverse_switched_moving_time_out :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_requests__rf_equal record 
+             (proj_Imp_requests__rf_reverse_switched record) 
+             (proj_Imp_requests__rf_moving_time_out record)))).
+
+[Imp_requests__rf_diff_reverse_switched_moving_time_out]
+  proj_Imp_requests__rf_diff_reverse_switched_moving_time_out (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_diff_reverse_switched_moving_time_out _ _ _ _ _)
+  -->
+  Imp_requests__rf_diff_reverse_switched_moving_time_out.
+
+def proj_Imp_requests__rf_set :
+  record:Imp_requests__me_as_species ->
+  (cc.eT basics.int__t) -> cc.eT (proj_Imp_requests__rf_T record).
+
+[Imp_requests__rf_set]
+  proj_Imp_requests__rf_set (Imp_requests__mk_record _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ Imp_requests__rf_set _ _ _ _)
+  -->
+  Imp_requests__rf_set.
+
+def proj_Imp_requests__rf_same_is_not_different :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.forall (proj_Imp_requests__rf_T record) 
+          (y:(cc.eT (proj_Imp_requests__rf_T record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP (proj_Imp_requests__rf_different record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Imp_requests__rf_equal record x y)))))).
+
+[Imp_requests__rf_same_is_not_different]
+  proj_Imp_requests__rf_same_is_not_different (Imp_requests__mk_record _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_same_is_not_different _ _ _)
+  -->
+  Imp_requests__rf_same_is_not_different.
+
+def proj_Imp_requests__rf_different_is_complete :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.forall (proj_Imp_requests__rf_T record) 
+          (y:(cc.eT (proj_Imp_requests__rf_T record)) =>
+           dk_logic.forall (proj_Imp_requests__rf_T record) 
+             (z:(cc.eT (proj_Imp_requests__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Imp_requests__rf_different record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP (proj_Imp_requests__rf_different record x z)) 
+                   (dk_logic.ebP (proj_Imp_requests__rf_different record y z))))))).
+
+[Imp_requests__rf_different_is_complete]
+  proj_Imp_requests__rf_different_is_complete (Imp_requests__mk_record _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_different_is_complete _ _)
+  -->
+  Imp_requests__rf_different_is_complete.
+
+def proj_Imp_requests__rf_different_is_irreflexive :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.not 
+          (dk_logic.ebP (proj_Imp_requests__rf_different record x x)))).
+
+[Imp_requests__rf_different_is_irreflexive]
+  proj_Imp_requests__rf_different_is_irreflexive (Imp_requests__mk_record _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_different_is_irreflexive _)
+  -->
+  Imp_requests__rf_different_is_irreflexive.
+
+def proj_Imp_requests__rf_different_is_symmetric :
+  record:Imp_requests__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_requests__rf_T record) 
+       (x:(cc.eT (proj_Imp_requests__rf_T record)) =>
+        dk_logic.forall (proj_Imp_requests__rf_T record) 
+          (y:(cc.eT (proj_Imp_requests__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Imp_requests__rf_different record x y)) 
+             (dk_logic.ebP (proj_Imp_requests__rf_different record y x))))).
+
+[Imp_requests__rf_different_is_symmetric]
+  proj_Imp_requests__rf_different_is_symmetric (Imp_requests__mk_record _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_requests__rf_different_is_symmetric)
+  -->
+  Imp_requests__rf_different_is_symmetric.
+
+def Imp_requests__element :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S builtins.0).
+
+def Imp_requests__equal :
+  x:(cc.eT basics.int__t) -> y:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  x:(cc.eT basics.int__t) => y:(cc.eT basics.int__t) => basics._equal_0x x y.
+
+def Imp_requests__inconsistent :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S (builtins.S (builtins.S builtins.0))).
+
+def Imp_requests__moving :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S (builtins.S builtins.0)).
+
+def Imp_requests__moving_time_out :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat 
+    (builtins.S (builtins.S (builtins.S (builtins.S builtins.0)))).
+
+def Imp_requests__normal_switched :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat builtins.0.
+
+def Imp_requests__parse :
+  x:(cc.eT basics.string__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT basics.string__t) => basics.int_of_string x.
+
+def Imp_requests__print :
+  x:(cc.eT basics.int__t) -> cc.eT basics.string__t
+  :=
+  x:(cc.eT basics.int__t) => basics.string_of_int x.
+
+def Imp_requests__reverse_switched :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S builtins.0).
+
+def Imp_requests__equal_reflexive :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x))).
+
+def Imp_requests__equal_symmetric :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+             (dk_logic.ebP (abst_equal y x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+             (dk_logic.ebP (abst_equal y x))))).
+
+def Imp_requests__equal_transitive :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z)))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z))))))).
+
+def Imp_requests__diff_moving_inconsistent :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_inconsistent:(cc.eT abst_T) ->
+  abst_moving:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_moving abst_inconsistent)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_inconsistent:(cc.eT abst_T) =>
+  abst_moving:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_moving abst_inconsistent))).
+
+def Imp_requests__diff_inconsistent_moving_time_out :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_inconsistent:(cc.eT abst_T) ->
+  abst_moving_time_out:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_inconsistent abst_moving_time_out)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_inconsistent:(cc.eT abst_T) =>
+  abst_moving_time_out:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_inconsistent abst_moving_time_out))).
+
+def Imp_requests__diff_moving_moving_time_out :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_moving:(cc.eT abst_T) ->
+  abst_moving_time_out:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_moving abst_moving_time_out)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_moving:(cc.eT abst_T) =>
+  abst_moving_time_out:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_moving abst_moving_time_out))).
+
+def Imp_requests__diff_normal_switched_inconsistent :
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__inconsistent)))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__inconsistent))).
+
+def Imp_requests__diff_normal_switched_moving :
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__moving)))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__moving))).
+
+def Imp_requests__diff_normal_switched_moving_time_out :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_moving_time_out:(cc.eT abst_T) ->
+  abst_normal_switched:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_normal_switched abst_moving_time_out)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_moving_time_out:(cc.eT abst_T) =>
+  abst_normal_switched:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_normal_switched abst_moving_time_out))).
+
+def Imp_requests__diff_normal_switched_reverse_switched :
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__reverse_switched)))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (Imp_requests__equal Imp_requests__normal_switched 
+             Imp_requests__reverse_switched))).
+
+def Imp_requests__diff_reverse_switched_inconsistent :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_inconsistent:(cc.eT abst_T) ->
+  abst_reverse_switched:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_inconsistent)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_inconsistent:(cc.eT abst_T) =>
+  abst_reverse_switched:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_inconsistent))).
+
+def Imp_requests__diff_reverse_switched_moving :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_moving:(cc.eT abst_T) ->
+  abst_reverse_switched:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_moving)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_moving:(cc.eT abst_T) =>
+  abst_reverse_switched:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_moving))).
+
+def Imp_requests__diff_reverse_switched_moving_time_out :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_moving_time_out:(cc.eT abst_T) ->
+  abst_reverse_switched:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_moving_time_out)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_moving_time_out:(cc.eT abst_T) =>
+  abst_reverse_switched:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not 
+       (dk_logic.ebP (abst_equal abst_reverse_switched abst_moving_time_out))).
+
+def Imp_requests__set :
+  abst_equal:((cc.eT basics.int__t) ->
+              (cc.eT basics.int__t) -> cc.eT basics.bool__t) ->
+  abst_inconsistent:(cc.eT basics.int__t) ->
+  abst_moving:(cc.eT basics.int__t) ->
+  abst_moving_time_out:(cc.eT basics.int__t) ->
+  abst_normal_switched:(cc.eT basics.int__t) ->
+  abst_reverse_switched:(cc.eT basics.int__t) ->
+  i:(cc.eT basics.int__t) -> cc.eT basics.int__t
+  :=
+  abst_equal:
+  ((cc.eT basics.int__t) -> (cc.eT basics.int__t) -> cc.eT basics.bool__t) =>
+  abst_inconsistent:(cc.eT basics.int__t) =>
+  abst_moving:(cc.eT basics.int__t) =>
+  abst_moving_time_out:(cc.eT basics.int__t) =>
+  abst_normal_switched:(cc.eT basics.int__t) =>
+  abst_reverse_switched:(cc.eT basics.int__t) =>
+  i:(cc.eT basics.int__t) =>
+  dk_bool.ite basics.int__t (abst_equal i (dk_int.from_nat builtins.0)) 
+    abst_normal_switched 
+    (dk_bool.ite basics.int__t 
+       (abst_equal i (dk_int.from_nat (builtins.S builtins.0))) 
+       abst_reverse_switched 
+       (dk_bool.ite basics.int__t 
+          (abst_equal i 
+             (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) 
+          abst_moving 
+          (dk_bool.ite basics.int__t 
+             (abst_equal i 
+                (dk_int.from_nat 
+                   (builtins.S (builtins.S (builtins.S builtins.0))))) 
+             abst_inconsistent 
+             (dk_bool.ite basics.int__t 
+                (abst_equal i 
+                   (dk_int.from_nat 
+                      (builtins.S 
+                         (builtins.S (builtins.S (builtins.S builtins.0)))))) 
+                abst_moving_time_out abst_inconsistent)))).
+
+def Imp_requests__collection_create
+  :=
+  Imp_requests__mk_record basics.int__t Imp_requests__element 
+    Imp_requests__equal Imp_requests__inconsistent Imp_requests__moving 
+    Imp_requests__moving_time_out Imp_requests__normal_switched 
+    Imp_requests__parse Imp_requests__print Imp_requests__reverse_switched 
+    (sets.Setoid__different basics.int__t Imp_requests__equal) 
+    (Imp_requests__equal_reflexive basics.int__t Imp_requests__equal) 
+    (Imp_requests__equal_symmetric basics.int__t Imp_requests__equal) 
+    (Imp_requests__equal_transitive basics.int__t Imp_requests__equal) 
+    (Imp_requests__diff_moving_inconsistent basics.int__t 
+       Imp_requests__equal Imp_requests__inconsistent Imp_requests__moving) 
+    (Imp_requests__diff_inconsistent_moving_time_out basics.int__t 
+       Imp_requests__equal Imp_requests__inconsistent 
+       Imp_requests__moving_time_out) 
+    (Imp_requests__diff_moving_moving_time_out basics.int__t 
+       Imp_requests__equal Imp_requests__moving Imp_requests__moving_time_out) 
+    Imp_requests__diff_normal_switched_inconsistent 
+    Imp_requests__diff_normal_switched_moving 
+    (Imp_requests__diff_normal_switched_moving_time_out basics.int__t 
+       Imp_requests__equal Imp_requests__moving_time_out 
+       Imp_requests__normal_switched) 
+    Imp_requests__diff_normal_switched_reverse_switched 
+    (Imp_requests__diff_reverse_switched_inconsistent basics.int__t 
+       Imp_requests__equal Imp_requests__inconsistent 
+       Imp_requests__reverse_switched) 
+    (Imp_requests__diff_reverse_switched_moving basics.int__t 
+       Imp_requests__equal Imp_requests__moving 
+       Imp_requests__reverse_switched) 
+    (Imp_requests__diff_reverse_switched_moving_time_out basics.int__t 
+       Imp_requests__equal Imp_requests__moving_time_out 
+       Imp_requests__reverse_switched) 
+    (Imp_requests__set Imp_requests__equal Imp_requests__inconsistent 
+       Imp_requests__moving Imp_requests__moving_time_out 
+       Imp_requests__normal_switched Imp_requests__reverse_switched) 
+    (sets.Setoid__same_is_not_different basics.int__t Imp_requests__equal) 
+    (sets.Setoid__different_is_complete basics.int__t Imp_requests__equal 
+       (sets.Setoid__different basics.int__t Imp_requests__equal) 
+       (Imp_requests__equal_reflexive basics.int__t Imp_requests__equal) 
+       (Imp_requests__equal_symmetric basics.int__t Imp_requests__equal) 
+       (Imp_requests__equal_transitive basics.int__t Imp_requests__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_requests__equal)) 
+    (sets.Setoid__different_is_irreflexive basics.int__t Imp_requests__equal 
+       (sets.Setoid__different basics.int__t Imp_requests__equal) 
+       (Imp_requests__equal_reflexive basics.int__t Imp_requests__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_requests__equal)) 
+    (sets.Setoid__different_is_symmetric basics.int__t Imp_requests__equal 
+       (sets.Setoid__different basics.int__t Imp_requests__equal) 
+       (Imp_requests__equal_symmetric basics.int__t Imp_requests__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_requests__equal)).
+
+def Coll_requests__effective_collection := Imp_requests__collection_create.
+
+def Coll_requests__me_as_carrier := basics.int__t.
+
+def Coll_requests__element
+  :=
+  proj_Imp_requests__rf_element Coll_requests__effective_collection.
+
+def Coll_requests__equal
+  :=
+  proj_Imp_requests__rf_equal Coll_requests__effective_collection.
+
+def Coll_requests__inconsistent
+  :=
+  proj_Imp_requests__rf_inconsistent Coll_requests__effective_collection.
+
+def Coll_requests__moving
+  :=
+  proj_Imp_requests__rf_moving Coll_requests__effective_collection.
+
+def Coll_requests__moving_time_out
+  :=
+  proj_Imp_requests__rf_moving_time_out Coll_requests__effective_collection.
+
+def Coll_requests__normal_switched
+  :=
+  proj_Imp_requests__rf_normal_switched Coll_requests__effective_collection.
+
+def Coll_requests__parse
+  :=
+  proj_Imp_requests__rf_parse Coll_requests__effective_collection.
+
+def Coll_requests__print
+  :=
+  proj_Imp_requests__rf_print Coll_requests__effective_collection.
+
+def Coll_requests__reverse_switched
+  :=
+  proj_Imp_requests__rf_reverse_switched Coll_requests__effective_collection.
+
+def Coll_requests__different
+  :=
+  proj_Imp_requests__rf_different Coll_requests__effective_collection.
+
+def Coll_requests__equal_reflexive
+  :=
+  proj_Imp_requests__rf_equal_reflexive Coll_requests__effective_collection.
+
+def Coll_requests__equal_symmetric
+  :=
+  proj_Imp_requests__rf_equal_symmetric Coll_requests__effective_collection.
+
+def Coll_requests__equal_transitive
+  :=
+  proj_Imp_requests__rf_equal_transitive Coll_requests__effective_collection.
+
+def Coll_requests__diff_moving_inconsistent
+  :=
+  proj_Imp_requests__rf_diff_moving_inconsistent 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_inconsistent_moving_time_out
+  :=
+  proj_Imp_requests__rf_diff_inconsistent_moving_time_out 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_moving_moving_time_out
+  :=
+  proj_Imp_requests__rf_diff_moving_moving_time_out 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_normal_switched_inconsistent
+  :=
+  proj_Imp_requests__rf_diff_normal_switched_inconsistent 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_normal_switched_moving
+  :=
+  proj_Imp_requests__rf_diff_normal_switched_moving 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_normal_switched_moving_time_out
+  :=
+  proj_Imp_requests__rf_diff_normal_switched_moving_time_out 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_normal_switched_reverse_switched
+  :=
+  proj_Imp_requests__rf_diff_normal_switched_reverse_switched 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_reverse_switched_inconsistent
+  :=
+  proj_Imp_requests__rf_diff_reverse_switched_inconsistent 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_reverse_switched_moving
+  :=
+  proj_Imp_requests__rf_diff_reverse_switched_moving 
+    Coll_requests__effective_collection.
+
+def Coll_requests__diff_reverse_switched_moving_time_out
+  :=
+  proj_Imp_requests__rf_diff_reverse_switched_moving_time_out 
+    Coll_requests__effective_collection.
+
+def Coll_requests__set
+  :=
+  proj_Imp_requests__rf_set Coll_requests__effective_collection.
+
+def Coll_requests__same_is_not_different
+  :=
+  proj_Imp_requests__rf_same_is_not_different 
+    Coll_requests__effective_collection.
+
+def Coll_requests__different_is_complete
+  :=
+  proj_Imp_requests__rf_different_is_complete 
+    Coll_requests__effective_collection.
+
+def Coll_requests__different_is_irreflexive
+  :=
+  proj_Imp_requests__rf_different_is_irreflexive 
+    Coll_requests__effective_collection.
+
+def Coll_requests__different_is_symmetric
+  :=
+  proj_Imp_requests__rf_different_is_symmetric 
+    Coll_requests__effective_collection.
+
+Imp_ports__me_as_species : Type.
+
+Imp_ports__mk_record :
+  Imp_ports__rf_T:cc.uT ->
+  Imp_ports__rf_element:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_empty:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_equal:((cc.eT Imp_ports__rf_T) ->
+                       (cc.eT Imp_ports__rf_T) -> cc.eT basics.bool__t) ->
+  Imp_ports__rf_parse:((cc.eT basics.string__t) -> cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_port_in1:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_port_in2:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_port_in3:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_port_out1:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_port_out2:(cc.eT Imp_ports__rf_T) ->
+  Imp_ports__rf_print:((cc.eT Imp_ports__rf_T) -> cc.eT basics.string__t) ->
+  Imp_ports__rf_different:((cc.eT Imp_ports__rf_T) ->
+                           (cc.eT Imp_ports__rf_T) -> cc.eT basics.bool__t) ->
+  Imp_ports__rf_equal_reflexive:(dk_logic.eP 
+                                   (dk_logic.forall Imp_ports__rf_T 
+                                      (x:(cc.eT Imp_ports__rf_T) =>
+                                       dk_logic.ebP (Imp_ports__rf_equal x x)))) ->
+  Imp_ports__rf_equal_symmetric:(dk_logic.eP 
+                                   (dk_logic.forall Imp_ports__rf_T 
+                                      (x:(cc.eT Imp_ports__rf_T) =>
+                                       dk_logic.forall Imp_ports__rf_T 
+                                         (y:(cc.eT Imp_ports__rf_T) =>
+                                          dk_logic.imp 
+                                            (dk_logic.ebP 
+                                               (Imp_ports__rf_equal x y)) 
+                                            (dk_logic.ebP 
+                                               (Imp_ports__rf_equal y x)))))) ->
+  Imp_ports__rf_equal_transitive:(dk_logic.eP 
+                                    (dk_logic.forall Imp_ports__rf_T 
+                                       (x:(cc.eT Imp_ports__rf_T) =>
+                                        dk_logic.forall Imp_ports__rf_T 
+                                          (y:(cc.eT Imp_ports__rf_T) =>
+                                           dk_logic.forall Imp_ports__rf_T 
+                                             (z:(cc.eT Imp_ports__rf_T) =>
+                                              dk_logic.imp 
+                                                (dk_logic.ebP 
+                                                   (Imp_ports__rf_equal x y)) 
+                                                (dk_logic.imp 
+                                                   (dk_logic.ebP 
+                                                      (Imp_ports__rf_equal y 
+                                                         z)) 
+                                                   (dk_logic.ebP 
+                                                      (Imp_ports__rf_equal x 
+                                                         z)))))))) ->
+  Imp_ports__rf_diff_empty_port_in1:(dk_logic.eP 
+                                       (dk_logic.not 
+                                          (dk_logic.ebP 
+                                             (Imp_ports__rf_equal 
+                                                Imp_ports__rf_empty 
+                                                Imp_ports__rf_port_in1)))) ->
+  Imp_ports__rf_diff_empty_port_in2:(dk_logic.eP 
+                                       (dk_logic.not 
+                                          (dk_logic.ebP 
+                                             (Imp_ports__rf_equal 
+                                                Imp_ports__rf_empty 
+                                                Imp_ports__rf_port_in2)))) ->
+  Imp_ports__rf_diff_port_in1_port_in2:(dk_logic.eP 
+                                          (dk_logic.not 
+                                             (dk_logic.ebP 
+                                                (Imp_ports__rf_equal 
+                                                   Imp_ports__rf_port_in1 
+                                                   Imp_ports__rf_port_in2)))) ->
+  Imp_ports__rf_diff_empty_port_in3:(dk_logic.eP 
+                                       (dk_logic.not 
+                                          (dk_logic.ebP 
+                                             (Imp_ports__rf_equal 
+                                                Imp_ports__rf_empty 
+                                                Imp_ports__rf_port_in3)))) ->
+  Imp_ports__rf_diff_port_in1_port_in3:(dk_logic.eP 
+                                          (dk_logic.not 
+                                             (dk_logic.ebP 
+                                                (Imp_ports__rf_equal 
+                                                   Imp_ports__rf_port_in1 
+                                                   Imp_ports__rf_port_in3)))) ->
+  Imp_ports__rf_diff_port_in2_port_in3:(dk_logic.eP 
+                                          (dk_logic.not 
+                                             (dk_logic.ebP 
+                                                (Imp_ports__rf_equal 
+                                                   Imp_ports__rf_port_in2 
+                                                   Imp_ports__rf_port_in3)))) ->
+  Imp_ports__rf_diff_empty_port_out1:(dk_logic.eP 
+                                        (dk_logic.not 
+                                           (dk_logic.ebP 
+                                              (Imp_ports__rf_equal 
+                                                 Imp_ports__rf_empty 
+                                                 Imp_ports__rf_port_out1)))) ->
+  Imp_ports__rf_diff_port_in1_port_out1:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in1 
+                                                    Imp_ports__rf_port_out1)))) ->
+  Imp_ports__rf_diff_port_in2_port_out1:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in2 
+                                                    Imp_ports__rf_port_out1)))) ->
+  Imp_ports__rf_diff_port_in3_port_out1:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in3 
+                                                    Imp_ports__rf_port_out1)))) ->
+  Imp_ports__rf_diff_empty_port_out2:(dk_logic.eP 
+                                        (dk_logic.not 
+                                           (dk_logic.ebP 
+                                              (Imp_ports__rf_equal 
+                                                 Imp_ports__rf_empty 
+                                                 Imp_ports__rf_port_out2)))) ->
+  Imp_ports__rf_diff_port_in1_port_out2:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in1 
+                                                    Imp_ports__rf_port_out2)))) ->
+  Imp_ports__rf_diff_port_in2_port_out2:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in2 
+                                                    Imp_ports__rf_port_out2)))) ->
+  Imp_ports__rf_diff_port_in3_port_out2:(dk_logic.eP 
+                                           (dk_logic.not 
+                                              (dk_logic.ebP 
+                                                 (Imp_ports__rf_equal 
+                                                    Imp_ports__rf_port_in3 
+                                                    Imp_ports__rf_port_out2)))) ->
+  Imp_ports__rf_diff_port_out1_port_out2:(dk_logic.eP 
+                                            (dk_logic.not 
+                                               (dk_logic.ebP 
+                                                  (Imp_ports__rf_equal 
+                                                     Imp_ports__rf_port_out1 
+                                                     Imp_ports__rf_port_out2)))) ->
+  Imp_ports__rf_disj:(dk_logic.eP 
+                        (dk_logic.forall Imp_ports__rf_T 
+                           (p:(cc.eT Imp_ports__rf_T) =>
+                            dk_logic.or 
+                              (dk_logic.ebP 
+                                 (Imp_ports__rf_equal p Imp_ports__rf_empty)) 
+                              (dk_logic.or 
+                                 (dk_logic.ebP 
+                                    (Imp_ports__rf_equal p 
+                                       Imp_ports__rf_port_in1)) 
+                                 (dk_logic.or 
+                                    (dk_logic.ebP 
+                                       (Imp_ports__rf_equal p 
+                                          Imp_ports__rf_port_in2)) 
+                                    (dk_logic.or 
+                                       (dk_logic.ebP 
+                                          (Imp_ports__rf_equal p 
+                                             Imp_ports__rf_port_in3)) 
+                                       (dk_logic.or 
+                                          (dk_logic.ebP 
+                                             (Imp_ports__rf_equal p 
+                                                Imp_ports__rf_port_out1)) 
+                                          (dk_logic.ebP 
+                                             (Imp_ports__rf_equal p 
+                                                Imp_ports__rf_port_out2))))))))) ->
+  Imp_ports__rf_same_is_not_different:(dk_logic.eP 
+                                         (dk_logic.forall Imp_ports__rf_T 
+                                            (x:(cc.eT Imp_ports__rf_T) =>
+                                             dk_logic.forall Imp_ports__rf_T 
+                                               (y:(cc.eT Imp_ports__rf_T) =>
+                                                dk_logic.eqv 
+                                                  (dk_logic.ebP 
+                                                     (Imp_ports__rf_different 
+                                                        x y)) 
+                                                  (dk_logic.not 
+                                                     (dk_logic.ebP 
+                                                        (Imp_ports__rf_equal 
+                                                           x y))))))) ->
+  Imp_ports__rf_different_is_complete:(dk_logic.eP 
+                                         (dk_logic.forall Imp_ports__rf_T 
+                                            (x:(cc.eT Imp_ports__rf_T) =>
+                                             dk_logic.forall Imp_ports__rf_T 
+                                               (y:(cc.eT Imp_ports__rf_T) =>
+                                                dk_logic.forall 
+                                                  Imp_ports__rf_T 
+                                                  (z:
+                                                   (cc.eT Imp_ports__rf_T) =>
+                                                   dk_logic.imp 
+                                                     (dk_logic.ebP 
+                                                        (Imp_ports__rf_different 
+                                                           x y)) 
+                                                     (dk_logic.or 
+                                                        (dk_logic.ebP 
+                                                           (Imp_ports__rf_different 
+                                                              x z)) 
+                                                        (dk_logic.ebP 
+                                                           (Imp_ports__rf_different 
+                                                              y z)))))))) ->
+  Imp_ports__rf_different_is_irreflexive:(dk_logic.eP 
+                                            (dk_logic.forall Imp_ports__rf_T 
+                                               (x:(cc.eT Imp_ports__rf_T) =>
+                                                dk_logic.not 
+                                                  (dk_logic.ebP 
+                                                     (Imp_ports__rf_different 
+                                                        x x))))) ->
+  Imp_ports__rf_different_is_symmetric:(dk_logic.eP 
+                                          (dk_logic.forall Imp_ports__rf_T 
+                                             (x:(cc.eT Imp_ports__rf_T) =>
+                                              dk_logic.forall 
+                                                Imp_ports__rf_T 
+                                                (y:(cc.eT Imp_ports__rf_T) =>
+                                                 dk_logic.imp 
+                                                   (dk_logic.ebP 
+                                                      (Imp_ports__rf_different 
+                                                         x y)) 
+                                                   (dk_logic.ebP 
+                                                      (Imp_ports__rf_different 
+                                                         y x)))))) ->
+  Imp_ports__me_as_species.
+
+def proj_Imp_ports__rf_T : record:Imp_ports__me_as_species -> cc.uT.
+
+[Imp_ports__rf_T]
+  proj_Imp_ports__rf_T (Imp_ports__mk_record Imp_ports__rf_T _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_T.
+
+def proj_Imp_ports__rf_element :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_element]
+  proj_Imp_ports__rf_element (Imp_ports__mk_record _ Imp_ports__rf_element _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_element.
+
+def proj_Imp_ports__rf_empty :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_empty]
+  proj_Imp_ports__rf_empty (Imp_ports__mk_record _ _ Imp_ports__rf_empty _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_empty.
+
+def proj_Imp_ports__rf_equal :
+  record:Imp_ports__me_as_species ->
+  (cc.eT (proj_Imp_ports__rf_T record)) ->
+  (cc.eT (proj_Imp_ports__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_ports__rf_equal]
+  proj_Imp_ports__rf_equal (Imp_ports__mk_record _ _ _ Imp_ports__rf_equal _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_equal.
+
+def proj_Imp_ports__rf_parse :
+  record:Imp_ports__me_as_species ->
+  (cc.eT basics.string__t) -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_parse]
+  proj_Imp_ports__rf_parse (Imp_ports__mk_record _ _ _ _ Imp_ports__rf_parse 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_parse.
+
+def proj_Imp_ports__rf_port_in1 :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_port_in1]
+  proj_Imp_ports__rf_port_in1 (Imp_ports__mk_record _ _ _ _ _ 
+    Imp_ports__rf_port_in1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_ports__rf_port_in1.
+
+def proj_Imp_ports__rf_port_in2 :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_port_in2]
+  proj_Imp_ports__rf_port_in2 (Imp_ports__mk_record _ _ _ _ _ _ 
+    Imp_ports__rf_port_in2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Imp_ports__rf_port_in2.
+
+def proj_Imp_ports__rf_port_in3 :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_port_in3]
+  proj_Imp_ports__rf_port_in3 (Imp_ports__mk_record _ _ _ _ _ _ _ 
+    Imp_ports__rf_port_in3 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_ports__rf_port_in3.
+
+def proj_Imp_ports__rf_port_out1 :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_port_out1]
+  proj_Imp_ports__rf_port_out1 (Imp_ports__mk_record _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_port_out1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_ports__rf_port_out1.
+
+def proj_Imp_ports__rf_port_out2 :
+  record:Imp_ports__me_as_species -> cc.eT (proj_Imp_ports__rf_T record).
+
+[Imp_ports__rf_port_out2]
+  proj_Imp_ports__rf_port_out2 (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_port_out2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _)
+  -->
+  Imp_ports__rf_port_out2.
+
+def proj_Imp_ports__rf_print :
+  record:Imp_ports__me_as_species ->
+  (cc.eT (proj_Imp_ports__rf_T record)) -> cc.eT basics.string__t.
+
+[Imp_ports__rf_print]
+  proj_Imp_ports__rf_print (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_print _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_print.
+
+def proj_Imp_ports__rf_different :
+  record:Imp_ports__me_as_species ->
+  (cc.eT (proj_Imp_ports__rf_T record)) ->
+  (cc.eT (proj_Imp_ports__rf_T record)) -> cc.eT basics.bool__t.
+
+[Imp_ports__rf_different]
+  proj_Imp_ports__rf_different (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_different _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_different.
+
+def proj_Imp_ports__rf_equal_reflexive :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.ebP (proj_Imp_ports__rf_equal record x x))).
+
+[Imp_ports__rf_equal_reflexive]
+  proj_Imp_ports__rf_equal_reflexive (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ 
+    _ _ _ Imp_ports__rf_equal_reflexive _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_ports__rf_equal_reflexive.
+
+def proj_Imp_ports__rf_equal_symmetric :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.forall (proj_Imp_ports__rf_T record) 
+          (y:(cc.eT (proj_Imp_ports__rf_T record)) =>
+           dk_logic.imp (dk_logic.ebP (proj_Imp_ports__rf_equal record x y)) 
+             (dk_logic.ebP (proj_Imp_ports__rf_equal record y x))))).
+
+[Imp_ports__rf_equal_symmetric]
+  proj_Imp_ports__rf_equal_symmetric (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ Imp_ports__rf_equal_symmetric _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_ports__rf_equal_symmetric.
+
+def proj_Imp_ports__rf_equal_transitive :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.forall (proj_Imp_ports__rf_T record) 
+          (y:(cc.eT (proj_Imp_ports__rf_T record)) =>
+           dk_logic.forall (proj_Imp_ports__rf_T record) 
+             (z:(cc.eT (proj_Imp_ports__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Imp_ports__rf_equal record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP (proj_Imp_ports__rf_equal record y z)) 
+                   (dk_logic.ebP (proj_Imp_ports__rf_equal record x z))))))).
+
+[Imp_ports__rf_equal_transitive]
+  proj_Imp_ports__rf_equal_transitive (Imp_ports__mk_record _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ Imp_ports__rf_equal_transitive _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _)
+  -->
+  Imp_ports__rf_equal_transitive.
+
+def proj_Imp_ports__rf_diff_empty_port_in1 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record (proj_Imp_ports__rf_empty record) 
+             (proj_Imp_ports__rf_port_in1 record)))).
+
+[Imp_ports__rf_diff_empty_port_in1]
+  proj_Imp_ports__rf_diff_empty_port_in1 (Imp_ports__mk_record _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ Imp_ports__rf_diff_empty_port_in1 _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_empty_port_in1.
+
+def proj_Imp_ports__rf_diff_empty_port_in2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record (proj_Imp_ports__rf_empty record) 
+             (proj_Imp_ports__rf_port_in2 record)))).
+
+[Imp_ports__rf_diff_empty_port_in2]
+  proj_Imp_ports__rf_diff_empty_port_in2 (Imp_ports__mk_record _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_empty_port_in2 _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_empty_port_in2.
+
+def proj_Imp_ports__rf_diff_port_in1_port_in2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in1 record) 
+             (proj_Imp_ports__rf_port_in2 record)))).
+
+[Imp_ports__rf_diff_port_in1_port_in2]
+  proj_Imp_ports__rf_diff_port_in1_port_in2 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_port_in1_port_in2 _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in1_port_in2.
+
+def proj_Imp_ports__rf_diff_empty_port_in3 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record (proj_Imp_ports__rf_empty record) 
+             (proj_Imp_ports__rf_port_in3 record)))).
+
+[Imp_ports__rf_diff_empty_port_in3]
+  proj_Imp_ports__rf_diff_empty_port_in3 (Imp_ports__mk_record _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_empty_port_in3 _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_empty_port_in3.
+
+def proj_Imp_ports__rf_diff_port_in1_port_in3 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in1 record) 
+             (proj_Imp_ports__rf_port_in3 record)))).
+
+[Imp_ports__rf_diff_port_in1_port_in3]
+  proj_Imp_ports__rf_diff_port_in1_port_in3 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_port_in1_port_in3 _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in1_port_in3.
+
+def proj_Imp_ports__rf_diff_port_in2_port_in3 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in2 record) 
+             (proj_Imp_ports__rf_port_in3 record)))).
+
+[Imp_ports__rf_diff_port_in2_port_in3]
+  proj_Imp_ports__rf_diff_port_in2_port_in3 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_port_in2_port_in3 _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in2_port_in3.
+
+def proj_Imp_ports__rf_diff_empty_port_out1 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record (proj_Imp_ports__rf_empty record) 
+             (proj_Imp_ports__rf_port_out1 record)))).
+
+[Imp_ports__rf_diff_empty_port_out1]
+  proj_Imp_ports__rf_diff_empty_port_out1 (Imp_ports__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_empty_port_out1 _ _ _ _ 
+    _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_empty_port_out1.
+
+def proj_Imp_ports__rf_diff_port_in1_port_out1 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in1 record) 
+             (proj_Imp_ports__rf_port_out1 record)))).
+
+[Imp_ports__rf_diff_port_in1_port_out1]
+  proj_Imp_ports__rf_diff_port_in1_port_out1 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_port_in1_port_out1 
+    _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in1_port_out1.
+
+def proj_Imp_ports__rf_diff_port_in2_port_out1 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in2 record) 
+             (proj_Imp_ports__rf_port_out1 record)))).
+
+[Imp_ports__rf_diff_port_in2_port_out1]
+  proj_Imp_ports__rf_diff_port_in2_port_out1 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_in2_port_out1 _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in2_port_out1.
+
+def proj_Imp_ports__rf_diff_port_in3_port_out1 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in3 record) 
+             (proj_Imp_ports__rf_port_out1 record)))).
+
+[Imp_ports__rf_diff_port_in3_port_out1]
+  proj_Imp_ports__rf_diff_port_in3_port_out1 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_in3_port_out1 _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in3_port_out1.
+
+def proj_Imp_ports__rf_diff_empty_port_out2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record (proj_Imp_ports__rf_empty record) 
+             (proj_Imp_ports__rf_port_out2 record)))).
+
+[Imp_ports__rf_diff_empty_port_out2]
+  proj_Imp_ports__rf_diff_empty_port_out2 (Imp_ports__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_diff_empty_port_out2 
+    _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_empty_port_out2.
+
+def proj_Imp_ports__rf_diff_port_in1_port_out2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in1 record) 
+             (proj_Imp_ports__rf_port_out2 record)))).
+
+[Imp_ports__rf_diff_port_in1_port_out2]
+  proj_Imp_ports__rf_diff_port_in1_port_out2 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_in1_port_out2 _ _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in1_port_out2.
+
+def proj_Imp_ports__rf_diff_port_in2_port_out2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in2 record) 
+             (proj_Imp_ports__rf_port_out2 record)))).
+
+[Imp_ports__rf_diff_port_in2_port_out2]
+  proj_Imp_ports__rf_diff_port_in2_port_out2 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_in2_port_out2 _ _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in2_port_out2.
+
+def proj_Imp_ports__rf_diff_port_in3_port_out2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_in3 record) 
+             (proj_Imp_ports__rf_port_out2 record)))).
+
+[Imp_ports__rf_diff_port_in3_port_out2]
+  proj_Imp_ports__rf_diff_port_in3_port_out2 (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_in3_port_out2 _ _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_in3_port_out2.
+
+def proj_Imp_ports__rf_diff_port_out1_port_out2 :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.not 
+       (dk_logic.ebP 
+          (proj_Imp_ports__rf_equal record 
+             (proj_Imp_ports__rf_port_out1 record) 
+             (proj_Imp_ports__rf_port_out2 record)))).
+
+[Imp_ports__rf_diff_port_out1_port_out2]
+  proj_Imp_ports__rf_diff_port_out1_port_out2 (Imp_ports__mk_record _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_diff_port_out1_port_out2 _ _ _ _ _)
+  -->
+  Imp_ports__rf_diff_port_out1_port_out2.
+
+def proj_Imp_ports__rf_disj :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (p:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.or 
+          (dk_logic.ebP 
+             (proj_Imp_ports__rf_equal record p 
+                (proj_Imp_ports__rf_empty record))) 
+          (dk_logic.or 
+             (dk_logic.ebP 
+                (proj_Imp_ports__rf_equal record p 
+                   (proj_Imp_ports__rf_port_in1 record))) 
+             (dk_logic.or 
+                (dk_logic.ebP 
+                   (proj_Imp_ports__rf_equal record p 
+                      (proj_Imp_ports__rf_port_in2 record))) 
+                (dk_logic.or 
+                   (dk_logic.ebP 
+                      (proj_Imp_ports__rf_equal record p 
+                         (proj_Imp_ports__rf_port_in3 record))) 
+                   (dk_logic.or 
+                      (dk_logic.ebP 
+                         (proj_Imp_ports__rf_equal record p 
+                            (proj_Imp_ports__rf_port_out1 record))) 
+                      (dk_logic.ebP 
+                         (proj_Imp_ports__rf_equal record p 
+                            (proj_Imp_ports__rf_port_out2 record))))))))).
+
+[Imp_ports__rf_disj]
+  proj_Imp_ports__rf_disj (Imp_ports__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ Imp_ports__rf_disj _ _ _ _)
+  -->
+  Imp_ports__rf_disj.
+
+def proj_Imp_ports__rf_same_is_not_different :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.forall (proj_Imp_ports__rf_T record) 
+          (y:(cc.eT (proj_Imp_ports__rf_T record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP (proj_Imp_ports__rf_different record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Imp_ports__rf_equal record x y)))))).
+
+[Imp_ports__rf_same_is_not_different]
+  proj_Imp_ports__rf_same_is_not_different (Imp_ports__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_same_is_not_different _ _ _)
+  -->
+  Imp_ports__rf_same_is_not_different.
+
+def proj_Imp_ports__rf_different_is_complete :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.forall (proj_Imp_ports__rf_T record) 
+          (y:(cc.eT (proj_Imp_ports__rf_T record)) =>
+           dk_logic.forall (proj_Imp_ports__rf_T record) 
+             (z:(cc.eT (proj_Imp_ports__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Imp_ports__rf_different record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP (proj_Imp_ports__rf_different record x z)) 
+                   (dk_logic.ebP (proj_Imp_ports__rf_different record y z))))))).
+
+[Imp_ports__rf_different_is_complete]
+  proj_Imp_ports__rf_different_is_complete (Imp_ports__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_different_is_complete _ _)
+  -->
+  Imp_ports__rf_different_is_complete.
+
+def proj_Imp_ports__rf_different_is_irreflexive :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.not (dk_logic.ebP (proj_Imp_ports__rf_different record x x)))).
+
+[Imp_ports__rf_different_is_irreflexive]
+  proj_Imp_ports__rf_different_is_irreflexive (Imp_ports__mk_record _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_different_is_irreflexive _)
+  -->
+  Imp_ports__rf_different_is_irreflexive.
+
+def proj_Imp_ports__rf_different_is_symmetric :
+  record:Imp_ports__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Imp_ports__rf_T record) 
+       (x:(cc.eT (proj_Imp_ports__rf_T record)) =>
+        dk_logic.forall (proj_Imp_ports__rf_T record) 
+          (y:(cc.eT (proj_Imp_ports__rf_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Imp_ports__rf_different record x y)) 
+             (dk_logic.ebP (proj_Imp_ports__rf_different record y x))))).
+
+[Imp_ports__rf_different_is_symmetric]
+  proj_Imp_ports__rf_different_is_symmetric (Imp_ports__mk_record _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_ports__rf_different_is_symmetric)
+  -->
+  Imp_ports__rf_different_is_symmetric.
+
+def Imp_ports__element :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S builtins.0).
+
+def Imp_ports__empty : cc.eT basics.int__t := dk_int.from_nat builtins.0.
+
+def Imp_ports__equal :
+  x:(cc.eT basics.int__t) -> y:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  x:(cc.eT basics.int__t) => y:(cc.eT basics.int__t) => basics._equal_0x x y.
+
+def Imp_ports__parse :
+  x:(cc.eT basics.string__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT basics.string__t) => basics.int_of_string x.
+
+def Imp_ports__port_in1 :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S builtins.0).
+
+def Imp_ports__port_in2 :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S (builtins.S builtins.0)).
+
+def Imp_ports__port_in3 :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat (builtins.S (builtins.S (builtins.S builtins.0))).
+
+def Imp_ports__port_out1 :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat 
+    (builtins.S 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S (builtins.S (builtins.S builtins.0))))))))))).
+
+def Imp_ports__port_out2 :
+  cc.eT basics.int__t
+  :=
+  dk_int.from_nat 
+    (builtins.S 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S (builtins.S builtins.0)))))))))))).
+
+def Imp_ports__print :
+  x:(cc.eT basics.int__t) -> cc.eT basics.string__t
+  :=
+  x:(cc.eT basics.int__t) => basics.string_of_int x.
+
+def Imp_ports__equal_reflexive :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x))).
+
+def Imp_ports__equal_symmetric :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+             (dk_logic.ebP (abst_equal y x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+             (dk_logic.ebP (abst_equal y x))))).
+
+def Imp_ports__equal_transitive :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z)))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z))))))).
+
+def Imp_ports__diff_empty_port_in1 :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in1)))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in1))).
+
+def Imp_ports__diff_empty_port_in2 :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in2)))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in2))).
+
+def Imp_ports__diff_port_in1_port_in2 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_in2)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_in2))).
+
+def Imp_ports__diff_empty_port_in3 :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in3)))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_in3))).
+
+def Imp_ports__diff_port_in1_port_in3 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_in3)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_in3))).
+
+def Imp_ports__diff_port_in2_port_in3 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_in3)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_in3))).
+
+def Imp_ports__diff_empty_port_out1 :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_out1)))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_out1))).
+
+def Imp_ports__diff_port_in1_port_out1 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_out1)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_out1))).
+
+def Imp_ports__diff_port_in2_port_out1 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_out1)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_out1))).
+
+def Imp_ports__diff_port_in3_port_out1 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in3 abst_port_out1)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in3 abst_port_out1))).
+
+def Imp_ports__diff_empty_port_out2 :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_out2)))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_empty abst_port_out2))).
+
+def Imp_ports__diff_port_in1_port_out2 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_out2)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in1 abst_port_out2))).
+
+def Imp_ports__diff_port_in2_port_out2 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_out2)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in2 abst_port_out2))).
+
+def Imp_ports__diff_port_in3_port_out2 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in3 abst_port_out2)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_in3 abst_port_out2))).
+
+def Imp_ports__diff_port_out1_port_out2 :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_out1 abst_port_out2)))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.not (dk_logic.ebP (abst_equal abst_port_out1 abst_port_out2))).
+
+def Imp_ports__disj :
+  abst_T:cc.uT ->
+  abst_empty:(cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_port_in1:(cc.eT abst_T) ->
+  abst_port_in2:(cc.eT abst_T) ->
+  abst_port_in3:(cc.eT abst_T) ->
+  abst_port_out1:(cc.eT abst_T) ->
+  abst_port_out2:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.or (dk_logic.ebP (abst_equal p abst_empty)) 
+          (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in1)) 
+             (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in2)) 
+                (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in3)) 
+                   (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_out1)) 
+                      (dk_logic.ebP (abst_equal p abst_port_out2))))))))
+  :=
+  abst_T:cc.uT =>
+  abst_empty:(cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_port_in1:(cc.eT abst_T) =>
+  abst_port_in2:(cc.eT abst_T) =>
+  abst_port_in3:(cc.eT abst_T) =>
+  abst_port_out1:(cc.eT abst_T) =>
+  abst_port_out2:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.or (dk_logic.ebP (abst_equal p abst_empty)) 
+          (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in1)) 
+             (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in2)) 
+                (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_in3)) 
+                   (dk_logic.or (dk_logic.ebP (abst_equal p abst_port_out1)) 
+                      (dk_logic.ebP (abst_equal p abst_port_out2)))))))).
+
+def Imp_ports__collection_create
+  :=
+  Imp_ports__mk_record basics.int__t Imp_ports__element Imp_ports__empty 
+    Imp_ports__equal Imp_ports__parse Imp_ports__port_in1 
+    Imp_ports__port_in2 Imp_ports__port_in3 Imp_ports__port_out1 
+    Imp_ports__port_out2 Imp_ports__print 
+    (sets.Setoid__different basics.int__t Imp_ports__equal) 
+    (Imp_ports__equal_reflexive basics.int__t Imp_ports__equal) 
+    (Imp_ports__equal_symmetric basics.int__t Imp_ports__equal) 
+    (Imp_ports__equal_transitive basics.int__t Imp_ports__equal) 
+    (Imp_ports__diff_empty_port_in1 basics.int__t Imp_ports__empty 
+       Imp_ports__equal Imp_ports__port_in1) 
+    (Imp_ports__diff_empty_port_in2 basics.int__t Imp_ports__empty 
+       Imp_ports__equal Imp_ports__port_in2) 
+    (Imp_ports__diff_port_in1_port_in2 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in1 Imp_ports__port_in2) 
+    (Imp_ports__diff_empty_port_in3 basics.int__t Imp_ports__empty 
+       Imp_ports__equal Imp_ports__port_in3) 
+    (Imp_ports__diff_port_in1_port_in3 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in1 Imp_ports__port_in3) 
+    (Imp_ports__diff_port_in2_port_in3 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in2 Imp_ports__port_in3) 
+    (Imp_ports__diff_empty_port_out1 basics.int__t Imp_ports__empty 
+       Imp_ports__equal Imp_ports__port_out1) 
+    (Imp_ports__diff_port_in1_port_out1 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in1 Imp_ports__port_out1) 
+    (Imp_ports__diff_port_in2_port_out1 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in2 Imp_ports__port_out1) 
+    (Imp_ports__diff_port_in3_port_out1 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in3 Imp_ports__port_out1) 
+    (Imp_ports__diff_empty_port_out2 basics.int__t Imp_ports__empty 
+       Imp_ports__equal Imp_ports__port_out2) 
+    (Imp_ports__diff_port_in1_port_out2 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in1 Imp_ports__port_out2) 
+    (Imp_ports__diff_port_in2_port_out2 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in2 Imp_ports__port_out2) 
+    (Imp_ports__diff_port_in3_port_out2 basics.int__t Imp_ports__equal 
+       Imp_ports__port_in3 Imp_ports__port_out2) 
+    (Imp_ports__diff_port_out1_port_out2 basics.int__t Imp_ports__equal 
+       Imp_ports__port_out1 Imp_ports__port_out2) 
+    (Imp_ports__disj basics.int__t Imp_ports__empty Imp_ports__equal 
+       Imp_ports__port_in1 Imp_ports__port_in2 Imp_ports__port_in3 
+       Imp_ports__port_out1 Imp_ports__port_out2) 
+    (sets.Setoid__same_is_not_different basics.int__t Imp_ports__equal) 
+    (sets.Setoid__different_is_complete basics.int__t Imp_ports__equal 
+       (sets.Setoid__different basics.int__t Imp_ports__equal) 
+       (Imp_ports__equal_reflexive basics.int__t Imp_ports__equal) 
+       (Imp_ports__equal_symmetric basics.int__t Imp_ports__equal) 
+       (Imp_ports__equal_transitive basics.int__t Imp_ports__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_ports__equal)) 
+    (sets.Setoid__different_is_irreflexive basics.int__t Imp_ports__equal 
+       (sets.Setoid__different basics.int__t Imp_ports__equal) 
+       (Imp_ports__equal_reflexive basics.int__t Imp_ports__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_ports__equal)) 
+    (sets.Setoid__different_is_symmetric basics.int__t Imp_ports__equal 
+       (sets.Setoid__different basics.int__t Imp_ports__equal) 
+       (Imp_ports__equal_symmetric basics.int__t Imp_ports__equal) 
+       (sets.Setoid__same_is_not_different basics.int__t Imp_ports__equal)).
+
+def Coll_ports__effective_collection := Imp_ports__collection_create.
+
+def Coll_ports__me_as_carrier := basics.int__t.
+
+def Coll_ports__element
+  :=
+  proj_Imp_ports__rf_element Coll_ports__effective_collection.
+
+def Coll_ports__empty
+  :=
+  proj_Imp_ports__rf_empty Coll_ports__effective_collection.
+
+def Coll_ports__equal
+  :=
+  proj_Imp_ports__rf_equal Coll_ports__effective_collection.
+
+def Coll_ports__parse
+  :=
+  proj_Imp_ports__rf_parse Coll_ports__effective_collection.
+
+def Coll_ports__port_in1
+  :=
+  proj_Imp_ports__rf_port_in1 Coll_ports__effective_collection.
+
+def Coll_ports__port_in2
+  :=
+  proj_Imp_ports__rf_port_in2 Coll_ports__effective_collection.
+
+def Coll_ports__port_in3
+  :=
+  proj_Imp_ports__rf_port_in3 Coll_ports__effective_collection.
+
+def Coll_ports__port_out1
+  :=
+  proj_Imp_ports__rf_port_out1 Coll_ports__effective_collection.
+
+def Coll_ports__port_out2
+  :=
+  proj_Imp_ports__rf_port_out2 Coll_ports__effective_collection.
+
+def Coll_ports__print
+  :=
+  proj_Imp_ports__rf_print Coll_ports__effective_collection.
+
+def Coll_ports__different
+  :=
+  proj_Imp_ports__rf_different Coll_ports__effective_collection.
+
+def Coll_ports__equal_reflexive
+  :=
+  proj_Imp_ports__rf_equal_reflexive Coll_ports__effective_collection.
+
+def Coll_ports__equal_symmetric
+  :=
+  proj_Imp_ports__rf_equal_symmetric Coll_ports__effective_collection.
+
+def Coll_ports__equal_transitive
+  :=
+  proj_Imp_ports__rf_equal_transitive Coll_ports__effective_collection.
+
+def Coll_ports__diff_empty_port_in1
+  :=
+  proj_Imp_ports__rf_diff_empty_port_in1 Coll_ports__effective_collection.
+
+def Coll_ports__diff_empty_port_in2
+  :=
+  proj_Imp_ports__rf_diff_empty_port_in2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in1_port_in2
+  :=
+  proj_Imp_ports__rf_diff_port_in1_port_in2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_empty_port_in3
+  :=
+  proj_Imp_ports__rf_diff_empty_port_in3 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in1_port_in3
+  :=
+  proj_Imp_ports__rf_diff_port_in1_port_in3 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in2_port_in3
+  :=
+  proj_Imp_ports__rf_diff_port_in2_port_in3 Coll_ports__effective_collection.
+
+def Coll_ports__diff_empty_port_out1
+  :=
+  proj_Imp_ports__rf_diff_empty_port_out1 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in1_port_out1
+  :=
+  proj_Imp_ports__rf_diff_port_in1_port_out1 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in2_port_out1
+  :=
+  proj_Imp_ports__rf_diff_port_in2_port_out1 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in3_port_out1
+  :=
+  proj_Imp_ports__rf_diff_port_in3_port_out1 Coll_ports__effective_collection.
+
+def Coll_ports__diff_empty_port_out2
+  :=
+  proj_Imp_ports__rf_diff_empty_port_out2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in1_port_out2
+  :=
+  proj_Imp_ports__rf_diff_port_in1_port_out2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in2_port_out2
+  :=
+  proj_Imp_ports__rf_diff_port_in2_port_out2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_in3_port_out2
+  :=
+  proj_Imp_ports__rf_diff_port_in3_port_out2 Coll_ports__effective_collection.
+
+def Coll_ports__diff_port_out1_port_out2
+  :=
+  proj_Imp_ports__rf_diff_port_out1_port_out2 
+    Coll_ports__effective_collection.
+
+def Coll_ports__disj
+  :=
+  proj_Imp_ports__rf_disj Coll_ports__effective_collection.
+
+def Coll_ports__same_is_not_different
+  :=
+  proj_Imp_ports__rf_same_is_not_different Coll_ports__effective_collection.
+
+def Coll_ports__different_is_complete
+  :=
+  proj_Imp_ports__rf_different_is_complete Coll_ports__effective_collection.
+
+def Coll_ports__different_is_irreflexive
+  :=
+  proj_Imp_ports__rf_different_is_irreflexive 
+    Coll_ports__effective_collection.
+
+def Coll_ports__different_is_symmetric
+  :=
+  proj_Imp_ports__rf_different_is_symmetric Coll_ports__effective_collection.
+

@@ -1,0 +1,1560 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_fail.
+#REQUIRE zen.
+#REQUIRE focal.
+#REQUIRE sets.
+
+Listes__me_as_species : A_T:cc.uT -> Type.
+
+Listes__mk_record :
+  A_T:cc.uT ->
+  Listes__rf_T:cc.uT ->
+  Listes__rf_element:(cc.eT Listes__rf_T) ->
+  Listes__rf_equal:((cc.eT Listes__rf_T) ->
+                    (cc.eT Listes__rf_T) -> cc.eT basics.bool__t) ->
+  Listes__rf_parse:((cc.eT basics.string__t) -> cc.eT Listes__rf_T) ->
+  Listes__rf_print:((cc.eT Listes__rf_T) -> cc.eT basics.string__t) ->
+  Listes__rf_different:((cc.eT Listes__rf_T) ->
+                        (cc.eT Listes__rf_T) -> cc.eT basics.bool__t) ->
+  Listes__rf_equal_reflexive:(dk_logic.eP 
+                                (dk_logic.forall Listes__rf_T 
+                                   (x:(cc.eT Listes__rf_T) =>
+                                    dk_logic.ebP (Listes__rf_equal x x)))) ->
+  Listes__rf_equal_symmetry_prop:((cc.eT Listes__rf_T) -> dk_logic.Prop) ->
+  Listes__rf_equal_transitive:(dk_logic.eP 
+                                 (dk_logic.forall Listes__rf_T 
+                                    (x:(cc.eT Listes__rf_T) =>
+                                     dk_logic.forall Listes__rf_T 
+                                       (y:(cc.eT Listes__rf_T) =>
+                                        dk_logic.forall Listes__rf_T 
+                                          (z:(cc.eT Listes__rf_T) =>
+                                           dk_logic.imp 
+                                             (dk_logic.ebP 
+                                                (Listes__rf_equal x y)) 
+                                             (dk_logic.imp 
+                                                (dk_logic.ebP 
+                                                   (Listes__rf_equal y z)) 
+                                                (dk_logic.ebP 
+                                                   (Listes__rf_equal x z)))))))) ->
+  Listes__rf_same_is_not_different:(dk_logic.eP 
+                                      (dk_logic.forall Listes__rf_T 
+                                         (x:(cc.eT Listes__rf_T) =>
+                                          dk_logic.forall Listes__rf_T 
+                                            (y:(cc.eT Listes__rf_T) =>
+                                             dk_logic.eqv 
+                                               (dk_logic.ebP 
+                                                  (Listes__rf_different x y)) 
+                                               (dk_logic.not 
+                                                  (dk_logic.ebP 
+                                                     (Listes__rf_equal x y))))))) ->
+  Listes__rf_equal_symmetric:(dk_logic.eP 
+                                (dk_logic.forall Listes__rf_T 
+                                   (x:(cc.eT Listes__rf_T) =>
+                                    dk_logic.forall Listes__rf_T 
+                                      (y:(cc.eT Listes__rf_T) =>
+                                       dk_logic.imp 
+                                         (dk_logic.ebP (Listes__rf_equal x y)) 
+                                         (dk_logic.ebP (Listes__rf_equal y x)))))) ->
+  Listes__rf_different_is_irreflexive:(dk_logic.eP 
+                                         (dk_logic.forall Listes__rf_T 
+                                            (x:(cc.eT Listes__rf_T) =>
+                                             dk_logic.not 
+                                               (dk_logic.ebP 
+                                                  (Listes__rf_different x x))))) ->
+  Listes__rf_different_is_complete:(dk_logic.eP 
+                                      (dk_logic.forall Listes__rf_T 
+                                         (x:(cc.eT Listes__rf_T) =>
+                                          dk_logic.forall Listes__rf_T 
+                                            (y:(cc.eT Listes__rf_T) =>
+                                             dk_logic.forall Listes__rf_T 
+                                               (z:(cc.eT Listes__rf_T) =>
+                                                dk_logic.imp 
+                                                  (dk_logic.ebP 
+                                                     (Listes__rf_different x 
+                                                        y)) 
+                                                  (dk_logic.or 
+                                                     (dk_logic.ebP 
+                                                        (Listes__rf_different 
+                                                           x z)) 
+                                                     (dk_logic.ebP 
+                                                        (Listes__rf_different 
+                                                           y z)))))))) ->
+  Listes__rf_different_is_symmetric:(dk_logic.eP 
+                                       (dk_logic.forall Listes__rf_T 
+                                          (x:(cc.eT Listes__rf_T) =>
+                                           dk_logic.forall Listes__rf_T 
+                                             (y:(cc.eT Listes__rf_T) =>
+                                              dk_logic.imp 
+                                                (dk_logic.ebP 
+                                                   (Listes__rf_different x y)) 
+                                                (dk_logic.ebP 
+                                                   (Listes__rf_different y x)))))) ->
+  Listes__me_as_species A_T.
+
+def proj_Listes__rf_T :
+  A_T:cc.uT -> record:(Listes__me_as_species A_T) -> cc.uT.
+
+[Listes__rf_T]
+  proj_Listes__rf_T _ (Listes__mk_record _ Listes__rf_T _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Listes__rf_T.
+
+def proj_Listes__rf_element :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) -> cc.eT (proj_Listes__rf_T A_T record).
+
+[Listes__rf_element]
+  proj_Listes__rf_element _ (Listes__mk_record _ _ Listes__rf_element _ _ _ 
+    _ _ _ _ _ _ _ _ _)
+  -->
+  Listes__rf_element.
+
+def proj_Listes__rf_equal :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) -> cc.eT basics.bool__t.
+
+[Listes__rf_equal]
+  proj_Listes__rf_equal _ (Listes__mk_record _ _ _ Listes__rf_equal _ _ _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Listes__rf_equal.
+
+def proj_Listes__rf_parse :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  (cc.eT basics.string__t) -> cc.eT (proj_Listes__rf_T A_T record).
+
+[Listes__rf_parse]
+  proj_Listes__rf_parse _ (Listes__mk_record _ _ _ _ Listes__rf_parse _ _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Listes__rf_parse.
+
+def proj_Listes__rf_print :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) -> cc.eT basics.string__t.
+
+[Listes__rf_print]
+  proj_Listes__rf_print _ (Listes__mk_record _ _ _ _ _ Listes__rf_print _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Listes__rf_print.
+
+def proj_Listes__rf_different :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) -> cc.eT basics.bool__t.
+
+[Listes__rf_different]
+  proj_Listes__rf_different _ (Listes__mk_record _ _ _ _ _ _ 
+    Listes__rf_different _ _ _ _ _ _ _ _)
+  -->
+  Listes__rf_different.
+
+def proj_Listes__rf_equal_reflexive :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.ebP (proj_Listes__rf_equal A_T record x x))).
+
+[Listes__rf_equal_reflexive]
+  proj_Listes__rf_equal_reflexive _ (Listes__mk_record _ _ _ _ _ _ _ 
+    Listes__rf_equal_reflexive _ _ _ _ _ _ _)
+  -->
+  Listes__rf_equal_reflexive.
+
+def proj_Listes__rf_equal_symmetry_prop :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  (cc.eT (proj_Listes__rf_T A_T record)) -> dk_logic.Prop.
+
+[Listes__rf_equal_symmetry_prop]
+  proj_Listes__rf_equal_symmetry_prop _ (Listes__mk_record _ _ _ _ _ _ _ _ 
+    Listes__rf_equal_symmetry_prop _ _ _ _ _ _)
+  -->
+  Listes__rf_equal_symmetry_prop.
+
+def proj_Listes__rf_equal_transitive :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.forall (proj_Listes__rf_T A_T record) 
+          (y:(cc.eT (proj_Listes__rf_T A_T record)) =>
+           dk_logic.forall (proj_Listes__rf_T A_T record) 
+             (z:(cc.eT (proj_Listes__rf_T A_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Listes__rf_equal A_T record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP (proj_Listes__rf_equal A_T record y z)) 
+                   (dk_logic.ebP (proj_Listes__rf_equal A_T record x z))))))).
+
+[Listes__rf_equal_transitive]
+  proj_Listes__rf_equal_transitive _ (Listes__mk_record _ _ _ _ _ _ _ _ _ 
+    Listes__rf_equal_transitive _ _ _ _ _)
+  -->
+  Listes__rf_equal_transitive.
+
+def proj_Listes__rf_same_is_not_different :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.forall (proj_Listes__rf_T A_T record) 
+          (y:(cc.eT (proj_Listes__rf_T A_T record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP (proj_Listes__rf_different A_T record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP (proj_Listes__rf_equal A_T record x y)))))).
+
+[Listes__rf_same_is_not_different]
+  proj_Listes__rf_same_is_not_different _ (Listes__mk_record _ _ _ _ _ _ _ _ 
+    _ _ Listes__rf_same_is_not_different _ _ _ _)
+  -->
+  Listes__rf_same_is_not_different.
+
+def proj_Listes__rf_equal_symmetric :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.forall (proj_Listes__rf_T A_T record) 
+          (y:(cc.eT (proj_Listes__rf_T A_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Listes__rf_equal A_T record x y)) 
+             (dk_logic.ebP (proj_Listes__rf_equal A_T record y x))))).
+
+[Listes__rf_equal_symmetric]
+  proj_Listes__rf_equal_symmetric _ (Listes__mk_record _ _ _ _ _ _ _ _ _ _ _ 
+    Listes__rf_equal_symmetric _ _ _)
+  -->
+  Listes__rf_equal_symmetric.
+
+def proj_Listes__rf_different_is_irreflexive :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.not 
+          (dk_logic.ebP (proj_Listes__rf_different A_T record x x)))).
+
+[Listes__rf_different_is_irreflexive]
+  proj_Listes__rf_different_is_irreflexive _ (Listes__mk_record _ _ _ _ _ _ 
+    _ _ _ _ _ _ Listes__rf_different_is_irreflexive _ _)
+  -->
+  Listes__rf_different_is_irreflexive.
+
+def proj_Listes__rf_different_is_complete :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.forall (proj_Listes__rf_T A_T record) 
+          (y:(cc.eT (proj_Listes__rf_T A_T record)) =>
+           dk_logic.forall (proj_Listes__rf_T A_T record) 
+             (z:(cc.eT (proj_Listes__rf_T A_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (proj_Listes__rf_different A_T record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP (proj_Listes__rf_different A_T record x z)) 
+                   (dk_logic.ebP (proj_Listes__rf_different A_T record y z))))))).
+
+[Listes__rf_different_is_complete]
+  proj_Listes__rf_different_is_complete _ (Listes__mk_record _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ Listes__rf_different_is_complete _)
+  -->
+  Listes__rf_different_is_complete.
+
+def proj_Listes__rf_different_is_symmetric :
+  A_T:cc.uT ->
+  record:(Listes__me_as_species A_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_Listes__rf_T A_T record) 
+       (x:(cc.eT (proj_Listes__rf_T A_T record)) =>
+        dk_logic.forall (proj_Listes__rf_T A_T record) 
+          (y:(cc.eT (proj_Listes__rf_T A_T record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP (proj_Listes__rf_different A_T record x y)) 
+             (dk_logic.ebP (proj_Listes__rf_different A_T record y x))))).
+
+[Listes__rf_different_is_symmetric]
+  proj_Listes__rf_different_is_symmetric _ (Listes__mk_record _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ Listes__rf_different_is_symmetric)
+  -->
+  Listes__rf_different_is_symmetric.
+
+def Listes__element :
+  _p_A_T:cc.uT -> cc.eT (basics.list__t _p_A_T)
+  :=
+  _p_A_T:cc.uT => builtins.nil _p_A_T.
+
+def Listes__equal :
+  _p_A_T:cc.uT ->
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) ->
+  (cc.eT (basics.list__t _p_A_T)) ->
+  (cc.eT (basics.list__t _p_A_T)) -> cc.eT basics.bool__t.
+
+[l2, l1, _p_A_equal, _p_A_T]
+  Listes__equal _p_A_T _p_A_equal l1 l2
+  -->
+  basics.match__nil _p_A_T basics.bool__t l1 
+    (basics.match__nil _p_A_T basics.bool__t l2 dk_bool.true dk_bool.false) 
+    (basics.match__cons _p_A_T basics.bool__t l1 
+       (pattern_var_0_:(cc.eT _p_A_T) =>
+        pattern_var_1_:(cc.eT (basics.list__t _p_A_T)) =>
+        (h1:(cc.eT _p_A_T) =>
+         (t1:(cc.eT (basics.list__t _p_A_T)) =>
+          basics.match__nil _p_A_T basics.bool__t l2 dk_bool.false 
+            (basics.match__cons _p_A_T basics.bool__t l2 
+               (pattern_var_0_0:(cc.eT _p_A_T) =>
+                pattern_var_1_0:(cc.eT (basics.list__t _p_A_T)) =>
+                (h2:(cc.eT _p_A_T) =>
+                 (t2:(cc.eT (basics.list__t _p_A_T)) =>
+                  dk_bool.ite basics.bool__t (_p_A_equal h1 h2) 
+                    ((_p_A_T:cc.uT =>
+                      _p_A_equal:
+                      ((cc.eT _p_A_T) ->
+                       (cc.eT _p_A_T) -> cc.eT basics.bool__t) =>
+                      l1:(cc.eT (basics.list__t _p_A_T)) =>
+                      l2:(cc.eT (basics.list__t _p_A_T)) =>
+                      dk_builtins.call_by_value (basics.list__t _p_A_T) 
+                        basics.bool__t 
+                        (dk_builtins.call_by_value (basics.list__t _p_A_T) 
+                           (cc.Arrow (basics.list__t _p_A_T) basics.bool__t) 
+                           (Listes__equal _p_A_T _p_A_equal) l1) l2) _p_A_T 
+                       _p_A_equal t1 t2) dk_bool.false) pattern_var_1_0) 
+                  pattern_var_0_0) (dk_fail.fail basics.bool__t))) 
+           pattern_var_1_) pattern_var_0_) (dk_fail.fail basics.bool__t)).
+
+def Listes__equal_reflexive :
+  _p_A_T:cc.uT ->
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall (basics.list__t _p_A_T) 
+       (x:(cc.eT (basics.list__t _p_A_T)) =>
+        dk_logic.ebP (Listes__equal _p_A_T _p_A_equal x x)))
+  :=
+  _p_A_T:cc.uT =>
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) =>
+  (__A_1_LEMMA:
+   (dk_logic.eP 
+      (dk_logic.ebP 
+         (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) 
+            (builtins.nil _p_A_T)))) =>
+   (__A_2_LEMMA:
+    (dk_logic.eP 
+       (dk_logic.forall _p_A_T 
+          (h:(cc.eT _p_A_T) =>
+           dk_logic.forall (basics.list__t _p_A_T) 
+             (l:(cc.eT (basics.list__t _p_A_T)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal l l)) 
+                (dk_logic.ebP 
+                   (Listes__equal _p_A_T _p_A_equal 
+                      (builtins.cons _p_A_T h l) (builtins.cons _p_A_T h l))))))) =>
+    (__A_f_LEMMA:
+     (dk_logic.eP 
+        (dk_logic.forall (basics.list__t _p_A_T) 
+           (l:(cc.eT (basics.list__t _p_A_T)) =>
+            dk_logic.ebP (Listes__equal _p_A_T _p_A_equal l l)))) =>
+     zen.nnpp 
+       (zen.forall (basics.list__t _p_A_T) 
+          (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+           zen.triangle 
+             (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vzb)))) 
+       (v_Vac:
+        (zen.proof 
+           (zen.not 
+              (zen.forall (basics.list__t _p_A_T) 
+                 (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                  zen.triangle 
+                    (focal.is_true 
+                       (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vzb)))))) =>
+        zen.Rnotall (basics.list__t _p_A_T) 
+          (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+           zen.triangle 
+             (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vzb))) 
+          (v_Vbc:(zen.term (basics.list__t _p_A_T)) =>
+           v_Vcc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Listes__equal _p_A_T _p_A_equal v_Vbc v_Vbc))))) =>
+           zen.Rall (basics.list__t _p_A_T) 
+             (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+              zen.triangle 
+                (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vzb))) 
+             v_Vbc 
+             (v_Vdc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Listes__equal _p_A_T _p_A_equal v_Vbc v_Vbc)))) =>
+              zen.Raxiom 
+                (zen.triangle 
+                   (focal.is_true 
+                      (Listes__equal _p_A_T _p_A_equal v_Vbc v_Vbc))) v_Vdc 
+                v_Vcc) __A_f_LEMMA) v_Vac)) 
+      (dk_builtins.magic_prove 
+         (dk_logic.forall (basics.list__t _p_A_T) 
+            (l:(cc.eT (basics.list__t _p_A_T)) =>
+             dk_logic.ebP (Listes__equal _p_A_T _p_A_equal l l))))) 
+     (dk_builtins.magic_prove 
+        (dk_logic.forall _p_A_T 
+           (h:(cc.eT _p_A_T) =>
+            dk_logic.forall (basics.list__t _p_A_T) 
+              (l:(cc.eT (basics.list__t _p_A_T)) =>
+               dk_logic.imp 
+                 (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal l l)) 
+                 (dk_logic.ebP 
+                    (Listes__equal _p_A_T _p_A_equal 
+                       (builtins.cons _p_A_T h l) (builtins.cons _p_A_T h l)))))))) 
+    (zen.nnpp 
+       (zen.triangle 
+          (focal.is_true 
+             (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) 
+                (builtins.nil _p_A_T)))) 
+       (v_Vbc:(zen.proof (zen.not zen.True)) => zen.Rnottrue v_Vbc)).
+
+def Listes__equal_symmetry_prop :
+  _p_A_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  x:(cc.eT abst_T) -> dk_logic.Prop
+  :=
+  _p_A_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  x:(cc.eT abst_T) =>
+  dk_logic.forall abst_T 
+    (y:(cc.eT abst_T) =>
+     dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+       (dk_logic.ebP (abst_equal y x))).
+
+def Listes__equal_transitive :
+  _p_A_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z)))))))
+  :=
+  _p_A_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.forall abst_T 
+             (z:(cc.eT abst_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                (dk_logic.imp (dk_logic.ebP (abst_equal y z)) 
+                   (dk_logic.ebP (abst_equal x z))))))).
+
+def Listes__equal_symmetric :
+  _p_A_T:cc.uT ->
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) ->
+  _p_A_equal_symmetric:(dk_logic.eP 
+                          (dk_logic.forall _p_A_T 
+                             (x:(cc.eT _p_A_T) =>
+                              dk_logic.forall _p_A_T 
+                                (y:(cc.eT _p_A_T) =>
+                                 dk_logic.imp 
+                                   (dk_logic.ebP (_p_A_equal x y)) 
+                                   (dk_logic.ebP (_p_A_equal y x)))))) ->
+  dk_logic.eP 
+    (dk_logic.forall (basics.list__t _p_A_T) 
+       (x:(cc.eT (basics.list__t _p_A_T)) =>
+        dk_logic.forall (basics.list__t _p_A_T) 
+          (y:(cc.eT (basics.list__t _p_A_T)) =>
+           dk_logic.imp (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal x y)) 
+             (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal y x)))))
+  :=
+  _p_A_T:cc.uT =>
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) =>
+  _p_A_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall _p_A_T 
+        (x:(cc.eT _p_A_T) =>
+         dk_logic.forall _p_A_T 
+           (y:(cc.eT _p_A_T) =>
+            dk_logic.imp (dk_logic.ebP (_p_A_equal x y)) 
+              (dk_logic.ebP (_p_A_equal y x)))))) =>
+  (__B_1_LEMMA:
+   (dk_logic.eP 
+      (dk_logic.forall (basics.list__t _p_A_T) 
+         (x:(cc.eT (basics.list__t _p_A_T)) =>
+          Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+            (Listes__equal _p_A_T _p_A_equal) x))) =>
+   zen.nnpp 
+     (zen.forall (basics.list__t _p_A_T) 
+        (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+         zen.forall (basics.list__t _p_A_T) 
+           (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+            zen.imp 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vac))) 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vac v_Vzb)))))) 
+     (v_Vbc:
+      (zen.proof 
+         (zen.not 
+            (zen.forall (basics.list__t _p_A_T) 
+               (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                zen.forall (basics.list__t _p_A_T) 
+                  (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                   zen.imp 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vac))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vac v_Vzb)))))))) =>
+      zen.Rnotall (basics.list__t _p_A_T) 
+        (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+         zen.forall (basics.list__t _p_A_T) 
+           (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+            zen.imp 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vzb v_Vac))) 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vac v_Vzb))))) 
+        (v_Vcc:(zen.term (basics.list__t _p_A_T)) =>
+         v_Vdc:
+         (zen.proof 
+            (zen.not 
+               (zen.forall (basics.list__t _p_A_T) 
+                  (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                   zen.imp 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vac))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vac v_Vcc))))))) =>
+         zen.Rnotall (basics.list__t _p_A_T) 
+           (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+            zen.imp 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vac))) 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vac v_Vcc)))) 
+           (v_Vec:(zen.term (basics.list__t _p_A_T)) =>
+            v_Vfc:
+            (zen.proof 
+               (zen.not 
+                  (zen.imp 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc)))))) =>
+            zen.Rnotimply 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec))) 
+              (zen.triangle 
+                 (focal.is_true (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc))) 
+              (v_Vgc:
+               (zen.proof 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec)))) =>
+               v_Vhc:
+               (zen.proof 
+                  (zen.not 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc))))) =>
+               zen.Rall (basics.list__t _p_A_T) 
+                 (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                  zen.triangle 
+                    (Listes__equal_symmetry_prop _p_A_T 
+                       (basics.list__t _p_A_T) 
+                       (Listes__equal _p_A_T _p_A_equal) v_Vzb)) v_Vcc 
+                 (v_Vic:
+                  (zen.proof 
+                     (zen.forall (basics.list__t _p_A_T) 
+                        (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                         zen.imp 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vac))) 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal v_Vac v_Vcc)))))) =>
+                  zen.Rall (basics.list__t _p_A_T) 
+                    (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vac))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal v_Vac v_Vcc)))) 
+                    v_Vec 
+                    (v_Vjc:
+                     (zen.proof 
+                        (zen.imp 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec))) 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc))))) =>
+                     zen.Rimply 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc))) 
+                       (v_Vkc:
+                        (zen.proof 
+                           (zen.not 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (Listes__equal _p_A_T _p_A_equal v_Vcc 
+                                       v_Vec))))) =>
+                        zen.Raxiom 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal v_Vcc v_Vec))) 
+                          v_Vgc v_Vkc) 
+                       (v_Vlc:
+                        (zen.proof 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc)))) =>
+                        zen.Raxiom 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal v_Vec v_Vcc))) 
+                          v_Vlc v_Vhc) v_Vjc) v_Vic) __B_1_LEMMA) v_Vfc) 
+           v_Vdc) v_Vbc)) 
+    ((__B_1_1_LEMMA:
+      (dk_logic.eP 
+         (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+            (Listes__equal _p_A_T _p_A_equal) (builtins.nil _p_A_T))) =>
+      (__B_1_2_LEMMA:
+       (dk_logic.eP 
+          (dk_logic.forall _p_A_T 
+             (a:(cc.eT _p_A_T) =>
+              dk_logic.forall (basics.list__t _p_A_T) 
+                (l:(cc.eT (basics.list__t _p_A_T)) =>
+                 dk_logic.imp 
+                   (Listes__equal_symmetry_prop _p_A_T 
+                      (basics.list__t _p_A_T) 
+                      (Listes__equal _p_A_T _p_A_equal) l) 
+                   (Listes__equal_symmetry_prop _p_A_T 
+                      (basics.list__t _p_A_T) 
+                      (Listes__equal _p_A_T _p_A_equal) 
+                      (builtins.cons _p_A_T a l)))))) =>
+       (__B_1_3_LEMMA:
+        (dk_logic.eP 
+           (dk_logic.forall (basics.list__t _p_A_T) 
+              (l:(cc.eT (basics.list__t _p_A_T)) =>
+               Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                 (Listes__equal _p_A_T _p_A_equal) l))) =>
+        zen.nnpp 
+          (zen.forall (basics.list__t _p_A_T) 
+             (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+              zen.triangle 
+                (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                   (Listes__equal _p_A_T _p_A_equal) v_Vzb))) 
+          (v_Vac:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall (basics.list__t _p_A_T) 
+                    (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                     zen.triangle 
+                       (Listes__equal_symmetry_prop _p_A_T 
+                          (basics.list__t _p_A_T) 
+                          (Listes__equal _p_A_T _p_A_equal) v_Vzb))))) =>
+           zen.Raxiom 
+             (zen.forall (basics.list__t _p_A_T) 
+                (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                 zen.triangle 
+                   (Listes__equal_symmetry_prop _p_A_T 
+                      (basics.list__t _p_A_T) 
+                      (Listes__equal _p_A_T _p_A_equal) v_Vzb))) 
+             __B_1_3_LEMMA v_Vac)) 
+         (dk_builtins.magic_prove 
+            (dk_logic.forall (basics.list__t _p_A_T) 
+               (l:(cc.eT (basics.list__t _p_A_T)) =>
+                Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                  (Listes__equal _p_A_T _p_A_equal) l)))) 
+        ((__B_1_2_1_LEMMA:
+          (a:(cc.eT _p_A_T) ->
+           l:(cc.eT (basics.list__t _p_A_T)) ->
+           I_x:(dk_logic.eP 
+                  (Listes__equal_symmetry_prop _p_A_T 
+                     (basics.list__t _p_A_T) 
+                     (Listes__equal _p_A_T _p_A_equal) l)) ->
+           dk_logic.eP 
+             (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                (Listes__equal _p_A_T _p_A_equal) (builtins.cons _p_A_T a l))) =>
+          zen.nnpp 
+            (zen.forall _p_A_T 
+               (v_Vzb:(zen.term _p_A_T) =>
+                zen.forall (basics.list__t _p_A_T) 
+                  (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                   zen.imp 
+                     (zen.triangle 
+                        (Listes__equal_symmetry_prop _p_A_T 
+                           (basics.list__t _p_A_T) 
+                           (Listes__equal _p_A_T _p_A_equal) v_Vac)) 
+                     (zen.triangle 
+                        (Listes__equal_symmetry_prop _p_A_T 
+                           (basics.list__t _p_A_T) 
+                           (Listes__equal _p_A_T _p_A_equal) 
+                           (builtins.cons _p_A_T v_Vzb v_Vac)))))) 
+            (v_Vbc:
+             (zen.proof 
+                (zen.not 
+                   (zen.forall _p_A_T 
+                      (v_Vzb:(zen.term _p_A_T) =>
+                       zen.forall (basics.list__t _p_A_T) 
+                         (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                          zen.imp 
+                            (zen.triangle 
+                               (Listes__equal_symmetry_prop _p_A_T 
+                                  (basics.list__t _p_A_T) 
+                                  (Listes__equal _p_A_T _p_A_equal) v_Vac)) 
+                            (zen.triangle 
+                               (Listes__equal_symmetry_prop _p_A_T 
+                                  (basics.list__t _p_A_T) 
+                                  (Listes__equal _p_A_T _p_A_equal) 
+                                  (builtins.cons _p_A_T v_Vzb v_Vac)))))))) =>
+             zen.Raxiom 
+               (zen.forall _p_A_T 
+                  (v_Vzb:(zen.term _p_A_T) =>
+                   zen.forall (basics.list__t _p_A_T) 
+                     (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                      zen.imp 
+                        (zen.triangle 
+                           (Listes__equal_symmetry_prop _p_A_T 
+                              (basics.list__t _p_A_T) 
+                              (Listes__equal _p_A_T _p_A_equal) v_Vac)) 
+                        (zen.triangle 
+                           (Listes__equal_symmetry_prop _p_A_T 
+                              (basics.list__t _p_A_T) 
+                              (Listes__equal _p_A_T _p_A_equal) 
+                              (builtins.cons _p_A_T v_Vzb v_Vac)))))) 
+               __B_1_2_1_LEMMA v_Vbc)) 
+           (a:(cc.eT _p_A_T) =>
+            l:(cc.eT (basics.list__t _p_A_T)) =>
+            I_x:
+            (dk_logic.eP 
+               (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                  (Listes__equal _p_A_T _p_A_equal) l)) =>
+            (__B_1_2_1_1_LEMMA:
+             (dk_logic.eP 
+                (dk_logic.forall (basics.list__t _p_A_T) 
+                   (y:(cc.eT (basics.list__t _p_A_T)) =>
+                    dk_logic.imp 
+                      (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal l y)) 
+                      (dk_logic.ebP (Listes__equal _p_A_T _p_A_equal y l))))) =>
+             (__B_1_2_1_2_LEMMA:
+              (dk_logic.eP 
+                 (dk_logic.forall (basics.list__t _p_A_T) 
+                    (y:(cc.eT (basics.list__t _p_A_T)) =>
+                     dk_logic.imp 
+                       (dk_logic.ebP 
+                          (Listes__equal _p_A_T _p_A_equal 
+                             (builtins.cons _p_A_T a l) y)) 
+                       (dk_logic.ebP 
+                          (Listes__equal _p_A_T _p_A_equal y 
+                             (builtins.cons _p_A_T a l)))))) =>
+              zen.nnpp 
+                (zen.triangle 
+                   (Listes__equal_symmetry_prop _p_A_T 
+                      (basics.list__t _p_A_T) 
+                      (Listes__equal _p_A_T _p_A_equal) 
+                      (builtins.cons _p_A_T a l))) 
+                (v_Vzb:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.forall (basics.list__t _p_A_T) 
+                          (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                           zen.imp 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (Listes__equal _p_A_T _p_A_equal 
+                                      (builtins.cons _p_A_T a l) v_Vac))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (Listes__equal _p_A_T _p_A_equal v_Vac 
+                                      (builtins.cons _p_A_T a l)))))))) =>
+                 zen.Raxiom 
+                   (zen.forall (basics.list__t _p_A_T) 
+                      (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                       zen.imp 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.cons _p_A_T a l) v_Vac))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal v_Vac 
+                                  (builtins.cons _p_A_T a l)))))) 
+                   __B_1_2_1_2_LEMMA v_Vzb)) 
+               ((__B_1_2_1_2_1_LEMMA:
+                 (dk_logic.eP 
+                    (dk_logic.imp 
+                       (dk_logic.ebP 
+                          (Listes__equal _p_A_T _p_A_equal 
+                             (builtins.cons _p_A_T a l) (builtins.nil _p_A_T))) 
+                       (dk_logic.ebP 
+                          (Listes__equal _p_A_T _p_A_equal 
+                             (builtins.nil _p_A_T) (builtins.cons _p_A_T a l))))) =>
+                 (__B_1_2_1_2_2_LEMMA:
+                  (dk_logic.eP 
+                     (dk_logic.forall _p_A_T 
+                        (aa:(cc.eT _p_A_T) =>
+                         dk_logic.forall (basics.list__t _p_A_T) 
+                           (ll:(cc.eT (basics.list__t _p_A_T)) =>
+                            dk_logic.imp 
+                              (dk_logic.ebP 
+                                 (Listes__equal _p_A_T _p_A_equal 
+                                    (builtins.cons _p_A_T a l) 
+                                    (builtins.cons _p_A_T aa ll))) 
+                              (dk_logic.ebP 
+                                 (Listes__equal _p_A_T _p_A_equal 
+                                    (builtins.cons _p_A_T aa ll) 
+                                    (builtins.cons _p_A_T a l))))))) =>
+                  dk_builtins.magic_prove 
+                    (dk_logic.forall (basics.list__t _p_A_T) 
+                       (y:(cc.eT (basics.list__t _p_A_T)) =>
+                        dk_logic.imp 
+                          (dk_logic.ebP 
+                             (Listes__equal _p_A_T _p_A_equal 
+                                (builtins.cons _p_A_T a l) y)) 
+                          (dk_logic.ebP 
+                             (Listes__equal _p_A_T _p_A_equal y 
+                                (builtins.cons _p_A_T a l)))))) 
+                   ((__B_1_2_1_2_2_1_LEMMA:
+                     (aa:(cc.eT _p_A_T) ->
+                      ll:(cc.eT (basics.list__t _p_A_T)) ->
+                      H:(dk_logic.eP 
+                           (dk_logic.ebP 
+                              (Listes__equal _p_A_T _p_A_equal 
+                                 (builtins.cons _p_A_T a l) 
+                                 (builtins.cons _p_A_T aa ll)))) ->
+                      dk_logic.eP 
+                        (dk_logic.ebP 
+                           (Listes__equal _p_A_T _p_A_equal 
+                              (builtins.cons _p_A_T aa ll) 
+                              (builtins.cons _p_A_T a l)))) =>
+                     zen.nnpp 
+                       (zen.forall _p_A_T 
+                          (v_Vzb:(zen.term _p_A_T) =>
+                           zen.forall (basics.list__t _p_A_T) 
+                             (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                              zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (Listes__equal _p_A_T _p_A_equal 
+                                         (builtins.cons _p_A_T a l) 
+                                         (builtins.cons _p_A_T v_Vzb v_Vac)))) 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (Listes__equal _p_A_T _p_A_equal 
+                                         (builtins.cons _p_A_T v_Vzb v_Vac) 
+                                         (builtins.cons _p_A_T a l))))))) 
+                       (v_Vbc:
+                        (zen.proof 
+                           (zen.not 
+                              (zen.forall _p_A_T 
+                                 (v_Vzb:(zen.term _p_A_T) =>
+                                  zen.forall (basics.list__t _p_A_T) 
+                                    (v_Vac:
+                                     (zen.term (basics.list__t _p_A_T)) =>
+                                     zen.imp 
+                                       (zen.triangle 
+                                          (focal.is_true 
+                                             (Listes__equal _p_A_T 
+                                                _p_A_equal 
+                                                (builtins.cons _p_A_T a l) 
+                                                (builtins.cons _p_A_T v_Vzb 
+                                                   v_Vac)))) 
+                                       (zen.triangle 
+                                          (focal.is_true 
+                                             (Listes__equal _p_A_T 
+                                                _p_A_equal 
+                                                (builtins.cons _p_A_T v_Vzb 
+                                                   v_Vac) 
+                                                (builtins.cons _p_A_T a l))))))))) =>
+                        zen.Raxiom 
+                          (zen.forall _p_A_T 
+                             (v_Vzb:(zen.term _p_A_T) =>
+                              zen.forall (basics.list__t _p_A_T) 
+                                (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                                 zen.imp 
+                                   (zen.triangle 
+                                      (focal.is_true 
+                                         (Listes__equal _p_A_T _p_A_equal 
+                                            (builtins.cons _p_A_T a l) 
+                                            (builtins.cons _p_A_T v_Vzb v_Vac)))) 
+                                   (zen.triangle 
+                                      (focal.is_true 
+                                         (Listes__equal _p_A_T _p_A_equal 
+                                            (builtins.cons _p_A_T v_Vzb v_Vac) 
+                                            (builtins.cons _p_A_T a l))))))) 
+                          __B_1_2_1_2_2_1_LEMMA v_Vbc)) 
+                      (aa:(cc.eT _p_A_T) =>
+                       ll:(cc.eT (basics.list__t _p_A_T)) =>
+                       H:
+                       (dk_logic.eP 
+                          (dk_logic.ebP 
+                             (Listes__equal _p_A_T _p_A_equal 
+                                (builtins.cons _p_A_T a l) 
+                                (builtins.cons _p_A_T aa ll)))) =>
+                       (__B_1_2_1_2_2_1_1_LEMMA:
+                        (dk_logic.eP (dk_logic.ebP (_p_A_equal aa a))) =>
+                        (__B_1_2_1_2_2_1_2_LEMMA:
+                         (dk_logic.eP 
+                            (dk_logic.ebP 
+                               (Listes__equal _p_A_T _p_A_equal ll l))) =>
+                         (__B_1_2_1_2_2_1_3_LEMMA:
+                          (dk_logic.eP 
+                             (dk_logic.ebP 
+                                (Listes__equal _p_A_T _p_A_equal 
+                                   (builtins.cons _p_A_T aa ll) 
+                                   (builtins.cons _p_A_T a l)))) =>
+                          zen.nnpp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (Listes__equal _p_A_T _p_A_equal 
+                                     (builtins.cons _p_A_T aa ll) 
+                                     (builtins.cons _p_A_T a l)))) 
+                            (v_Vzb:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (focal.is_true 
+                                         (Listes__equal _p_A_T _p_A_equal 
+                                            (builtins.cons _p_A_T aa ll) 
+                                            (builtins.cons _p_A_T a l)))))) =>
+                             zen.Raxiom 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (Listes__equal _p_A_T _p_A_equal 
+                                        (builtins.cons _p_A_T aa ll) 
+                                        (builtins.cons _p_A_T a l)))) 
+                               __B_1_2_1_2_2_1_3_LEMMA v_Vzb)) 
+                           (dk_builtins.magic_prove 
+                              (dk_logic.ebP 
+                                 (Listes__equal _p_A_T _p_A_equal 
+                                    (builtins.cons _p_A_T aa ll) 
+                                    (builtins.cons _p_A_T a l))))) 
+                          ((__B_1_2_1_2_2_1_2_1_LEMMA:
+                            (dk_logic.eP 
+                               (dk_logic.ebP 
+                                  (Listes__equal _p_A_T _p_A_equal l ll))) =>
+                            zen.nnpp 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (Listes__equal _p_A_T _p_A_equal ll l))) 
+                              (v_Vzb:
+                               (zen.proof 
+                                  (zen.not 
+                                     (zen.triangle 
+                                        (focal.is_true 
+                                           (Listes__equal _p_A_T _p_A_equal 
+                                              ll l))))) =>
+                               zen.Rall (basics.list__t _p_A_T) 
+                                 (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                                  zen.imp 
+                                    (zen.triangle 
+                                       (focal.is_true 
+                                          (Listes__equal _p_A_T _p_A_equal l 
+                                             v_Vac))) 
+                                    (zen.triangle 
+                                       (focal.is_true 
+                                          (Listes__equal _p_A_T _p_A_equal 
+                                             v_Vac l)))) ll 
+                                 (v_Vbc:
+                                  (zen.proof 
+                                     (zen.imp 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (Listes__equal _p_A_T 
+                                                 _p_A_equal l ll))) 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (Listes__equal _p_A_T 
+                                                 _p_A_equal ll l))))) =>
+                                  zen.Rimply 
+                                    (zen.triangle 
+                                       (focal.is_true 
+                                          (Listes__equal _p_A_T _p_A_equal l 
+                                             ll))) 
+                                    (zen.triangle 
+                                       (focal.is_true 
+                                          (Listes__equal _p_A_T _p_A_equal 
+                                             ll l))) 
+                                    (v_Vcc:
+                                     (zen.proof 
+                                        (zen.not 
+                                           (zen.triangle 
+                                              (focal.is_true 
+                                                 (Listes__equal _p_A_T 
+                                                    _p_A_equal l ll))))) =>
+                                     zen.Raxiom 
+                                       (zen.triangle 
+                                          (focal.is_true 
+                                             (Listes__equal _p_A_T 
+                                                _p_A_equal l ll))) 
+                                       __B_1_2_1_2_2_1_2_1_LEMMA v_Vcc) 
+                                    (v_Vdc:
+                                     (zen.proof 
+                                        (zen.triangle 
+                                           (focal.is_true 
+                                              (Listes__equal _p_A_T 
+                                                 _p_A_equal ll l)))) =>
+                                     zen.Raxiom 
+                                       (zen.triangle 
+                                          (focal.is_true 
+                                             (Listes__equal _p_A_T 
+                                                _p_A_equal ll l))) v_Vdc 
+                                       v_Vzb) v_Vbc) I_x)) 
+                             (dk_builtins.magic_prove 
+                                (dk_logic.ebP 
+                                   (Listes__equal _p_A_T _p_A_equal l ll))))) 
+                         ((__B_1_2_1_2_2_1_1_1_LEMMA:
+                           (dk_logic.eP (dk_logic.ebP (_p_A_equal a aa))) =>
+                           zen.nnpp 
+                             (zen.triangle (focal.is_true (_p_A_equal aa a))) 
+                             (v_Vzb:
+                              (zen.proof 
+                                 (zen.not 
+                                    (zen.triangle 
+                                       (focal.is_true (_p_A_equal aa a))))) =>
+                              zen.Rall _p_A_T 
+                                (v_Vac:(zen.term _p_A_T) =>
+                                 zen.forall _p_A_T 
+                                   (v_Vbc:(zen.term _p_A_T) =>
+                                    zen.imp 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_A_equal v_Vac v_Vbc))) 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_A_equal v_Vbc v_Vac))))) a 
+                                (v_Vcc:
+                                 (zen.proof 
+                                    (zen.forall _p_A_T 
+                                       (v_Vbc:(zen.term _p_A_T) =>
+                                        zen.imp 
+                                          (zen.triangle 
+                                             (focal.is_true 
+                                                (_p_A_equal a v_Vbc))) 
+                                          (zen.triangle 
+                                             (focal.is_true 
+                                                (_p_A_equal v_Vbc a)))))) =>
+                                 zen.Rall _p_A_T 
+                                   (v_Vbc:(zen.term _p_A_T) =>
+                                    zen.imp 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal a v_Vbc))) 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal v_Vbc a)))) 
+                                   aa 
+                                   (v_Vdc:
+                                    (zen.proof 
+                                       (zen.imp 
+                                          (zen.triangle 
+                                             (focal.is_true (_p_A_equal a aa))) 
+                                          (zen.triangle 
+                                             (focal.is_true (_p_A_equal aa a))))) =>
+                                    zen.Rimply 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal a aa))) 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal aa a))) 
+                                      (v_Vec:
+                                       (zen.proof 
+                                          (zen.not 
+                                             (zen.triangle 
+                                                (focal.is_true 
+                                                   (_p_A_equal a aa))))) =>
+                                       zen.Raxiom 
+                                         (zen.triangle 
+                                            (focal.is_true (_p_A_equal a aa))) 
+                                         __B_1_2_1_2_2_1_1_1_LEMMA v_Vec) 
+                                      (v_Vfc:
+                                       (zen.proof 
+                                          (zen.triangle 
+                                             (focal.is_true (_p_A_equal aa a)))) =>
+                                       zen.Raxiom 
+                                         (zen.triangle 
+                                            (focal.is_true (_p_A_equal aa a))) 
+                                         v_Vfc v_Vzb) v_Vdc) v_Vcc) 
+                                _p_A_equal_symmetric)) 
+                            (zen.nnpp 
+                               (zen.triangle 
+                                  (focal.is_true (_p_A_equal a aa))) 
+                               (v_Vbc:
+                                (zen.proof 
+                                   (zen.not 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal a aa))))) =>
+                                focal.zenon_focal_ite_bool (_p_A_equal a aa) 
+                                  (dk_builtins.call_by_value 
+                                     (basics.list__t _p_A_T) basics.bool__t 
+                                     (dk_builtins.call_by_value 
+                                        (basics.list__t _p_A_T) 
+                                        (zen.arrow (basics.list__t _p_A_T) 
+                                           basics.bool__t) 
+                                        (Listes__equal _p_A_T _p_A_equal) l) 
+                                     ll) basics.false 
+                                  (v_Vcc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (focal.is_true (_p_A_equal a aa)))) =>
+                                   v_Vdc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (dk_builtins.call_by_value 
+                                               (basics.list__t _p_A_T) 
+                                               basics.bool__t 
+                                               (dk_builtins.call_by_value 
+                                                  (basics.list__t _p_A_T) 
+                                                  (zen.arrow 
+                                                     (basics.list__t _p_A_T) 
+                                                     basics.bool__t) 
+                                                  (Listes__equal _p_A_T 
+                                                     _p_A_equal) l) ll)))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (focal.is_true (_p_A_equal a aa))) 
+                                     v_Vcc v_Vbc) 
+                                  (v_Vbc0:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (focal.is_true (_p_A_equal a aa))))) =>
+                                   v_Vec:(zen.proof zen.False) =>
+                                   zen.Rfalse v_Vec) H)))))) 
+                  ((__B_1_2_1_2_1_1_LEMMA:
+                    (dk_logic.eP 
+                       (dk_logic.not 
+                          (dk_logic.ebP 
+                             (Listes__equal _p_A_T _p_A_equal 
+                                (builtins.cons _p_A_T a l) 
+                                (builtins.nil _p_A_T))))) =>
+                    zen.nnpp 
+                      (zen.imp 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.cons _p_A_T a l) 
+                                  (builtins.nil _p_A_T)))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.nil _p_A_T) 
+                                  (builtins.cons _p_A_T a l))))) 
+                      (v_Vzb:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (Listes__equal _p_A_T _p_A_equal 
+                                         (builtins.cons _p_A_T a l) 
+                                         (builtins.nil _p_A_T)))) 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (Listes__equal _p_A_T _p_A_equal 
+                                         (builtins.nil _p_A_T) 
+                                         (builtins.cons _p_A_T a l))))))) =>
+                       zen.Rnotimply 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.cons _p_A_T a l) 
+                                  (builtins.nil _p_A_T)))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.nil _p_A_T) 
+                                  (builtins.cons _p_A_T a l)))) 
+                         (v_Vac:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (Listes__equal _p_A_T _p_A_equal 
+                                      (builtins.cons _p_A_T a l) 
+                                      (builtins.nil _p_A_T))))) =>
+                          v_Vbc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (Listes__equal _p_A_T _p_A_equal 
+                                         (builtins.nil _p_A_T) 
+                                         (builtins.cons _p_A_T a l)))))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (Listes__equal _p_A_T _p_A_equal 
+                                     (builtins.cons _p_A_T a l) 
+                                     (builtins.nil _p_A_T)))) v_Vac 
+                            __B_1_2_1_2_1_1_LEMMA) v_Vzb)) 
+                     (zen.nnpp 
+                        (zen.not 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal 
+                                    (builtins.cons _p_A_T a l) 
+                                    (builtins.nil _p_A_T))))) 
+                        (v_Vbc:
+                         (zen.proof 
+                            (zen.not 
+                               (zen.not 
+                                  (zen.triangle 
+                                     (focal.is_true 
+                                        (Listes__equal _p_A_T _p_A_equal 
+                                           (builtins.cons _p_A_T a l) 
+                                           (builtins.nil _p_A_T))))))) =>
+                         zen.Rnotnot 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (Listes__equal _p_A_T _p_A_equal 
+                                    (builtins.cons _p_A_T a l) 
+                                    (builtins.nil _p_A_T)))) 
+                           (v_Vcc:(zen.proof zen.False) => zen.Rfalse v_Vcc) 
+                           v_Vbc))))) 
+              (zen.nnpp 
+                 (zen.forall (basics.list__t _p_A_T) 
+                    (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal l v_Vzb))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal v_Vzb l))))) 
+                 (v_Vac:
+                  (zen.proof 
+                     (zen.not 
+                        (zen.forall (basics.list__t _p_A_T) 
+                           (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                            zen.imp 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (Listes__equal _p_A_T _p_A_equal l v_Vzb))) 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (Listes__equal _p_A_T _p_A_equal v_Vzb l))))))) =>
+                  zen.Raxiom 
+                    (zen.forall (basics.list__t _p_A_T) 
+                       (v_Vzb:(zen.term (basics.list__t _p_A_T)) =>
+                        zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal l v_Vzb))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal v_Vzb l))))) 
+                    I_x v_Vac))))) 
+       ((__B_1_1_1_LEMMA:
+         (dk_logic.eP 
+            (dk_logic.forall (basics.list__t _p_A_T) 
+               (y:(cc.eT (basics.list__t _p_A_T)) =>
+                dk_logic.imp 
+                  (dk_logic.ebP 
+                     (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) y)) 
+                  (dk_logic.ebP 
+                     (Listes__equal _p_A_T _p_A_equal y (builtins.nil _p_A_T)))))) =>
+         zen.nnpp 
+           (zen.triangle 
+              (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+                 (Listes__equal _p_A_T _p_A_equal) (builtins.nil _p_A_T))) 
+           (v_Vzb:
+            (zen.proof 
+               (zen.not 
+                  (zen.forall (basics.list__t _p_A_T) 
+                     (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                      zen.imp 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (Listes__equal _p_A_T _p_A_equal 
+                                 (builtins.nil _p_A_T) v_Vac))) 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (Listes__equal _p_A_T _p_A_equal v_Vac 
+                                 (builtins.nil _p_A_T)))))))) =>
+            zen.Raxiom 
+              (zen.forall (basics.list__t _p_A_T) 
+                 (v_Vac:(zen.term (basics.list__t _p_A_T)) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Listes__equal _p_A_T _p_A_equal 
+                             (builtins.nil _p_A_T) v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Listes__equal _p_A_T _p_A_equal v_Vac 
+                             (builtins.nil _p_A_T)))))) __B_1_1_1_LEMMA v_Vzb)) 
+          ((__B_1_1_1_1_LEMMA:
+            (dk_logic.eP 
+               (dk_logic.imp 
+                  (dk_logic.ebP 
+                     (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) 
+                        (builtins.nil _p_A_T))) 
+                  (dk_logic.ebP 
+                     (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) 
+                        (builtins.nil _p_A_T))))) =>
+            (__B_1_1_1_2_LEMMA:
+             (y:(cc.eT (basics.list__t _p_A_T)) ->
+              a:(cc.eT _p_A_T) ->
+              H:(dk_logic.eP 
+                   (dk_logic.imp 
+                      (dk_logic.ebP 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) y)) 
+                      (dk_logic.ebP 
+                         (Listes__equal _p_A_T _p_A_equal y 
+                            (builtins.nil _p_A_T))))) ->
+              dk_logic.eP 
+                (dk_logic.imp 
+                   (dk_logic.ebP 
+                      (Listes__equal _p_A_T _p_A_equal (builtins.nil _p_A_T) 
+                         (builtins.cons _p_A_T a y))) 
+                   (dk_logic.ebP 
+                      (Listes__equal _p_A_T _p_A_equal 
+                         (builtins.cons _p_A_T a y) (builtins.nil _p_A_T))))) =>
+             dk_builtins.magic_prove 
+               (dk_logic.forall (basics.list__t _p_A_T) 
+                  (y:(cc.eT (basics.list__t _p_A_T)) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (Listes__equal _p_A_T _p_A_equal 
+                           (builtins.nil _p_A_T) y)) 
+                     (dk_logic.ebP 
+                        (Listes__equal _p_A_T _p_A_equal y 
+                           (builtins.nil _p_A_T)))))) 
+              (y:(cc.eT (basics.list__t _p_A_T)) =>
+               a:(cc.eT _p_A_T) =>
+               H:
+               (dk_logic.eP 
+                  (dk_logic.imp 
+                     (dk_logic.ebP 
+                        (Listes__equal _p_A_T _p_A_equal 
+                           (builtins.nil _p_A_T) y)) 
+                     (dk_logic.ebP 
+                        (Listes__equal _p_A_T _p_A_equal y 
+                           (builtins.nil _p_A_T))))) =>
+               (__B_1_1_1_2_1_LEMMA:
+                (dk_logic.eP 
+                   (dk_logic.not 
+                      (dk_logic.ebP 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) (builtins.cons _p_A_T a y))))) =>
+                zen.nnpp 
+                  (zen.imp 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal 
+                              (builtins.nil _p_A_T) 
+                              (builtins.cons _p_A_T a y)))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal 
+                              (builtins.cons _p_A_T a y) 
+                              (builtins.nil _p_A_T))))) 
+                  (v_Vzb:
+                   (zen.proof 
+                      (zen.not 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (Listes__equal _p_A_T _p_A_equal 
+                                     (builtins.nil _p_A_T) 
+                                     (builtins.cons _p_A_T a y)))) 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (Listes__equal _p_A_T _p_A_equal 
+                                     (builtins.cons _p_A_T a y) 
+                                     (builtins.nil _p_A_T))))))) =>
+                   zen.Rnotimply 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal 
+                              (builtins.nil _p_A_T) 
+                              (builtins.cons _p_A_T a y)))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (Listes__equal _p_A_T _p_A_equal 
+                              (builtins.cons _p_A_T a y) 
+                              (builtins.nil _p_A_T)))) 
+                     (v_Vac:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (Listes__equal _p_A_T _p_A_equal 
+                                  (builtins.nil _p_A_T) 
+                                  (builtins.cons _p_A_T a y))))) =>
+                      v_Vbc:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (Listes__equal _p_A_T _p_A_equal 
+                                     (builtins.cons _p_A_T a y) 
+                                     (builtins.nil _p_A_T)))))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (Listes__equal _p_A_T _p_A_equal 
+                                 (builtins.nil _p_A_T) 
+                                 (builtins.cons _p_A_T a y)))) v_Vac 
+                        __B_1_1_1_2_1_LEMMA) v_Vzb)) 
+                 (zen.nnpp 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal 
+                                (builtins.nil _p_A_T) 
+                                (builtins.cons _p_A_T a y))))) 
+                    (v_Vbc:
+                     (zen.proof 
+                        (zen.not 
+                           (zen.not 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (Listes__equal _p_A_T _p_A_equal 
+                                       (builtins.nil _p_A_T) 
+                                       (builtins.cons _p_A_T a y))))))) =>
+                     zen.Rnotnot 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (Listes__equal _p_A_T _p_A_equal 
+                                (builtins.nil _p_A_T) 
+                                (builtins.cons _p_A_T a y)))) 
+                       (v_Vcc:(zen.proof zen.False) => zen.Rfalse v_Vcc) 
+                       v_Vbc)))) 
+             (zen.nnpp 
+                (zen.imp 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) (builtins.nil _p_A_T)))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) (builtins.nil _p_A_T))))) 
+                (v_Vbc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal 
+                                   (builtins.nil _p_A_T) 
+                                   (builtins.nil _p_A_T)))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (Listes__equal _p_A_T _p_A_equal 
+                                   (builtins.nil _p_A_T) 
+                                   (builtins.nil _p_A_T))))))) =>
+                 zen.Rnotimply 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) (builtins.nil _p_A_T)))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (Listes__equal _p_A_T _p_A_equal 
+                            (builtins.nil _p_A_T) (builtins.nil _p_A_T)))) 
+                   (v_Vcc:(zen.proof zen.True) =>
+                    v_Vdc:(zen.proof (zen.not zen.True)) =>
+                    zen.Raxiom 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (Listes__equal _p_A_T _p_A_equal 
+                               (builtins.nil _p_A_T) (builtins.nil _p_A_T)))) 
+                      v_Vcc v_Vdc) v_Vbc))))).
+
+def Listes__collection_create
+  :=
+  _p_A_T:cc.uT =>
+  _p_A_equal:((cc.eT _p_A_T) -> (cc.eT _p_A_T) -> cc.eT basics.bool__t) =>
+  _p_A_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall _p_A_T 
+        (x:(cc.eT _p_A_T) =>
+         dk_logic.forall _p_A_T 
+           (y:(cc.eT _p_A_T) =>
+            dk_logic.imp (dk_logic.ebP (_p_A_equal x y)) 
+              (dk_logic.ebP (_p_A_equal y x)))))) =>
+  Listes__mk_record _p_A_T (basics.list__t _p_A_T) (Listes__element _p_A_T) 
+    (Listes__equal _p_A_T _p_A_equal) 
+    (basics.Basic_object__parse (basics.list__t _p_A_T)) 
+    (basics.Basic_object__print (basics.list__t _p_A_T)) 
+    (sets.Setoid__different (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal)) 
+    (Listes__equal_reflexive _p_A_T _p_A_equal) 
+    (Listes__equal_symmetry_prop _p_A_T (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal)) 
+    (Listes__equal_transitive _p_A_T (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal)) 
+    (sets.Setoid__same_is_not_different (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal)) 
+    (Listes__equal_symmetric _p_A_T _p_A_equal _p_A_equal_symmetric) 
+    (sets.Setoid__different_is_irreflexive (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal) 
+       (sets.Setoid__different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal)) 
+       (Listes__equal_reflexive _p_A_T _p_A_equal) 
+       (sets.Setoid__same_is_not_different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal))) 
+    (sets.Setoid__different_is_complete (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal) 
+       (sets.Setoid__different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal)) 
+       (Listes__equal_reflexive _p_A_T _p_A_equal) 
+       (Listes__equal_symmetric _p_A_T _p_A_equal _p_A_equal_symmetric) 
+       (Listes__equal_transitive _p_A_T (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal)) 
+       (sets.Setoid__same_is_not_different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal))) 
+    (sets.Setoid__different_is_symmetric (basics.list__t _p_A_T) 
+       (Listes__equal _p_A_T _p_A_equal) 
+       (sets.Setoid__different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal)) 
+       (Listes__equal_symmetric _p_A_T _p_A_equal _p_A_equal_symmetric) 
+       (sets.Setoid__same_is_not_different (basics.list__t _p_A_T) 
+          (Listes__equal _p_A_T _p_A_equal))).
+

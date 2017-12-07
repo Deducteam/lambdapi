@@ -1,0 +1,526 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_logic.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def Setoid_with_zero__element :
+  abst_T:cc.uT -> abst_zero:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT => abst_zero:(cc.eT abst_T) => abst_zero.
+
+def Setoid_with_zero__is_zero :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_zero:(cc.eT abst_T) -> x:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_zero:(cc.eT abst_T) => x:(cc.eT abst_T) => abst_equal x abst_zero.
+
+def Setoid_with_zero__is_zero_spec :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_zero:(cc.eT abst_T) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  abst_equal_symmetric:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.forall abst_T 
+                                (y:(cc.eT abst_T) =>
+                                 dk_logic.imp 
+                                   (dk_logic.ebP (abst_equal x y)) 
+                                   (dk_logic.ebP (abst_equal y x)))))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.eqv 
+          (dk_logic.ebP 
+             (Setoid_with_zero__is_zero abst_T abst_equal abst_zero x)) 
+          (dk_logic.or (dk_logic.ebP (abst_equal x abst_zero)) 
+             (dk_logic.ebP (abst_equal abst_zero x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_zero:(cc.eT abst_T) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  abst_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.forall abst_T 
+           (y:(cc.eT abst_T) =>
+            dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+              (dk_logic.ebP (abst_equal y x)))))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.eqv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_zero__is_zero abst_T abst_equal abst_zero v_Vzb))) 
+          (zen.or 
+             (zen.triangle (focal.is_true (abst_equal v_Vzb abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vzb)))))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.eqv 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Setoid_with_zero__is_zero abst_T abst_equal 
+                          abst_zero v_Vzb))) 
+                 (zen.or 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal v_Vzb abst_zero))) 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.eqv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_zero__is_zero abst_T abst_equal abst_zero v_Vzb))) 
+          (zen.or 
+             (zen.triangle (focal.is_true (abst_equal v_Vzb abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vzb))))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.eqv 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Setoid_with_zero__is_zero abst_T abst_equal 
+                          abst_zero v_Vbc))) 
+                 (zen.or 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero v_Vbc))))))) =>
+        zen.Rnotequiv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_zero__is_zero abst_T abst_equal abst_zero v_Vbc))) 
+          (zen.or 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc)))) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))))) =>
+           v_Vec:
+           (zen.proof 
+              (zen.or 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                 (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc))))) =>
+           zen.Ror 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc))) 
+             (v_Vfc:
+              (zen.proof 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero)))) =>
+              zen.Raxiom 
+                (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                v_Vfc v_Vdc) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc)))) =>
+              zen.Rall abst_T 
+                (v_Vzb:(zen.term abst_T) =>
+                 zen.forall abst_T 
+                   (v_Vhc:(zen.term abst_T) =>
+                    zen.imp 
+                      (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vhc))) 
+                      (zen.triangle (focal.is_true (abst_equal v_Vhc v_Vzb))))) 
+                abst_zero 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.forall abst_T 
+                       (v_Vhc:(zen.term abst_T) =>
+                        zen.imp 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal abst_zero v_Vhc))) 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vhc abst_zero)))))) =>
+                 zen.Rall abst_T 
+                   (v_Vhc:(zen.term abst_T) =>
+                    zen.imp 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal abst_zero v_Vhc))) 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal v_Vhc abst_zero)))) 
+                   v_Vbc 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal abst_zero v_Vbc))) 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vbc abst_zero))))) =>
+                    zen.Rimply 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal abst_zero v_Vbc))) 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                      (v_Vkc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true (abst_equal abst_zero v_Vbc))))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal abst_zero v_Vbc))) 
+                         v_Vgc v_Vkc) 
+                      (v_Vfc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vbc abst_zero)))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                         v_Vfc v_Vdc) v_Vjc) v_Vic) abst_equal_symmetric) 
+             v_Vec) 
+          (v_Vfc:
+           (zen.proof 
+              (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero)))) =>
+           v_Vlc:
+           (zen.proof 
+              (zen.not 
+                 (zen.or 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero v_Vbc)))))) =>
+           zen.Rnotor 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc))) 
+             (v_Vdc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal v_Vbc abst_zero))))) =>
+              v_Vkc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero v_Vbc))))) =>
+              zen.Raxiom 
+                (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+                v_Vfc v_Vdc) v_Vlc) v_Vcc) v_Vac).
+
+def Setoid_with_zero__zero_checks_to_zero :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_zero:(cc.eT abst_T) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_is_zero_spec:(dk_logic.eP 
+                       (dk_logic.forall abst_T 
+                          (x:(cc.eT abst_T) =>
+                           dk_logic.eqv (dk_logic.ebP (abst_is_zero x)) 
+                             (dk_logic.or 
+                                (dk_logic.ebP (abst_equal x abst_zero)) 
+                                (dk_logic.ebP (abst_equal abst_zero x)))))) ->
+  dk_logic.eP (dk_logic.ebP (abst_is_zero abst_zero))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_zero:(cc.eT abst_T) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_is_zero_spec:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.eqv (dk_logic.ebP (abst_is_zero x)) 
+           (dk_logic.or (dk_logic.ebP (abst_equal x abst_zero)) 
+              (dk_logic.ebP (abst_equal abst_zero x)))))) =>
+  zen.nnpp (zen.triangle (focal.is_true (abst_is_zero abst_zero))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not (zen.triangle (focal.is_true (abst_is_zero abst_zero))))) =>
+     zen.Rall abst_T 
+       (v_Vbc:(zen.term abst_T) =>
+        zen.eqv (zen.triangle (focal.is_true (abst_is_zero v_Vbc))) 
+          (zen.or 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero v_Vbc))))) 
+       abst_zero 
+       (v_Vcc:
+        (zen.proof 
+           (zen.eqv (zen.triangle (focal.is_true (abst_is_zero abst_zero))) 
+              (zen.or 
+                 (zen.triangle 
+                    (focal.is_true (abst_equal abst_zero abst_zero))) 
+                 (zen.triangle 
+                    (focal.is_true (abst_equal abst_zero abst_zero)))))) =>
+        zen.Requiv (zen.triangle (focal.is_true (abst_is_zero abst_zero))) 
+          (zen.or 
+             (zen.triangle (focal.is_true (abst_equal abst_zero abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero abst_zero)))) 
+          (v_Vac:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle (focal.is_true (abst_is_zero abst_zero))))) =>
+           v_Vdc:
+           (zen.proof 
+              (zen.not 
+                 (zen.or 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero abst_zero))) 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero abst_zero)))))) =>
+           zen.Rnotor 
+             (zen.triangle (focal.is_true (abst_equal abst_zero abst_zero))) 
+             (zen.triangle (focal.is_true (abst_equal abst_zero abst_zero))) 
+             (v_Vec:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero abst_zero))))) =>
+              v_Vec:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero abst_zero))))) =>
+              zen.Rall abst_T 
+                (v_Vbc:(zen.term abst_T) =>
+                 zen.triangle (focal.is_true (abst_equal v_Vbc v_Vbc))) 
+                abst_zero 
+                (v_Vfc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true (abst_equal abst_zero abst_zero)))) =>
+                 zen.Raxiom 
+                   (zen.triangle 
+                      (focal.is_true (abst_equal abst_zero abst_zero))) 
+                   v_Vfc v_Vec) abst_equal_reflexive) v_Vdc) 
+          (v_Vgc:
+           (zen.proof (zen.triangle (focal.is_true (abst_is_zero abst_zero)))) =>
+           v_Vhc:
+           (zen.proof 
+              (zen.or 
+                 (zen.triangle 
+                    (focal.is_true (abst_equal abst_zero abst_zero))) 
+                 (zen.triangle 
+                    (focal.is_true (abst_equal abst_zero abst_zero))))) =>
+           zen.Raxiom 
+             (zen.triangle (focal.is_true (abst_is_zero abst_zero))) v_Vgc 
+             v_Vac) v_Vcc) abst_is_zero_spec).
+
+def Setoid_with_one__element :
+  abst_T:cc.uT -> abst_one:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT => abst_one:(cc.eT abst_T) => abst_one.
+
+def Setoid_with_one__is_one :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_one:(cc.eT abst_T) -> x:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_one:(cc.eT abst_T) => x:(cc.eT abst_T) => abst_equal x abst_one.
+
+def Setoid_with_one__is_one_spec :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_one:(cc.eT abst_T) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  abst_equal_symmetric:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.forall abst_T 
+                                (y:(cc.eT abst_T) =>
+                                 dk_logic.imp 
+                                   (dk_logic.ebP (abst_equal x y)) 
+                                   (dk_logic.ebP (abst_equal y x)))))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.eqv 
+          (dk_logic.ebP 
+             (Setoid_with_one__is_one abst_T abst_equal abst_one x)) 
+          (dk_logic.or (dk_logic.ebP (abst_equal x abst_one)) 
+             (dk_logic.ebP (abst_equal abst_one x)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_one:(cc.eT abst_T) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  abst_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.forall abst_T 
+           (y:(cc.eT abst_T) =>
+            dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+              (dk_logic.ebP (abst_equal y x)))))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.eqv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_one__is_one abst_T abst_equal abst_one v_Vzb))) 
+          (zen.or (zen.triangle (focal.is_true (abst_equal v_Vzb abst_one))) 
+             (zen.triangle (focal.is_true (abst_equal abst_one v_Vzb)))))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.eqv 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Setoid_with_one__is_one abst_T abst_equal abst_one 
+                          v_Vzb))) 
+                 (zen.or 
+                    (zen.triangle (focal.is_true (abst_equal v_Vzb abst_one))) 
+                    (zen.triangle (focal.is_true (abst_equal abst_one v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.eqv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_one__is_one abst_T abst_equal abst_one v_Vzb))) 
+          (zen.or (zen.triangle (focal.is_true (abst_equal v_Vzb abst_one))) 
+             (zen.triangle (focal.is_true (abst_equal abst_one v_Vzb))))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.eqv 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (Setoid_with_one__is_one abst_T abst_equal abst_one 
+                          v_Vbc))) 
+                 (zen.or 
+                    (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+                    (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc))))))) =>
+        zen.Rnotequiv 
+          (zen.triangle 
+             (focal.is_true 
+                (Setoid_with_one__is_one abst_T abst_equal abst_one v_Vbc))) 
+          (zen.or (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+             (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc)))) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))))) =>
+           v_Vec:
+           (zen.proof 
+              (zen.or 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+                 (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc))))) =>
+           zen.Ror 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+             (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc))) 
+             (v_Vfc:
+              (zen.proof 
+                 (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one)))) =>
+              zen.Raxiom 
+                (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+                v_Vfc v_Vdc) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc)))) =>
+              zen.Rall abst_T 
+                (v_Vzb:(zen.term abst_T) =>
+                 zen.forall abst_T 
+                   (v_Vhc:(zen.term abst_T) =>
+                    zen.imp 
+                      (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vhc))) 
+                      (zen.triangle (focal.is_true (abst_equal v_Vhc v_Vzb))))) 
+                abst_one 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.forall abst_T 
+                       (v_Vhc:(zen.term abst_T) =>
+                        zen.imp 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal abst_one v_Vhc))) 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vhc abst_one)))))) =>
+                 zen.Rall abst_T 
+                   (v_Vhc:(zen.term abst_T) =>
+                    zen.imp 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal abst_one v_Vhc))) 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal v_Vhc abst_one)))) v_Vbc 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.imp 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal abst_one v_Vbc))) 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vbc abst_one))))) =>
+                    zen.Rimply 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal abst_one v_Vbc))) 
+                      (zen.triangle 
+                         (focal.is_true (abst_equal v_Vbc abst_one))) 
+                      (v_Vkc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true (abst_equal abst_one v_Vbc))))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal abst_one v_Vbc))) 
+                         v_Vgc v_Vkc) 
+                      (v_Vfc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true (abst_equal v_Vbc abst_one)))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vbc abst_one))) 
+                         v_Vfc v_Vdc) v_Vjc) v_Vic) abst_equal_symmetric) 
+             v_Vec) 
+          (v_Vfc:
+           (zen.proof 
+              (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one)))) =>
+           v_Vlc:
+           (zen.proof 
+              (zen.not 
+                 (zen.or 
+                    (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+                    (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc)))))) =>
+           zen.Rnotor 
+             (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+             (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc))) 
+             (v_Vdc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))))) =>
+              v_Vkc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle (focal.is_true (abst_equal abst_one v_Vbc))))) =>
+              zen.Raxiom 
+                (zen.triangle (focal.is_true (abst_equal v_Vbc abst_one))) 
+                v_Vfc v_Vdc) v_Vlc) v_Vcc) v_Vac).
+

@@ -1,0 +1,47 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+
+def Div__div :
+  (cc.eT basics.int__t) -> (cc.eT basics.int__t) -> cc.eT basics.int__t.
+
+[b, a]
+  Div__div a b
+  -->
+  dk_bool.ite basics.int__t 
+    (basics._bar__bar_ (basics._lt__equal_ a (dk_int.from_nat builtins.0)) 
+       (basics._lt__equal_ b (dk_int.from_nat builtins.0))) 
+    (dk_int.from_nat builtins.0) 
+    (dk_bool.ite basics.int__t (basics._lt_ a b) 
+       (dk_int.from_nat builtins.0) 
+       (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+          ((a:(cc.eT basics.int__t) =>
+            b:(cc.eT basics.int__t) =>
+            dk_builtins.call_by_value basics.int__t basics.int__t 
+              (dk_builtins.call_by_value basics.int__t 
+                 (cc.Arrow basics.int__t basics.int__t) Div__div a) b) 
+             (basics._dash_ a b) b))).
+
+def Div_paper__div :
+  (cc.eT basics.int__t) -> (cc.eT basics.int__t) -> cc.eT basics.int__t.
+
+[b, a]
+  Div_paper__div a b
+  -->
+  dk_bool.ite basics.int__t 
+    (basics._bar__bar_ (basics._lt__equal_ a (dk_int.from_nat builtins.0)) 
+       (basics._lt__equal_ b (dk_int.from_nat builtins.0))) 
+    (dk_int.from_nat builtins.0) 
+    (dk_bool.ite basics.int__t (basics._lt_ a b) 
+       (dk_int.from_nat builtins.0) 
+       (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+          ((a:(cc.eT basics.int__t) =>
+            b:(cc.eT basics.int__t) =>
+            dk_builtins.call_by_value basics.int__t basics.int__t 
+              (dk_builtins.call_by_value basics.int__t 
+                 (cc.Arrow basics.int__t basics.int__t) Div_paper__div a) b) 
+             (basics._dash_ a b) b))).
+

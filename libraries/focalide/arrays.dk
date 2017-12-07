@@ -1,0 +1,25 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE arrays_externals.
+
+def array__t := __var_a:cc.uT => arrays_externals.bi__array __var_a.
+
+def array_set :
+  __var_a:cc.uT ->
+  (cc.eT (array__t __var_a)) ->
+  (cc.eT basics.int__t) -> (cc.eT __var_a) -> cc.eT basics.unit__t
+  :=
+  __var_a:cc.uT => arrays_externals.bi__array_set __var_a.
+
+def array_create :
+  __var_a:cc.uT ->
+  (cc.eT basics.int__t) -> (cc.eT __var_a) -> cc.eT (array__t __var_a)
+  :=
+  __var_a:cc.uT => arrays_externals.bi__array_create __var_a.
+
+def array_get :
+  __var_a:cc.uT ->
+  (cc.eT (array__t __var_a)) -> (cc.eT basics.int__t) -> cc.eT __var_a
+  :=
+  __var_a:cc.uT => arrays_externals.bi__array_get __var_a.
+

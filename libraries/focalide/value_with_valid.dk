@@ -1,0 +1,2914 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_tuple.
+#REQUIRE zen.
+#REQUIRE focal.
+#REQUIRE sets.
+#REQUIRE pair.
+#REQUIRE valid_meas.
+#REQUIRE basic_type.
+
+Imp_value_with_valid__me_as_species :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) -> Type.
+
+Imp_value_with_valid__mk_record :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  Imp_value_with_valid__rf_T:cc.uT ->
+  Imp_value_with_valid__rf_constr:((cc.eT T_T) ->
+                                   (cc.eT V_T) ->
+                                   cc.eT Imp_value_with_valid__rf_T) ->
+  Imp_value_with_valid__rf_equal:((cc.eT Imp_value_with_valid__rf_T) ->
+                                  (cc.eT Imp_value_with_valid__rf_T) ->
+                                  cc.eT basics.bool__t) ->
+  Imp_value_with_valid__rf_parse:((cc.eT basics.string__t) ->
+                                  cc.eT Imp_value_with_valid__rf_T) ->
+  Imp_value_with_valid__rf_prj_a:((cc.eT Imp_value_with_valid__rf_T) ->
+                                  cc.eT T_T) ->
+  Imp_value_with_valid__rf_prj_b:((cc.eT Imp_value_with_valid__rf_T) ->
+                                  cc.eT V_T) ->
+  Imp_value_with_valid__rf_element:(cc.eT Imp_value_with_valid__rf_T) ->
+  Imp_value_with_valid__rf_parse2:((cc.eT basics.string__t) ->
+                                   (cc.eT basics.string__t) ->
+                                   cc.eT Imp_value_with_valid__rf_T) ->
+  Imp_value_with_valid__rf_different:((cc.eT Imp_value_with_valid__rf_T) ->
+                                      (cc.eT Imp_value_with_valid__rf_T) ->
+                                      cc.eT basics.bool__t) ->
+  Imp_value_with_valid__rf_prj_a_is_first_of_pair:(dk_logic.eP 
+                                                     (dk_logic.forall T_T 
+                                                        (n1:(cc.eT T_T) =>
+                                                         dk_logic.forall V_T 
+                                                           (n2:(cc.eT V_T) =>
+                                                            dk_logic.ebP 
+                                                              (_p_T_equal 
+                                                                 (Imp_value_with_valid__rf_prj_a 
+                                                                    (
+                                                                    Imp_value_with_valid__rf_constr 
+                                                                    n1 n2)) 
+                                                                 n1))))) ->
+  Imp_value_with_valid__rf_consistency_rule:((cc.eT 
+                                                Imp_value_with_valid__rf_T) ->
+                                             (cc.eT 
+                                                Imp_value_with_valid__rf_T) ->
+                                             cc.eT basics.bool__t) ->
+  Imp_value_with_valid__rf_def_equal:(dk_logic.eP 
+                                        (dk_logic.forall 
+                                           Imp_value_with_valid__rf_T 
+                                           (p1:
+                                            (cc.eT Imp_value_with_valid__rf_T) =>
+                                            dk_logic.forall 
+                                              Imp_value_with_valid__rf_T 
+                                              (p2:
+                                               (cc.eT 
+                                                  Imp_value_with_valid__rf_T) =>
+                                               dk_logic.eqv 
+                                                 (dk_logic.ebP 
+                                                    (Imp_value_with_valid__rf_equal 
+                                                       p1 p2)) 
+                                                 (dk_logic.and 
+                                                    (dk_logic.ebP 
+                                                       (_p_T_equal 
+                                                          (Imp_value_with_valid__rf_prj_a 
+                                                             p1) 
+                                                          (Imp_value_with_valid__rf_prj_a 
+                                                             p2))) 
+                                                    (dk_logic.ebP 
+                                                       (_p_V_equal 
+                                                          (Imp_value_with_valid__rf_prj_b 
+                                                             p1) 
+                                                          (Imp_value_with_valid__rf_prj_b 
+                                                             p2)))))))) ->
+  Imp_value_with_valid__rf_print:((cc.eT Imp_value_with_valid__rf_T) ->
+                                  cc.eT basics.string__t) ->
+  Imp_value_with_valid__rf_prj_b_is_snd_of_pair:(dk_logic.eP 
+                                                   (dk_logic.forall T_T 
+                                                      (n1:(cc.eT T_T) =>
+                                                       dk_logic.forall V_T 
+                                                         (n2:(cc.eT V_T) =>
+                                                          dk_logic.ebP 
+                                                            (_p_V_equal 
+                                                               (Imp_value_with_valid__rf_prj_b 
+                                                                  (Imp_value_with_valid__rf_constr 
+                                                                    n1 n2)) 
+                                                               n2))))) ->
+  Imp_value_with_valid__rf_unicite_1:(dk_logic.eP 
+                                        (dk_logic.forall 
+                                           Imp_value_with_valid__rf_T 
+                                           (a:
+                                            (cc.eT Imp_value_with_valid__rf_T) =>
+                                            dk_logic.ebP 
+                                              (Imp_value_with_valid__rf_equal 
+                                                 (Imp_value_with_valid__rf_constr 
+                                                    (Imp_value_with_valid__rf_prj_a 
+                                                       a) 
+                                                    (Imp_value_with_valid__rf_prj_b 
+                                                       a)) a)))) ->
+  Imp_value_with_valid__rf_unicite_2:(dk_logic.eP 
+                                        (dk_logic.forall 
+                                           Imp_value_with_valid__rf_T 
+                                           (a:
+                                            (cc.eT Imp_value_with_valid__rf_T) =>
+                                            dk_logic.ebP 
+                                              (Imp_value_with_valid__rf_equal 
+                                                 a 
+                                                 (Imp_value_with_valid__rf_constr 
+                                                    (Imp_value_with_valid__rf_prj_a 
+                                                       a) 
+                                                    (Imp_value_with_valid__rf_prj_b 
+                                                       a)))))) ->
+  Imp_value_with_valid__rf_same_is_not_different:(dk_logic.eP 
+                                                    (dk_logic.forall 
+                                                       Imp_value_with_valid__rf_T 
+                                                       (x:
+                                                        (cc.eT 
+                                                           Imp_value_with_valid__rf_T) =>
+                                                        dk_logic.forall 
+                                                          Imp_value_with_valid__rf_T 
+                                                          (y:
+                                                           (cc.eT 
+                                                              Imp_value_with_valid__rf_T) =>
+                                                           dk_logic.eqv 
+                                                             (dk_logic.ebP 
+                                                                (Imp_value_with_valid__rf_different 
+                                                                   x y)) 
+                                                             (dk_logic.not 
+                                                                (dk_logic.ebP 
+                                                                   (Imp_value_with_valid__rf_equal 
+                                                                    x y))))))) ->
+  Imp_value_with_valid__rf_consistency_rule_reflexive:(dk_logic.eP 
+                                                         (dk_logic.forall 
+                                                            Imp_value_with_valid__rf_T 
+                                                            (a:
+                                                             (cc.eT 
+                                                                Imp_value_with_valid__rf_T) =>
+                                                             dk_logic.ebP 
+                                                               (Imp_value_with_valid__rf_consistency_rule 
+                                                                  a a)))) ->
+  Imp_value_with_valid__rf_consistency_rule_symmetric:(dk_logic.eP 
+                                                         (dk_logic.forall 
+                                                            Imp_value_with_valid__rf_T 
+                                                            (a:
+                                                             (cc.eT 
+                                                                Imp_value_with_valid__rf_T) =>
+                                                             dk_logic.forall 
+                                                               Imp_value_with_valid__rf_T 
+                                                               (b:
+                                                                (cc.eT 
+                                                                   Imp_value_with_valid__rf_T) =>
+                                                                dk_logic.imp 
+                                                                  (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_consistency_rule 
+                                                                    a b)) 
+                                                                  (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_consistency_rule 
+                                                                    b a)))))) ->
+  Imp_value_with_valid__rf_equal_transitive:(dk_logic.eP 
+                                               (dk_logic.forall 
+                                                  Imp_value_with_valid__rf_T 
+                                                  (x:
+                                                   (cc.eT 
+                                                      Imp_value_with_valid__rf_T) =>
+                                                   dk_logic.forall 
+                                                     Imp_value_with_valid__rf_T 
+                                                     (y:
+                                                      (cc.eT 
+                                                         Imp_value_with_valid__rf_T) =>
+                                                      dk_logic.forall 
+                                                        Imp_value_with_valid__rf_T 
+                                                        (z:
+                                                         (cc.eT 
+                                                            Imp_value_with_valid__rf_T) =>
+                                                         dk_logic.imp 
+                                                           (dk_logic.ebP 
+                                                              (Imp_value_with_valid__rf_equal 
+                                                                 x y)) 
+                                                           (dk_logic.imp 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_equal 
+                                                                    y z)) 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_equal 
+                                                                    x z)))))))) ->
+  Imp_value_with_valid__rf_def_equal1:(dk_logic.eP 
+                                         (dk_logic.forall T_T 
+                                            (n1:(cc.eT T_T) =>
+                                             dk_logic.forall T_T 
+                                               (n3:(cc.eT T_T) =>
+                                                dk_logic.forall V_T 
+                                                  (n2:(cc.eT V_T) =>
+                                                   dk_logic.forall V_T 
+                                                     (n4:(cc.eT V_T) =>
+                                                      dk_logic.eqv 
+                                                        (dk_logic.ebP 
+                                                           (Imp_value_with_valid__rf_equal 
+                                                              (Imp_value_with_valid__rf_constr 
+                                                                 n1 n2) 
+                                                              (Imp_value_with_valid__rf_constr 
+                                                                 n3 n4))) 
+                                                        (dk_logic.and 
+                                                           (dk_logic.ebP 
+                                                              (_p_T_equal n1 
+                                                                 n3)) 
+                                                           (dk_logic.ebP 
+                                                              (_p_V_equal n2 
+                                                                 n4))))))))) ->
+  Imp_value_with_valid__rf_equal_reflexive:(dk_logic.eP 
+                                              (dk_logic.forall 
+                                                 Imp_value_with_valid__rf_T 
+                                                 (x:
+                                                  (cc.eT 
+                                                     Imp_value_with_valid__rf_T) =>
+                                                  dk_logic.ebP 
+                                                    (Imp_value_with_valid__rf_equal 
+                                                       x x)))) ->
+  Imp_value_with_valid__rf_equal_reflexive2:(dk_logic.eP 
+                                               (dk_logic.forall T_T 
+                                                  (n1:(cc.eT T_T) =>
+                                                   dk_logic.forall V_T 
+                                                     (n2:(cc.eT V_T) =>
+                                                      dk_logic.ebP 
+                                                        (Imp_value_with_valid__rf_equal 
+                                                           (Imp_value_with_valid__rf_constr 
+                                                              n1 n2) 
+                                                           (Imp_value_with_valid__rf_constr 
+                                                              n1 n2)))))) ->
+  Imp_value_with_valid__rf_equal_symmetric2:(dk_logic.eP 
+                                               (dk_logic.forall T_T 
+                                                  (n1:(cc.eT T_T) =>
+                                                   dk_logic.forall T_T 
+                                                     (n3:(cc.eT T_T) =>
+                                                      dk_logic.forall V_T 
+                                                        (n2:(cc.eT V_T) =>
+                                                         dk_logic.forall V_T 
+                                                           (n4:(cc.eT V_T) =>
+                                                            dk_logic.imp 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_equal 
+                                                                    (
+                                                                    Imp_value_with_valid__rf_constr 
+                                                                    n1 n2) 
+                                                                    (
+                                                                    Imp_value_with_valid__rf_constr 
+                                                                    n3 n4))) 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_equal 
+                                                                    (
+                                                                    Imp_value_with_valid__rf_constr 
+                                                                    n3 n4) 
+                                                                    (
+                                                                    Imp_value_with_valid__rf_constr 
+                                                                    n1 n2))))))))) ->
+  Imp_value_with_valid__rf_equal_transitive2:(dk_logic.eP 
+                                                (dk_logic.forall T_T 
+                                                   (n1:(cc.eT T_T) =>
+                                                    dk_logic.forall T_T 
+                                                      (n3:(cc.eT T_T) =>
+                                                       dk_logic.forall T_T 
+                                                         (n5:(cc.eT T_T) =>
+                                                          dk_logic.forall 
+                                                            V_T 
+                                                            (n2:
+                                                             (cc.eT V_T) =>
+                                                             dk_logic.forall 
+                                                               V_T 
+                                                               (n4:
+                                                                (cc.eT V_T) =>
+                                                                dk_logic.forall 
+                                                                  V_T 
+                                                                  (n6:
+                                                                   (cc.eT V_T) =>
+                                                                   dk_logic.imp 
+                                                                    (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_equal 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n1 n2) 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n3 n4))) 
+                                                                    (dk_logic.imp 
+                                                                    (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_equal 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n3 n4) 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n5 n6))) 
+                                                                    (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_equal 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n1 n2) 
+                                                                    (Imp_value_with_valid__rf_constr 
+                                                                    n5 n6)))))))))))) ->
+  Imp_value_with_valid__rf_different_is_irreflexive:(dk_logic.eP 
+                                                       (dk_logic.forall 
+                                                          Imp_value_with_valid__rf_T 
+                                                          (x:
+                                                           (cc.eT 
+                                                              Imp_value_with_valid__rf_T) =>
+                                                           dk_logic.not 
+                                                             (dk_logic.ebP 
+                                                                (Imp_value_with_valid__rf_different 
+                                                                   x x))))) ->
+  Imp_value_with_valid__rf_equal_symmetric:(dk_logic.eP 
+                                              (dk_logic.forall 
+                                                 Imp_value_with_valid__rf_T 
+                                                 (x:
+                                                  (cc.eT 
+                                                     Imp_value_with_valid__rf_T) =>
+                                                  dk_logic.forall 
+                                                    Imp_value_with_valid__rf_T 
+                                                    (y:
+                                                     (cc.eT 
+                                                        Imp_value_with_valid__rf_T) =>
+                                                     dk_logic.imp 
+                                                       (dk_logic.ebP 
+                                                          (Imp_value_with_valid__rf_equal 
+                                                             x y)) 
+                                                       (dk_logic.ebP 
+                                                          (Imp_value_with_valid__rf_equal 
+                                                             y x)))))) ->
+  Imp_value_with_valid__rf_different_is_complete:(dk_logic.eP 
+                                                    (dk_logic.forall 
+                                                       Imp_value_with_valid__rf_T 
+                                                       (x:
+                                                        (cc.eT 
+                                                           Imp_value_with_valid__rf_T) =>
+                                                        dk_logic.forall 
+                                                          Imp_value_with_valid__rf_T 
+                                                          (y:
+                                                           (cc.eT 
+                                                              Imp_value_with_valid__rf_T) =>
+                                                           dk_logic.forall 
+                                                             Imp_value_with_valid__rf_T 
+                                                             (z:
+                                                              (cc.eT 
+                                                                 Imp_value_with_valid__rf_T) =>
+                                                              dk_logic.imp 
+                                                                (dk_logic.ebP 
+                                                                   (Imp_value_with_valid__rf_different 
+                                                                    x y)) 
+                                                                (dk_logic.or 
+                                                                   (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_different 
+                                                                    x z)) 
+                                                                   (dk_logic.ebP 
+                                                                    (Imp_value_with_valid__rf_different 
+                                                                    y z)))))))) ->
+  Imp_value_with_valid__rf_different_is_symmetric:(dk_logic.eP 
+                                                     (dk_logic.forall 
+                                                        Imp_value_with_valid__rf_T 
+                                                        (x:
+                                                         (cc.eT 
+                                                            Imp_value_with_valid__rf_T) =>
+                                                         dk_logic.forall 
+                                                           Imp_value_with_valid__rf_T 
+                                                           (y:
+                                                            (cc.eT 
+                                                               Imp_value_with_valid__rf_T) =>
+                                                            dk_logic.imp 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_different 
+                                                                    x y)) 
+                                                              (dk_logic.ebP 
+                                                                 (Imp_value_with_valid__rf_different 
+                                                                    y x)))))) ->
+  Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal.
+
+def proj_Imp_value_with_valid__rf_T :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  cc.uT.
+
+[Imp_value_with_valid__rf_T]
+  proj_Imp_value_with_valid__rf_T _ _ _ _ (Imp_value_with_valid__mk_record _ 
+    _ _ _ Imp_value_with_valid__rf_T _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_T.
+
+def proj_Imp_value_with_valid__rf_constr :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT T_T) ->
+  (cc.eT V_T) ->
+  cc.eT 
+    (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record).
+
+[Imp_value_with_valid__rf_constr]
+  proj_Imp_value_with_valid__rf_constr _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ 
+    Imp_value_with_valid__rf_constr _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_constr.
+
+def proj_Imp_value_with_valid__rf_equal :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT basics.bool__t.
+
+[Imp_value_with_valid__rf_equal]
+  proj_Imp_value_with_valid__rf_equal _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_equal _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal.
+
+def proj_Imp_value_with_valid__rf_parse :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT basics.string__t) ->
+  cc.eT 
+    (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record).
+
+[Imp_value_with_valid__rf_parse]
+  proj_Imp_value_with_valid__rf_parse _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_parse _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_parse.
+
+def proj_Imp_value_with_valid__rf_prj_a :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT T_T.
+
+[Imp_value_with_valid__rf_prj_a]
+  proj_Imp_value_with_valid__rf_prj_a _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_prj_a _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Imp_value_with_valid__rf_prj_a.
+
+def proj_Imp_value_with_valid__rf_prj_b :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT V_T.
+
+[Imp_value_with_valid__rf_prj_b]
+  proj_Imp_value_with_valid__rf_prj_b _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_prj_b _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_value_with_valid__rf_prj_b.
+
+def proj_Imp_value_with_valid__rf_element :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  cc.eT 
+    (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record).
+
+[Imp_value_with_valid__rf_element]
+  proj_Imp_value_with_valid__rf_element _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_element _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_value_with_valid__rf_element.
+
+def proj_Imp_value_with_valid__rf_parse2 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT basics.string__t) ->
+  (cc.eT basics.string__t) ->
+  cc.eT 
+    (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record).
+
+[Imp_value_with_valid__rf_parse2]
+  proj_Imp_value_with_valid__rf_parse2 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_parse2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _)
+  -->
+  Imp_value_with_valid__rf_parse2.
+
+def proj_Imp_value_with_valid__rf_different :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT basics.bool__t.
+
+[Imp_value_with_valid__rf_different]
+  proj_Imp_value_with_valid__rf_different _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_different _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _)
+  -->
+  Imp_value_with_valid__rf_different.
+
+def proj_Imp_value_with_valid__rf_prj_a_is_first_of_pair :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall V_T 
+          (n2:(cc.eT V_T) =>
+           dk_logic.ebP 
+             (_p_T_equal 
+                (proj_Imp_value_with_valid__rf_prj_a T_T V_T _p_T_equal 
+                   _p_V_equal record 
+                   (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                      _p_V_equal record n1 n2)) n1)))).
+
+[Imp_value_with_valid__rf_prj_a_is_first_of_pair]
+  proj_Imp_value_with_valid__rf_prj_a_is_first_of_pair _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_prj_a_is_first_of_pair _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_prj_a_is_first_of_pair.
+
+def proj_Imp_value_with_valid__rf_consistency_rule :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT basics.bool__t.
+
+[Imp_value_with_valid__rf_consistency_rule]
+  proj_Imp_value_with_valid__rf_consistency_rule _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_consistency_rule _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _)
+  -->
+  Imp_value_with_valid__rf_consistency_rule.
+
+def proj_Imp_value_with_valid__rf_def_equal :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (p1:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (p2:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                   _p_V_equal record p1 p2)) 
+             (dk_logic.and 
+                (dk_logic.ebP 
+                   (_p_T_equal 
+                      (proj_Imp_value_with_valid__rf_prj_a T_T V_T 
+                         _p_T_equal _p_V_equal record p1) 
+                      (proj_Imp_value_with_valid__rf_prj_a T_T V_T 
+                         _p_T_equal _p_V_equal record p2))) 
+                (dk_logic.ebP 
+                   (_p_V_equal 
+                      (proj_Imp_value_with_valid__rf_prj_b T_T V_T 
+                         _p_T_equal _p_V_equal record p1) 
+                      (proj_Imp_value_with_valid__rf_prj_b T_T V_T 
+                         _p_T_equal _p_V_equal record p2))))))).
+
+[Imp_value_with_valid__rf_def_equal]
+  proj_Imp_value_with_valid__rf_def_equal _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_def_equal _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_def_equal.
+
+def proj_Imp_value_with_valid__rf_print :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  (cc.eT 
+     (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record)) ->
+  cc.eT basics.string__t.
+
+[Imp_value_with_valid__rf_print]
+  proj_Imp_value_with_valid__rf_print _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_print _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_print.
+
+def proj_Imp_value_with_valid__rf_prj_b_is_snd_of_pair :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall V_T 
+          (n2:(cc.eT V_T) =>
+           dk_logic.ebP 
+             (_p_V_equal 
+                (proj_Imp_value_with_valid__rf_prj_b T_T V_T _p_T_equal 
+                   _p_V_equal record 
+                   (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                      _p_V_equal record n1 n2)) n2)))).
+
+[Imp_value_with_valid__rf_prj_b_is_snd_of_pair]
+  proj_Imp_value_with_valid__rf_prj_b_is_snd_of_pair _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_prj_b_is_snd_of_pair _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_value_with_valid__rf_prj_b_is_snd_of_pair.
+
+def proj_Imp_value_with_valid__rf_unicite_1 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (a:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.ebP 
+          (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal _p_V_equal 
+             record 
+             (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                _p_V_equal record 
+                (proj_Imp_value_with_valid__rf_prj_a T_T V_T _p_T_equal 
+                   _p_V_equal record a) 
+                (proj_Imp_value_with_valid__rf_prj_b T_T V_T _p_T_equal 
+                   _p_V_equal record a)) a))).
+
+[Imp_value_with_valid__rf_unicite_1]
+  proj_Imp_value_with_valid__rf_unicite_1 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_unicite_1 _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_unicite_1.
+
+def proj_Imp_value_with_valid__rf_unicite_2 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (a:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.ebP 
+          (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal _p_V_equal 
+             record a 
+             (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                _p_V_equal record 
+                (proj_Imp_value_with_valid__rf_prj_a T_T V_T _p_T_equal 
+                   _p_V_equal record a) 
+                (proj_Imp_value_with_valid__rf_prj_b T_T V_T _p_T_equal 
+                   _p_V_equal record a))))).
+
+[Imp_value_with_valid__rf_unicite_2]
+  proj_Imp_value_with_valid__rf_unicite_2 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_unicite_2 _ _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_unicite_2.
+
+def proj_Imp_value_with_valid__rf_same_is_not_different :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (y:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.eqv 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_different T_T V_T _p_T_equal 
+                   _p_V_equal record x y)) 
+             (dk_logic.not 
+                (dk_logic.ebP 
+                   (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                      _p_V_equal record x y)))))).
+
+[Imp_value_with_valid__rf_same_is_not_different]
+  proj_Imp_value_with_valid__rf_same_is_not_different _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    Imp_value_with_valid__rf_same_is_not_different _ _ _ _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_same_is_not_different.
+
+def proj_Imp_value_with_valid__rf_consistency_rule_reflexive :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (a:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.ebP 
+          (proj_Imp_value_with_valid__rf_consistency_rule T_T V_T _p_T_equal 
+             _p_V_equal record a a))).
+
+[Imp_value_with_valid__rf_consistency_rule_reflexive]
+  proj_Imp_value_with_valid__rf_consistency_rule_reflexive _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ Imp_value_with_valid__rf_consistency_rule_reflexive _ _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_value_with_valid__rf_consistency_rule_reflexive.
+
+def proj_Imp_value_with_valid__rf_consistency_rule_symmetric :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (a:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (b:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_consistency_rule T_T V_T 
+                   _p_T_equal _p_V_equal record a b)) 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_consistency_rule T_T V_T 
+                   _p_T_equal _p_V_equal record b a))))).
+
+[Imp_value_with_valid__rf_consistency_rule_symmetric]
+  proj_Imp_value_with_valid__rf_consistency_rule_symmetric _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ Imp_value_with_valid__rf_consistency_rule_symmetric _ _ _ _ _ _ _ _ 
+    _ _)
+  -->
+  Imp_value_with_valid__rf_consistency_rule_symmetric.
+
+def proj_Imp_value_with_valid__rf_equal_transitive :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (y:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.forall 
+             (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                record) 
+             (z:
+              (cc.eT 
+                 (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal 
+                    _p_V_equal record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP 
+                   (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                      _p_V_equal record x y)) 
+                (dk_logic.imp 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                         _p_T_equal _p_V_equal record y z)) 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                         _p_T_equal _p_V_equal record x z))))))).
+
+[Imp_value_with_valid__rf_equal_transitive]
+  proj_Imp_value_with_valid__rf_equal_transitive _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ Imp_value_with_valid__rf_equal_transitive _ _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal_transitive.
+
+def proj_Imp_value_with_valid__rf_def_equal1 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall T_T 
+          (n3:(cc.eT T_T) =>
+           dk_logic.forall V_T 
+             (n2:(cc.eT V_T) =>
+              dk_logic.forall V_T 
+                (n4:(cc.eT V_T) =>
+                 dk_logic.eqv 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                         _p_T_equal _p_V_equal record 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n1 n2) 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n3 n4))) 
+                   (dk_logic.and (dk_logic.ebP (_p_T_equal n1 n3)) 
+                      (dk_logic.ebP (_p_V_equal n2 n4)))))))).
+
+[Imp_value_with_valid__rf_def_equal1]
+  proj_Imp_value_with_valid__rf_def_equal1 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ Imp_value_with_valid__rf_def_equal1 _ _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_def_equal1.
+
+def proj_Imp_value_with_valid__rf_equal_reflexive :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.ebP 
+          (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal _p_V_equal 
+             record x x))).
+
+[Imp_value_with_valid__rf_equal_reflexive]
+  proj_Imp_value_with_valid__rf_equal_reflexive _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ Imp_value_with_valid__rf_equal_reflexive _ _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal_reflexive.
+
+def proj_Imp_value_with_valid__rf_equal_reflexive2 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall V_T 
+          (n2:(cc.eT V_T) =>
+           dk_logic.ebP 
+             (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                _p_V_equal record 
+                (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                   _p_V_equal record n1 n2) 
+                (proj_Imp_value_with_valid__rf_constr T_T V_T _p_T_equal 
+                   _p_V_equal record n1 n2))))).
+
+[Imp_value_with_valid__rf_equal_reflexive2]
+  proj_Imp_value_with_valid__rf_equal_reflexive2 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ Imp_value_with_valid__rf_equal_reflexive2 _ _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal_reflexive2.
+
+def proj_Imp_value_with_valid__rf_equal_symmetric2 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall T_T 
+          (n3:(cc.eT T_T) =>
+           dk_logic.forall V_T 
+             (n2:(cc.eT V_T) =>
+              dk_logic.forall V_T 
+                (n4:(cc.eT V_T) =>
+                 dk_logic.imp 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                         _p_T_equal _p_V_equal record 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n1 n2) 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n3 n4))) 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                         _p_T_equal _p_V_equal record 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n3 n4) 
+                         (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                            _p_T_equal _p_V_equal record n1 n2)))))))).
+
+[Imp_value_with_valid__rf_equal_symmetric2]
+  proj_Imp_value_with_valid__rf_equal_symmetric2 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ Imp_value_with_valid__rf_equal_symmetric2 _ _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal_symmetric2.
+
+def proj_Imp_value_with_valid__rf_equal_transitive2 :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall T_T 
+       (n1:(cc.eT T_T) =>
+        dk_logic.forall T_T 
+          (n3:(cc.eT T_T) =>
+           dk_logic.forall T_T 
+             (n5:(cc.eT T_T) =>
+              dk_logic.forall V_T 
+                (n2:(cc.eT V_T) =>
+                 dk_logic.forall V_T 
+                   (n4:(cc.eT V_T) =>
+                    dk_logic.forall V_T 
+                      (n6:(cc.eT V_T) =>
+                       dk_logic.imp 
+                         (dk_logic.ebP 
+                            (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                               _p_T_equal _p_V_equal record 
+                               (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                                  _p_T_equal _p_V_equal record n1 n2) 
+                               (proj_Imp_value_with_valid__rf_constr T_T V_T 
+                                  _p_T_equal _p_V_equal record n3 n4))) 
+                         (dk_logic.imp 
+                            (dk_logic.ebP 
+                               (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                                  _p_T_equal _p_V_equal record 
+                                  (proj_Imp_value_with_valid__rf_constr T_T 
+                                     V_T _p_T_equal _p_V_equal record n3 n4) 
+                                  (proj_Imp_value_with_valid__rf_constr T_T 
+                                     V_T _p_T_equal _p_V_equal record n5 n6))) 
+                            (dk_logic.ebP 
+                               (proj_Imp_value_with_valid__rf_equal T_T V_T 
+                                  _p_T_equal _p_V_equal record 
+                                  (proj_Imp_value_with_valid__rf_constr T_T 
+                                     V_T _p_T_equal _p_V_equal record n1 n2) 
+                                  (proj_Imp_value_with_valid__rf_constr T_T 
+                                     V_T _p_T_equal _p_V_equal record n5 n6))))))))))).
+
+[Imp_value_with_valid__rf_equal_transitive2]
+  proj_Imp_value_with_valid__rf_equal_transitive2 _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ Imp_value_with_valid__rf_equal_transitive2 _ _ _ _)
+  -->
+  Imp_value_with_valid__rf_equal_transitive2.
+
+def proj_Imp_value_with_valid__rf_different_is_irreflexive :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.not 
+          (dk_logic.ebP 
+             (proj_Imp_value_with_valid__rf_different T_T V_T _p_T_equal 
+                _p_V_equal record x x)))).
+
+[Imp_value_with_valid__rf_different_is_irreflexive]
+  proj_Imp_value_with_valid__rf_different_is_irreflexive _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ Imp_value_with_valid__rf_different_is_irreflexive _ _ 
+    _)
+  -->
+  Imp_value_with_valid__rf_different_is_irreflexive.
+
+def proj_Imp_value_with_valid__rf_equal_symmetric :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (y:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                   _p_V_equal record x y)) 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_equal T_T V_T _p_T_equal 
+                   _p_V_equal record y x))))).
+
+[Imp_value_with_valid__rf_equal_symmetric]
+  proj_Imp_value_with_valid__rf_equal_symmetric _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ Imp_value_with_valid__rf_equal_symmetric _ _)
+  -->
+  Imp_value_with_valid__rf_equal_symmetric.
+
+def proj_Imp_value_with_valid__rf_different_is_complete :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (y:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.forall 
+             (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                record) 
+             (z:
+              (cc.eT 
+                 (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal 
+                    _p_V_equal record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP 
+                   (proj_Imp_value_with_valid__rf_different T_T V_T 
+                      _p_T_equal _p_V_equal record x y)) 
+                (dk_logic.or 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_different T_T V_T 
+                         _p_T_equal _p_V_equal record x z)) 
+                   (dk_logic.ebP 
+                      (proj_Imp_value_with_valid__rf_different T_T V_T 
+                         _p_T_equal _p_V_equal record y z))))))).
+
+[Imp_value_with_valid__rf_different_is_complete]
+  proj_Imp_value_with_valid__rf_different_is_complete _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ Imp_value_with_valid__rf_different_is_complete _)
+  -->
+  Imp_value_with_valid__rf_different_is_complete.
+
+def proj_Imp_value_with_valid__rf_different_is_symmetric :
+  T_T:cc.uT ->
+  V_T:cc.uT ->
+  _p_T_equal:((cc.eT T_T) -> (cc.eT T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT V_T) -> (cc.eT V_T) -> cc.eT basics.bool__t) ->
+  record:(Imp_value_with_valid__me_as_species T_T V_T _p_T_equal _p_V_equal) ->
+  dk_logic.eP 
+    (dk_logic.forall 
+       (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal record) 
+       (x:
+        (cc.eT 
+           (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+              record)) =>
+        dk_logic.forall 
+          (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+             record) 
+          (y:
+           (cc.eT 
+              (proj_Imp_value_with_valid__rf_T T_T V_T _p_T_equal _p_V_equal 
+                 record)) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_different T_T V_T _p_T_equal 
+                   _p_V_equal record x y)) 
+             (dk_logic.ebP 
+                (proj_Imp_value_with_valid__rf_different T_T V_T _p_T_equal 
+                   _p_V_equal record y x))))).
+
+[Imp_value_with_valid__rf_different_is_symmetric]
+  proj_Imp_value_with_valid__rf_different_is_symmetric _ _ _ _ 
+    (Imp_value_with_valid__mk_record _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+    _ _ _ _ _ _ _ _ _ _ _ _ Imp_value_with_valid__rf_different_is_symmetric)
+  -->
+  Imp_value_with_valid__rf_different_is_symmetric.
+
+def Imp_value_with_valid__parse2 :
+  _p_T_T:cc.uT ->
+  _p_V_T:cc.uT ->
+  _p_T_parse:((cc.eT basics.string__t) -> cc.eT _p_T_T) ->
+  _p_V_parse:((cc.eT basics.string__t) -> cc.eT _p_V_T) ->
+  abst_T:cc.uT ->
+  abst_constr:((cc.eT _p_T_T) -> (cc.eT _p_V_T) -> cc.eT abst_T) ->
+  x:(cc.eT basics.string__t) -> y:(cc.eT basics.string__t) -> cc.eT abst_T
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_parse:((cc.eT basics.string__t) -> cc.eT _p_T_T) =>
+  _p_V_parse:((cc.eT basics.string__t) -> cc.eT _p_V_T) =>
+  abst_T:cc.uT =>
+  abst_constr:((cc.eT _p_T_T) -> (cc.eT _p_V_T) -> cc.eT abst_T) =>
+  x:(cc.eT basics.string__t) =>
+  y:(cc.eT basics.string__t) => abst_constr (_p_T_parse x) (_p_V_parse y).
+
+def Imp_value_with_valid__consistency_rule :
+  _p_T_T:cc.uT ->
+  _p_V_T:cc.uT ->
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) ->
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) ->
+  _p_V_valid:(cc.eT _p_V_T) ->
+  abst_T:cc.uT ->
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) ->
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) ->
+  x:(cc.eT abst_T) -> y:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) =>
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) =>
+  _p_V_valid:(cc.eT _p_V_T) =>
+  abst_T:cc.uT =>
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) =>
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) =>
+  x:(cc.eT abst_T) =>
+  y:(cc.eT abst_T) =>
+  dk_bool.ite basics.bool__t (_p_V_equal (abst_prj_b x) _p_V_valid) 
+    (dk_bool.ite basics.bool__t (_p_V_equal (abst_prj_b y) _p_V_valid) 
+       (_p_T_equal (abst_prj_a x) (abst_prj_a y)) dk_bool.false) 
+    (dk_bool.ite basics.bool__t (_p_V_equal (abst_prj_b y) _p_V_valid) 
+       dk_bool.false dk_bool.true).
+
+def Imp_value_with_valid__print :
+  _p_T_T:cc.uT ->
+  _p_V_T:cc.uT ->
+  _p_T_print:((cc.eT _p_T_T) -> cc.eT basics.string__t) ->
+  _p_V_print:((cc.eT _p_V_T) -> cc.eT basics.string__t) ->
+  abst_T:cc.uT ->
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) ->
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) ->
+  x:(cc.eT abst_T) -> cc.eT basics.string__t
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_print:((cc.eT _p_T_T) -> cc.eT basics.string__t) =>
+  _p_V_print:((cc.eT _p_V_T) -> cc.eT basics.string__t) =>
+  abst_T:cc.uT =>
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) =>
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) =>
+  x:(cc.eT abst_T) =>
+  (a:(cc.eT basics.string__t) =>
+   (b:(cc.eT basics.string__t) =>
+    (c:(cc.eT basics.string__t) =>
+     (d:(cc.eT basics.string__t) =>
+      (e:(cc.eT basics.string__t) =>
+       basics._hat_ a (basics._hat_ b (basics._hat_ c (basics._hat_ d e)))) 
+        (builtins.string_cons 
+           (builtins.char_of_nat 
+              (builtins.S 
+                 (builtins.S 
+                    (builtins.S 
+                       (builtins.S 
+                          (builtins.S 
+                             (builtins.S 
+                                (builtins.S 
+                                   (builtins.S 
+                                      (builtins.S 
+                                         (builtins.S 
+                                            (builtins.S 
+                                               (builtins.S 
+                                                  (builtins.S 
+                                                     (builtins.S 
+                                                        (builtins.S 
+                                                           (builtins.S 
+                                                              (builtins.S 
+                                                                 (builtins.S 
+                                                                    (
+                                                                    builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))) 
+           builtins.string_nil)) (_p_V_print (abst_prj_b x))) 
+      (builtins.string_cons 
+         (builtins.char_of_nat 
+            (builtins.S 
+               (builtins.S 
+                  (builtins.S 
+                     (builtins.S 
+                        (builtins.S 
+                           (builtins.S 
+                              (builtins.S 
+                                 (builtins.S 
+                                    (builtins.S 
+                                       (builtins.S 
+                                          (builtins.S 
+                                             (builtins.S 
+                                                (builtins.S 
+                                                   (builtins.S 
+                                                      (builtins.S 
+                                                         (builtins.S 
+                                                            (builtins.S 
+                                                               (builtins.S 
+                                                                  (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))))) 
+         (builtins.string_cons 
+            (builtins.char_of_nat 
+               (builtins.S 
+                  (builtins.S 
+                     (builtins.S 
+                        (builtins.S 
+                           (builtins.S 
+                              (builtins.S 
+                                 (builtins.S 
+                                    (builtins.S 
+                                       (builtins.S 
+                                          (builtins.S 
+                                             (builtins.S 
+                                                (builtins.S 
+                                                   (builtins.S 
+                                                      (builtins.S 
+                                                         (builtins.S 
+                                                            (builtins.S 
+                                                               (builtins.S 
+                                                                  (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))) 
+            builtins.string_nil))) (_p_T_print (abst_prj_a x))) 
+    (builtins.string_cons 
+       (builtins.char_of_nat 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))) 
+       (builtins.string_cons 
+          (builtins.char_of_nat 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))) 
+          builtins.string_nil)).
+
+def Imp_value_with_valid__consistency_rule_reflexive :
+  _p_T_T:cc.uT ->
+  _p_V_T:cc.uT ->
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) ->
+  _p_T_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall _p_T_T 
+                             (x:(cc.eT _p_T_T) =>
+                              dk_logic.ebP (_p_T_equal x x)))) ->
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) ->
+  _p_V_valid:(cc.eT _p_V_T) ->
+  abst_T:cc.uT ->
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) ->
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (a:(cc.eT abst_T) =>
+        dk_logic.ebP 
+          (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T _p_T_equal 
+             _p_V_equal _p_V_valid abst_T abst_prj_a abst_prj_b a a)))
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) =>
+  _p_T_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_T_T 
+        (x:(cc.eT _p_T_T) => dk_logic.ebP (_p_T_equal x x)))) =>
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) =>
+  _p_V_valid:(cc.eT _p_V_T) =>
+  abst_T:cc.uT =>
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) =>
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle 
+          (focal.is_true 
+             (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                abst_prj_b v_Vzb v_Vzb)))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.triangle 
+                 (focal.is_true 
+                    (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                       _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                       abst_prj_b v_Vzb v_Vzb)))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.triangle 
+          (focal.is_true 
+             (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                abst_prj_b v_Vzb v_Vzb))) 
+       (v_Vbc:(zen.term abst_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true 
+                    (dk_bool.ite basics.bool__t 
+                       (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+                       (dk_bool.ite basics.bool__t 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+                          (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)) 
+                          basics.false) 
+                       (dk_bool.ite basics.bool__t 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+                          basics.false basics.true)))))) =>
+        focal.zenon_focal_ite_bool_n 
+          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+          (dk_bool.ite basics.bool__t 
+             (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+             (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)) basics.false) 
+          (dk_bool.ite basics.bool__t 
+             (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) basics.false 
+             basics.true) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.triangle 
+                 (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid)))) =>
+           v_Vec:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (dk_bool.ite basics.bool__t 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+                          (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)) 
+                          basics.false))))) =>
+           focal.zenon_focal_ite_bool_n 
+             (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+             (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)) basics.false 
+             (v_Vdc0:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid)))) =>
+              v_Vfc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)))))) =>
+              zen.Rall _p_T_T 
+                (v_Vgc:(zen.term _p_T_T) =>
+                 zen.triangle (focal.is_true (_p_T_equal v_Vgc v_Vgc))) 
+                (abst_prj_a v_Vbc) 
+                (v_Vhc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc))))) =>
+                 zen.Raxiom 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (_p_T_equal (abst_prj_a v_Vbc) (abst_prj_a v_Vbc)))) 
+                   v_Vhc v_Vfc) _p_T_equal_reflexive) 
+             (v_Vic:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid))))) =>
+              v_Vjc:(zen.proof (zen.not zen.False)) =>
+              zen.Raxiom 
+                (zen.triangle 
+                   (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid))) 
+                v_Vdc v_Vic) v_Vec) 
+          (v_Vic:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid))))) =>
+           v_Vkc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (dk_bool.ite basics.bool__t 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) 
+                          basics.false basics.true))))) =>
+           focal.zenon_focal_ite_bool_n 
+             (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid) basics.false 
+             basics.true 
+             (v_Vdc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid)))) =>
+              v_Vjc:(zen.proof (zen.not zen.False)) =>
+              zen.Raxiom 
+                (zen.triangle 
+                   (focal.is_true (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid))) 
+                v_Vdc v_Vic) 
+             (v_Vic0:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (_p_V_equal (abst_prj_b v_Vbc) _p_V_valid))))) =>
+              v_Vlc:(zen.proof (zen.not zen.True)) => zen.Rnottrue v_Vlc) 
+             v_Vkc) v_Vcc) v_Vac).
+
+def Imp_value_with_valid__consistency_rule_symmetric :
+  _p_T_T:cc.uT ->
+  _p_V_T:cc.uT ->
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) ->
+  _p_T_equal_symmetric:(dk_logic.eP 
+                          (dk_logic.forall _p_T_T 
+                             (x:(cc.eT _p_T_T) =>
+                              dk_logic.forall _p_T_T 
+                                (y:(cc.eT _p_T_T) =>
+                                 dk_logic.imp 
+                                   (dk_logic.ebP (_p_T_equal x y)) 
+                                   (dk_logic.ebP (_p_T_equal y x)))))) ->
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) ->
+  _p_V_valid:(cc.eT _p_V_T) ->
+  abst_T:cc.uT ->
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) ->
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (a:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (b:(cc.eT abst_T) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                   _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                   abst_prj_b a b)) 
+             (dk_logic.ebP 
+                (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                   _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                   abst_prj_b b a)))))
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) =>
+  _p_T_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall _p_T_T 
+        (x:(cc.eT _p_T_T) =>
+         dk_logic.forall _p_T_T 
+           (y:(cc.eT _p_T_T) =>
+            dk_logic.imp (dk_logic.ebP (_p_T_equal x y)) 
+              (dk_logic.ebP (_p_T_equal y x)))))) =>
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) =>
+  _p_V_valid:(cc.eT _p_V_T) =>
+  abst_T:cc.uT =>
+  abst_prj_a:((cc.eT abst_T) -> cc.eT _p_T_T) =>
+  abst_prj_b:((cc.eT abst_T) -> cc.eT _p_V_T) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vac v_Vzb)))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vac v_Vzb)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vac v_Vzb))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vac v_Vcc))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vcc v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vac v_Vcc)))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (Imp_value_with_valid__consistency_rule _p_T_T 
+                             _p_V_T _p_T_equal _p_V_equal _p_V_valid abst_T 
+                             abst_prj_a abst_prj_b v_Vec v_Vcc)))))) =>
+           zen.Rnotimply 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vcc v_Vec))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T 
+                      _p_T_equal _p_V_equal _p_V_valid abst_T abst_prj_a 
+                      abst_prj_b v_Vec v_Vcc))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (dk_bool.ite basics.bool__t 
+                          (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                          (dk_bool.ite basics.bool__t 
+                             (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                             (_p_T_equal (abst_prj_a v_Vcc) 
+                                (abst_prj_a v_Vec)) basics.false) 
+                          (dk_bool.ite basics.bool__t 
+                             (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                             basics.false basics.true))))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (dk_bool.ite basics.bool__t 
+                             (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                             (dk_bool.ite basics.bool__t 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                                (_p_T_equal (abst_prj_a v_Vec) 
+                                   (abst_prj_a v_Vcc)) basics.false) 
+                             (dk_bool.ite basics.bool__t 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                                basics.false basics.true)))))) =>
+              focal.zenon_focal_ite_bool_n 
+                (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                (dk_bool.ite basics.bool__t 
+                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                   (_p_T_equal (abst_prj_a v_Vec) (abst_prj_a v_Vcc)) 
+                   basics.false) 
+                (dk_bool.ite basics.bool__t 
+                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) basics.false 
+                   basics.true) 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (_p_V_equal (abst_prj_b v_Vec) _p_V_valid)))) =>
+                 v_Vjc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (dk_bool.ite basics.bool__t 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                                (_p_T_equal (abst_prj_a v_Vec) 
+                                   (abst_prj_a v_Vcc)) basics.false))))) =>
+                 focal.zenon_focal_ite_bool_n 
+                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                   (_p_T_equal (abst_prj_a v_Vec) (abst_prj_a v_Vcc)) 
+                   basics.false 
+                   (v_Vkc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid)))) =>
+                    v_Vlc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_T_equal (abst_prj_a v_Vec) 
+                                   (abst_prj_a v_Vcc)))))) =>
+                    focal.zenon_focal_ite_bool 
+                      (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         (_p_T_equal (abst_prj_a v_Vcc) (abst_prj_a v_Vec)) 
+                         basics.false) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         basics.false basics.true) 
+                      (v_Vkc0:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid)))) =>
+                       v_Vmc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   (_p_T_equal (abst_prj_a v_Vcc) 
+                                      (abst_prj_a v_Vec)) basics.false)))) =>
+                       focal.zenon_focal_ite_bool 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         (_p_T_equal (abst_prj_a v_Vcc) (abst_prj_a v_Vec)) 
+                         basics.false 
+                         (v_Vic0:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid)))) =>
+                          v_Vnc:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_T_equal (abst_prj_a v_Vcc) 
+                                      (abst_prj_a v_Vec))))) =>
+                          zen.Rall _p_T_T 
+                            (v_Voc:(zen.term _p_T_T) =>
+                             zen.forall _p_T_T 
+                               (v_Vpc:(zen.term _p_T_T) =>
+                                zen.imp 
+                                  (zen.triangle 
+                                     (focal.is_true (_p_T_equal v_Voc v_Vpc))) 
+                                  (zen.triangle 
+                                     (focal.is_true (_p_T_equal v_Vpc v_Voc))))) 
+                            (abst_prj_a v_Vcc) 
+                            (v_Vqc:
+                             (zen.proof 
+                                (zen.forall _p_T_T 
+                                   (v_Vpc:(zen.term _p_T_T) =>
+                                    zen.imp 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_T_equal (abst_prj_a v_Vcc) 
+                                               v_Vpc))) 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_T_equal v_Vpc 
+                                               (abst_prj_a v_Vcc))))))) =>
+                             zen.Rall _p_T_T 
+                               (v_Vpc:(zen.term _p_T_T) =>
+                                zen.imp 
+                                  (zen.triangle 
+                                     (focal.is_true 
+                                        (_p_T_equal (abst_prj_a v_Vcc) v_Vpc))) 
+                                  (zen.triangle 
+                                     (focal.is_true 
+                                        (_p_T_equal v_Vpc (abst_prj_a v_Vcc))))) 
+                               (abst_prj_a v_Vec) 
+                               (v_Vrc:
+                                (zen.proof 
+                                   (zen.imp 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_T_equal (abst_prj_a v_Vcc) 
+                                               (abst_prj_a v_Vec)))) 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_T_equal (abst_prj_a v_Vec) 
+                                               (abst_prj_a v_Vcc)))))) =>
+                                zen.Rimply 
+                                  (zen.triangle 
+                                     (focal.is_true 
+                                        (_p_T_equal (abst_prj_a v_Vcc) 
+                                           (abst_prj_a v_Vec)))) 
+                                  (zen.triangle 
+                                     (focal.is_true 
+                                        (_p_T_equal (abst_prj_a v_Vec) 
+                                           (abst_prj_a v_Vcc)))) 
+                                  (v_Vsc:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (focal.is_true 
+                                               (_p_T_equal 
+                                                  (abst_prj_a v_Vcc) 
+                                                  (abst_prj_a v_Vec)))))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (focal.is_true 
+                                           (_p_T_equal (abst_prj_a v_Vcc) 
+                                              (abst_prj_a v_Vec)))) v_Vnc 
+                                     v_Vsc) 
+                                  (v_Vtc:
+                                   (zen.proof 
+                                      (zen.triangle 
+                                         (focal.is_true 
+                                            (_p_T_equal (abst_prj_a v_Vec) 
+                                               (abst_prj_a v_Vcc))))) =>
+                                   zen.Raxiom 
+                                     (zen.triangle 
+                                        (focal.is_true 
+                                           (_p_T_equal (abst_prj_a v_Vec) 
+                                              (abst_prj_a v_Vcc)))) v_Vtc 
+                                     v_Vlc) v_Vrc) v_Vqc) 
+                            _p_T_equal_symmetric) 
+                         (v_Vuc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (_p_V_equal (abst_prj_b v_Vec) 
+                                         _p_V_valid))))) =>
+                          v_Vvc:(zen.proof zen.False) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (_p_V_equal (abst_prj_b v_Vec) _p_V_valid))) 
+                            v_Vic v_Vuc) v_Vmc) 
+                      (v_Vwc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))))) =>
+                       v_Vxc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   basics.false basics.true)))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))) 
+                         v_Vkc v_Vwc) v_Vgc) 
+                   (v_Vwc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))))) =>
+                    v_Vyc:(zen.proof (zen.not zen.False)) =>
+                    focal.zenon_focal_ite_bool 
+                      (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         (_p_T_equal (abst_prj_a v_Vcc) (abst_prj_a v_Vec)) 
+                         basics.false) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         basics.false basics.true) 
+                      (v_Vkc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid)))) =>
+                       v_Vmc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   (_p_T_equal (abst_prj_a v_Vcc) 
+                                      (abst_prj_a v_Vec)) basics.false)))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))) 
+                         v_Vkc v_Vwc) 
+                      (v_Vwc0:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))))) =>
+                       v_Vxc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   basics.false basics.true)))) =>
+                       focal.zenon_focal_ite_bool 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         basics.false basics.true 
+                         (v_Vic0:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid)))) =>
+                          v_Vvc:(zen.proof zen.False) => zen.Rfalse v_Vvc) 
+                         (v_Vuc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (_p_V_equal (abst_prj_b v_Vec) 
+                                         _p_V_valid))))) =>
+                          v_Vzc:(zen.proof zen.True) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (_p_V_equal (abst_prj_b v_Vec) _p_V_valid))) 
+                            v_Vic v_Vuc) v_Vxc) v_Vgc) v_Vjc) 
+                (v_Vuc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_V_equal (abst_prj_b v_Vec) _p_V_valid))))) =>
+                 v_Vad:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (dk_bool.ite basics.bool__t 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                                basics.false basics.true))))) =>
+                 focal.zenon_focal_ite_bool_n 
+                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) basics.false 
+                   basics.true 
+                   (v_Vkc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid)))) =>
+                    v_Vyc:(zen.proof (zen.not zen.False)) =>
+                    focal.zenon_focal_ite_bool 
+                      (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         (_p_T_equal (abst_prj_a v_Vcc) (abst_prj_a v_Vec)) 
+                         basics.false) 
+                      (dk_bool.ite basics.bool__t 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         basics.false basics.true) 
+                      (v_Vkc0:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid)))) =>
+                       v_Vmc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   (_p_T_equal (abst_prj_a v_Vcc) 
+                                      (abst_prj_a v_Vec)) basics.false)))) =>
+                       focal.zenon_focal_ite_bool 
+                         (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                         (_p_T_equal (abst_prj_a v_Vcc) (abst_prj_a v_Vec)) 
+                         basics.false 
+                         (v_Vic:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid)))) =>
+                          v_Vnc:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_T_equal (abst_prj_a v_Vcc) 
+                                      (abst_prj_a v_Vec))))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (_p_V_equal (abst_prj_b v_Vec) _p_V_valid))) 
+                            v_Vic v_Vuc) 
+                         (v_Vuc0:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (_p_V_equal (abst_prj_b v_Vec) 
+                                         _p_V_valid))))) =>
+                          v_Vvc:(zen.proof zen.False) => zen.Rfalse v_Vvc) 
+                         v_Vmc) 
+                      (v_Vwc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))))) =>
+                       v_Vxc:
+                       (zen.proof 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (dk_bool.ite basics.bool__t 
+                                   (_p_V_equal (abst_prj_b v_Vec) _p_V_valid) 
+                                   basics.false basics.true)))) =>
+                       zen.Raxiom 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))) 
+                         v_Vkc v_Vwc) v_Vgc) 
+                   (v_Vwc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (_p_V_equal (abst_prj_b v_Vcc) _p_V_valid))))) =>
+                    v_Vbd:(zen.proof (zen.not zen.True)) =>
+                    zen.Rnottrue v_Vbd) v_Vad) v_Vhc) v_Vfc) v_Vdc) v_Vbc).
+
+def Imp_value_with_valid__collection_create
+  :=
+  _p_T_T:cc.uT =>
+  _p_V_T:cc.uT =>
+  _p_T_element:(cc.eT _p_T_T) =>
+  _p_T_equal:((cc.eT _p_T_T) -> (cc.eT _p_T_T) -> cc.eT basics.bool__t) =>
+  _p_T_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_T_T 
+        (x:(cc.eT _p_T_T) => dk_logic.ebP (_p_T_equal x x)))) =>
+  _p_T_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall _p_T_T 
+        (x:(cc.eT _p_T_T) =>
+         dk_logic.forall _p_T_T 
+           (y:(cc.eT _p_T_T) =>
+            dk_logic.imp (dk_logic.ebP (_p_T_equal x y)) 
+              (dk_logic.ebP (_p_T_equal y x)))))) =>
+  _p_T_equal_transitive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_T_T 
+        (x:(cc.eT _p_T_T) =>
+         dk_logic.forall _p_T_T 
+           (y:(cc.eT _p_T_T) =>
+            dk_logic.forall _p_T_T 
+              (z:(cc.eT _p_T_T) =>
+               dk_logic.imp (dk_logic.ebP (_p_T_equal x y)) 
+                 (dk_logic.imp (dk_logic.ebP (_p_T_equal y z)) 
+                    (dk_logic.ebP (_p_T_equal x z)))))))) =>
+  _p_T_parse:((cc.eT basics.string__t) -> cc.eT _p_T_T) =>
+  _p_T_print:((cc.eT _p_T_T) -> cc.eT basics.string__t) =>
+  _p_V_element:(cc.eT _p_V_T) =>
+  _p_V_equal:((cc.eT _p_V_T) -> (cc.eT _p_V_T) -> cc.eT basics.bool__t) =>
+  _p_V_valid:(cc.eT _p_V_T) =>
+  _p_V_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_V_T 
+        (x:(cc.eT _p_V_T) => dk_logic.ebP (_p_V_equal x x)))) =>
+  _p_V_equal_symmetric:
+  (dk_logic.eP 
+     (dk_logic.forall _p_V_T 
+        (x:(cc.eT _p_V_T) =>
+         dk_logic.forall _p_V_T 
+           (y:(cc.eT _p_V_T) =>
+            dk_logic.imp (dk_logic.ebP (_p_V_equal x y)) 
+              (dk_logic.ebP (_p_V_equal y x)))))) =>
+  _p_V_equal_transitive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_V_T 
+        (x:(cc.eT _p_V_T) =>
+         dk_logic.forall _p_V_T 
+           (y:(cc.eT _p_V_T) =>
+            dk_logic.forall _p_V_T 
+              (z:(cc.eT _p_V_T) =>
+               dk_logic.imp (dk_logic.ebP (_p_V_equal x y)) 
+                 (dk_logic.imp (dk_logic.ebP (_p_V_equal y z)) 
+                    (dk_logic.ebP (_p_V_equal x z)))))))) =>
+  _p_V_parse:((cc.eT basics.string__t) -> cc.eT _p_V_T) =>
+  _p_V_print:((cc.eT _p_V_T) -> cc.eT basics.string__t) =>
+  Imp_value_with_valid__mk_record _p_T_T _p_V_T _p_T_equal _p_V_equal 
+    (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+    (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+    (basics.Basic_object__parse (dk_tuple.prod _p_T_T _p_V_T)) 
+    (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+    (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+    (pair.Imp_pair__element _p_T_T _p_V_T _p_T_element _p_V_element 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T)) 
+    (Imp_value_with_valid__parse2 _p_T_T _p_V_T _p_T_parse _p_V_parse 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T)) 
+    (sets.Setoid__different (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal)) 
+    (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+    (Imp_value_with_valid__consistency_rule _p_T_T _p_V_T _p_T_equal 
+       _p_V_equal _p_V_valid (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+       (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (Imp_value_with_valid__print _p_T_T _p_V_T _p_T_print _p_V_print 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (pair.Imp_pair__unicite_1 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (pair.Imp_pair__unicite_2 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (sets.Setoid__same_is_not_different (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal)) 
+    (Imp_value_with_valid__consistency_rule_reflexive _p_T_T _p_V_T 
+       _p_T_equal _p_T_equal_reflexive _p_V_equal _p_V_valid 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (Imp_value_with_valid__consistency_rule_symmetric _p_T_T _p_V_T 
+       _p_T_equal _p_T_equal_symmetric _p_V_equal _p_V_valid 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+    (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+       _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+       (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+       (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+    (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal _p_T_equal_symmetric 
+       _p_T_equal_transitive _p_V_equal _p_V_equal_symmetric 
+       _p_V_equal_transitive (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+       (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+       (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+    (pair.Imp_pair__equal_reflexive _p_T_T _p_V_T 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+       (pair.Imp_pair__unicite_1 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+       (pair.Imp_pair__unicite_2 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+       (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+    (pair.Imp_pair__equal_reflexive2 _p_T_T _p_V_T _p_T_equal 
+       _p_T_equal_reflexive _p_V_equal _p_V_equal_reflexive 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+          _p_V_equal_symmetric _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+    (pair.Imp_pair__equal_symmetric2 _p_T_T _p_V_T _p_T_equal 
+       _p_T_equal_symmetric _p_V_equal _p_V_equal_symmetric 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+          _p_V_equal_symmetric _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+    (pair.Imp_pair__equal_transitive2 _p_T_T _p_V_T _p_T_equal 
+       _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+          _p_V_equal_symmetric _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+    (sets.Setoid__different_is_irreflexive (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (sets.Setoid__different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal)) 
+       (pair.Imp_pair__equal_reflexive _p_T_T _p_V_T 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__unicite_1 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__unicite_2 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+             (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+       (sets.Setoid__same_is_not_different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal))) 
+    (pair.Imp_pair__equal_symmetric _p_T_T _p_V_T 
+       (dk_tuple.prod _p_T_T _p_V_T) (pair.Imp_pair__constr _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+       (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+       (pair.Imp_pair__unicite_1 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+       (pair.Imp_pair__unicite_2 _p_T_T _p_V_T (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+       (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+       (pair.Imp_pair__equal_symmetric2 _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_symmetric _p_V_equal _p_V_equal_symmetric 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+             _p_V_equal_symmetric _p_V_equal_transitive 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T _p_T_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+             (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+             (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T))))) 
+    (sets.Setoid__different_is_complete (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (sets.Setoid__different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal)) 
+       (pair.Imp_pair__equal_reflexive _p_T_T _p_V_T 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__unicite_1 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__unicite_2 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+             (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T)))) 
+       (pair.Imp_pair__equal_symmetric _p_T_T _p_V_T 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__unicite_1 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__unicite_2 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+             (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+          (pair.Imp_pair__equal_symmetric2 _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_symmetric _p_V_equal _p_V_equal_symmetric 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+                _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+                _p_V_equal_symmetric _p_V_equal_transitive 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T 
+                   _p_T_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+                (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal 
+                   _p_V_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                   (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+                (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T 
+                   _p_V_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_b _p_T_T _p_V_T))))) 
+       (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+          _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+       (sets.Setoid__same_is_not_different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal))) 
+    (sets.Setoid__different_is_symmetric (dk_tuple.prod _p_T_T _p_V_T) 
+       (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+       (sets.Setoid__different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal)) 
+       (pair.Imp_pair__equal_symmetric _p_T_T _p_V_T 
+          (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__constr _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+          (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+          (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+          (pair.Imp_pair__unicite_1 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__unicite_2 _p_T_T _p_V_T 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+          (pair.Imp_pair__equal_transitive _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_transitive _p_V_equal _p_V_equal_transitive 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+             (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+             (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal _p_V_equal 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T))) 
+          (pair.Imp_pair__equal_symmetric2 _p_T_T _p_V_T _p_T_equal 
+             _p_T_equal_symmetric _p_V_equal _p_V_equal_symmetric 
+             (dk_tuple.prod _p_T_T _p_V_T) 
+             (pair.Imp_pair__constr _p_T_T _p_V_T) 
+             (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+             (pair.Imp_pair__def_equal1 _p_T_T _p_V_T _p_T_equal 
+                _p_T_equal_symmetric _p_T_equal_transitive _p_V_equal 
+                _p_V_equal_symmetric _p_V_equal_transitive 
+                (dk_tuple.prod _p_T_T _p_V_T) 
+                (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_b _p_T_T _p_V_T) 
+                (pair.Imp_pair__prj_a_is_first_of_pair _p_T_T _p_V_T 
+                   _p_T_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_a _p_T_T _p_V_T)) 
+                (pair.Imp_pair__def_equal _p_T_T _p_V_T _p_T_equal 
+                   _p_V_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal) 
+                   (pair.Imp_pair__prj_a _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_b _p_T_T _p_V_T)) 
+                (pair.Imp_pair__prj_b_is_snd_of_pair _p_T_T _p_V_T 
+                   _p_V_equal (dk_tuple.prod _p_T_T _p_V_T) 
+                   (pair.Imp_pair__constr _p_T_T _p_V_T) 
+                   (pair.Imp_pair__prj_b _p_T_T _p_V_T))))) 
+       (sets.Setoid__same_is_not_different (dk_tuple.prod _p_T_T _p_V_T) 
+          (pair.Imp_pair__equal _p_T_T _p_V_T _p_T_equal _p_V_equal))).
+
+def Coll_int_value_with_valid__effective_collection
+  :=
+  Imp_value_with_valid__collection_create 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__element basic_type.Coll_int_value__equal 
+    basic_type.Coll_int_value__equal_reflexive 
+    basic_type.Coll_int_value__equal_symmetric 
+    basic_type.Coll_int_value__equal_transitive 
+    basic_type.Coll_int_value__parse basic_type.Coll_int_value__print 
+    valid_meas.Coll_valid_meas__element valid_meas.Coll_valid_meas__equal 
+    valid_meas.Coll_valid_meas__valid 
+    valid_meas.Coll_valid_meas__equal_reflexive 
+    valid_meas.Coll_valid_meas__equal_symmetric 
+    valid_meas.Coll_valid_meas__equal_transitive 
+    valid_meas.Coll_valid_meas__parse valid_meas.Coll_valid_meas__print.
+
+def Coll_int_value_with_valid__me_as_carrier
+  :=
+  dk_tuple.prod basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier.
+
+def Coll_int_value_with_valid__constr
+  :=
+  proj_Imp_value_with_valid__rf_constr 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal
+  :=
+  proj_Imp_value_with_valid__rf_equal 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__parse
+  :=
+  proj_Imp_value_with_valid__rf_parse 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__prj_a
+  :=
+  proj_Imp_value_with_valid__rf_prj_a 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__prj_b
+  :=
+  proj_Imp_value_with_valid__rf_prj_b 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__element
+  :=
+  proj_Imp_value_with_valid__rf_element 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__parse2
+  :=
+  proj_Imp_value_with_valid__rf_parse2 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__different
+  :=
+  proj_Imp_value_with_valid__rf_different 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__prj_a_is_first_of_pair
+  :=
+  proj_Imp_value_with_valid__rf_prj_a_is_first_of_pair 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__consistency_rule
+  :=
+  proj_Imp_value_with_valid__rf_consistency_rule 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__def_equal
+  :=
+  proj_Imp_value_with_valid__rf_def_equal 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__print
+  :=
+  proj_Imp_value_with_valid__rf_print 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__prj_b_is_snd_of_pair
+  :=
+  proj_Imp_value_with_valid__rf_prj_b_is_snd_of_pair 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__unicite_1
+  :=
+  proj_Imp_value_with_valid__rf_unicite_1 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__unicite_2
+  :=
+  proj_Imp_value_with_valid__rf_unicite_2 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__same_is_not_different
+  :=
+  proj_Imp_value_with_valid__rf_same_is_not_different 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__consistency_rule_reflexive
+  :=
+  proj_Imp_value_with_valid__rf_consistency_rule_reflexive 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__consistency_rule_symmetric
+  :=
+  proj_Imp_value_with_valid__rf_consistency_rule_symmetric 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_transitive
+  :=
+  proj_Imp_value_with_valid__rf_equal_transitive 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__def_equal1
+  :=
+  proj_Imp_value_with_valid__rf_def_equal1 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_reflexive
+  :=
+  proj_Imp_value_with_valid__rf_equal_reflexive 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_reflexive2
+  :=
+  proj_Imp_value_with_valid__rf_equal_reflexive2 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_symmetric2
+  :=
+  proj_Imp_value_with_valid__rf_equal_symmetric2 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_transitive2
+  :=
+  proj_Imp_value_with_valid__rf_equal_transitive2 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__different_is_irreflexive
+  :=
+  proj_Imp_value_with_valid__rf_different_is_irreflexive 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__equal_symmetric
+  :=
+  proj_Imp_value_with_valid__rf_equal_symmetric 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__different_is_complete
+  :=
+  proj_Imp_value_with_valid__rf_different_is_complete 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+
+def Coll_int_value_with_valid__different_is_symmetric
+  :=
+  proj_Imp_value_with_valid__rf_different_is_symmetric 
+    basic_type.Coll_int_value__me_as_carrier 
+    valid_meas.Coll_valid_meas__me_as_carrier 
+    basic_type.Coll_int_value__equal valid_meas.Coll_valid_meas__equal 
+    Coll_int_value_with_valid__effective_collection.
+

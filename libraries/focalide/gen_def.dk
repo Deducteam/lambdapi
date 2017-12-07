@@ -1,0 +1,87 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_tuple.
+
+def Automata__constr_tau :
+  _p_Po_T:cc.uT ->
+  abst_T:cc.uT ->
+  p1:(cc.eT abst_T) ->
+  p2:(cc.eT _p_Po_T) -> cc.eT (dk_tuple.prod abst_T _p_Po_T)
+  :=
+  _p_Po_T:cc.uT =>
+  abst_T:cc.uT =>
+  p1:(cc.eT abst_T) =>
+  p2:(cc.eT _p_Po_T) => dk_tuple.pair abst_T _p_Po_T p1 p2.
+
+def Automata__tau_p1 :
+  _p_Po_T:cc.uT ->
+  abst_T:cc.uT -> i:(cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT abst_T
+  :=
+  _p_Po_T:cc.uT =>
+  abst_T:cc.uT =>
+  i:(cc.eT (dk_tuple.prod abst_T _p_Po_T)) => basics.fst abst_T _p_Po_T i.
+
+def Automata__tau_p2 :
+  _p_Po_T:cc.uT ->
+  abst_T:cc.uT -> i:(cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT _p_Po_T
+  :=
+  _p_Po_T:cc.uT =>
+  abst_T:cc.uT =>
+  i:(cc.eT (dk_tuple.prod abst_T _p_Po_T)) => basics.snd abst_T _p_Po_T i.
+
+def Automata__self_is_fst_tau :
+  _p_Po_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_constr_tau:((cc.eT abst_T) ->
+                   (cc.eT _p_Po_T) -> cc.eT (dk_tuple.prod abst_T _p_Po_T)) ->
+  abst_tau_p1:((cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (s:(cc.eT abst_T) =>
+        dk_logic.forall _p_Po_T 
+          (p:(cc.eT _p_Po_T) =>
+           dk_logic.ebP 
+             (basics._equal_ abst_T (abst_tau_p1 (abst_constr_tau s p)) s))))
+  :=
+  _p_Po_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_constr_tau:
+  ((cc.eT abst_T) -> (cc.eT _p_Po_T) -> cc.eT (dk_tuple.prod abst_T _p_Po_T)) =>
+  abst_tau_p1:((cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (s:(cc.eT abst_T) =>
+        dk_logic.forall _p_Po_T 
+          (p:(cc.eT _p_Po_T) =>
+           dk_logic.ebP 
+             (basics._equal_ abst_T (abst_tau_p1 (abst_constr_tau s p)) s)))).
+
+def Automata__po_is_snd_tau :
+  _p_Po_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_constr_tau:((cc.eT abst_T) ->
+                   (cc.eT _p_Po_T) -> cc.eT (dk_tuple.prod abst_T _p_Po_T)) ->
+  abst_tau_p2:((cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT _p_Po_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (s:(cc.eT abst_T) =>
+        dk_logic.forall _p_Po_T 
+          (p:(cc.eT _p_Po_T) =>
+           dk_logic.ebP 
+             (basics._equal_ _p_Po_T (abst_tau_p2 (abst_constr_tau s p)) p))))
+  :=
+  _p_Po_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_constr_tau:
+  ((cc.eT abst_T) -> (cc.eT _p_Po_T) -> cc.eT (dk_tuple.prod abst_T _p_Po_T)) =>
+  abst_tau_p2:((cc.eT (dk_tuple.prod abst_T _p_Po_T)) -> cc.eT _p_Po_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (s:(cc.eT abst_T) =>
+        dk_logic.forall _p_Po_T 
+          (p:(cc.eT _p_Po_T) =>
+           dk_logic.ebP 
+             (basics._equal_ _p_Po_T (abst_tau_p2 (abst_constr_tau s p)) p)))).
+

@@ -1,0 +1,775 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+#REQUIRE dk_fail.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def succ_Z :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (x:(cc.eT basics.int__t) =>
+        dk_logic.ebP 
+          (basics._lt_ x 
+             (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) x))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (x:(cc.eT basics.int__t) =>
+        dk_logic.ebP 
+          (basics._lt_ x 
+             (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) x)))).
+
+def length : l:(cc.eT (basics.list__t basics.int__t)) -> cc.eT basics.int__t.
+
+[l]
+  length l
+  -->
+  basics.match__nil basics.int__t basics.int__t l 
+    (dk_int.from_nat builtins.0) 
+    (basics.match__cons basics.int__t basics.int__t l 
+       (pattern_var_0_:(cc.eT basics.int__t) =>
+        pattern_var_1_:(cc.eT (basics.list__t basics.int__t)) =>
+        (q:(cc.eT (basics.list__t basics.int__t)) =>
+         basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+           ((l:(cc.eT (basics.list__t basics.int__t)) =>
+             dk_builtins.call_by_value (basics.list__t basics.int__t) 
+               basics.int__t length l) q)) pattern_var_1_) 
+       (dk_fail.fail basics.int__t)).
+
+def length_pos :
+  dk_logic.eP 
+    (dk_logic.forall (basics.list__t basics.int__t) 
+       (l:(cc.eT (basics.list__t basics.int__t)) =>
+        dk_logic.ebP 
+          (basics._lt__equal_ (dk_int.from_nat builtins.0) (length l))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall (basics.list__t basics.int__t) 
+       (l:(cc.eT (basics.list__t basics.int__t)) =>
+        dk_logic.ebP 
+          (basics._lt__equal_ (dk_int.from_nat builtins.0) (length l)))).
+
+def mes_util_decr :
+  dk_logic.eP 
+    (dk_logic.forall (basics.list__t basics.int__t) 
+       (l:(cc.eT (basics.list__t basics.int__t)) =>
+        dk_logic.forall (basics.list__t basics.int__t) 
+          (q:(cc.eT (basics.list__t basics.int__t)) =>
+           dk_logic.forall basics.int__t 
+             (h:(cc.eT basics.int__t) =>
+              dk_logic.imp 
+                (dk_logic.ebP 
+                   (basics._equal_ (basics.list__t basics.int__t) l 
+                      (builtins.cons basics.int__t h q))) 
+                (dk_logic.ebP (basics._lt_ (length q) (length l)))))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall (basics.list__t basics.int__t) 
+       (l:(cc.eT (basics.list__t basics.int__t)) =>
+        dk_logic.forall (basics.list__t basics.int__t) 
+          (q:(cc.eT (basics.list__t basics.int__t)) =>
+           dk_logic.forall basics.int__t 
+             (h:(cc.eT basics.int__t) =>
+              dk_logic.imp 
+                (dk_logic.ebP 
+                   (basics._equal_ (basics.list__t basics.int__t) l 
+                      (builtins.cons basics.int__t h q))) 
+                (dk_logic.ebP (basics._lt_ (length q) (length l))))))).
+
+def mes_decr :
+  dk_logic.eP 
+    (dk_logic.forall (basics.list__t basics.int__t) 
+       (q:(cc.eT (basics.list__t basics.int__t)) =>
+        dk_logic.forall basics.int__t 
+          (h:(cc.eT basics.int__t) =>
+           dk_logic.ebP 
+             (basics._lt_ (length q) 
+                (length (builtins.cons basics.int__t h q))))))
+  :=
+  (__A_1_LEMMA:
+   (q:(cc.eT (basics.list__t basics.int__t)) ->
+    h:(cc.eT basics.int__t) ->
+    dk_logic.eP 
+      (dk_logic.ebP 
+         (basics._lt_ (length q) (length (builtins.cons basics.int__t h q))))) =>
+   zen.nnpp 
+     (zen.forall (basics.list__t basics.int__t) 
+        (v_Vzb:(zen.term (basics.list__t basics.int__t)) =>
+         zen.forall basics.int__t 
+           (v_Vac:(zen.term basics.int__t) =>
+            zen.triangle 
+              (focal.is_true 
+                 (basics._lt_ (length v_Vzb) 
+                    (length (builtins.cons basics.int__t v_Vac v_Vzb))))))) 
+     (v_Vbc:
+      (zen.proof 
+         (zen.not 
+            (zen.forall (basics.list__t basics.int__t) 
+               (v_Vzb:(zen.term (basics.list__t basics.int__t)) =>
+                zen.forall basics.int__t 
+                  (v_Vac:(zen.term basics.int__t) =>
+                   zen.triangle 
+                     (focal.is_true 
+                        (basics._lt_ (length v_Vzb) 
+                           (length (builtins.cons basics.int__t v_Vac v_Vzb))))))))) =>
+      zen.Raxiom 
+        (zen.forall (basics.list__t basics.int__t) 
+           (v_Vzb:(zen.term (basics.list__t basics.int__t)) =>
+            zen.forall basics.int__t 
+              (v_Vac:(zen.term basics.int__t) =>
+               zen.triangle 
+                 (focal.is_true 
+                    (basics._lt_ (length v_Vzb) 
+                       (length (builtins.cons basics.int__t v_Vac v_Vzb))))))) 
+        __A_1_LEMMA v_Vbc)) 
+    (q:(cc.eT (basics.list__t basics.int__t)) =>
+     h:(cc.eT basics.int__t) =>
+     (__A_1_1_LEMMA:
+      (dk_logic.eP 
+         (dk_logic.ebP 
+            (basics._equal_ basics.int__t 
+               (length (builtins.cons basics.int__t h q)) 
+               (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+                  (length q))))) =>
+      zen.nnpp 
+        (zen.triangle 
+           (focal.is_true 
+              (basics._lt_ (length q) 
+                 (length (builtins.cons basics.int__t h q))))) 
+        (v_Vcc:
+         (zen.proof 
+            (zen.not 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._lt_ (length q) 
+                        (length (builtins.cons basics.int__t h q))))))) =>
+         focal.zenon_syntactic_equal basics.int__t 
+           (length (builtins.cons basics.int__t h q)) 
+           (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+              (length q)) 
+           (v_Vdc:
+            (zen.proof 
+               (zen.triangle 
+                  (zen.equal basics.int__t 
+                     (length (builtins.cons basics.int__t h q)) 
+                     (basics._plus_ 
+                        (dk_int.from_nat (builtins.S builtins.0)) (length q))))) =>
+            zen.Rall basics.int__t 
+              (v_Vec:(zen.term basics.int__t) =>
+               zen.triangle 
+                 (focal.is_true 
+                    (basics._lt_ v_Vec 
+                       (basics._plus_ 
+                          (dk_int.from_nat (builtins.S builtins.0)) v_Vec)))) 
+              (length q) 
+              (v_Vfc:
+               (zen.proof 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (basics._lt_ (length q) 
+                           (basics._plus_ 
+                              (dk_int.from_nat (builtins.S builtins.0)) 
+                              (length q)))))) =>
+               zen.Rsubst basics.bool__t 
+                 (v_Vgc:(zen.term basics.bool__t) =>
+                  zen.triangle (focal.is_true v_Vgc)) 
+                 (basics._lt_ (length q) 
+                    (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+                       (length q))) 
+                 (basics._lt_ (length q) 
+                    (length (builtins.cons basics.int__t h q))) 
+                 (v_Vhc:
+                  (zen.proof 
+                     (zen.not 
+                        (zen.triangle 
+                           (zen.equal basics.bool__t 
+                              (basics._lt_ (length q) 
+                                 (basics._plus_ 
+                                    (dk_int.from_nat (builtins.S builtins.0)) 
+                                    (length q))) 
+                              (basics._lt_ (length q) 
+                                 (length (builtins.cons basics.int__t h q))))))) =>
+                  zen.Rsubst basics.int__t 
+                    (v_Vic:(zen.term basics.int__t) =>
+                     zen.not 
+                       (zen.triangle 
+                          (zen.equal basics.bool__t 
+                             (basics._lt_ v_Vic 
+                                (basics._plus_ 
+                                   (dk_int.from_nat (builtins.S builtins.0)) 
+                                   (length q))) 
+                             (basics._lt_ (length q) 
+                                (length (builtins.cons basics.int__t h q)))))) 
+                    (length q) (length q) 
+                    (v_Vjc:
+                     (zen.proof 
+                        (zen.not 
+                           (zen.triangle 
+                              (zen.equal basics.int__t (length q) (length q))))) =>
+                     zen.Rnoteq basics.int__t (length q) v_Vjc) 
+                    (v_Vhc:
+                     (zen.proof 
+                        (zen.not 
+                           (zen.triangle 
+                              (zen.equal basics.bool__t 
+                                 (basics._lt_ (length q) 
+                                    (basics._plus_ 
+                                       (dk_int.from_nat 
+                                          (builtins.S builtins.0)) (length q))) 
+                                 (basics._lt_ (length q) 
+                                    (length (builtins.cons basics.int__t h q))))))) =>
+                     zen.Rsubst basics.int__t 
+                       (v_Vkc:(zen.term basics.int__t) =>
+                        zen.not 
+                          (zen.triangle 
+                             (zen.equal basics.bool__t 
+                                (basics._lt_ (length q) v_Vkc) 
+                                (basics._lt_ (length q) 
+                                   (length (builtins.cons basics.int__t h q)))))) 
+                       (basics._plus_ 
+                          (dk_int.from_nat (builtins.S builtins.0)) 
+                          (length q)) 
+                       (length (builtins.cons basics.int__t h q)) 
+                       (v_Vlc:
+                        (zen.proof 
+                           (zen.not 
+                              (zen.triangle 
+                                 (zen.equal basics.int__t 
+                                    (basics._plus_ 
+                                       (dk_int.from_nat 
+                                          (builtins.S builtins.0)) (length q)) 
+                                    (length (builtins.cons basics.int__t h q)))))) =>
+                        zen.Reqsym basics.int__t 
+                          (length (builtins.cons basics.int__t h q)) 
+                          (basics._plus_ 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (length q)) v_Vdc v_Vlc) 
+                       (v_Vmc:
+                        (zen.proof 
+                           (zen.not 
+                              (zen.triangle 
+                                 (zen.equal basics.bool__t 
+                                    (basics._lt_ (length q) 
+                                       (length 
+                                          (builtins.cons basics.int__t h q))) 
+                                    (basics._lt_ (length q) 
+                                       (length 
+                                          (builtins.cons basics.int__t h q))))))) =>
+                        zen.Rnoteq basics.bool__t 
+                          (basics._lt_ (length q) 
+                             (length (builtins.cons basics.int__t h q))) 
+                          v_Vmc) v_Vhc) v_Vhc) 
+                 (v_Vnc:
+                  (zen.proof 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._lt_ (length q) 
+                              (length (builtins.cons basics.int__t h q)))))) =>
+                  zen.Raxiom 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._lt_ (length q) 
+                             (length (builtins.cons basics.int__t h q))))) 
+                    v_Vnc v_Vcc) v_Vfc) succ_Z) __A_1_1_LEMMA)) 
+       (zen.nnpp 
+          (zen.triangle 
+             (focal.is_true 
+                (basics._equal_ basics.int__t 
+                   (length (builtins.cons basics.int__t h q)) 
+                   (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+                      (length q))))) 
+          (v_Vdc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics.syntactic_equal basics.int__t 
+                          (basics._plus_ 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (dk_builtins.call_by_value 
+                                (basics.list__t basics.int__t) basics.int__t 
+                                length q)) 
+                          (basics._plus_ 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (basics.match__nil basics.int__t basics.int__t 
+                                q (dk_int.from_nat builtins.0) 
+                                (basics.match__cons basics.int__t 
+                                   basics.int__t q 
+                                   (v_Vec:(zen.term basics.int__t) =>
+                                    v_Vfc:
+                                    (zen.term (basics.list__t basics.int__t)) =>
+                                    basics._plus_ 
+                                      (dk_int.from_nat 
+                                         (builtins.S builtins.0)) 
+                                      (dk_builtins.call_by_value 
+                                         (basics.list__t basics.int__t) 
+                                         basics.int__t length v_Vfc)) 
+                                   (dk_fail.fail basics.int__t))))))))) =>
+           focal.zenon_not_syntactic_equal basics.int__t 
+             (length (builtins.cons basics.int__t h q)) 
+             (basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+                (length q)) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (zen.equal basics.int__t 
+                          (basics._plus_ 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (dk_builtins.call_by_value 
+                                (basics.list__t basics.int__t) basics.int__t 
+                                length q)) 
+                          (basics._plus_ 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (basics.match__nil basics.int__t basics.int__t 
+                                q (dk_int.from_nat builtins.0) 
+                                (basics.match__cons basics.int__t 
+                                   basics.int__t q 
+                                   (v_Vec:(zen.term basics.int__t) =>
+                                    v_Vfc:
+                                    (zen.term (basics.list__t basics.int__t)) =>
+                                    basics._plus_ 
+                                      (dk_int.from_nat 
+                                         (builtins.S builtins.0)) 
+                                      (dk_builtins.call_by_value 
+                                         (basics.list__t basics.int__t) 
+                                         basics.int__t length v_Vfc)) 
+                                   (dk_fail.fail basics.int__t)))))))) =>
+              zen.Rsubst basics.int__t 
+                (v_Vhc:(zen.term basics.int__t) =>
+                 zen.not 
+                   (zen.triangle 
+                      (zen.equal basics.int__t 
+                         (basics._plus_ v_Vhc 
+                            (dk_builtins.call_by_value 
+                               (basics.list__t basics.int__t) basics.int__t 
+                               length q)) 
+                         (basics._plus_ 
+                            (dk_int.from_nat (builtins.S builtins.0)) 
+                            (basics.match__nil basics.int__t basics.int__t q 
+                               (dk_int.from_nat builtins.0) 
+                               (basics.match__cons basics.int__t 
+                                  basics.int__t q 
+                                  (v_Vec:(zen.term basics.int__t) =>
+                                   v_Vfc:
+                                   (zen.term (basics.list__t basics.int__t)) =>
+                                   basics._plus_ 
+                                     (dk_int.from_nat (builtins.S builtins.0)) 
+                                     (dk_builtins.call_by_value 
+                                        (basics.list__t basics.int__t) 
+                                        basics.int__t length v_Vfc)) 
+                                  (dk_fail.fail basics.int__t))))))) 
+                (dk_int.from_nat (builtins.S builtins.0)) 
+                (dk_int.from_nat (builtins.S builtins.0)) 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (zen.equal basics.int__t 
+                             (dk_int.from_nat (builtins.S builtins.0)) 
+                             (dk_int.from_nat (builtins.S builtins.0)))))) =>
+                 zen.Rnoteq basics.int__t 
+                   (dk_int.from_nat (builtins.S builtins.0)) v_Vic) 
+                (v_Vgc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (zen.equal basics.int__t 
+                             (basics._plus_ 
+                                (dk_int.from_nat (builtins.S builtins.0)) 
+                                (dk_builtins.call_by_value 
+                                   (basics.list__t basics.int__t) 
+                                   basics.int__t length q)) 
+                             (basics._plus_ 
+                                (dk_int.from_nat (builtins.S builtins.0)) 
+                                (basics.match__nil basics.int__t 
+                                   basics.int__t q 
+                                   (dk_int.from_nat builtins.0) 
+                                   (basics.match__cons basics.int__t 
+                                      basics.int__t q 
+                                      (v_Vec:(zen.term basics.int__t) =>
+                                       v_Vfc:
+                                       (zen.term 
+                                          (basics.list__t basics.int__t)) =>
+                                       basics._plus_ 
+                                         (dk_int.from_nat 
+                                            (builtins.S builtins.0)) 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            basics.int__t length v_Vfc)) 
+                                      (dk_fail.fail basics.int__t)))))))) =>
+                 zen.Rsubst basics.int__t 
+                   (v_Vjc:(zen.term basics.int__t) =>
+                    zen.not 
+                      (zen.triangle 
+                         (zen.equal basics.int__t 
+                            (basics._plus_ 
+                               (dk_int.from_nat (builtins.S builtins.0)) 
+                               v_Vjc) 
+                            (basics._plus_ 
+                               (dk_int.from_nat (builtins.S builtins.0)) 
+                               (basics.match__nil basics.int__t 
+                                  basics.int__t q 
+                                  (dk_int.from_nat builtins.0) 
+                                  (basics.match__cons basics.int__t 
+                                     basics.int__t q 
+                                     (v_Vec:(zen.term basics.int__t) =>
+                                      v_Vfc:
+                                      (zen.term 
+                                         (basics.list__t basics.int__t)) =>
+                                      basics._plus_ 
+                                        (dk_int.from_nat 
+                                           (builtins.S builtins.0)) 
+                                        (dk_builtins.call_by_value 
+                                           (basics.list__t basics.int__t) 
+                                           basics.int__t length v_Vfc)) 
+                                     (dk_fail.fail basics.int__t))))))) 
+                   (dk_builtins.call_by_value (basics.list__t basics.int__t) 
+                      basics.int__t length q) 
+                   (basics.match__nil basics.int__t basics.int__t q 
+                      (dk_int.from_nat builtins.0) 
+                      (basics.match__cons basics.int__t basics.int__t q 
+                         (v_Vec:(zen.term basics.int__t) =>
+                          v_Vfc:(zen.term (basics.list__t basics.int__t)) =>
+                          basics._plus_ 
+                            (dk_int.from_nat (builtins.S builtins.0)) 
+                            (dk_builtins.call_by_value 
+                               (basics.list__t basics.int__t) basics.int__t 
+                               length v_Vfc)) (dk_fail.fail basics.int__t))) 
+                   (v_Vkc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (zen.equal basics.int__t 
+                                (dk_builtins.call_by_value 
+                                   (basics.list__t basics.int__t) 
+                                   basics.int__t length q) 
+                                (basics.match__nil basics.int__t 
+                                   basics.int__t q 
+                                   (dk_int.from_nat builtins.0) 
+                                   (basics.match__cons basics.int__t 
+                                      basics.int__t q 
+                                      (v_Vec:(zen.term basics.int__t) =>
+                                       v_Vfc:
+                                       (zen.term 
+                                          (basics.list__t basics.int__t)) =>
+                                       basics._plus_ 
+                                         (dk_int.from_nat 
+                                            (builtins.S builtins.0)) 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            basics.int__t length v_Vfc)) 
+                                      (dk_fail.fail basics.int__t))))))) =>
+                    zen.Ralltype 
+                      (v_Vlc:zen.type =>
+                       zen.foralltype 
+                         (v_Vmc:zen.type =>
+                          zen.forall (zen.arrow v_Vlc v_Vmc) 
+                            (v_Vnc:((zen.term v_Vlc) -> zen.term v_Vmc) =>
+                             zen.forall v_Vlc 
+                               (v_Voc:(zen.term v_Vlc) =>
+                                zen.triangle 
+                                  (zen.equal v_Vmc 
+                                     (dk_builtins.call_by_value v_Vlc v_Vmc 
+                                        v_Vnc v_Voc) (v_Vnc v_Voc)))))) 
+                      (basics.list__t basics.int__t) 
+                      (v_Vpc:
+                       (zen.proof 
+                          (zen.foralltype 
+                             (v_Vmc:zen.type =>
+                              zen.forall 
+                                (zen.arrow (basics.list__t basics.int__t) 
+                                   v_Vmc) 
+                                (v_Vqc:
+                                 ((zen.term (basics.list__t basics.int__t)) ->
+                                  zen.term v_Vmc) =>
+                                 zen.forall (basics.list__t basics.int__t) 
+                                   (v_Vrc:
+                                    (zen.term (basics.list__t basics.int__t)) =>
+                                    zen.triangle 
+                                      (zen.equal v_Vmc 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            v_Vmc v_Vqc v_Vrc) (v_Vqc v_Vrc))))))) =>
+                       zen.Ralltype 
+                         (v_Vmc:zen.type =>
+                          zen.forall 
+                            (zen.arrow (basics.list__t basics.int__t) v_Vmc) 
+                            (v_Vqc:
+                             ((zen.term (basics.list__t basics.int__t)) ->
+                              zen.term v_Vmc) =>
+                             zen.forall (basics.list__t basics.int__t) 
+                               (v_Vrc:
+                                (zen.term (basics.list__t basics.int__t)) =>
+                                zen.triangle 
+                                  (zen.equal v_Vmc 
+                                     (dk_builtins.call_by_value 
+                                        (basics.list__t basics.int__t) v_Vmc 
+                                        v_Vqc v_Vrc) (v_Vqc v_Vrc))))) 
+                         basics.int__t 
+                         (v_Vsc:
+                          (zen.proof 
+                             (zen.forall 
+                                (zen.arrow (basics.list__t basics.int__t) 
+                                   basics.int__t) 
+                                (v_Vtc:
+                                 ((zen.term (basics.list__t basics.int__t)) ->
+                                  zen.term basics.int__t) =>
+                                 zen.forall (basics.list__t basics.int__t) 
+                                   (v_Vrc:
+                                    (zen.term (basics.list__t basics.int__t)) =>
+                                    zen.triangle 
+                                      (zen.equal basics.int__t 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            basics.int__t v_Vtc v_Vrc) 
+                                         (v_Vtc v_Vrc)))))) =>
+                          zen.Rall 
+                            (zen.arrow (basics.list__t basics.int__t) 
+                               basics.int__t) 
+                            (v_Vtc:
+                             ((zen.term (basics.list__t basics.int__t)) ->
+                              zen.term basics.int__t) =>
+                             zen.forall (basics.list__t basics.int__t) 
+                               (v_Vrc:
+                                (zen.term (basics.list__t basics.int__t)) =>
+                                zen.triangle 
+                                  (zen.equal basics.int__t 
+                                     (dk_builtins.call_by_value 
+                                        (basics.list__t basics.int__t) 
+                                        basics.int__t v_Vtc v_Vrc) 
+                                     (v_Vtc v_Vrc)))) length 
+                            (v_Vuc:
+                             (zen.proof 
+                                (zen.forall (basics.list__t basics.int__t) 
+                                   (v_Vrc:
+                                    (zen.term (basics.list__t basics.int__t)) =>
+                                    zen.triangle 
+                                      (zen.equal basics.int__t 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            basics.int__t length v_Vrc) 
+                                         (length v_Vrc))))) =>
+                             zen.Rall (basics.list__t basics.int__t) 
+                               (v_Vrc:
+                                (zen.term (basics.list__t basics.int__t)) =>
+                                zen.triangle 
+                                  (zen.equal basics.int__t 
+                                     (dk_builtins.call_by_value 
+                                        (basics.list__t basics.int__t) 
+                                        basics.int__t length v_Vrc) 
+                                     (length v_Vrc))) q 
+                               (v_Vvc:
+                                (zen.proof 
+                                   (zen.triangle 
+                                      (zen.equal basics.int__t 
+                                         (dk_builtins.call_by_value 
+                                            (basics.list__t basics.int__t) 
+                                            basics.int__t length q) 
+                                         (basics.match__nil basics.int__t 
+                                            basics.int__t q 
+                                            (dk_int.from_nat builtins.0) 
+                                            (basics.match__cons 
+                                               basics.int__t basics.int__t q 
+                                               (v_Vec:
+                                                (zen.term basics.int__t) =>
+                                                v_Vfc:
+                                                (zen.term 
+                                                   (basics.list__t 
+                                                      basics.int__t)) =>
+                                                basics._plus_ 
+                                                  (dk_int.from_nat 
+                                                     (builtins.S builtins.0)) 
+                                                  (dk_builtins.call_by_value 
+                                                     (basics.list__t 
+                                                        basics.int__t) 
+                                                     basics.int__t length 
+                                                     v_Vfc)) 
+                                               (dk_fail.fail basics.int__t)))))) =>
+                                zen.Rconglr basics.int__t 
+                                  (v_Vwc:(zen.term basics.int__t) =>
+                                   zen.not 
+                                     (zen.triangle 
+                                        (zen.equal basics.int__t v_Vwc 
+                                           (basics.match__nil basics.int__t 
+                                              basics.int__t q 
+                                              (dk_int.from_nat builtins.0) 
+                                              (basics.match__cons 
+                                                 basics.int__t basics.int__t 
+                                                 q 
+                                                 (v_Vec:
+                                                  (zen.term basics.int__t) =>
+                                                  v_Vfc:
+                                                  (zen.term 
+                                                     (basics.list__t 
+                                                        basics.int__t)) =>
+                                                  basics._plus_ 
+                                                    (dk_int.from_nat 
+                                                       (builtins.S builtins.0)) 
+                                                    (dk_builtins.call_by_value 
+                                                       (basics.list__t 
+                                                          basics.int__t) 
+                                                       basics.int__t length 
+                                                       v_Vfc)) 
+                                                 (dk_fail.fail basics.int__t)))))) 
+                                  (dk_builtins.call_by_value 
+                                     (basics.list__t basics.int__t) 
+                                     basics.int__t length q) (length q) 
+                                  (v_Vxc:
+                                   (zen.proof 
+                                      (zen.not 
+                                         (zen.triangle 
+                                            (zen.equal basics.int__t 
+                                               (basics.match__nil 
+                                                  basics.int__t 
+                                                  basics.int__t q 
+                                                  (dk_int.from_nat builtins.0) 
+                                                  (basics.match__cons 
+                                                     basics.int__t 
+                                                     basics.int__t q 
+                                                     (v_Vec:
+                                                      (zen.term basics.int__t) =>
+                                                      v_Vfc:
+                                                      (zen.term 
+                                                         (basics.list__t 
+                                                            basics.int__t)) =>
+                                                      basics._plus_ 
+                                                        (dk_int.from_nat 
+                                                           (builtins.S 
+                                                              builtins.0)) 
+                                                        (dk_builtins.call_by_value 
+                                                           (basics.list__t 
+                                                              basics.int__t) 
+                                                           basics.int__t 
+                                                           length v_Vfc)) 
+                                                     (dk_fail.fail 
+                                                        basics.int__t))) 
+                                               (basics.match__nil 
+                                                  basics.int__t 
+                                                  basics.int__t q 
+                                                  (dk_int.from_nat builtins.0) 
+                                                  (basics.match__cons 
+                                                     basics.int__t 
+                                                     basics.int__t q 
+                                                     (v_Vec:
+                                                      (zen.term basics.int__t) =>
+                                                      v_Vfc:
+                                                      (zen.term 
+                                                         (basics.list__t 
+                                                            basics.int__t)) =>
+                                                      basics._plus_ 
+                                                        (dk_int.from_nat 
+                                                           (builtins.S 
+                                                              builtins.0)) 
+                                                        (dk_builtins.call_by_value 
+                                                           (basics.list__t 
+                                                              basics.int__t) 
+                                                           basics.int__t 
+                                                           length v_Vfc)) 
+                                                     (dk_fail.fail 
+                                                        basics.int__t))))))) =>
+                                   zen.Rnoteq basics.int__t 
+                                     (basics.match__nil basics.int__t 
+                                        basics.int__t q 
+                                        (dk_int.from_nat builtins.0) 
+                                        (basics.match__cons basics.int__t 
+                                           basics.int__t q 
+                                           (v_Vec:(zen.term basics.int__t) =>
+                                            v_Vfc:
+                                            (zen.term 
+                                               (basics.list__t basics.int__t)) =>
+                                            basics._plus_ 
+                                              (dk_int.from_nat 
+                                                 (builtins.S builtins.0)) 
+                                              (dk_builtins.call_by_value 
+                                                 (basics.list__t 
+                                                    basics.int__t) 
+                                                 basics.int__t length v_Vfc)) 
+                                           (dk_fail.fail basics.int__t))) 
+                                     v_Vxc) v_Vkc v_Vvc) v_Vuc) v_Vsc) v_Vpc) 
+                      dk_builtins.cbv_eq) 
+                   (v_Vyc:
+                    (zen.proof 
+                       (zen.not 
+                          (zen.triangle 
+                             (zen.equal basics.int__t 
+                                (basics._plus_ 
+                                   (dk_int.from_nat (builtins.S builtins.0)) 
+                                   (basics.match__nil basics.int__t 
+                                      basics.int__t q 
+                                      (dk_int.from_nat builtins.0) 
+                                      (basics.match__cons basics.int__t 
+                                         basics.int__t q 
+                                         (v_Vec:(zen.term basics.int__t) =>
+                                          v_Vfc:
+                                          (zen.term 
+                                             (basics.list__t basics.int__t)) =>
+                                          basics._plus_ 
+                                            (dk_int.from_nat 
+                                               (builtins.S builtins.0)) 
+                                            (dk_builtins.call_by_value 
+                                               (basics.list__t basics.int__t) 
+                                               basics.int__t length v_Vfc)) 
+                                         (dk_fail.fail basics.int__t)))) 
+                                (basics._plus_ 
+                                   (dk_int.from_nat (builtins.S builtins.0)) 
+                                   (basics.match__nil basics.int__t 
+                                      basics.int__t q 
+                                      (dk_int.from_nat builtins.0) 
+                                      (basics.match__cons basics.int__t 
+                                         basics.int__t q 
+                                         (v_Vec:(zen.term basics.int__t) =>
+                                          v_Vfc:
+                                          (zen.term 
+                                             (basics.list__t basics.int__t)) =>
+                                          basics._plus_ 
+                                            (dk_int.from_nat 
+                                               (builtins.S builtins.0)) 
+                                            (dk_builtins.call_by_value 
+                                               (basics.list__t basics.int__t) 
+                                               basics.int__t length v_Vfc)) 
+                                         (dk_fail.fail basics.int__t)))))))) =>
+                    zen.Rnoteq basics.int__t 
+                      (basics._plus_ 
+                         (dk_int.from_nat (builtins.S builtins.0)) 
+                         (basics.match__nil basics.int__t basics.int__t q 
+                            (dk_int.from_nat builtins.0) 
+                            (basics.match__cons basics.int__t basics.int__t 
+                               q 
+                               (v_Vec:(zen.term basics.int__t) =>
+                                v_Vfc:
+                                (zen.term (basics.list__t basics.int__t)) =>
+                                basics._plus_ 
+                                  (dk_int.from_nat (builtins.S builtins.0)) 
+                                  (dk_builtins.call_by_value 
+                                     (basics.list__t basics.int__t) 
+                                     basics.int__t length v_Vfc)) 
+                               (dk_fail.fail basics.int__t)))) v_Vyc) v_Vgc) 
+                v_Vgc) v_Vdc))).
+
+def mem :
+  l:(cc.eT (basics.list__t basics.int__t)) ->
+  x:(cc.eT basics.int__t) -> cc.eT basics.bool__t.
+
+[x, l]
+  mem l x
+  -->
+  basics.match__nil basics.int__t basics.bool__t l dk_bool.false 
+    (basics.match__cons basics.int__t basics.bool__t l 
+       (pattern_var_0_:(cc.eT basics.int__t) =>
+        pattern_var_1_:(cc.eT (basics.list__t basics.int__t)) =>
+        (h:(cc.eT basics.int__t) =>
+         (q:(cc.eT (basics.list__t basics.int__t)) =>
+          basics._bar__bar_ (basics._equal_ basics.int__t h x) 
+            ((l:(cc.eT (basics.list__t basics.int__t)) =>
+              x:(cc.eT basics.int__t) =>
+              dk_builtins.call_by_value basics.int__t basics.bool__t 
+                (dk_builtins.call_by_value (basics.list__t basics.int__t) 
+                   (cc.Arrow basics.int__t basics.bool__t) mem l) x) q x)) 
+           pattern_var_1_) pattern_var_0_) (dk_fail.fail basics.bool__t)).
+

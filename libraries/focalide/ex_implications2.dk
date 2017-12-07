@@ -1,0 +1,68 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_logic.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def implications :
+  dk_logic.eP 
+    (dk_logic.forall basics.bool__t 
+       (a:(cc.eT basics.bool__t) =>
+        dk_logic.forall basics.bool__t 
+          (b:(cc.eT basics.bool__t) =>
+           dk_logic.imp (dk_logic.ebP a) 
+             (dk_logic.imp (dk_logic.ebP b) (dk_logic.ebP a)))))
+  :=
+  (__A_1_LEMMA:
+   (a:(cc.eT basics.bool__t) ->
+    b:(cc.eT basics.bool__t) ->
+    h1:(dk_logic.eP (dk_logic.ebP a)) ->
+    dk_logic.eP (dk_logic.imp (dk_logic.ebP b) (dk_logic.ebP a))) =>
+   zen.nnpp 
+     (zen.forall basics.bool__t 
+        (v_Vzb:(zen.term basics.bool__t) =>
+         zen.forall basics.bool__t 
+           (v_Vac:(zen.term basics.bool__t) =>
+            zen.imp (zen.triangle (focal.is_true v_Vzb)) 
+              (zen.imp (zen.triangle (focal.is_true v_Vac)) 
+                 (zen.triangle (focal.is_true v_Vzb)))))) 
+     (v_Vbc:
+      (zen.proof 
+         (zen.not 
+            (zen.forall basics.bool__t 
+               (v_Vzb:(zen.term basics.bool__t) =>
+                zen.forall basics.bool__t 
+                  (v_Vac:(zen.term basics.bool__t) =>
+                   zen.imp (zen.triangle (focal.is_true v_Vzb)) 
+                     (zen.imp (zen.triangle (focal.is_true v_Vac)) 
+                        (zen.triangle (focal.is_true v_Vzb)))))))) =>
+      zen.Raxiom 
+        (zen.forall basics.bool__t 
+           (v_Vzb:(zen.term basics.bool__t) =>
+            zen.forall basics.bool__t 
+              (v_Vac:(zen.term basics.bool__t) =>
+               zen.imp (zen.triangle (focal.is_true v_Vzb)) 
+                 (zen.imp (zen.triangle (focal.is_true v_Vac)) 
+                    (zen.triangle (focal.is_true v_Vzb)))))) __A_1_LEMMA 
+        v_Vbc)) 
+    (a:(cc.eT basics.bool__t) =>
+     b:(cc.eT basics.bool__t) =>
+     h1:(dk_logic.eP (dk_logic.ebP a)) =>
+     (__A_1_1_LEMMA:
+      (h2:(dk_logic.eP (dk_logic.ebP b)) -> dk_logic.eP (dk_logic.ebP a)) =>
+      zen.nnpp 
+        (zen.imp (zen.triangle (focal.is_true b)) 
+           (zen.triangle (focal.is_true a))) 
+        (v_Vzb:
+         (zen.proof 
+            (zen.not 
+               (zen.imp (zen.triangle (focal.is_true b)) 
+                  (zen.triangle (focal.is_true a))))) =>
+         zen.Raxiom 
+           (zen.imp (zen.triangle (focal.is_true b)) 
+              (zen.triangle (focal.is_true a))) __A_1_1_LEMMA v_Vzb)) 
+       (h2:(dk_logic.eP (dk_logic.ebP b)) =>
+        zen.nnpp (zen.triangle (focal.is_true a)) 
+          (v_Vzb:(zen.proof (zen.not (zen.triangle (focal.is_true a)))) =>
+           zen.Raxiom (zen.triangle (focal.is_true a)) h1 v_Vzb))).
+

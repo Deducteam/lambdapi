@@ -1,0 +1,439 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+
+def Toto__intle :
+  a:(cc.eT basics.int__t) -> b:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  a:(cc.eT basics.int__t) =>
+  b:(cc.eT basics.int__t) =>
+  basics._amper__amper_ (basics._gt__equal_ b (dk_int.from_nat builtins.0)) 
+    (basics._lt_ a b).
+
+def Toto__obl1 :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._equal_ basics.int__t i 
+                   (dk_int.from_nat (builtins.S builtins.0))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i (dk_int.from_nat (builtins.S builtins.0))) i))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._equal_ basics.int__t i 
+                   (dk_int.from_nat (builtins.S builtins.0))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i (dk_int.from_nat (builtins.S builtins.0))) i)))).
+
+def Toto__obl2 :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat (builtins.S builtins.0)))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i 
+                   (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) i))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat (builtins.S builtins.0)))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i 
+                   (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) i)))).
+
+def Toto__obl3 :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._amper__amper_ 
+                   (basics._tilda__tilda_ 
+                      (basics._equal_ basics.int__t i 
+                         (dk_int.from_nat (builtins.S builtins.0)))) 
+                   (basics._tilda__tilda_ 
+                      (basics._equal_ basics.int__t i 
+                         (dk_int.from_nat 
+                            (builtins.S (builtins.S builtins.0)))))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i 
+                   (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) i))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (i:(cc.eT basics.int__t) =>
+        dk_logic.imp 
+          (dk_logic.ebP 
+             (basics._amper__amper_ 
+                (basics._tilda__tilda_ 
+                   (basics._equal_ basics.int__t i 
+                      (dk_int.from_nat builtins.0))) 
+                (basics._amper__amper_ 
+                   (basics._tilda__tilda_ 
+                      (basics._equal_ basics.int__t i 
+                         (dk_int.from_nat (builtins.S builtins.0)))) 
+                   (basics._tilda__tilda_ 
+                      (basics._equal_ basics.int__t i 
+                         (dk_int.from_nat 
+                            (builtins.S (builtins.S builtins.0)))))))) 
+          (dk_logic.ebP 
+             (basics._lt_ 
+                (basics._dash_ i 
+                   (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) i)))).
+
+def Toto__f :
+  abst_obl1:(dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat (builtins.S builtins.0))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat (builtins.S builtins.0))) i))))) ->
+  abst_obl2:(dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat (builtins.S builtins.0)))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) ->
+  abst_obl3:(dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._amper__amper_ 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat (builtins.S builtins.0)))) 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat 
+                                       (builtins.S (builtins.S builtins.0)))))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) ->
+  (cc.eT basics.int__t) -> (cc.eT basics.bool__t) -> cc.eT basics.int__t.
+
+[y, x, abst_obl3, abst_obl2, abst_obl1]
+  Toto__f abst_obl1 abst_obl2 abst_obl3 x y
+  -->
+  dk_bool.ite basics.int__t 
+    (basics._equal_ basics.int__t x (dk_int.from_nat builtins.0)) 
+    (dk_int.from_nat 
+       (builtins.S 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0))))))))))))))))))))))))))))))))))))))))))) 
+    (dk_bool.ite basics.int__t 
+       (basics._equal_ basics.int__t x 
+          (dk_int.from_nat (builtins.S builtins.0))) 
+       ((abst_obl1:
+         (dk_logic.eP 
+            (dk_logic.forall basics.int__t 
+               (i:(cc.eT basics.int__t) =>
+                dk_logic.imp 
+                  (dk_logic.ebP 
+                     (basics._amper__amper_ 
+                        (basics._tilda__tilda_ 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat builtins.0))) 
+                        (basics._equal_ basics.int__t i 
+                           (dk_int.from_nat (builtins.S builtins.0))))) 
+                  (dk_logic.ebP 
+                     (basics._lt_ 
+                        (basics._dash_ i 
+                           (dk_int.from_nat (builtins.S builtins.0))) i))))) =>
+         abst_obl2:
+         (dk_logic.eP 
+            (dk_logic.forall basics.int__t 
+               (i:(cc.eT basics.int__t) =>
+                dk_logic.imp 
+                  (dk_logic.ebP 
+                     (basics._amper__amper_ 
+                        (basics._tilda__tilda_ 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat builtins.0))) 
+                        (basics._tilda__tilda_ 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat (builtins.S builtins.0)))))) 
+                  (dk_logic.ebP 
+                     (basics._lt_ 
+                        (basics._dash_ i 
+                           (dk_int.from_nat 
+                              (builtins.S (builtins.S builtins.0)))) i))))) =>
+         abst_obl3:
+         (dk_logic.eP 
+            (dk_logic.forall basics.int__t 
+               (i:(cc.eT basics.int__t) =>
+                dk_logic.imp 
+                  (dk_logic.ebP 
+                     (basics._amper__amper_ 
+                        (basics._tilda__tilda_ 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat builtins.0))) 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat (builtins.S builtins.0)))) 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat 
+                                    (builtins.S (builtins.S builtins.0)))))))) 
+                  (dk_logic.ebP 
+                     (basics._lt_ 
+                        (basics._dash_ i 
+                           (dk_int.from_nat 
+                              (builtins.S (builtins.S builtins.0)))) i))))) =>
+         x:(cc.eT basics.int__t) =>
+         y:(cc.eT basics.bool__t) =>
+         dk_builtins.call_by_value basics.bool__t basics.int__t 
+           (dk_builtins.call_by_value basics.int__t 
+              (cc.Arrow basics.bool__t basics.int__t) 
+              (Toto__f abst_obl1 abst_obl2 abst_obl3) x) y) abst_obl1 
+          abst_obl2 abst_obl3 
+          (basics._dash_ x (dk_int.from_nat (builtins.S builtins.0))) 
+          dk_bool.true) 
+       (dk_bool.ite basics.int__t 
+          (basics._equal_ basics.int__t x 
+             (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) 
+          ((abst_obl1:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat (builtins.S builtins.0))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat (builtins.S builtins.0))) i))))) =>
+            abst_obl2:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat (builtins.S builtins.0)))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) =>
+            abst_obl3:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._amper__amper_ 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat (builtins.S builtins.0)))) 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat 
+                                       (builtins.S (builtins.S builtins.0)))))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) =>
+            x:(cc.eT basics.int__t) =>
+            y:(cc.eT basics.bool__t) =>
+            dk_builtins.call_by_value basics.bool__t basics.int__t 
+              (dk_builtins.call_by_value basics.int__t 
+                 (cc.Arrow basics.bool__t basics.int__t) 
+                 (Toto__f abst_obl1 abst_obl2 abst_obl3) x) y) abst_obl1 
+             abst_obl2 abst_obl3 
+             (basics._dash_ x 
+                (dk_int.from_nat (builtins.S (builtins.S builtins.0)))) 
+             (basics._bar__bar_ dk_bool.true y)) 
+          ((abst_obl1:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._equal_ basics.int__t i 
+                              (dk_int.from_nat (builtins.S builtins.0))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat (builtins.S builtins.0))) i))))) =>
+            abst_obl2:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat (builtins.S builtins.0)))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) =>
+            abst_obl3:
+            (dk_logic.eP 
+               (dk_logic.forall basics.int__t 
+                  (i:(cc.eT basics.int__t) =>
+                   dk_logic.imp 
+                     (dk_logic.ebP 
+                        (basics._amper__amper_ 
+                           (basics._tilda__tilda_ 
+                              (basics._equal_ basics.int__t i 
+                                 (dk_int.from_nat builtins.0))) 
+                           (basics._amper__amper_ 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat (builtins.S builtins.0)))) 
+                              (basics._tilda__tilda_ 
+                                 (basics._equal_ basics.int__t i 
+                                    (dk_int.from_nat 
+                                       (builtins.S (builtins.S builtins.0)))))))) 
+                     (dk_logic.ebP 
+                        (basics._lt_ 
+                           (basics._dash_ i 
+                              (dk_int.from_nat 
+                                 (builtins.S (builtins.S builtins.0)))) i))))) =>
+            x:(cc.eT basics.int__t) =>
+            y:(cc.eT basics.bool__t) =>
+            dk_builtins.call_by_value basics.bool__t basics.int__t 
+              (dk_builtins.call_by_value basics.int__t 
+                 (cc.Arrow basics.bool__t basics.int__t) 
+                 (Toto__f abst_obl1 abst_obl2 abst_obl3) x) y) abst_obl1 
+             abst_obl2 abst_obl3 
+             (basics._dash_ x (dk_int.from_nat (builtins.S builtins.0))) 
+             (basics._bar__bar_ dk_bool.true y)))).
+

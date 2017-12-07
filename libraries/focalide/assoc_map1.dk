@@ -1,0 +1,1304 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_logic.
+#REQUIRE dk_fail.
+#REQUIRE zen.
+#REQUIRE focal.
+
+__int_str_list_t__t : Type.
+
+def int_str_list_t__t : cc.uT.
+
+[] cc.eT (int_str_list_t__t) --> __int_str_list_t__t.
+
+Nil : cc.eT int_str_list_t__t.
+
+Node :
+  (cc.eT basics.int__t) ->
+  (cc.eT basics.string__t) ->
+  (cc.eT int_str_list_t__t) -> cc.eT int_str_list_t__t.
+
+def match__Nil :
+  Ret_type:cc.uT ->
+  (cc.eT int_str_list_t__t) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Nil Ret_type (Nil) pattern default --> pattern.
+
+[default, pattern, x_2_, x_1_, x_0_, Ret_type]
+  match__Nil Ret_type (Node x_0_ x_1_ x_2_) pattern default --> default.
+
+def match__Node :
+  Ret_type:cc.uT ->
+  (cc.eT int_str_list_t__t) ->
+  ((cc.eT basics.int__t) ->
+   (cc.eT basics.string__t) -> (cc.eT int_str_list_t__t) -> cc.eT Ret_type) ->
+  (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Node Ret_type (Nil) pattern default --> default.
+
+[default, pattern, x_2_, x_1_, x_0_, Ret_type]
+  match__Node Ret_type (Node x_0_ x_1_ x_2_) pattern default
+  -->
+  pattern x_0_ x_1_ x_2_.
+
+def call_by_value_int_str_list_t__t :
+  R:cc.uT ->
+  ((cc.eT int_str_list_t__t) -> cc.eT R) ->
+  (cc.eT int_str_list_t__t) -> cc.eT R.
+
+[f, R] dk_builtins.call_by_value (int_str_list_t__t) R f (Nil) --> f Nil.
+
+[x_2_, x_1_, x_0_, f, R]
+  dk_builtins.call_by_value (int_str_list_t__t) R f (Node x_0_ x_1_ x_2_)
+  -->
+  f (Node x_0_ x_1_ x_2_).
+
+__option_t__t : __var_a:cc.uT -> Type.
+
+def option_t__t : __var_a:cc.uT -> cc.uT.
+
+[__var_a] cc.eT (option_t__t __var_a) --> __option_t__t __var_a.
+
+None : __var_a:cc.uT -> cc.eT (option_t__t __var_a).
+
+Some : __var_a:cc.uT -> (cc.eT __var_a) -> cc.eT (option_t__t __var_a).
+
+def match__None :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (option_t__t __var_a)) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__None __var_a Ret_type (None __var_a) pattern default --> pattern.
+
+[default, pattern, x_0_, Ret_type, __var_a]
+  match__None __var_a Ret_type (Some __var_a x_0_) pattern default
+  -->
+  default.
+
+def match__Some :
+  __var_a:cc.uT ->
+  Ret_type:cc.uT ->
+  (cc.eT (option_t__t __var_a)) ->
+  ((cc.eT __var_a) -> cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type, __var_a]
+  match__Some __var_a Ret_type (None __var_a) pattern default --> default.
+
+[default, pattern, x_0_, Ret_type, __var_a]
+  match__Some __var_a Ret_type (Some __var_a x_0_) pattern default
+  -->
+  pattern x_0_.
+
+def call_by_value_option_t__t :
+  __var_a:cc.uT ->
+  R:cc.uT ->
+  ((cc.eT (option_t__t __var_a)) -> cc.eT R) ->
+  (cc.eT (option_t__t __var_a)) -> cc.eT R.
+
+[f, R, __var_a]
+  dk_builtins.call_by_value (option_t__t __var_a) R f (None _)
+  -->
+  f (None __var_a).
+
+[x_0_, f, R, __var_a]
+  dk_builtins.call_by_value (option_t__t __var_a) R f (Some _ x_0_)
+  -->
+  f (Some __var_a x_0_).
+
+AssocMap__me_as_species : Type.
+
+AssocMap__mk_record :
+  AssocMap__rf_T:cc.uT ->
+  AssocMap__rf_add:((cc.eT basics.int__t) ->
+                    (cc.eT basics.string__t) ->
+                    (cc.eT AssocMap__rf_T) -> cc.eT AssocMap__rf_T) ->
+  AssocMap__rf_empty:(cc.eT AssocMap__rf_T) ->
+  AssocMap__rf_find:((cc.eT basics.int__t) ->
+                     (cc.eT AssocMap__rf_T) ->
+                     cc.eT (option_t__t basics.string__t)) ->
+  AssocMap__rf_find_added_not_fails:(dk_logic.eP 
+                                       (dk_logic.forall basics.int__t 
+                                          (k:(cc.eT basics.int__t) =>
+                                           dk_logic.forall basics.string__t 
+                                             (v:(cc.eT basics.string__t) =>
+                                              dk_logic.forall AssocMap__rf_T 
+                                                (m1:(cc.eT AssocMap__rf_T) =>
+                                                 dk_logic.forall 
+                                                   AssocMap__rf_T 
+                                                   (m2:
+                                                    (cc.eT AssocMap__rf_T) =>
+                                                    dk_logic.imp 
+                                                      (dk_logic.ebP 
+                                                         (basics._equal_ 
+                                                            AssocMap__rf_T 
+                                                            m2 
+                                                            (AssocMap__rf_add 
+                                                               k v m1))) 
+                                                      (dk_logic.not 
+                                                         (dk_logic.ebP 
+                                                            (basics._equal_ 
+                                                               (option_t__t 
+                                                                  basics.string__t) 
+                                                               (AssocMap__rf_find 
+                                                                  k m2) 
+                                                               (None 
+                                                                  basics.string__t)))))))))) ->
+  AssocMap__rf_find_same_key_same_value:(dk_logic.eP 
+                                           (dk_logic.forall basics.int__t 
+                                              (k1:(cc.eT basics.int__t) =>
+                                               dk_logic.forall basics.int__t 
+                                                 (k2:(cc.eT basics.int__t) =>
+                                                  dk_logic.forall 
+                                                    AssocMap__rf_T 
+                                                    (m:
+                                                     (cc.eT AssocMap__rf_T) =>
+                                                     dk_logic.imp 
+                                                       (dk_logic.ebP 
+                                                          (basics._equal_ 
+                                                             basics.int__t 
+                                                             k1 k2)) 
+                                                       (dk_logic.ebP 
+                                                          (basics._equal_ 
+                                                             (option_t__t 
+                                                                basics.string__t) 
+                                                             (AssocMap__rf_find 
+                                                                k1 m) 
+                                                             (AssocMap__rf_find 
+                                                                k2 m)))))))) ->
+  AssocMap__rf_find_spec:(dk_logic.eP 
+                            (dk_logic.forall AssocMap__rf_T 
+                               (m:(cc.eT AssocMap__rf_T) =>
+                                dk_logic.forall basics.int__t 
+                                  (s:(cc.eT basics.int__t) =>
+                                   dk_logic.forall basics.int__t 
+                                     (k:(cc.eT basics.int__t) =>
+                                      dk_logic.forall basics.string__t 
+                                        (v:(cc.eT basics.string__t) =>
+                                         dk_logic.eqv 
+                                           (dk_logic.or 
+                                              (dk_logic.ebP 
+                                                 (basics._equal_ 
+                                                    (option_t__t 
+                                                       basics.string__t) 
+                                                    (AssocMap__rf_find s m) 
+                                                    (Some basics.string__t v))) 
+                                              (dk_logic.ebP 
+                                                 (basics._equal_ 
+                                                    basics.int__t s k))) 
+                                           (dk_logic.ebP 
+                                              (basics._equal_ 
+                                                 (option_t__t 
+                                                    basics.string__t) 
+                                                 (AssocMap__rf_find s 
+                                                    (AssocMap__rf_add k v m)) 
+                                                 (Some basics.string__t v))))))))) ->
+  AssocMap__me_as_species.
+
+def proj_AssocMap__rf_T : record:AssocMap__me_as_species -> cc.uT.
+
+[AssocMap__rf_T]
+  proj_AssocMap__rf_T (AssocMap__mk_record AssocMap__rf_T _ _ _ _ _ _)
+  -->
+  AssocMap__rf_T.
+
+def proj_AssocMap__rf_add :
+  record:AssocMap__me_as_species ->
+  (cc.eT basics.int__t) ->
+  (cc.eT basics.string__t) ->
+  (cc.eT (proj_AssocMap__rf_T record)) -> cc.eT (proj_AssocMap__rf_T record).
+
+[AssocMap__rf_add]
+  proj_AssocMap__rf_add (AssocMap__mk_record _ AssocMap__rf_add _ _ _ _ _)
+  -->
+  AssocMap__rf_add.
+
+def proj_AssocMap__rf_empty :
+  record:AssocMap__me_as_species -> cc.eT (proj_AssocMap__rf_T record).
+
+[AssocMap__rf_empty]
+  proj_AssocMap__rf_empty (AssocMap__mk_record _ _ AssocMap__rf_empty _ _ _ 
+    _)
+  -->
+  AssocMap__rf_empty.
+
+def proj_AssocMap__rf_find :
+  record:AssocMap__me_as_species ->
+  (cc.eT basics.int__t) ->
+  (cc.eT (proj_AssocMap__rf_T record)) ->
+  cc.eT (option_t__t basics.string__t).
+
+[AssocMap__rf_find]
+  proj_AssocMap__rf_find (AssocMap__mk_record _ _ _ AssocMap__rf_find _ _ _)
+  -->
+  AssocMap__rf_find.
+
+def proj_AssocMap__rf_find_added_not_fails :
+  record:AssocMap__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (k:(cc.eT basics.int__t) =>
+        dk_logic.forall basics.string__t 
+          (v:(cc.eT basics.string__t) =>
+           dk_logic.forall (proj_AssocMap__rf_T record) 
+             (m1:(cc.eT (proj_AssocMap__rf_T record)) =>
+              dk_logic.forall (proj_AssocMap__rf_T record) 
+                (m2:(cc.eT (proj_AssocMap__rf_T record)) =>
+                 dk_logic.imp 
+                   (dk_logic.ebP 
+                      (basics._equal_ (proj_AssocMap__rf_T record) m2 
+                         (proj_AssocMap__rf_add record k v m1))) 
+                   (dk_logic.not 
+                      (dk_logic.ebP 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (proj_AssocMap__rf_find record k m2) 
+                            (None basics.string__t))))))))).
+
+[AssocMap__rf_find_added_not_fails]
+  proj_AssocMap__rf_find_added_not_fails (AssocMap__mk_record _ _ _ _ 
+    AssocMap__rf_find_added_not_fails _ _)
+  -->
+  AssocMap__rf_find_added_not_fails.
+
+def proj_AssocMap__rf_find_same_key_same_value :
+  record:AssocMap__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (k1:(cc.eT basics.int__t) =>
+        dk_logic.forall basics.int__t 
+          (k2:(cc.eT basics.int__t) =>
+           dk_logic.forall (proj_AssocMap__rf_T record) 
+             (m:(cc.eT (proj_AssocMap__rf_T record)) =>
+              dk_logic.imp 
+                (dk_logic.ebP (basics._equal_ basics.int__t k1 k2)) 
+                (dk_logic.ebP 
+                   (basics._equal_ (option_t__t basics.string__t) 
+                      (proj_AssocMap__rf_find record k1 m) 
+                      (proj_AssocMap__rf_find record k2 m))))))).
+
+[AssocMap__rf_find_same_key_same_value]
+  proj_AssocMap__rf_find_same_key_same_value (AssocMap__mk_record _ _ _ _ _ 
+    AssocMap__rf_find_same_key_same_value _)
+  -->
+  AssocMap__rf_find_same_key_same_value.
+
+def proj_AssocMap__rf_find_spec :
+  record:AssocMap__me_as_species ->
+  dk_logic.eP 
+    (dk_logic.forall (proj_AssocMap__rf_T record) 
+       (m:(cc.eT (proj_AssocMap__rf_T record)) =>
+        dk_logic.forall basics.int__t 
+          (s:(cc.eT basics.int__t) =>
+           dk_logic.forall basics.int__t 
+             (k:(cc.eT basics.int__t) =>
+              dk_logic.forall basics.string__t 
+                (v:(cc.eT basics.string__t) =>
+                 dk_logic.eqv 
+                   (dk_logic.or 
+                      (dk_logic.ebP 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (proj_AssocMap__rf_find record s m) 
+                            (Some basics.string__t v))) 
+                      (dk_logic.ebP (basics._equal_ basics.int__t s k))) 
+                   (dk_logic.ebP 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (proj_AssocMap__rf_find record s 
+                            (proj_AssocMap__rf_add record k v m)) 
+                         (Some basics.string__t v)))))))).
+
+[AssocMap__rf_find_spec]
+  proj_AssocMap__rf_find_spec (AssocMap__mk_record _ _ _ _ _ _ 
+    AssocMap__rf_find_spec)
+  -->
+  AssocMap__rf_find_spec.
+
+def AssocMap__add :
+  k:(cc.eT basics.int__t) ->
+  v:(cc.eT basics.string__t) ->
+  m:(cc.eT int_str_list_t__t) -> cc.eT int_str_list_t__t
+  :=
+  k:(cc.eT basics.int__t) =>
+  v:(cc.eT basics.string__t) => m:(cc.eT int_str_list_t__t) => Node k v m.
+
+def AssocMap__empty : cc.eT int_str_list_t__t := Nil.
+
+def AssocMap__find :
+  (cc.eT basics.int__t) ->
+  (cc.eT int_str_list_t__t) -> cc.eT (option_t__t basics.string__t).
+
+[m, k]
+  AssocMap__find k m
+  -->
+  match__Nil (option_t__t basics.string__t) m (None basics.string__t) 
+    (match__Node (option_t__t basics.string__t) m 
+       (pattern_var_0_:(cc.eT basics.int__t) =>
+        pattern_var_1_:(cc.eT basics.string__t) =>
+        pattern_var_2_:(cc.eT int_str_list_t__t) =>
+        (kcur:(cc.eT basics.int__t) =>
+         (v:(cc.eT basics.string__t) =>
+          (q:(cc.eT int_str_list_t__t) =>
+           dk_bool.ite (option_t__t basics.string__t) 
+             (basics._equal_ basics.int__t kcur k) (Some basics.string__t v) 
+             ((k:(cc.eT basics.int__t) =>
+               m:(cc.eT int_str_list_t__t) =>
+               dk_builtins.call_by_value int_str_list_t__t 
+                 (option_t__t basics.string__t) 
+                 (dk_builtins.call_by_value basics.int__t 
+                    (cc.Arrow int_str_list_t__t 
+                       (option_t__t basics.string__t)) AssocMap__find k) m) 
+                k q)) pattern_var_2_) pattern_var_1_) pattern_var_0_) 
+       (dk_fail.fail (option_t__t basics.string__t))).
+
+def AssocMap__find_added_not_fails :
+  abst_T:cc.uT ->
+  abst_add:((cc.eT basics.int__t) ->
+            (cc.eT basics.string__t) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_find:((cc.eT basics.int__t) ->
+             (cc.eT abst_T) -> cc.eT (option_t__t basics.string__t)) ->
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (k:(cc.eT basics.int__t) =>
+        dk_logic.forall basics.string__t 
+          (v:(cc.eT basics.string__t) =>
+           dk_logic.forall abst_T 
+             (m1:(cc.eT abst_T) =>
+              dk_logic.forall abst_T 
+                (m2:(cc.eT abst_T) =>
+                 dk_logic.imp 
+                   (dk_logic.ebP (basics._equal_ abst_T m2 (abst_add k v m1))) 
+                   (dk_logic.not 
+                      (dk_logic.ebP 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (abst_find k m2) (None basics.string__t)))))))))
+  :=
+  abst_T:cc.uT =>
+  abst_add:
+  ((cc.eT basics.int__t) ->
+   (cc.eT basics.string__t) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_find:
+  ((cc.eT basics.int__t) ->
+   (cc.eT abst_T) -> cc.eT (option_t__t basics.string__t)) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (k:(cc.eT basics.int__t) =>
+        dk_logic.forall basics.string__t 
+          (v:(cc.eT basics.string__t) =>
+           dk_logic.forall abst_T 
+             (m1:(cc.eT abst_T) =>
+              dk_logic.forall abst_T 
+                (m2:(cc.eT abst_T) =>
+                 dk_logic.imp 
+                   (dk_logic.ebP (basics._equal_ abst_T m2 (abst_add k v m1))) 
+                   (dk_logic.not 
+                      (dk_logic.ebP 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (abst_find k m2) (None basics.string__t))))))))).
+
+def AssocMap__find_same_key_same_value :
+  abst_T:cc.uT ->
+  abst_find:((cc.eT basics.int__t) ->
+             (cc.eT abst_T) -> cc.eT (option_t__t basics.string__t)) ->
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (k1:(cc.eT basics.int__t) =>
+        dk_logic.forall basics.int__t 
+          (k2:(cc.eT basics.int__t) =>
+           dk_logic.forall abst_T 
+             (m:(cc.eT abst_T) =>
+              dk_logic.imp 
+                (dk_logic.ebP (basics._equal_ basics.int__t k1 k2)) 
+                (dk_logic.ebP 
+                   (basics._equal_ (option_t__t basics.string__t) 
+                      (abst_find k1 m) (abst_find k2 m)))))))
+  :=
+  abst_T:cc.uT =>
+  abst_find:
+  ((cc.eT basics.int__t) ->
+   (cc.eT abst_T) -> cc.eT (option_t__t basics.string__t)) =>
+  zen.nnpp 
+    (zen.forall basics.int__t 
+       (v_Vbc:(zen.term basics.int__t) =>
+        zen.forall basics.int__t 
+          (v_Vcc:(zen.term basics.int__t) =>
+           zen.forall abst_T 
+             (v_Vdc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (basics._equal_ basics.int__t v_Vbc v_Vcc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find v_Vbc v_Vdc) (abst_find v_Vcc v_Vdc)))))))) 
+    (v_Vec:
+     (zen.proof 
+        (zen.not 
+           (zen.forall basics.int__t 
+              (v_Vbc:(zen.term basics.int__t) =>
+               zen.forall basics.int__t 
+                 (v_Vcc:(zen.term basics.int__t) =>
+                  zen.forall abst_T 
+                    (v_Vdc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vbc v_Vcc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vbc v_Vdc) 
+                                (abst_find v_Vcc v_Vdc)))))))))) =>
+     zen.Rnotall basics.int__t 
+       (v_Vbc:(zen.term basics.int__t) =>
+        zen.forall basics.int__t 
+          (v_Vcc:(zen.term basics.int__t) =>
+           zen.forall abst_T 
+             (v_Vdc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (basics._equal_ basics.int__t v_Vbc v_Vcc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find v_Vbc v_Vdc) (abst_find v_Vcc v_Vdc))))))) 
+       (v_Vfc:(zen.term basics.int__t) =>
+        v_Vgc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall basics.int__t 
+                 (v_Vcc:(zen.term basics.int__t) =>
+                  zen.forall abst_T 
+                    (v_Vdc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vfc v_Vcc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vfc v_Vdc) 
+                                (abst_find v_Vcc v_Vdc))))))))) =>
+        zen.Rnotall basics.int__t 
+          (v_Vcc:(zen.term basics.int__t) =>
+           zen.forall abst_T 
+             (v_Vdc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (basics._equal_ basics.int__t v_Vfc v_Vcc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find v_Vfc v_Vdc) (abst_find v_Vcc v_Vdc)))))) 
+          (v_Vhc:(zen.term basics.int__t) =>
+           v_Vic:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall abst_T 
+                    (v_Vdc:(zen.term abst_T) =>
+                     zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vfc v_Vhc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vfc v_Vdc) 
+                                (abst_find v_Vhc v_Vdc)))))))) =>
+           zen.Rnotall abst_T 
+             (v_Vdc:(zen.term abst_T) =>
+              zen.imp 
+                (zen.triangle 
+                   (focal.is_true (basics._equal_ basics.int__t v_Vfc v_Vhc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find v_Vfc v_Vdc) (abst_find v_Vhc v_Vdc))))) 
+             (v_Vjc:(zen.term abst_T) =>
+              v_Vkc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.imp 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vfc v_Vhc))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vfc v_Vjc) 
+                                (abst_find v_Vhc v_Vjc))))))) =>
+              zen.Rnotimply 
+                (zen.triangle 
+                   (focal.is_true (basics._equal_ basics.int__t v_Vfc v_Vhc))) 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find v_Vfc v_Vjc) (abst_find v_Vhc v_Vjc)))) 
+                (v_Vlc:
+                 (zen.proof 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal basics.int__t v_Vfc v_Vhc)))) =>
+                 v_Vmc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics.syntactic_equal 
+                                (option_t__t basics.string__t) 
+                                (abst_find v_Vfc v_Vjc) 
+                                (abst_find v_Vhc v_Vjc)))))) =>
+                 focal.zenon_syntactic_equal basics.int__t v_Vfc v_Vhc 
+                   (v_Vnc:
+                    (zen.proof 
+                       (zen.triangle (zen.equal basics.int__t v_Vfc v_Vhc))) =>
+                    focal.zenon_not_syntactic_equal 
+                      (option_t__t basics.string__t) (abst_find v_Vfc v_Vjc) 
+                      (abst_find v_Vhc v_Vjc) 
+                      (v_Voc:
+                       (zen.proof 
+                          (zen.not 
+                             (zen.triangle 
+                                (zen.equal (option_t__t basics.string__t) 
+                                   (abst_find v_Vfc v_Vjc) 
+                                   (abst_find v_Vhc v_Vjc))))) =>
+                       zen.Rsubst basics.int__t 
+                         (v_Vpc:(zen.term basics.int__t) =>
+                          zen.not 
+                            (zen.triangle 
+                               (zen.equal (option_t__t basics.string__t) 
+                                  (abst_find v_Vpc v_Vjc) 
+                                  (abst_find v_Vhc v_Vjc)))) v_Vfc v_Vhc 
+                         (v_Vqc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (zen.equal basics.int__t v_Vfc v_Vhc)))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (zen.equal basics.int__t v_Vfc v_Vhc)) v_Vnc 
+                            v_Vqc) 
+                         (v_Vrc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (zen.equal (option_t__t basics.string__t) 
+                                      (abst_find v_Vhc v_Vjc) 
+                                      (abst_find v_Vhc v_Vjc))))) =>
+                          zen.Rsubst abst_T 
+                            (v_Vsc:(zen.term abst_T) =>
+                             zen.not 
+                               (zen.triangle 
+                                  (zen.equal (option_t__t basics.string__t) 
+                                     (abst_find v_Vhc v_Vsc) 
+                                     (abst_find v_Vhc v_Vjc)))) v_Vjc v_Vjc 
+                            (v_Vtc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal abst_T v_Vjc v_Vjc)))) =>
+                             zen.Rnoteq abst_T v_Vjc v_Vtc) 
+                            (v_Vrc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (zen.equal 
+                                         (option_t__t basics.string__t) 
+                                         (abst_find v_Vhc v_Vjc) 
+                                         (abst_find v_Vhc v_Vjc))))) =>
+                             zen.Rnoteq (option_t__t basics.string__t) 
+                               (abst_find v_Vhc v_Vjc) v_Vrc) v_Vrc) v_Voc) 
+                      v_Vmc) v_Vlc) v_Vkc) v_Vic) v_Vgc) v_Vec).
+
+def AssocMap__find_spec :
+  abst_find:((cc.eT basics.int__t) ->
+             (cc.eT int_str_list_t__t) ->
+             cc.eT (option_t__t basics.string__t)) ->
+  dk_logic.eP 
+    (dk_logic.forall int_str_list_t__t 
+       (m:(cc.eT int_str_list_t__t) =>
+        dk_logic.forall basics.int__t 
+          (s:(cc.eT basics.int__t) =>
+           dk_logic.forall basics.int__t 
+             (k:(cc.eT basics.int__t) =>
+              dk_logic.forall basics.string__t 
+                (v:(cc.eT basics.string__t) =>
+                 dk_logic.eqv 
+                   (dk_logic.or 
+                      (dk_logic.ebP 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (abst_find s m) (Some basics.string__t v))) 
+                      (dk_logic.ebP (basics._equal_ basics.int__t s k))) 
+                   (dk_logic.ebP 
+                      (basics._equal_ (option_t__t basics.string__t) 
+                         (abst_find s (AssocMap__add k v m)) 
+                         (Some basics.string__t v))))))))
+  :=
+  abst_find:
+  ((cc.eT basics.int__t) ->
+   (cc.eT int_str_list_t__t) -> cc.eT (option_t__t basics.string__t)) =>
+  (__B_1_LEMMA:
+   (m:(cc.eT int_str_list_t__t) ->
+    s:(cc.eT basics.int__t) ->
+    k:(cc.eT basics.int__t) ->
+    v:(cc.eT basics.string__t) ->
+    dk_logic.eP 
+      (dk_logic.eqv 
+         (dk_logic.or 
+            (dk_logic.ebP 
+               (basics._equal_ (option_t__t basics.string__t) 
+                  (abst_find s m) (Some basics.string__t v))) 
+            (dk_logic.ebP (basics._equal_ basics.int__t s k))) 
+         (dk_logic.ebP 
+            (basics._equal_ (option_t__t basics.string__t) 
+               (abst_find s (AssocMap__add k v m)) (Some basics.string__t v))))) =>
+   zen.nnpp 
+     (zen.forall int_str_list_t__t 
+        (v_Vzb:(zen.term int_str_list_t__t) =>
+         zen.forall basics.int__t 
+           (v_Vac:(zen.term basics.int__t) =>
+            zen.forall basics.int__t 
+              (v_Vbc:(zen.term basics.int__t) =>
+               zen.forall basics.string__t 
+                 (v_Vcc:(zen.term basics.string__t) =>
+                  zen.eqv 
+                    (zen.or 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vac v_Vzb) 
+                                (Some basics.string__t v_Vcc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ basics.int__t v_Vac v_Vbc)))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._equal_ (option_t__t basics.string__t) 
+                             (abst_find v_Vac 
+                                (AssocMap__add v_Vbc v_Vcc v_Vzb)) 
+                             (Some basics.string__t v_Vcc))))))))) 
+     (v_Vdc:
+      (zen.proof 
+         (zen.not 
+            (zen.forall int_str_list_t__t 
+               (v_Vzb:(zen.term int_str_list_t__t) =>
+                zen.forall basics.int__t 
+                  (v_Vac:(zen.term basics.int__t) =>
+                   zen.forall basics.int__t 
+                     (v_Vbc:(zen.term basics.int__t) =>
+                      zen.forall basics.string__t 
+                        (v_Vcc:(zen.term basics.string__t) =>
+                         zen.eqv 
+                           (zen.or 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (basics._equal_ 
+                                       (option_t__t basics.string__t) 
+                                       (abst_find v_Vac v_Vzb) 
+                                       (Some basics.string__t v_Vcc)))) 
+                              (zen.triangle 
+                                 (focal.is_true 
+                                    (basics._equal_ basics.int__t v_Vac v_Vbc)))) 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (basics._equal_ 
+                                    (option_t__t basics.string__t) 
+                                    (abst_find v_Vac 
+                                       (AssocMap__add v_Vbc v_Vcc v_Vzb)) 
+                                    (Some basics.string__t v_Vcc))))))))))) =>
+      zen.Raxiom 
+        (zen.forall int_str_list_t__t 
+           (v_Vzb:(zen.term int_str_list_t__t) =>
+            zen.forall basics.int__t 
+              (v_Vac:(zen.term basics.int__t) =>
+               zen.forall basics.int__t 
+                 (v_Vbc:(zen.term basics.int__t) =>
+                  zen.forall basics.string__t 
+                    (v_Vcc:(zen.term basics.string__t) =>
+                     zen.eqv 
+                       (zen.or 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics._equal_ 
+                                   (option_t__t basics.string__t) 
+                                   (abst_find v_Vac v_Vzb) 
+                                   (Some basics.string__t v_Vcc)))) 
+                          (zen.triangle 
+                             (focal.is_true 
+                                (basics._equal_ basics.int__t v_Vac v_Vbc)))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (basics._equal_ (option_t__t basics.string__t) 
+                                (abst_find v_Vac 
+                                   (AssocMap__add v_Vbc v_Vcc v_Vzb)) 
+                                (Some basics.string__t v_Vcc))))))))) 
+        __B_1_LEMMA v_Vdc)) 
+    (m:(cc.eT int_str_list_t__t) =>
+     s:(cc.eT basics.int__t) =>
+     k:(cc.eT basics.int__t) =>
+     v:(cc.eT basics.string__t) =>
+     (__B_1_1_LEMMA:
+      (H1:(dk_logic.eP 
+             (dk_logic.or 
+                (dk_logic.ebP 
+                   (basics._equal_ (option_t__t basics.string__t) 
+                      (abst_find s m) (Some basics.string__t v))) 
+                (dk_logic.ebP (basics._equal_ basics.int__t s k)))) ->
+       dk_logic.eP 
+         (dk_logic.ebP 
+            (basics._equal_ (option_t__t basics.string__t) 
+               (abst_find s (AssocMap__add k v m)) (Some basics.string__t v)))) =>
+      (__B_1_2_LEMMA:
+       (H2:(dk_logic.eP 
+              (dk_logic.ebP 
+                 (basics._equal_ (option_t__t basics.string__t) 
+                    (abst_find s (AssocMap__add k v m)) 
+                    (Some basics.string__t v)))) ->
+        dk_logic.eP 
+          (dk_logic.or 
+             (dk_logic.ebP 
+                (basics._equal_ (option_t__t basics.string__t) 
+                   (abst_find s m) (Some basics.string__t v))) 
+             (dk_logic.ebP (basics._equal_ basics.int__t s k)))) =>
+       zen.nnpp 
+         (zen.eqv 
+            (zen.or 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._equal_ (option_t__t basics.string__t) 
+                        (abst_find s m) (Some basics.string__t v)))) 
+               (zen.triangle 
+                  (focal.is_true (basics._equal_ basics.int__t s k)))) 
+            (zen.triangle 
+               (focal.is_true 
+                  (basics._equal_ (option_t__t basics.string__t) 
+                     (abst_find s (AssocMap__add k v m)) 
+                     (Some basics.string__t v))))) 
+         (v_Vzb:
+          (zen.proof 
+             (zen.not 
+                (zen.eqv 
+                   (zen.or 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ (option_t__t basics.string__t) 
+                               (abst_find s m) (Some basics.string__t v)))) 
+                      (zen.triangle 
+                         (focal.is_true (basics._equal_ basics.int__t s k)))) 
+                   (zen.triangle 
+                      (focal.is_true 
+                         (basics._equal_ (option_t__t basics.string__t) 
+                            (abst_find s (AssocMap__add k v m)) 
+                            (Some basics.string__t v))))))) =>
+          zen.Rimply 
+            (zen.or 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._equal_ (option_t__t basics.string__t) 
+                        (abst_find s m) (Some basics.string__t v)))) 
+               (zen.triangle 
+                  (focal.is_true (basics._equal_ basics.int__t s k)))) 
+            (zen.triangle 
+               (focal.is_true 
+                  (basics._equal_ (option_t__t basics.string__t) 
+                     (abst_find s (AssocMap__add k v m)) 
+                     (Some basics.string__t v)))) 
+            (v_Vac:
+             (zen.proof 
+                (zen.not 
+                   (zen.or 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ (option_t__t basics.string__t) 
+                               (abst_find s m) (Some basics.string__t v)))) 
+                      (zen.triangle 
+                         (focal.is_true (basics._equal_ basics.int__t s k)))))) =>
+             zen.Rnotor 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._equal_ (option_t__t basics.string__t) 
+                        (abst_find s m) (Some basics.string__t v)))) 
+               (zen.triangle 
+                  (focal.is_true (basics._equal_ basics.int__t s k))) 
+               (v_Vbc:
+                (zen.proof 
+                   (zen.not 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal 
+                               (option_t__t basics.string__t) 
+                               (abst_find s m) (Some basics.string__t v)))))) =>
+                v_Vcc:
+                (zen.proof 
+                   (zen.not 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal basics.int__t s k))))) =>
+                zen.Rimply 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (basics._equal_ (option_t__t basics.string__t) 
+                           (abst_find s (AssocMap__add k v m)) 
+                           (Some basics.string__t v)))) 
+                  (zen.or 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._equal_ (option_t__t basics.string__t) 
+                              (abst_find s m) (Some basics.string__t v)))) 
+                     (zen.triangle 
+                        (focal.is_true (basics._equal_ basics.int__t s k)))) 
+                  (v_Vdc:
+                   (zen.proof 
+                      (zen.not 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s (AssocMap__add k v m)) 
+                                  (Some basics.string__t v)))))) =>
+                   zen.Rnotequiv 
+                     (zen.or 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k)))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._equal_ (option_t__t basics.string__t) 
+                              (abst_find s (AssocMap__add k v m)) 
+                              (Some basics.string__t v)))) 
+                     (v_Vac0:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.or 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ 
+                                        (option_t__t basics.string__t) 
+                                        (abst_find s m) 
+                                        (Some basics.string__t v)))) 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ basics.int__t s k)))))) =>
+                      v_Vec:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s (AssocMap__add k v m)) 
+                                  (Some basics.string__t v))))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s (AssocMap__add k v m)) 
+                                 (Some basics.string__t v)))) v_Vec v_Vdc) 
+                     (v_Vfc:
+                      (zen.proof 
+                         (zen.or 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s m) 
+                                     (Some basics.string__t v)))) 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ basics.int__t s k))))) =>
+                      v_Vdc0:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics.syntactic_equal 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s (AssocMap__add k v m)) 
+                                     (Some basics.string__t v)))))) =>
+                      zen.Raxiom 
+                        (zen.or 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (basics._equal_ 
+                                    (option_t__t basics.string__t) 
+                                    (abst_find s m) (Some basics.string__t v)))) 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (basics._equal_ basics.int__t s k)))) v_Vfc 
+                        v_Vac) v_Vzb) 
+                  (v_Vfc:
+                   (zen.proof 
+                      (zen.or 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics._equal_ 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s m) (Some basics.string__t v)))) 
+                         (zen.triangle 
+                            (focal.is_true (basics._equal_ basics.int__t s k))))) =>
+                   zen.Ror 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._equal_ (option_t__t basics.string__t) 
+                              (abst_find s m) (Some basics.string__t v)))) 
+                     (zen.triangle 
+                        (focal.is_true (basics._equal_ basics.int__t s k))) 
+                     (v_Vgc:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s m) (Some basics.string__t v))))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        v_Vgc v_Vbc) 
+                     (v_Vhc:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal basics.int__t s k)))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k))) 
+                        v_Vhc v_Vcc) v_Vfc) __B_1_2_LEMMA) v_Vac) 
+            (v_Vec:
+             (zen.proof 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics.syntactic_equal (option_t__t basics.string__t) 
+                         (abst_find s (AssocMap__add k v m)) 
+                         (Some basics.string__t v))))) =>
+             zen.Rimply 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._equal_ (option_t__t basics.string__t) 
+                        (abst_find s (AssocMap__add k v m)) 
+                        (Some basics.string__t v)))) 
+               (zen.or 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (basics._equal_ (option_t__t basics.string__t) 
+                           (abst_find s m) (Some basics.string__t v)))) 
+                  (zen.triangle 
+                     (focal.is_true (basics._equal_ basics.int__t s k)))) 
+               (v_Vdc:
+                (zen.proof 
+                   (zen.not 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal 
+                               (option_t__t basics.string__t) 
+                               (abst_find s (AssocMap__add k v m)) 
+                               (Some basics.string__t v)))))) =>
+                zen.Raxiom 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (basics._equal_ (option_t__t basics.string__t) 
+                           (abst_find s (AssocMap__add k v m)) 
+                           (Some basics.string__t v)))) v_Vec v_Vdc) 
+               (v_Vfc:
+                (zen.proof 
+                   (zen.or 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics._equal_ (option_t__t basics.string__t) 
+                               (abst_find s m) (Some basics.string__t v)))) 
+                      (zen.triangle 
+                         (focal.is_true (basics._equal_ basics.int__t s k))))) =>
+                zen.Ror 
+                  (zen.triangle 
+                     (focal.is_true 
+                        (basics._equal_ (option_t__t basics.string__t) 
+                           (abst_find s m) (Some basics.string__t v)))) 
+                  (zen.triangle 
+                     (focal.is_true (basics._equal_ basics.int__t s k))) 
+                  (v_Vgc:
+                   (zen.proof 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal 
+                               (option_t__t basics.string__t) 
+                               (abst_find s m) (Some basics.string__t v))))) =>
+                   zen.Rnotequiv 
+                     (zen.or 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k)))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._equal_ (option_t__t basics.string__t) 
+                              (abst_find s (AssocMap__add k v m)) 
+                              (Some basics.string__t v)))) 
+                     (v_Vac:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.or 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ 
+                                        (option_t__t basics.string__t) 
+                                        (abst_find s m) 
+                                        (Some basics.string__t v)))) 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ basics.int__t s k)))))) =>
+                      v_Vec0:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s (AssocMap__add k v m)) 
+                                  (Some basics.string__t v))))) =>
+                      zen.Rnotor 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k))) 
+                        (v_Vbc:
+                         (zen.proof 
+                            (zen.not 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics.syntactic_equal 
+                                        (option_t__t basics.string__t) 
+                                        (abst_find s m) 
+                                        (Some basics.string__t v)))))) =>
+                         v_Vcc:
+                         (zen.proof 
+                            (zen.not 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics.syntactic_equal basics.int__t s 
+                                        k))))) =>
+                         zen.Raxiom 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (basics._equal_ 
+                                    (option_t__t basics.string__t) 
+                                    (abst_find s m) (Some basics.string__t v)))) 
+                           v_Vgc v_Vbc) v_Vac) 
+                     (v_Vfc0:
+                      (zen.proof 
+                         (zen.or 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s m) 
+                                     (Some basics.string__t v)))) 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ basics.int__t s k))))) =>
+                      v_Vdc:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics.syntactic_equal 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s (AssocMap__add k v m)) 
+                                     (Some basics.string__t v)))))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s (AssocMap__add k v m)) 
+                                 (Some basics.string__t v)))) v_Vec v_Vdc) 
+                     v_Vzb) 
+                  (v_Vhc:
+                   (zen.proof 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (basics.syntactic_equal basics.int__t s k)))) =>
+                   zen.Rnotequiv 
+                     (zen.or 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k)))) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._equal_ (option_t__t basics.string__t) 
+                              (abst_find s (AssocMap__add k v m)) 
+                              (Some basics.string__t v)))) 
+                     (v_Vac:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.or 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ 
+                                        (option_t__t basics.string__t) 
+                                        (abst_find s m) 
+                                        (Some basics.string__t v)))) 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics._equal_ basics.int__t s k)))))) =>
+                      v_Vec0:
+                      (zen.proof 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (basics.syntactic_equal 
+                                  (option_t__t basics.string__t) 
+                                  (abst_find s (AssocMap__add k v m)) 
+                                  (Some basics.string__t v))))) =>
+                      zen.Rnotor 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s m) (Some basics.string__t v)))) 
+                        (zen.triangle 
+                           (focal.is_true (basics._equal_ basics.int__t s k))) 
+                        (v_Vbc:
+                         (zen.proof 
+                            (zen.not 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics.syntactic_equal 
+                                        (option_t__t basics.string__t) 
+                                        (abst_find s m) 
+                                        (Some basics.string__t v)))))) =>
+                         v_Vcc:
+                         (zen.proof 
+                            (zen.not 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (basics.syntactic_equal basics.int__t s 
+                                        k))))) =>
+                         zen.Raxiom 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (basics._equal_ basics.int__t s k))) v_Vhc 
+                           v_Vcc) v_Vac) 
+                     (v_Vfc0:
+                      (zen.proof 
+                         (zen.or 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s m) 
+                                     (Some basics.string__t v)))) 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics._equal_ basics.int__t s k))))) =>
+                      v_Vdc:
+                      (zen.proof 
+                         (zen.not 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (basics.syntactic_equal 
+                                     (option_t__t basics.string__t) 
+                                     (abst_find s (AssocMap__add k v m)) 
+                                     (Some basics.string__t v)))))) =>
+                      zen.Raxiom 
+                        (zen.triangle 
+                           (focal.is_true 
+                              (basics._equal_ (option_t__t basics.string__t) 
+                                 (abst_find s (AssocMap__add k v m)) 
+                                 (Some basics.string__t v)))) v_Vec v_Vdc) 
+                     v_Vzb) v_Vfc) __B_1_2_LEMMA) __B_1_1_LEMMA)) 
+        (H2:
+         (dk_logic.eP 
+            (dk_logic.ebP 
+               (basics._equal_ (option_t__t basics.string__t) 
+                  (abst_find s (AssocMap__add k v m)) 
+                  (Some basics.string__t v)))) =>
+         (__B_1_2_1_LEMMA:
+          (dk_logic.eP 
+             (dk_logic.ebP 
+                (basics._equal_ int_str_list_t__t (AssocMap__add k v m) 
+                   (Node k v m)))) =>
+          dk_builtins.magic_prove 
+            (dk_logic.or 
+               (dk_logic.ebP 
+                  (basics._equal_ (option_t__t basics.string__t) 
+                     (abst_find s m) (Some basics.string__t v))) 
+               (dk_logic.ebP (basics._equal_ basics.int__t s k)))) 
+           (zen.nnpp 
+              (zen.triangle 
+                 (focal.is_true 
+                    (basics._equal_ int_str_list_t__t (AssocMap__add k v m) 
+                       (Node k v m)))) 
+              (v_Vzb:
+               (zen.proof 
+                  (zen.not 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics.syntactic_equal int_str_list_t__t 
+                              (Node k v m) (Node k v m)))))) =>
+               focal.zenon_not_syntactic_equal int_str_list_t__t 
+                 (AssocMap__add k v m) (Node k v m) 
+                 (v_Vac:
+                  (zen.proof 
+                     (zen.not 
+                        (zen.triangle 
+                           (zen.equal int_str_list_t__t (Node k v m) 
+                              (Node k v m))))) =>
+                  zen.Rnoteq int_str_list_t__t (Node k v m) v_Vac) v_Vzb)))) 
+       (H1:
+        (dk_logic.eP 
+           (dk_logic.or 
+              (dk_logic.ebP 
+                 (basics._equal_ (option_t__t basics.string__t) 
+                    (abst_find s m) (Some basics.string__t v))) 
+              (dk_logic.ebP (basics._equal_ basics.int__t s k)))) =>
+        (__B_1_1_1_LEMMA:
+         (dk_logic.eP 
+            (dk_logic.ebP 
+               (basics._equal_ int_str_list_t__t (AssocMap__add k v m) 
+                  (Node k v m)))) =>
+         dk_builtins.magic_prove 
+           (dk_logic.ebP 
+              (basics._equal_ (option_t__t basics.string__t) 
+                 (abst_find s (AssocMap__add k v m)) 
+                 (Some basics.string__t v)))) 
+          (zen.nnpp 
+             (zen.triangle 
+                (focal.is_true 
+                   (basics._equal_ int_str_list_t__t (AssocMap__add k v m) 
+                      (Node k v m)))) 
+             (v_Vzb:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics.syntactic_equal int_str_list_t__t 
+                             (Node k v m) (Node k v m)))))) =>
+              focal.zenon_not_syntactic_equal int_str_list_t__t 
+                (AssocMap__add k v m) (Node k v m) 
+                (v_Vac:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (zen.equal int_str_list_t__t (Node k v m) 
+                             (Node k v m))))) =>
+                 zen.Rnoteq int_str_list_t__t (Node k v m) v_Vac) v_Vzb)))).
+
+def AssocMap__collection_create
+  :=
+  AssocMap__mk_record int_str_list_t__t AssocMap__add AssocMap__empty 
+    AssocMap__find 
+    (AssocMap__find_added_not_fails int_str_list_t__t AssocMap__add 
+       AssocMap__find) 
+    (AssocMap__find_same_key_same_value int_str_list_t__t AssocMap__find) 
+    (AssocMap__find_spec AssocMap__find).
+

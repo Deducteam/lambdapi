@@ -1,0 +1,31 @@
+#REQUIRE cc.
+
+sum : cc.uT -> cc.uT -> cc.uT.
+
+Sum : cc.uT -> cc.uT -> Type.
+
+[B, A] cc.eT (sum A B) --> Sum A B.
+
+left : A:cc.uT -> B:cc.uT -> (cc.eT A) -> Sum A B.
+
+right : A:cc.uT -> B:cc.uT -> (cc.eT B) -> Sum A B.
+
+def simple_match__sum :
+  A:cc.uT ->
+  B:cc.uT ->
+  C:cc.uT ->
+  (Sum A B) -> ((cc.eT A) -> cc.eT C) -> ((cc.eT B) -> cc.eT C) -> cc.eT C.
+
+[f, a] simple_match__sum _ _ _ (left _ _ a) f _ --> f a
+[g, b] simple_match__sum _ _ _ (right _ _ b) _ g --> g b.
+
+def match__sum
+  :=
+  A:cc.uT =>
+  B:cc.uT =>
+  C:cc.uT =>
+  H:(Sum A B) =>
+  f:((cc.eT A) -> cc.eT C) =>
+  g:((cc.eT B) -> cc.eT C) =>
+  default:(cc.eT C) => simple_match__sum A B C H f g.
+

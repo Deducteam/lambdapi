@@ -1,0 +1,121 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_nat.
+#REQUIRE dk_bool.
+
+def UNat : Type := dk_nat.Nat.
+
+def Bool : Type := dk_bool.Bool.
+
+bNat : cc.uT.
+
+BNat : Type.
+
+[] cc.eT (bNat) --> BNat.
+
+O : BNat.
+
+def S0 : BNat -> BNat.
+
+S1 : BNat -> BNat.
+
+[] S0 (O) --> O.
+
+def call_by_value_bNat : R:cc.uT -> (BNat -> cc.eT R) -> BNat -> cc.eT R.
+
+[f] call_by_value_bNat _ f (O) --> f O
+[n, f] call_by_value_bNat _ f (S0 n) --> f (S0 n)
+[n, f] call_by_value_bNat _ f (S1 n) --> f (S1 n).
+
+def nat_of_bnat : BNat -> UNat.
+
+[] nat_of_bnat (O) --> builtins.0
+[bn]
+  nat_of_bnat (S0 bn)
+  -->
+  dk_nat.mult (builtins.S (builtins.S builtins.0)) (nat_of_bnat bn)
+[bn]
+  nat_of_bnat (S1 bn)
+  -->
+  builtins.S 
+    (dk_nat.mult (builtins.S (builtins.S builtins.0)) (nat_of_bnat bn)).
+
+def succ : BNat -> BNat.
+
+[] succ (O) --> S1 O.
+
+[n] succ (S0 n) --> S1 n
+[n] succ (S1 n) --> S0 (succ n).
+
+def bnat_of_nat : UNat -> BNat.
+
+[] bnat_of_nat (builtins.0) --> O
+[n] bnat_of_nat (builtins.S n) --> succ (bnat_of_nat n).
+
+def lt : BNat -> BNat -> Bool.
+
+def gt : BNat -> BNat -> Bool.
+
+def leq : BNat -> BNat -> Bool.
+
+def geq : BNat -> BNat -> Bool.
+
+[] lt _ (O) --> dk_bool.false[] lt (O) (S0 _) --> dk_bool.true
+[] lt (O) (S1 _) --> dk_bool.true[m, n] lt (S0 n) (S0 m) --> lt n m
+[m, n] lt (S0 n) (S1 m) --> leq n m[m, n] lt (S1 n) (S0 m) --> lt n m
+[m, n] lt (S1 n) (S1 m) --> lt n m.
+
+[m, n] gt n m --> lt m n.
+
+[] leq (O) _ --> dk_bool.true[] leq (S0 _) (O) --> dk_bool.false
+[] leq (S1 _) (O) --> dk_bool.false[m, n] leq (S0 n) (S0 m) --> leq n m
+[m, n] leq (S0 n) (S1 m) --> leq n m[m, n] leq (S1 n) (S0 m) --> lt n m
+[m, n] leq (S1 n) (S1 m) --> leq n m.
+
+[m, n] geq n m --> leq m n.
+
+def eq : BNat -> BNat -> Bool.
+
+[m, n] eq n m --> dk_bool.and (leq n m) (geq n m).
+
+def plus : BNat -> BNat -> BNat.
+
+[m] plus (O) m --> m[n] plus n (O) --> n
+[m, n] plus (S0 n) (S0 m) --> S0 (plus n m)
+[m, n] plus (S0 n) (S1 m) --> S1 (plus n m)
+[m, n] plus (S1 n) (S0 m) --> S1 (plus n m)
+[m, n] plus (S1 n) (S1 m) --> S0 (succ (plus n m)).
+
+def mult : BNat -> BNat -> BNat.
+
+[] mult (O) _ --> O[] mult _ (O) --> O
+[m, n] mult (S0 n) (S0 m) --> S0 (S0 (mult n m))
+[m, n] mult (S0 n) (S1 m) --> S0 (plus (S0 (mult n m)) n)
+[m, n] mult (S1 n) (S0 m) --> S0 (plus m (S0 (mult n m)))
+[m, n] mult (S1 n) (S1 m) --> S1 (plus (S0 (mult n m)) (plus n m)).
+
+def max : BNat -> BNat -> BNat.
+
+[n, m] max m n --> dk_bool.ite bNat (leq m n) n m.
+
+def min : BNat -> BNat -> BNat.
+
+[n, m] min m n --> dk_bool.ite bNat (leq m n) m n.
+
+def div2 : BNat -> BNat.
+
+[] div2 (O) --> O[n] div2 (S0 n) --> n
+[n] div2 (S1 n) --> n.
+
+def quo2 : BNat -> UNat -> BNat.
+
+[n] quo2 n (builtins.0) --> n[] quo2 (O) _ --> O
+[k, n] quo2 (S0 n) (builtins.S k) --> quo2 n k
+[k, n] quo2 (S1 n) (builtins.S k) --> quo2 n k.
+
+def mod2 : BNat -> UNat -> BNat.
+
+[] mod2 _ (builtins.0) --> O[] mod2 (O) _ --> O
+[k, n] mod2 (S0 n) (builtins.S k) --> S0 (mod2 n k)
+[k, n] mod2 (S1 n) (builtins.S k) --> S1 (mod2 n k).
+

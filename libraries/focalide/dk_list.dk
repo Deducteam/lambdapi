@@ -1,0 +1,106 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_logic.
+
+List : cc.uT -> Type.
+
+[A] cc.eT (builtins.list A) --> List A.
+
+def call_by_value_list :
+  A:cc.uT -> R:cc.uT -> ((List A) -> cc.eT R) -> (List A) -> cc.eT R.
+
+[f, R, A] call_by_value_list A R f (builtins.nil _) --> f (builtins.nil A)
+[l, a, f, R, A]
+  call_by_value_list A R f (builtins.cons _ a l) --> f (builtins.cons A a l).
+
+def match :
+  A:cc.uT ->
+  P:((List A) -> cc.uT) ->
+  (cc.eT (P (builtins.nil A))) ->
+  (a:(cc.eT A) -> l:(List A) -> cc.eT (P (builtins.cons A a l))) ->
+  l:(List A) -> cc.eT (P l).
+
+[Hcons, Hnil, P, A] match A P Hnil Hcons (builtins.nil _) --> Hnil
+[l, a, Hcons, Hnil, P, A]
+  match A P Hnil Hcons (builtins.cons _ a l) --> Hcons a l.
+
+def simple_match :
+  A:cc.uT ->
+  return:cc.uT ->
+  (cc.eT return) ->
+  ((cc.eT A) -> (List A) -> cc.eT return) -> (List A) -> cc.eT return
+  :=
+  A:cc.uT => return:cc.uT => match A (_x:(List A) => return).
+
+def match__nil :
+  A:cc.uT ->
+  return:cc.uT ->
+  (List A) -> (cc.eT return) -> (cc.eT return) -> cc.eT return.
+
+[ccase, ncase, ret, A]
+  match__nil A ret (builtins.nil _) ncase ccase --> ncase
+[ccase, ncase, l, a, ret, A]
+  match__nil A ret (builtins.cons _ a l) ncase ccase --> ccase.
+
+def match__cons :
+  A:cc.uT ->
+  return:cc.uT ->
+  (List A) ->
+  ((cc.eT A) -> (List A) -> cc.eT return) -> (cc.eT return) -> cc.eT return.
+
+[ncase, ccase, l, ret, A]
+  match__cons A ret l ccase ncase --> simple_match A ret ncase ccase l.
+
+def append : A:cc.uT -> (List A) -> (List A) -> List A.
+
+[l2, A] append A (builtins.nil _) l2 --> l2
+[l2, l1, a1, A]
+  append A (builtins.cons _ a1 l1) l2 --> builtins.cons A a1 (append A l1 l2)
+[l3, l2, l1, A] append A l1 (append _ l2 l3) --> append A (append A l1 l2) l3.
+
+def map : A:cc.uT -> B:cc.uT -> ((cc.eT A) -> cc.eT B) -> (List A) -> List B.
+
+[f, B, A] map A B f (builtins.nil _) --> builtins.nil B
+[l, a, f, B, A]
+  map A B f (builtins.cons _ a l) --> builtins.cons B (f a) (map A B f l)
+[l, f, A, g, C, B]
+  map B C g (map A _ f l) --> map A C (x:(cc.eT A) => g (f x)) l.
+
+def mem :
+  A:cc.uT ->
+  ((cc.eT A) -> (cc.eT A) -> cc.eT dk_bool.bool) ->
+  (cc.eT A) -> (List A) -> cc.eT dk_bool.bool.
+
+[a, eq, A] mem A eq a (builtins.nil _) --> dk_bool.false
+[l, a2, a1, eq, A]
+  mem A eq a1 (builtins.cons _ a2 l)
+  -->
+  dk_bool.or (eq a1 a2) (mem A eq a1 l).
+
+def map_id :
+  B:cc.uT ->
+  l:(cc.eT (builtins.list B)) ->
+  dk_logic.eP 
+    (dk_logic.equal (builtins.list B) (map B B (x:(cc.eT B) => x) l) l).
+
+[B]
+  map_id B (builtins.nil _)
+  -->
+  dk_logic.refl (builtins.list B) (builtins.nil B)
+[l, a, A]
+  map_id A (builtins.cons _ a l)
+  -->
+  dk_logic.equal_congr (builtins.list A) (builtins.list A) 
+    (builtins.cons A a) (map A A (x:(cc.eT A) => x) l) l (map_id A l).
+
+dlist : A:cc.uT -> (cc.eT A) -> cc.uT.
+
+dnil : A:cc.uT -> a:(cc.eT A) -> cc.eT (dlist A a).
+
+dcons :
+  A:cc.uT ->
+  a:(cc.eT A) ->
+  f:((cc.eT (dlist A a)) -> cc.uT) ->
+  l:(cc.eT (dlist A a)) -> (cc.eT (f l)) -> cc.eT (dlist A a).
+

@@ -1,0 +1,371 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE dk_fail.
+#REQUIRE zen.
+#REQUIRE focal.
+
+__bintree_t__t : Type.
+
+def bintree_t__t : cc.uT.
+
+[] cc.eT (bintree_t__t) --> __bintree_t__t.
+
+Leaf : cc.eT bintree_t__t.
+
+Node :
+  (cc.eT bintree_t__t) ->
+  (cc.eT basics.bool__t) -> (cc.eT bintree_t__t) -> cc.eT bintree_t__t.
+
+def match__Leaf :
+  Ret_type:cc.uT ->
+  (cc.eT bintree_t__t) ->
+  (cc.eT Ret_type) -> (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Leaf Ret_type (Leaf) pattern default --> pattern.
+
+[default, pattern, x_2_, x_1_, x_0_, Ret_type]
+  match__Leaf Ret_type (Node x_0_ x_1_ x_2_) pattern default --> default.
+
+def match__Node :
+  Ret_type:cc.uT ->
+  (cc.eT bintree_t__t) ->
+  ((cc.eT bintree_t__t) ->
+   (cc.eT basics.bool__t) -> (cc.eT bintree_t__t) -> cc.eT Ret_type) ->
+  (cc.eT Ret_type) -> cc.eT Ret_type.
+
+[default, pattern, Ret_type]
+  match__Node Ret_type (Leaf) pattern default --> default.
+
+[default, pattern, x_2_, x_1_, x_0_, Ret_type]
+  match__Node Ret_type (Node x_0_ x_1_ x_2_) pattern default
+  -->
+  pattern x_0_ x_1_ x_2_.
+
+def call_by_value_bintree_t__t :
+  R:cc.uT ->
+  ((cc.eT bintree_t__t) -> cc.eT R) -> (cc.eT bintree_t__t) -> cc.eT R.
+
+[f, R] dk_builtins.call_by_value (bintree_t__t) R f (Leaf) --> f Leaf.
+
+[x_2_, x_1_, x_0_, f, R]
+  dk_builtins.call_by_value (bintree_t__t) R f (Node x_0_ x_1_ x_2_)
+  -->
+  f (Node x_0_ x_1_ x_2_).
+
+def f : t:(cc.eT bintree_t__t) -> cc.eT basics.bool__t.
+
+[t]
+  f t
+  -->
+  match__Leaf basics.bool__t t dk_bool.false 
+    (match__Node basics.bool__t t 
+       (pattern_var_0_:(cc.eT bintree_t__t) =>
+        pattern_var_1_:(cc.eT basics.bool__t) =>
+        pattern_var_2_:(cc.eT bintree_t__t) =>
+        (l:(cc.eT bintree_t__t) =>
+         (b:(cc.eT basics.bool__t) =>
+          (r:(cc.eT bintree_t__t) =>
+           basics._amper__amper_ b 
+             (basics._amper__amper_ 
+                ((t:(cc.eT bintree_t__t) =>
+                  dk_builtins.call_by_value bintree_t__t basics.bool__t f t) 
+                   l) 
+                ((t:(cc.eT bintree_t__t) =>
+                  dk_builtins.call_by_value bintree_t__t basics.bool__t f t) 
+                   r))) pattern_var_2_) pattern_var_1_) pattern_var_0_) 
+       (dk_fail.fail basics.bool__t)).
+
+def always_false :
+  dk_logic.eP 
+    (dk_logic.forall bintree_t__t 
+       (t:(cc.eT bintree_t__t) => dk_logic.not (dk_logic.ebP (f t))))
+  :=
+  (__A_1_LEMMA:(dk_logic.eP (dk_logic.not (dk_logic.ebP (f Leaf)))) =>
+   (__A_2_LEMMA:
+    (l:(cc.eT bintree_t__t) ->
+     HRecL:(dk_logic.eP (dk_logic.not (dk_logic.ebP (f l)))) ->
+     b:(cc.eT basics.bool__t) ->
+     r:(cc.eT bintree_t__t) ->
+     HRecR:(dk_logic.eP (dk_logic.not (dk_logic.ebP (f r)))) ->
+     dk_logic.eP (dk_logic.not (dk_logic.ebP (f (Node l b r))))) =>
+    dk_builtins.magic_prove 
+      (dk_logic.forall bintree_t__t 
+         (t:(cc.eT bintree_t__t) => dk_logic.not (dk_logic.ebP (f t))))) 
+     (l:(cc.eT bintree_t__t) =>
+      HRecL:(dk_logic.eP (dk_logic.not (dk_logic.ebP (f l)))) =>
+      b:(cc.eT basics.bool__t) =>
+      r:(cc.eT bintree_t__t) =>
+      HRecR:(dk_logic.eP (dk_logic.not (dk_logic.ebP (f r)))) =>
+      zen.nnpp (zen.not (zen.triangle (focal.is_true (f (Node l b r))))) 
+        (v_Vbc:
+         (zen.proof 
+            (zen.not 
+               (zen.not (zen.triangle (focal.is_true (f (Node l b r))))))) =>
+         zen.Rnotnot (zen.triangle (focal.is_true (f (Node l b r)))) 
+           (v_Vcc:
+            (zen.proof 
+               (zen.triangle 
+                  (focal.is_true 
+                     (basics._amper__amper_ b 
+                        (basics._amper__amper_ 
+                           (dk_builtins.call_by_value bintree_t__t 
+                              basics.bool__t f l) 
+                           (dk_builtins.call_by_value bintree_t__t 
+                              basics.bool__t f r)))))) =>
+            focal.zenon_focal_and b 
+              (basics._amper__amper_ 
+                 (dk_builtins.call_by_value bintree_t__t basics.bool__t f l) 
+                 (dk_builtins.call_by_value bintree_t__t basics.bool__t f r)) 
+              (v_Vdc:
+               (zen.proof 
+                  (zen.and (zen.triangle (focal.is_true b)) 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._amper__amper_ 
+                              (dk_builtins.call_by_value bintree_t__t 
+                                 basics.bool__t f l) 
+                              (dk_builtins.call_by_value bintree_t__t 
+                                 basics.bool__t f r)))))) =>
+               zen.Rand (zen.triangle (focal.is_true b)) 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics._amper__amper_ 
+                          (dk_builtins.call_by_value bintree_t__t 
+                             basics.bool__t f l) 
+                          (dk_builtins.call_by_value bintree_t__t 
+                             basics.bool__t f r)))) 
+                 (v_Vec:(zen.proof (zen.triangle (focal.is_true b))) =>
+                  v_Vfc:
+                  (zen.proof 
+                     (zen.triangle 
+                        (focal.is_true 
+                           (basics._amper__amper_ 
+                              (dk_builtins.call_by_value bintree_t__t 
+                                 basics.bool__t f l) 
+                              (dk_builtins.call_by_value bintree_t__t 
+                                 basics.bool__t f r))))) =>
+                  focal.zenon_focal_and 
+                    (dk_builtins.call_by_value bintree_t__t basics.bool__t f 
+                       l) 
+                    (dk_builtins.call_by_value bintree_t__t basics.bool__t f 
+                       r) 
+                    (v_Vgc:
+                     (zen.proof 
+                        (zen.and 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (dk_builtins.call_by_value bintree_t__t 
+                                    basics.bool__t f l))) 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (dk_builtins.call_by_value bintree_t__t 
+                                    basics.bool__t f r))))) =>
+                     zen.Rand 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (dk_builtins.call_by_value bintree_t__t 
+                                basics.bool__t f l))) 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (dk_builtins.call_by_value bintree_t__t 
+                                basics.bool__t f r))) 
+                       (v_Vhc:
+                        (zen.proof 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (dk_builtins.call_by_value bintree_t__t 
+                                    basics.bool__t f l)))) =>
+                        v_Vic:
+                        (zen.proof 
+                           (zen.triangle 
+                              (focal.is_true 
+                                 (dk_builtins.call_by_value bintree_t__t 
+                                    basics.bool__t f r)))) =>
+                        zen.Ralltype 
+                          (v_Vjc:zen.type =>
+                           zen.foralltype 
+                             (v_Vkc:zen.type =>
+                              zen.forall (zen.arrow v_Vjc v_Vkc) 
+                                (v_Vlc:
+                                 ((zen.term v_Vjc) -> zen.term v_Vkc) =>
+                                 zen.forall v_Vjc 
+                                   (v_Vmc:(zen.term v_Vjc) =>
+                                    zen.triangle 
+                                      (zen.equal v_Vkc 
+                                         (dk_builtins.call_by_value v_Vjc 
+                                            v_Vkc v_Vlc v_Vmc) (v_Vlc v_Vmc)))))) 
+                          bintree_t__t 
+                          (v_Vnc:
+                           (zen.proof 
+                              (zen.foralltype 
+                                 (v_Vkc:zen.type =>
+                                  zen.forall (zen.arrow bintree_t__t v_Vkc) 
+                                    (v_Voc:
+                                     ((zen.term bintree_t__t) ->
+                                      zen.term v_Vkc) =>
+                                     zen.forall bintree_t__t 
+                                       (v_Vpc:(zen.term bintree_t__t) =>
+                                        zen.triangle 
+                                          (zen.equal v_Vkc 
+                                             (dk_builtins.call_by_value 
+                                                bintree_t__t v_Vkc v_Voc 
+                                                v_Vpc) (v_Voc v_Vpc))))))) =>
+                           zen.Ralltype 
+                             (v_Vkc:zen.type =>
+                              zen.forall (zen.arrow bintree_t__t v_Vkc) 
+                                (v_Voc:
+                                 ((zen.term bintree_t__t) -> zen.term v_Vkc) =>
+                                 zen.forall bintree_t__t 
+                                   (v_Vpc:(zen.term bintree_t__t) =>
+                                    zen.triangle 
+                                      (zen.equal v_Vkc 
+                                         (dk_builtins.call_by_value 
+                                            bintree_t__t v_Vkc v_Voc v_Vpc) 
+                                         (v_Voc v_Vpc))))) basics.bool__t 
+                             (v_Vqc:
+                              (zen.proof 
+                                 (zen.forall 
+                                    (zen.arrow bintree_t__t basics.bool__t) 
+                                    (v_Vrc:
+                                     ((zen.term bintree_t__t) ->
+                                      zen.term basics.bool__t) =>
+                                     zen.forall bintree_t__t 
+                                       (v_Vpc:(zen.term bintree_t__t) =>
+                                        zen.triangle 
+                                          (zen.equal basics.bool__t 
+                                             (dk_builtins.call_by_value 
+                                                bintree_t__t basics.bool__t 
+                                                v_Vrc v_Vpc) (v_Vrc v_Vpc)))))) =>
+                              zen.Rall 
+                                (zen.arrow bintree_t__t basics.bool__t) 
+                                (v_Vrc:
+                                 ((zen.term bintree_t__t) ->
+                                  zen.term basics.bool__t) =>
+                                 zen.forall bintree_t__t 
+                                   (v_Vpc:(zen.term bintree_t__t) =>
+                                    zen.triangle 
+                                      (zen.equal basics.bool__t 
+                                         (dk_builtins.call_by_value 
+                                            bintree_t__t basics.bool__t 
+                                            v_Vrc v_Vpc) (v_Vrc v_Vpc)))) f 
+                                (v_Vsc:
+                                 (zen.proof 
+                                    (zen.forall bintree_t__t 
+                                       (v_Vpc:(zen.term bintree_t__t) =>
+                                        zen.triangle 
+                                          (zen.equal basics.bool__t 
+                                             (dk_builtins.call_by_value 
+                                                bintree_t__t basics.bool__t 
+                                                f v_Vpc) (f v_Vpc))))) =>
+                                 zen.Rall bintree_t__t 
+                                   (v_Vpc:(zen.term bintree_t__t) =>
+                                    zen.triangle 
+                                      (zen.equal basics.bool__t 
+                                         (dk_builtins.call_by_value 
+                                            bintree_t__t basics.bool__t f 
+                                            v_Vpc) (f v_Vpc))) l 
+                                   (v_Vtc:
+                                    (zen.proof 
+                                       (zen.triangle 
+                                          (zen.equal basics.bool__t 
+                                             (dk_builtins.call_by_value 
+                                                bintree_t__t basics.bool__t 
+                                                f l) 
+                                             (match__Leaf basics.bool__t l 
+                                                basics.false 
+                                                (match__Node basics.bool__t 
+                                                   l 
+                                                   (v_Vuc:
+                                                    (zen.term bintree_t__t) =>
+                                                    v_Vvc:
+                                                    (zen.term basics.bool__t) =>
+                                                    v_Vwc:
+                                                    (zen.term bintree_t__t) =>
+                                                    basics._amper__amper_ 
+                                                      v_Vvc 
+                                                      (basics._amper__amper_ 
+                                                         (dk_builtins.call_by_value 
+                                                            bintree_t__t 
+                                                            basics.bool__t f 
+                                                            v_Vuc) 
+                                                         (dk_builtins.call_by_value 
+                                                            bintree_t__t 
+                                                            basics.bool__t f 
+                                                            v_Vwc))) 
+                                                   (dk_fail.fail 
+                                                      basics.bool__t)))))) =>
+                                    zen.Rconglr basics.bool__t 
+                                      (v_Vxc:(zen.term basics.bool__t) =>
+                                       zen.triangle (focal.is_true v_Vxc)) 
+                                      (dk_builtins.call_by_value 
+                                         bintree_t__t basics.bool__t f l) 
+                                      (f l) 
+                                      (v_Vyc:
+                                       (zen.proof 
+                                          (zen.triangle 
+                                             (focal.is_true 
+                                                (match__Leaf basics.bool__t 
+                                                   l basics.false 
+                                                   (match__Node 
+                                                      basics.bool__t l 
+                                                      (v_Vuc:
+                                                       (zen.term bintree_t__t) =>
+                                                       v_Vvc:
+                                                       (zen.term 
+                                                          basics.bool__t) =>
+                                                       v_Vwc:
+                                                       (zen.term bintree_t__t) =>
+                                                       basics._amper__amper_ 
+                                                         v_Vvc 
+                                                         (basics._amper__amper_ 
+                                                            (dk_builtins.call_by_value 
+                                                               bintree_t__t 
+                                                               basics.bool__t 
+                                                               f v_Vuc) 
+                                                            (dk_builtins.call_by_value 
+                                                               bintree_t__t 
+                                                               basics.bool__t 
+                                                               f v_Vwc))) 
+                                                      (dk_fail.fail 
+                                                         basics.bool__t)))))) =>
+                                       zen.Raxiom 
+                                         (zen.triangle 
+                                            (focal.is_true 
+                                               (match__Leaf basics.bool__t l 
+                                                  basics.false 
+                                                  (match__Node 
+                                                     basics.bool__t l 
+                                                     (v_Vuc:
+                                                      (zen.term bintree_t__t) =>
+                                                      v_Vvc:
+                                                      (zen.term 
+                                                         basics.bool__t) =>
+                                                      v_Vwc:
+                                                      (zen.term bintree_t__t) =>
+                                                      basics._amper__amper_ 
+                                                        v_Vvc 
+                                                        (basics._amper__amper_ 
+                                                           (dk_builtins.call_by_value 
+                                                              bintree_t__t 
+                                                              basics.bool__t 
+                                                              f v_Vuc) 
+                                                           (dk_builtins.call_by_value 
+                                                              bintree_t__t 
+                                                              basics.bool__t 
+                                                              f v_Vwc))) 
+                                                     (dk_fail.fail 
+                                                        basics.bool__t))))) 
+                                         v_Vyc HRecL) v_Vhc v_Vtc) v_Vsc) 
+                                v_Vqc) v_Vnc) dk_builtins.cbv_eq) v_Vgc) 
+                    v_Vfc) v_Vdc) v_Vcc) v_Vbc))) 
+    (zen.nnpp (zen.not (zen.triangle (focal.is_true (f Leaf)))) 
+       (v_Vzb:
+        (zen.proof 
+           (zen.not (zen.not (zen.triangle (focal.is_true (f Leaf)))))) =>
+        zen.Rnotnot (zen.triangle (focal.is_true (f Leaf))) 
+          (v_Vac:(zen.proof zen.False) => zen.Rfalse v_Vac) v_Vzb)).
+

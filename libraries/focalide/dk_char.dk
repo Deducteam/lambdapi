@@ -1,0 +1,30 @@
+#REQUIRE cc.
+#REQUIRE builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_nat.
+
+Char : Type.
+
+[] cc.eT (builtins.char) --> Char.
+
+def call_by_value_char : R:cc.uT -> (Char -> cc.eT R) -> Char -> cc.eT R.
+
+[n, f]
+  call_by_value_char _ f (builtins.char_of_nat n)
+  -->
+  f (builtins.char_of_nat n).
+
+def to_nat : Char -> cc.eT builtins.nat.
+
+[n] to_nat (builtins.char_of_nat n) --> n.
+
+def equal :
+  c1:Char -> c2:Char -> cc.eT dk_bool.bool
+  :=
+  c1:Char => c2:Char => dk_nat.eq (to_nat c1) (to_nat c2).
+
+def lt :
+  c1:Char -> c2:Char -> cc.eT dk_bool.bool
+  :=
+  c1:Char => c2:Char => dk_nat.lt (to_nat c1) (to_nat c2).
+

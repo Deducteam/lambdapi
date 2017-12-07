@@ -1,0 +1,51 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_bool.
+#REQUIRE dk_int.
+#REQUIRE dk_fail.
+
+def length : l:(cc.eT (basics.list__t basics.int__t)) -> cc.eT basics.int__t.
+
+[l]
+  length l
+  -->
+  basics.match__nil basics.int__t basics.int__t l 
+    (dk_int.from_nat builtins.0) 
+    (basics.match__cons basics.int__t basics.int__t l 
+       (pattern_var_0_:(cc.eT basics.int__t) =>
+        pattern_var_1_:(cc.eT (basics.list__t basics.int__t)) =>
+        (q:(cc.eT (basics.list__t basics.int__t)) =>
+         basics._plus_ (dk_int.from_nat (builtins.S builtins.0)) 
+           ((l:(cc.eT (basics.list__t basics.int__t)) =>
+             dk_builtins.call_by_value (basics.list__t basics.int__t) 
+               basics.int__t length l) q)) pattern_var_1_) 
+       (dk_fail.fail basics.int__t)).
+
+def dummy :
+  x:(cc.eT basics.int__t) -> cc.eT basics.int__t
+  :=
+  x:(cc.eT basics.int__t) => dk_int.from_nat builtins.0.
+
+def mem :
+  l:(cc.eT (basics.list__t basics.int__t)) ->
+  x:(cc.eT basics.int__t) -> cc.eT basics.bool__t.
+
+[x, l]
+  mem l x
+  -->
+  basics.match__nil basics.int__t basics.bool__t l dk_bool.false 
+    (basics.match__cons basics.int__t basics.bool__t l 
+       (pattern_var_0_:(cc.eT basics.int__t) =>
+        pattern_var_1_:(cc.eT (basics.list__t basics.int__t)) =>
+        (h:(cc.eT basics.int__t) =>
+         (q:(cc.eT (basics.list__t basics.int__t)) =>
+          basics._bar__bar_ (basics._equal_ basics.int__t h x) 
+            ((l:(cc.eT (basics.list__t basics.int__t)) =>
+              x:(cc.eT basics.int__t) =>
+              dk_builtins.call_by_value basics.int__t basics.bool__t 
+                (dk_builtins.call_by_value (basics.list__t basics.int__t) 
+                   (cc.Arrow basics.int__t basics.bool__t) mem l) x) q x)) 
+           pattern_var_1_) pattern_var_0_) (dk_fail.fail basics.bool__t)).
+

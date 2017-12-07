@@ -1,0 +1,830 @@
+#REQUIRE cc.
+#REQUIRE dk_logic.
+#REQUIRE dk_builtins.
+#REQUIRE basics.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def Enumeration_system__element :
+  abst_T:cc.uT -> abst_start:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT => abst_start:(cc.eT abst_T) => abst_start.
+
+def Enumerated_system__enumerated_induction :
+  abst_T:cc.uT ->
+  abst_start:(cc.eT abst_T) ->
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall (cc.Arrow abst_T dk_builtins.prop) 
+       (p:((cc.eT abst_T) -> dk_logic.Prop) =>
+        dk_logic.imp (p abst_start) 
+          (dk_logic.imp 
+             (dk_logic.forall abst_T 
+                (n:(cc.eT abst_T) =>
+                 dk_logic.imp (p n) (p (abst_successor n)))) 
+             (dk_logic.forall abst_T (n:(cc.eT abst_T) => p n)))))
+  :=
+  abst_T:cc.uT =>
+  abst_start:(cc.eT abst_T) =>
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall (cc.Arrow abst_T dk_builtins.prop) 
+       (p:((cc.eT abst_T) -> dk_logic.Prop) =>
+        dk_logic.imp (p abst_start) 
+          (dk_logic.imp 
+             (dk_logic.forall abst_T 
+                (n:(cc.eT abst_T) =>
+                 dk_logic.imp (p n) (p (abst_successor n)))) 
+             (dk_logic.forall abst_T (n:(cc.eT abst_T) => p n))))).
+
+def Number_system__deux :
+  abst_T:cc.uT ->
+  abst_one:(cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  cc.eT abst_T
+  :=
+  abst_T:cc.uT =>
+  abst_one:(cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_plus abst_one abst_one.
+
+def Number_system__successor :
+  abst_T:cc.uT ->
+  abst_one:(cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  x:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT =>
+  abst_one:(cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  x:(cc.eT abst_T) => abst_plus x abst_one.
+
+def Number_system__start :
+  abst_T:cc.uT -> abst_zero:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT => abst_zero:(cc.eT abst_T) => abst_zero.
+
+def Number_system__div2 :
+  abst_T:cc.uT ->
+  abst_deux:(cc.eT abst_T) ->
+  abst_quotient:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  n:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT =>
+  abst_deux:(cc.eT abst_T) =>
+  abst_quotient:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  n:(cc.eT abst_T) => abst_quotient n abst_deux.
+
+def Number_system__is_even :
+  abst_T:cc.uT ->
+  abst_deux:(cc.eT abst_T) ->
+  abst_remainder:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  n:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  abst_deux:(cc.eT abst_T) =>
+  abst_remainder:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  n:(cc.eT abst_T) => abst_is_zero (abst_remainder n abst_deux).
+
+def Number_system__successor_substitution_rule :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_one:(cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_plus_left_substitution_rule:(dk_logic.eP 
+                                      (dk_logic.forall abst_T 
+                                         (x:(cc.eT abst_T) =>
+                                          dk_logic.forall abst_T 
+                                            (y:(cc.eT abst_T) =>
+                                             dk_logic.forall abst_T 
+                                               (z:(cc.eT abst_T) =>
+                                                dk_logic.imp 
+                                                  (dk_logic.ebP 
+                                                     (abst_equal x y)) 
+                                                  (dk_logic.ebP 
+                                                     (abst_equal 
+                                                        (abst_plus x z) 
+                                                        (abst_plus y z)))))))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+             (dk_logic.ebP 
+                (abst_equal 
+                   (Number_system__successor abst_T abst_one abst_plus x) 
+                   (Number_system__successor abst_T abst_one abst_plus y))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_one:(cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_plus_left_substitution_rule:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.forall abst_T 
+           (y:(cc.eT abst_T) =>
+            dk_logic.forall abst_T 
+              (z:(cc.eT abst_T) =>
+               dk_logic.imp (dk_logic.ebP (abst_equal x y)) 
+                 (dk_logic.ebP (abst_equal (abst_plus x z) (abst_plus y z)))))))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vzb) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vzb) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vac))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vzb) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac)))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vcc) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vac)))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vcc) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac))))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vcc) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vec))))))) =>
+           zen.Rnotimply 
+             (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vcc) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vec)))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec)))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal (abst_plus v_Vcc abst_one) 
+                             (abst_plus v_Vec abst_one)))))) =>
+              zen.Rall abst_T 
+                (v_Vzb:(zen.term abst_T) =>
+                 zen.forall abst_T 
+                   (v_Vac:(zen.term abst_T) =>
+                    zen.forall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.imp 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vzb v_Vac))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (abst_equal (abst_plus v_Vzb v_Vic) 
+                                  (abst_plus v_Vac v_Vic))))))) v_Vcc 
+                (v_Vjc:
+                 (zen.proof 
+                    (zen.forall abst_T 
+                       (v_Vac:(zen.term abst_T) =>
+                        zen.forall abst_T 
+                          (v_Vic:(zen.term abst_T) =>
+                           zen.imp 
+                             (zen.triangle 
+                                (focal.is_true (abst_equal v_Vcc v_Vac))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (abst_equal (abst_plus v_Vcc v_Vic) 
+                                      (abst_plus v_Vac v_Vic)))))))) =>
+                 zen.Rall abst_T 
+                   (v_Vac:(zen.term abst_T) =>
+                    zen.forall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.imp 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vcc v_Vac))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (abst_equal (abst_plus v_Vcc v_Vic) 
+                                  (abst_plus v_Vac v_Vic)))))) v_Vec 
+                   (v_Vkc:
+                    (zen.proof 
+                       (zen.forall abst_T 
+                          (v_Vic:(zen.term abst_T) =>
+                           zen.imp 
+                             (zen.triangle 
+                                (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (abst_equal (abst_plus v_Vcc v_Vic) 
+                                      (abst_plus v_Vec v_Vic))))))) =>
+                    zen.Rall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.imp 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (abst_equal (abst_plus v_Vcc v_Vic) 
+                                  (abst_plus v_Vec v_Vic))))) abst_one 
+                      (v_Vlc:
+                       (zen.proof 
+                          (zen.imp 
+                             (zen.triangle 
+                                (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (abst_equal (abst_plus v_Vcc abst_one) 
+                                      (abst_plus v_Vec abst_one)))))) =>
+                       zen.Rimply 
+                         (zen.triangle 
+                            (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                         (zen.triangle 
+                            (focal.is_true 
+                               (abst_equal (abst_plus v_Vcc abst_one) 
+                                  (abst_plus v_Vec abst_one)))) 
+                         (v_Vmc:
+                          (zen.proof 
+                             (zen.not 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vec))))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                            v_Vgc v_Vmc) 
+                         (v_Vnc:
+                          (zen.proof 
+                             (zen.triangle 
+                                (focal.is_true 
+                                   (abst_equal (abst_plus v_Vcc abst_one) 
+                                      (abst_plus v_Vec abst_one))))) =>
+                          zen.Raxiom 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc abst_one) 
+                                     (abst_plus v_Vec abst_one)))) v_Vnc 
+                            v_Vhc) v_Vlc) v_Vkc) v_Vjc) 
+                abst_plus_left_substitution_rule) v_Vfc) v_Vdc) v_Vbc).
+
+def Number_system__is_odd :
+  abst_T:cc.uT ->
+  abst_is_even:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  n:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  abst_T:cc.uT =>
+  abst_is_even:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  n:(cc.eT abst_T) => basics._tilda__tilda_ (abst_is_even n).
+
+def Number_system__successor_is_injective :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_one:(cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_plus_is_regular:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.forall abst_T 
+                                (y:(cc.eT abst_T) =>
+                                 dk_logic.forall abst_T 
+                                   (z:(cc.eT abst_T) =>
+                                    dk_logic.and 
+                                      (dk_logic.imp 
+                                         (dk_logic.ebP 
+                                            (abst_equal (abst_plus x y) 
+                                               (abst_plus x z))) 
+                                         (dk_logic.ebP (abst_equal y z))) 
+                                      (dk_logic.imp 
+                                         (dk_logic.ebP 
+                                            (abst_equal (abst_plus x z) 
+                                               (abst_plus y z))) 
+                                         (dk_logic.ebP (abst_equal x y)))))))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp 
+             (dk_logic.ebP 
+                (abst_equal 
+                   (Number_system__successor abst_T abst_one abst_plus x) 
+                   (Number_system__successor abst_T abst_one abst_plus y))) 
+             (dk_logic.ebP (abst_equal x y)))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_one:(cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_plus_is_regular:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) =>
+         dk_logic.forall abst_T 
+           (y:(cc.eT abst_T) =>
+            dk_logic.forall abst_T 
+              (z:(cc.eT abst_T) =>
+               dk_logic.and 
+                 (dk_logic.imp 
+                    (dk_logic.ebP 
+                       (abst_equal (abst_plus x y) (abst_plus x z))) 
+                    (dk_logic.ebP (abst_equal y z))) 
+                 (dk_logic.imp 
+                    (dk_logic.ebP 
+                       (abst_equal (abst_plus x z) (abst_plus y z))) 
+                    (dk_logic.ebP (abst_equal x y)))))))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vzb) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac)))) 
+             (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac)))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vzb) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vac)))) 
+                    (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac)))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vzb) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac)))) 
+             (zen.triangle (focal.is_true (abst_equal v_Vzb v_Vac))))) 
+       (v_Vcc:(zen.term abst_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vcc) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vac)))) 
+                    (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vac))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.imp 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vcc) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vac)))) 
+             (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vac)))) 
+          (v_Vec:(zen.term abst_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.imp 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (abst_equal 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vcc) 
+                             (Number_system__successor abst_T abst_one 
+                                abst_plus v_Vec)))) 
+                    (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec)))))) =>
+           zen.Rnotimply 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vcc) 
+                      (Number_system__successor abst_T abst_one abst_plus 
+                         v_Vec)))) 
+             (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (abst_equal (abst_plus v_Vcc abst_one) 
+                          (abst_plus v_Vec abst_one))))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle (focal.is_true (abst_equal v_Vcc v_Vec))))) =>
+              zen.Rall abst_T 
+                (v_Vzb:(zen.term abst_T) =>
+                 zen.forall abst_T 
+                   (v_Vac:(zen.term abst_T) =>
+                    zen.forall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.and 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vzb v_Vac) 
+                                     (abst_plus v_Vzb v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vac v_Vic)))) 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vzb v_Vic) 
+                                     (abst_plus v_Vac v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vzb v_Vac))))))) 
+                v_Vcc 
+                (v_Vjc:
+                 (zen.proof 
+                    (zen.forall abst_T 
+                       (v_Vac:(zen.term abst_T) =>
+                        zen.forall abst_T 
+                          (v_Vic:(zen.term abst_T) =>
+                           zen.and 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vac) 
+                                         (abst_plus v_Vcc v_Vic)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vac v_Vic)))) 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vic) 
+                                         (abst_plus v_Vac v_Vic)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vac)))))))) =>
+                 zen.Rall abst_T 
+                   (v_Vac:(zen.term abst_T) =>
+                    zen.forall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.and 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc v_Vac) 
+                                     (abst_plus v_Vcc v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vac v_Vic)))) 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc v_Vic) 
+                                     (abst_plus v_Vac v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vcc v_Vac)))))) 
+                   v_Vec 
+                   (v_Vkc:
+                    (zen.proof 
+                       (zen.forall abst_T 
+                          (v_Vic:(zen.term abst_T) =>
+                           zen.and 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vec) 
+                                         (abst_plus v_Vcc v_Vic)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vec v_Vic)))) 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vic) 
+                                         (abst_plus v_Vec v_Vic)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vec))))))) =>
+                    zen.Rall abst_T 
+                      (v_Vic:(zen.term abst_T) =>
+                       zen.and 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc v_Vec) 
+                                     (abst_plus v_Vcc v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vec v_Vic)))) 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc v_Vic) 
+                                     (abst_plus v_Vec v_Vic)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vcc v_Vec))))) 
+                      abst_one 
+                      (v_Vlc:
+                       (zen.proof 
+                          (zen.and 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vec) 
+                                         (abst_plus v_Vcc abst_one)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vec abst_one)))) 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc abst_one) 
+                                         (abst_plus v_Vec abst_one)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vec)))))) =>
+                       zen.Rand 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc v_Vec) 
+                                     (abst_plus v_Vcc abst_one)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vec abst_one)))) 
+                         (zen.imp 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc abst_one) 
+                                     (abst_plus v_Vec abst_one)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vcc v_Vec)))) 
+                         (v_Vmc:
+                          (zen.proof 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc v_Vec) 
+                                         (abst_plus v_Vcc abst_one)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vec abst_one))))) =>
+                          v_Vnc:
+                          (zen.proof 
+                             (zen.imp 
+                                (zen.triangle 
+                                   (focal.is_true 
+                                      (abst_equal (abst_plus v_Vcc abst_one) 
+                                         (abst_plus v_Vec abst_one)))) 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vec))))) =>
+                          zen.Rimply 
+                            (zen.triangle 
+                               (focal.is_true 
+                                  (abst_equal (abst_plus v_Vcc abst_one) 
+                                     (abst_plus v_Vec abst_one)))) 
+                            (zen.triangle 
+                               (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                            (v_Voc:
+                             (zen.proof 
+                                (zen.not 
+                                   (zen.triangle 
+                                      (focal.is_true 
+                                         (abst_equal 
+                                            (abst_plus v_Vcc abst_one) 
+                                            (abst_plus v_Vec abst_one)))))) =>
+                             zen.Raxiom 
+                               (zen.triangle 
+                                  (focal.is_true 
+                                     (abst_equal (abst_plus v_Vcc abst_one) 
+                                        (abst_plus v_Vec abst_one)))) v_Vgc 
+                               v_Voc) 
+                            (v_Vpc:
+                             (zen.proof 
+                                (zen.triangle 
+                                   (focal.is_true (abst_equal v_Vcc v_Vec)))) =>
+                             zen.Raxiom 
+                               (zen.triangle 
+                                  (focal.is_true (abst_equal v_Vcc v_Vec))) 
+                               v_Vpc v_Vhc) v_Vnc) v_Vlc) v_Vkc) v_Vjc) 
+                abst_plus_is_regular) v_Vfc) v_Vdc) v_Vbc).
+
+def Natural_number_system__predecessor :
+  abst_T:cc.uT ->
+  abst_minus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_one:(cc.eT abst_T) -> n:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT =>
+  abst_minus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_one:(cc.eT abst_T) => n:(cc.eT abst_T) => abst_minus n abst_one.
+
+def Natural_number_system__predecessor_reverses_successor :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x (abst_successor y))) 
+             (dk_logic.ebP (abst_equal y (abst_predecessor x))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x (abst_successor y))) 
+             (dk_logic.ebP (abst_equal y (abst_predecessor x)))))).
+
+def Natural_number_system__predecessor_is_injective :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_start:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (n:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (m:(cc.eT abst_T) =>
+           dk_logic.not 
+             (dk_logic.imp (dk_logic.ebP (abst_equal n abst_start)) 
+                (dk_logic.not 
+                   (dk_logic.imp (dk_logic.ebP (abst_equal m abst_start)) 
+                      (dk_logic.imp 
+                         (dk_logic.ebP 
+                            (abst_equal (abst_predecessor n) 
+                               (abst_predecessor m))) 
+                         (dk_logic.ebP (abst_equal m n)))))))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_start:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (n:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (m:(cc.eT abst_T) =>
+           dk_logic.not 
+             (dk_logic.imp (dk_logic.ebP (abst_equal n abst_start)) 
+                (dk_logic.not 
+                   (dk_logic.imp (dk_logic.ebP (abst_equal m abst_start)) 
+                      (dk_logic.imp 
+                         (dk_logic.ebP 
+                            (abst_equal (abst_predecessor n) 
+                               (abst_predecessor m))) 
+                         (dk_logic.ebP (abst_equal m n))))))))).
+
+def Natural_number_system__successor_is_non_trivial :
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_start:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (n:(cc.eT abst_T) =>
+        dk_logic.not 
+          (dk_logic.ebP (abst_equal (abst_successor n) abst_start))))
+  :=
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_start:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (n:(cc.eT abst_T) =>
+        dk_logic.not 
+          (dk_logic.ebP (abst_equal (abst_successor n) abst_start)))).
+
+def Integer_system__predecessor :
+  abst_T:cc.uT ->
+  abst_one:(cc.eT abst_T) ->
+  abst_minus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  n:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  abst_T:cc.uT =>
+  abst_one:(cc.eT abst_T) =>
+  abst_minus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  n:(cc.eT abst_T) => abst_minus n abst_one.
+
+def Integer_system__predecessor_is_injective :
+  abst_T:cc.uT ->
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp 
+             (dk_logic.ebP (abst_equal (abst_successor x) (abst_successor y))) 
+             (dk_logic.ebP (abst_equal x y)))))
+  :=
+  abst_T:cc.uT =>
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp 
+             (dk_logic.ebP (abst_equal (abst_successor x) (abst_successor y))) 
+             (dk_logic.ebP (abst_equal x y))))).
+
+def Integer_system__predecessor_reverses_successor :
+  abst_T:cc.uT ->
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x (abst_successor y))) 
+             (dk_logic.ebP (abst_equal y (abst_predecessor x))))))
+  :=
+  abst_T:cc.uT =>
+  abst_successor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_predecessor:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (y:(cc.eT abst_T) =>
+           dk_logic.imp (dk_logic.ebP (abst_equal x (abst_successor y))) 
+             (dk_logic.ebP (abst_equal y (abst_predecessor x)))))).
+

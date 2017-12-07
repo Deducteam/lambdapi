@@ -1,0 +1,1074 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE dk_bool.
+#REQUIRE zen.
+#REQUIRE focal.
+
+def Formal_indexed_sum__coefficient :
+  _p_M_T:cc.uT ->
+  _p_I_T:cc.uT ->
+  _p_M_zero:(cc.eT _p_M_T) ->
+  _p_I_lt:((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) ->
+  abst_leading_coefficient:((cc.eT abst_T) -> cc.eT _p_M_T) ->
+  abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) ->
+  (cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT _p_M_T.
+
+[n, p, abst_reductum, abst_leading_coefficient, abst_degree, abst_T, _p_I_lt, _p_M_zero, _p_I_T, _p_M_T]
+  Formal_indexed_sum__coefficient _p_M_T _p_I_T _p_M_zero _p_I_lt abst_T 
+    abst_degree abst_leading_coefficient abst_reductum p n
+  -->
+  (d:(cc.eT _p_I_T) =>
+   dk_bool.ite _p_M_T (_p_I_lt d n) _p_M_zero 
+     (dk_bool.ite _p_M_T (_p_I_lt n d) 
+        ((_p_M_T:cc.uT =>
+          _p_I_T:cc.uT =>
+          _p_M_zero:(cc.eT _p_M_T) =>
+          _p_I_lt:
+          ((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) =>
+          abst_T:cc.uT =>
+          abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) =>
+          abst_leading_coefficient:((cc.eT abst_T) -> cc.eT _p_M_T) =>
+          abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) =>
+          p:(cc.eT abst_T) =>
+          n:(cc.eT _p_I_T) =>
+          dk_builtins.call_by_value _p_I_T _p_M_T 
+            (dk_builtins.call_by_value abst_T (cc.Arrow _p_I_T _p_M_T) 
+               (Formal_indexed_sum__coefficient _p_M_T _p_I_T _p_M_zero 
+                  _p_I_lt abst_T abst_degree abst_leading_coefficient 
+                  abst_reductum) p) n) _p_M_T _p_I_T _p_M_zero _p_I_lt 
+           abst_T abst_degree abst_leading_coefficient abst_reductum 
+           (abst_reductum p) n) (abst_leading_coefficient p))) 
+    (abst_degree p).
+
+def Formal_indexed_sum__lift :
+  _p_M_T:cc.uT ->
+  _p_I_T:cc.uT ->
+  _p_I_zero:(cc.eT _p_I_T) ->
+  abst_T:cc.uT ->
+  abst_monomial:((cc.eT _p_M_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) ->
+  x:(cc.eT _p_M_T) -> cc.eT abst_T
+  :=
+  _p_M_T:cc.uT =>
+  _p_I_T:cc.uT =>
+  _p_I_zero:(cc.eT _p_I_T) =>
+  abst_T:cc.uT =>
+  abst_monomial:((cc.eT _p_M_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) =>
+  x:(cc.eT _p_M_T) => abst_monomial x _p_I_zero.
+
+def Formal_indexed_sum__print :
+  abst_T:cc.uT ->
+  abst_output:((cc.eT abst_T) ->
+               (cc.eT basics.string__t) -> cc.eT basics.string__t) ->
+  x:(cc.eT abst_T) -> cc.eT basics.string__t
+  :=
+  abst_T:cc.uT =>
+  abst_output:
+  ((cc.eT abst_T) -> (cc.eT basics.string__t) -> cc.eT basics.string__t) =>
+  x:(cc.eT abst_T) =>
+  abst_output x 
+    (builtins.string_cons 
+       (builtins.char_of_nat 
+          (builtins.S 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+       (builtins.string_cons 
+          (builtins.char_of_nat 
+             (builtins.S 
+                (builtins.S 
+                   (builtins.S 
+                      (builtins.S 
+                         (builtins.S 
+                            (builtins.S 
+                               (builtins.S 
+                                  (builtins.S 
+                                     (builtins.S 
+                                        (builtins.S 
+                                           (builtins.S 
+                                              (builtins.S 
+                                                 (builtins.S 
+                                                    (builtins.S 
+                                                       (builtins.S 
+                                                          (builtins.S 
+                                                             (builtins.S 
+                                                                (builtins.S 
+                                                                   (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    (builtins.S 
+                                                                    builtins.0)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) 
+          builtins.string_nil)).
+
+def Formal_indexed_sum__lift_is_additive :
+  _p_M_T:cc.uT ->
+  _p_I_T:cc.uT ->
+  _p_M_plus:((cc.eT _p_M_T) -> (cc.eT _p_M_T) -> cc.eT _p_M_T) ->
+  _p_I_zero:(cc.eT _p_I_T) ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_monomial:((cc.eT _p_M_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_monomial_is_additive:(dk_logic.eP 
+                               (dk_logic.forall _p_M_T 
+                                  (x:(cc.eT _p_M_T) =>
+                                   dk_logic.forall _p_M_T 
+                                     (y:(cc.eT _p_M_T) =>
+                                      dk_logic.forall _p_I_T 
+                                        (i:(cc.eT _p_I_T) =>
+                                         dk_logic.ebP 
+                                           (abst_equal 
+                                              (abst_plus (abst_monomial x i) 
+                                                 (abst_monomial y i)) 
+                                              (abst_monomial (_p_M_plus x y) 
+                                                 i))))))) ->
+  dk_logic.eP 
+    (dk_logic.forall _p_M_T 
+       (x:(cc.eT _p_M_T) =>
+        dk_logic.forall _p_M_T 
+          (y:(cc.eT _p_M_T) =>
+           dk_logic.ebP 
+             (abst_equal 
+                (abst_plus 
+                   (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                      abst_monomial x) 
+                   (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                      abst_monomial y)) 
+                (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                   abst_monomial (_p_M_plus x y))))))
+  :=
+  _p_M_T:cc.uT =>
+  _p_I_T:cc.uT =>
+  _p_M_plus:((cc.eT _p_M_T) -> (cc.eT _p_M_T) -> cc.eT _p_M_T) =>
+  _p_I_zero:(cc.eT _p_I_T) =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_monomial:((cc.eT _p_M_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_monomial_is_additive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_M_T 
+        (x:(cc.eT _p_M_T) =>
+         dk_logic.forall _p_M_T 
+           (y:(cc.eT _p_M_T) =>
+            dk_logic.forall _p_I_T 
+              (i:(cc.eT _p_I_T) =>
+               dk_logic.ebP 
+                 (abst_equal 
+                    (abst_plus (abst_monomial x i) (abst_monomial y i)) 
+                    (abst_monomial (_p_M_plus x y) i))))))) =>
+  zen.nnpp 
+    (zen.forall _p_M_T 
+       (v_Vzb:(zen.term _p_M_T) =>
+        zen.forall _p_M_T 
+          (v_Vac:(zen.term _p_M_T) =>
+           zen.triangle 
+             (focal.is_true 
+                (abst_equal 
+                   (abst_plus 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vzb) 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vac)) 
+                   (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                      abst_monomial (_p_M_plus v_Vzb v_Vac))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall _p_M_T 
+              (v_Vzb:(zen.term _p_M_T) =>
+               zen.forall _p_M_T 
+                 (v_Vac:(zen.term _p_M_T) =>
+                  zen.triangle 
+                    (focal.is_true 
+                       (abst_equal 
+                          (abst_plus 
+                             (Formal_indexed_sum__lift _p_M_T _p_I_T 
+                                _p_I_zero abst_T abst_monomial v_Vzb) 
+                             (Formal_indexed_sum__lift _p_M_T _p_I_T 
+                                _p_I_zero abst_T abst_monomial v_Vac)) 
+                          (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                             abst_T abst_monomial (_p_M_plus v_Vzb v_Vac))))))))) =>
+     zen.Rnotall _p_M_T 
+       (v_Vzb:(zen.term _p_M_T) =>
+        zen.forall _p_M_T 
+          (v_Vac:(zen.term _p_M_T) =>
+           zen.triangle 
+             (focal.is_true 
+                (abst_equal 
+                   (abst_plus 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vzb) 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vac)) 
+                   (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                      abst_monomial (_p_M_plus v_Vzb v_Vac)))))) 
+       (v_Vcc:(zen.term _p_M_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall _p_M_T 
+                 (v_Vac:(zen.term _p_M_T) =>
+                  zen.triangle 
+                    (focal.is_true 
+                       (abst_equal 
+                          (abst_plus 
+                             (Formal_indexed_sum__lift _p_M_T _p_I_T 
+                                _p_I_zero abst_T abst_monomial v_Vcc) 
+                             (Formal_indexed_sum__lift _p_M_T _p_I_T 
+                                _p_I_zero abst_T abst_monomial v_Vac)) 
+                          (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                             abst_T abst_monomial (_p_M_plus v_Vcc v_Vac)))))))) =>
+        zen.Rnotall _p_M_T 
+          (v_Vac:(zen.term _p_M_T) =>
+           zen.triangle 
+             (focal.is_true 
+                (abst_equal 
+                   (abst_plus 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vcc) 
+                      (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero 
+                         abst_T abst_monomial v_Vac)) 
+                   (Formal_indexed_sum__lift _p_M_T _p_I_T _p_I_zero abst_T 
+                      abst_monomial (_p_M_plus v_Vcc v_Vac))))) 
+          (v_Vec:(zen.term _p_M_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (abst_equal 
+                          (abst_plus (abst_monomial v_Vcc _p_I_zero) 
+                             (abst_monomial v_Vec _p_I_zero)) 
+                          (abst_monomial (_p_M_plus v_Vcc v_Vec) _p_I_zero)))))) =>
+           zen.Rall _p_M_T 
+             (v_Vzb:(zen.term _p_M_T) =>
+              zen.forall _p_M_T 
+                (v_Vac:(zen.term _p_M_T) =>
+                 zen.forall _p_I_T 
+                   (v_Vgc:(zen.term _p_I_T) =>
+                    zen.triangle 
+                      (focal.is_true 
+                         (abst_equal 
+                            (abst_plus (abst_monomial v_Vzb v_Vgc) 
+                               (abst_monomial v_Vac v_Vgc)) 
+                            (abst_monomial (_p_M_plus v_Vzb v_Vac) v_Vgc)))))) 
+             v_Vcc 
+             (v_Vhc:
+              (zen.proof 
+                 (zen.forall _p_M_T 
+                    (v_Vac:(zen.term _p_M_T) =>
+                     zen.forall _p_I_T 
+                       (v_Vgc:(zen.term _p_I_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (abst_plus (abst_monomial v_Vcc v_Vgc) 
+                                   (abst_monomial v_Vac v_Vgc)) 
+                                (abst_monomial (_p_M_plus v_Vcc v_Vac) v_Vgc))))))) =>
+              zen.Rall _p_M_T 
+                (v_Vac:(zen.term _p_M_T) =>
+                 zen.forall _p_I_T 
+                   (v_Vgc:(zen.term _p_I_T) =>
+                    zen.triangle 
+                      (focal.is_true 
+                         (abst_equal 
+                            (abst_plus (abst_monomial v_Vcc v_Vgc) 
+                               (abst_monomial v_Vac v_Vgc)) 
+                            (abst_monomial (_p_M_plus v_Vcc v_Vac) v_Vgc))))) 
+                v_Vec 
+                (v_Vic:
+                 (zen.proof 
+                    (zen.forall _p_I_T 
+                       (v_Vgc:(zen.term _p_I_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (abst_plus (abst_monomial v_Vcc v_Vgc) 
+                                   (abst_monomial v_Vec v_Vgc)) 
+                                (abst_monomial (_p_M_plus v_Vcc v_Vec) v_Vgc)))))) =>
+                 zen.Rall _p_I_T 
+                   (v_Vgc:(zen.term _p_I_T) =>
+                    zen.triangle 
+                      (focal.is_true 
+                         (abst_equal 
+                            (abst_plus (abst_monomial v_Vcc v_Vgc) 
+                               (abst_monomial v_Vec v_Vgc)) 
+                            (abst_monomial (_p_M_plus v_Vcc v_Vec) v_Vgc)))) 
+                   _p_I_zero 
+                   (v_Vjc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (abst_plus (abst_monomial v_Vcc _p_I_zero) 
+                                   (abst_monomial v_Vec _p_I_zero)) 
+                                (abst_monomial (_p_M_plus v_Vcc v_Vec) 
+                                   _p_I_zero))))) =>
+                    zen.Raxiom 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (abst_equal 
+                               (abst_plus (abst_monomial v_Vcc _p_I_zero) 
+                                  (abst_monomial v_Vec _p_I_zero)) 
+                               (abst_monomial (_p_M_plus v_Vcc v_Vec) 
+                                  _p_I_zero)))) v_Vjc v_Vfc) v_Vic) v_Vhc) 
+             abst_monomial_is_additive) v_Vdc) v_Vbc).
+
+def Formal_indexed_sum__is_constant :
+  _p_I_T:cc.uT ->
+  _p_I_is_zero:((cc.eT _p_I_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) ->
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  p:(cc.eT abst_T) -> cc.eT basics.bool__t
+  :=
+  _p_I_T:cc.uT =>
+  _p_I_is_zero:((cc.eT _p_I_T) -> cc.eT basics.bool__t) =>
+  abst_T:cc.uT =>
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) =>
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  p:(cc.eT abst_T) =>
+  dk_bool.ite basics.bool__t (abst_is_zero p) dk_bool.true 
+    (_p_I_is_zero (abst_degree p)).
+
+def Formal_indexed_sum__tail :
+  _p_I_T:cc.uT ->
+  _p_I_lt:((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) ->
+  abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  (cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT abst_T.
+
+[d, p, abst_is_zero, abst_reductum, abst_degree, abst_T, _p_I_lt, _p_I_T]
+  Formal_indexed_sum__tail _p_I_T _p_I_lt abst_T abst_degree abst_reductum 
+    abst_is_zero p d
+  -->
+  dk_bool.ite abst_T (abst_is_zero p) p 
+    ((dp:(cc.eT _p_I_T) =>
+      dk_bool.ite abst_T (_p_I_lt dp d) p 
+        ((_p_I_T:cc.uT =>
+          _p_I_lt:
+          ((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) =>
+          abst_T:cc.uT =>
+          abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) =>
+          abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) =>
+          abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+          p:(cc.eT abst_T) =>
+          d:(cc.eT _p_I_T) =>
+          dk_builtins.call_by_value _p_I_T abst_T 
+            (dk_builtins.call_by_value abst_T (cc.Arrow _p_I_T abst_T) 
+               (Formal_indexed_sum__tail _p_I_T _p_I_lt abst_T abst_degree 
+                  abst_reductum abst_is_zero) p) d) _p_I_T _p_I_lt abst_T 
+           abst_degree abst_reductum abst_is_zero (abst_reductum p) d)) 
+       (abst_degree p)).
+
+def Formal_indexed_sum__leading_coefficient_is_tail_with_degree :
+  _p_I_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_tail:((cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.ebP 
+          (abst_equal (abst_reductum p) (abst_tail p (abst_degree p)))))
+  :=
+  _p_I_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_reductum:((cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_tail:((cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.ebP 
+          (abst_equal (abst_reductum p) (abst_tail p (abst_degree p))))).
+
+def Formal_indexed_sum__tail_has_smaller_degree :
+  _p_I_T:cc.uT ->
+  _p_I_lt:((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) ->
+  abst_T:cc.uT ->
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_tail:((cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (q:(cc.eT abst_T) =>
+           dk_logic.forall _p_I_T 
+             (d:(cc.eT _p_I_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal p (abst_tail q d))) 
+                (dk_logic.not 
+                   (dk_logic.imp (dk_logic.ebP (abst_is_zero q)) 
+                      (dk_logic.ebP (_p_I_lt (abst_degree q) d))))))))
+  :=
+  _p_I_T:cc.uT =>
+  _p_I_lt:((cc.eT _p_I_T) -> (cc.eT _p_I_T) -> cc.eT basics.bool__t) =>
+  abst_T:cc.uT =>
+  abst_degree:((cc.eT abst_T) -> cc.eT _p_I_T) =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_is_zero:((cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_tail:((cc.eT abst_T) -> (cc.eT _p_I_T) -> cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (q:(cc.eT abst_T) =>
+           dk_logic.forall _p_I_T 
+             (d:(cc.eT _p_I_T) =>
+              dk_logic.imp (dk_logic.ebP (abst_equal p (abst_tail q d))) 
+                (dk_logic.not 
+                   (dk_logic.imp (dk_logic.ebP (abst_is_zero q)) 
+                      (dk_logic.ebP (_p_I_lt (abst_degree q) d)))))))).
+
+def Formal_polynomials_commutative_ring__fmecg :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) ->
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  p:(cc.eT abst_T) ->
+  c:(cc.eT _p_R_T) ->
+  delta:(cc.eT _p_D_T) -> q:(cc.eT abst_T) -> cc.eT abst_T
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) =>
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  p:(cc.eT abst_T) =>
+  c:(cc.eT _p_R_T) =>
+  delta:(cc.eT _p_D_T) =>
+  q:(cc.eT abst_T) => abst_plus p (abst_mult (abst_monomial c delta) q).
+
+def Formal_polynomials_commutative_ring__generator :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  _p_R_one:(cc.eT _p_R_T) ->
+  abst_T:cc.uT ->
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) ->
+  d:(cc.eT _p_D_T) -> cc.eT abst_T
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  _p_R_one:(cc.eT _p_R_T) =>
+  abst_T:cc.uT =>
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) =>
+  d:(cc.eT _p_D_T) => abst_monomial _p_R_one d.
+
+def Formal_polynomials_commutative_ring__fmecg_combines :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) ->
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (p:(cc.eT abst_T) =>
+        dk_logic.forall abst_T 
+          (q:(cc.eT abst_T) =>
+           dk_logic.forall _p_R_T 
+             (c:(cc.eT _p_R_T) =>
+              dk_logic.forall _p_D_T 
+                (delta:(cc.eT _p_D_T) =>
+                 dk_logic.ebP 
+                   (abst_equal 
+                      (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                         _p_D_T abst_T abst_monomial abst_mult abst_plus p c 
+                         delta q) 
+                      (abst_plus p (abst_mult (abst_monomial c delta) q))))))))
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) =>
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  zen.nnpp 
+    (zen.forall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.forall _p_R_T 
+             (v_Vbc:(zen.term _p_R_T) =>
+              zen.forall _p_D_T 
+                (v_Vcc:(zen.term _p_D_T) =>
+                 zen.triangle 
+                   (focal.is_true 
+                      (abst_equal 
+                         (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                            _p_D_T abst_T abst_monomial abst_mult abst_plus 
+                            v_Vzb v_Vbc v_Vcc v_Vac) 
+                         (abst_plus v_Vzb 
+                            (abst_mult (abst_monomial v_Vbc v_Vcc) v_Vac))))))))) 
+    (v_Vdc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall abst_T 
+              (v_Vzb:(zen.term abst_T) =>
+               zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.forall _p_R_T 
+                    (v_Vbc:(zen.term _p_R_T) =>
+                     zen.forall _p_D_T 
+                       (v_Vcc:(zen.term _p_D_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (Formal_polynomials_commutative_ring__fmecg 
+                                   _p_R_T _p_D_T abst_T abst_monomial 
+                                   abst_mult abst_plus v_Vzb v_Vbc v_Vcc 
+                                   v_Vac) 
+                                (abst_plus v_Vzb 
+                                   (abst_mult (abst_monomial v_Vbc v_Vcc) 
+                                      v_Vac))))))))))) =>
+     zen.Rnotall abst_T 
+       (v_Vzb:(zen.term abst_T) =>
+        zen.forall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.forall _p_R_T 
+             (v_Vbc:(zen.term _p_R_T) =>
+              zen.forall _p_D_T 
+                (v_Vcc:(zen.term _p_D_T) =>
+                 zen.triangle 
+                   (focal.is_true 
+                      (abst_equal 
+                         (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                            _p_D_T abst_T abst_monomial abst_mult abst_plus 
+                            v_Vzb v_Vbc v_Vcc v_Vac) 
+                         (abst_plus v_Vzb 
+                            (abst_mult (abst_monomial v_Vbc v_Vcc) v_Vac)))))))) 
+       (v_Vec:(zen.term abst_T) =>
+        v_Vfc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall abst_T 
+                 (v_Vac:(zen.term abst_T) =>
+                  zen.forall _p_R_T 
+                    (v_Vbc:(zen.term _p_R_T) =>
+                     zen.forall _p_D_T 
+                       (v_Vcc:(zen.term _p_D_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (Formal_polynomials_commutative_ring__fmecg 
+                                   _p_R_T _p_D_T abst_T abst_monomial 
+                                   abst_mult abst_plus v_Vec v_Vbc v_Vcc 
+                                   v_Vac) 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vbc v_Vcc) 
+                                      v_Vac)))))))))) =>
+        zen.Rnotall abst_T 
+          (v_Vac:(zen.term abst_T) =>
+           zen.forall _p_R_T 
+             (v_Vbc:(zen.term _p_R_T) =>
+              zen.forall _p_D_T 
+                (v_Vcc:(zen.term _p_D_T) =>
+                 zen.triangle 
+                   (focal.is_true 
+                      (abst_equal 
+                         (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                            _p_D_T abst_T abst_monomial abst_mult abst_plus 
+                            v_Vec v_Vbc v_Vcc v_Vac) 
+                         (abst_plus v_Vec 
+                            (abst_mult (abst_monomial v_Vbc v_Vcc) v_Vac))))))) 
+          (v_Vgc:(zen.term abst_T) =>
+           v_Vhc:
+           (zen.proof 
+              (zen.not 
+                 (zen.forall _p_R_T 
+                    (v_Vbc:(zen.term _p_R_T) =>
+                     zen.forall _p_D_T 
+                       (v_Vcc:(zen.term _p_D_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (Formal_polynomials_commutative_ring__fmecg 
+                                   _p_R_T _p_D_T abst_T abst_monomial 
+                                   abst_mult abst_plus v_Vec v_Vbc v_Vcc 
+                                   v_Vgc) 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vbc v_Vcc) 
+                                      v_Vgc))))))))) =>
+           zen.Rnotall _p_R_T 
+             (v_Vbc:(zen.term _p_R_T) =>
+              zen.forall _p_D_T 
+                (v_Vcc:(zen.term _p_D_T) =>
+                 zen.triangle 
+                   (focal.is_true 
+                      (abst_equal 
+                         (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                            _p_D_T abst_T abst_monomial abst_mult abst_plus 
+                            v_Vec v_Vbc v_Vcc v_Vgc) 
+                         (abst_plus v_Vec 
+                            (abst_mult (abst_monomial v_Vbc v_Vcc) v_Vgc)))))) 
+             (v_Vic:(zen.term _p_R_T) =>
+              v_Vjc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.forall _p_D_T 
+                       (v_Vcc:(zen.term _p_D_T) =>
+                        zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (Formal_polynomials_commutative_ring__fmecg 
+                                   _p_R_T _p_D_T abst_T abst_monomial 
+                                   abst_mult abst_plus v_Vec v_Vic v_Vcc 
+                                   v_Vgc) 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vic v_Vcc) 
+                                      v_Vgc)))))))) =>
+              zen.Rnotall _p_D_T 
+                (v_Vcc:(zen.term _p_D_T) =>
+                 zen.triangle 
+                   (focal.is_true 
+                      (abst_equal 
+                         (Formal_polynomials_commutative_ring__fmecg _p_R_T 
+                            _p_D_T abst_T abst_monomial abst_mult abst_plus 
+                            v_Vec v_Vic v_Vcc v_Vgc) 
+                         (abst_plus v_Vec 
+                            (abst_mult (abst_monomial v_Vic v_Vcc) v_Vgc))))) 
+                (v_Vkc:(zen.term _p_D_T) =>
+                 v_Vlc:
+                 (zen.proof 
+                    (zen.not 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                      v_Vgc)) 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                      v_Vgc))))))) =>
+                 zen.Rall abst_T 
+                   (v_Vmc:(zen.term abst_T) =>
+                    zen.triangle (focal.is_true (abst_equal v_Vmc v_Vmc))) 
+                   (abst_plus v_Vec 
+                      (abst_mult (abst_monomial v_Vic v_Vkc) v_Vgc)) 
+                   (v_Vnc:
+                    (zen.proof 
+                       (zen.triangle 
+                          (focal.is_true 
+                             (abst_equal 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                      v_Vgc)) 
+                                (abst_plus v_Vec 
+                                   (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                      v_Vgc)))))) =>
+                    zen.Raxiom 
+                      (zen.triangle 
+                         (focal.is_true 
+                            (abst_equal 
+                               (abst_plus v_Vec 
+                                  (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                     v_Vgc)) 
+                               (abst_plus v_Vec 
+                                  (abst_mult (abst_monomial v_Vic v_Vkc) 
+                                     v_Vgc))))) v_Vnc v_Vlc) 
+                   abst_equal_reflexive) v_Vjc) v_Vhc) v_Vfc) v_Vdc).
+
+def Formal_polynomials_commutative_ring__generator_spec :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  _p_R_one:(cc.eT _p_R_T) ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  dk_logic.eP 
+    (dk_logic.forall _p_D_T 
+       (d:(cc.eT _p_D_T) =>
+        dk_logic.ebP 
+          (abst_equal 
+             (Formal_polynomials_commutative_ring__generator _p_R_T _p_D_T 
+                _p_R_one abst_T abst_monomial d) (abst_monomial _p_R_one d))))
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  _p_R_one:(cc.eT _p_R_T) =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_monomial:((cc.eT _p_R_T) -> (cc.eT _p_D_T) -> cc.eT abst_T) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  zen.nnpp 
+    (zen.forall _p_D_T 
+       (v_Vzb:(zen.term _p_D_T) =>
+        zen.triangle 
+          (focal.is_true 
+             (abst_equal 
+                (Formal_polynomials_commutative_ring__generator _p_R_T 
+                   _p_D_T _p_R_one abst_T abst_monomial v_Vzb) 
+                (abst_monomial _p_R_one v_Vzb))))) 
+    (v_Vac:
+     (zen.proof 
+        (zen.not 
+           (zen.forall _p_D_T 
+              (v_Vzb:(zen.term _p_D_T) =>
+               zen.triangle 
+                 (focal.is_true 
+                    (abst_equal 
+                       (Formal_polynomials_commutative_ring__generator 
+                          _p_R_T _p_D_T _p_R_one abst_T abst_monomial v_Vzb) 
+                       (abst_monomial _p_R_one v_Vzb))))))) =>
+     zen.Rnotall _p_D_T 
+       (v_Vzb:(zen.term _p_D_T) =>
+        zen.triangle 
+          (focal.is_true 
+             (abst_equal 
+                (Formal_polynomials_commutative_ring__generator _p_R_T 
+                   _p_D_T _p_R_one abst_T abst_monomial v_Vzb) 
+                (abst_monomial _p_R_one v_Vzb)))) 
+       (v_Vbc:(zen.term _p_D_T) =>
+        v_Vcc:
+        (zen.proof 
+           (zen.not 
+              (zen.triangle 
+                 (focal.is_true 
+                    (abst_equal (abst_monomial _p_R_one v_Vbc) 
+                       (abst_monomial _p_R_one v_Vbc)))))) =>
+        zen.Rall abst_T 
+          (v_Vdc:(zen.term abst_T) =>
+           zen.triangle (focal.is_true (abst_equal v_Vdc v_Vdc))) 
+          (abst_monomial _p_R_one v_Vbc) 
+          (v_Vec:
+           (zen.proof 
+              (zen.triangle 
+                 (focal.is_true 
+                    (abst_equal (abst_monomial _p_R_one v_Vbc) 
+                       (abst_monomial _p_R_one v_Vbc))))) =>
+           zen.Raxiom 
+             (zen.triangle 
+                (focal.is_true 
+                   (abst_equal (abst_monomial _p_R_one v_Vbc) 
+                      (abst_monomial _p_R_one v_Vbc)))) v_Vec v_Vcc) 
+          abst_equal_reflexive) v_Vac).
+
+def Formal_polynomials_commutative_ring__one :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  _p_R_one:(cc.eT _p_R_T) ->
+  abst_T:cc.uT -> abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) -> cc.eT abst_T
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  _p_R_one:(cc.eT _p_R_T) =>
+  abst_T:cc.uT =>
+  abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) => abst_lift _p_R_one.
+
+def Formal_polynomials_commutative_ring__lift_one :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  _p_R_one:(cc.eT _p_R_T) ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_equal_reflexive:(dk_logic.eP 
+                          (dk_logic.forall abst_T 
+                             (x:(cc.eT abst_T) =>
+                              dk_logic.ebP (abst_equal x x)))) ->
+  abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.ebP 
+       (abst_equal (abst_lift _p_R_one) 
+          (Formal_polynomials_commutative_ring__one _p_R_T _p_D_T _p_R_one 
+             abst_T abst_lift)))
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  _p_R_one:(cc.eT _p_R_T) =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_equal_reflexive:
+  (dk_logic.eP 
+     (dk_logic.forall abst_T 
+        (x:(cc.eT abst_T) => dk_logic.ebP (abst_equal x x)))) =>
+  abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) =>
+  zen.nnpp 
+    (zen.triangle 
+       (focal.is_true 
+          (abst_equal (abst_lift _p_R_one) 
+             (Formal_polynomials_commutative_ring__one _p_R_T _p_D_T 
+                _p_R_one abst_T abst_lift)))) 
+    (v_Vzb:
+     (zen.proof 
+        (zen.not 
+           (zen.triangle 
+              (focal.is_true 
+                 (abst_equal (abst_lift _p_R_one) (abst_lift _p_R_one)))))) =>
+     zen.Rall abst_T 
+       (v_Vac:(zen.term abst_T) =>
+        zen.triangle (focal.is_true (abst_equal v_Vac v_Vac))) 
+       (abst_lift _p_R_one) 
+       (v_Vbc:
+        (zen.proof 
+           (zen.triangle 
+              (focal.is_true 
+                 (abst_equal (abst_lift _p_R_one) (abst_lift _p_R_one))))) =>
+        zen.Raxiom 
+          (zen.triangle 
+             (focal.is_true 
+                (abst_equal (abst_lift _p_R_one) (abst_lift _p_R_one)))) 
+          v_Vbc v_Vzb) abst_equal_reflexive).
+
+def Formal_polynomials_commutative_ring__one_is_left_neutral :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_one:(cc.eT abst_T) ->
+  dk_logic.eP 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.ebP (abst_equal (abst_mult abst_one x) x)))
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_mult:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_one:(cc.eT abst_T) =>
+  dk_builtins.magic_prove 
+    (dk_logic.forall abst_T 
+       (x:(cc.eT abst_T) =>
+        dk_logic.ebP (abst_equal (abst_mult abst_one x) x))).
+
+def Formal_polynomials_commutative_ring__lift_additive :
+  _p_R_T:cc.uT ->
+  _p_D_T:cc.uT ->
+  _p_R_plus:((cc.eT _p_R_T) -> (cc.eT _p_R_T) -> cc.eT _p_R_T) ->
+  abst_T:cc.uT ->
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) ->
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) ->
+  abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) ->
+  abst_lift_is_additive:(dk_logic.eP 
+                           (dk_logic.forall _p_R_T 
+                              (x:(cc.eT _p_R_T) =>
+                               dk_logic.forall _p_R_T 
+                                 (y:(cc.eT _p_R_T) =>
+                                  dk_logic.ebP 
+                                    (abst_equal 
+                                       (abst_plus (abst_lift x) (abst_lift y)) 
+                                       (abst_lift (_p_R_plus x y))))))) ->
+  dk_logic.eP 
+    (dk_logic.forall _p_R_T 
+       (x:(cc.eT _p_R_T) =>
+        dk_logic.forall _p_R_T 
+          (y:(cc.eT _p_R_T) =>
+           dk_logic.ebP 
+             (abst_equal (abst_plus (abst_lift x) (abst_lift y)) 
+                (abst_lift (_p_R_plus x y))))))
+  :=
+  _p_R_T:cc.uT =>
+  _p_D_T:cc.uT =>
+  _p_R_plus:((cc.eT _p_R_T) -> (cc.eT _p_R_T) -> cc.eT _p_R_T) =>
+  abst_T:cc.uT =>
+  abst_equal:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT basics.bool__t) =>
+  abst_plus:((cc.eT abst_T) -> (cc.eT abst_T) -> cc.eT abst_T) =>
+  abst_lift:((cc.eT _p_R_T) -> cc.eT abst_T) =>
+  abst_lift_is_additive:
+  (dk_logic.eP 
+     (dk_logic.forall _p_R_T 
+        (x:(cc.eT _p_R_T) =>
+         dk_logic.forall _p_R_T 
+           (y:(cc.eT _p_R_T) =>
+            dk_logic.ebP 
+              (abst_equal (abst_plus (abst_lift x) (abst_lift y)) 
+                 (abst_lift (_p_R_plus x y))))))) =>
+  zen.nnpp 
+    (zen.forall _p_R_T 
+       (v_Vzb:(zen.term _p_R_T) =>
+        zen.forall _p_R_T 
+          (v_Vac:(zen.term _p_R_T) =>
+           zen.triangle 
+             (focal.is_true 
+                (abst_equal (abst_plus (abst_lift v_Vzb) (abst_lift v_Vac)) 
+                   (abst_lift (_p_R_plus v_Vzb v_Vac))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall _p_R_T 
+              (v_Vzb:(zen.term _p_R_T) =>
+               zen.forall _p_R_T 
+                 (v_Vac:(zen.term _p_R_T) =>
+                  zen.triangle 
+                    (focal.is_true 
+                       (abst_equal 
+                          (abst_plus (abst_lift v_Vzb) (abst_lift v_Vac)) 
+                          (abst_lift (_p_R_plus v_Vzb v_Vac))))))))) =>
+     zen.Raxiom 
+       (zen.forall _p_R_T 
+          (v_Vzb:(zen.term _p_R_T) =>
+           zen.forall _p_R_T 
+             (v_Vac:(zen.term _p_R_T) =>
+              zen.triangle 
+                (focal.is_true 
+                   (abst_equal 
+                      (abst_plus (abst_lift v_Vzb) (abst_lift v_Vac)) 
+                      (abst_lift (_p_R_plus v_Vzb v_Vac))))))) 
+       abst_lift_is_additive v_Vbc).
+

@@ -1,0 +1,25 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE dk_builtins.
+#REQUIRE dk_logic.
+#REQUIRE loose_sets.
+
+def added_forcibly_belongs :
+  dk_logic.eP 
+    (dk_logic.forall basics.int__t 
+       (x:(cc.eT basics.int__t) =>
+        dk_logic.forall (loose_sets.set_t__t basics.int__t) 
+          (s:(cc.eT (loose_sets.set_t__t basics.int__t)) =>
+           dk_logic.ebP 
+             (loose_sets.belongs basics.int__t x 
+                (loose_sets.add basics.int__t x s)))))
+  :=
+  dk_builtins.magic_prove 
+    (dk_logic.forall basics.int__t 
+       (x:(cc.eT basics.int__t) =>
+        dk_logic.forall (loose_sets.set_t__t basics.int__t) 
+          (s:(cc.eT (loose_sets.set_t__t basics.int__t)) =>
+           dk_logic.ebP 
+             (loose_sets.belongs basics.int__t x 
+                (loose_sets.add basics.int__t x s))))).
+

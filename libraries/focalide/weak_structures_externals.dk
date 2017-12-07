@@ -1,0 +1,73 @@
+#REQUIRE cc.
+
+quo_rem_result : __var_a:cc.uT -> cc.uT.
+
+mk_quo_rem_result :
+  __var_a:cc.uT ->
+  (cc.eT __var_a) -> (cc.eT __var_a) -> cc.eT (quo_rem_result __var_a).
+
+def proj_quot :
+  __var_a:cc.uT -> (cc.eT (quo_rem_result __var_a)) -> cc.eT __var_a.
+
+[quot, __var_a] proj_quot __var_a (mk_quo_rem_result __var_a quot _) --> quot.
+
+def proj_rema :
+  __var_a:cc.uT -> (cc.eT (quo_rem_result __var_a)) -> cc.eT __var_a.
+
+[rema, __var_a] proj_rema __var_a (mk_quo_rem_result __var_a _ rema) --> rema.
+
+def cr_qrr
+  :=
+  __var_a:cc.uT =>
+  x:(cc.eT __var_a) => y:(cc.eT __var_a) => mk_quo_rem_result __var_a x y.
+
+def qrr_quot
+  :=
+  __var_a:cc.uT => x:(cc.eT (quo_rem_result __var_a)) => proj_quot __var_a x.
+
+def qrr_rema
+  :=
+  __var_a:cc.uT => x:(cc.eT (quo_rem_result __var_a)) => proj_rema __var_a x.
+
+bezout_res : cc.uT -> cc.uT.
+
+mk_bezout_res :
+  __var_a:cc.uT ->
+  (cc.eT __var_a) ->
+  (cc.eT __var_a) -> (cc.eT __var_a) -> cc.eT (bezout_res __var_a).
+
+def proj_gcd :
+  __var_a:cc.uT -> (cc.eT (bezout_res __var_a)) -> cc.eT __var_a.
+
+[gcd, __var_a] proj_gcd __var_a (mk_bezout_res __var_a gcd _ _) --> gcd.
+
+def proj_coef1 :
+  __var_a:cc.uT -> (cc.eT (bezout_res __var_a)) -> cc.eT __var_a.
+
+[coef1, __var_a]
+  proj_coef1 __var_a (mk_bezout_res __var_a _ coef1 _) --> coef1.
+
+def proj_coef2 :
+  __var_a:cc.uT -> (cc.eT (bezout_res __var_a)) -> cc.eT __var_a.
+
+[coef2, __var_a]
+  proj_coef2 __var_a (mk_bezout_res __var_a _ _ coef2) --> coef2.
+
+def cr_br
+  :=
+  __var_a:cc.uT =>
+  x:(cc.eT __var_a) =>
+  y:(cc.eT __var_a) => z:(cc.eT __var_a) => mk_bezout_res __var_a x y z.
+
+def br_gcd
+  :=
+  __var_a:cc.uT => x:(cc.eT (bezout_res __var_a)) => proj_gcd __var_a x.
+
+def br_coef1
+  :=
+  __var_a:cc.uT => x:(cc.eT (bezout_res __var_a)) => proj_coef1 __var_a x.
+
+def br_coef2
+  :=
+  __var_a:cc.uT => x:(cc.eT (bezout_res __var_a)) => proj_coef2 __var_a x.
+

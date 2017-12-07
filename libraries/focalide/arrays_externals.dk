@@ -1,0 +1,16 @@
+#REQUIRE cc.
+#REQUIRE basics.
+
+bi__array : cc.uT -> cc.uT.
+
+bi__array_set :
+  a:cc.uT ->
+  (cc.eT (bi__array a)) ->
+  (cc.eT basics.int__t) -> (cc.eT a) -> cc.eT basics.unit__t.
+
+bi__array_create :
+  a:cc.uT -> (cc.eT basics.int__t) -> (cc.eT a) -> cc.eT (bi__array a).
+
+bi__array_get :
+  a:cc.uT -> (cc.eT (bi__array a)) -> (cc.eT basics.int__t) -> cc.eT a.
+

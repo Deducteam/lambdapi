@@ -1,0 +1,565 @@
+#REQUIRE cc.
+#REQUIRE dk_logic.
+
+(; Logic for Zenon Modulo ;)
+
+def prop  : Type := dk_logic.Prop.
+def proof : prop -> Type := dk_logic.eP.
+def type  : Type := cc.uT.
+def term  : type -> Type := cc.eT.
+def arrow : type -> type -> type := cc.Arrow.
+iota  : type.
+
+(; Symbols ;)
+
+def True  : prop := dk_logic.True.
+def False : prop := dk_logic.False.
+
+def not : prop -> prop := dk_logic.not.
+def and : prop -> prop -> prop := dk_logic.and.
+def or  : prop -> prop -> prop := dk_logic.or.
+def imp : prop -> prop -> prop := dk_logic.imp.
+def eqv : prop -> prop -> prop := dk_logic.eqv.
+
+def forall : a : type -> (term a -> prop) -> prop := dk_logic.forall.
+def exists : a : type -> (term a -> prop) -> prop := dk_logic.exists.
+
+def foralltype : (type -> prop) -> prop := dk_logic.forall_type.
+def existstype : (type -> prop) -> prop := dk_logic.exists_type.
+
+def equal      : a : type -> term a -> term a -> prop := dk_logic.equal.
+def triangle (x : prop) := x.
+
+(; Definition of Proofs of Symbols ;)
+
+(; The Sequent Type ;)
+
+def seq : Type
+    :=
+      proof False.
+
+(; Law of eXcluded Middle ;)
+
+xmid       : p : prop ->
+	     z : prop ->
+	     (proof p -> proof z) ->
+	     (proof (not p) -> proof z) ->
+	     proof z.
+
+thm nnpp (p : prop)
+: proof (not (not p)) -> proof p
+:=
+  H1 : proof (not (not p))
+  => xmid p p
+	  (H2 : proof p
+	   => H2)
+	  (H3 : proof (not p)
+	   => H1 H3 p).
+
+(; usefull lemmas to prove rules ;)
+
+thm true_intro : proof True
+             :=
+               p : prop
+	       => x : proof p
+	          => x.
+
+thm lemme_contraposition (p : prop)
+                      (q : prop)
+: (proof (imp p q) ->
+   proof (imp (not q) (not p)))
+:=
+  H1 : proof (imp p q)
+  => H2 : proof (not q)
+     => H3 : proof p
+	=> H2 (H1 H3).
+
+thm lemme_equiv_1 (p : prop)
+	       (q : prop)
+	       (H5 : proof q -> proof p)
+	       (H2 : proof p -> proof (not q))
+	       (HQ : proof q)
+: proof (not q)
+:=
+  H2 (H5 HQ).
+
+thm lemme_equiv_2 (p : prop)
+	       (q : prop)
+	       (H5 : proof q -> proof p)
+	       (H2 : proof p -> proof (not q))
+: proof (not q)
+:=
+  HQ : proof q
+  => lemme_equiv_1 p q H5 H2 HQ HQ.
+
+thm lemme_equiv_3 (p : prop)
+	       (q : prop)
+	       (H5 : proof q -> proof p)
+	       (H2 : proof p -> proof (not q))
+	       (H4 : proof p -> proof q)
+: proof (not p)
+:=
+  lemme_contraposition p q H4 (lemme_equiv_2 p q H5 H2).
+
+thm lemme_equiv_4 (p : prop)
+	       (q : prop)
+	       (H5 : proof q -> proof p)
+	       (H2 : proof p -> proof (not q))
+	       (H4 : proof p -> proof q)
+	       (H1 : proof (not p) -> proof (not (not q)))
+: proof (not (not q))
+:=
+  H1 (lemme_equiv_3 p q H5 H2 H4).
+
+thm lemme_notor_1 (p : prop)
+	       (q : prop)
+: proof p -> proof (or p q)
+:=
+  dk_logic.or_intro1 p q.
+
+thm lemme_notor_2 (p : prop)
+	       (q : prop)
+: proof q -> proof (or p q)
+:=
+  dk_logic.or_intro2 p q.
+
+thm lemme_notor_3 (p : prop)
+	       (q : prop)
+	       (H2 : proof (not (or p q)))
+: proof (not p)
+:=
+  lemme_contraposition p (or p q) (lemme_notor_1 p q) H2.
+
+thm lemme_notor_4 (p : prop)
+	       (q : prop)
+	       (H2 : proof (not (or p q)))
+: proof (not q)
+:=
+  lemme_contraposition q (or p q) (lemme_notor_2 p q) H2.
+
+thm lemme_notimply_1 (p : prop)
+	          (q : prop)
+	          (H2 : proof (not (imp p q)))
+: proof (not q)
+:=
+  H3 : proof q
+  => H2 (H4 : proof p
+	 => H3).
+
+thm lemme_notimply_2 (p : prop)
+	          (q : prop)
+	          (H1 : proof p -> proof (not (not q)))
+	          (H2 : proof (not (imp p q)))
+: proof (not p)
+:=
+  H3 : proof p
+  => (H1 H3) (lemme_notimply_1 p q H2).
+
+thm lemme_notimply_3 (p : prop)
+	          (q : prop)
+	          (H3 : proof (not p))
+: proof (imp p q)
+:=
+  H4 : proof p
+  => H3 H4 q.
+
+thm lemme_notequiv_1 (p : prop)
+                  (q : prop)
+                  (H2 : proof p -> proof (not (not q)))
+                  (H3 : proof (not (eqv p q)))
+: proof (not p)
+:=
+  HP : proof p
+  => H2 HP (HQ : proof q
+            => H3 (dk_logic.and_intro
+                    (imp p q)
+                    (imp q p)
+                    (__ : proof p => HQ)
+                    (__ : proof q => HP))).
+
+
+(; LLproof Deduction Rules ;)
+
+(; Rfalse ;)
+
+thm Rfalse
+:
+proof False ->
+seq
+:=
+  x : proof False
+  => x.
+
+(; Rnottrue ;)
+
+thm Rnottrue
+:
+proof (not True) ->
+seq
+:=
+  H : proof (not True)
+  => H true_intro.
+
+(; Raxiom ;)
+
+thm Raxiom (p : prop)
+:
+proof p -> proof (not p) ->
+seq
+:=
+  H : proof p
+  => CH : proof (not p)
+     => CH H.
+
+(; Rnoteq ;)
+
+thm Rnoteq (a : type)
+        (t : term a)
+:
+proof (not (equal a t t)) ->
+seq
+:=
+  H1 : proof (not (equal a t t))
+  => H1 (z : (term a -> prop)
+	 => (H2 : proof (z t)
+	     => H2)).
+
+(; Reqsym ;)
+
+thm Reqsym (a : type)
+        (t : term a)
+        (u : term a)
+:
+proof (equal a t u) ->
+proof (not (equal a u t)) ->
+seq
+:=
+  H1 : proof (equal a t u)
+  => H2 : proof (not (equal a u t))
+     => H2 (z : (term a -> prop)
+	    => H3 : proof (z u)
+	       => H1 (x : term a
+		      => (imp (z x) (z t)))
+		     (H4 : proof (z t)
+		      => H4)
+		     H3).
+
+(; Rcut ;)
+
+thm Rcut (p : prop)
+:
+(proof p -> seq) ->
+(proof (not p) -> seq) ->
+seq
+:=
+  H1 : (proof p -> proof False)
+  => H2 : (proof (not p) -> proof False)
+     => H2 H1.
+
+(; Rnotnot ;)
+
+thm Rnotnot (p : prop)
+:
+(proof p -> seq) ->
+proof (not (not p)) ->
+seq
+:=
+  H1 : (proof p -> proof False)
+  => H2 : proof (not (not p))
+     => H2 H1.
+
+(; Rand ;)
+
+thm Rand (p : prop)
+      (q : prop)
+:
+(proof p -> proof q -> seq) ->
+proof (and p q) ->
+seq
+:=
+  H1 : (proof p -> proof q -> proof False)
+  => H2 : proof (and p q)
+     => H1 (dk_logic.and_elim1 p q H2) (dk_logic.and_elim2 p q H2).
+
+(; Ror ;)
+
+thm Ror (p : prop)
+     (q : prop)
+:
+(proof p -> seq) ->
+(proof q -> seq) ->
+proof (or p q) ->
+seq
+:=
+  H1 : (proof p -> proof False)
+  => H2 : (proof q -> proof False)
+     => H3 : proof (or p q)
+	=> dk_logic.or_elim p q False H3 H1 H2.
+
+(; Rimply ;)
+
+thm Rimply (p : prop)
+        (q : prop)
+:
+(proof (not p) -> seq) ->
+(proof q -> seq) ->
+proof (imp p q) ->
+seq
+:=
+  H1 : (proof (not p) -> proof False)
+  => H2 : (proof q -> proof False)
+     => H3 : proof (imp p q)
+	=> H1 (lemme_contraposition p q H3 H2).
+
+(; Requiv ;)
+
+thm Requiv (p : prop)
+        (q : prop)
+:
+(proof (not p) -> proof (not q) -> seq) ->
+(proof p -> proof q -> seq) ->
+proof (eqv p q) ->
+seq
+:=
+  H1 : (proof (not p) -> proof (not q) -> proof False)
+  => H2 : (proof p -> proof q -> proof False)
+     => H3 : proof (eqv p q)
+	=> lemme_equiv_4 p q
+                         (dk_logic.and_elim2 (imp p q) (imp q p) H3)
+                         H2
+                           (dk_logic.and_elim1 (imp p q) (imp q p) H3)
+                           H1
+                             (lemme_equiv_2 p q
+                                            (dk_logic.and_elim2 (imp p q) (imp q p) H3)
+                                            H2).
+
+(; Rnotand ;)
+
+thm Rnotand (p : prop)
+         (q : prop)
+:
+(proof (not p) -> seq) ->
+(proof (not q) -> seq) ->
+proof (not (and p q)) ->
+seq
+:=
+  H1 : (proof (not p) -> proof False)
+  => H2 : (proof (not q) -> proof False)
+     => H3 : proof (not (and p q))
+	=> H1 (H5 : proof p =>
+               H2 (H6 : proof q =>
+                   H3 (dk_logic.and_intro p q H5 H6))).
+
+(; Rnotor ;)
+
+thm Rnotor (p : prop)
+        (q : prop)
+:
+(proof (not p) -> proof (not q) -> seq) ->
+proof (not (or p q)) ->
+seq
+:=
+  H1 : (proof (not p) -> proof (not q) -> proof False)
+  => H2 : proof (not (or p q))
+     => H1 (lemme_notor_3 p q H2) (lemme_notor_4 p q H2).
+
+(; Rnotimply;)
+
+thm Rnotimply (p : prop)
+           (q : prop)
+:
+(proof p -> proof (not q) -> seq) ->
+proof (not (imp p q)) ->
+seq
+:=
+  H1 : (proof p -> proof (not q) -> proof False)
+  => H2 : proof (not (imp p q))
+     => H2 (lemme_notimply_3 p q (lemme_notimply_2 p q H1 H2)).
+
+(; Rnotequiv ;)
+
+thm Rnotequiv (p : prop)
+           (q : prop)
+:
+(proof (not p) -> proof q -> seq) ->
+(proof p -> proof (not q) -> seq) ->
+proof (not (eqv p q)) ->
+seq
+:=
+  H1 : (proof (not p) -> proof (not q))
+  => H2 : (proof p -> proof (not (not q)))
+     => H3 : proof (not (eqv p q))
+        => (HNP : proof (not p)
+            => H3 (dk_logic.and_intro (imp p q) (imp q p)
+                                               (HP : proof p => HNP HP q)
+                                               (HQ : proof q => H1 HNP HQ p)))
+           (lemme_notequiv_1 p q H2 H3).
+
+(; Rex ;)
+
+thm Rex (a : type)
+     (p : (term a -> prop))
+:
+(t : term a -> proof (p t) -> seq) ->
+proof (exists a p) ->
+seq
+:=
+  H1 : (t : term a -> proof (p t) -> proof False)
+  => H2 : proof (exists a p)
+     => H2 False H1.
+
+(; Rall ;)
+
+thm Rall (a : type)
+      (p : (term a -> prop))
+      (t : term a)
+:
+(proof (p t) -> seq) ->
+proof (forall a p) ->
+seq
+:=
+  H1 : (proof (p t) -> proof False)
+  => H2 : proof (forall a p)
+     => H1 (H2 t).
+
+(; Rnotex ;)
+
+thm Rnotex (a : type)
+        (p : (term a -> prop))
+        (t : term a)
+:
+(proof (not (p t)) -> seq) ->
+proof (not (exists a p)) ->
+seq
+:=
+  H1 : (proof (not (p t)) -> proof False)
+  => H2 : proof (not (exists a p))
+     => H1 (H4 : proof (p t)
+            => H2 (z : prop
+		   => H3 : (x : term a -> proof (p x) -> proof z)
+		      => H3 t H4)).
+
+(; Rnotall ;)
+
+thm Rnotall (a : type)
+         (p : (term a -> prop))
+:
+(t : term a -> proof (not (p t)) -> seq) ->
+proof (not (forall a p)) ->
+seq
+:=
+  H1 : (t : term a -> proof (not (p t)) -> proof False)
+  => H2 : proof (not (forall a p))
+     => H2 (t : term a
+	    => nnpp (p t) (H1 t)).
+
+(; Rextype ;)
+
+thm Rextype (p : (type -> prop))
+:
+(a : type -> proof (p a) -> seq) ->
+proof (existstype p) ->
+seq
+:=
+  H1 : (a : type -> proof (p a) -> proof False)
+  => H2 : proof (existstype p)
+     => H2 False H1.
+
+(; Ralltype ;)
+
+thm Ralltype (p : (type -> prop))
+          (a : type)
+:
+(proof (p a) -> seq) ->
+proof (foralltype p) ->
+seq
+:=
+  H1 : (proof (p a) -> proof False)
+  => H2 : proof (foralltype p)
+     => H1 (H2 a).
+
+(; Rnotextype ;)
+
+thm Rnotextype (p : (type -> prop))
+            (a : type)
+:
+(proof (not (p a)) -> seq) ->
+proof (not (existstype p)) ->
+seq
+:=
+  H1 : (proof (not (p a)) -> proof False)
+  => H2 : proof (not (existstype p))
+     => H1 (H4 : proof (p a)
+            => (H2 (z : prop
+		    => H3 : (b : type -> proof (p b) -> proof z)
+		       => H3 a H4))).
+
+(; Rnotalltype ;)
+
+thm Rnotalltype (p : (type -> prop))
+:
+(a : type -> proof (not (p a)) -> seq) ->
+proof (not (foralltype p)) ->
+seq
+:=
+  H1 : (a : type -> proof (not (p a)) -> proof False)
+  => H2 : proof (not (foralltype p))
+     => H2 (a : type
+	    => nnpp (p a) (H1 a)).
+
+(; Rsubst ;)
+
+thm Rsubst (a : type)
+        (p : (term a -> prop))
+        (t1 : term a)
+        (t2 : term a)
+:
+(proof (not (equal a t1 t2)) -> seq) ->
+(proof (p t2) -> seq) ->
+proof (p t1) ->
+seq
+:=
+  H1 : (proof (not (equal a t1 t2)) -> proof False)
+  => H2 : (proof (p t2) -> proof False)
+     => H3 : proof (p t1)
+	=> H1 (H4 : proof (equal a t1 t2)
+               => H2 (H4 p H3)).
+
+def Rconglr : a : type ->
+              p : (term a -> prop) ->
+              t1 : term a ->
+              t2 : term a ->
+              (proof (p t2) -> seq) ->
+              proof (p t1) ->
+              proof (equal a t1 t2) ->
+              seq.
+
+def Rcongrl : a : type ->
+              p : (term a -> prop) ->
+              t1 : term a ->
+              t2 : term a ->
+              (proof (p t2) -> seq) ->
+              proof (p t1) ->
+              proof (equal a t2 t1) ->
+              seq.
+
+def equal_refl : A : type -> t : term A -> proof (equal A t t)
+               := dk_logic.refl.
+
+def equal_congruence (A : type)
+                     (t : term A)
+                     (u : term A)
+                     (P : term A -> prop)
+                     (H : proof (equal A t u)) :
+                     proof (P t) ->
+                     proof (P u)
+                     := H P.
+
+def equal_sym (A : type) (t : term A) (u : term A) (H : proof (equal A t u)) : proof (equal A u t)
+:= equal_congruence A t u (x : term A => equal A x t) H (equal_refl A t).
+
+[a,p,t1,t2,HN2,H1,He] Rconglr a p t1 t2 HN2 H1 He -->
+  HN2 (equal_congruence a t1 t2 p He H1).
+
+[a,p,t1,t2,HN2,H1,He] Rcongrl a p t1 t2 HN2 H1 He -->
+  Rconglr a p t1 t2 HN2 H1 (equal_sym a t2 t1 He).

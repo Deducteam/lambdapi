@@ -1,0 +1,345 @@
+#REQUIRE cc.
+#REQUIRE basics.
+#REQUIRE builtins.
+#REQUIRE dk_builtins.
+#REQUIRE dk_int.
+#REQUIRE dk_logic.
+#REQUIRE zen.
+#REQUIRE focal.
+
+FromMesureToWF__me_as_species :
+  MI_T:cc.uT -> _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) -> Type.
+
+FromMesureToWF__mk_record :
+  MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) ->
+  FromMesureToWF__rf_T:cc.uT ->
+  FromMesureToWF__rf_order_fct:((cc.eT MI_T) ->
+                                (cc.eT MI_T) -> cc.eT basics.bool__t) ->
+  FromMesureToWF__rf_order_fct_spec:(dk_logic.eP 
+                                       (dk_logic.forall MI_T 
+                                          (mi1:(cc.eT MI_T) =>
+                                           dk_logic.forall MI_T 
+                                             (mi2:(cc.eT MI_T) =>
+                                              dk_logic.eqv 
+                                                (dk_logic.ebP 
+                                                   (FromMesureToWF__rf_order_fct 
+                                                      mi1 mi2)) 
+                                                (dk_logic.ebP 
+                                                   (basics._amper__amper_ 
+                                                      (basics._lt__equal_ 
+                                                         (dk_int.from_nat 
+                                                            builtins.0) 
+                                                         (_p_MI_meas_fct mi2)) 
+                                                      (basics._lt_ 
+                                                         (_p_MI_meas_fct mi1) 
+                                                         (_p_MI_meas_fct mi2)))))))) ->
+  FromMesureToWF__rf_wf_order_fct:(dk_logic.eP 
+                                     (basics.is_well_founded MI_T 
+                                        FromMesureToWF__rf_order_fct)) ->
+  FromMesureToWF__me_as_species MI_T _p_MI_meas_fct.
+
+def proj_FromMesureToWF__rf_T :
+  MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) ->
+  record:(FromMesureToWF__me_as_species MI_T _p_MI_meas_fct) -> cc.uT.
+
+[FromMesureToWF__rf_T]
+  proj_FromMesureToWF__rf_T _ _ (FromMesureToWF__mk_record _ _ 
+    FromMesureToWF__rf_T _ _ _)
+  -->
+  FromMesureToWF__rf_T.
+
+def proj_FromMesureToWF__rf_order_fct :
+  MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) ->
+  record:(FromMesureToWF__me_as_species MI_T _p_MI_meas_fct) ->
+  (cc.eT MI_T) -> (cc.eT MI_T) -> cc.eT basics.bool__t.
+
+[FromMesureToWF__rf_order_fct]
+  proj_FromMesureToWF__rf_order_fct _ _ (FromMesureToWF__mk_record _ _ _ 
+    FromMesureToWF__rf_order_fct _ _)
+  -->
+  FromMesureToWF__rf_order_fct.
+
+def proj_FromMesureToWF__rf_order_fct_spec :
+  MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) ->
+  record:(FromMesureToWF__me_as_species MI_T _p_MI_meas_fct) ->
+  dk_logic.eP 
+    (dk_logic.forall MI_T 
+       (mi1:(cc.eT MI_T) =>
+        dk_logic.forall MI_T 
+          (mi2:(cc.eT MI_T) =>
+           dk_logic.eqv 
+             (dk_logic.ebP 
+                (proj_FromMesureToWF__rf_order_fct MI_T _p_MI_meas_fct 
+                   record mi1 mi2)) 
+             (dk_logic.ebP 
+                (basics._amper__amper_ 
+                   (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                      (_p_MI_meas_fct mi2)) 
+                   (basics._lt_ (_p_MI_meas_fct mi1) (_p_MI_meas_fct mi2))))))).
+
+[FromMesureToWF__rf_order_fct_spec]
+  proj_FromMesureToWF__rf_order_fct_spec _ _ (FromMesureToWF__mk_record _ _ 
+    _ _ FromMesureToWF__rf_order_fct_spec _)
+  -->
+  FromMesureToWF__rf_order_fct_spec.
+
+def proj_FromMesureToWF__rf_wf_order_fct :
+  MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT MI_T) -> cc.eT basics.int__t) ->
+  record:(FromMesureToWF__me_as_species MI_T _p_MI_meas_fct) ->
+  dk_logic.eP 
+    (basics.is_well_founded MI_T 
+       (proj_FromMesureToWF__rf_order_fct MI_T _p_MI_meas_fct record)).
+
+[FromMesureToWF__rf_wf_order_fct]
+  proj_FromMesureToWF__rf_wf_order_fct _ _ (FromMesureToWF__mk_record _ _ _ 
+    _ _ FromMesureToWF__rf_wf_order_fct)
+  -->
+  FromMesureToWF__rf_wf_order_fct.
+
+def FromMesureToWF__order_fct :
+  _p_MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) ->
+  mi1:(cc.eT _p_MI_T) -> mi2:(cc.eT _p_MI_T) -> cc.eT basics.bool__t
+  :=
+  _p_MI_T:cc.uT =>
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) =>
+  mi1:(cc.eT _p_MI_T) =>
+  mi2:(cc.eT _p_MI_T) =>
+  basics._amper__amper_ 
+    (basics._lt__equal_ (dk_int.from_nat builtins.0) (_p_MI_meas_fct mi2)) 
+    (basics._lt_ (_p_MI_meas_fct mi1) (_p_MI_meas_fct mi2)).
+
+def FromMesureToWF__order_fct_spec :
+  _p_MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) ->
+  dk_logic.eP 
+    (dk_logic.forall _p_MI_T 
+       (mi1:(cc.eT _p_MI_T) =>
+        dk_logic.forall _p_MI_T 
+          (mi2:(cc.eT _p_MI_T) =>
+           dk_logic.eqv 
+             (dk_logic.ebP 
+                (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct mi1 mi2)) 
+             (dk_logic.ebP 
+                (basics._amper__amper_ 
+                   (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                      (_p_MI_meas_fct mi2)) 
+                   (basics._lt_ (_p_MI_meas_fct mi1) (_p_MI_meas_fct mi2)))))))
+  :=
+  _p_MI_T:cc.uT =>
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) =>
+  zen.nnpp 
+    (zen.forall _p_MI_T 
+       (v_Vzb:(zen.term _p_MI_T) =>
+        zen.forall _p_MI_T 
+          (v_Vac:(zen.term _p_MI_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true 
+                   (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct v_Vzb 
+                      v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (basics._amper__amper_ 
+                      (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                         (_p_MI_meas_fct v_Vac)) 
+                      (basics._lt_ (_p_MI_meas_fct v_Vzb) 
+                         (_p_MI_meas_fct v_Vac)))))))) 
+    (v_Vbc:
+     (zen.proof 
+        (zen.not 
+           (zen.forall _p_MI_T 
+              (v_Vzb:(zen.term _p_MI_T) =>
+               zen.forall _p_MI_T 
+                 (v_Vac:(zen.term _p_MI_T) =>
+                  zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct 
+                             v_Vzb v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._amper__amper_ 
+                             (basics._lt__equal_ 
+                                (dk_int.from_nat builtins.0) 
+                                (_p_MI_meas_fct v_Vac)) 
+                             (basics._lt_ (_p_MI_meas_fct v_Vzb) 
+                                (_p_MI_meas_fct v_Vac)))))))))) =>
+     zen.Rnotall _p_MI_T 
+       (v_Vzb:(zen.term _p_MI_T) =>
+        zen.forall _p_MI_T 
+          (v_Vac:(zen.term _p_MI_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true 
+                   (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct v_Vzb 
+                      v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (basics._amper__amper_ 
+                      (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                         (_p_MI_meas_fct v_Vac)) 
+                      (basics._lt_ (_p_MI_meas_fct v_Vzb) 
+                         (_p_MI_meas_fct v_Vac))))))) 
+       (v_Vcc:(zen.term _p_MI_T) =>
+        v_Vdc:
+        (zen.proof 
+           (zen.not 
+              (zen.forall _p_MI_T 
+                 (v_Vac:(zen.term _p_MI_T) =>
+                  zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct 
+                             v_Vcc v_Vac))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._amper__amper_ 
+                             (basics._lt__equal_ 
+                                (dk_int.from_nat builtins.0) 
+                                (_p_MI_meas_fct v_Vac)) 
+                             (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                                (_p_MI_meas_fct v_Vac))))))))) =>
+        zen.Rnotall _p_MI_T 
+          (v_Vac:(zen.term _p_MI_T) =>
+           zen.eqv 
+             (zen.triangle 
+                (focal.is_true 
+                   (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct v_Vcc 
+                      v_Vac))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (basics._amper__amper_ 
+                      (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                         (_p_MI_meas_fct v_Vac)) 
+                      (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                         (_p_MI_meas_fct v_Vac)))))) 
+          (v_Vec:(zen.term _p_MI_T) =>
+           v_Vfc:
+           (zen.proof 
+              (zen.not 
+                 (zen.eqv 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct 
+                             v_Vcc v_Vec))) 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._amper__amper_ 
+                             (basics._lt__equal_ 
+                                (dk_int.from_nat builtins.0) 
+                                (_p_MI_meas_fct v_Vec)) 
+                             (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                                (_p_MI_meas_fct v_Vec)))))))) =>
+           zen.Rnotequiv 
+             (zen.triangle 
+                (focal.is_true 
+                   (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct v_Vcc 
+                      v_Vec))) 
+             (zen.triangle 
+                (focal.is_true 
+                   (basics._amper__amper_ 
+                      (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                         (_p_MI_meas_fct v_Vec)) 
+                      (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                         (_p_MI_meas_fct v_Vec))))) 
+             (v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._amper__amper_ 
+                             (basics._lt__equal_ 
+                                (dk_int.from_nat builtins.0) 
+                                (_p_MI_meas_fct v_Vec)) 
+                             (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                                (_p_MI_meas_fct v_Vec))))))) =>
+              v_Vhc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics._amper__amper_ 
+                          (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                             (_p_MI_meas_fct v_Vec)) 
+                          (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                             (_p_MI_meas_fct v_Vec)))))) =>
+              zen.Raxiom 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._amper__amper_ 
+                         (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                            (_p_MI_meas_fct v_Vec)) 
+                         (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                            (_p_MI_meas_fct v_Vec))))) v_Vhc v_Vgc) 
+             (v_Vhc:
+              (zen.proof 
+                 (zen.triangle 
+                    (focal.is_true 
+                       (basics._amper__amper_ 
+                          (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                             (_p_MI_meas_fct v_Vec)) 
+                          (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                             (_p_MI_meas_fct v_Vec)))))) =>
+              v_Vgc:
+              (zen.proof 
+                 (zen.not 
+                    (zen.triangle 
+                       (focal.is_true 
+                          (basics._amper__amper_ 
+                             (basics._lt__equal_ 
+                                (dk_int.from_nat builtins.0) 
+                                (_p_MI_meas_fct v_Vec)) 
+                             (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                                (_p_MI_meas_fct v_Vec))))))) =>
+              zen.Raxiom 
+                (zen.triangle 
+                   (focal.is_true 
+                      (basics._amper__amper_ 
+                         (basics._lt__equal_ (dk_int.from_nat builtins.0) 
+                            (_p_MI_meas_fct v_Vec)) 
+                         (basics._lt_ (_p_MI_meas_fct v_Vcc) 
+                            (_p_MI_meas_fct v_Vec))))) v_Vhc v_Vgc) v_Vfc) 
+          v_Vdc) v_Vbc).
+
+def FromMesureToWF__wf_order_fct :
+  _p_MI_T:cc.uT ->
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) ->
+  dk_logic.eP 
+    (basics.is_well_founded _p_MI_T 
+       (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct))
+  :=
+  _p_MI_T:cc.uT =>
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) =>
+  dk_builtins.magic_prove 
+    (basics.is_well_founded _p_MI_T 
+       (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct)).
+
+def FromMesureToWF__collection_create
+  :=
+  _p_MI_T:cc.uT =>
+  _p_MI_meas_fct:((cc.eT _p_MI_T) -> cc.eT basics.int__t) =>
+  FromMesureToWF__mk_record _p_MI_T _p_MI_meas_fct basics.unit__t 
+    (FromMesureToWF__order_fct _p_MI_T _p_MI_meas_fct) 
+    (FromMesureToWF__order_fct_spec _p_MI_T _p_MI_meas_fct) 
+    (FromMesureToWF__wf_order_fct _p_MI_T _p_MI_meas_fct).
+
+def pos_int_order :
+  i1:(cc.eT basics.int__t) ->
+  i2:(cc.eT basics.int__t) -> cc.eT basics.bool__t
+  :=
+  i1:(cc.eT basics.int__t) =>
+  i2:(cc.eT basics.int__t) =>
+  basics._amper__amper_ (basics._lt__equal_ (dk_int.from_nat builtins.0) i2) 
+    (basics._lt_ i1 i2).
+
+def pos_int_order_wf :
+  dk_logic.eP (basics.is_well_founded basics.int__t pos_int_order)
+  :=
+  dk_builtins.magic_prove 
+    (basics.is_well_founded basics.int__t pos_int_order).
+
