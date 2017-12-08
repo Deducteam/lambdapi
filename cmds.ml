@@ -29,9 +29,12 @@ let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
     fatal "Cannot type the definition of %s...\n" x;
   let s = Sign.new_definable sg x a in
   let rule =
-    let lhs = Bindlib.mbinder_from_fun [||] (fun _ -> []) in
-    let rhs = Bindlib.mbinder_from_fun [||] (fun _ -> t) in
-    {arity = 0; lhs ; rhs}
+    let lhs = Bindlib.mvbind mkfree [||] (fun _ -> Bindlib.box []) in
+    let rhs =
+      let t = Bindlib.box t in
+      Bindlib.mvbind mkfree [||] (fun _ -> t)
+    in
+    {arity = 0; lhs = Bindlib.unbox lhs ; rhs = Bindlib.unbox rhs}
   in
   Sign.add_rule sg s rule
 
