@@ -22,14 +22,35 @@ cd ${DIR}
 
 # Applying the changes.
 echo "Applying changes..."
-echo "#REQUIRE FOL." > iProverModulo.dk
 for sig in `ls *_sig.dk`; do
   base="${sig%%_sig.dk}"
   prf="${base}_prf.dk"
   sed -i "s/^#NAME/#REQUIRE FOL.\n#NAME/g" ${sig}
   sed -i "s/^#NAME/#REQUIRE FOL.\n#REQUIRE ${base}_sig.\n#NAME/g" ${prf}
-  echo "#REQUIRE ${base}_sig." >> iProverModulo.dk
-  echo "#REQUIRE ${base}_prf." >> iProverModulo.dk
 done
+
+# Generating a GNUmakefile.
+echo "Generating GNUmakefile..."
+cat > GNUmakefile <<\EOF
+LAMBDAPI = ../../lambdapi.native --verbose 0
+ALL      = $(wildcard *.dk)
+
+all: $(ALL:.dk=.dko)
+
+FOL.dko: FOL.dk
+	$(LAMBDAPI) $<
+
+%_sig.dko: %_sig.dk FOL.dko
+	$(LAMBDAPI) $<
+
+%_prf.dko: %_prf.dk %_sig.dko FOL.dko
+	$(LAMBDAPI) $<
+
+clean:
+	rm -f *.dko
+
+distclean: clean
+	rm -f *~
+EOF
 
 echo "DONE."
