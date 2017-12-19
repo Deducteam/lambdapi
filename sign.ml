@@ -37,7 +37,7 @@ let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
 let create : module_path -> t = fun path ->
   { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
 
-(** [link sign] establishes physical links between equal symbols. *)
+(** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
     let link_binder b =
@@ -98,6 +98,41 @@ let link : t -> unit = fun sign ->
   in
   Hashtbl.filter_map_inplace gn sign.deps
 
+(** [unlink sign] minimize references to external symbols. *)
+let unlink : t -> unit = fun sign ->
+  let unlink_sym s = s.sym_type <- Wild in
+  let unlink_def s = s.def_type <- Wild; s.def_rules <- [] in
+  let rec unlink_term t =
+    let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
+    match unfold t with
+    | Vari(x)      -> ()
+    | Type         -> ()
+    | Kind         -> ()
+    | Symb(Sym(s)) -> if s.sym_path <> sign.path then unlink_sym s
+    | Symb(Def(s)) -> if s.def_path <> sign.path then unlink_def s
+    | Prod(_,a,b)  -> unlink_term a; unlink_binder b
+    | Abst(_,a,t)  -> unlink_term a; unlink_binder t
+    | Appl(_,t,u)  -> unlink_term t; unlink_term u
+    | Unif(_,_)    -> assert false
+    | ITag(_)      -> assert false
+    | Wild         -> ()
+  and unlink_rule r =
+    let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
+    List.iter unlink_term lhs;
+    let (xs, rhs) = Bindlib.unmbind mkfree r.rhs in
+    unlink_term rhs
+  in
+  let fn _ sym =
+    match sym with
+    | Sym(s) -> unlink_term s.sym_type
+    | Def(s) -> unlink_term s.def_type; List.iter unlink_rule s.def_rules
+  in
+  Hashtbl.iter fn sign.symbols;
+  let gn _ ls =
+    List.iter (fun (_, r) -> unlink_rule r) ls
+  in
+  Hashtbl.iter gn sign.deps
+
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
 let new_static : t -> string -> term -> sym =
@@ -124,9 +159,13 @@ let new_definable : t -> string -> term -> def =
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit =
   fun sign fname ->
-    let oc = open_out fname in
-    Marshal.to_channel oc sign [Marshal.Closures];
-    close_out oc
+    match Unix.fork () with
+    | 0 -> let oc = open_out fname in
+           unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
+           close_out oc; exit 0
+    | i -> ignore (Unix.waitpid [] i)
+
+(** NOTE we [Unix.fork] to safely [unlink] before writing the file. *)
 
 (** [read fname] reads a signature from the file [fname]. *)
 let read : string -> t =
