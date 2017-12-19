@@ -235,11 +235,11 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         match (unfold a, unfold b) with
         | (a            , b            ) when eq a b -> eq_modulo l
         | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
-            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
-            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
+            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
+            eq_modulo ((aa,ab)::(ba,bb)::l)
         | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
-            let x = mkfree (Bindlib.new_var mkfree "_eq_modulo_") in
-            eq_modulo ((aa,ab)::(Bindlib.subst ba x, Bindlib.subst bb x)::l)
+            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
+            eq_modulo ((aa,ab)::(ba,bb)::l)
         | (a            , b            ) ->
             constr_on && add_constraint a b && eq_modulo l
   in
