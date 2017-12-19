@@ -1,3 +1,4 @@
+#REQUIRE tests.dummy1.
 #REQUIRE tests.dummy2.
 
 def one := tests.dummy1.s tests.dummy1.z.
