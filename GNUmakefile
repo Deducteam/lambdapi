@@ -35,9 +35,14 @@ focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
 	@cd libraries/focalide && $(TIME) ../../lambdapi.native focalide.dk
 
 .PHONY: holide
+ifneq ("$(wildcard libraries/holide)","")
 holide: lambdapi.native $(wildcard libraries/holide/*.dk)
 	@echo "## Compiling holide library ##"
 	@cd libraries/holide && $(TIME) ../../lambdapi.native holide.dk
+else
+holide:
+	@echo "You must first run 'cd libraries; ./holide.sh'"
+endif
 
 .PHONY: verine
 ifneq ("$(wildcard libraries/verine)","")
