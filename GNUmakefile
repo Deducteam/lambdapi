@@ -5,7 +5,7 @@ TESTFILES    = $(wildcard tests/*.dk) \
 							 $(wildcard dedukti_tests/OK/*.dk)
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
-SHELL = /bin/bash
+TIME         = /usr/bin/time -f "%E at %P with %MKb of RAM"
 
 all: lambdapi.native unit_tests
 
@@ -27,31 +27,36 @@ tests: lambdapi.native
 .PHONY: matita
 matita: lambdapi.native $(wildcard libraries/matita/*.dk)
 	@echo "## Compiling matita library ##"
-	@cd libraries/matita && time ../../lambdapi.native matita.dk
+	@cd libraries/matita && $(TIME) ../../lambdapi.native matita.dk
 
 .PHONY: focalide
 focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
 	@echo "## Compiling focalide library ##"
-	@cd libraries/focalide && time ../../lambdapi.native focalide.dk
+	@cd libraries/focalide && $(TIME) ../../lambdapi.native focalide.dk
 
 .PHONY: holide
 holide: lambdapi.native $(wildcard libraries/holide/*.dk)
 	@echo "## Compiling holide library ##"
-	@cd libraries/holide && time ../../lambdapi.native holide.dk
+	@cd libraries/holide && $(TIME) ../../lambdapi.native holide.dk
 
 .PHONY: verine
+ifneq ("$(wildcard libraries/verine)","")
 verine: lambdapi.native $(wildcard libraries/verine/*.dk)
 	@echo "## Compiling verine library ##"
-	@cd libraries/verine && time ../../lambdapi.native verine.dk
+	@cd libraries/verine && $(TIME) ../../lambdapi.native verine.dk
+else
+verine:
+	@echo "You must first run 'cd libraries; ./verine.sh'"
+endif
 
 .PHONY: iProverModulo
 ifneq ("$(wildcard libraries/iProverModulo)","")
 iProverModulo: lambdapi.native $(wildcard libraries/iProverModulo/*.dk)
 	@echo "## Compiling iProverModulo library ##"
-	@cd libraries/iProverModulo && time ../../lambdapi.native iProverModulo.dk
+	@cd libraries/iProverModulo && $(TIME) ../../lambdapi.native iProverModulo.dk
 else
 iProverModulo:
-	@echo "You must first run 'libraries/iProverModulo.sh'"
+	@echo "You must first run 'cd libraries; ./iProverModulo.sh'"
 endif
 
 unit_tests: lambdapi.native
