@@ -4,7 +4,7 @@ SRC="https://deducteam.github.io/data/libraries/iProverModulo_dk.tar.gz"
 DIR="iProverModulo"
 
 # Cleaning up.
-if [ -f ${DIR} ]; then
+if [ -d ${DIR} ]; then
   rm -rf ${DIR}
 fi
 
