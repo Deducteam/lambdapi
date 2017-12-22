@@ -28,16 +28,18 @@ def Eqv := dk_logic.eqv.
 def Forall := dk_logic.forall.
 def Forallb := Forall bool.
 
-def equal := zen.equal.
+def equal := zen.tequal.
 def eqb := equal bool.
-def refl := dk_logic.refl bool.
-def sym := dk_logic.equal_sym bool.
+def refl := zen.equal_refl bool.
+def sym := zen.equal_sym bool.
 
 def tt : TrueT := P : dk_logic.Prop => H : eP P => H.
 def ff (H : FalseT) : FalseT := H.
 
-def is_true : Bool -> Prop := dk_logic.ebP.
-def Is_true (b : Bool) := is_true b.
+def is_true : Bool -> zen.alpha.
+[] zen.triangle (is_true dk_bool.true) --> True
+[] zen.triangle (is_true dk_bool.false) --> False.
+def Is_true (b : Bool) := zen.triangle (is_true b).
 
 
 
@@ -49,7 +51,7 @@ def zenon_focal_trueequal (x : Bool)
                           (H : eP (Not (Is_true x)))
                           (G : eP (eqb true x)) : FalseT
 :=
-  H (G Is_true tt).
+  H (zen.equal_congruence bool true x Is_true G tt).
 
 def zenon_focal_equaltrue (x : Bool)
                           (H : eP (Not (Is_true x)))
@@ -92,7 +94,7 @@ def zenon_focal_falseequal :
                  (Not (eqb false x))))
           (H : eP (NotNot True) =>
            G : eP (eqb false true) =>
-           G (x : Bool => Is_true (not x)) tt)
+           zen.equal_congruence bool false true (x : Bool => Is_true (not x)) G tt)
           (H : eP (NotNot False) =>
            G : eP (eqb false false) =>
            H ff).

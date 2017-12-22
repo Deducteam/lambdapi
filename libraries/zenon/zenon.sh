@@ -1,16 +1,31 @@
 #!/bin/bash
 
-SRC="https://cloud.lsv.ens-cachan.fr/public.php?service=files&t=4b3d24c59694ededc28bd45cb7e8f10d&download"
+NBWORKERS="4"
+SRC="https://cloud.lsv.ens-cachan.fr/public.php?service=files&t=8f8231877f5034cd8c27c53b085bd9d6&download"
 LAMBDAPI="../../lambdapi.native"
-ARCHIVE="zenon_dk.tar.gz"
+ARCHIVE="zenon.tar"
 
 # Cleaning up.
 echo "Cleaning up..."
 rm -f *.dk *.dko
 
-# Download the library if necessary.
-if [ ! -f zenon_dk.tar.gz ]; then
-  wget -q --show-progress -O zenon_dk.tar.gz ${SRC}
+# Download the archive if necessary.
+if [ ! -f ${ARCHIVE} ]; then
+  if [ ! -f zenon_dk.tar.gz ]; then
+    echo "Downloading the archive..."
+    wget -q --show-progress -O zenon_dk.tar.gz ${SRC}
+  fi
+  echo "Extracting..."
+  tar xf zenon_dk.tar.gz
+  echo "Creating the new archive..."
+  cd zenon_dk
+  rm zenon_focal.dk
+  ls *.dk | xargs -P ${NBWORKERS} -n 1 gzip
+  tar cf zenon.tar *.dk.gz
+  cd ..
+  mv zenon_dk/zenon.tar .
+  echo "Cleaning up archives..."
+  rm -rf zenon_dk zenon_dk.tar.gz
 fi
 
 # Building theory files.
@@ -25,5 +40,34 @@ done
 # Compiling the theory files.
 echo "Compiling the theory files..."
 $LAMBDAPI --verbose 0 *.dk
+
+# Compilation function.
+export readonly GARCHIVE=${ARCHIVE}
+export readonly GLAMBDAPI=${LAMBDAPI}
+
+function test_gz() {
+  file_gz="$1"
+  file_dk=${file_gz%%.gz}
+  modname=${file_dk%%.dk}
+  tar xf ${GARCHIVE} $file_gz
+  gzip -d $file_gz
+  ocaml tools/deps.ml $file_dk $modname > $modname.aux
+  cat $file_dk >> $modname.aux
+  mv $modname.aux $file_dk
+  ${GLAMBDAPI} --verbose 0 $file_dk
+  if [ $? -ne 0 ]; then
+    echo -e "$modname \033[0;31mKO\033[0m"
+    echo "FAILED $file_gz" >> error.log
+  else
+    echo -e "$modname \033[0;32mOK\033[0m"
+  fi
+  rm -f $file_dk $modname.dko
+}
+
+export -f test_gz
+
+# Compiling the library files.
+echo "Compiling the library files..."
+tar -tf ${ARCHIVE} | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "test_gz {}"
 
 echo "DONE."
