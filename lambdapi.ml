@@ -30,7 +30,7 @@ let _ =
       ; "1 : only file loading information (default)"
       ; "2 : more file loading information"
       ; "3 (or more) : show the results of commands" ]
-    in "<int> et the verbosity level:\n" ^ String.concat "\n" flags
+    in "<int> set the verbosity level:\n" ^ String.concat "\n" flags
   in
   let spec =
     [ ("--debug"  , Arg.String (set_debug true), debug_doc  )
