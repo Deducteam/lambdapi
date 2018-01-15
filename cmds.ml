@@ -11,20 +11,20 @@ open Print
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
 let handle_newsym : Sign.t -> string -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign n a); ignore (Sign.new_static sign n a)
+  ignore (Typing.sort_type sign a); ignore (Sign.new_static sign n a)
 
 (** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
     with type [a] (and no reduction rule). If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. *)
 let handle_newdef : Sign.t -> string -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign n a); ignore (Sign.new_definable sign n a)
+  ignore (Typing.sort_type sign a); ignore (Sign.new_definable sign n a)
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [n] and type [a], and then adds a simple rewriting rule to  [t]. Note that
     this amounts to defining a symbol with a single reduction rule. In case of
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type sg x a);
+  ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg Ctxt.empty t a) then
     fatal "Cannot type the definition of %s...\n" x;
   let s = Sign.new_definable sg x a in
@@ -48,6 +48,7 @@ let handle_rules = fun sign rs ->
 (** [handle_check sign t a] attempts to show that [t] has type [a], in [sign].
     In case of failure, the program fails gracefully. *)
 let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
+  ignore (Typing.sort_type sign a);
   if not (Typing.has_type sign Ctxt.empty t a) then
     fatal "%a does not have type %a...\n" pp t pp a;
   out 3 "(chck) OK\n"

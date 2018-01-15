@@ -76,7 +76,7 @@ type term =
    { key   : int
    ; value : (term, term) Bindlib.mbinder option ref }
 
-(* NOTE a unification variable is represented using a multiple binder. Hence,
+(* NOTE a unification variable is represented using a multiple binder.  Hence,
    it can be instanciated with an open term, which free variables are bound in
    an external environment. Their value is given by the second argument of the
    [Unif] constructor, which can be used to substitute the binder whenever the
