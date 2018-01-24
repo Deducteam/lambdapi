@@ -1,0 +1,3 @@
+*.dko
+_build
+*.native
