@@ -12,9 +12,9 @@ type t =
   ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
-   modules on which the current signature depends to an association
-   list mapping definable symbols (given in these modules) to additional rules
-   (defined in the current signature). *)
+   external modules on which the current signature depends to an  association.
+   This association list then maps definable symbols of the external module to
+   additional reduction rules defined in the current signature. *)
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -23,14 +23,14 @@ let find : t -> string -> symbol =
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
-    the topmost element corresponds to the current module. If a [module_path]
+    the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
 let loading : module_path Stack.t = Stack.create ()
 
 (** [loaded] stores the signatures of the known (already compiled) modules. An
-    important invariant is that all the occurrences of a symbol should be
-    physically equal (across different signatures). This requires copying when
-    loading an object file. *)
+    important invariant is that all the occurrences of a symbol are physically
+    equal (even across different signatures). In particular, this requires the
+    objects to be copied when loading an object file. *)
 let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
 
 (** [create path] creates an empty signature with module path [path]. *)

@@ -11,7 +11,7 @@ let obj_extension : string = ".dko"
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
 
-(** [module_path path] computes the [module_path] corresponding to a (relative)
+(** [module_path path] computes the [module_path] corresponding to a  relative
     file [path], which should not use [".."]. The returned list is formed with
     the subdirectories along the [path], and it is terminated by the file name
     (without extension). Although it is removed, the extension should be given
