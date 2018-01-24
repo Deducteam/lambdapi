@@ -87,7 +87,7 @@ type constrs = (term * term) list
 
 (** If [constraints] is set to [None] then typechecking is in regular mode. If
     it is set to [Some l] then it is in constraint mode, which means that when
-    equality fails a constraint is added to [constrs] instead of the  equality
+    equality fails a constraint is added to [constrs] instead of the equality
     function giving up. *)
 let constraints = ref None
 
