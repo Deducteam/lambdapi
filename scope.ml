@@ -5,6 +5,7 @@ open Files
 open Terms
 open Print
 open Parser
+open Cmd
 
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
@@ -140,33 +141,6 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
     (ctx, s, t, u, { lhs ; rhs ; arity })
-
-(** Representation of a toplevel command. *)
-type cmd =
-  (** Static symbol declaration. *)
-  | NewSym of string * term
-  (** Definable symbol declaration. *)
-  | NewDef of string * term
-  (** Rewriting rules declaration. *)
-  | Rules  of (Ctxt.t * def * term * term * rule) list
-  (** Quick definition. *)
-  | Defin  of string * term * term
-  (** Import an external signature. *)
-  | Import of module_path
-  (** Set debugging flags. *)
-  | Debug  of bool * string
-  (** Set the verbosity level. *)
-  | Verb   of int
-  (** Type-checking command. *)
-  | Check  of term * term
-  (** Type inference command. *)
-  | Infer  of term
-  (** Normalisation command. *)
-  | Eval   of term
-  (** Convertibility command. *)
-  | Conv   of term * term
-  (** Unimplemented command. *)
-  | Other  of string
 
 (** [scope_cmd sign cmd] scopes the parser level command [cmd],  using [sign].
     In case of error, the program gracefully fails. *)

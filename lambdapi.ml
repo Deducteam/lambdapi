@@ -10,7 +10,7 @@ let compile : string -> unit = fun fname ->
     fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
   in
   Hashtbl.clear Sign.loaded;
-  Cmds.compile true modpath
+  Handle.compile true modpath
 
 (* Main program. *)
 let _ =

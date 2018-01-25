@@ -6,6 +6,7 @@ open Scope
 open Files
 open Terms
 open Print
+open Cmd
 
 (** [handle_newsym sign n a] extends the signature [sign] with a static symbol
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
