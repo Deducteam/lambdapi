@@ -193,9 +193,6 @@ and matching : term array -> term -> term ref -> bool = fun ar p t ->
     t := whnf !t;
     match (p, !t) with
     | (ITag(i)      , t            ) -> eq_modulo ar.(i) t (* t <> ITag(i) *)
-    | (Prod(_,a1,b1), Prod(_,a2,b2)) ->
-        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-        matching ar a1 (ref a2) && matching ar b1 (ref b2)
     | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
         let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
         matching ar t1 (ref t2)
@@ -203,8 +200,6 @@ and matching : term array -> term -> term ref -> bool = fun ar p t ->
         matching ar t1 (ref t2) && matching ar u1 (ref u2)
     | (Unif(_,_)    , _            ) -> assert false
     | (_            , Unif(_,_)    ) -> assert false
-    | (Type         , Type         ) -> true
-    | (Kind         , Kind         ) -> true
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (_            , _            ) -> false
@@ -232,7 +227,7 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
           | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
-        match (unfold a, unfold b) with
+        match (a, b) with
         | (a            , b            ) when eq a b -> eq_modulo l
         | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
