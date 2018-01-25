@@ -181,7 +181,7 @@ and find_rule : def -> stack -> (term * stack) option = fun s stk ->
     pattern variables (using the [ITag] node) are stored in [ar], at the index
     they denote. In case several different values are found for a same pattern
     variable, equality modulo is computed to check compatibility. *)
-and matching ar p t =
+and matching : term array -> term -> term ref -> bool = fun ar p t ->
   if !debug_eval then log "matc" "[%a] =~= [%a]" pp p pp !t;
   let res =
     (* First handle patterns that do not need the evaluated term. *)
