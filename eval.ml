@@ -231,7 +231,7 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         | (a            , b            ) when eq a b -> eq_modulo l
         | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            eq_modulo ((aa,ab)::(ba,bb)::l)
+            eq_modulo ((ba,bb)::l)
         | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
