@@ -38,30 +38,30 @@ focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
 ifneq ("$(wildcard libraries/holide)","")
 holide: lambdapi.native $(wildcard libraries/holide/*.dk)
 	@echo "## Compiling holide library ##"
-	@cd libraries/holide && $(TIME) ../../lambdapi.native holide.dk
+	@$(TIME) make -C libraries/holide
 else
 holide:
-	@echo "You must first run 'cd libraries; ./holide.sh'"
+	@echo "You must first run 'cd libraries; ./holide.sh; cd ..'"
 endif
 
 .PHONY: verine
 ifneq ("$(wildcard libraries/verine)","")
 verine: lambdapi.native $(wildcard libraries/verine/*.dk)
 	@echo "## Compiling verine library ##"
-	@cd libraries/verine && $(TIME) ../../lambdapi.native verine.dk
+	@$(TIME) make -C libraries/verine
 else
 verine:
-	@echo "You must first run 'cd libraries; ./verine.sh'"
+	@echo "You must first run 'cd libraries; ./verine.sh; cd ..'"
 endif
 
 .PHONY: iProverModulo
 ifneq ("$(wildcard libraries/iProverModulo)","")
 iProverModulo: lambdapi.native $(wildcard libraries/iProverModulo/*.dk)
 	@echo "## Compiling iProverModulo library ##"
-	@cd libraries/iProverModulo && $(TIME) ../../lambdapi.native iProverModulo.dk
+	@$(TIME) make -C libraries/iProverModulo
 else
 iProverModulo:
-	@echo "You must first run 'cd libraries; ./iProverModulo.sh'"
+	@echo "You must first run 'cd libraries; ./iProverModulo.sh; cd ..'"
 endif
 
 unit_tests: lambdapi.native
