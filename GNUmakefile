@@ -19,7 +19,7 @@ lambdapi.native: $(wildcard *.ml)
 tests: lambdapi.native
 	@echo "## Timing on examples ##"
 	@rm -f $(TESTFILES:.dk=.dko)
-	@time for file in $(TESTFILES) ; do \
+	@for file in $(TESTFILES) ; do \
 		echo "$$file" ; \
 		./lambdapi.native --verbose 0 $$file ; \
 	done
