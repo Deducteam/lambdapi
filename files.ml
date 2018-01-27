@@ -38,14 +38,8 @@ let module_path : string -> module_path = fun fname ->
 let mod_time : string -> float = fun fname ->
   if Sys.file_exists fname then Unix.((stat fname).st_mtime) else neg_infinity
 
-(** [binary_time] is the modification time of the compiled program. *)
-let binary_time : float = mod_time "/proc/self/exe"
-
 (** [more_recent source target] checks whether the [target] (produced from the
     [source] file) should be produced again. This is the case when [source] is
-    more recent than [target] or when the binary of the program is more recent
-    than [target]. *)
+    more recent than [target]. *)
 let more_recent : string -> string -> bool = fun source target ->
-  let s_time = mod_time source in
-  let t_time = mod_time target in
-  s_time > t_time || binary_time > t_time
+  mod_time source > mod_time target

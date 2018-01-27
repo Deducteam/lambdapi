@@ -135,44 +135,50 @@ let unlink : t -> unit = fun sign ->
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
-let new_static : t -> string -> term -> sym =
-  fun sign sym_name sym_type ->
-    if Hashtbl.mem sign.symbols sym_name then
-      wrn "Redefinition of symbol %S.\n" sym_name;
-    let sym_path = sign.path in
-    let sym = { sym_name ; sym_type ; sym_path } in
-    Hashtbl.add sign.symbols sym_name (Sym(sym));
-    out 3 "(stat) %s\n" sym_name; sym
+let new_static : t -> string -> term -> sym = fun sign sym_name sym_type ->
+  if Hashtbl.mem sign.symbols sym_name then
+    wrn "Redefinition of symbol %S.\n" sym_name;
+  let sym_path = sign.path in
+  let sym = { sym_name ; sym_type ; sym_path } in
+  Hashtbl.add sign.symbols sym_name (Sym(sym));
+  out 3 "(stat) %s\n" sym_name; sym
 
 (** [new_definable sign name a] creates a fresh definable symbol named [name],
     without any reduction rules, and of type [a] in the signature [sign]. Note
     that the created symbol is also returned. *)
-let new_definable : t -> string -> term -> def =
-  fun sign def_name def_type ->
-    if Hashtbl.mem sign.symbols def_name then
-      wrn "Redefinition of symbol %S.\n" def_name;
-    let def_path = sign.path in
-    let def = { def_name ; def_type ; def_rules = [] ; def_path } in
-    Hashtbl.add sign.symbols def_name (Def(def));
-    out 3 "(defi) %s\n" def_name; def
+let new_definable : t -> string -> term -> def = fun sign def_name def_type ->
+  if Hashtbl.mem sign.symbols def_name then
+    wrn "Redefinition of symbol %S.\n" def_name;
+  let def_path = sign.path in
+  let def = { def_name ; def_type ; def_rules = [] ; def_path } in
+  Hashtbl.add sign.symbols def_name (Def(def));
+  out 3 "(defi) %s\n" def_name; def
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
-let write : t -> string -> unit =
-  fun sign fname ->
-    match Unix.fork () with
-    | 0 -> let oc = open_out fname in
-           unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
-           close_out oc; exit 0
-    | i -> ignore (Unix.waitpid [] i)
+let write : t -> string -> unit = fun sign fname ->
+  match Unix.fork () with
+  | 0 -> let oc = open_out fname in
+         unlink sign; Marshal.to_channel oc sign [Marshal.Closures];
+         close_out oc; exit 0
+  | i -> ignore (Unix.waitpid [] i)
 
 (** NOTE we [Unix.fork] to safely [unlink] before writing the file. *)
 
-(** [read fname] reads a signature from the file [fname]. *)
-let read : string -> t =
-  fun fname ->
-    let ic = open_in fname in
+(** [read fname] reads a signature from the object file [fname]. Note that the
+    file can only be read properly if it was build with the same binary as the
+    one being evaluated. If this is not the case, the program gracefully fails
+    with an error message. *)
+let read : string -> t = fun fname ->
+  let ic = open_in fname in
+  try
     let sign = Marshal.from_channel ic in
     close_in ic; sign
+  with Failure _ ->
+    close_in ic;
+    fatal "File [%s] is incompatible with the current binary...\n" fname
+
+(** NOTE we here rely on the fact that a marshaled closure can only be read by
+    processes running the same binary as the one that produced it. *)
 
 (** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
     the rule does not correspond to a symbol of the current signature,  it  is
