@@ -162,7 +162,7 @@ let write : t -> string -> unit = fun sign fname ->
          close_out oc; exit 0
   | i -> ignore (Unix.waitpid [] i)
 
-(** NOTE we [Unix.fork] to safely [unlink] before writing the file. *)
+(* NOTE we [Unix.fork] to safely [unlink] before writing the file. *)
 
 (** [read fname] reads a signature from the object file [fname]. Note that the
     file can only be read properly if it was build with the same binary as the
@@ -177,8 +177,8 @@ let read : string -> t = fun fname ->
     close_in ic;
     fatal "File [%s] is incompatible with the current binary...\n" fname
 
-(** NOTE we here rely on the fact that a marshaled closure can only be read by
-    processes running the same binary as the one that produced it. *)
+(* NOTE here, we rely on the fact that a marshaled closure can only be read by
+   processes running the same binary as the one that produced it. *)
 
 (** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
     the rule does not correspond to a symbol of the current signature,  it  is

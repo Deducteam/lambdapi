@@ -231,9 +231,9 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
         match (a, b) with
         | (a            , b            ) when eq a b -> eq_modulo l
-        | (Abst(_,_,ba) , Abst(_,_,bb) ) ->
+        | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            eq_modulo ((ba,bb)::l)
+            eq_modulo ((aa,ab)::(ba,bb)::l)
         | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
@@ -242,8 +242,3 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
-
-(** NOTE in the λ-abstraction case, we do not need to check the convertibility
-    of the domains.  If the bodies are found to be convertible, then they must
-    live in the same type (rewriting rules are well-typed).  This implies that
-    the domains must be convertible. *)
