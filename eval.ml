@@ -71,10 +71,11 @@ let eq : term -> term -> bool = fun a b ->
     | (Appl(_,t1,u1), Appl(_,t2,u2)) -> eq t1 t2 && eq u1 u2
     | (Wild         , _            ) -> assert false
     | (_            , Wild         ) -> assert false
+    | (ITag(_)      , _            ) -> assert false
+    | (_            , ITag(_)      ) -> assert false
     | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
     | (Unif(u,e)    , b            ) when unify u e b -> true
     | (a            , Unif(u,e)    ) -> unify u e a
-    | (ITag(i1)     , ITag(i2)     ) -> i1 = i2
     | (_            , _            ) -> false
   in eq a b
 
