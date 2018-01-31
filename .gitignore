@@ -1,3 +1,7 @@
 *.dko
 _build
 *.native
+libraries/*.tar.gz
+libraries/holide
+libraries/verine
+libraries/iProverModulo
