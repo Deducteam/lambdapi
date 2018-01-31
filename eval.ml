@@ -127,18 +127,19 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (appl t !u) args
   in to_term t args
 
-(** [whnf t] returns (almost) a weak head normal form of [t]. When a reduction
-    rule is matched, the arguments may need to be normalised.  Their evaluated
-    form is kept to avoid useless recomputations. *)
+(** [whnf t] computes (sometimes a bit more than) the weak head normal form of
+    the term [t]. When a reduction rule is matched, some arguments of the head
+    symbol may need to be evaluated. In this case, we preserve their evaluated
+    form to avoid useless recomputation, even when no rule applies. *)
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
   let (u, stk) = whnf_stk t [] in
   let u = to_term u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
 
-(** [whnf_stk t stk] performs a weak head normalisation of the term [t] applied
-    to the argument list (or stack) [stk]. Note that the normalisation is done
-    in the sense of [whnf]. *)
+(** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
+    argument list (or stack) [stk]. Note that the normalisation is done in the
+    sense of [whnf]. *)
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
