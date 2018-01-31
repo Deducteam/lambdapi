@@ -119,7 +119,7 @@ type stack = term ref list
 (* NOTE the stack contain references so that the computation of arguments when
    matching reduction rules may be shared. *)
 
-(** [to_term t stk] builds a term from an abstrack machine state [(t,stk)]. *)
+(** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
     match args with
@@ -136,7 +136,7 @@ let rec whnf : term -> term = fun t ->
   let u = to_term u stk in
   if !debug_eval then log "eval" "produced %a" pp u; u
 
-(** [whnf_stk t stk] performs weak head normalisations of the term [t] applied
+(** [whnf_stk t stk] performs a weak head normalisation of the term [t] applied
     to the argument list (or stack) [stk]. Note that the normalisation is done
     in the sense of [whnf]. *)
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
