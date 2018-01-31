@@ -2,7 +2,7 @@ Lambdapi- Implementation of the λΠ-calculus modulo rewriting
 ============================================================
 
 Lambdapi is an implementation of the λΠ-calculus modulo rewriting, which
-is the system of Dedukit (https://github.com/Deducteam/Dedukti).
+is the system of Dedukti (https://github.com/Deducteam/Dedukti).
 
 Dependencies and compilation
 ----------------------------
