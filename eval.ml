@@ -200,8 +200,6 @@ and matching : term array -> term -> term ref -> bool = fun ar p t ->
         matching ar t1 (ref t2)
     | (Appl(_,t1,u1), Appl(_,t2,u2)) ->
         matching ar t1 (ref t2) && matching ar u1 (ref u2)
-    | (Unif(_,_)    , _            ) -> assert false
-    | (_            , Unif(_,_)    ) -> assert false
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (_            , _            ) -> false
