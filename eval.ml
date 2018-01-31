@@ -221,7 +221,7 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         let (b,sb) = whnf_stk b [] in
         let rec sync acc la lb =
           match (la, lb) with
-          | ([]   , []   ) -> (a, b, List.rev acc)
+          | ([]   , []   ) -> (a, b, acc)
           | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
           | (la   , []   ) -> (to_term a (List.rev la), b, acc)
           | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
