@@ -23,7 +23,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     match unfold t with
     (* Sort *)
     | Type        ->
-        eq_modulo ~constr_on:true c Kind
+        eq c Kind
     (* Variable *)
     | Vari(x)     ->
         let cx = try Ctxt.find x ctx with Not_found -> assert false in
