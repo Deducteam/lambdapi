@@ -13,7 +13,7 @@ type p_term =
   | P_Wild
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
-   path), and for symbols. The [P_Wild] constructor corresponds to the wildard
+   path), and for symbols. The [P_Wild] constructor corresponds to the wildcard
    pattern ['_']. *)
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
@@ -24,7 +24,7 @@ let parser ident = id:''[_'a-zA-Z0-9]+'' ->
   if List.mem id ["Type"; "_"] then Earley.give_up (); id
 
 (** [qident] is an atomic parser for a qualified identifier, or in other words
-    an identifier that may be preceeded by a module path.  The different parts
+    an identifier that may be preceded by a module path.  The different parts
     are formed of the same characters as identifiers ([ident]), separated with
     the ['.'] character. *)
 let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
