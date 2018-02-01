@@ -35,14 +35,9 @@ focalide: lambdapi.native
 	@cd libraries && ./focalide.sh
 
 .PHONY: holide
-ifneq ("$(wildcard libraries/holide)","")
-holide: lambdapi.native $(wildcard libraries/holide/*.dk)
+holide: lambdapi.native
 	@echo "## Compiling holide library ##"
-	@$(TIME) make -C libraries/holide
-else
-holide:
-	@echo "You must first run 'cd libraries; ./holide.sh; cd ..'"
-endif
+	@cd libraries && ./holide.sh
 
 .PHONY: verine
 ifneq ("$(wildcard libraries/verine)","")
@@ -89,6 +84,7 @@ distclean: clean
 	@rm -f lambdapi.native
 	@cd libraries && ./matita.sh clean
 	@cd libraries && ./focalide.sh clean
+	@cd libraries && ./holide.sh clean
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim

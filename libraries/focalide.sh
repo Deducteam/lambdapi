@@ -24,19 +24,19 @@ if [[ ! -d ${DIR} ]]; then
 
   # Download the library if necessary.
   if [[ ! -f focalide.tar.gz ]]; then
-    echo -n "  - downloading..."
+    echo -n "  - downloading...      "
     wget -q ${SRC}
-    echo "      OK"
+    echo "OK"
   fi
 
   # Extracting the source files.
-  echo -n "  - extracting..."
+  echo -n "  - extracting...       "
   tar xf focalide.tar.gz
   mv focalide_dks focalide
-  echo "       OK"
+  echo "OK"
 
   # Applying the changes (add "#REQUIRE" and create "focalide.dk").
-  echo -n "  - applying changes..."
+  echo -n "  - applying changes... "
   mv ${DIR}/modulogic.dk ${DIR}/zen.dk
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     MODNAME=`basename "${FILE}" ".dk"`
@@ -46,13 +46,13 @@ if [[ ! -d ${DIR} ]]; then
 
     echo "#REQUIRE ${MODNAME}." >> ${DIR}/focalide.dk
   done
-  echo " OK"
+  echo "OK"
 
   # Cleaning up.
-  echo -n "  - cleaning up..."
+  echo -n "  - cleaning up...      "
   rm focalide.tar.gz
   rm ${DIR}/Makefile
-  echo "      OK"
+  echo "OK"
 
   # All done.
   echo "Ready."

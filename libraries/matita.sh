@@ -24,18 +24,18 @@ if [[ ! -d ${DIR} ]]; then
 
   # Download the library if necessary.
   if [[ ! -f matita.tar.gz ]]; then
-    echo -n "  - downloading..."
+    echo -n "  - downloading...      "
     wget -q ${SRC}
-    echo "      OK"
+    echo "OK"
   fi
 
   # Extracting the source files.
-  echo -n "  - extracting..."
+  echo -n "  - extracting...       "
   tar xf matita.tar.gz
-  echo "       OK"
+  echo "OK"
 
   # Applying the changes (add "#REQUIRE" and create "matita.dk").
-  echo -n "  - applying changes..."
+  echo -n "  - applying changes... "
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     MODNAME=`basename "${FILE}" ".dk"`
     ocaml ../tools/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
@@ -44,13 +44,13 @@ if [[ ! -d ${DIR} ]]; then
 
     echo "#REQUIRE ${MODNAME}." >> ${DIR}/matita.dk
   done
-  echo " OK"
+  echo "OK"
 
   # Cleaning up.
-  echo -n "  - cleaning up..."
+  echo -n "  - cleaning up...      "
   rm matita.tar.gz
   rm ${DIR}/Makefile
-  echo "      OK"
+  echo "OK"
 
   # All done.
   echo "Ready."

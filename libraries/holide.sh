@@ -1,53 +1,75 @@
 #!/bin/bash
 
+LAMBDAPI="../../lambdapi.native"
 SRC="https://deducteam.github.io/data/libraries/holide.tar.gz"
 DIR="holide"
 
-# Cleaning up.
-if [ -d ${DIR} ]; then
-  echo "Cleaning up..."
+# Cleaning command (clean and exit).
+if [[ "$#" -eq 1 && "$1" = "clean" ]]; then
   rm -rf ${DIR}
+  rm -f holide.tar.gz
+  exit 0
 fi
 
-# Download the library if necessary.
-if [ ! -f holide.tar.gz ]; then
-  wget -q --show-progress ${SRC}
+# Rejecting other command line arguments.
+if [[ "$#" -ne 0 ]]; then
+    echo "Invalid argument, usage: $0 [clean]"
+    exit -1
 fi
 
-# Extracting.
-echo "Extracting..."
-tar xf holide.tar.gz
-rm ${DIR}/Makefile
-cd ${DIR}
+# Prepare the library if necessary.
+if [[ ! -d ${DIR} ]]; then
+  # The directory is not ready, so we need to work.
+  echo "Preparing the library:"
 
-# Applying the changes.
-echo "Applying changes..."
-for file in `ls *.dk`; do
-  if [ ${file} != hol.dk ]; then
-    sed -i "s/^#NAME/#REQUIRE hol.\n#NAME/g" ${file}
-    sed -i 's/^[{]\([a-zA-Z0-9_-]*\)[}]/def \1/g' ${file}
+  # Download the library if necessary.
+  if [[ ! -f holide.tar.gz ]]; then
+    echo -n "  - downloading...      "
+    wget -q ${SRC}
+    echo "OK"
   fi
-done
 
-# Generating a GNUmakefile.
-echo "Generating GNUmakefile..."
-cat > GNUmakefile <<\EOF
-LAMBDAPI = ../../lambdapi.native --verbose 0 --gen-obj
-ALL      = $(wildcard *.dk)
+  # Extracting the source files.
+  echo -n "  - extracting...       "
+  tar xf holide.tar.gz
+  echo "OK"
 
-all: $(ALL:.dk=.dko)
+  # Applying the changes (add "#REQUIRE hol" and fix obsolete syntax).
+  echo -n "  - applying changes... "
+  for FILE in `find ${DIR} -type f -name "*.dk"`; do
+    if [ ${FILE} != "${DIR}/hol.dk" ]; then
+      sed -i "s/^#NAME/#REQUIRE hol.\n#NAME/g" ${FILE}
+      sed -i 's/^[{]\([a-zA-Z0-9_-]*\)[}]/def \1/g' ${FILE}
+    fi
+  done
+  echo "OK"
 
-hol.dko: hol.dk
-	$(LAMBDAPI) $<
+  # Cleaning up.
+  echo -n "  - cleaning up...      "
+  rm holide.tar.gz
+  rm ${DIR}/Makefile
+  echo "OK"
 
-%.dko: %.dk hol.dko
-	$(LAMBDAPI) $<
+  # All done.
+  echo "Ready."
+  echo ""
+fi
 
-clean:
-	rm -f *.dko
+# Checking function.
+function check_holide() {
+  rm -f hol.dko
+  ${LAMBDAPI} --gen-obj hol.dk
+  for FILE in `ls *.dk`; do
+    if [ ${FILE} != "hol.dk" ]; then
+      ${LAMBDAPI} ${FILE}
+    fi
+  done
+}
 
-distclean: clean
-	rm -f *~
-EOF
+# Export stuff for the checking function.
+export readonly LAMBDAPI=${LAMBDAPI}
+export -f check_holide
 
-echo "DONE."
+# Run the actual checks.
+cd ${DIR}
+\time -f "Finished in %E at %P with %MKb of RAM" bash -c "check_holide"
