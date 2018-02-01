@@ -49,6 +49,11 @@ iprover: lambdapi.native
 	@echo "## Compiling iProverModulo library ##"
 	@cd libraries && ./iprover.sh
 
+.PHONY: dklib
+dklib: lambdapi.native
+	@echo "## Compiling the dklib library ##"
+	@cd libraries && ./dklib.sh
+
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)
@@ -77,6 +82,7 @@ distclean: clean
 	@cd libraries && ./holide.sh clean
 	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./verine.sh clean
+	@cd libraries && ./dklib.sh clean
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
