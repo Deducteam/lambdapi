@@ -18,12 +18,12 @@ if [[ "$#" -ne 0 ]]; then
 fi
 
 # Prepare the library if necessary.
-if [ ! -d ${DIR} ]; then
+if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
   echo "Preparing the library:"
 
   # Download the library if necessary.
-  if [ ! -f focalide.tar.gz ]; then
+  if [[ ! -f focalide.tar.gz ]]; then
     echo -n "  - downloading..."
     wget -q ${SRC}
     echo "      OK"
