@@ -120,22 +120,22 @@ and compile : bool -> string list -> unit = fun force path ->
       if force || more_recent src obj then
         begin
           let forced = if force then " (forced)" else "" in
-          out 1 "Compiling [%s]%s\n%!" src forced;
+          out 2 "Loading [%s]%s\n%!" src forced;
           Stack.push path Sign.loading;
           let sign = Sign.create path in
           Hashtbl.add Sign.loaded path sign;
           handle_cmds sign (parse_file src);
           if !gen_obj then Sign.write sign obj;
           ignore (Stack.pop Sign.loading);
-          out 2 "Compiled  [%s]\n%!" src;
+          out 1 "Checked [%s]\n%!" src;
         end
       else
         begin
-          out 1 "Loading [%s]\n%!" src;
+          out 2 "Loading [%s]\n%!" src;
           let sign = Sign.read obj in
           Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
           Hashtbl.add Sign.loaded path sign;
           Sign.link sign;
-          out 2 "Loaded  [%s]\n%!" obj;
+          out 1 "Loaded  [%s]\n%!" obj;
         end;
     end
