@@ -136,6 +136,6 @@ and compile : bool -> string list -> unit = fun force path ->
           Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
           Hashtbl.add Sign.loaded path sign;
           Sign.link sign;
-          out 1 "Loaded  [%s]\n%!" obj;
+          out 2 "Loaded  [%s]\n%!" obj;
         end;
     end
