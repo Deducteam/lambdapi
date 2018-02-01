@@ -28,13 +28,10 @@ Tests and supported libraries
 -----------------------------
 
 You can run tests with:
- - `make unit_tests` (small tests also run by `make`)
- - `make tests` (many more small tests)
- - `make matita` (type-checks Matita's arithmetic library)
-
-Tests for more libraries are also provided. Use the following commands and
-follow the instructions (only the first time):
- - `make focalide`
- - `make holide`
- - `make verine`
- - `make iProverModulo`
+ - `make tests`    (unit tests)
+ - `make matita`   (type-checks Matita's arithmetic library)
+ - `make focalide` (type-checks the Focalide library)
+ - `make holide`   (type-checks the Holide library)
+ - `make verine`   (type-checks the Verine library)
+ - `make iprover`  (type-checks the iProverModulo library)
+ - `make dklibr`   (type-checks the dklib library)
