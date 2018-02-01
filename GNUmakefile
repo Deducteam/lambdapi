@@ -49,15 +49,10 @@ verine:
 	@echo "You must first run 'cd libraries; ./verine.sh; cd ..'"
 endif
 
-.PHONY: iProverModulo
-ifneq ("$(wildcard libraries/iProverModulo)","")
-iProverModulo: lambdapi.native $(wildcard libraries/iProverModulo/*.dk)
+.PHONY: iprover
+iprover: lambdapi.native
 	@echo "## Compiling iProverModulo library ##"
-	@$(TIME) make -C libraries/iProverModulo
-else
-iProverModulo:
-	@echo "You must first run 'cd libraries; ./iProverModulo.sh; cd ..'"
-endif
+	@cd libraries && ./iprover.sh
 
 unit_tests: lambdapi.native
 	@echo "## OK tests ##"
@@ -85,6 +80,7 @@ distclean: clean
 	@cd libraries && ./matita.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
+	@cd libraries && ./iprover.sh clean
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
