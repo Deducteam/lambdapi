@@ -82,7 +82,6 @@ unit_tests: lambdapi.native
 
 clean:
 	@ocamlbuild -clean
-	@rm -f *.cmi *.cmo *.cmx *.o
 
 distclean: clean
 	@find . -type f -name "*~" -exec rm {} \;

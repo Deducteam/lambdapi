@@ -32,7 +32,7 @@ done
 # Generating a GNUmakefile.
 echo "Generating GNUmakefile..."
 cat > GNUmakefile <<\EOF
-LAMBDAPI = ../../lambdapi.native --verbose 0
+LAMBDAPI = ../../lambdapi.native --verbose 0 --gen-obj
 ALL      = $(wildcard *.dk)
 
 all: $(ALL:.dk=.dko)

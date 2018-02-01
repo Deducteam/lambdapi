@@ -39,7 +39,7 @@ done
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-$LAMBDAPI --verbose 0 *.dk
+$LAMBDAPI --verbose 0 --gen-obj *.dk
 
 # Compilation function.
 export readonly GARCHIVE=${ARCHIVE}

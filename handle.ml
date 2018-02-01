@@ -8,6 +8,10 @@ open Terms
 open Print
 open Cmd
 
+(** [gen_obj] indicates whether we should generate object files when compiling
+    source files. The default behaviour is not te generate them. *)
+let gen_obj : bool ref = ref false
+
 (** [handle_newsym sign n a] extends the signature [sign] with a static symbol
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
@@ -121,7 +125,7 @@ and compile : bool -> string list -> unit = fun force path ->
           let sign = Sign.create path in
           Hashtbl.add Sign.loaded path sign;
           handle_cmds sign (parse_file src);
-          Sign.write sign obj;
+          if !gen_obj then Sign.write sign obj;
           ignore (Stack.pop Sign.loading);
           out 2 "Compiled  [%s]\n%!" src;
         end
