@@ -4,6 +4,7 @@ VIMDIR     = $(HOME)/.vim
 
 #### Compilation #############################################################
 
+.PHONY: all
 all: lambdapi.native
 
 lambdapi.native: $(wildcard *.ml)
@@ -74,9 +75,11 @@ dklib: lambdapi.native
 
 #### Cleaning targets ########################################################
 
+.PHONY: clean
 clean:
 	@ocamlbuild -clean
 
+.PHONY: distclean
 distclean: clean
 	@cd libraries && ./matita.sh clean
 	@cd libraries && ./focalide.sh clean
@@ -90,6 +93,7 @@ distclean: clean
 #### Installation targets ####################################################
 
 # Install the main program.
+.PHONY: install
 install: lambdapi.native
 	install -m 755 $^ $(BINDIR)
 
