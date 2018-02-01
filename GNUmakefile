@@ -25,14 +25,14 @@ tests: lambdapi.native
 	done
 
 .PHONY: matita
-matita: lambdapi.native $(wildcard libraries/matita/*.dk)
+matita: lambdapi.native
 	@echo "## Compiling the Matita's arithmetic library ##"
 	@cd libraries && ./matita.sh
 
 .PHONY: focalide
-focalide: lambdapi.native $(wildcard libraries/focalide/*.dk)
+focalide: lambdapi.native
 	@echo "## Compiling focalide library ##"
-	@cd libraries/focalide && $(TIME) ../../lambdapi.native focalide.dk
+	@cd libraries && ./focalide.sh
 
 .PHONY: holide
 ifneq ("$(wildcard libraries/holide)","")
@@ -88,6 +88,7 @@ distclean: clean
 	@find . -type f -name "*.dko" -exec rm {} \;
 	@rm -f lambdapi.native
 	@cd libraries && ./matita.sh clean
+	@cd libraries && ./focalide.sh clean
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
