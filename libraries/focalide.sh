@@ -35,7 +35,7 @@ if [[ ! -d ${DIR} ]]; then
   mv focalide_dks focalide
   echo "       OK"
 
-  # Applying the changes (add "#REQUIRE" and create "matita.dk").
+  # Applying the changes (add "#REQUIRE" and create "focalide.dk").
   echo -n "  - applying changes..."
   mv ${DIR}/modulogic.dk ${DIR}/zen.dk
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
