@@ -33,7 +33,7 @@ echo "Building theory files..."
 for file in `ls logic/*.dk`; do
   name="`grep "#NAME " $file | awk -F  " " '{print $2}' `dk"
   modname="${name%%.dk}"
-  ocaml tools/deps.ml $file $modname > $name
+  ocaml ../../tools/deps.ml $file $modname > $name
   cat $file >> $name
 done
 
@@ -51,7 +51,7 @@ function test_gz() {
   modname=${file_dk%%.dk}
   tar xf ${GARCHIVE} $file_gz
   gzip -d $file_gz
-  ocaml tools/deps.ml $file_dk $modname > $modname.aux
+  ocaml ../../tools/deps.ml $file_dk $modname > $modname.aux
   cat $file_dk >> $modname.aux
   mv $modname.aux $file_dk
   ${GLAMBDAPI} --verbose 0 $file_dk
