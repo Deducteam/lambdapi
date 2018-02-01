@@ -40,14 +40,9 @@ holide: lambdapi.native
 	@cd libraries && ./holide.sh
 
 .PHONY: verine
-ifneq ("$(wildcard libraries/verine)","")
-verine: lambdapi.native $(wildcard libraries/verine/*.dk)
+verine: lambdapi.native
 	@echo "## Compiling verine library ##"
-	@$(TIME) make -C libraries/verine
-else
-verine:
-	@echo "You must first run 'cd libraries; ./verine.sh; cd ..'"
-endif
+	@cd libraries && ./verine.sh
 
 .PHONY: iprover
 iprover: lambdapi.native
@@ -81,6 +76,7 @@ distclean: clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
 	@cd libraries && ./iprover.sh clean
+	@cd libraries && ./verine.sh clean
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
