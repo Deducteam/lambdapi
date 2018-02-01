@@ -26,7 +26,7 @@ let handle_newdef : Sign.t -> string -> term -> unit = fun sign n a ->
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
-    this amounts to define a symbol with a single reduction rule. In case of
+    this amounts to define a symbol with a single reduction rule.  In case  of
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
@@ -43,7 +43,7 @@ let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
   in
   Sign.add_rule sg s rule
 
-(** [handle_rules sign rs] checks that the rules of [rs] are well-typed, before
+(** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
 let handle_rules = fun sign rs ->
