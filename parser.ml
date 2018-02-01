@@ -16,6 +16,11 @@ type p_term =
    path), and for symbols. The [P_Wild] constructor corresponds to the wildcard
    pattern ['_']. *)
 
+(** [build_prod xs a] build a product by abstracting away the arguments of the
+    list [xs] on the body [a]. *)
+let build_prod : (string * p_term) list -> p_term -> p_term = fun xs a ->
+   List.fold_right (fun (x,a) b -> P_Prod(x,a,b)) xs a
+
 (** [ident] is an atomic parser for an identifier (for example variable name).
     It accepts (and returns as semantic value) any non-empty strings formed of
     letters, decimal digits, and the ['_'] and ['''] characters. Note that the
@@ -120,14 +125,15 @@ let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule = _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
 
+let parser arg = "(" ident ":" expr ")"
+
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
-let parser def_def =
-  xs:{"(" ident ":" expr ")"}* ao:{":" ao:expr}? ":=" t:expr ->
+let parser def_def = xs:arg* ao:{":" ao:expr}? ":=" t:expr ->
     let t = List.fold_right (fun (x,a) t -> P_Abst(x, Some(a), t)) xs t in
     let ao =
       match ao with
       | None    -> None
-      | Some(a) -> Some(List.fold_right (fun (x,a) b -> P_Prod(x,a,b)) xs a)
+      | Some(a) -> Some(build_prod xs a)
     in
     (ao, t)
 
@@ -137,7 +143,7 @@ let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
 
 (** [cmp] parses a single toplevel command. *)
 let parser cmd =
-  | x:ident ":" a:expr                   -> P_NewSym(x,a)
+  | x:ident xs:arg* ":" a:expr           -> P_NewSym(x,build_prod xs a)
   | _def_ x:ident ":" a:expr             -> P_NewDef(x,a)
   | _def_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
   | _thm_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
