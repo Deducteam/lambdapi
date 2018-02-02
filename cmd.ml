@@ -12,7 +12,7 @@ type cmd =
   (** Rewriting rules declaration. *)
   | Rules  of (Ctxt.t * def * term * term * rule) list
   (** Quick definition. *)
-  | Defin  of string * term * term
+  | Def    of bool * string * term * term
   (** Import an external signature. *)
   | Import of module_path
   (** Set debugging flags. *)

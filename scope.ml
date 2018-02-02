@@ -148,7 +148,7 @@ let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
   match cmd with
   | P_NewSym(x,a)  -> NewSym(x, to_term sign a)
   | P_NewDef(x,a)  -> NewDef(x, to_term sign a)
-  | P_Defin(x,a,t) ->
+  | P_Def(o,x,a,t) ->
       begin
         let t = to_term sign t in
         let a =
@@ -161,7 +161,7 @@ let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
               end
           | Some(a) -> to_term sign a
         in
-        Defin(x, a, t)
+        Def(o, x, a, t)
       end
   | P_Rules(rs)    -> Rules(List.map (scope_rule sign) rs)
   | P_Import(path) -> Import(path)

@@ -24,14 +24,20 @@ let handle_newsym : Sign.t -> string -> term -> unit = fun sign n a ->
 let handle_newdef : Sign.t -> string -> term -> unit = fun sign n a ->
   ignore (Typing.sort_type sign a); ignore (Sign.new_definable sign n a)
 
+(** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
+    is well-typed, which means that [t] has type [a]. In case of error (typing
+    or sorting), the program fails gracefully. *)
+let handle_opaque : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
+  ignore (Typing.sort_type sg a);
+  if not (Typing.has_type sg Ctxt.empty t a) then
+    fatal "Cannot type the definition of %s...\n" x
+
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
     this amounts to define a symbol with a single reduction rule.  In case  of
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type sg a);
-  if not (Typing.has_type sg Ctxt.empty t a) then
-    fatal "Cannot type the definition of %s...\n" x;
+  handle_opaque sg x a t;
   let s = Sign.new_definable sg x a in
   let rule =
     let lhs = Bindlib.mvbind mkfree [||] (fun _ -> Bindlib.box []) in
@@ -92,7 +98,7 @@ and handle_cmds : Sign.t -> p_cmd list -> unit = fun sign cmds ->
     | NewSym(n,a)  -> handle_newsym sign n a
     | NewDef(n,a)  -> handle_newdef sign n a
     | Rules(rs)    -> handle_rules sign rs
-    | Defin(n,a,t) -> handle_defin sign n a t
+    | Def(o,n,a,t) -> (if o then handle_opaque else handle_defin) sign n a t
     | Import(path) -> handle_import sign path
     | Debug(v,s)   -> set_debug v s
     | Verb(n)      -> verbose := n

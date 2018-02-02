@@ -98,7 +98,7 @@ type p_cmd =
   (** Rewriting rules declaration. *)
   | P_Rules  of p_rule list
   (** Quick definition. *)
-  | P_Defin  of string * p_term option * p_term
+  | P_Def    of bool * string * p_term option * p_term
   (** Import an external signature. *)
   | P_Import of module_path
   (** Set debugging flags. *)
@@ -145,8 +145,8 @@ let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
 let parser cmd =
   | x:ident xs:arg* ":" a:expr           -> P_NewSym(x,build_prod xs a)
   | _def_ x:ident ":" a:expr             -> P_NewDef(x,a)
-  | _def_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
-  | _thm_ x:ident (ao,t):def_def         -> P_Defin(x,ao,t)
+  | _def_ x:ident (ao,t):def_def         -> P_Def(false,x,ao,t)
+  | _thm_ x:ident (ao,t):def_def         -> P_Def(true ,x,ao,t)
   | rs:rule+                             -> P_Rules(rs)
   | "#REQUIRE" path:mod_path             -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)
