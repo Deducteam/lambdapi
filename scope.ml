@@ -10,6 +10,36 @@ open Cmd
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
 
+(** [find_var sign vars mp x] returns a bindbox corresponding to a variable of
+    the environment [vars], or to a symbol named [x] with module path [mp]. In
+    the case where [mp] is empty, we first search [x] in the environement, and
+    if it is not mapped we also search in the current signature [sign]. If the
+    name does not correspond to anything, the program fails gracefully. *)
+let find_var : Sign.t -> env -> module_path -> string -> tbox =
+  fun sign vars mp x ->
+    if mp = [] then
+      (* No module path, search the environemnt first. *)
+      begin
+        try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
+        try _Symb (Sign.find sign x) with Not_found ->
+        fatal "Unbound variable or symbol %S...\n%!" x
+      end
+    else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
+      (* Module path is not available (not loaded). *)
+      begin
+        let cur = String.concat "." Sign.(sign.path) in
+        let req = String.concat "." mp in
+        fatal "No module %s loaded in %s...\n%!" req cur
+      end
+    else
+      (* Module path loaded, look for symbol. *)
+      begin
+        (* Cannot fail. *)
+        let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
+        try _Symb (Sign.find sign x) with Not_found ->
+        fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
+      end
+
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
     an actual term using the free variables of the environement [env], and the
     symbols of the signature [sign]. If a function is given in [new_wildcard],
@@ -19,29 +49,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
   fun new_wildcard vars sign t ->
     let rec scope vars t =
       match t with
-      | P_Vari([],x)  ->
-          begin
-            try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
-            try _Symb (Sign.find sign x) with Not_found ->
-            fatal "Unbound variable or symbol %S...\n%!" x
-          end
-      | P_Vari(fs,x)  ->
-          begin
-            if not (fs = Sign.(sign.path) || Hashtbl.mem Sign.(sign.deps) fs) then
-              begin
-                let cur = String.concat "." Sign.(sign.path) in
-                let req = String.concat "." fs in
-                fatal "No module %s loaded in %s...\n%!" req cur
-              end;
-            try
-              let sg = Hashtbl.find Sign.loaded fs in
-              try _Symb (Sign.find sg x) with Not_found ->
-                let x = String.concat "." (fs @ [x]) in
-                fatal "Unbound symbol %S...\n%!" x
-            with Not_found ->
-              let path = String.concat "." fs in
-              fatal "No module path %S loaded...\n%!" path
-          end
+      | P_Vari(mp,x)  -> find_var sign vars mp x
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
           let f v = scope (if x = "_" then vars else (x,v)::vars) b in
