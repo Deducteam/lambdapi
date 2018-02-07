@@ -1,7 +1,12 @@
 *.dko
+*~
 _build
-*.native
+lambdapi.native
 libraries/*.tar.gz
+libraries/dklib
+libraries/focalide
 libraries/holide
+libraries/iprover
+libraries/matita
 libraries/verine
-libraries/iProverModulo
+libraries/zenon/zenon.tar
