@@ -141,7 +141,7 @@ let parser def_def = xs:arg* ao:{":" ao:expr}? ":=" t:expr ->
 let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
   String.split_on_char '.' path
 
-(** [cmp] parses a single toplevel command. *)
+(** [cmd] parses a single toplevel command. *)
 let parser cmd =
   | x:ident xs:arg* ":" a:expr           -> P_NewSym(x,build_prod xs a)
   | _def_ x:ident ":" a:expr             -> P_NewDef(x,a)
