@@ -36,8 +36,8 @@ def 2 := S 1.
 def 3 := S 2.
 def suite := Cons 2 e (Cons 1 e (Cons 0 e Nil)).
 
-#CHECK Tail_bis 2 (Cons_bis 3 e suite) , Vect 2.
-#CHECK suite , Vect 3.
+#CHECK Tail_bis 2 (Cons_bis 3 e suite) :: Vect 2.
+#CHECK suite :: Vect 3.
 (; Un double YES pour les CHECK, donc on ne veut pas pouvoir convertir l'un en l'autre ;)
 
 def id_bis : n : Nat -> Vect (S_bis n) -> Vect (S_bis n).

@@ -28,5 +28,5 @@ def power : numeral -> numeral -> numeral
 def four : numeral := plus two two.
 def five : numeral := plus two three.
 
-#CONV 	( power two (times four five) ),
-	( power two (times five four) ).
+#CHECK (power two (times four five))
+    == (power two (times five four)).

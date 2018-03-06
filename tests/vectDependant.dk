@@ -45,5 +45,5 @@ def right : Vec 2.
 
 #EVAL left.
 #EVAL right.
-#CONV left, right.
+#CHECK left == right.
 ;)

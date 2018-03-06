@@ -154,9 +154,9 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     In case of error, the program gracefully fails. *)
 let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
   match cmd with
-  | P_NewSym(x,a)  -> NewSym(x, to_term sign a)
-  | P_NewDef(x,a)  -> NewDef(x, to_term sign a)
-  | P_Def(o,x,a,t) ->
+  | P_NewSym(x,a)       -> NewSym(x, to_term sign a)
+  | P_NewDef(x,a)       -> NewDef(x, to_term sign a)
+  | P_Def(o,x,a,t)      ->
       begin
         let t = to_term sign t in
         let a =
@@ -171,12 +171,18 @@ let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
         in
         Def(o, x, a, t)
       end
-  | P_Rules(rs)    -> Rules(List.map (scope_rule sign) rs)
-  | P_Import(path) -> Import(path)
-  | P_Debug(b,s)   -> Debug(b,s)
-  | P_Verb(n)      -> Verb(n)
-  | P_Check(t,a)   -> Check(to_term sign t, to_term sign a)
-  | P_Infer(t)     -> Infer(to_term sign t)
-  | P_Eval(t)      -> Eval(to_term sign t)
-  | P_Conv(t,u)    -> Conv(to_term sign t, to_term sign u)
-  | P_Other(c)     -> Other(c)
+  | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
+  | P_Import(path)      -> Import(path)
+  | P_Debug(b,s)        -> Debug(b,s)
+  | P_Verb(n)           -> Verb(n)
+  | P_Infer(t,c)        -> Infer(to_term sign t, c)
+  | P_Eval(t,c)         -> Eval(to_term sign t, c)
+  | P_Test_T(ia,mf,t,a) ->
+      let t = to_term sign t in
+      let a = to_term sign a in
+      Test({is_assert = ia; must_fail = mf; contents = HasType(t,a)})
+  | P_Test_C(ia,mf,t,u) ->
+      let t = to_term sign t in
+      let u = to_term sign u in
+      Test({is_assert = ia; must_fail = mf; contents = Convert(t,u)})
+  | P_Other(c)          -> Other(c)

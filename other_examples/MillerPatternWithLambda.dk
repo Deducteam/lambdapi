@@ -16,5 +16,5 @@ a : A.
       -->
     a.
 
-#CONV g (x => g (y => f x y)), a.
-#CONV h (x => g (y => f x y)), a.
+#CHECK g (x => g (y => f x y)) == a.
+#CHECK h (x => g (y => f x y)) == a.

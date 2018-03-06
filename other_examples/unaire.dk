@@ -37,4 +37,4 @@ def Syracuse : Nat -> Bool.
 []  Syracuse (S 0)     --> True.
 [n] Syracuse (S (S n)) --> Syracuse (ifThenElse (even n) (S (halfOf n)) (S (mult (S (S (S 0))) (S (S n))))).
 
-#SNF Syracuse (S (S (S (S (S (S (S 0))))))).
+#EVAL Syracuse (S (S (S (S (S (S (S 0))))))).

@@ -16,4 +16,4 @@ def plus : Nat -> Nat -> Nat.
 def eq : (Nat -> Nat) -> (Nat -> Nat) -> Nat.
 [f] eq f f --> 0.
 
-#CONV eq (n:Nat => plus (S n) n) (n:Nat => plus n (S n)), 0.
+#CHECK eq (n:Nat => plus (S n) n) (n:Nat => plus n (S n)) == 0.

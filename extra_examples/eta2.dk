@@ -40,7 +40,7 @@ def 8 := App N N S 7.
 def 1b := Ab2 (a:type => arr (arr a a) (arr a a)) (a0:type => Abs (arr a0 a0) (arr a0 a0) (f:typed (arr a0 a0) => f)).
 
 (;#EVAL 1.;)
-#CONV 1, 1b.
+#CHECK 1 == 1b.
 
 (;
 def 2 := App S 1.
@@ -57,11 +57,11 @@ def times : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
   App2 m (App n f) x)))).
 def power : Term := Abs (m => Abs (n => App n m)).
 
-#CONV App2 plus 2 3, App2 plus 3 2.
-#CONV App2 times 2 3, App2 times 3 2.
-#CONV App2 power (App2 times 8 7), App2 power (App2 times 7 8).
+#CHECK App2 plus  2 3 == App2 plus  3 2.
+#CHECK App2 times 2 3 == App2 times 3 2.
+#CHECK App2 power (App2 times 8 7) == App2 power (App2 times 7 8).
 
-#CONV Abs (a:Term => Abs (b:Term => App a b)), Abs (a:Term => a).
-#CONV Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b))),
-      Abs (a:Term => a).
+#CHECK Abs (a:Term => Abs (b:Term => App a b)) == Abs (a:Term => a).
+#CHECK Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b)))
+      == Abs (a:Term => a).
 ;)

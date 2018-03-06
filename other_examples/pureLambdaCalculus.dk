@@ -6,4 +6,4 @@ def lamt : Type.
 def delta : lamt := (x => x x).
 def omega : lamt := delta delta.
 
-#HNF (x: lamt => (y: lamt => y)) omega.
+#EVAL[WHNF] (x: lamt => (y: lamt => y)) omega.

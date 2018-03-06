@@ -37,19 +37,19 @@ def subst : N -> DB -> DB -> DB.
 
 def delta := Lam (App (Var 0) (Var 0)).
 
-#NSTEPS #2 beta (App delta delta).
-#NSTEPS #19 beta (App delta delta).
-#NSTEPS #36 beta (App delta delta).
+#EVAL[WHNF,2 ] beta (App delta delta).
+#EVAL[WHNF,19] beta (App delta delta).
+#EVAL[WHNF,36] beta (App delta delta).
 
 def id :=  Lam (Var 0).
 
-#SNF beta (App id id).
-#SNF beta (App id delta).
-#SNF beta (App delta id).
+#EVAL beta (App id id).
+#EVAL beta (App id delta).
+#EVAL beta (App delta id).
 
 def left := Lam (Lam (Var (S 0))).
 def right := Lam (Lam (Var 0)).
 
-#SNF beta (App left id).
-#SNF beta (App (App left id) (App delta delta)).
-#SNF beta (Lam (App (Lam (Var (S 0))) id)).
+#EVAL beta (App left id).
+#EVAL beta (App (App left id) (App delta delta)).
+#EVAL beta (Lam (App (Lam (Var (S 0))) id)).

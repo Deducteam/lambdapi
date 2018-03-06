@@ -136,7 +136,5 @@ def triple : (eps Nat) -> (eps Nat).
 def while : A : type -> (eps A) -> ((eps A) -> (eps Bool)) -> ((eps A) -> (eps A)) -> (eps A).
 [A,a,test,f] while A a test f --> if A (test a) (while A (f a) test f) a.
 
-#SNF (while Nat 1 (x => leq x 100) triple).
-(;
-#SNF (for Nat 1 1 10 double).
-;)
+#EVAL (while Nat 1 (x => leq x 100) triple).
+(;#EVAL (for Nat 1 1 10 double).;)

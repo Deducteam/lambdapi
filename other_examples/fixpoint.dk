@@ -35,7 +35,7 @@ def fac : (N -> N) -> (N -> N).
 
 def ffact := fix2 fac.
 
-#CONV ffact 5  , plus 100 (plus 10 10).
+#CHECK ffact 5   == plus 100 (plus 10 10).
 (; FIXME make program fail since should fail.
-#CONV ffact 100, plus 100 (plus 10 10).
+#CHECK ffact 100 == plus 100 (plus 10 10).
 ;)

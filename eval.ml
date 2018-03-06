@@ -240,3 +240,52 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
+
+(** [snf t] computes the strong normal form of the term [t]. *)
+let rec snf : term -> term = fun t ->
+  let h = whnf t in
+  match h with
+  | Vari(_)     -> h
+  | Type        -> h
+  | Kind        -> h
+  | Symb(_)     -> h
+  | Prod(i,a,b) ->
+      let (x,b) = Bindlib.unbind mkfree b in
+      let b = snf b in
+      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
+      Prod(i, snf a, b)
+  | Abst(i,a,b) ->
+      let (x,b) = Bindlib.unbind mkfree b in
+      let b = snf b in
+      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
+      Abst(i, snf a, b)
+  | Appl(i,t,u) -> Appl(i, snf t, snf u)
+  | Unif(_,_)   -> assert false
+  | ITag(_)     -> assert false
+  | Wild        -> assert false
+
+(** [hnf t] computes the head normal form of the term [t]. *)
+let rec hnf : term -> term = fun t ->
+  match whnf t with
+  | Appl(i,t,u) -> Appl(i, hnf t, hnf u)
+  | t           -> t
+
+(** Type representing the different evaluation strategies. *)
+type strategy = WHNF | HNF | SNF
+
+(** Configuration for evaluation. *)
+type config =
+  { strategy : strategy   (** Evaluation strategy.          *)
+  ; steps    : int option (** Max number of steps if given. *) }
+
+(** [eval cfg t] evaluates the term [t] according to configuration [cfg]. *)
+let eval : config -> term -> term = fun c t ->
+  match (c.strategy, c.steps) with
+  | (_   , Some(0)) -> t
+  | (WHNF, None   ) -> whnf t
+  | (SNF , None   ) -> snf t
+  | (HNF , None   ) -> hnf t
+  (* TODO implement the rest. *)
+  | (WHNF, Some(m)) -> wrn "number of steps not supported for WHNF...\n"; t
+  | (HNF , Some(m)) -> wrn "number of steps not supported for HNF...\n"; t
+  | (SNF , Some(m)) -> wrn "number of steps not supported for SNF...\n";  t

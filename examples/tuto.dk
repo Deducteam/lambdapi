@@ -267,5 +267,5 @@ def 0_right_neutral : n : Nat ->
 [n] 0_right_neutral (S n) --> 0_right_neutral n.
 
 (; FIXME too slow
-#CONV factorielle 14, mult 95 95.
+#CHECK factorielle 14 == mult 95 95.
 ;)

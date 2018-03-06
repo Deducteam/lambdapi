@@ -27,17 +27,17 @@ def operation4 : Nat -> Nat -> Nat.
 [x,y]   operation4 (S x)       y     --> S 0.
 [x,y]   operation4 x           (S y) --> S (S 0).
 
-#SNF operation (S 0) (S 0).
-#SNF operation2 (S 0) (S 0).
-#SNF operation3 (operation3 (S 0) (S 0)) (S 0).
-#SNF operation4 (operation4 (S 0) (S 0)) (S 0).
+#EVAL operation (S 0) (S 0).
+#EVAL operation2 (S 0) (S 0).
+#EVAL operation3 (operation3 (S 0) (S 0)) (S 0).
+#EVAL operation4 (operation4 (S 0) (S 0)) (S 0).
 
-#HNF operation (S 0) (S 0).
-#HNF operation2 (S 0) (S 0).
-#HNF operation3 (operation3 (S 0) (S 0)) (S 0).
-#HNF operation4 (operation4 (S 0) (S 0)) (S 0).
+#EVAL[HNF] operation (S 0) (S 0).
+#EVAL[HNF] operation2 (S 0) (S 0).
+#EVAL[HNF] operation3 (operation3 (S 0) (S 0)) (S 0).
+#EVAL[HNF] operation4 (operation4 (S 0) (S 0)) (S 0).
 
-#WHNF operation (S 0) (S 0).
-#WHNF operation2 (S 0) (S 0).
-#WHNF operation3 (operation3 (S 0) (S 0)) (S 0).
-#WHNF operation4 (operation4 (S 0) (S 0)) (S 0).
+#EVAL[WHNF] operation (S 0) (S 0).
+#EVAL[WHNF] operation2 (S 0) (S 0).
+#EVAL[WHNF] operation3 (operation3 (S 0) (S 0)) (S 0).
+#EVAL[WHNF] operation4 (operation4 (S 0) (S 0)) (S 0).

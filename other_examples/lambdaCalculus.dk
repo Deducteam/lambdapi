@@ -9,4 +9,4 @@ def App : lamt -> lamt -> lamt.
 
 def delta : lamt := Lam (x=> App x x).
 
-#STEP ((x:lamt=> App x x) delta).
+(;#EVAL[SNF,1] ((x:lamt=> App x x) delta).;)

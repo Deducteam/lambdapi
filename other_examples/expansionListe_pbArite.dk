@@ -21,4 +21,4 @@ def expandn : n : nat -> lnt n -> list -> lnt n.
 
 a : t.
 
-#SNF expandn O (List (S O) a) Nil.
+#EVAL expandn O (List (S O) a) Nil.

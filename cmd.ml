@@ -3,6 +3,16 @@
 open Files
 open Terms
 
+(** Type of the tests that can be made in a file. *)
+type test_type =
+  | Convert of term * term (** Convertibility test. *)
+  | HasType of term * term (** Type-checking. *)
+
+type test =
+  { is_assert : bool (** Should the program fail if the test fails? *)
+  ; must_fail : bool (** Is this test supposed to fail? *)
+  ; contents  : test_type  (** The test itself. *) }
+
 (** Representation of a toplevel command. *)
 type cmd =
   (** Static symbol declaration. *)
@@ -19,13 +29,11 @@ type cmd =
   | Debug  of bool * string
   (** Set the verbosity level. *)
   | Verb   of int
-  (** Type-checking command. *)
-  | Check  of term * term
   (** Type inference command. *)
-  | Infer  of term
+  | Infer  of term * Eval.config
   (** Normalisation command. *)
-  | Eval   of term
-  (** Convertibility command. *)
-  | Conv   of term * term
+  | Eval   of term * Eval.config
+  (** Test command. *)
+  | Test   of test
   (** Unimplemented command. *)
   | Other  of string

@@ -32,4 +32,4 @@ def mod2 := fix nat nat
                        (S O)
                        (q => m2 q))).
 
-#CONV mod2 (S (S (S (S O)))), O.
+#CHECK mod2 (S (S (S (S O)))) == O.

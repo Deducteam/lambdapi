@@ -15,5 +15,5 @@ def double_ : Nat -> Nat := x => plus x x.
 def f : (Nat -> Nat) -> Nat. 
 [] f (x=> plus x x) --> 0.
 
-#SNF f double.
-#SNF f double_.
+#EVAL f double.
+#EVAL f double_.

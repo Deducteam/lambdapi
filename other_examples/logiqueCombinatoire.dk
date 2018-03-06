@@ -39,5 +39,5 @@ t : Lamt.
 def B := Abst X1 (Abst X2 (App (Var X2) (App (App (Var X1) (Var X1)) (Var X2)))).
 def Y := App B B.
 
-#SNF (trad_lam2CL B).
-#SNF (trad_lam2CL Y).
+#EVAL (trad_lam2CL B).
+#EVAL (trad_lam2CL Y).

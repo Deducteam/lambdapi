@@ -21,6 +21,6 @@ def six   : Nat :=  (S (S (S (S (S (S Z)))))).
 def seven : Nat :=  (S (S (S (S (S (S (S Z))))))).
 
 (; FIXME too slow
-#CONV	(plus (fact seven) (fact six)),
-	(plus (fact six) (fact seven)).
+#CHECK (plus (fact seven) (fact six))
+    == (plus (fact six) (fact seven)).
 ;)

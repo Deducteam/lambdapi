@@ -56,31 +56,34 @@ let handle_rules = fun sign rs ->
   let rs = List.map (Typing.check_rule sign) rs in
   List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
 
-(** [handle_check sign t a] attempts to show that [t] has type [a], in [sign].
-    In case of failure, the program fails gracefully. *)
-let handle_check : Sign.t -> term -> term -> unit = fun sign t a ->
-  ignore (Typing.sort_type sign a);
-  if not (Typing.has_type sign Ctxt.empty t a) then
-    fatal "%a does not have type %a...\n" pp t pp a;
-  out 3 "(chck) OK\n"
-
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
-let handle_infer : Sign.t -> term -> unit = fun sign t ->
+let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
   match Typing.infer sign Ctxt.empty t with
-  | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp a
+  | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
 (** [handle_eval sign t] evaluates the term [t]. *)
-let handle_eval : Sign.t -> term -> unit = fun sign t ->
+let handle_eval : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
   (* FIXME check typing? *)
-  out 3 "(eval) %a\n" pp (Eval.whnf t)
+  out 3 "(eval) %a\n" pp (Eval.eval c t)
 
-(** [handle_conv sign t u] checks the convertibility of the terms [t] and [u].
-    The program fails gracefully if the check is not successful. *)
-let handle_conv : Sign.t -> term -> term -> unit = fun sign t u ->
-  if Eval.eq_modulo t u then out 3 "(conv) OK\n"
-  else fatal "cannot convert %a and %a...\n" pp t pp u
+(** [handle_test sign test] runs the test [test] in the signature [sign]. When
+    the test does not succeed, the program may fail gracefully or continue its
+    exection depending on the value of [test.is_assert]. *)
+let handle_test : Sign.t -> test -> unit = fun sign test ->
+  match (test.contents, test.is_assert, test.must_fail) with
+  | (Convert(t,u), false, false) ->
+      if Eval.eq_modulo t u then out 3 "(conv) OK\n"
+      else fatal "cannot convert %a and %a...\n" pp t pp u
+  | (HasType(t,a), false, false) ->
+      ignore (Typing.sort_type sign a);
+      if not (Typing.has_type sign Ctxt.empty t a) then
+        fatal "%a does not have type %a...\n" pp t pp a;
+      out 3 "(chck) OK\n"
+  | (_           , _    , _    ) ->
+      (* TODO *)
+      wrn "Test not implemented...\n"
 
 (** [handle_import sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
@@ -102,10 +105,9 @@ and handle_cmds : Sign.t -> p_cmd list -> unit = fun sign cmds ->
     | Import(path) -> handle_import sign path
     | Debug(v,s)   -> set_debug v s
     | Verb(n)      -> verbose := n
-    | Check(t,a)   -> handle_check sign t a
-    | Infer(t)     -> handle_infer sign t
-    | Eval(t)      -> handle_eval sign t
-    | Conv(a,b)    -> handle_conv sign a b
+    | Infer(t,c)   -> handle_infer sign t c
+    | Eval(t,c)    -> handle_eval sign t c
+    | Test(test)   -> handle_test sign test
     | Other(c)     -> if !debug then wrn "Command %S not implemented.\n" c
   in
   try List.iter handle_cmd cmds with e ->

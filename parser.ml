@@ -105,14 +105,14 @@ type p_cmd =
   | P_Debug  of bool * string
   (** Set the verbosity level. *)
   | P_Verb   of int
-  (** Type-checking command. *)
-  | P_Check  of p_term * p_term
   (** Type inference command. *)
-  | P_Infer  of p_term
+  | P_Infer  of p_term * Eval.config
   (** Normalisation command. *)
-  | P_Eval   of p_term
+  | P_Eval   of p_term * Eval.config
+  (** Type-checking command. *)
+  | P_Test_T of bool * bool * p_term * p_term
   (** Convertibility command. *)
-  | P_Conv   of p_term * p_term
+  | P_Test_C of bool * bool * p_term * p_term
   (** Unimplemented command. *)
   | P_Other  of string
 
@@ -141,6 +141,31 @@ let parser def_def = xs:arg* ao:{":" ao:expr}? ":=" t:expr ->
 let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
   String.split_on_char '.' path
 
+(** [strategy] is a parser for an evaluation strategy name. *)
+let parser strategy =
+  | "WHNF" -> Eval.WHNF
+  | "HNF"  -> Eval.HNF
+  | "SNF"  -> Eval.SNF
+
+(** [steps] is a parser for an integer, used in evaluation configuration. *)
+let parser steps = n:''[0-9]+'' -> int_of_string n
+
+(** [eval_config] is a parser for an evaluation configuration. *)
+let parser eval_config =
+  | EMPTY                             -> Eval.{strategy = SNF; steps = None}
+  | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s  ; steps = n   }
+  | "[" n:steps s:{"," strategy}? "]" ->
+      begin
+        let strategy = match s with None -> Eval.SNF | Some(s) -> s in
+        Eval.{strategy; steps = Some(n)}
+      end
+
+let parser check =
+  | "#CHECKNOT"  -> (false, true )
+  | "#CHECK"     -> (false, false)
+  | "#ASSERTNOT" -> (true , true )
+  | "#ASSERT"    -> (true , false)
+
 (** [cmp] parses a single toplevel command. *)
 let parser cmd =
   | x:ident xs:arg* ":" a:expr           -> P_NewSym(x,build_prod xs a)
@@ -151,16 +176,11 @@ let parser cmd =
   | "#REQUIRE" path:mod_path             -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)
   | "#VERBOSE" n:''[-+]?[0-9]+''         -> P_Verb(int_of_string n)
-  | "#CHECK" t:expr "," a:expr           -> P_Check(t,a)
-  | "#INFER" t:expr                      -> P_Infer(t)
-  | "#EVAL" t:expr                       -> P_Eval(t)
-  | "#CONV" t:expr "," u:expr            -> P_Conv(t,u)
+  | (ia,mf):check t:expr "::" a:expr     -> P_Test_T(ia,mf,t,a)
+  | (ia,mf):check t:expr "==" u:expr     -> P_Test_C(ia,mf,t,u)
+  | "#INFER" c:eval_config t:expr        -> P_Infer(t,c)
+  | "#EVAL" c:eval_config t:expr         -> P_Eval(t,c)
   | c:"#NAME" _:ident                    -> P_Other(c)
-  | c:"#STEP" _:expr                     -> P_Other(c)
-  | c:"#SNF" _:expr                      -> P_Other(c)
-  | c:"#WHNF" _:expr                     -> P_Other(c)
-  | c:"#HNF" _:expr                      -> P_Other(c)
-  | c:"#NSTEPS" "#"-''[0-9]+'' _:expr    -> P_Other(c)
 
 (** Blank function for basic blank characters (' ', '\t', '\r' and '\n')
     and line comments starting with "//". *)

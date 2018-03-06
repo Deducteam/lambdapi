@@ -50,4 +50,4 @@ def geq : Int -> Int -> Bool.
 [x,y] geq (Neg x) (Pos y) --> F.
 [x,y] geq (Neg x) (Neg y) --> other_examples.natBinaire.geq y x.
 
-#WHNF mult (Pos (other_examples.natBinaire.x2 (other_examples.natBinaire.x2plus1 other_examples.natBinaire.1))) (Pos (other_examples.natBinaire.x2 other_examples.natBinaire.1)).
+#EVAL[WHNF] mult (Pos (other_examples.natBinaire.x2 (other_examples.natBinaire.x2plus1 other_examples.natBinaire.1))) (Pos (other_examples.natBinaire.x2 other_examples.natBinaire.1)).

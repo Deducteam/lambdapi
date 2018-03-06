@@ -22,13 +22,13 @@ def seven : Nat := (S (S (S (S (S (S (S Z))))))).
 def eight : Nat := S seven.
 
 (;
-#CONV	plus (fact seven) (mult seven (fact seven)), fact eight.
+#CHECK plus (fact seven) (mult seven (fact seven)) == fact eight.
 (; ;)
 
 (;
-#CONV mult (fact seven) eight, fact eight.
+#CHECK mult (fact seven) eight == fact eight.
 (; ;)
 
 (;
-#CONV fact eight, plus (fact seven) (mult seven (fact seven)).
+#CHECK fact eight == plus (fact seven) (mult seven (fact seven)).
 (; ;)

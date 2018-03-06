@@ -13,4 +13,4 @@ Lam: a:type -> b:type -> (term a -> term b) -> term (arrow a b).
 
 c:term o.
 
-#STEP App o o (Lam o o (x=> x)) c.
+#EVAL[WHNF] App o o (Lam o o (x=> x)) c.
