@@ -1,5 +1,6 @@
-"parser.ml" : pp(pa_ocaml)
-true        : package(unix)
-true        : package(bindlib)
-true        : package(earley)
-true        : package(earley.str)
+"src"          : traverse
+"src/parser.ml": pp(pa_ocaml)
+true           : package(unix)
+true           : package(bindlib)
+true           : package(earley)
+true           : package(earley.str)

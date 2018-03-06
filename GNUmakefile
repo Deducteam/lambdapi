@@ -7,8 +7,10 @@ VIMDIR     = $(HOME)/.vim
 .PHONY: all
 all: lambdapi.native
 
-lambdapi.native: $(wildcard *.ml)
-	$(OCAMLBUILD) $@
+lambdapi.native: _build/src/lambdapi.native
+
+_build/src/lambdapi.native: $(wildcard src/*.ml)
+	$(OCAMLBUILD) src/lambdapi.native
 
 #### Unit tests ##############################################################
 
