@@ -44,3 +44,9 @@ module Array =
     let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
       List.pp pp_elt sep oc (to_list a)
   end
+
+(** [time f x] times the application of [f] to [x], and returns the evaluation
+    time in seconds together with the result of the application. *)
+let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
+  let t = Sys.time () in
+  (Sys.time () -. t, f x) (* OK due to right-to-left evaluation. *)
