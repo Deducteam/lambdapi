@@ -186,7 +186,7 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
   if !debug_patt then log "patt" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
-(** [sort_type sign a] infers the sort of the type [a].  The result may either
+(** [sort_type sign a] infers the sort of the type [a]. The result type may be
     be [Type] or [Kind]. If [a] is not well-sorted type then the program fails
     gracefully. *)
 let sort_type : Sign.t -> term -> term = fun sign a ->
