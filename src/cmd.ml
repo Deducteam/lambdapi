@@ -2,6 +2,7 @@
 
 open Files
 open Terms
+open Pos
 
 (** Type of the tests that can be made in a file. *)
 type test_type =
@@ -14,15 +15,16 @@ type test =
   ; contents  : test_type  (** The test itself. *) }
 
 (** Representation of a toplevel command. *)
-type cmd =
+type cmd = cmd_aux loc
+ and cmd_aux =
   (** Static symbol declaration. *)
-  | NewSym of string * term
+  | NewSym of strloc * term
   (** Definable symbol declaration. *)
-  | NewDef of string * term
+  | NewDef of strloc * term
   (** Rewriting rules declaration. *)
   | Rules  of (Ctxt.t * def * term * term * rule) list
   (** Quick definition. *)
-  | Def    of bool * string * term * term
+  | Def    of bool * strloc * term * term
   (** Import an external signature. *)
   | Import of module_path
   (** Set debugging flags. *)
@@ -36,4 +38,4 @@ type cmd =
   (** Test command. *)
   | Test   of test
   (** Unimplemented command. *)
-  | Other  of string
+  | Other  of strloc

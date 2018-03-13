@@ -6,6 +6,7 @@ open Terms
 open Print
 open Parser
 open Cmd
+open Pos
 
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
@@ -48,14 +49,14 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
 let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
   fun new_wildcard vars sign t ->
     let rec scope vars t =
-      match t with
+      match t.elt with
       | P_Vari(mp,x)  -> find_var sign vars mp x
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
-          let f v = scope (if x = "_" then vars else (x,v)::vars) b in
-          _Prod (scope vars a) x f
+          let f v = scope (if x.elt = "_" then vars else (x.elt,v)::vars) b in
+          _Prod (scope vars a) x.elt f
       | P_Abst(x,a,t) ->
-          let f v = scope ((x,v)::vars) t in
+          let f v = scope ((x.elt,v)::vars) t in
           let a =
             match a with
             | None    -> let fn (_,x) = Bindlib.box_of_var x in
@@ -63,7 +64,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
                          _Unif (new_unif ()) (Array.of_list vars)
             | Some(a) -> scope vars a
           in
-          _Abst a x f
+          _Abst a x.elt f
       | P_Appl(t,u)   -> _Appl (scope vars t) (scope vars u)
       | P_Wild        ->
           match new_wildcard with
@@ -109,7 +110,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
-    let vars = List.map (fun x -> (x, Bindlib.new_var mkfree x)) xs in
+    let vars = List.map (fun x -> (x.elt, Bindlib.new_var mkfree x.elt)) xs in
     let (s, l, wcs) = to_patt vars sign t in
     let arity = List.length l in
     let l = Bindlib.box_list l in
@@ -125,6 +126,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
     (* Constructing the typing context. *)
     let xs = Array.append xs wcs in
+    let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
     let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
     let add_var (vars, ctx) x =
       let a =
@@ -150,9 +152,9 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     let u = Bindlib.unbox u in
     (ctx, s, t, u, { lhs ; rhs ; arity })
 
-(** [scope_cmd sign cmd] scopes the parser level command [cmd],  using [sign].
-    In case of error, the program gracefully fails. *)
-let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
+(** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
+    signature [sign]. In case of error, the program gracefully fails. *)
+let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   match cmd with
   | P_NewSym(x,a)       -> NewSym(x, to_term sign a)
   | P_NewDef(x,a)       -> NewDef(x, to_term sign a)
@@ -186,3 +188,9 @@ let scope_cmd : Sign.t -> p_cmd -> cmd = fun sign cmd ->
       let u = to_term sign u in
       Test({is_assert = ia; must_fail = mf; contents = Convert(t,u)})
   | P_Other(c)          -> Other(c)
+
+(** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
+    signature [sign], and forwards the source code position of the command. In
+    case of error, the program gracefully fails. *)
+let scope_cmd : Sign.t -> p_cmd loc -> cmd = fun sign cmd ->
+  {elt = scope_cmd_aux sign cmd.elt; pos = cmd.pos}

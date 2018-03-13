@@ -57,8 +57,8 @@ let union : popt -> popt -> popt = fun p1 p2 ->
   | (None   , Some _ ) -> p2
   | (Some p1, Some p2) -> Some (merge p1 p2)
 
-(** [pos_to_string pos] transforms [pos] into a readable string. *)
-let pos_to_string : pos -> string = fun p ->
+(** [to_string pos] transforms [pos] into a readable string. *)
+let to_string : pos -> string = fun p ->
   let fname =
     match p.fname with
     | None       -> ""
@@ -72,15 +72,15 @@ let pos_to_string : pos -> string = fun p ->
   else
     Printf.sprintf "%s%d:%d-%d" fname p.start_line p.start_col p.end_col
 
-(** [print_pos oc pos] prints the position [pos] to the channel [oc]. *)
-let print_pos : out_channel -> pos -> unit = fun ch p ->
-  output_string ch ("at " ^ (pos_to_string p))
+(** [print oc pos] prints the position [pos] to the channel [oc]. *)
+let print : out_channel -> pos -> unit = fun ch p ->
+  output_string ch ("at " ^ (to_string p))
 
-(** [print_pos_opt oc pos] prints the optional position [pos] to [oc]. *)
-let print_pos_opt : out_channel -> pos option -> unit = fun ch p ->
+(** [print_opt oc pos] prints the optional position [pos] to [oc]. *)
+let print_opt : out_channel -> pos option -> unit = fun ch p ->
   match p with
   | None   -> output_string ch "at an unknown location"
-  | Some p -> print_pos ch p
+  | Some p -> print ch p
 
 open Input
 
