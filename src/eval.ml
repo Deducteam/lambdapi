@@ -5,9 +5,8 @@ open Console
 open Terms
 open Print
 
-(** [eq t u] tests the equality of the two terms [t] and [u]. Note
-    that during the comparison, unification variables may be
-    instantiated. *)
+(** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
+    the comparison, unification variables are not instantiated. *)
 let eq : term -> term -> bool = fun a b ->
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in

@@ -28,10 +28,9 @@ let rec occurs : unif -> term -> bool = fun r t ->
   | ITag(_)     -> false
   | Wild        -> false
 
-(** [instantiate u t] tries to instantiate [u] with [t], and returns a
-    boolean to indicate whether it succeeded or not. Note that the
-    function also verifies that the body of the unification variable
-    (the binder) is closed. *)
+(** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
+    telling whether it succeeded or not.  Note that the function also verifies
+    that the body of the unification variable (the binder) is closed. *)
 let instantiate : unif -> term array -> term -> bool = fun u env a ->
   assert(unset u);
   not (occurs u a) &&
@@ -39,9 +38,8 @@ let instantiate : unif -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_unif u (Bindlib.unbox b); true)
     
-(** [unify t u] tests the equality of the two terms [t] and [u]. Note
-    that during the comparison, unification variables may be
-    instantiated. *)
+(** [unify t u] tests the equality of the two terms [t] and [u] while possibly
+    instantiating unification variables. *)
 let unify : term -> term -> bool = fun a b ->
   let rec unify a b = a == b ||
     let unify_binder = Bindlib.eq_binder mkfree unify in
@@ -64,10 +62,9 @@ let unify : term -> term -> bool = fun a b ->
     | (_            , _            ) -> false
   in unify a b
 
-(* NOTE it might be a good idea to undo unification variable
-   instanciations in the case where [unify a b] returns [false]. This
-   can be done with "timed refs" but for now, this does not seem to be
-   necessary. *)
+(* NOTE it might be a good idea to undo unification variable instanciations in
+   the case where [unify a b] returns [false].  This can be achieved using the
+   "timed refs" approach, but this does not seem to be necessary for now. *)
 
 (** Representation of equality constraints. *)
 type constrs = (term * term) list
@@ -99,10 +96,10 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
-(** [unify_modulo ~constr_on a b] tests equality modulo rewriting
-    between [a] and [b]. In the case where [constr_on] is true, and
-    constraint mode is enabled (see [constraints]), constraints are
-    learnt instead of failing. *)
+(** [unify_modulo ~constr_on a b] tests equality modulo rewriting between  the
+    terms [a] and [b]. In the case where [constr_on] is [true], and constraint
+    mode is enabled (see [constraints]) we do not fail and rather record a new
+    constraint. *)
 let unify_modulo : ?constr_on:bool -> term -> term -> bool =
     fun ?(constr_on=false) a b ->
   if !debug_equa then log "unif" "%a == %a" pp a pp b;
