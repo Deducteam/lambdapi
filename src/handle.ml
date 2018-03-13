@@ -31,14 +31,17 @@ let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
 let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg Ctxt.empty t a) then
-    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
+    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
+  ignore (Sign.new_definable sg x a)
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
     this amounts to define a symbol with a single reduction rule.  In case  of
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
-  handle_opaque sg x a t;
+  ignore (Typing.sort_type sg a);
+  if not (Typing.has_type sg Ctxt.empty t a) then
+    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   let s = Sign.new_definable sg x a in
   let rule =
     let lhs = Bindlib.mvbind mkfree [||] (fun _ -> Bindlib.box []) in
