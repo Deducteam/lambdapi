@@ -31,7 +31,7 @@ let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
 let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg Ctxt.empty t a) then
-    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print_opt x.pos
+    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
@@ -113,10 +113,10 @@ and handle_cmds : Sign.t -> p_cmd loc list -> unit = fun sign cmds ->
       | Test(test)   -> handle_test sign test
       | Other(c)     ->
           if !debug then
-            wrn "%a, unknown command %S.\n" Pos.print_opt c.pos c.elt
+            wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
     with e ->
-      fatal "Uncaught exception on a command %a\n%s\n%!"
-        Pos.print_opt cmd.pos (Printexc.to_string e)
+      fatal "Uncaught exception on a command at %a\n%s\n%!"
+        Pos.print cmd.pos (Printexc.to_string e)
   in
   List.iter handle_cmd cmds
 

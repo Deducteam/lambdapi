@@ -72,15 +72,11 @@ let to_string : pos -> string = fun p ->
   else
     Printf.sprintf "%s%d:%d-%d" fname p.start_line p.start_col p.end_col
 
-(** [print oc pos] prints the position [pos] to the channel [oc]. *)
-let print : out_channel -> pos -> unit = fun ch p ->
-  output_string ch ("at " ^ (to_string p))
-
 (** [print_opt oc pos] prints the optional position [pos] to [oc]. *)
-let print_opt : out_channel -> pos option -> unit = fun ch p ->
+let print : out_channel -> pos option -> unit = fun ch p ->
   match p with
-  | None   -> output_string ch "at an unknown location"
-  | Some p -> print ch p
+  | None   -> output_string ch "an unknown location"
+  | Some p -> output_string ch (to_string p)
 
 open Input
 

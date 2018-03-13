@@ -139,7 +139,7 @@ let unlink : t -> unit = fun sign ->
 let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
   let { elt = sym_name; pos } = s in
   if Hashtbl.mem sign.symbols sym_name then
-    wrn "Redefinition of symbol %S %a.\n" sym_name Pos.print_opt pos;
+    wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
   let sym_path = sign.path in
   let sym = { sym_name ; sym_type ; sym_path } in
   Hashtbl.add sign.symbols sym_name (Sym(sym));
@@ -151,7 +151,7 @@ let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
 let new_definable : t -> strloc -> term -> def = fun sign s def_type ->
   let { elt = def_name; pos } = s in
   if Hashtbl.mem sign.symbols def_name then
-    wrn "Redefinition of symbol %S %a.\n" def_name Pos.print_opt pos;
+    wrn "Redefinition of symbol %S at %a.\n" def_name Pos.print pos;
   let def_path = sign.path in
   let def = { def_name ; def_type ; def_rules = [] ; def_path } in
   Hashtbl.add sign.symbols def_name (Def(def));

@@ -8,6 +8,10 @@ open Parser
 open Cmd
 open Pos
 
+(** Flag to enable a warning if an abstraction is not annotated (with the type
+    of its domain). *)
+let wrn_no_type : bool ref = ref true
+
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
 
@@ -59,10 +63,14 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let f v = scope ((x.elt,v)::vars) t in
           let a =
             match a with
-            | None    -> let fn (_,x) = Bindlib.box_of_var x in
-                         let vars = List.map fn vars in
-                         _Unif (new_unif ()) (Array.of_list vars)
-            | Some(a) -> scope vars a
+            | None    ->
+                if !wrn_no_type then
+                  wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
+                let fn (_,x) = Bindlib.box_of_var x in
+                let vars = List.map fn vars in
+                _Unif (new_unif ()) (Array.of_list vars)
+            | Some(a) ->
+                scope vars a
           in
           _Abst a x.elt f
       | P_Appl(t,u)   -> _Appl (scope vars t) (scope vars u)
