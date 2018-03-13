@@ -5,6 +5,12 @@ SRC="https://cloud.lsv.ens-cachan.fr/public.php?service=files&t=8f8231877f5034cd
 LAMBDAPI="../../lambdapi.native"
 ARCHIVE="zenon.tar"
 
+# Cleaning command (clean and exit).
+if [[ "$#" -eq 1 && "$1" = "clean" ]]; then
+  rm -f *.dk *.dko
+  exit 0
+fi
+
 # Cleaning up.
 echo "Cleaning up..."
 rm -f *.dk *.dko
@@ -17,7 +23,7 @@ if [ ! -f ${ARCHIVE} ]; then
   fi
   echo "Extracting..."
   tar xf zenon_dk.tar.gz
-  echo "Creating the new archive..."
+  echo "Creating the new archive using ${NBWORKERS} processes..."
   cd zenon_dk
   rm zenon_focal.dk
   ls *.dk | xargs -P ${NBWORKERS} -n 1 gzip
@@ -67,7 +73,7 @@ function test_gz() {
 export -f test_gz
 
 # Compiling the library files.
-echo "Compiling the library files..."
+echo "Compiling the library files with ${NBWORKERS} processes..."
 tar -tf ${ARCHIVE} | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "test_gz {}"
 
 echo "DONE."
