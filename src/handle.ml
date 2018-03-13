@@ -57,7 +57,7 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
 let handle_rules = fun sign rs ->
-  let rs = List.map (Typing.check_rule sign) rs in
+  let rs = List.map (Sr.check_rule sign) rs in
   List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
