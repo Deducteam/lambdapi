@@ -5,58 +5,24 @@ open Console
 open Terms
 open Print
 
-(** [set_unif u v] sets the value of the unification variable [u] to [v]. Note
-    that [u] should not have already been instanciated. *)
-let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
-  assert(unset u); u.value := Some(v);
-  if !debug_unif then
-    let (env,a) = Bindlib.unmbind mkfree v in
-    log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
+(** [for_all2 f a b] tests whether the arrays [a] and [b] have the
+    same length and whether [f a.(i) b.(i)] holds for every [i]. *)
+exception For_all2
+  
+let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool
+  = fun f a b ->
+    if Array.length a = Array.length b then
+      try
+	for i = 0 to Array.length a - 1 do
+	  if not (f a.(i) b.(i)) then raise For_all2
+	done;
+	true
+      with For_all2 -> false
+    else false
 
-(** [occurs u t] checks whether the unification variable [u] occurs in [t]. *)
-let rec occurs : unif -> term -> bool = fun r t ->
-  match unfold t with
-  | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
-  | Appl(_,t,u) -> occurs r t || occurs r u
-  | Unif(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type        -> false
-  | Kind        -> false
-  | Vari(_)     -> false
-  | Symb(_)     -> false
-  | ITag(_)     -> false
-  | Wild        -> false
-
-(** [unify u t] tries to unify [u] with [t], and returns a boolean to indicate
-    whether it succeeded or not. Note that the function also verifies that the
-    body of the unification variable (the binder) is closed. *)
-let unify : unif -> term array -> term -> bool = fun u env a ->
-  assert(unset u);
-  not (occurs u a) &&
-  let to_var t = match t with Vari v -> v | _ -> assert false in
-  let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
-  Bindlib.is_closed b && (set_unif u (Bindlib.unbox b); true)
-
-(** [to_prod r e xo] instantiates the unification variable [r] (with [e] as an
-    environment) using a product type formed with fresh unification variables.
-    The argument [xo] is used to name the bound variable. Note that the binder
-    (the body) is constant if [xo] is equal to [None]. *)
-let to_prod r e xo =
-  let ra = new_unif () in
-  let rb = new_unif () in
-  let le = Array.map lift e in
-  let a = _Unif ra le in
-  let fn =
-    match xo with
-    | None    -> fun _ -> _Unif rb le
-    | Some(_) -> fun x -> _Unif rb (Array.append le [|Bindlib.box_of_var x|])
-  in
-  let x = match xo with Some(x) -> x | None -> "_" in
-  let p = Bindlib.unbox (_Prod a x fn) in
-  if not (unify r e p) then assert false (* cannot fail *)
-
-(** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
-    the comparison, unification variables may be instanciated. *)
+(** [eq t u] tests the equality of the two terms [t] and [u]. Note
+    that during the comparison, unification variables may be
+    instantiated. *)
 let eq : term -> term -> bool = fun a b ->
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
@@ -73,45 +39,9 @@ let eq : term -> term -> bool = fun a b ->
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
     | (_            , ITag(_)      ) -> assert false
-    | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
-    | (Unif(u,e)    , b            ) when unify u e b -> true
-    | (a            , Unif(u,e)    ) -> unify u e a
+    | (Unif(u1,e1)  , Unif(u2,e2)  ) -> u1 == u2 && for_all2 eq e1 e2
     | (_            , _            ) -> false
   in eq a b
-
-(* NOTE it might be a good idea to undo unification variable instanciations in
-   the case where [eq a b] returns [false]. This can be done with "timed refs"
-   but for now, this does not seem to be necessary. *)
-
-(** Representation of equality constraints. *)
-type constrs = (term * term) list
-
-(** If [constraints] is set to [None] then typechecking is in regular mode. If
-    it is set to [Some l] then it is in constraint mode, which means that when
-    equality fails a constraint is added to [constrs] instead of the  equality
-    function giving up. *)
-let constraints = ref None
-
-(* NOTE: constraint mode is only used when type-cheching the left-hand side of
-   reduction rules (see function [infer_with_constrs] for mode switching). *)
-
-(** [in_constrs_mode f a] enters constraint mode, runs [f a], exits constraint
-    mode and returns the result of the computation with the constraints. *)
-let in_constrs_mode : ('a -> 'b) -> 'a -> 'b * constrs = fun f a ->
-  constraints := Some([]);
-  let res = f a in
-  let cs = match !constraints with Some(cs) -> cs | None -> assert false in
-  constraints := None; (res, cs)
-
-(** [add_constraint a b] adds an equality constraint between [a] and [b] while
-    returning [true], when the program is in constraint mode. When the program
-    is in regular mode, the value [false] is immediately returned. *)
-let add_constraint : term -> term -> bool = fun a b ->
-  match !constraints with
-  | None    -> false
-  | Some(l) ->
-      if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
-      constraints := Some((a, b)::l); true
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = term ref list
@@ -127,10 +57,7 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (appl t !u) args
   in to_term t args
 
-(** [whnf t] computes (sometimes a bit more than) the weak head normal form of
-    the term [t]. When a reduction rule is matched, some arguments of the head
-    symbol may need to be evaluated. In this case, we preserve their evaluated
-    form to avoid useless recomputation, even when no rule applies. *)
+(** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating %a" pp t;
   let (u, stk) = whnf_stk t [] in
@@ -206,11 +133,8 @@ and matching : term array -> term -> term ref -> bool = fun ar p t ->
   in
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
-(** [eq_modulo ~constr_on a b] tests equality modulo rewriting between [a] and
-    [b]. In the case where [constr_on] is true, and constraint mode is enabled
-    (see [constraints]), constraints are learnt instead of failing. *)
-and eq_modulo : ?constr_on:bool -> term -> term -> bool =
-    fun ?(constr_on=false) a b ->
+(** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
+and eq_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -235,8 +159,7 @@ and eq_modulo : ?constr_on:bool -> term -> term -> bool =
         | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (a            , b            ) ->
-            constr_on && add_constraint a b && eq_modulo l
+        | (a            , b            ) -> false
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
