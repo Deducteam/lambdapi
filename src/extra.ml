@@ -36,8 +36,9 @@ module Array =
         is raised if the arrays do not have the same size. *)
     let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool =
       fun f a1 a2 ->
-        let f x y = if not (f x y) then raise Exit in
-        try iter2 f a1 a2; true with Exit -> false
+        let exception Done in
+        let f x y = if not (f x y) then raise Done in
+        try iter2 f a1 a2; true with Done -> false
 
     (** [pp pp_e sep oc a] prints the array list [a] on the channel [oc] using
         [sep] as separator, and [pp_e] for printing the elements. *)
