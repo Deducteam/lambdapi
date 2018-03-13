@@ -25,13 +25,12 @@ syntax match   Keyword ","
 syntax match   Keyword "\."
 
 " Commands
-syntax match Include "#NAME"
 syntax match Include "#EVAL"
 syntax match Include "#INFER"
-syntax match Indlude "#CHECK"
-syntax match Indlude "#CHECKNOT"
-syntax match Indlude "#ASSERT"
-syntax match Indlude "#ASSERTNOT"
+syntax match Include "#CHECK"
+syntax match Include "#CHECKNOT"
+syntax match Include "#ASSERT"
+syntax match Include "#ASSERTNOT"
 syntax match Include "#REQUIRE"
 
 " Comments
