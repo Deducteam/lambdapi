@@ -1,7 +1,7 @@
 #!/bin/bash
 
 LAMBDAPI="../../lambdapi.native"
-SRC="https://github.com/rafoo/dklib/archive/master.zip"
+SRC="https://github.com/rlepigre/dklib/archive/master.zip"
 DIR="dklib"
 
 # Cleaning command (clean and exit).
@@ -36,13 +36,10 @@ if [[ ! -d ${DIR} ]]; then
   mv dklib-master ${DIR}
   echo "OK"
 
-  # Applying the changes (add "#REQUIRE" and create "dklib.dk").
+  # Applying the changes (create "dklib.dk").
   echo -n "  - applying changes... "
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     MODNAME=`basename "${FILE}" ".dk"`
-    ocaml ../tools/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux
-    cat ${FILE} >> ${FILE}.aux
-    mv ${FILE}.aux ${FILE}
 
     if [[ "${MODNAME}" = "dk_monads_coc" ]]; then
       echo "(;#REQUIRE ${MODNAME}.;)" >> ${DIR}/dklib.dk
