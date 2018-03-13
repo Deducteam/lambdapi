@@ -2,6 +2,9 @@
 
 open Console
 open Files
+open Pos
+
+#define LOCATE locate
 
 (** Parser-level representation of terms (and patterns). *)
 type p_term =
