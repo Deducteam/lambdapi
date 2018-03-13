@@ -75,6 +75,11 @@ dklib: lambdapi.native
 	@echo "## Compiling the dklib library ##"
 	@cd libraries && ./dklib.sh
 
+.PHONY: zenon
+zenon: lambdapi.native
+	@echo "## Compiling the zenon library ##"
+	@cd libraries/zenon && ./zenon.sh
+
 #### Cleaning targets ########################################################
 
 .PHONY: clean
@@ -89,6 +94,7 @@ distclean: clean
 	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./verine.sh clean
 	@cd libraries && ./dklib.sh clean
+	@cd libraries/zenon && ./zenon.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
 

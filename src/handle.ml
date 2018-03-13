@@ -7,6 +7,7 @@ open Files
 open Terms
 open Print
 open Cmd
+open Pos
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -15,29 +16,32 @@ let gen_obj : bool ref = ref false
 (** [handle_newsym sign n a] extends the signature [sign] with a static symbol
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
-let handle_newsym : Sign.t -> string -> term -> unit = fun sign n a ->
+let handle_newsym : Sign.t -> strloc -> term -> unit = fun sign n a ->
   ignore (Typing.sort_type sign a); ignore (Sign.new_static sign n a)
 
 (** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
     with type [a] (and no reduction rule). If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. *)
-let handle_newdef : Sign.t -> string -> term -> unit = fun sign n a ->
+let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
   ignore (Typing.sort_type sign a); ignore (Sign.new_definable sign n a)
 
 (** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
     is well-typed, which means that [t] has type [a]. In case of error (typing
     or sorting), the program fails gracefully. *)
-let handle_opaque : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
+let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg Ctxt.empty t a) then
-    fatal "Cannot type the definition of %s...\n" x
+    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
+  ignore (Sign.new_definable sg x a)
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
     this amounts to define a symbol with a single reduction rule.  In case  of
     error (typing, sorting, ...) the program fails gracefully. *)
-let handle_defin : Sign.t -> string -> term -> term -> unit = fun sg x a t ->
-  handle_opaque sg x a t;
+let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
+  ignore (Typing.sort_type sg a);
+  if not (Typing.has_type sg Ctxt.empty t a) then
+    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   let s = Sign.new_definable sg x a in
   let rule =
     let lhs = Bindlib.mvbind mkfree [||] (fun _ -> Bindlib.box []) in
@@ -95,23 +99,29 @@ let rec handle_import : Sign.t -> module_path -> unit = fun sign path ->
 
 (** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
     signature [sign]. The program fails gracefully in case of error. *)
-and handle_cmds : Sign.t -> p_cmd list -> unit = fun sign cmds ->
+and handle_cmds : Sign.t -> p_cmd loc list -> unit = fun sign cmds ->
   let handle_cmd cmd =
-    match scope_cmd sign cmd with
-    | NewSym(n,a)  -> handle_newsym sign n a
-    | NewDef(n,a)  -> handle_newdef sign n a
-    | Rules(rs)    -> handle_rules sign rs
-    | Def(o,n,a,t) -> (if o then handle_opaque else handle_defin) sign n a t
-    | Import(path) -> handle_import sign path
-    | Debug(v,s)   -> set_debug v s
-    | Verb(n)      -> verbose := n
-    | Infer(t,c)   -> handle_infer sign t c
-    | Eval(t,c)    -> handle_eval sign t c
-    | Test(test)   -> handle_test sign test
-    | Other(c)     -> if !debug then wrn "Command %S not implemented.\n" c
+    try
+      let cmd = scope_cmd sign cmd in
+      match cmd.elt with
+      | NewSym(n,a)  -> handle_newsym sign n a
+      | NewDef(n,a)  -> handle_newdef sign n a
+      | Rules(rs)    -> handle_rules sign rs
+      | Def(o,n,a,t) -> (if o then handle_opaque else handle_defin) sign n a t
+      | Import(path) -> handle_import sign path
+      | Debug(v,s)   -> set_debug v s
+      | Verb(n)      -> verbose := n
+      | Infer(t,c)   -> handle_infer sign t c
+      | Eval(t,c)    -> handle_eval sign t c
+      | Test(test)   -> handle_test sign test
+      | Other(c)     ->
+          if !debug then
+            wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
+    with e ->
+      fatal "Uncaught exception on a command at %a\n%s\n%!"
+        Pos.print cmd.pos (Printexc.to_string e)
   in
-  try List.iter handle_cmd cmds with e ->
-    fatal "Uncaught exception...\n%s\n%!" (Printexc.to_string e)
+  List.iter handle_cmd cmds
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,

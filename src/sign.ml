@@ -3,6 +3,7 @@
 open Console
 open Files
 open Terms
+open Pos
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -135,9 +136,10 @@ let unlink : t -> unit = fun sign ->
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
-let new_static : t -> string -> term -> sym = fun sign sym_name sym_type ->
+let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
+  let { elt = sym_name; pos } = s in
   if Hashtbl.mem sign.symbols sym_name then
-    wrn "Redefinition of symbol %S.\n" sym_name;
+    wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
   let sym_path = sign.path in
   let sym = { sym_name ; sym_type ; sym_path } in
   Hashtbl.add sign.symbols sym_name (Sym(sym));
@@ -146,9 +148,10 @@ let new_static : t -> string -> term -> sym = fun sign sym_name sym_type ->
 (** [new_definable sign name a] creates a fresh definable symbol named [name],
     without any reduction rules, and of type [a] in the signature [sign]. Note
     that the created symbol is also returned. *)
-let new_definable : t -> string -> term -> def = fun sign def_name def_type ->
+let new_definable : t -> strloc -> term -> def = fun sign s def_type ->
+  let { elt = def_name; pos } = s in
   if Hashtbl.mem sign.symbols def_name then
-    wrn "Redefinition of symbol %S.\n" def_name;
+    wrn "Redefinition of symbol %S at %a.\n" def_name Pos.print pos;
   let def_path = sign.path in
   let def = { def_name ; def_type ; def_rules = [] ; def_path } in
   Hashtbl.add sign.symbols def_name (Def(def));

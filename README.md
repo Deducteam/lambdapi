@@ -13,16 +13,29 @@ with "bash on Windows").
 
 List of dependencies:
  - GNU make,
- - OCaml (at least 4.02.0),
+ - OCaml (at least 4.04.0),
  - ocamlbuild,
  - findlib,
- - bindlib (from source https://github.com/rlepigre/ocaml-bindlib)
- - earley (from source https://github.com/rlepigre/ocaml-earley)
- - earley-ocaml (from source https://github.com/rlepigre/ocaml-earley-ocaml)
+ - bindlib (from opam or https://github.com/rlepigre/ocaml-bindlib),
+ - earley (from opam or https://github.com/rlepigre/ocaml-earley),
+ - earley-ocaml (from opam or https://github.com/rlepigre/ocaml-earley-ocaml).
+
+Using Opam, a suitable OCaml environment can be setup as follows.
+```bash
+opam switch 4.05.0
+eval `opam config env`
+opam install ocamlfind ocamlbuild bindlib earley earley-ocaml
+```
 
 To compile Lambdapi, just run the command `make` in the source directory.
 This produces the `lambdapi.native` binary, which can be run on files with
 the `.dk` extension (use `./lambdapi.native --help` for more informations).
+
+```bash
+make
+make install     # optionally install the program.
+make install_vim # optionally install vim support.
+```
 
 Tests and supported libraries
 -----------------------------
@@ -35,3 +48,4 @@ You can run tests with:
  - `make verine`   (type-checks the Verine library)
  - `make iprover`  (type-checks the iProverModulo library)
  - `make dklibr`   (type-checks the dklib library)
+ - `make zenonr`   (type-checks the zenon library)
