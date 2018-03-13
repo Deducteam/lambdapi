@@ -5,21 +5,6 @@ open Console
 open Terms
 open Print
 
-(** [for_all2 f a b] tests whether the arrays [a] and [b] have the
-    same length and whether [f a.(i) b.(i)] holds for every [i]. *)
-exception For_all2
-  
-let for_all2 : ('a -> 'b -> bool) -> 'a array -> 'b array -> bool
-  = fun f a b ->
-    if Array.length a = Array.length b then
-      try
-	for i = 0 to Array.length a - 1 do
-	  if not (f a.(i) b.(i)) then raise For_all2
-	done;
-	true
-      with For_all2 -> false
-    else false
-
 (** [eq t u] tests the equality of the two terms [t] and [u]. Note
     that during the comparison, unification variables may be
     instantiated. *)
@@ -39,7 +24,7 @@ let eq : term -> term -> bool = fun a b ->
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
     | (_            , ITag(_)      ) -> assert false
-    | (Unif(u1,e1)  , Unif(u2,e2)  ) -> u1 == u2 && for_all2 eq e1 e2
+    | (Unif(u1,e1)  , Unif(u2,e2)  ) -> u1 == u2 && Array.for_all2 eq e1 e2
     | (_            , _            ) -> false
   in eq a b
 
