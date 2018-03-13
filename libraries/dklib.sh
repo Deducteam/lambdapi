@@ -5,17 +5,19 @@ SRC="https://github.com/rlepigre/dklib/archive/master.zip"
 DIR="dklib"
 
 # Cleaning command (clean and exit).
-if [[ "$#" -eq 1 && "$1" = "clean" ]]; then
+if [[ "$#" -eq 1 && ("$1" = "clean" || "$1" = "fullclean") ]]; then
   rm -rf ${DIR}
   rm -rf dklib-master
-  rm -f dklib.zip
+  if [[ "$1" = "fullclean" ]]; then
+    rm -f dklib.zip
+  fi
   exit 0
 fi
 
 # Rejecting other command line arguments.
 if [[ "$#" -ne 0 ]]; then
-    echo "Invalid argument, usage: $0 [clean]"
-    exit -1
+  echo "Invalid argument, usage: $0 [clean | fullclean]"
+  exit -1
 fi
 
 # Prepare the library if necessary.

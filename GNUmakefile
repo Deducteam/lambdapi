@@ -98,6 +98,16 @@ distclean: clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
 
+.PHONY: fullclean
+fullclean: distclean
+	@cd libraries && ./matita.sh fullclean
+	@cd libraries && ./focalide.sh fullclean
+	@cd libraries && ./holide.sh fullclean
+	@cd libraries && ./iprover.sh fullclean
+	@cd libraries && ./verine.sh fullclean
+	@cd libraries && ./dklib.sh fullclean
+	@cd libraries/zenon && ./zenon.sh fullclean
+
 #### Installation targets ####################################################
 
 # Install the main program.

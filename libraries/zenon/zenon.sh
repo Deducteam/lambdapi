@@ -6,9 +6,20 @@ LAMBDAPI="../../lambdapi.native"
 ARCHIVE="zenon.tar"
 
 # Cleaning command (clean and exit).
-if [[ "$#" -eq 1 && "$1" = "clean" ]]; then
-  rm -f *.dk *.dko
+if [[ "$#" -eq 1 && ("$1" = "clean" || "$1" = "fullclean") ]]; then
+  rm -f *.dk *.dko *.aux error.log
+  rm -rf zenon_dk
+  rm -f zenon_dk.tar.gz
+  if [[ "$1" = "fullclean" ]]; then
+    zenon.tar
+  fi
   exit 0
+fi
+
+# Rejecting other command line arguments.
+if [[ "$#" -ne 0 ]]; then
+  echo "Invalid argument, usage: $0 [clean | fullclean]"
+  exit -1
 fi
 
 # Cleaning up.
