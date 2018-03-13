@@ -10,7 +10,7 @@ open Pos
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
-let wrn_no_type : bool ref = ref true
+let wrn_no_type : bool ref = ref false
 
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
