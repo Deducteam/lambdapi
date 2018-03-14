@@ -46,10 +46,10 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
     (* Variable *)
     | Vari(x)     ->
         let cx = try Ctxt.find x ctx with Not_found -> assert false in
-        unify_modulo ~constr_on:true cx c
+        unify_modulo cx c
     (* Symbol *)
     | Symb(s)     ->
-        unify_modulo ~constr_on:true (symbol_type s) c
+        unify_modulo (symbol_type s) c
     (* Product *)
     | Prod(_,a,b) ->
         begin
@@ -75,7 +75,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
           | Prod(_,c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = Ctxt.add x a ctx in
-              unify_modulo ~constr_on:true a c &&
+              unify_modulo a c &&
               has_type sign ctx_x tx bx &&
               has_type sign ctx a Type &&
               begin
@@ -103,7 +103,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
                 end;
                 match unfold a with
                 | Prod(_,a,b) ->
-                    unify_modulo ~constr_on:true (Bindlib.subst b u) c
+                    unify_modulo (Bindlib.subst b u) c
                     && has_type sign ctx u a
                 | a           ->
                     err "Product expected for [%a], found [%a]...\n%!"

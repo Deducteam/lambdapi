@@ -96,12 +96,9 @@ let add_constraint : term -> term -> bool = fun a b ->
       if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
       constraints := Some((a, b)::l); true
 
-(** [unify_modulo ~constr_on a b] tests equality modulo rewriting between  the
-    terms [a] and [b]. In the case where [constr_on] is [true], and constraint
-    mode is enabled (see [constraints]) we do not fail and rather record a new
-    constraint. *)
-let unify_modulo : ?constr_on:bool -> term -> term -> bool =
-    fun ?(constr_on=false) a b ->
+(** [unify_modulo a b] tests equality modulo rewriting between  the
+    terms [a] and [b]. *)
+let unify_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "unif" "%a == %a" pp a pp b;
   let rec unify_modulo l =
     match l with
@@ -127,7 +124,7 @@ let unify_modulo : ?constr_on:bool -> term -> term -> bool =
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             unify_modulo ((aa,ab)::(ba,bb)::l)
         | (a            , b            ) ->
-            constr_on && add_constraint a b && unify_modulo l
+            add_constraint a b && unify_modulo l
   in
   let res = unify_modulo [(a,b)] in
   if !debug_equa then log "unif" (r_or_g res "%a == %a") pp a pp b; res
