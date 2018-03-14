@@ -99,7 +99,7 @@ let link : t -> unit = fun sign ->
   in
   Hashtbl.filter_map_inplace gn sign.deps
 
-(** [unlink sign] minimize references to external symbols. *)
+(** [unlink sign] removes references to external symbols. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s = s.sym_type <- Wild in
   let unlink_def s = s.def_type <- Wild; s.def_rules <- [] in
