@@ -99,7 +99,11 @@ let link : t -> unit = fun sign ->
   in
   Hashtbl.filter_map_inplace gn sign.deps
 
-(** [unlink sign] removes references to external symbols. *)
+(** [unlink sign] removes references to external symbols (and thus signatures)
+    in the signature [sign]. This function is used to minimize the size of our
+    object files, by preventing a recursive inclusion of all the dependencies.
+    Note however that [unlink] processes [sign] in place, which means that the
+    signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s = s.sym_type <- Wild in
   let unlink_def s = s.def_type <- Wild; s.def_rules <- [] in
@@ -165,7 +169,8 @@ let write : t -> string -> unit = fun sign fname ->
          close_out oc; exit 0
   | i -> ignore (Unix.waitpid [] i)
 
-(* NOTE we [Unix.fork] to safely [unlink] before writing the file. *)
+(* NOTE [Unix.fork] is used to safely [unlink] and write an object file, while
+   preserving a valid copy of the written signature in the parent process. *)
 
 (** [read fname] reads a signature from the object file [fname]. Note that the
     file can only be read properly if it was build with the same binary as the
