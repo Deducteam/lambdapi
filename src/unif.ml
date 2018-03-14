@@ -9,7 +9,7 @@ open Eval
 (** [set_unif u v] sets the value of the unification variable [u] to [v]. Note
     that [u] should not have already been instanciated. *)
 let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
-  assert(unset u); u.value := Some(v);
+  u.value := Some(v);
   if !debug_unif then
     let (env,a) = Bindlib.unmbind mkfree v in
     log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
