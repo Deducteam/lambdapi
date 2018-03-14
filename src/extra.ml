@@ -50,4 +50,4 @@ module Array =
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
   let t = Sys.time () in
-  (Sys.time () -. t, f x) (* OK due to right-to-left evaluation. *)
+  let r = f x in (Sys.time () -. t, r)
