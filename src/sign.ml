@@ -13,9 +13,9 @@ type t =
   ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
-   external modules on which the current signature depends to an  association.
-   This association list then maps definable symbols of the external module to
-   additional reduction rules defined in the current signature. *)
+   external modules on which the current signature depends to an association
+   list. This association list then maps definable symbols of the external
+   module to additional reduction rules defined in the current signature. *)
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)

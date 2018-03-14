@@ -23,7 +23,7 @@ type env = (string * tvar) list
 let find_var : Sign.t -> env -> module_path -> string -> tbox =
   fun sign vars mp x ->
     if mp = [] then
-      (* No module path, search the environemnt first. *)
+      (* No module path, search the environment first. *)
       begin
         try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
         try _Symb (Sign.find sign x) with Not_found ->
