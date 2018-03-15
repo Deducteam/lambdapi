@@ -50,7 +50,6 @@ if [[ ! -d ${DIR} ]]; then
 
   # Cleaning up.
   echo -n "  - cleaning up...      "
-  rm matita.tar.gz
   rm ${DIR}/Makefile
   echo "OK"
 

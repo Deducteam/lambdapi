@@ -48,7 +48,6 @@ if [[ ! -d ${DIR} ]]; then
 
   # Cleaning up.
   echo -n "  - cleaning up...      "
-  rm holide.tar.gz
   rm ${DIR}/Makefile
   echo "OK"
 

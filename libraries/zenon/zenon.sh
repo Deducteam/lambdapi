@@ -11,7 +11,7 @@ if [[ "$#" -eq 1 && ("$1" = "clean" || "$1" = "fullclean") ]]; then
   rm -rf zenon_dk
   rm -f zenon_dk.tar.gz
   if [[ "$1" = "fullclean" ]]; then
-    zenon.tar
+    rm -f zenon.tar
   fi
   exit 0
 fi

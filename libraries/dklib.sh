@@ -1,13 +1,13 @@
 #!/bin/bash
 
 LAMBDAPI="../../lambdapi.native"
-SRC="https://github.com/rlepigre/dklib/archive/master.zip"
+SRC="https://github.com/rafoo/dklib/archive/v2.6.zip"
 DIR="dklib"
 
 # Cleaning command (clean and exit).
 if [[ "$#" -eq 1 && ("$1" = "clean" || "$1" = "fullclean") ]]; then
   rm -rf ${DIR}
-  rm -rf dklib-master
+  rm -rf dklib-2.6
   if [[ "$1" = "fullclean" ]]; then
     rm -f dklib.zip
   fi
@@ -35,7 +35,7 @@ if [[ ! -d ${DIR} ]]; then
   # Extracting the source files.
   echo -n "  - extracting...       "
   unzip -qq dklib.zip
-  mv dklib-master ${DIR}
+  mv dklib-2.6 ${DIR}
   echo "OK"
 
   # Applying the changes (create "dklib.dk").
@@ -53,7 +53,6 @@ if [[ ! -d ${DIR} ]]; then
 
   # Cleaning up.
   echo -n "  - cleaning up...      "
-  rm dklib.zip
   rm ${DIR}/Makefile ${DIR}/.gitignore ${DIR}/README.org
   echo "OK"
 

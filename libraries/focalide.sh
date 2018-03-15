@@ -53,7 +53,6 @@ if [[ ! -d ${DIR} ]]; then
 
   # Cleaning up.
   echo -n "  - cleaning up...      "
-  rm focalide.tar.gz
   rm ${DIR}/Makefile
   echo "OK"
 
