@@ -113,6 +113,12 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
   | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | _            -> fatal "%a is not a valid pattern...\n" pp t
 
+(* NOTE wildcards are replaced by fresh variables named with a natural number,
+   prefixed with the ['#'] character.  This means that wildcards are syntactic
+   sugar for fresh variables with a single occurence (in the pattern). This is
+   useful as the corresponding variables may appear in constraints, when rules
+   are type-checked. *)
+
 (** [scope_rule sign r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
