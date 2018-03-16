@@ -15,17 +15,17 @@ let wrn_no_type : bool ref = ref false
 (** Representation of an environment for variables. *)
 type env = (string * tvar) list
 
-(** [find_var sign vars mp x] returns a bindbox corresponding to a variable of
-    the environment [vars], or to a symbol named [x] with module path [mp]. In
+(** [find_var sign env mp x] returns a bindbox corresponding to a variable of
+    the environment [env], or to a symbol named [x] with module path [mp]. In
     the case where [mp] is empty, we first search [x] in the environement, and
     if it is not mapped we also search in the current signature [sign]. If the
     name does not correspond to anything, the program fails gracefully. *)
 let find_var : Sign.t -> env -> module_path -> string -> tbox =
-  fun sign vars mp x ->
+  fun sign env mp x ->
     if mp = [] then
       (* No module path, search the environment first. *)
       begin
-        try Bindlib.box_of_var (List.assoc x vars) with Not_found ->
+        try Bindlib.box_of_var (List.assoc x env) with Not_found ->
         try _Symb (Sign.find sign x) with Not_found ->
         fatal "Unbound variable or symbol %S...\n%!" x
       end
@@ -51,45 +51,46 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
     then it is called on [P_Wild] nodes. This is only allowed when considering
     [t] as a pattern. *)
 let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
-  fun new_wildcard vars sign t ->
-    let rec scope vars t =
+  fun new_wildcard env sign t ->
+    let rec scope env t =
       match t.elt with
-      | P_Vari(mp,x)  -> find_var sign vars mp x
+      | P_Vari(mp,x)  -> find_var sign env mp x
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
-          let f v = scope (if x.elt = "_" then vars else (x.elt,v)::vars) b in
-          _Prod (scope vars a) x.elt f
+          let f v = scope (if x.elt = "_" then env else (x.elt,v)::env) b in
+          _Prod (scope env a) x.elt f
       | P_Abst(x,a,t) ->
-          let f v = scope ((x.elt,v)::vars) t in
+          let f v = scope ((x.elt,v)::env) t in
           let a =
             match a with
             | None    ->
                 if !wrn_no_type then
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
                 let fn (_,x) = Bindlib.box_of_var x in
-                let vars = List.map fn vars in
+                let vars = List.map fn env in
                 _Meta (new_meta Ctxt.empty Type) (Array.of_list vars)
 	    (* We use dummy values for the context and type since they
 	       are not used in the current type-checking algorithm. *)
             | Some(a) ->
-                scope vars a
+                scope env a
           in
           _Abst a x.elt f
-      | P_Appl(t,u)   -> _Appl (scope vars t) (scope vars u)
+      | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
-          match new_wildcard with
+          begin match new_wildcard with
           | None    -> fatal "\"_\" not allowed in terms...\n"
           | Some(f) -> f ()
+	  end
     in
-    scope vars t
+    scope env t
 
-(** [to_tbox ~vars sign t] is a convenient interface for [scope]. *)
-let to_tbox : ?vars:env -> Sign.t -> p_term -> tbox =
-  fun ?(vars=[]) sign t -> scope None vars sign t
+(** [to_tbox ~env sign t] is a convenient interface for [scope]. *)
+let to_tbox : ?env:env -> Sign.t -> p_term -> tbox =
+  fun ?(env=[]) sign t -> scope None env sign t
 
-(** [to_term ~vars sign t] composes [to_tbox] with [Bindlib.unbox]. *)
-let to_term : ?vars:env -> Sign.t -> p_term -> term =
-  fun ?(vars=[]) sign t -> Bindlib.unbox (scope None vars sign t)
+(** [to_term ~env sign t] composes [to_tbox] with [Bindlib.unbox]. *)
+let to_term : ?env:env -> Sign.t -> p_term -> term =
+  fun ?(env=[]) sign t -> Bindlib.unbox (scope None env sign t)
 
 (** Representation of a pattern as its head symbol, the list of its arguments,
     and an array of variables corresponding to wildcards. *)
@@ -98,7 +99,7 @@ type patt = def * tbox list * tvar array
 (** [to_patt env sign t] transforms the parsing level term [t] into a pattern.
     Note that [t] may contain wildcards. The function also checks that it  has
     a definable symbol as a head term, and gracefully fails otherwise. *)
-let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
+let to_patt : env -> Sign.t -> p_term -> patt = fun env sign t ->
   let wildcards = ref [] in
   let counter = ref 0 in
   let new_wildcard () =
@@ -106,7 +107,7 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun vars sign t ->
     let x = Bindlib.new_var mkfree x in
     incr counter; wildcards := x :: !wildcards; Bindlib.box_of_var x
   in
-  let t = Bindlib.unbox (scope (Some new_wildcard) vars sign t) in
+  let t = Bindlib.unbox (scope (Some new_wildcard) env sign t) in
   let (head, args) = get_args t in
   match head with
   | Symb(Def(s)) -> (s, List.map lift args, Array.of_list !wildcards)
@@ -126,13 +127,13 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
-    let vars = List.map (fun x -> (x.elt, Bindlib.new_var mkfree x.elt)) xs in
-    let (s, l, wcs) = to_patt vars sign t in
+    let env = List.map (fun x -> (x.elt, Bindlib.new_var mkfree x.elt)) xs in
+    let (s, l, wcs) = to_patt env sign t in
     let arity = List.length l in
     let l = Bindlib.box_list l in
-    let u = to_tbox ~vars sign u in
+    let u = to_tbox ~env sign u in
     (* Building the definition. *)
-    let xs = Array.of_list (List.map snd vars) in
+    let xs = Array.of_list (List.map snd env) in
     let lhs =
       let lhs = Bindlib.bind_mvar xs l in
       let lhs = Bindlib.bind_mvar wcs lhs in
@@ -143,13 +144,13 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
     (* Constructing the typing context. *)
     let xs = Array.append xs wcs in
     let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
-    let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) vars in
-    let add_var (vars, ctx) x =
+    let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) env in
+    let add_var (env, ctx) x =
       let a =
         try
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
           | None    -> raise Not_found
-          | Some(a) -> to_term ~vars sign a (* FIXME order ? *)
+          | Some(a) -> to_term ~env sign a (* FIXME order ? *)
         with Not_found ->
           (* FIXME order (temporary hack.
           let fn (_,x) = Bindlib.box_of_var x in
@@ -161,7 +162,7 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
       (* We use dummy values for the context and type since they are
 	 not used in the current type-checking algorithm. *)
       in
-      ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
+      ((Bindlib.name_of x, x) :: env, Ctxt.add x a ctx)
     in
     let wcs = Array.to_list wcs in
     let wcs = List.map (fun x -> (Bindlib.name_of x, x)) wcs in
