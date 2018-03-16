@@ -15,14 +15,15 @@ type p_term = p_term_aux loc
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
-
+  | P_Meta of int * p_term array
+      
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to the wildcard
    pattern ['_']. *)
 
 (** [build_prod xs a] build a product by abstracting away the arguments of the
     list [xs] on the body [a]. *)
-let build_prod : (strloc* p_term) list -> p_term -> p_term = fun xs a ->
+let build_prod : (strloc * p_term) list -> p_term -> p_term = fun xs a ->
    List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b))) xs a
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
@@ -77,6 +78,10 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Application *)
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
+  (* Metavariable *)
+  | "?" n:''[0-9]+'' "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
+      when p = `Atom ->
+     in_pos _loc (P_Meta(int_of_string n, Array.of_list (e::es)))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom
