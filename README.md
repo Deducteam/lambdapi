@@ -48,4 +48,4 @@ You can run tests with:
  - `make verine`   (type-checks the Verine library)
  - `make iprover`  (type-checks the iProverModulo library)
  - `make dklibr`   (type-checks the dklib library)
- - `make zenonr`   (type-checks the zenon library)
+ - `make zenon`   (type-checks the zenon library)
