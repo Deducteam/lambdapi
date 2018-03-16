@@ -13,7 +13,11 @@ open Pos
 let wrn_no_type : bool ref = ref false
 
 (** Representation of an environment for variables. *)
-type env = (string * tvar) list
+type env = (string * (tvar * (strloc * p_term))) list
+
+(** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
+let add : string -> tvar -> (strloc * p_term) -> env -> env =
+  fun s v x env -> if s = "_" then env else (s,(v,x))::env
 
 (** [find_var sign env mp x] returns a bindbox corresponding to a variable of
     the environment [env], or to a symbol named [x] with module path [mp]. In
@@ -25,7 +29,7 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
     if mp = [] then
       (* No module path, search the environment first. *)
       begin
-        try Bindlib.box_of_var (List.assoc x env) with Not_found ->
+        try Bindlib.box_of_var (fst (List.assoc x env)) with Not_found ->
         try _Symb (Sign.find sign x) with Not_found ->
         fatal "Unbound variable or symbol %S...\n%!" x
       end
@@ -57,30 +61,49 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Vari(mp,x)  -> find_var sign env mp x
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
-          let f v = scope (if x.elt = "_" then env else (x.elt,v)::env) b in
+         let f v = scope (add x.elt v (x,a) env) b in
           _Prod (scope env a) x.elt f
-      | P_Abst(x,a,t) ->
-          let f v = scope ((x.elt,v)::env) t in
+      | P_Abst(x,a_opt,b) ->
           let a =
-            match a with
-            | None    ->
+            match a_opt with
+	    | Some a -> a
+            | None ->
                 if !wrn_no_type then
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
-                let fn (_,x) = Bindlib.box_of_var x in
-                let vars = List.map fn env in
-                _Meta (new_meta Ctxt.empty Type) (Array.of_list vars)
-	    (* We use dummy values for the context and type since they
-	       are not used in the current type-checking algorithm. *)
-            | Some(a) ->
-                scope env a
-          in
-          _Abst a x.elt f
+	      (* We introduce a new metavariable [m] for the type of [x]. *)
+	      let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
+	      let prod t =
+		Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
+	      let n = List.length env in
+	      let m = new_meta (prod P_Type) n in
+	      (*REMOVE:let fn (_,(v,_)) = Bindlib.box_of_var v in
+		let vars = List.map fn env in
+		_Meta m (Array.of_list vars)*)
+	      let fn (s,_) = Pos.none (P_Vari([],s)) in
+	      let vars = List.rev_map fn env in
+	      Pos.none (P_Meta (m.meta_key, Array.of_list vars))
+	  in
+	  let f v = scope (add x.elt v (x,a) env) b in
+          _Abst (scope env a) x.elt f
       | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
           begin match new_wildcard with
           | None    -> fatal "\"_\" not allowed in terms...\n"
           | Some(f) -> f ()
 	  end
+      | P_Meta(k,ts) ->
+	 let ts = Array.map (scope env) ts in
+	 try _Meta (meta k) ts
+	 with Not_found -> (* This is a new user-defined metavariable. *)
+	   (* We introduce a new metavariable [m] for the type of [k]. *)
+	   let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
+	   let prod t =
+	     Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
+	   let n = List.length env in
+	   let m = new_meta (prod P_Type) n in
+	   let vars = List.rev_map (fun (s,_) -> Pos.none (P_Vari([],s))) env in
+	   let tk = prod (P_Meta (m.meta_key, Array.of_list vars)) in
+	   _Meta (user_meta k tk n) ts
     in
     scope env t
 
@@ -127,13 +150,13 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
-    let env = List.map (fun x -> (x.elt, Bindlib.new_var mkfree x.elt)) xs in
+    let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, Pos.none P_Type) (*FIXME*) ))) xs in
     let (s, l, wcs) = to_patt env sign t in
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~env sign u in
     (* Building the definition. *)
-    let xs = Array.of_list (List.map snd env) in
+    let xs = Array.of_list (List.map (fun (_,(v,_)) -> v) env) in
     let lhs =
       let lhs = Bindlib.bind_mvar xs l in
       let lhs = Bindlib.bind_mvar wcs lhs in
