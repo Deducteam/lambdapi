@@ -2,7 +2,6 @@
 
 open Extra
 open Terms
-open Ctxt
 open Sign
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
@@ -65,7 +64,7 @@ let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
   Printf.fprintf oc "%a → %a" pp lhs pp rhs
 
 (** [pp_ctxt oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp_ctxt : out_channel -> Ctxt.t -> unit = fun oc ctx ->
+let pp_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
   let pp_e oc (x,a) = Printf.fprintf oc "%a : %a" pp_tvar x pp a in
   if ctx = [] then output_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)

@@ -30,7 +30,7 @@ let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
     or sorting), the program fails gracefully. *)
 let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
-  if not (Typing.has_type sg Ctxt.empty t a) then
+  if not (Typing.has_type sg empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   ignore (Sign.new_definable sg x a)
 
@@ -40,7 +40,7 @@ let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
-  if not (Typing.has_type sg Ctxt.empty t a) then
+  if not (Typing.has_type sg empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   let s = Sign.new_definable sg x a in
   let rule =
@@ -63,7 +63,7 @@ let handle_rules = fun sign rs ->
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  match Typing.infer sign Ctxt.empty t with
+  match Typing.infer sign empty_ctxt t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
@@ -82,7 +82,7 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
       else fatal "cannot convert %a and %a...\n" pp t pp u
   | (HasType(t,a), false, false) ->
       ignore (Typing.sort_type sign a);
-      if not (Typing.has_type sign Ctxt.empty t a) then
+      if not (Typing.has_type sign empty_ctxt t a) then
         fatal "%a does not have type %a...\n" pp t pp a;
       out 3 "(chck) OK\n"
   | (_           , _    , _    ) ->

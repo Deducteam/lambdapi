@@ -10,7 +10,7 @@ open Typing
 (** [infer_with_constrs sign ctx t] is similar to [infer sign ctx t] but it is
     run in constraint mode (see [constraints]). In case of success a couple of
     a type and a set of constraints is returned. *)
-let infer_with_constrs : Sign.t -> Ctxt.t -> term -> (term * constrs) option =
+let infer_with_constrs : Sign.t -> ctxt -> term -> (term * constrs) option =
   fun sign ctx t ->
     match in_constrs_mode (infer sign ctx) t with
     | (None   , _ ) ->

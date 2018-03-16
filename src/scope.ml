@@ -123,7 +123,7 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun env sign t ->
 (** [scope_rule sign r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
+let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
@@ -162,11 +162,11 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
       (* We use dummy values for the context and type since they are
 	 not used in the current type-checking algorithm. *)
       in
-      ((Bindlib.name_of x, x) :: env, Ctxt.add x a ctx)
+      ((Bindlib.name_of x, x) :: env, add_tvar x a ctx)
     in
     let wcs = Array.to_list wcs in
     let wcs = List.map (fun x -> (Bindlib.name_of x, x)) wcs in
-    let (_, ctx) = Array.fold_left add_var (wcs, Ctxt.empty) xs in
+    let (_, ctx) = Array.fold_left add_var (wcs, empty_ctxt) xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
     let u = Bindlib.unbox u in
@@ -185,7 +185,7 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
           match a with
           | None    ->
               begin
-                match Typing.infer sign Ctxt.empty t with
+                match Typing.infer sign empty_ctxt t with
                 | Some(a) -> a
                 | None    -> fatal "Unable to infer the type of [%a]\n" pp t
               end

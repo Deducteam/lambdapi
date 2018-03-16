@@ -47,7 +47,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
         unify c Kind
     (* Variable *)
     | Vari(x)     ->
-        let cx = try Ctxt.find x ctx with Not_found -> assert false in
+        let cx = try find_tvar x ctx with Not_found -> assert false in
         unify_modulo cx c
     (* Symbol *)
     | Symb(s)     ->
@@ -57,7 +57,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
-          has_type sign (if uses_x then Ctxt.add x a ctx else ctx) bx c &&
+          has_type sign (if uses_x then add_tvar x a ctx else ctx) bx c &&
           has_type sign ctx a Type &&
           match whnf c with
           | Type -> true | Kind -> true
@@ -76,7 +76,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
           match unfold c with
           | Prod(_,c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
-              let ctx_x = Ctxt.add x a ctx in
+              let ctx_x = add_tvar x a ctx in
               unify_modulo a c &&
               has_type sign ctx_x tx bx &&
               has_type sign ctx a Type &&
@@ -148,7 +148,7 @@ let has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     be [Type] or [Kind]. If [a] is not well-sorted type then the program fails
     gracefully. *)
 let sort_type : Sign.t -> term -> term = fun sign a ->
-  match infer sign Ctxt.empty a with
+  match infer sign empty_ctxt a with
   | Some(Kind) -> Kind
   | Some(Type) -> Type
   | Some(s)    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
