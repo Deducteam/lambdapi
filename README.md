@@ -47,5 +47,5 @@ You can run tests with:
  - `make holide`   (type-checks the Holide library)
  - `make verine`   (type-checks the Verine library)
  - `make iprover`  (type-checks the iProverModulo library)
- - `make dklibr`   (type-checks the dklib library)
+ - `make dklib`   (type-checks the dklib library)
  - `make zenon`   (type-checks the zenon library)
