@@ -11,8 +11,8 @@ open Unif
     The argument [xo] is used to name the bound variable. Note that the binder
     (the body) is constant if [xo] is equal to [None]. *)
 let to_prod r e xo =
-  let ra = new_meta Ctxt.empty Type in
-  let rb = new_meta Ctxt.empty Type in
+  let ra = new_meta Type 0 in
+  let rb = new_meta Type 0 in
   (* We use dummy values for the context and type since they are not
      used in the current type-checking algorithm. *)
   let le = Array.map lift e in
@@ -32,7 +32,7 @@ let to_prod r e xo =
     (fully evaluated) infered type. *)
 let rec infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
   let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
-  let a = Bindlib.unbox(_Meta (new_meta Ctxt.empty Type) (Array.of_list env)) in
+  let a = Bindlib.unbox(_Meta (new_meta Type 0) (Array.of_list env)) in
   if has_type sign ctx t a then Some(whnf a) else None
 
 (** [has_type sign ctx t a] tests whether the term [t] has type [a] in context

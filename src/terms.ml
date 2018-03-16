@@ -6,7 +6,7 @@ open Files
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
-  | Vari of term Bindlib.var
+  | Vari of tvar
   (** "Type" constant. *)
   | Type
   (** "Kind" constant. *)
@@ -14,9 +14,9 @@ type term =
   (** Symbol (static or definable). *)
   | Symb of symbol
   (** Dependent product. *)
-  | Prod of info * term * (term, term) Bindlib.binder
+  | Prod of info * term * term_binder
   (** Abstraction. *)
-  | Abst of info * term * (term, term) Bindlib.binder
+  | Abst of info * term * term_binder
   (** Application. *)
   | Appl of info * term * term
   (** Metavariable. *)
@@ -26,6 +26,9 @@ type term =
   (** Wildcard (used for pattern-matching). *)
   | Wild
 
+ and term_binder = (term, term) Bindlib.binder
+ and term_mbinder = (term, term) Bindlib.mbinder
+  
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
 
@@ -54,7 +57,7 @@ type term =
     in the context are bound on both sides of the rule. *)
  and rule =
   { lhs   : (term, term list) Bindlib.mbinder (** Left-hand side (pattern). *)
-  ; rhs   : (term, term) Bindlib.mbinder      (** Right-hand side. *)
+  ; rhs   : term_mbinder (** Right-hand side. *)
   ; arity : int (** Minimal number of argument for the rule to apply. *) }
 
 (* NOTE the pattern for a rule (or [lhs]) is stored as a list of arguments for
@@ -74,10 +77,10 @@ type term =
 (** Representation of a metavariable. *)
  and meta =
   { meta_key : int
-  ; meta_ctxt : ctxt
   ; meta_type : term
-  ; meta_value : (term, term) Bindlib.mbinder option ref }
-
+  ; meta_arity : int
+  ; meta_value : term_mbinder option ref }
+  
 (* NOTE a metavariable is represented using a multiple binder. It can hence be
    instanciated with an open term,  provided that its which free variables are
    in the environment.  The values for the free variables are provided  by the
@@ -107,18 +110,43 @@ let add_tvar : tvar -> term -> ctxt -> ctxt =
 let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
-(** [new_meta ctxt typ] creates a new meta-variable of type [typ] in
-    context [ctxt]. *)
-let new_meta : ctxt -> term -> meta =
-  let c = ref (-1) in
-  fun ctxt typ ->
-    incr c;
-    if !debug_meta then log "meta" "?%i created" !c;
-    { meta_key = !c
-    ; meta_ctxt = ctxt
-    ; meta_type = typ
-    ; meta_value = ref None }
+(** Injection of [Bindlib] variables into terms. *)
+let mkfree : tvar -> term = fun x -> Vari(x)
 
+(** Generates new metavariables. *)
+let meta_counter : int ref = ref (-1)
+let meta_table : (int * meta) list ref = ref []
+
+(** [new_meta typ n] creates a new uninstantiated metavariable of type
+    [typ] and arity [n]. *)
+let new_meta : term -> int -> meta = fun typ n ->
+  incr meta_counter;
+  let m = { meta_key = !meta_counter
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  meta_table := (!meta_counter, m) :: !meta_table;
+  if !debug_meta then log "meta" "?%i created" !meta_counter;
+  m
+
+(** [meta k] returns the metavariable whose key is [k] if it
+    exists. Raises Not_found otherwise. *)
+let meta : int -> meta = fun k -> List.assoc k !meta_table
+
+(** [user_meta k typ n] returns a new uninstantiated metavariable
+    whose key is [k], type is [typ] and arity is [n]. [k] must not be
+    in [!meta_table]. *)
+let user_meta : int -> term -> int -> meta = fun k typ n ->
+  assert (not (List.mem_assoc k !meta_table));
+  let m = { meta_key = k
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  meta_table := (k, m) :: !meta_table;
+  meta_counter := max !meta_counter k + 1;
+  if !debug_meta then log "meta" "?%i created" !meta_counter;
+  m
+  
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
 
@@ -131,9 +159,6 @@ let rec unfold : term -> term = fun t ->
 
 (** Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
-
-(** Injection of [Bindlib] variables into terms. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** [_Vari x] injects the free variable [x] into the bindbox so that it may be
     available for binding. *)
@@ -173,7 +198,6 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
     its environment [ar]. The metavariable should not  be instanciated
     when calling this function. *)
 let _Meta : meta -> tbox array -> tbox = fun u ar ->
-  assert(unset u);
   Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
