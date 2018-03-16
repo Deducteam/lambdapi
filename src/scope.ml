@@ -68,7 +68,9 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
                 let fn (_,x) = Bindlib.box_of_var x in
                 let vars = List.map fn vars in
-                _Meta (new_meta ()) (Array.of_list vars)
+                _Meta (new_meta Ctxt.empty Type) (Array.of_list vars)
+	    (* We use dummy values for the context and type since they
+	       are not used in the current type-checking algorithm. *)
             | Some(a) ->
                 scope vars a
           in
@@ -148,7 +150,10 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           let vars = List.map fn vars in
           Bindlib.unbox (_Meta (new_meta ()) (Array.of_list vars))
           *)
-          Bindlib.unbox (_Meta (new_meta ()) (Array.map Bindlib.box_of_var xs))
+          Bindlib.unbox
+	    (_Meta (new_meta Ctxt.empty Type) (Array.map Bindlib.box_of_var xs))
+      (* We use dummy values for the context and type since they are
+	 not used in the current type-checking algorithm. *)
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in

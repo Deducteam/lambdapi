@@ -74,6 +74,8 @@ type term =
  (** Representation of a metavariable. *)
  and meta =
   { meta_key : int
+  ; meta_ctxt : ctxt
+  ; meta_type : term
   ; meta_value : (term, term) Bindlib.mbinder option ref }
 
  (* NOTE a metavariable is represented using a multiple binder.  Hence,
@@ -111,13 +113,16 @@ module Ctxt = struct
 
 end
 
-(** [new_meta ()] creates a new meta-variable. *)
-let new_meta : unit -> meta =
+(** [new_meta ctxt typ] creates a new meta-variable of type [typ] in
+    context [ctxt]. *)
+let new_meta : ctxt -> term -> meta =
   let c = ref (-1) in
-  fun () ->
+  fun ctxt typ ->
     incr c;
     if !debug_meta then log "meta" "?%i created" !c;
     { meta_key = !c
+    ; meta_ctxt = ctxt
+    ; meta_type = typ
     ; meta_value = ref None }
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
