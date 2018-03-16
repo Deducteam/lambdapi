@@ -6,21 +6,21 @@ open Terms
 open Print
 open Eval
 
-(** [set_unif u v] sets the value of the unification variable [u] to [v]. Note
-    that [u] should not have already been instanciated. *)
-let set_unif : unif -> (term, term) Bindlib.mbinder -> unit = fun u v ->
-  u.value := Some(v);
-  if !debug_unif then
+(** [set_meta u v] sets the value of the metavariable [m] to [v]. Note
+    that [m] should not have already been instanciated. *)
+let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
+  m.meta_value := Some(v);
+  if !debug_meta then
     let (env,a) = Bindlib.unmbind mkfree v in
-    log "unif" "?%i[%a] ← %a" u.key (Array.pp pp_tvar ",") env pp a
+    log "meta" "?%i[%a] ← %a" m.meta_key (Array.pp pp_tvar ",") env pp a
 
-(** [occurs u t] checks whether the unification variable [u] occurs in [t]. *)
-let rec occurs : unif -> term -> bool = fun r t ->
+(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
+let rec occurs : meta -> term -> bool = fun r t ->
   match unfold t with
   | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
   | Appl(_,t,u) -> occurs r t || occurs r u
-  | Unif(u,e)   -> u == r || Array.exists (occurs r) e
+  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
   | Type        -> false
   | Kind        -> false
   | Vari(_)     -> false
@@ -30,16 +30,16 @@ let rec occurs : unif -> term -> bool = fun r t ->
 
 (** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
     telling whether it succeeded or not.  Note that the function also verifies
-    that the body of the unification variable (the binder) is closed. *)
-let instantiate : unif -> term array -> term -> bool = fun u env a ->
+    that the body of the metavariable (the binder) is closed. *)
+let instantiate : meta -> term array -> term -> bool = fun u env a ->
   assert(unset u);
   not (occurs u a) &&
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
-  Bindlib.is_closed b && (set_unif u (Bindlib.unbox b); true)
+  Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
     
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly
-    instantiating unification variables. *)
+    instantiating metavariables. *)
 let unify : term -> term -> bool = fun a b ->
   let rec unify a b = a == b ||
     let unify_binder = Bindlib.eq_binder mkfree unify in
@@ -56,13 +56,13 @@ let unify : term -> term -> bool = fun a b ->
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
     | (_            , ITag(_)      ) -> assert false
-    | (Unif(u1,e1)  , Unif(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
-    | (Unif(u,e)    , b            ) when instantiate u e b -> true
-    | (a            , Unif(u,e)    ) -> instantiate u e a
+    | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
+    | (Meta(u,e)    , b            ) when instantiate u e b -> true
+    | (a            , Meta(u,e)    ) -> instantiate u e a
     | (_            , _            ) -> false
   in unify a b
 
-(* NOTE it might be a good idea to undo unification variable instanciations in
+(* NOTE it might be a good idea to undo metavariable instantiations in
    the case where [unify a b] returns [false].  This can be achieved using the
    "timed refs" approach, but this does not seem to be necessary for now. *)
 

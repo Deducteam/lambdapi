@@ -6,19 +6,19 @@ open Print
 open Eval
 open Unif
 
-(** [to_prod r e xo] instantiates the unification variable [r] (with [e] as an
-    environment) using a product type formed with fresh unification variables.
+(** [to_prod r e xo] instantiates the metavariable [r] (with [e] as an
+    environment) using a product type formed with fresh metavariables.
     The argument [xo] is used to name the bound variable. Note that the binder
     (the body) is constant if [xo] is equal to [None]. *)
 let to_prod r e xo =
-  let ra = new_unif () in
-  let rb = new_unif () in
+  let ra = new_meta () in
+  let rb = new_meta () in
   let le = Array.map lift e in
-  let a = _Unif ra le in
+  let a = _Meta ra le in
   let fn =
     match xo with
-    | None    -> fun _ -> _Unif rb le
-    | Some(_) -> fun x -> _Unif rb (Array.append le [|Bindlib.box_of_var x|])
+    | None    -> fun _ -> _Meta rb le
+    | Some(_) -> fun x -> _Meta rb (Array.append le [|Bindlib.box_of_var x|])
   in
   let x = match xo with Some(x) -> x | None -> "_" in
   let p = Bindlib.unbox (_Prod a x fn) in
@@ -30,12 +30,12 @@ let to_prod r e xo =
     (fully evaluated) infered type. *)
 let rec infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
   let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
-  let a = Bindlib.unbox (_Unif (new_unif ()) (Array.of_list env)) in
+  let a = Bindlib.unbox (_Meta (new_meta ()) (Array.of_list env)) in
   if has_type sign ctx t a then Some(whnf a) else None
 
 (** [has_type sign ctx t a] tests whether the term [t] has type [a] in context
     [ctx] and with the signature [sign]. Note that inference can be  performed
-    using an [a] that is a unification variable. *)
+    using an [a] that is a metavariable. *)
 and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
   if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
@@ -68,7 +68,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
           let c = whnf c in
           begin
             match c with
-            | Unif(r,e) -> to_prod r e (Some(Bindlib.binder_name t))
+            | Meta(r,e) -> to_prod r e (Some(Bindlib.binder_name t))
             | _         -> ()
           end;
           match unfold c with
@@ -98,7 +98,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
               begin
                 begin
                   match a with
-                  | Unif(r,e) -> to_prod r e None
+                  | Meta(r,e) -> to_prod r e None
                   | _         -> ()
                 end;
                 match unfold a with
@@ -114,7 +114,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     (* No rule apply. *)
     | Kind        -> assert false
     | ITag(_)     -> assert false
-    | Unif(_,_)   -> assert false
+    | Meta(_,_)   -> assert false
     | Wild        -> assert false
   in
   if !debug_type then

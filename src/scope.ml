@@ -68,7 +68,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
                 let fn (_,x) = Bindlib.box_of_var x in
                 let vars = List.map fn vars in
-                _Unif (new_unif ()) (Array.of_list vars)
+                _Meta (new_meta ()) (Array.of_list vars)
             | Some(a) ->
                 scope vars a
           in
@@ -146,9 +146,9 @@ let scope_rule : Sign.t -> p_rule -> Ctxt.t * def * term * term * rule =
           (* FIXME order (temporary hack.
           let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in
-          Bindlib.unbox (_Unif (new_unif ()) (Array.of_list vars))
+          Bindlib.unbox (_Meta (new_meta ()) (Array.of_list vars))
           *)
-          Bindlib.unbox (_Unif (new_unif ()) (Array.map Bindlib.box_of_var xs))
+          Bindlib.unbox (_Meta (new_meta ()) (Array.map Bindlib.box_of_var xs))
       in
       ((Bindlib.name_of x, x) :: vars, Ctxt.add x a ctx)
     in

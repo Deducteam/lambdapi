@@ -53,7 +53,7 @@ let link : t -> unit = fun sign ->
     | Prod(i,a,b) -> Prod(i, link_term a, link_binder b)
     | Abst(i,a,t) -> Abst(i, link_term a, link_binder t)
     | Appl(i,t,u) -> Appl(i, link_term t, link_term u)
-    | Unif(_,_)   -> assert false
+    | Meta(_,_)   -> assert false
     | ITag(_)     -> assert false
     | Wild        -> Wild
   and link_rule r =
@@ -118,7 +118,7 @@ let unlink : t -> unit = fun sign ->
     | Prod(_,a,b)  -> unlink_term a; unlink_binder b
     | Abst(_,a,t)  -> unlink_term a; unlink_binder t
     | Appl(_,t,u)  -> unlink_term t; unlink_term u
-    | Unif(_,_)    -> assert false
+    | Meta(_,_)    -> assert false
     | ITag(_)      -> assert false
     | Wild         -> ()
   and unlink_rule r =

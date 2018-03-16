@@ -6,7 +6,7 @@ open Terms
 open Print
 
 (** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
-    the comparison, unification variables are not instantiated. *)
+    the comparison, metavariables are not instantiated. *)
 let eq : term -> term -> bool = fun a b ->
   let rec eq a b = a == b ||
     let eq_binder = Bindlib.eq_binder mkfree eq in
@@ -23,7 +23,7 @@ let eq : term -> term -> bool = fun a b ->
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
     | (_            , ITag(_)      ) -> assert false
-    | (Unif(u1,e1)  , Unif(u2,e2)  ) -> u1 == u2 && Array.for_all2 eq e1 e2
+    | (Meta(m1,ar1)  , Meta(m2,ar2)) -> m1 == m2 && Array.for_all2 eq ar1 ar2
     | (_            , _            ) -> false
   in eq a b
 
@@ -167,7 +167,7 @@ let rec snf : term -> term = fun t ->
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Abst(i, snf a, b)
   | Appl(i,t,u) -> Appl(i, snf t, snf u)
-  | Unif(_,_)   -> assert false
+  | Meta(_,_)   -> assert false
   | ITag(_)     -> assert false
   | Wild        -> assert false
 

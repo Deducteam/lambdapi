@@ -19,8 +19,8 @@ type term =
   | Abst of info * term * (term, term) Bindlib.binder
   (** Application. *)
   | Appl of info * term * term
-  (** Unification variable (used for inference). *)
-  | Unif of unif * term array
+  (** Metavariable. *)
+  | Meta of meta * term array
   (** Integer tag (used for pattern-matching). *)
   | ITag of int
   (** Wildcard (used for pattern-matching). *)
@@ -71,27 +71,27 @@ type term =
    be rewritten to the term obtained by substituting [r.rhs] with [args] (note
    that its pattern variables should have been substituted at this point. *)
 
-(** Representation of a unification variable (or meta-variable). *)
- and unif =
-   { key   : int
-   ; value : (term, term) Bindlib.mbinder option ref }
+ (** Representation of a metavariable. *)
+ and meta =
+  { meta_key : int
+  ; meta_value : (term, term) Bindlib.mbinder option ref }
 
-(* NOTE a unification variable is represented using a multiple binder.  Hence,
+ (* NOTE a metavariable is represented using a multiple binder.  Hence,
    it can be instanciated with an open term, which free variables are bound in
    an external environment. Their value is given by the second argument of the
-   [Unif] constructor, which can be used to substitute the binder whenever the
-   unification variable has been instanciated. *)
+   [Meta] constructor, which can be used to substitute the binder whenever the
+   metavariable has been instanciated. *)
 
-(** Additional information on some [term] constructors. *)
+ (** Additional information on some [term] constructors. *)
  and info =
   { closed : bool (** Set to [true] if the corresponding term is closed. *) }
 
-(** Representation of a typing context, associating a type to
+ (** Short name for term variables. *)
+ and tvar = term Bindlib.var
+
+ (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
  and ctxt = (tvar * term) list
-
-(** Short name for term variables. *)
- and tvar = term Bindlib.var
 
 module Ctxt = struct
 
@@ -110,22 +110,24 @@ module Ctxt = struct
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
 end
-  
-(** [new_unif ()] creates a fresh unification variable. *)
-let new_unif : unit -> unif =
+
+(** [new_meta ()] creates a new meta-variable. *)
+let new_meta : unit -> meta =
   let c = ref (-1) in
   fun () ->
     incr c;
-    if !debug_unif then log "unif" "?%i created" !c;
-    { key = !c ; value = ref None }
+    if !debug_meta then log "meta" "?%i created" !c;
+    { meta_key = !c
+    ; meta_value = ref None }
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
-let unset : unif -> bool = fun u -> !(u.value) = None
+let unset : meta -> bool = fun u -> !(u.meta_value) = None
 
-(** [unfold t] unfolds the toplevel unification / pattern variables in [t]. *)
+(** [unfold t] unfolds the toplevel metavariable in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Unif({value = {contents = Some(f)}}, ar) -> unfold (Bindlib.msubst f ar)
+  | Meta({meta_value = {contents = Some(f)}}, ar) ->
+     unfold (Bindlib.msubst f ar)
   | _                                        -> t
 
 (** Short name for boxed terms. *)
@@ -168,12 +170,12 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let closed = Bindlib.is_closed a && Bindlib.is_closed b in
   Bindlib.box_apply2 (fun a b -> Abst({closed},a,b)) a b
 
-(** [_Unif u ar] lifts a unification variable [u] to the [bindbox] type, given
-    its environment [ar]. The unification variable should not  be instanciated
+(** [_Meta u ar] lifts a metavariable [u] to the [bindbox] type, given
+    its environment [ar]. The metavariable should not  be instanciated
     when calling this function. *)
-let _Unif : unif -> tbox array -> tbox = fun u ar ->
+let _Meta : meta -> tbox array -> tbox = fun u ar ->
   assert(unset u);
-  Bindlib.box_apply (fun ar -> Unif(u,ar)) (Bindlib.box_array ar)
+  Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
 
 let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
 
@@ -195,7 +197,7 @@ let rec lift : term -> tbox = fun t ->
   | Abst(_,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
   | Appl(i,_,_) when i.closed -> Bindlib.box t
   | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Unif(r,m)   -> _Unif r (Array.map lift m)
+  | Meta(r,m)   -> _Meta r (Array.map lift m)
   | ITag(i)     -> _ITag i
   | Wild        -> _Wild
 
@@ -207,7 +209,7 @@ let rec is_closed : term -> bool = fun t ->
   | Prod(i,_,_) -> i.closed
   | Abst(i,_,_) -> i.closed
   | Appl(i,_,_) -> i.closed
-  | Unif(_,ar)  -> Array.for_all is_closed ar
+  | Meta(_,ar)  -> Array.for_all is_closed ar
   | _           -> true
 
 (** [appl t u] builds the application of the terms [t] and [u] (outside of the
