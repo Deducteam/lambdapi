@@ -28,7 +28,7 @@ let to_prod r e xo =
     and with the signature [sign]. If the function is not able to infer a type
     then [None] is returned. Otherwise, [Some a] is returned, where [a] is the
     (fully evaluated) infered type. *)
-let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
+let rec infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
   let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
   let a = Bindlib.unbox (_Unif (new_unif ()) (Array.of_list env)) in
   if has_type sign ctx t a then Some(whnf a) else None
@@ -36,7 +36,7 @@ let rec infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
 (** [has_type sign ctx t a] tests whether the term [t] has type [a] in context
     [ctx] and with the signature [sign]. Note that inference can be  performed
     using an [a] that is a unification variable. *)
-and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
+and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
   if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
     match unfold t with
@@ -123,7 +123,7 @@ and has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
 
 (** [infer sign ctx t] is a wrapper function for the [infer] function  defined
     earlier. It is mainly used to obtain fine-grained logs. *)
-let infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
+let infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
   if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
   let res = infer sign ctx t in
   if !debug then
@@ -136,7 +136,7 @@ let infer : Sign.t -> Ctxt.t -> term -> term option = fun sign ctx t ->
 
 (** [has_type sign ctx t a] is a wrapper function for the [has_type]  function
     defined earlier. It is mainly used to obtain fine-grained logs. *)
-let has_type : Sign.t -> Ctxt.t -> term -> term -> bool = fun sign ctx t c ->
+let has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
   let res = has_type sign ctx t c in
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;

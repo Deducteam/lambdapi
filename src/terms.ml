@@ -86,6 +86,31 @@ type term =
  and info =
   { closed : bool (** Set to [true] if the corresponding term is closed. *) }
 
+(** Representation of a typing context, associating a type to
+    free [Bindlib] variables. *)
+ and ctxt = (tvar * term) list
+
+(** Short name for term variables. *)
+ and tvar = term Bindlib.var
+
+module Ctxt = struct
+
+  type t = ctxt
+    
+  (** [empty] is the empty context. *)
+  let empty : t = []
+
+  (** [add x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
+  let add : tvar -> term -> t -> t =
+    fun x a ctx -> (x,a)::ctx
+
+  (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,
+      and raises [Not_found] otherwise. *)
+  let find : tvar -> t -> term = fun x ctx ->
+    snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
+
+end
+  
 (** [new_unif ()] creates a fresh unification variable. *)
 let new_unif : unit -> unif =
   let c = ref (-1) in
@@ -102,9 +127,6 @@ let rec unfold : term -> term = fun t ->
   match t with
   | Unif({value = {contents = Some(f)}}, ar) -> unfold (Bindlib.msubst f ar)
   | _                                        -> t
-
-(** Short name for term variables. *)
-type tvar = term Bindlib.var
 
 (** Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
