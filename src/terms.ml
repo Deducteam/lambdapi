@@ -71,45 +71,39 @@ type term =
    be rewritten to the term obtained by substituting [r.rhs] with [args] (note
    that its pattern variables should have been substituted at this point. *)
 
- (** Representation of a metavariable. *)
+(** Representation of a metavariable. *)
  and meta =
-  { meta_key : int
+  { meta_key   : int
   ; meta_value : (term, term) Bindlib.mbinder option ref }
 
- (* NOTE a metavariable is represented using a multiple binder.  Hence,
-   it can be instanciated with an open term, which free variables are bound in
-   an external environment. Their value is given by the second argument of the
-   [Meta] constructor, which can be used to substitute the binder whenever the
-   metavariable has been instanciated. *)
+(* NOTE a metavariable is represented using a multiple binder. It can hence be
+   instanciated with an open term,  provided that its which free variables are
+   in the environment.  The values for the free variables are provided  by the
+   second argument of the [Meta] constructor,  which can be used to substitute
+   the binder whenever the metavariable has been instanciated. *)
 
- (** Additional information on some [term] constructors. *)
+(** Additional information on some [term] constructors. *)
  and info =
   { closed : bool (** Set to [true] if the corresponding term is closed. *) }
 
- (** Short name for term variables. *)
+(** Short name for term variables. *)
  and tvar = term Bindlib.var
 
- (** Representation of a typing context, associating a type (or [Term.term]) to
+(** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
  and ctxt = (tvar * term) list
 
-module Ctxt = struct
+(** [empty_ctxt] is the empty context. *)
+let empty_ctxt : ctxt = []
 
-  type t = ctxt
-    
-  (** [empty] is the empty context. *)
-  let empty : t = []
+(** [add_tvar x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
+let add_tvar : tvar -> term -> ctxt -> ctxt =
+  fun x a ctx -> (x,a)::ctx
 
-  (** [add x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
-  let add : tvar -> term -> t -> t =
-    fun x a ctx -> (x,a)::ctx
-
-  (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,
-      and raises [Not_found] otherwise. *)
-  let find : tvar -> t -> term = fun x ctx ->
+(** [find_tvar x ctx] gives the type of variable [x] in the context [ctx]. The
+    exception [Not_found] is raised if the variable is not in the context. *)
+let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
-
-end
 
 (** [new_meta ()] creates a new meta-variable. *)
 let new_meta : unit -> meta =
