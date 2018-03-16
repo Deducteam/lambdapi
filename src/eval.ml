@@ -167,7 +167,7 @@ let rec snf : term -> term = fun t ->
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Abst(i, snf a, b)
   | Appl(i,t,u) -> Appl(i, snf t, snf u)
-  | Meta(_,_)   -> assert false
+  | Meta(m,ts)  -> Meta(m,Array.map snf ts)
   | ITag(_)     -> assert false
   | Wild        -> assert false
 
