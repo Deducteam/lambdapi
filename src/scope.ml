@@ -34,7 +34,7 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
         fatal "Unbound variable or symbol %S...\n%!" x
       end
     else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
-      (* Module path is not available (not loaded). *)
+      (* Module path is not available (not loaded), fail. *)
       begin
         let cur = String.concat "." Sign.(sign.path) in
         let req = String.concat "." mp in
@@ -50,10 +50,10 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
       end
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
-    an actual term using the free variables of the environement [env], and the
-    symbols of the signature [sign]. If a function is given in [new_wildcard],
-    then it is called on [P_Wild] nodes. This is only allowed when considering
-    [t] as a pattern. *)
+    an actual term using the free variables of the environment [env], and the
+    symbols of the signature [sign]. Wildcards are replaced by new
+    metavariables. *)
+
 let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
   fun new_wildcard env sign t ->
     let rec scope env t =
@@ -68,6 +68,8 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             match a_opt with
 	    | Some a -> a
             | None ->
+	      (* If there is no type annotation, we create a
+		 metavariable for it. *)
                 if !wrn_no_type then
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
 	      (* We introduce a new metavariable [m] for the type of [x]. *)
@@ -148,10 +150,12 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun env sign t ->
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
+    (*Reminder: type p_rule = (strloc * p_term option) list * p_term * p_term*)
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
     let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, Pos.none P_Type) (*FIXME*) ))) xs in
     let (s, l, wcs) = to_patt env sign t in
+    (*Reminder: type patt = def * tbox list * tvar array*)    
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~env sign u in
@@ -167,7 +171,9 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     (* Constructing the typing context. *)
     let xs = Array.append xs wcs in
     let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
-    let ty_map = List.map (fun (n,x) -> (x, List.assoc n xs_ty_map)) env in
+    let ty_map = List.map (fun (n,(x,_)) -> (x, List.assoc n xs_ty_map)) env in
+    let fn x =
+      let n = Bindlib.name_of x in (n, (x, (Pos.none n, Pos.none P_Type))) in
     let add_var (env, ctx) x =
       let a =
         try
@@ -181,14 +187,14 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
           Bindlib.unbox (_Meta (new_meta ()) (Array.of_list vars))
           *)
           Bindlib.unbox
-	    (_Meta (new_meta Ctxt.empty Type) (Array.map Bindlib.box_of_var xs))
+	    (_Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs))
       (* We use dummy values for the context and type since they are
 	 not used in the current type-checking algorithm. *)
       in
-      ((Bindlib.name_of x, x) :: env, add_tvar x a ctx)
+      (fn x :: env, add_tvar x a ctx)
     in
     let wcs = Array.to_list wcs in
-    let wcs = List.map (fun x -> (Bindlib.name_of x, x)) wcs in
+    let wcs = List.map fn wcs in
     let (_, ctx) = Array.fold_left add_var (wcs, empty_ctxt) xs in
     (* Constructing the rule. *)
     let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
