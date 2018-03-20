@@ -26,6 +26,13 @@ type term =
   (** Wildcard (used for pattern-matching). *)
   | Wild
 
+ (** Short name for term variables. *)
+ and tvar = term Bindlib.var
+
+ (** Additional information on some [term] constructors. *)
+ and info =
+  { closed : bool (** Set to [true] if the corresponding term is closed. *) }
+
  and term_binder = (term, term) Bindlib.binder
  and term_mbinder = (term, term) Bindlib.mbinder
   
@@ -80,23 +87,16 @@ type term =
   ; meta_type : term
   ; meta_arity : int
   ; meta_value : term_mbinder option ref }
-  
+
 (* NOTE a metavariable is represented using a multiple binder. It can hence be
    instanciated with an open term,  provided that its which free variables are
    in the environment.  The values for the free variables are provided  by the
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
 
-(** Additional information on some [term] constructors. *)
- and info =
-  { closed : bool (** Set to [true] if the corresponding term is closed. *) }
-
-(** Short name for term variables. *)
- and tvar = term Bindlib.var
-
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
- and ctxt = (tvar * term) list
+let ctxt = (tvar * term) list
 
 (** [empty_ctxt] is the empty context. *)
 let empty_ctxt : ctxt = []
