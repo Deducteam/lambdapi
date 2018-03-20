@@ -113,8 +113,11 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
 
+(** [name_of_meta m] returns a parsable identifier for [m]. *)
+let name_of_meta m = assert (m.meta_key >= 0); sprintf "?%d" m.meta_key
+    
 (** Generates new metavariables. *)
-let meta_counter : int ref = ref (-1)
+let meta_counter : int ref = ref 0
 let meta_table : (int * meta) list ref = ref []
 
 (** [new_meta typ n] creates a new uninstantiated metavariable of type
