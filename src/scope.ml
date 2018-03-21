@@ -208,20 +208,18 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   | P_NewSym(x,a)       -> NewSym(x, to_term sign a)
   | P_NewDef(x,a)       -> NewDef(x, to_term sign a)
   | P_Def(o,x,a,t)      ->
-      begin
-        let t = to_term sign t in
-        let a =
-          match a with
-          | None    ->
-              begin
-                match Typing.infer sign empty_ctxt t with
-                | Some(a) -> a
-                | None    -> fatal "Unable to infer the type of [%a]\n" pp t
-              end
-          | Some(a) -> to_term sign a
-        in
-        Def(o, x, a, t)
-      end
+      let t = to_term sign t in
+      let a =
+        match a with
+        | None    ->
+            begin
+              match Typing.infer sign empty_ctxt t with
+              | Some(a) -> a
+              | None    -> fatal "Unable to infer the type of [%a]\n" pp t
+            end
+        | Some(a) -> to_term sign a
+      in
+      Def(o, x, a, t)
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
   | P_Import(path)      -> Import(path)
   | P_Debug(b,s)        -> Debug(b,s)
@@ -229,13 +227,11 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   | P_Infer(t,c)        -> Infer(to_term sign t, c)
   | P_Eval(t,c)         -> Eval(to_term sign t, c)
   | P_Test_T(ia,mf,t,a) ->
-      let t = to_term sign t in
-      let a = to_term sign a in
-      Test({is_assert = ia; must_fail = mf; contents = HasType(t,a)})
+      let contents = HasType(to_term sign t, to_term sign a) in
+      Test({is_assert = ia; must_fail = mf; contents})
   | P_Test_C(ia,mf,t,u) ->
-      let t = to_term sign t in
-      let u = to_term sign u in
-      Test({is_assert = ia; must_fail = mf; contents = Convert(t,u)})
+      let contents = Convert(to_term sign t, to_term sign u) in
+      Test({is_assert = ia; must_fail = mf; contents})
   | P_Other(c)          -> Other(c)
 
 (** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
