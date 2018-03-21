@@ -6,7 +6,7 @@ open Files
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
-  | Vari of term_var
+  | Vari of tvar
   (** "Type" constant. *)
   | Type
   (** "Kind" constant. *)
@@ -27,7 +27,7 @@ type term =
   | Wild
 
 (** Representation of a free term variable. *)
- and term_var = term Bindlib.var
+ and tvar = term Bindlib.var
 
 (** Representation of the binding of a term variable in a term. *)
  and term_binder = (term, term) Bindlib.binder
