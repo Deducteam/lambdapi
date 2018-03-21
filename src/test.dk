@@ -1,0 +1,63 @@
+(; Type of booleans. ;)
+
+B : Type.
+
+true : B.
+false : B.
+
+(; Type of natural numbers. ;)
+
+N : Type.
+
+0 : N.
+s : N -> N.
+
+def 1 := s 0.
+
+(; Addition on natural numbers. ;)
+
+def add : N -> N -> N.
+
+[x] add 0 x --> x.
+[x, y] add (s x) y --> s (add x y).
+
+(; Type code universes. ;)
+
+U : N -> Type.
+
+(; Decoding function. ;)
+
+def T : i : N -> U i -> Type.
+
+(; Prop is an abbreviation for the universe 0; ;)
+
+def Prop := U 0.
+
+(; Code for the type of booleans in the universe 1. ;)
+
+bool : U 1.
+
+[] T _ bool --> B.
+
+(; Code for the type of natural numbers in the universe 1. ;)
+
+nat : U 1.
+
+[] T _ nat --> N.
+
+(; Cumulativity: [lift i] maps [U i] to [U (s i)]. ;)
+
+lift : i : N -> U i -> U (s i).
+
+(; Code for the product type in universe i. *)
+
+pi : i : N -> a : U i -> (T i a -> U i) -> U i.
+
+[i, a, f] T _ (pi i a f) --> x : T i a -> T i (f x).
+
+(; Code for the type of vectors in universe i. ;)
+
+vec : i : N -> a : U i -> N -> U i.
+
+nil : i : N -> a : U i -> T i (vec i a 0).
+cons : i : N -> a : U i -> x : T i a -> n : N -> T i (vec i a n) -> T i (vec i a (s n)).
