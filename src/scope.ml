@@ -159,7 +159,7 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     (* Scoping the LHS and RHS. *)
     let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, Pos.none P_Type) (*FIXME*) ))) xs in
     let (s, l, wcs) = to_patt env sign t in
-    (*Reminder: type patt = def * tbox list * tvar array*)    
+    (*Reminder: type patt = def * tbox list * tvar array*)
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~env sign u in

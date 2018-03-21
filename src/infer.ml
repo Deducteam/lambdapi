@@ -6,12 +6,12 @@ open Extra
 open Console
 
 let prod x t u = Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
-    
+
 type constr = ctxt * term * term
 
 let pp_constr : out_channel -> constr -> unit = fun oc (c,t,u) ->
   Printf.fprintf oc "%a ⊢ %a ~ %a" pp_ctxt c pp t pp u
-    
+
 type problem = constr list
 
 let pp_problem : out_channel -> problem -> unit = fun oc p ->
@@ -40,7 +40,7 @@ type error =
   | E_not_convertible of term * term
 
 exception Error of error
-    
+
 let rec infer : problem -> ctxt -> term -> problem * term =
   fun p c t ->
   if !debug_type then log "INFR" "%a; %a ⊢ %a : ?" pp_problem p pp_ctxt c pp t;
@@ -56,38 +56,38 @@ let rec infer : problem -> ctxt -> term -> problem * term =
     (* Product *)
     | Prod(t,f) ->
        begin
-	 let p = check p c t Type in
-	 let x,u,c = unbind_tbinder c t f in 
-	 let p, typ_u = infer p c u in
-	 match typ_u with
-	 | Type | Kind -> p, typ_u
-	 | _ -> raise (Error (E_not_a_sort typ_u))
+        let p = check p c t Type in
+        let x,u,c = unbind_tbinder c t f in
+        let p, typ_u = infer p c u in
+        match typ_u with
+        | Type | Kind -> p, typ_u
+        | _ -> raise (Error (E_not_a_sort typ_u))
        end
     (* Abstraction *)
     | Abst(t,f) ->
        begin
-	 let p = check p c t Type in
-	 let x,u,c = unbind_tbinder c t f in
-	 let p, typ_u = infer p c u in
-	 p, prod x t u
+        let p = check p c t Type in
+        let x,u,c = unbind_tbinder c t f in
+        let p, typ_u = infer p c u in
+        p, prod x t u
        end
     (* Application *)
     | Appl(t,u) ->
        begin
-	 let p, typ_u = infer p c u in
-	 let p, typ_t = infer p c t in
-	 match typ_t with
-	 | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
-	 | _ -> raise (Error (E_not_a_product typ_t))
+        let p, typ_u = infer p c u in
+        let p, typ_t = infer p c t in
+        match typ_t with
+        | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
+        | _ -> raise (Error (E_not_a_product typ_t))
        end
     (* Metavariable *)
     | Meta(m, ts) ->
        (* The type of [Meta(m,ts)] is the same as [addd_args v ts]
-	  where [v] is some fresh variable with the same type as [m]. *)
+         where [v] is some fresh variable with the same type as [m]. *)
        begin
-	 let v = Bindlib.new_var mkfree (name_of_meta m) in
-	 let c = add_tvar v m.meta_type c in
-	 infer p c (add_args (Vari v) (Array.to_list ts))
+        let v = Bindlib.new_var mkfree (name_of_meta m) in
+        let c = add_tvar v m.meta_type c in
+        infer p c (add_args (Vari v) (Array.to_list ts))
        end
     (* No rule apply. *)
     | Kind        -> assert false
@@ -102,7 +102,7 @@ and check : problem -> ctxt -> term -> term -> problem =
   fun p c t u ->
     let p, typ_t = infer p c t in
     add_constr c typ_t u p
-      
+
 and add_constr : ctxt -> term -> term -> problem -> problem =
   fun c t u p ->
     match t, u with
@@ -124,8 +124,8 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
     | ITag _, _
     | _, ITag _ -> assert false
     | _, _ -> raise (Error (E_not_convertible (t,u)))
-      
+
 let infer : ctxt -> term -> term option = fun c t ->
   let p, typ_t = infer [] c t in
   if p = [] then Some typ_t else None
-    
+

@@ -32,7 +32,7 @@ type term =
 (** Representation of the binding of a term variable in a term. *)
  and tbinder = (term, term) Bindlib.binder
  and tmbinder = (term, term) Bindlib.mbinder
-  
+
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
 
@@ -112,7 +112,7 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** [name_of_meta m] returns a parsable identifier for [m]. *)
 let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
-    
+
 (** Generates new metavariables. *)
 let meta_counter : int ref = ref 0
 let meta_table : (int * meta) list ref = ref []
@@ -122,9 +122,9 @@ let meta_table : (int * meta) list ref = ref []
 let new_meta : term -> int -> meta = fun typ n ->
   incr meta_counter;
   let m = { meta_key = !meta_counter
-	  ; meta_type = typ
-	  ; meta_arity = n
-	  ; meta_value = ref None } in
+         ; meta_type = typ
+         ; meta_arity = n
+         ; meta_value = ref None } in
   meta_table := (!meta_counter, m) :: !meta_table;
   if !debug_meta then log "meta" "?%i created" !meta_counter;
   m
@@ -139,14 +139,14 @@ let meta : int -> meta = fun k -> List.assoc k !meta_table
 let user_meta : int -> term -> int -> meta = fun k typ n ->
   assert (not (List.mem_assoc k !meta_table));
   let m = { meta_key = k
-	  ; meta_type = typ
-	  ; meta_arity = n
-	  ; meta_value = ref None } in
+         ; meta_type = typ
+         ; meta_arity = n
+         ; meta_value = ref None } in
   meta_table := (k, m) :: !meta_table;
   meta_counter := max !meta_counter k + 1;
   if !debug_meta then log "meta" "?%i created" !meta_counter;
   m
-  
+
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
 

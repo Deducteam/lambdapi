@@ -24,7 +24,7 @@ let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
 
 let pp_meta : out_channel -> meta -> unit = fun oc m ->
   Printf.fprintf oc "?%s" (name_of_meta m)
-    
+
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
   let pstring = output_string oc in

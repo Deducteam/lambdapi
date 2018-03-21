@@ -37,7 +37,7 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
-    
+
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly
     instantiating metavariables. *)
 let unify : term -> term -> bool = fun a b ->
