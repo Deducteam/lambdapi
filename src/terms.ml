@@ -6,7 +6,7 @@ open Files
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
-  | Vari of term_var
+  | Vari of tvar
   (** "Type" constant. *)
   | Type
   (** "Kind" constant. *)
@@ -14,9 +14,9 @@ type term =
   (** Symbol (static or definable). *)
   | Symb of symbol
   (** Dependent product. *)
-  | Prod of term * term_binder
+  | Prod of term * tbinder
   (** Abstraction. *)
-  | Abst of term * term_binder
+  | Abst of term * tbinder
   (** Application. *)
   | Appl of term * term
   (** Metavariable. *)
@@ -27,10 +27,10 @@ type term =
   | Wild
 
 (** Representation of a free term variable. *)
- and term_var = term Bindlib.var
+ and tvar = term Bindlib.var
 
 (** Representation of the binding of a term variable in a term. *)
- and term_binder = (term, term) Bindlib.binder
+ and tbinder = (term, term) Bindlib.binder
 
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
@@ -87,9 +87,6 @@ type term =
    in the environment.  The values for the free variables are provided  by the
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
-
-(** Short name for term variables. *)
- and tvar = term_var
 
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
