@@ -67,6 +67,11 @@ let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
+let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
+  match Infer.infer empty_ctxt t with
+  | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
+  | None    -> fatal "%a : unable to infer\n%!" pp t
+
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
   (* FIXME check typing? *)

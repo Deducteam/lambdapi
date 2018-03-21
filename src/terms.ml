@@ -96,7 +96,7 @@ type term =
 
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
-let ctxt = (tvar * term) list
+type ctxt = (tvar * term) list
 
 (** [empty_ctxt] is the empty context. *)
 let empty_ctxt : ctxt = []
@@ -114,7 +114,7 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** [name_of_meta m] returns a parsable identifier for [m]. *)
-let name_of_meta m = assert (m.meta_key >= 0); sprintf "?%d" m.meta_key
+let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
     
 (** Generates new metavariables. *)
 let meta_counter : int ref = ref 0
