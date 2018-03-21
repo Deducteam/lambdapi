@@ -17,12 +17,12 @@ type p_term = p_term_aux loc
   | P_Wild
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
-   path), and for symbols. The [P_Wild] constructor corresponds to the wildcard
+   path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
    pattern ['_']. *)
 
 (** [build_prod xs a] build a product by abstracting away the arguments of the
     list [xs] on the body [a]. *)
-let build_prod : (strloc* p_term) list -> p_term -> p_term = fun xs a ->
+let build_prod : (strloc * p_term) list -> p_term -> p_term = fun xs a ->
    List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b))) xs a
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
@@ -33,9 +33,9 @@ let parser ident = id:''[_'a-zA-Z0-9]+'' ->
   if List.mem id ["Type"; "_"] then Earley.give_up (); in_pos _loc id
 
 (** [qident] is an atomic parser for a qualified identifier, or in other words
-    an identifier that may be preceded by a module path.  The different parts
-    are formed of the same characters as identifiers ([ident]), separated with
-    the ['.'] character. *)
+    an identifier preceded by an optional module path. Its different parts are
+    formed of the same characters as [ident], and are separated with the ['.']
+    character. *)
 let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   let fs = List.rev (String.split_on_char '.' id) in
   let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
@@ -160,10 +160,8 @@ let parser eval_config =
   | EMPTY                             -> Eval.{strategy = SNF; steps = None}
   | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s  ; steps = n   }
   | "[" n:steps s:{"," strategy}? "]" ->
-      begin
-        let strategy = match s with None -> Eval.SNF | Some(s) -> s in
-        Eval.{strategy; steps = Some(n)}
-      end
+      let strategy = match s with None -> Eval.SNF | Some(s) -> s in
+      Eval.{strategy; steps = Some(n)}
 
 let parser check =
   | "#CHECKNOT"  -> (false, true )
@@ -173,19 +171,19 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident xs:arg* ":" a:expr           -> P_NewSym(x, build_prod xs a)
-  | _def_ x:ident ":" a:expr             -> P_NewDef(x,a)
-  | _def_ x:ident (ao,t):def_def         -> P_Def(false,x,ao,t)
-  | _thm_ x:ident (ao,t):def_def         -> P_Def(true ,x,ao,t)
-  | rs:rule+                             -> P_Rules(rs)
-  | "#REQUIRE" path:mod_path             -> P_Import(path)
-  | "#DEBUG" f:''[+-]'' s:''[a-z]+''     -> P_Debug(f = "+", s)
-  | "#VERBOSE" n:''[-+]?[0-9]+''         -> P_Verb(int_of_string n)
-  | (ia,mf):check t:expr "::" a:expr     -> P_Test_T(ia,mf,t,a)
-  | (ia,mf):check t:expr "==" u:expr     -> P_Test_C(ia,mf,t,u)
-  | "#INFER" c:eval_config t:expr        -> P_Infer(t,c)
-  | "#EVAL" c:eval_config t:expr         -> P_Eval(t,c)
-  | c:"#NAME" _:ident                    -> P_Other(in_pos _loc_c c)
+  | x:ident xs:arg* ":" a:expr       -> P_NewSym(x, build_prod xs a)
+  | _def_ x:ident ":" a:expr         -> P_NewDef(x,a)
+  | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
+  | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
+  | rs:rule+                         -> P_Rules(rs)
+  | "#REQUIRE" path:mod_path         -> P_Import(path)
+  | "#DEBUG" f:''[+-]'' s:''[a-z]+'' -> P_Debug(f = "+", s)
+  | "#VERBOSE" n:''[-+]?[0-9]+''     -> P_Verb(int_of_string n)
+  | (ia,mf):check t:expr "::" a:expr -> P_Test_T(ia,mf,t,a)
+  | (ia,mf):check t:expr "==" u:expr -> P_Test_C(ia,mf,t,u)
+  | "#INFER" c:eval_config t:expr    -> P_Infer(t,c)
+  | "#EVAL" c:eval_config t:expr     -> P_Eval(t,c)
+  | c:"#NAME" _:ident                -> P_Other(in_pos _loc_c c)
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
