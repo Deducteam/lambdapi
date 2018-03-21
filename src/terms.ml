@@ -6,7 +6,7 @@ open Files
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
-  | Vari of tvar
+  | Vari of term_var
   (** "Type" constant. *)
   | Type
   (** "Kind" constant. *)
@@ -26,13 +26,10 @@ type term =
   (** Wildcard (used for pattern-matching). *)
   | Wild
 
- (** Short name for term variables. *)
- and tvar = term Bindlib.var
+(** Representation of a free term variable. *)
+ and term_var = term Bindlib.var
 
- (** Additional information on some [term] constructors. *)
- and info =
-  { closed : bool (** Set to [true] if the corresponding term is closed. *) }
-
+(** Representation of the binding of a term variable in a term. *)
  and term_binder = (term, term) Bindlib.binder
  and term_mbinder = (term, term) Bindlib.mbinder
   
@@ -57,7 +54,7 @@ type term =
   { def_name          : string      (** Name of the symbol. *)
   ; mutable def_type  : term        (** Type of the symbol. *)
   ; mutable def_rules : rule list   (** Reduction rules for the symbol. *)
-  ; def_path          : module_path (** Module in which it is defined. *) }
+  ; def_path          : module_path (** Module in which it is defined.  *) }
 
 (** Representation of a reduction rule. The definition of a rule is split into
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
