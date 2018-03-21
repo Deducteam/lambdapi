@@ -16,7 +16,7 @@ type p_term = p_term_aux loc
   | P_Appl of p_term * p_term
   | P_Wild
   | P_Meta of int * p_term array
-      
+
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
    pattern ['_']. *)

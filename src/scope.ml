@@ -95,7 +95,11 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           end
       | P_Meta(k,ts) ->
          let ts = Array.map (scope env) ts in
-         try _Meta (meta k) ts
+         try
+           let m = meta k in
+           if m.meta_arity = Array.length ts then _Meta m ts
+           else fatal "[%a] expects [%d] arguments but is applied to [%d] arguments\n" pp_meta m m.meta_arity (Array.length ts)
+           (*raise (E_wrong_number_of_arguments t)*)
          with Not_found -> (* This is a new user-defined metavariable. *)
            (* We introduce a new metavariable [m] for the type of [k]. *)
            let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
@@ -155,7 +159,7 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     (* Scoping the LHS and RHS. *)
     let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, Pos.none P_Type) (*FIXME*) ))) xs in
     let (s, l, wcs) = to_patt env sign t in
-    (*Reminder: type patt = def * tbox list * tvar array*)    
+    (*Reminder: type patt = def * tbox list * tvar array*)
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~env sign u in
