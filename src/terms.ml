@@ -14,9 +14,9 @@ type term =
   (** Symbol (static or definable). *)
   | Symb of symbol
   (** Dependent product. *)
-  | Prod of term * term_binder
+  | Prod of term * tbinder
   (** Abstraction. *)
-  | Abst of term * term_binder
+  | Abst of term * tbinder
   (** Application. *)
   | Appl of term * term
   (** Metavariable. *)
@@ -30,8 +30,8 @@ type term =
  and tvar = term Bindlib.var
 
 (** Representation of the binding of a term variable in a term. *)
- and term_binder = (term, term) Bindlib.binder
- and term_mbinder = (term, term) Bindlib.mbinder
+ and tbinder = (term, term) Bindlib.binder
+ and tmbinder = (term, term) Bindlib.mbinder
   
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
@@ -61,7 +61,7 @@ type term =
     in the context are bound on both sides of the rule. *)
  and rule =
   { lhs   : (term, term list) Bindlib.mbinder (** Left-hand side (pattern). *)
-  ; rhs   : term_mbinder (** Right-hand side. *)
+  ; rhs   : tmbinder (** Right-hand side. *)
   ; arity : int (** Minimal number of argument for the rule to apply. *) }
 
 (* NOTE the pattern for a rule (or [lhs]) is stored as a list of arguments for
@@ -83,7 +83,7 @@ type term =
   { meta_key : int
   ; meta_type : term
   ; meta_arity : int
-  ; meta_value : term_mbinder option ref }
+  ; meta_value : tmbinder option ref }
 
 (* NOTE a metavariable is represented using a multiple binder. It can hence be
    instanciated with an open term,  provided that its which free variables are
