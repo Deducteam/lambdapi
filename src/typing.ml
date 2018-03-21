@@ -41,17 +41,17 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
   let res =
     match unfold t with
     (* Sort *)
-    | Type        ->
+    | Type      ->
         unify c Kind
     (* Variable *)
-    | Vari(x)     ->
+    | Vari(x)   ->
         let cx = try find_tvar x ctx with Not_found -> assert false in
         unify_modulo cx c
     (* Symbol *)
-    | Symb(s)     ->
+    | Symb(s)   ->
         unify_modulo (symbol_type s) c
     (* Product *)
-    | Prod(_,a,b) ->
+    | Prod(a,b) ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
@@ -62,7 +62,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
           | c    -> err "[%a] is not a sort...\n" pp c; false
         end
     (* Abstraction *)
-    | Abst(_,a,t) ->
+    | Abst(a,t) ->
         begin
           let (x,tx) = Bindlib.unbind mkfree t in
           let c = whnf c in
@@ -72,7 +72,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
             | _         -> ()
           end;
           match unfold c with
-          | Prod(_,c,b) ->
+          | Prod(c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = add_tvar x a ctx in
               unify_modulo a c &&
@@ -85,12 +85,12 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
                 | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
                 | None       -> wrn "BUG3 (cannot infer sort)\n"; false
               end
-          | c           ->
+          | c         ->
               err "Product type expected, found [%a]...\n" pp c;
               assert(unfold c == c); false
         end
     (* Application *)
-    | Appl(_,t,u) ->
+    | Appl(t,u) ->
         begin
           match infer sign ctx t with
           | None    -> wrn "Cannot infer the type of [%a]\n%!" pp t; false
@@ -102,20 +102,20 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
                   | _         -> ()
                 end;
                 match unfold a with
-                | Prod(_,a,b) ->
+                | Prod(a,b) ->
                     unify_modulo (Bindlib.subst b u) c
                     && has_type sign ctx u a
-                | a           ->
+                | a         ->
                     err "Product expected for [%a], found [%a]...\n%!"
                       pp t pp a;
                     assert(unfold c == c); false
               end
         end
     (* No rule apply. *)
-    | Kind        -> assert false
-    | ITag(_)     -> assert false
-    | Meta(_,_)   -> assert false
-    | Wild        -> assert false
+    | Kind      -> assert false
+    | ITag(_)   -> assert false
+    | Meta(_,_) -> assert false
+    | Wild      -> assert false
   in
   if !debug_type then
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;

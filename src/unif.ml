@@ -17,16 +17,16 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
 (** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
 let rec occurs : meta -> term -> bool = fun r t ->
   match unfold t with
-  | Prod(_,a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Abst(_,a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
-  | Appl(_,t,u) -> occurs r t || occurs r u
-  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type        -> false
-  | Kind        -> false
-  | Vari(_)     -> false
-  | Symb(_)     -> false
-  | ITag(_)     -> false
-  | Wild        -> false
+  | Prod(a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Abst(a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Appl(t,u) -> occurs r t || occurs r u
+  | Meta(u,e) -> u == r || Array.exists (occurs r) e
+  | Type      -> false
+  | Kind      -> false
+  | Vari(_)   -> false
+  | Symb(_)   -> false
+  | ITag(_)   -> false
+  | Wild      -> false
 
 (** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
     telling whether it succeeded or not.  Note that the function also verifies
@@ -49,9 +49,9 @@ let unify : term -> term -> bool = fun a b ->
     | (Kind         , Kind         ) -> true
     | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
     | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
-    | (Prod(_,a1,b1), Prod(_,a2,b2)) -> unify a1 a2 && unify_binder b1 b2
-    | (Abst(_,a1,t1), Abst(_,a2,t2)) -> unify a1 a2 && unify_binder t1 t2
-    | (Appl(_,t1,u1), Appl(_,t2,u2)) -> unify t1 t2 && unify u1 u2
+    | (Prod(a1,b1)  , Prod(a2,b2)  ) -> unify a1 a2 && unify_binder b1 b2
+    | (Abst(a1,t1)  , Abst(a2,t2)  ) -> unify a1 a2 && unify_binder t1 t2
+    | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify t1 t2 && unify u1 u2
     | (Wild         , _            ) -> assert false
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
@@ -116,14 +116,14 @@ let unify_modulo : term -> term -> bool = fun a b ->
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
         match (a, b) with
-        | (a            , b            ) when unify a b -> unify_modulo l
-        | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
+        | (a          , b          ) when unify a b -> unify_modulo l
+        | (Abst(aa,ba), Abst(ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             unify_modulo ((aa,ab)::(ba,bb)::l)
-        | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
+        | (Prod(aa,ba), Prod(ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             unify_modulo ((aa,ab)::(ba,bb)::l)
-        | (a            , b            ) ->
+        | (a          , b          ) ->
             add_constraint a b && unify_modulo l
   in
   let res = unify_modulo [(a,b)] in
