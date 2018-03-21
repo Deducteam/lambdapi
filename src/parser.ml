@@ -6,16 +6,19 @@ open Pos
 
 #define LOCATE locate
 
+(** Parser-level representation of a qualified identifier. *)
+type qident = (module_path * string) loc
+
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
  and p_term_aux =
-  | P_Vari of string list * string
+  | P_Vari of qident
   | P_Type
   | P_Prod of strloc * p_term * p_term
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
-  | P_Meta of int * p_term array
+  | P_Meta of strloc * p_term array
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
@@ -40,7 +43,7 @@ let parser ident = id:''[_'a-zA-Z0-9]+'' ->
 let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   let fs = List.rev (String.split_on_char '.' id) in
   let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
-  if List.mem id ["Type"; "_"] then Earley.give_up (); (fs,x)
+  if List.mem id ["Type"; "_"] then Earley.give_up (); in_pos _loc (fs,x)
 
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
@@ -61,8 +64,8 @@ let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
-  | (fs,x):qident
-      when p = `Atom -> in_pos _loc (P_Vari(fs,x))
+  | qid:qident
+      when p = `Atom -> in_pos _loc (P_Vari(qid))
   (* Type constant *)
   | _Type_
       when p = `Atom -> in_pos _loc P_Type
@@ -79,9 +82,8 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
-  | "?" n:''[0-9]+'' "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
-      when p = `Atom ->
-     in_pos _loc (P_Meta(int_of_string n, Array.of_list (e::es)))
+  | "?" - n:ident "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
+      when p = `Atom -> in_pos _loc (P_Meta(n, Array.of_list (e::es)))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom

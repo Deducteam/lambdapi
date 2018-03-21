@@ -80,8 +80,9 @@ type term =
 
 (** Representation of a metavariable. *)
  and meta =
-  { meta_key : int
-  ; meta_type : term
+  { meta_key   : int
+  ; meta_name  : string option
+  ; meta_type  : term
   ; meta_arity : int
   ; meta_value : tmbinder option ref }
 
@@ -115,37 +116,34 @@ let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
 
 (** Generates new metavariables. *)
 let meta_counter : int ref = ref 0
-let meta_table : (int * meta) list ref = ref []
 
-(** [new_meta typ n] creates a new uninstantiated metavariable of type
-    [typ] and arity [n]. *)
-let new_meta : term -> int -> meta = fun typ n ->
-  incr meta_counter;
-  let m = { meta_key = !meta_counter
-         ; meta_type = typ
-         ; meta_arity = n
-         ; meta_value = ref None } in
-  meta_table := (!meta_counter, m) :: !meta_table;
-  if !debug_meta then log "meta" "?%i created" !meta_counter;
-  m
+let all_meta  : (int   , meta) Hashtbl.t = Hashtbl.create 107
+let user_meta : (string, meta) Hashtbl.t = Hashtbl.create 31
 
-(** [meta k] returns the metavariable whose key is [k] if it
+(** [new_meta ?name a n] creates a fresh (uninstantiated) metavariable of type
+    [a], and arity [n]. The [name] should be used when creating a user-defined
+    metavariable, using the name chosen by the user. Note that the name, if it
+    is given, should not correspond to a previously created metavariable. *)
+let new_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
+  assert(match name with Some n -> not (Hashtbl.mem user_meta n) | _ -> true);
+  let key = incr meta_counter; !meta_counter in
+  let m =
+    { meta_key   = key
+    ; meta_name  = name
+    ; meta_type  = a
+    ; meta_arity = n
+    ; meta_value = ref None }
+  in
+  Hashtbl.add all_meta key m;
+  match name with
+  | None       -> if !debug_meta then log "meta" "?%i created" key; m
+  | Some(name) ->
+      Hashtbl.add user_meta name m;
+      if !debug_meta then log "meta" "?%i(%s) created" key name; m
+
+(** [named_meta name] returns the metavariable named whose key is [k] if it
     exists. Raises Not_found otherwise. *)
-let meta : int -> meta = fun k -> List.assoc k !meta_table
-
-(** [user_meta k typ n] returns a new uninstantiated metavariable
-    whose key is [k], type is [typ] and arity is [n]. [k] must not be
-    in [!meta_table]. *)
-let user_meta : int -> term -> int -> meta = fun k typ n ->
-  assert (not (List.mem_assoc k !meta_table));
-  let m = { meta_key = k
-         ; meta_type = typ
-         ; meta_arity = n
-         ; meta_value = ref None } in
-  meta_table := (k, m) :: !meta_table;
-  meta_counter := max !meta_counter k + 1;
-  if !debug_meta then log "meta" "?%i created" !meta_counter;
-  m
+let named_meta : string -> meta = Hashtbl.find user_meta
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None

@@ -13,103 +13,109 @@ open Pos
 let wrn_no_type : bool ref = ref false
 
 (** Representation of an environment for variables. *)
-type env = (string * (tvar * (strloc * p_term))) list
+type env = (string * (tvar * (strloc * tbox))) list
 
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
-let add : string -> tvar -> (strloc * p_term) -> env -> env =
+let add : string -> tvar -> (strloc * tbox) -> env -> env =
   fun s v x env -> if s = "_" then env else (s,(v,x))::env
 
-(** [find_var sign env mp x] returns a bindbox corresponding to a variable of
-    the environment [env], or to a symbol named [x] with module path [mp]. In
-    the case where [mp] is empty, we first search [x] in the environement, and
-    if it is not mapped we also search in the current signature [sign]. If the
-    name does not correspond to anything, the program fails gracefully. *)
-let find_var : Sign.t -> env -> module_path -> string -> tbox =
-  fun sign env mp x ->
-    if mp = [] then
-      (* No module path, search the environment first. *)
-      begin
-        try Bindlib.box_of_var (fst (List.assoc x env)) with Not_found ->
-        try _Symb (Sign.find sign x) with Not_found ->
-        fatal "Unbound variable or symbol %S...\n%!" x
-      end
-    else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
-      (* Module path is not available (not loaded), fail. *)
-      begin
-        let cur = String.concat "." Sign.(sign.path) in
-        let req = String.concat "." mp in
-        fatal "No module %s loaded in %s...\n%!" req cur
-      end
-    else
-      (* Module path loaded, look for symbol. *)
-      begin
-        (* Cannot fail. *)
-        let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
-        try _Symb (Sign.find sign x) with Not_found ->
-        fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
-      end
+(** [find_var sign env mp x] returns a bindbox corresponding to a variable  of
+    the environment [env], or to a symbol named [x] which module path is [mp].
+    In the case where [mp] is empty,  we first search [x] in the environement,
+    and if it is not mapped we also search in the current signature [sign]. If
+    the name does not correspond to anything, the program fails gracefully. *)
+let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
+  let (mp, x) = qid.elt in
+  if mp = [] then
+    (* No module path, search the environment first. *)
+    begin
+      try Bindlib.box_of_var (fst (List.assoc x env)) with Not_found ->
+      try _Symb (Sign.find sign x) with Not_found ->
+      fatal "Unbound variable or symbol %S...\n%!" x
+    end
+  else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
+    (* Module path is not available (not loaded), fail. *)
+    begin
+      let cur = String.concat "." Sign.(sign.path) in
+      let req = String.concat "." mp in
+      fatal "No module %s loaded in %s...\n%!" req cur
+    end
+  else
+    (* Module path loaded, look for symbol. *)
+    begin
+      (* Cannot fail. *)
+      let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
+      try _Symb (Sign.find sign x) with Not_found ->
+      fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
+    end
+
+(** [build_meta ctx] builds a new metavariable which environment contains  all
+    the variable of the “context” [ctx] (last variable first). Note that a new
+    metavariable is also created for the type of the metavariable. *)
+let build_meta : ?name:string -> (tvar * tbox) list -> tbox = fun ?name ctx ->
+  (* We create a metavariable for the type of the metavariable. *)
+  let (vs,a) =
+    let build (vs,b) (x,a) =
+      let f = Bindlib.bind_var x b in
+      let b = Bindlib.box_apply2 (fun a f -> Prod(a,f)) a f in
+      (x :: vs, b)
+    in
+    let (vs,a) = List.fold_left build ([],_Type) ctx in
+    (Array.of_list vs, Bindlib.unbox a)
+  in
+  let m = new_meta a (Array.length vs) in
+  let a = Meta(m, Array.map mkfree vs) in
+  (* We create a new metavariable with type [a]. *)
+  let m = new_meta ?name a (Array.length vs) in
+  _Meta m (Array.map Bindlib.box_of_var vs)
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
-    an actual term using the free variables of the environment [env], and the
+    an actual term using the free variables of the environment [env], and  the
     symbols of the signature [sign]. Wildcards are replaced by new
     metavariables. *)
-
 let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
   fun new_wildcard env sign t ->
     let rec scope env t =
       match t.elt with
-      | P_Vari(mp,x)  -> find_var sign env mp x
+      | P_Vari(qid)   -> find_var sign env qid
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
-         let f v = scope (add x.elt v (x,a) env) b in
-          _Prod (scope env a) x.elt f
-      | P_Abst(x,a_opt,b) ->
+          let a = scope env a in
+          let f v = scope (add x.elt v (x,a) env) b in
+          _Prod a x.elt f
+      | P_Abst(x,a,b) ->
           let a =
-            match a_opt with
-            | Some a -> a
-            | None ->
-              (* If there is no type annotation, we create a
-                 metavariable for it. *)
+            match a with
+            | Some(a) -> scope env a
+            | None    ->
+                (* No type annotation, we create a metavariable. *)
                 if !wrn_no_type then
-                  wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
-              (* We introduce a new metavariable [m] for the type of [x]. *)
-              let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
-              let prod t =
-                Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
-              let n = List.length env in
-              let m = new_meta (prod P_Type) n in
-              (*REMOVE:let fn (_,(v,_)) = Bindlib.box_of_var v in
-                let vars = List.map fn env in
-                _Meta m (Array.of_list vars)*)
-              let fn (s,_) = Pos.none (P_Vari([],s)) in
-              let vars = List.rev_map fn env in
-              Pos.none (P_Meta (m.meta_key, Array.of_list vars))
+                  wrn "No type given for %s at %a\n" x.elt Pos.print x.pos;
+                build_meta (List.map (fun (_,(x,(_,a))) -> (x,a)) env)
           in
           let f v = scope (add x.elt v (x,a) env) b in
-          _Abst (scope env a) x.elt f
+          _Abst a x.elt f
       | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
-          begin match new_wildcard with
-          | None    -> fatal "\"_\" not allowed in terms...\n"
-          | Some(f) -> f ()
+          begin
+            match new_wildcard with
+            | None    -> fatal "\"_\" not allowed in terms...\n"
+            | Some(f) -> f ()
           end
       | P_Meta(k,ts) ->
-         let ts = Array.map (scope env) ts in
-         try
-           let m = meta k in
-           if m.meta_arity = Array.length ts then _Meta m ts
-           else fatal "[%a] expects [%d] arguments but is applied to [%d] arguments\n" pp_meta m m.meta_arity (Array.length ts)
-           (*raise (E_wrong_number_of_arguments t)*)
-         with Not_found -> (* This is a new user-defined metavariable. *)
-           (* We introduce a new metavariable [m] for the type of [k]. *)
-           let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
-           let prod t =
-             Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
-           let n = List.length env in
-           let m = new_meta (prod P_Type) n in
-           let vars = List.rev_map (fun (s,_) -> Pos.none (P_Vari([],s))) env in
-           let tk = prod (P_Meta (m.meta_key, Array.of_list vars)) in
-           _Meta (user_meta k tk n) ts
+          begin
+            let ts = Array.map (scope env) ts in
+            let ar = Array.length ts in
+            try
+              let m = named_meta k.elt in
+              if m.meta_arity <> ar then
+                fatal "[%a] expects %i arguments (%d given) %a\n"
+                  pp_meta m m.meta_arity ar Pos.print k.pos;
+              _Meta m ts
+            with Not_found ->
+              let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
+              build_meta ~name:k.elt ctx
+          end
     in
     scope env t
 
@@ -157,7 +163,7 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     (*Reminder: type p_rule = (strloc * p_term option) list * p_term * p_term*)
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
-    let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, Pos.none P_Type) (*FIXME*) ))) xs in
+    let env = List.map (fun x -> (x.elt, (Bindlib.new_var mkfree x.elt, (x, _Type) (*FIXME*) ))) xs in
     let (s, l, wcs) = to_patt env sign t in
     (*Reminder: type patt = def * tbox list * tvar array*)
     let arity = List.length l in
@@ -177,25 +183,26 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
     let ty_map = List.map (fun (n,(x,_)) -> (x, List.assoc n xs_ty_map)) env in
     let fn x =
-      let n = Bindlib.name_of x in (n, (x, (Pos.none n, Pos.none P_Type))) in
+      let n = Bindlib.name_of x in
+      (n, (x, (Pos.none n, _Type)))
+    in
     let add_var (env, ctx) x =
       let a =
         try
           match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
           | None    -> raise Not_found
-          | Some(a) -> to_term ~env sign a (* FIXME order ? *)
+          | Some(a) -> to_tbox ~env sign a (* FIXME order ? *)
         with Not_found ->
           (* FIXME order (temporary hack.
           let fn (_,x) = Bindlib.box_of_var x in
           let vars = List.map fn vars in
           Bindlib.unbox (_Meta (new_meta ()) (Array.of_list vars))
           *)
-          Bindlib.unbox
-            (_Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs))
+          _Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs)
       (* We use dummy values for the context and type since they are
          not used in the current type-checking algorithm. *)
       in
-      (fn x :: env, add_tvar x a ctx)
+      (fn x :: env, add_tvar x (Bindlib.unbox a) ctx)
     in
     let wcs = Array.to_list wcs in
     let wcs = List.map fn wcs in
