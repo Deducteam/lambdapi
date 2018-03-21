@@ -6,7 +6,7 @@ open Files
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
-  | Vari of term Bindlib.var
+  | Vari of term_var
   (** "Type" constant. *)
   | Type
   (** "Kind" constant. *)
@@ -14,9 +14,9 @@ type term =
   (** Symbol (static or definable). *)
   | Symb of symbol
   (** Dependent product. *)
-  | Prod of term * (term, term) Bindlib.binder
+  | Prod of term * term_binder
   (** Abstraction. *)
-  | Abst of term * (term, term) Bindlib.binder
+  | Abst of term * term_binder
   (** Application. *)
   | Appl of term * term
   (** Metavariable. *)
@@ -25,6 +25,12 @@ type term =
   | ITag of int
   (** Wildcard (used for pattern-matching). *)
   | Wild
+
+(** Representation of a free term variable. *)
+ and term_var = term Bindlib.var
+
+(** Representation of the binding of a term variable in a term. *)
+ and term_binder = (term, term) Bindlib.binder
 
 (** Representation of a (static or definable) symbol. *)
  and symbol = Sym of sym | Def of def
@@ -47,7 +53,7 @@ type term =
   { def_name          : string      (** Name of the symbol. *)
   ; mutable def_type  : term        (** Type of the symbol. *)
   ; mutable def_rules : rule list   (** Reduction rules for the symbol. *)
-  ; def_path          : module_path (** Module in which it is defined. *) }
+  ; def_path          : module_path (** Module in which it is defined.  *) }
 
 (** Representation of a reduction rule. The definition of a rule is split into
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
@@ -83,7 +89,7 @@ type term =
    the binder whenever the metavariable has been instanciated. *)
 
 (** Short name for term variables. *)
- and tvar = term Bindlib.var
+ and tvar = term_var
 
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
