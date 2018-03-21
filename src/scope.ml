@@ -66,50 +66,50 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Abst(x,a_opt,b) ->
           let a =
             match a_opt with
-	    | Some a -> a
+            | Some a -> a
             | None ->
-	      (* If there is no type annotation, we create a
-		 metavariable for it. *)
+              (* If there is no type annotation, we create a
+                 metavariable for it. *)
                 if !wrn_no_type then
                   wrn "No type provided for %s at %a\n" x.elt Pos.print x.pos;
-	      (* We introduce a new metavariable [m] for the type of [x]. *)
-	      let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
-	      let prod t =
-		Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
-	      let n = List.length env in
-	      let m = new_meta (prod P_Type) n in
-	      (*REMOVE:let fn (_,(v,_)) = Bindlib.box_of_var v in
-		let vars = List.map fn env in
-		_Meta m (Array.of_list vars)*)
-	      let fn (s,_) = Pos.none (P_Vari([],s)) in
-	      let vars = List.rev_map fn env in
-	      Pos.none (P_Meta (m.meta_key, Array.of_list vars))
-	  in
-	  let f v = scope (add x.elt v (x,a) env) b in
+              (* We introduce a new metavariable [m] for the type of [x]. *)
+              let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
+              let prod t =
+                Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
+              let n = List.length env in
+              let m = new_meta (prod P_Type) n in
+              (*REMOVE:let fn (_,(v,_)) = Bindlib.box_of_var v in
+                let vars = List.map fn env in
+                _Meta m (Array.of_list vars)*)
+              let fn (s,_) = Pos.none (P_Vari([],s)) in
+              let vars = List.rev_map fn env in
+              Pos.none (P_Meta (m.meta_key, Array.of_list vars))
+          in
+          let f v = scope (add x.elt v (x,a) env) b in
           _Abst (scope env a) x.elt f
       | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
           begin match new_wildcard with
           | None    -> fatal "\"_\" not allowed in terms...\n"
           | Some(f) -> f ()
-	  end
+          end
       | P_Meta(k,ts) ->
-	 let ts = Array.map (scope env) ts in
-	 try
-	   let m = meta k in
-	   if m.meta_arity = Array.length ts then _Meta m ts
-	   else fatal "[%a] expects [%d] arguments but is applied to [%d] arguments\n" pp_meta m m.meta_arity (Array.length ts)
-	 (*raise (E_wrong_number_of_arguments t)*)
-	 with Not_found -> (* This is a new user-defined metavariable. *)
-	   (* We introduce a new metavariable [m] for the type of [k]. *)
-	   let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
-	   let prod t =
-	     Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
-	   let n = List.length env in
-	   let m = new_meta (prod P_Type) n in
-	   let vars = List.rev_map (fun (s,_) -> Pos.none (P_Vari([],s))) env in
-	   let tk = prod (P_Meta (m.meta_key, Array.of_list vars)) in
-	   _Meta (user_meta k tk n) ts
+         let ts = Array.map (scope env) ts in
+         try
+           let m = meta k in
+           if m.meta_arity = Array.length ts then _Meta m ts
+           else fatal "[%a] expects [%d] arguments but is applied to [%d] arguments\n" pp_meta m m.meta_arity (Array.length ts)
+           (*raise (E_wrong_number_of_arguments t)*)
+         with Not_found -> (* This is a new user-defined metavariable. *)
+           (* We introduce a new metavariable [m] for the type of [k]. *)
+           let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
+           let prod t =
+             Bindlib.unbox (scope [] (build_prod xas (Pos.none t))) in
+           let n = List.length env in
+           let m = new_meta (prod P_Type) n in
+           let vars = List.rev_map (fun (s,_) -> Pos.none (P_Vari([],s))) env in
+           let tk = prod (P_Meta (m.meta_key, Array.of_list vars)) in
+           _Meta (user_meta k tk n) ts
     in
     scope env t
 
@@ -191,9 +191,9 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
           Bindlib.unbox (_Meta (new_meta ()) (Array.of_list vars))
           *)
           Bindlib.unbox
-	    (_Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs))
+            (_Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs))
       (* We use dummy values for the context and type since they are
-	 not used in the current type-checking algorithm. *)
+         not used in the current type-checking algorithm. *)
       in
       (fn x :: env, add_tvar x a ctx)
     in
