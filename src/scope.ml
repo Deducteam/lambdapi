@@ -95,7 +95,11 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
 	  end
       | P_Meta(k,ts) ->
 	 let ts = Array.map (scope env) ts in
-	 try _Meta (meta k) ts
+	 try
+	   let m = meta k in
+	   if m.meta_arity = Array.length ts then _Meta m ts
+	   else fatal "[%a] expects [%d] arguments but is applied to [%d] arguments\n" pp_meta m m.meta_arity (Array.length ts)
+	 (*raise (E_wrong_number_of_arguments t)*)
 	 with Not_found -> (* This is a new user-defined metavariable. *)
 	   (* We introduce a new metavariable [m] for the type of [k]. *)
 	   let xas = List.rev_map (fun (_,(_,xa)) -> xa) env in
