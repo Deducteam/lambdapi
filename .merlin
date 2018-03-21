@@ -1,0 +1,3 @@
+S src
+B _build/src
+PKG bindlib earley earley.str
