@@ -16,9 +16,9 @@ let eq : term -> term -> bool = fun a b ->
     | (Kind         , Kind         ) -> true
     | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
     | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
-    | (Prod(_,a1,b1), Prod(_,a2,b2)) -> eq a1 a2 && eq_binder b1 b2
-    | (Abst(_,a1,t1), Abst(_,a2,t2)) -> eq a1 a2 && eq_binder t1 t2
-    | (Appl(_,t1,u1), Appl(_,t2,u2)) -> eq t1 t2 && eq u1 u2
+    | (Prod(a1,b1)  , Prod(a2,b2)  ) -> eq a1 a2 && eq_binder b1 b2
+    | (Abst(a1,t1)  , Abst(a2,t2)  ) -> eq a1 a2 && eq_binder t1 t2
+    | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq t1 t2 && eq u1 u2
     | (Wild         , _            ) -> assert false
     | (_            , Wild         ) -> assert false
     | (ITag(_)      , _            ) -> assert false
@@ -38,7 +38,7 @@ let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
     match args with
     | []      -> t
-    | u::args -> to_term (appl t !u) args
+    | u::args -> to_term (Appl(t,!u)) args
   in to_term t args
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
@@ -54,9 +54,9 @@ let rec whnf : term -> term = fun t ->
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
-  | (Appl(_,f,u) , stk    )       -> whnf_stk f (ref u :: stk)
+  | (Appl(f,u)   , stk    )       -> whnf_stk f (ref u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,_,f) , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
+  | (Abst(_,f)   , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
   | (Symb(Def(s)), stk    ) as st ->
       begin
@@ -105,15 +105,15 @@ and matching : term array -> term -> term ref -> bool = fun ar p t ->
     (* Other cases need the term to be evaluated. *)
     t := whnf !t;
     match (p, !t) with
-    | (ITag(i)      , t            ) -> eq_modulo ar.(i) t (* t <> ITag(i) *)
-    | (Abst(_,_,t1) , Abst(_,_,t2) ) ->
+    | (ITag(i)      , t        ) -> eq_modulo ar.(i) t (* t <> ITag(i) *)
+    | (Abst(_,t1) , Abst(_,t2) ) ->
         let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
         matching ar t1 (ref t2)
-    | (Appl(_,t1,u1), Appl(_,t2,u2)) ->
+    | (Appl(t1,u1), Appl(t2,u2)) ->
         matching ar t1 (ref t2) && matching ar u1 (ref u2)
-    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
-    | (_            , _            ) -> false
+    | (Vari(x1)   , Vari(x2)   ) -> Bindlib.eq_vars x1 x2
+    | (Symb(s1)   , Symb(s2)   ) -> s1 == s2
+    | (_          , _          ) -> false
   in
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
@@ -136,14 +136,14 @@ and eq_modulo : term -> term -> bool = fun a b ->
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
         match (a, b) with
-        | (a            , b            ) when eq a b -> eq_modulo l
-        | (Abst(_,aa,ba), Abst(_,ab,bb)) ->
+        | (a          , b          ) when eq a b -> eq_modulo l
+        | (Abst(aa,ba), Abst(ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (Prod(_,aa,ba), Prod(_,ab,bb)) ->
+        | (Prod(aa,ba), Prod(ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (a            , b            ) -> false
+        | (a          , b          ) -> false
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
@@ -152,30 +152,30 @@ and eq_modulo : term -> term -> bool = fun a b ->
 let rec snf : term -> term = fun t ->
   let h = whnf t in
   match h with
-  | Vari(_)     -> h
-  | Type        -> h
-  | Kind        -> h
-  | Symb(_)     -> h
-  | Prod(i,a,b) ->
+  | Vari(_)   -> h
+  | Type      -> h
+  | Kind      -> h
+  | Symb(_)   -> h
+  | Prod(a,b) ->
       let (x,b) = Bindlib.unbind mkfree b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Prod(i, snf a, b)
-  | Abst(i,a,b) ->
+      Prod(snf a, b)
+  | Abst(a,b) ->
       let (x,b) = Bindlib.unbind mkfree b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Abst(i, snf a, b)
-  | Appl(i,t,u) -> Appl(i, snf t, snf u)
+      Abst(snf a, b)
+  | Appl(t,u) -> Appl(snf t, snf u)
   | Meta(m,ts)  -> Meta(m,Array.map snf ts)
-  | ITag(_)     -> assert false
-  | Wild        -> assert false
+  | ITag(_)   -> assert false
+  | Wild      -> assert false
 
 (** [hnf t] computes the head normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
   match whnf t with
-  | Appl(i,t,u) -> Appl(i, hnf t, hnf u)
-  | t           -> t
+  | Appl(t,u) -> Appl(hnf t, hnf u)
+  | t         -> t
 
 (** Type representing the different evaluation strategies. *)
 type strategy = WHNF | HNF | SNF

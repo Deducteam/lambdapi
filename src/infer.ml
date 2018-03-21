@@ -5,9 +5,7 @@ open Print
 open Extra
 open Console
 
-let prod x t u =
-  let u = Bindlib.unbox (Bindlib.bind_var x (lift u)) in 
-  Prod({closed=false}(*FIXME*), t, u)
+let prod x t u = Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
     
 type constr = ctxt * term * term
 
@@ -35,7 +33,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
     (* Symbol *)
     | Symb(s)     -> p, symbol_type s
     (* Product *)
-    | Prod(_,t,f) ->
+    | Prod(t,f) ->
        begin
 	 let p = check p c t Type in
 	 let (x,u) = Bindlib.unbind mkfree f in
@@ -46,7 +44,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
 	 | _ -> err "[%a] is not a sort...\n" pp typ_u; raise Not_typable
        end
     (* Abstraction *)
-    | Abst(_,t,f) ->
+    | Abst(t,f) ->
        begin
 	 let p = check p c t Type in
          let (x,u) = Bindlib.unbind mkfree f in
@@ -55,12 +53,12 @@ let rec infer : problem -> ctxt -> term -> problem * term =
 	 p, prod x t u
        end
     (* Application *)
-    | Appl(_,t,u) ->
+    | Appl(t,u) ->
        begin
 	 let p, typ_u = infer p c u in
 	 let p, typ_t = infer p c t in
 	 match typ_t with
-	 | Prod(_,a,f) -> add_constr c a typ_u p, Bindlib.subst f u
+	 | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
 	 | _ -> err "[%a] is not a product...\n" pp typ_t; raise Not_typable
        end
     (* Metavariable *)

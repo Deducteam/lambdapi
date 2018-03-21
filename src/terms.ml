@@ -14,11 +14,11 @@ type term =
   (** Symbol (static or definable). *)
   | Symb of symbol
   (** Dependent product. *)
-  | Prod of info * term * term_binder
+  | Prod of term * term_binder
   (** Abstraction. *)
-  | Abst of info * term * term_binder
+  | Abst of term * term_binder
   (** Application. *)
-  | Appl of info * term * term
+  | Appl of term * term
   (** Metavariable. *)
   | Meta of meta * term array
   (** Integer tag (used for pattern-matching). *)
@@ -178,24 +178,21 @@ let _Symb : symbol -> tbox = fun s -> Bindlib.box (Symb(s))
 
 (** [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
 let _Appl : tbox -> tbox -> tbox = fun t u ->
-  let closed = Bindlib.is_closed t && Bindlib.is_closed u in
-  Bindlib.box_apply2 (fun t u -> Appl({closed},t,u)) t u
+  Bindlib.box_apply2 (fun t u -> Appl(t,u)) t u
 
 (** [_Prod a x f] lifts a dependent product node to the [bindbox] type given a
     boxed term [a] (the type of the domain), a prefered name [x] for the bound
     variable, and a function [f] to build the [binder] (codomain). *)
 let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let b = Bindlib.vbind mkfree x f in
-  let closed = Bindlib.is_closed a && Bindlib.is_closed b in
-  Bindlib.box_apply2 (fun a b -> Prod({closed},a,b)) a b
+  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
 
 (** [_Abst a x f] lifts an abstraction node to the [bindbox] type given a term
     [a] (the type of the bound variable),  the prefered name [x] for the bound
     variable, and the function [f] to build the [binder] (body). *)
 let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let b = Bindlib.vbind mkfree x f in
-  let closed = Bindlib.is_closed a && Bindlib.is_closed b in
-  Bindlib.box_apply2 (fun a b -> Abst({closed},a,b)) a b
+  Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
 
 (** [_Meta u ar] lifts a metavariable [u] to the [bindbox] type, given
     its environment [ar]. The metavariable should not  be instanciated
@@ -213,50 +210,24 @@ let _Wild : tbox = Bindlib.box Wild
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   match unfold t with
-  | Vari(x)     -> _Vari x
-  | Type        -> _Type
-  | Kind        -> _Kind
-  | Symb(s)     -> _Symb s
-  | Prod(i,_,_) when i.closed -> Bindlib.box t
-  | Prod(_,a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
-  | Abst(i,_,_) when i.closed -> Bindlib.box t
-  | Abst(_,a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
-  | Appl(i,_,_) when i.closed -> Bindlib.box t
-  | Appl(_,t,u) -> _Appl (lift t) (lift u)
-  | Meta(r,m)   -> _Meta r (Array.map lift m)
-  | ITag(i)     -> _ITag i
-  | Wild        -> _Wild
-
-(** [is_closed t] tests whether the term [t] is closed,  using the information
-    stored in the [info] elements. *)
-let rec is_closed : term -> bool = fun t ->
-  match unfold t with
-  | Vari(_)     -> false
-  | Prod(i,_,_) -> i.closed
-  | Abst(i,_,_) -> i.closed
-  | Appl(i,_,_) -> i.closed
-  | Meta(_,ar)  -> Array.for_all is_closed ar
-  | _           -> true
-
-(** [appl t u] builds the application of the terms [t] and [u] (outside of the
-    [bindbox] type), computing the correct value for the [closed] field. *)
-let appl : term -> term -> term = fun t u ->
-  let closed = is_closed t && is_closed u in
-  Appl({closed},t,u)
-
-(** [prod a b] builds the product type of domain [a] and codomain [b] (outside 
-    of the [bindbox] type), computing the correct value for [closed]. *)
-let prod : term -> (term, term) Bindlib.binder -> term = fun a b ->
-  let closed = is_closed a && Bindlib.binder_closed b in
-  Prod({closed},a,b) 
+  | Vari(x)   -> _Vari x
+  | Type      -> _Type
+  | Kind      -> _Kind
+  | Symb(s)   -> _Symb s
+  | Prod(a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Abst(a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Appl(t,u) -> _Appl (lift t) (lift u)
+  | Meta(r,m) -> _Meta r (Array.map lift m)
+  | ITag(i)   -> _ITag i
+  | Wild      -> _Wild
 
 (** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
     and [args] is the list of its arguments. *)
 let get_args : term -> term * term list = fun t ->
   let rec get_args acc t =
     match unfold t with
-    | Appl(_,t,u) -> get_args (u::acc) t
-    | t           -> (t, acc)
+    | Appl(t,u) -> get_args (u::acc) t
+    | t         -> (t, acc)
   in get_args [] t
 
 (** [add_args h args] builds the application of a term [h] to a list [args] of
@@ -265,7 +236,7 @@ let add_args : term -> term list -> term = fun t args ->
   let rec add_args t args =
     match args with
     | []      -> t
-    | u::args -> add_args (appl t u) args
+    | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
 (** [symbol_type s] returns the type of the given symbol [s]. *)

@@ -46,16 +46,16 @@ let link : t -> unit = fun sign ->
       Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
     in
     match unfold t with
-    | Vari(x)     -> t
-    | Type        -> t
-    | Kind        -> t
-    | Symb(s)     -> Symb(link_symb s)
-    | Prod(i,a,b) -> Prod(i, link_term a, link_binder b)
-    | Abst(i,a,t) -> Abst(i, link_term a, link_binder t)
-    | Appl(i,t,u) -> Appl(i, link_term t, link_term u)
-    | Meta(_,_)   -> assert false
-    | ITag(_)     -> assert false
-    | Wild        -> Wild
+    | Vari(x)   -> t
+    | Type      -> t
+    | Kind      -> t
+    | Symb(s)   -> Symb(link_symb s)
+    | Prod(a,b) -> Prod(link_term a, link_binder b)
+    | Abst(a,t) -> Abst(link_term a, link_binder t)
+    | Appl(t,u) -> Appl(link_term t, link_term u)
+    | Meta(_,_) -> assert false
+    | ITag(_)   -> assert false
+    | Wild      -> Wild
   and link_rule r =
     let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
     let lhs = List.map link_term lhs in
@@ -115,9 +115,9 @@ let unlink : t -> unit = fun sign ->
     | Kind         -> ()
     | Symb(Sym(s)) -> if s.sym_path <> sign.path then unlink_sym s
     | Symb(Def(s)) -> if s.def_path <> sign.path then unlink_def s
-    | Prod(_,a,b)  -> unlink_term a; unlink_binder b
-    | Abst(_,a,t)  -> unlink_term a; unlink_binder t
-    | Appl(_,t,u)  -> unlink_term t; unlink_term u
+    | Prod(a,b)    -> unlink_term a; unlink_binder b
+    | Abst(a,t)    -> unlink_term a; unlink_binder t
+    | Appl(t,u)    -> unlink_term t; unlink_term u
     | Meta(_,_)    -> assert false
     | ITag(_)      -> assert false
     | Wild         -> ()

@@ -30,26 +30,26 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     let t = unfold t in
     match (t, p) with
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)    , _    ) -> pp_tvar oc x
-    | (Type       , _    ) -> pstring "Type"
-    | (Kind       , _    ) -> pstring "Kind"
-    | (Symb(s)    , _    ) -> pp_symbol oc s
-    | (Meta(m,e)  , _    ) -> pformat "?%i[%a]" m.meta_key
+    | (Vari(x)  , _    ) -> pp_tvar oc x
+    | (Type     , _    ) -> pstring "Type"
+    | (Kind     , _    ) -> pstring "Kind"
+    | (Symb(s)  , _    ) -> pp_symbol oc s
+    | (Meta(m,e), _    ) -> pformat "?%i[%a]" m.meta_key
                                 (Array.pp (pp `Appl) ",") e
-    | (ITag(i)    , _    ) -> pformat "[%i]" i
+    | (ITag(i)  , _    ) -> pformat "[%i]" i
     (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(_,t,u), `Appl)
-    | (Appl(_,t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
+    | (Appl(t,u), `Appl)
+    | (Appl(t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(_,a,t), `Func) ->
+    | (Abst(a,t), `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
         pformat "%a:%a => %a" pp_tvar x (pp `Func) a (pp `Func) t
-    | (Prod(_,a,b), `Func) ->
+    | (Prod(a,b), `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
         if Bindlib.binder_occur b then pformat "%a:" pp_tvar x;
         pformat "%a -> %a" (pp `Appl) a (pp `Func) c
     (* Anything else needs parentheses. *)
-    | (_          , _    ) -> pformat "(%a)" (pp `Func) t
+    | (_        , _    ) -> pformat "(%a)" (pp `Func) t
   in
   pp `Func oc (Bindlib.unbox (lift t))
 
