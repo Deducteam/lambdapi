@@ -102,19 +102,36 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             | None    -> fatal "\"_\" not allowed in terms...\n"
             | Some(f) -> f ()
           end
-      | P_Meta(k,ts) ->
+      | P_Meta(m,ts) ->
           begin
             let ts = Array.map (scope env) ts in
             let ar = Array.length ts in
-            try
-              let m = named_meta k.elt in
-              if m.meta_arity <> ar then
-                fatal "[%a] expects %i arguments (%d given) %a\n"
-                  pp_meta m m.meta_arity ar Pos.print k.pos;
-              _Meta m ts
-            with Not_found ->
-              let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
-              build_meta ~name:k.elt ctx
+            match m with
+            | Named(name) ->
+                begin
+                  try
+                    let m = named_meta name.elt in
+                    if m.meta_arity <> ar then
+                      fatal "[%a] expects %i arguments (%d given) %a\n"
+                        pp_meta m m.meta_arity ar Pos.print name.pos;
+                    _Meta m ts
+                  with Not_found ->
+                    let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
+                    build_meta ~name:name.elt ctx
+                end
+            | Key(key)    ->
+                begin
+                  try
+                    let m = Keys.find key.elt !all_meta in
+                    if m.meta_arity <> ar then
+                      fatal "[%a] expects %i arguments (%d given) %a\n"
+                        pp_meta m m.meta_arity ar Pos.print key.pos;
+                    _Meta m ts
+                  with Not_found ->
+                    fatal "Unknown meta-variable ?%i %a\n"
+                      key.elt Pos.print key.pos;
+                    (* TODO Create in this case? *)
+                end
           end
     in
     scope env t

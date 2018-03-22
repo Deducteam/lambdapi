@@ -9,6 +9,10 @@ open Pos
 (** Parser-level representation of a qualified identifier. *)
 type qident = (module_path * string) loc
 
+type p_meta =
+  | Named of strloc
+  | Key   of int loc
+
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
  and p_term_aux =
@@ -18,7 +22,7 @@ type p_term = p_term_aux loc
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
-  | P_Meta of strloc * p_term array
+  | P_Meta of p_meta * p_term array
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
@@ -65,6 +69,10 @@ let parser _def_ = s:''[d][e][f][_a-zA-Z0-9]*'' ->
 let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
   if s <> "thm" then Earley.give_up ()
 
+let parser meta =
+  | id:ident          -> Named(id)
+  | n:''[1-9][0-9]*'' -> Key(in_pos _loc (int_of_string n))
+
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
@@ -86,8 +94,8 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
-  | "?" - n:ident "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
-      when p = `Atom -> in_pos _loc (P_Meta(n, Array.of_list (e::es)))
+  | "?" - m:meta "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
+      when p = `Atom -> in_pos _loc (P_Meta(m, Array.of_list (e::es)))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom
