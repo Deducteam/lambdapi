@@ -6,6 +6,12 @@ type 'a pp = out_channel -> 'a -> unit
 (** Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
 
+module Int =
+  struct
+    type t = int
+    let compare = (-)
+  end
+
 module List =
   struct
     include List
@@ -52,17 +58,8 @@ let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
   let t = Sys.time () in
   let r = f x in (Sys.time () -. t, r)
 
-(** Functional maps on int and string. *)
-module IntOrd = struct
-  type t = int
-  let compare = Pervasives.compare
-end
+(* Functional maps with [int] keys. *)
+module IntMap = Map.Make(Int)
 
-module IntMap = Map.Make(IntOrd)
-
-module StrOrd = struct
-  type t = string
-  let compare = Pervasives.compare
-end
-
-module StrMap = Map.Make(StrOrd)
+(* Functional maps with [string] keys. *)
+module StrMap = Map.Make(String)
