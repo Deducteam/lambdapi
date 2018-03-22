@@ -45,6 +45,10 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
   if List.mem id ["Type"; "_"] then Earley.give_up (); in_pos _loc (fs,x)
 
+(* NOTE we use an [Earley] regular expression to parse “qualified identifiers”
+   for efficiency reasons. Indeed, there is an ambiguity in the parser (due to
+   the final dot), and this is one way to resolve it by being “greedy”. *)
+
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
   if s <> "_" then Earley.give_up ()
