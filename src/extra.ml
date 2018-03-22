@@ -51,3 +51,18 @@ module Array =
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
   let t = Sys.time () in
   let r = f x in (Sys.time () -. t, r)
+
+(** Functional maps on int and string. *)
+module IntOrd = struct
+  type t = int
+  let compare = Pervasives.compare
+end
+
+module IntMap = Map.Make(IntOrd)
+
+module StrOrd = struct
+  type t = string
+  let compare = Pervasives.compare
+end
+
+module StrMap = Map.Make(StrOrd)
