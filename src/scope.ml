@@ -129,8 +129,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
                     _Meta m ts
                   with Not_found ->
                     fatal "Unknown meta-variable ?%i %a\n"
-                      key.elt Pos.print key.pos;
-                    (* TODO Create in this case? *)
+                      key.elt Pos.print key.pos
                 end
           end
     in
