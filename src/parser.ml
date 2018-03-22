@@ -52,14 +52,16 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
 (** [nat] is an atomic parser for natural numbers. *)
 let parser nat = s:''[1-9][0-9]*'' -> int_of_string s
 
-(** [mident_prefix] is an atomic parser for a metavariable identifier prefix. *)
-let parser mident_prefix = s:''\([a-zA-Z][_'a-zA-Z0-9]*\)*'' -> s
+(** [user_mident] is an atomic parser for a user-defined metavariable
+    identifier. *)
+let parser user_mident = s:''[a-zA-Z][_'a-zA-Z0-9]*'' -> s
 
 (** [mident] is an atomic parser for a metavariable identifier. *)
-let parser mident = s:''\([a-zA-Z][_'a-zA-Z0-9]*\)*'' - k:nat ->
-  let id = s,k in
-  if s<>"" || Terms.exists_meta id then in_pos _loc id
-  else fatal "[?%d]: unknown metavariable" k
+let parser mident =
+  | k:nat ->
+     if Terms.exists_sys k then in_pos _loc (Id.Sys k)
+     else fatal "[?%d]: unknown metavariable" k
+  | s:user_mident -> in_pos _loc (Id.User s)
 
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->

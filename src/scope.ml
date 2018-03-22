@@ -67,7 +67,8 @@ let build_meta : Id.t -> (tvar * tbox) list -> tbox = fun id ctx ->
   let m = new_meta a (Array.length vs) in
   let a = Meta(m, Array.map mkfree vs) in
   (* We declare the metavariable [id]. *)
-  let mid = add_meta id a (Array.length vs) in
+  let s = match id with Id.User s -> s | Id.Sys _ -> assert false in
+  let mid = add_meta s a (Array.length vs) in
   _Meta mid (Array.map Bindlib.box_of_var vs)
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into

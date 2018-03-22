@@ -117,20 +117,29 @@ let id_map : meta Id.map ref = ref Id.empty
     Not_found. *)
 let meta : Id.t -> meta = fun id -> Id.find id !id_map
 
-let exists_meta : Id.t -> bool = fun id ->
-  try let _ = meta id in true with Not_found -> false
+let exists_sys : int -> bool = fun k -> Id.mem_sys k !id_map
     
-(** [add_meta id typ n] extends [!id_map] by mapping [id] to a un
-    uninstantiated [meta] of id [id], type [typ] and arity [n]. *)
-let add_meta : Id.t -> term -> int -> meta = fun id typ n ->
-  let m = { meta_id = id
+(** [add_meta s typ n] updates [id_map] by mapping [User s] to a an
+    uninstantiated [meta] of id [User s], type [typ] and arity [n]. *)
+let add_meta : string -> term -> int -> meta = fun s typ n ->
+  let m = { meta_id = Id.User s
 	  ; meta_type = typ
 	  ; meta_arity = n
 	  ; meta_value = ref None } in
-  id_map := Id.add id m !id_map;
+  id_map := Id.add_user s m !id_map;
   m
 
-let new_meta : term -> int -> meta = add_meta (Id.fresh "" !id_map)
+(** [new_meta typ n] generates a new identifier [id] and a new
+    uninstantiated meta [m] with id [id], type [typ] and arity [n],
+    and updates [id_map] by mapping [id] to [m]. *)
+let new_meta : term -> int -> meta = fun typ n ->
+  let k = Id.fresh !id_map in
+  let m = { meta_id = Id.Sys k
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  id_map := Id.add_sys k m !id_map;
+  m
     
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
