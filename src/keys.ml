@@ -89,12 +89,14 @@ let find : int -> 'a map -> 'a = fun k m ->
   if k < 0 then invalid_arg "Keys.find";
   IntMap.find k m.mapping
 
-(** [add v m] inserts the value [v] in the map [m] using the smallest key that
-    is available. The used key and the updated map are both returned. *)
-let add : 'a -> 'a map -> int * 'a map = fun v m ->
+(** [add fn m] finds the smallest available key [k] in [m], and then maps this
+    key to the value [fn k] in a copy of the map [m]. The function returns the
+    couple of the effectively inserted value and the extended map. *)
+let add : (int -> 'a) -> 'a map -> 'a * 'a map = fun fn m ->
   let (k, free_keys) = Cofin.take_smallest m.free_keys in
+  let v = fn k in
   let mapping = IntMap.add k v m.mapping in
-  (k, {mapping; free_keys})
+  (v, {mapping; free_keys})
 
 (** [add_with_key k v m] inserts the binding [(k,v)] in the map [v],  provided
     that the key [k] is a valid (non-negative) and available. When this is not
