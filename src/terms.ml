@@ -1,6 +1,7 @@
 (** Term representation. *)
 
 open Console
+open Extra
 open Files
 
 (** Representation of terms (and types). *)
@@ -114,36 +115,35 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 (** [name_of_meta m] returns a parsable identifier for [m]. *)
 let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
 
-(** Generates new metavariables. *)
-let meta_counter : int ref = ref 0
-
-let all_meta  : (int   , meta) Hashtbl.t = Hashtbl.create 107
-let user_meta : (string, meta) Hashtbl.t = Hashtbl.create 31
+let all_meta : meta Keys.map ref = ref Keys.empty
+let meta_ids : int StrMap.t ref  = ref StrMap.empty 
 
 (** [new_meta ?name a n] creates a fresh (uninstantiated) metavariable of type
     [a], and arity [n]. The [name] should be used when creating a user-defined
     metavariable, using the name chosen by the user. Note that the name, if it
     is given, should not correspond to a previously created metavariable. *)
 let new_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
-  assert(match name with Some n -> not (Hashtbl.mem user_meta n) | _ -> true);
-  let key = incr meta_counter; !meta_counter in
-  let m =
+  assert(match name with Some n -> not (StrMap.mem n !meta_ids) | _ -> true);
+  let create key =
     { meta_key   = key
     ; meta_name  = name
     ; meta_type  = a
     ; meta_arity = n
     ; meta_value = ref None }
   in
-  Hashtbl.add all_meta key m;
+  let (m, map) = Keys.add create !all_meta in
+  all_meta := map;
   match name with
-  | None       -> if !debug_meta then log "meta" "?%i created" key; m
+  | None       ->
+      if !debug_meta then log "meta" "?%i created" m.meta_key; m
   | Some(name) ->
-      Hashtbl.add user_meta name m;
-      if !debug_meta then log "meta" "?%i(%s) created" key name; m
+      meta_ids := StrMap.add name m.meta_key !meta_ids;
+      if !debug_meta then log "meta" "?%i (%s) created" m.meta_key name; m
 
 (** [named_meta name] returns the metavariable named whose key is [k] if it
     exists. Raises Not_found otherwise. *)
-let named_meta : string -> meta = Hashtbl.find user_meta
+let named_meta : string -> meta = fun name ->
+  Keys.find (StrMap.find name !meta_ids) !all_meta
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
