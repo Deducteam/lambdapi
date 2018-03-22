@@ -18,7 +18,7 @@ type p_term = p_term_aux loc
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
-  | P_Meta of strloc * p_term array
+  | P_Meta of Id.t loc * p_term array
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
@@ -48,6 +48,18 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
 (* NOTE we use an [Earley] regular expression to parse “qualified identifiers”
    for efficiency reasons. Indeed, there is an ambiguity in the parser (due to
    the final dot), and this is one way to resolve it by being “greedy”. *)
+
+(** [nat] is an atomic parser for natural numbers. *)
+let parser nat = s:''[1-9][0-9]*'' -> int_of_string s
+
+(** [mident_prefix] is an atomic parser for a metavariable identifier prefix. *)
+let parser mident_prefix = s:''\([a-zA-Z][_'a-zA-Z0-9]*\)*'' -> s
+
+(** [mident] is an atomic parser for a metavariable identifier. *)
+let parser mident = s:''\([a-zA-Z][_'a-zA-Z0-9]*\)*'' - k:nat ->
+  let id = s,k in
+  if s<>"" || Terms.exists_meta id then in_pos _loc id
+  else fatal "[?%d]: unknown metavariable" k
 
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
@@ -86,8 +98,8 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
-  | "?" - n:ident "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
-      when p = `Atom -> in_pos _loc (P_Meta(n, Array.of_list (e::es)))
+  | "?" - id:mident "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
+      when p = `Atom -> in_pos _loc (P_Meta(id, Array.of_list (e::es)))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom

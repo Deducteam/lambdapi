@@ -49,11 +49,12 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
       fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
     end
 
-(** [build_meta ctx] builds a new metavariable which environment contains  all
-    the variable of the “context” [ctx] (last variable first). Note that a new
-    metavariable is also created for the type of the metavariable. *)
-let build_meta : ?name:string -> (tvar * tbox) list -> tbox = fun ?name ctx ->
-  (* We create a metavariable for the type of the metavariable. *)
+(** [build_meta id ctx] declares the (new) metavariable [id] which environment
+    contains all the variable of the “context” [ctx] (last variable
+    first). Note that a new metavariable is also created for the type
+    of the metavariable. *)
+let build_meta : Id.t -> (tvar * tbox) list -> tbox = fun id ctx ->
+  (* We create a new metavariable [m] for the type of [id]. *)
   let (vs,a) =
     let build (vs,b) (x,a) =
       let f = Bindlib.bind_var x b in
@@ -65,9 +66,9 @@ let build_meta : ?name:string -> (tvar * tbox) list -> tbox = fun ?name ctx ->
   in
   let m = new_meta a (Array.length vs) in
   let a = Meta(m, Array.map mkfree vs) in
-  (* We create a new metavariable with type [a]. *)
-  let m = new_meta ?name a (Array.length vs) in
-  _Meta m (Array.map Bindlib.box_of_var vs)
+  (* We declare the metavariable [id]. *)
+  let mid = add_meta id a (Array.length vs) in
+  _Meta mid (Array.map Bindlib.box_of_var vs)
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
     an actual term using the free variables of the environment [env], and  the
@@ -87,11 +88,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let a =
             match a with
             | Some(a) -> scope env a
-            | None    ->
-                (* No type annotation, we create a metavariable. *)
-                if !wrn_no_type then
-                  wrn "No type given for %s at %a\n" x.elt Pos.print x.pos;
-                build_meta (List.map (fun (_,(x,(_,a))) -> (x,a)) env)
+            | None    -> assert false
           in
           let f v = scope (add x.elt v (x,a) env) b in
           _Abst a x.elt f
@@ -102,19 +99,19 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             | None    -> fatal "\"_\" not allowed in terms...\n"
             | Some(f) -> f ()
           end
-      | P_Meta(k,ts) ->
+      | P_Meta(id,ts) ->
           begin
             let ts = Array.map (scope env) ts in
             let ar = Array.length ts in
             try
-              let m = named_meta k.elt in
+              let m = meta id.elt in
               if m.meta_arity <> ar then
                 fatal "[%a] expects %i arguments (%d given) %a\n"
-                  pp_meta m m.meta_arity ar Pos.print k.pos;
+                  Id.pp id.elt m.meta_arity ar Pos.print id.pos;
               _Meta m ts
             with Not_found ->
               let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
-              build_meta ~name:k.elt ctx
+              build_meta id.elt ctx
           end
     in
     scope env t

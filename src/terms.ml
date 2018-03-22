@@ -80,8 +80,7 @@ type term =
 
 (** Representation of a metavariable. *)
  and meta =
-  { meta_key   : int
-  ; meta_name  : string option
+  { meta_id    : Id.t
   ; meta_type  : term
   ; meta_arity : int
   ; meta_value : tmbinder option ref }
@@ -111,40 +110,28 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
 
-(** [name_of_meta m] returns a parsable identifier for [m]. *)
-let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
+(** Map from [Meta.id] to [meta]. *)
+let id_map : meta Id.map ref = ref Id.empty
 
-(** Generates new metavariables. *)
-let meta_counter : int ref = ref 0
+(** [meta id] returns the meta mapped to [id] in [!id_map] or raises
+    Not_found. *)
+let meta : Id.t -> meta = fun id -> Id.find id !id_map
 
-let all_meta  : (int   , meta) Hashtbl.t = Hashtbl.create 107
-let user_meta : (string, meta) Hashtbl.t = Hashtbl.create 31
+let exists_meta : Id.t -> bool = fun id ->
+  try let _ = meta id in true with Not_found -> false
+    
+(** [add_meta id typ n] extends [!id_map] by mapping [id] to a un
+    uninstantiated [meta] of id [id], type [typ] and arity [n]. *)
+let add_meta : Id.t -> term -> int -> meta = fun id typ n ->
+  let m = { meta_id = id
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  id_map := Id.add id m !id_map;
+  m
 
-(** [new_meta ?name a n] creates a fresh (uninstantiated) metavariable of type
-    [a], and arity [n]. The [name] should be used when creating a user-defined
-    metavariable, using the name chosen by the user. Note that the name, if it
-    is given, should not correspond to a previously created metavariable. *)
-let new_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
-  assert(match name with Some n -> not (Hashtbl.mem user_meta n) | _ -> true);
-  let key = incr meta_counter; !meta_counter in
-  let m =
-    { meta_key   = key
-    ; meta_name  = name
-    ; meta_type  = a
-    ; meta_arity = n
-    ; meta_value = ref None }
-  in
-  Hashtbl.add all_meta key m;
-  match name with
-  | None       -> if !debug_meta then log "meta" "?%i created" key; m
-  | Some(name) ->
-      Hashtbl.add user_meta name m;
-      if !debug_meta then log "meta" "?%i(%s) created" key name; m
-
-(** [named_meta name] returns the metavariable named whose key is [k] if it
-    exists. Raises Not_found otherwise. *)
-let named_meta : string -> meta = Hashtbl.find user_meta
-
+let new_meta : term -> int -> meta = add_meta (Id.fresh "" !id_map)
+    
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
 
