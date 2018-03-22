@@ -22,12 +22,12 @@ module Cofin =
     let rec normalize : t -> t = fun s ->
       match s with
       (* Checking for broken invariants. *)
-      | (l1,r1) :: _            when l1 > r1 -> assert false
-      | (_ ,r1) :: (l2,_ ) :: _ when r1 > l2 -> assert false
+      | (l1,r1) :: _            when l1 > r1   -> assert false
+      | (_ ,r1) :: (l2,_ ) :: _ when r1 > l2   -> assert false
       (* Normal cases. *)
-      | (l1,r1) :: (l2,r2) :: s when r1 = l2 -> normalize ((l1,r2) :: s)
-      | (l1,r1) :: s                         -> (l1,r1) :: normalize s
-      | []                                   -> []
+      | (l1,r1) :: (l2,r2) :: s when r1+1 = l2 -> normalize ((l1,r2) :: s)
+      | (l1,r1) :: s                           -> (l1,r1) :: normalize s
+      | []                                     -> []
 
     (** [remove i s] returns a set containing the same elements as [s], except
         [i] which is not contained in the returned set. If [i] does not appear
@@ -55,6 +55,20 @@ module Cofin =
     let take_smallest : t -> int * t = fun s ->
       let i = smallest s in
       (i, remove i s)
+
+
+    (** [pp oc s] outputs a representation of the set [s] on channel [oc]. *)
+    let pp : out_channel -> t -> unit = fun oc s ->
+      let pelt oc (l,r) =
+        if l = r then Printf.fprintf oc "{%i}" l
+        else Printf.fprintf oc "[%i..%i]" l r
+      in
+      match s with
+      | []   -> Printf.fprintf oc "<int>"
+      | [c]  -> Printf.fprintf oc "<int> - %a" pelt c
+      | c::s -> Printf.fprintf oc "<int> - (%a" pelt c;
+                List.iter (Printf.fprintf oc "∪%a" pelt) s;
+                Printf.fprintf oc ")"
   end
 
 (** Representation of a map with [int] keys (greater or equal to [0]) and with
