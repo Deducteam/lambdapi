@@ -49,11 +49,12 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
       fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
     end
 
-(** [build_meta ctx] builds a new metavariable which environment contains  all
-    the variable of the “context” [ctx] (last variable first). Note that a new
-    metavariable is also created for the type of the metavariable. *)
-let build_meta : ?name:string -> (tvar * tbox) list -> tbox = fun ?name ctx ->
-  (* We create a metavariable for the type of the metavariable. *)
+(** [build_meta id ctx] declares the (new) metavariable [id] which environment
+    contains all the variable of the “context” [ctx] (last variable
+    first). Note that a new metavariable is also created for the type
+    of the metavariable. *)
+let build_meta : Id.t -> (tvar * tbox) list -> tbox = fun id ctx ->
+  (* We create a new metavariable [m] for the type of [id]. *)
   let (vs,a) =
     let build (vs,b) (x,a) =
       let f = Bindlib.bind_var x b in
@@ -65,9 +66,10 @@ let build_meta : ?name:string -> (tvar * tbox) list -> tbox = fun ?name ctx ->
   in
   let m = new_meta a (Array.length vs) in
   let a = Meta(m, Array.map mkfree vs) in
-  (* We create a new metavariable with type [a]. *)
-  let m = new_meta ?name a (Array.length vs) in
-  _Meta m (Array.map Bindlib.box_of_var vs)
+  (* We declare the metavariable [id]. *)
+  let s = match id with Id.User s -> s | Id.Sys _ -> assert false in
+  let mid = add_meta s a (Array.length vs) in
+  _Meta mid (Array.map Bindlib.box_of_var vs)
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
     an actual term using the free variables of the environment [env], and  the
@@ -87,11 +89,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let a =
             match a with
             | Some(a) -> scope env a
-            | None    ->
-                (* No type annotation, we create a metavariable. *)
-                if !wrn_no_type then
-                  wrn "No type given for %s at %a\n" x.elt Pos.print x.pos;
-                build_meta (List.map (fun (_,(x,(_,a))) -> (x,a)) env)
+            | None    -> assert false
           in
           let f v = scope (add x.elt v (x,a) env) b in
           _Abst a x.elt f
@@ -102,35 +100,27 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             | None    -> fatal "\"_\" not allowed in terms...\n"
             | Some(f) -> f ()
           end
-      | P_Meta(m,ts) ->
+      | P_Meta(id,ts) ->
+          let id =
+            let open Id in
+            match id with
+            | M_User(id) -> User(id)
+            | M_Sys(n)   -> Sys(n)
+            | M_Bad(n)   ->
+                fatal "Unknown metavariable [?%i] %a" n Pos.print t.pos
+          in
+          let ts = Array.map (scope env) ts in
+          let ar = Array.length ts in
           begin
-            let ts = Array.map (scope env) ts in
-            let ar = Array.length ts in
-            match m with
-            | Named(name) ->
-                begin
-                  try
-                    let m = named_meta name.elt in
-                    if m.meta_arity <> ar then
-                      fatal "[%a] expects %i arguments (%d given) %a\n"
-                        pp_meta m m.meta_arity ar Pos.print name.pos;
-                    _Meta m ts
-                  with Not_found ->
-                    let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
-                    build_meta ~name:name.elt ctx
-                end
-            | Key(key)    ->
-                begin
-                  try
-                    let m = Keys.find key.elt !all_meta in
-                    if m.meta_arity <> ar then
-                      fatal "[%a] expects %i arguments (%d given) %a\n"
-                        pp_meta m m.meta_arity ar Pos.print key.pos;
-                    _Meta m ts
-                  with Not_found ->
-                    fatal "Unknown meta-variable ?%i %a\n"
-                      key.elt Pos.print key.pos
-                end
+            try
+              let m = find_meta id in
+              if m.meta_arity <> ar then
+                fatal "[%a] expects %i arguments (%d given) %a\n"
+                  Id.pp id m.meta_arity ar Pos.print t.pos;
+              _Meta m ts
+            with Not_found ->
+              let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
+              build_meta id ctx
           end
     in
     scope env t

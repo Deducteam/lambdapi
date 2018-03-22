@@ -9,9 +9,11 @@ open Pos
 (** Parser-level representation of a qualified identifier. *)
 type qident = (module_path * string) loc
 
+(** Parser-level representation of a metavariable identifier. *)
 type p_meta =
-  | Named of strloc
-  | Key   of int loc
+  | M_User of string (** With given name. *)
+  | M_Sys  of int    (** With given key.  *)
+  | M_Bad  of int    (** Undefined key.   *)
 
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
@@ -69,9 +71,14 @@ let parser _def_ = s:''[d][e][f][_a-zA-Z0-9]*'' ->
 let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
   if s <> "thm" then Earley.give_up ()
 
+(** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta =
-  | id:ident          -> Named(id)
-  | n:''[1-9][0-9]*'' -> Key(in_pos _loc (int_of_string n))
+  (* Internal meta-variable by key. *)
+  | "?" - n:''[1-9][0-9]*''             ->
+      let n = int_of_string n in
+      if Terms.exists_sys n then M_Sys(n) else M_Bad(n)
+  (* User-defined meta-variable by name. *)
+  | "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(id)
 
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
@@ -94,7 +101,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
-  | "?" - m:meta "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
+  | m:meta "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
       when p = `Atom -> in_pos _loc (P_Meta(m, Array.of_list (e::es)))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"

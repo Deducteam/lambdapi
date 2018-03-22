@@ -81,8 +81,7 @@ type term =
 
 (** Representation of a metavariable. *)
  and meta =
-  { meta_key   : int
-  ; meta_name  : string option
+  { meta_id    : Id.t
   ; meta_type  : term
   ; meta_arity : int
   ; meta_value : tmbinder option ref }
@@ -112,39 +111,37 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
 
-(** [name_of_meta m] returns a parsable identifier for [m]. *)
-let name_of_meta m = assert (m.meta_key >= 0); Printf.sprintf "?%d" m.meta_key
+(** Map from [Meta.id] to [meta]. *)
+let id_map : meta Id.map ref = ref Id.empty
 
-let all_meta : meta Keys.map ref = ref Keys.empty
-let meta_ids : int StrMap.t ref  = ref StrMap.empty 
+(** [find_meta id] returns the meta mapped to [id] in [!id_map] or raises
+    Not_found. *)
+let find_meta : Id.t -> meta = fun id -> Id.find id !id_map
 
-(** [new_meta ?name a n] creates a fresh (uninstantiated) metavariable of type
-    [a], and arity [n]. The [name] should be used when creating a user-defined
-    metavariable, using the name chosen by the user. Note that the name, if it
-    is given, should not correspond to a previously created metavariable. *)
-let new_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
-  assert(match name with Some n -> not (StrMap.mem n !meta_ids) | _ -> true);
-  let create key =
-    { meta_key   = key
-    ; meta_name  = name
-    ; meta_type  = a
-    ; meta_arity = n
-    ; meta_value = ref None }
-  in
-  let (m, map) = Keys.add create !all_meta in
-  all_meta := map;
-  match name with
-  | None       ->
-      if !debug_meta then log "meta" "?%i created" m.meta_key; m
-  | Some(name) ->
-      meta_ids := StrMap.add name m.meta_key !meta_ids;
-      if !debug_meta then log "meta" "?%i (%s) created" m.meta_key name; m
+let exists_sys : int -> bool = fun k -> Id.mem_sys k !id_map
+    
+(** [add_meta s typ n] updates [id_map] by mapping [User s] to a an
+    uninstantiated [meta] of id [User s], type [typ] and arity [n]. *)
+let add_meta : string -> term -> int -> meta = fun s typ n ->
+  let m = { meta_id = Id.User s
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  id_map := Id.add_user s m !id_map;
+  m
 
-(** [named_meta name] returns the metavariable named whose key is [k] if it
-    exists. Raises Not_found otherwise. *)
-let named_meta : string -> meta = fun name ->
-  Keys.find (StrMap.find name !meta_ids) !all_meta
-
+(** [new_meta typ n] generates a new identifier [id] and a new
+    uninstantiated meta [m] with id [id], type [typ] and arity [n],
+    and updates [id_map] by mapping [id] to [m]. *)
+let new_meta : term -> int -> meta = fun typ n ->
+  let k = Id.fresh !id_map in
+  let m = { meta_id = Id.Sys k
+	  ; meta_type = typ
+	  ; meta_arity = n
+	  ; meta_value = ref None } in
+  id_map := Id.add_sys k m !id_map;
+  m
+    
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
 
