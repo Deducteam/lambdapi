@@ -274,4 +274,3 @@ let meta_name : meta -> string = fun m ->
   match m.meta_name with
   | Defined(id) -> Printf.sprintf "?%s" id
   | Internal(k) -> Printf.sprintf "?%i" k
-
