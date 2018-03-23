@@ -52,21 +52,31 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
 (** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
     .. -> xn:Tn -> t]. *)
-let build_prod : (tvar * tbox) list -> tbox -> term = fun c t ->
-  let fn b (x,a) =
-    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var x b)
+let build_prod : env -> tbox -> term = fun c t ->
+  let fn b (_,(v,(_,a))) =
+    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
   in Bindlib.unbox (List.fold_left fn t c)
 
-(** [build_type is_type c] builds the product of [c] over [a] where
-    [a] is [Type] if [is_type], and a new metavariable otherwise. *)
-let build_meta_type : (tvar * tbox) list -> bool -> term = fun c is_type ->
-  let a = build_prod c _Type in
-  if is_type then a
-  else (* We create a new metavariable. *)
-    let m = new_meta a (List.length c) in
-    let fn (v, _) = Bindlib.box_of_var v in
-    let vs = Array.of_list (List.rev_map fn c) in
-    build_prod c (_Meta m vs)
+(** [build_type is_type env] builds the product of [env] over [a] where
+    [a] is [Type] if [is_type], and a new metavariable
+    otherwise. Returns the array of variables of [env] too. *)
+let build_meta_type : env -> bool -> term * tbox array =
+  fun env is_type ->
+    let a = build_prod env _Type in
+    let fn (_,(v,_)) = Bindlib.box_of_var v in
+    let vs = Array.of_list (List.rev_map fn env) in
+    if is_type then a, vs
+    else (* We create a new metavariable. *)
+      let m = new_meta a (List.length env) in
+      build_prod env (_Meta m vs), vs
+
+(** [build_meta_app is_type c] builds a new metavariable of type
+    [build_meta_type is_type c]. *)
+let build_meta_app : env -> bool -> tbox =
+  fun env is_type ->
+    let t, vs = build_meta_type env is_type in
+    let m = new_meta t (List.length env) in
+    _Meta m vs
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
     an actual term using the free variables of the environment [env], and  the
@@ -86,7 +96,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           let a =
             match ao with
             | Some(a) -> scope env a
-            | None    -> assert false
+            | None    -> build_meta_app env true
           in
           let f v = scope (add_env x.elt v (x,a) env) b in
           _Abst a x.elt f
@@ -94,8 +104,8 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Wild        ->
           begin
             match new_wildcard with
-            | None    -> fatal "\"_\" not allowed in terms...\n"
             | Some(f) -> f ()
+            | None    -> build_meta_app env false
           end
       | P_Meta(id,ts) ->
         let ts = Array.map (scope env) ts in
@@ -114,10 +124,8 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
              begin
               try find_meta id
               with Not_found ->
-                (* We create a new user-defined metavariable. *)
-                let c = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
-                let t = build_meta_type c false in
-                add_meta s t (List.length c)
+                let t, _ = build_meta_type env false in
+                add_meta s t (List.length env)
              end
         in
         _Meta m ts
