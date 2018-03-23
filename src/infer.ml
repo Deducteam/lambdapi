@@ -85,7 +85,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
        (* The type of [Meta(m,ts)] is the same as [add_args v ts]
          where [v] is some fresh variable with the same type as [m]. *)
        begin
-        let v = Bindlib.new_var mkfree (Id.name m.meta_id) in
+        let v = Bindlib.new_var mkfree (Id.to_string m.meta_id) in
         let c = add_tvar v m.meta_type c in
         infer p c (add_args (Vari v) (Array.to_list ts))
        end

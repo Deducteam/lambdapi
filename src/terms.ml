@@ -134,13 +134,14 @@ let add_meta : string -> term -> int -> meta = fun s typ n ->
     uninstantiated meta [m] with id [id], type [typ] and arity [n],
     and updates [id_map] by mapping [id] to [m]. *)
 let new_meta : term -> int -> meta = fun typ n ->
-  let k = Id.fresh !id_map in
-  let m = { meta_id = Id.Sys k
-	  ; meta_type = typ
+  let fn k =
+    { meta_id    = Id.Sys(k)
+	  ; meta_type  = typ
 	  ; meta_arity = n
-	  ; meta_value = ref None } in
-  id_map := Id.add_sys k m !id_map;
-  m
+	  ; meta_value = ref None }
+  in
+  let (m, map) = Id.add_sys fn !id_map in
+  id_map := map; m
     
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
