@@ -116,7 +116,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
               let m = find_meta id in
               if m.meta_arity <> ar then
                 fatal "[%a] expects %i arguments (%d given) %a\n"
-                  Id.pp id m.meta_arity ar Pos.print t.pos;
+                  pp_meta m m.meta_arity ar Pos.print t.pos;
               _Meta m ts
             with Not_found ->
               let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in

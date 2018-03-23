@@ -13,10 +13,6 @@ let to_string : t -> string = fun id ->
   | User(s) -> Printf.sprintf "?%s" s
   | Sys(k)  -> Printf.sprintf "?%d" k
 
-(** [pp oc id] pretty-prints [id] on the output channel [oc]. *)
-let pp : out_channel -> t -> unit = fun oc id ->
-  output_string oc (to_string id)
-
 (** ['a map] is a datatype for finite maps from [id] to ['a]. *)
 type 'a map =
   { str_map   : 'a StrMap.t

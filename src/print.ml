@@ -18,39 +18,47 @@ let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
   in
   output_string oc full
 
+(** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
   output_string oc (Bindlib.name_of x)
-  (* Printf.fprintf oc "%s{%i}" (Bindlib.name_of x) (Bindlib.uid_of x) *)
+
+(** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
+let pp_meta : out_channel -> meta -> unit = fun oc m ->
+  if !(m.meta_value) <> None then assert false;
+  match m.meta_id with
+  | Id.User(s) -> Printf.fprintf oc "?%s" s
+  | Id.Sys(k)  -> Printf.fprintf oc "?%i" k
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
-  let pstring = output_string oc in
-  let pformat fmt = Printf.fprintf oc fmt in
+  let out fmt = Printf.fprintf oc fmt in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    let t = unfold t in
-    match (t, p) with
+    let pp_func = pp `Func in
+    let pp_appl = pp `Appl in
+    let pp_atom = pp `Atom in
+    match (unfold t, p) with
     (* Atoms are printed inconditonally. *)
     | (Vari(x)  , _    ) -> pp_tvar oc x
-    | (Type     , _    ) -> pstring "Type"
-    | (Kind     , _    ) -> pstring "Kind"
+    | (Type     , _    ) -> output_string oc "Type"
+    | (Kind     , _    ) -> output_string oc "Kind"
     | (Symb(s)  , _    ) -> pp_symbol oc s
-    | (Meta(m,[||]), _ ) -> Id.pp oc m.meta_id
-    | (Meta(m,e), _    ) -> pformat "%a[%a]" Id.pp m.meta_id
-                                (Array.pp (pp `Appl) ",") e
-    | (ITag(i)  , _    ) -> pformat "[%i]" i
+    | (Meta(m,e), _    ) ->
+        if Array.length e = 0 then pp_meta oc m
+        else out "%a[%a]" pp_meta m (Array.pp pp_appl ",") e
+    | (ITag(i)  , _    ) -> out "<%i>" i
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(t,u), `Appl)
-    | (Appl(t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
+    | (Appl(t,u), `Func) -> out "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t), `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
-        pformat "%a:%a => %a" pp_tvar x (pp `Func) a (pp `Func) t
+        out "%a:%a => %a" pp_tvar x pp_func a pp_func t
     | (Prod(a,b), `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
-        if Bindlib.binder_occur b then pformat "%a:" pp_tvar x;
-        pformat "%a -> %a" (pp `Appl) a (pp `Func) c
+        if Bindlib.binder_occur b then out "%a:" pp_tvar x;
+        out "%a -> %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
-    | (_        , _    ) -> pformat "(%a)" (pp `Func) t
+    | (_        , _    ) -> out "(%a)" pp_func t
   in
   pp `Func oc (Bindlib.unbox (lift t))
 

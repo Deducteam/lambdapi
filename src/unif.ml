@@ -12,7 +12,7 @@ let set_meta : meta -> tmbinder -> unit = fun m v ->
   m.meta_value := Some(v);
   if !debug_meta then
     let (env,a) = Bindlib.unmbind mkfree v in
-    log "meta" "%a[%a] ← %a" Id.pp m.meta_id (Array.pp pp_tvar ",") env pp a
+    log "meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
 
 (** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
 let rec occurs : meta -> term -> bool = fun r t ->
