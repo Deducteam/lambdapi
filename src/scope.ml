@@ -16,7 +16,7 @@ let wrn_no_type : bool ref = ref false
 type env = (string * (tvar * (strloc * tbox))) list
 
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
-let add : string -> tvar -> (strloc * tbox) -> env -> env =
+let add_env : string -> tvar -> (strloc * tbox) -> env -> env =
   fun s v x env -> if s = "_" then env else (s,(v,x))::env
 
 (** [find_var sign env mp x] returns a bindbox corresponding to a variable  of
@@ -49,28 +49,24 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
       fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
     end
 
-(** [build_meta id ctx] declares the (new) user-defined metavariable
-    [id] which environment contains all the variable of the “context”
-    [ctx] (last variable first). Note that a new metavariable is also
-    created for the type of [id]. [id] must be of the form
-    [Defined(s)]. *)
-let build_meta : meta_name -> (tvar * tbox) list -> tbox = fun id ctx ->
-  (* We create a new metavariable [m] for the type of [id]. *)
-  let (vs,a) =
-    let build (vs,b) (x,a) =
-      let f = Bindlib.bind_var x b in
-      let b = Bindlib.box_apply2 (fun a f -> Prod(a,f)) a f in
-      (x :: vs, b)
-    in
-    let (vs,a) = List.fold_left build ([],_Type) ctx in
-    (Array.of_list vs, Bindlib.unbox a)
-  in
-  let m = new_meta a (Array.length vs) in
-  let a = Meta(m, Array.map mkfree vs) in
-  (* We declare the metavariable [id]. *)
-  let s = match id with Defined(s) -> s | Internal(_) -> assert false in
-  let mid = add_meta s a (Array.length vs) in
-  _Meta mid (Array.map Bindlib.box_of_var vs)
+(** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
+    free variables in [x1, .., xn], build the product type [x1:T1 ->
+    .. -> xn:Tn -> t]. *)
+let build_prod : (tvar * tbox) list -> tbox -> term = fun c t ->
+  let fn b (x,a) =
+    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var x b)
+  in Bindlib.unbox (List.fold_left fn t c)
+
+(** [build_type is_type c] builds the product of [c] over [a] where
+    [a] is [Type] if [is_type], and a new metavariable otherwise. *)
+let build_meta_type : (tvar * tbox) list -> bool -> term = fun c is_type ->
+  let a = build_prod c _Type in
+  if is_type then a
+  else (* We create a new metavariable. *)
+    let m = new_meta a (List.length c) in
+    let fn (v, _) = Bindlib.box_of_var v in
+    let vs = Array.of_list (List.rev_map fn c) in
+    build_prod c (_Meta m vs)
 
 (** [scope new_wildcard env sign t] transforms the parsing level term [t] into
     an actual term using the free variables of the environment [env], and  the
@@ -84,15 +80,15 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
           let a = scope env a in
-          let f v = scope (add x.elt v (x,a) env) b in
+          let f v = scope (add_env x.elt v (x,a) env) b in
           _Prod a x.elt f
-      | P_Abst(x,a,b) ->
+      | P_Abst(x,ao,b) ->
           let a =
-            match a with
+            match ao with
             | Some(a) -> scope env a
             | None    -> assert false
           in
-          let f v = scope (add x.elt v (x,a) env) b in
+          let f v = scope (add_env x.elt v (x,a) env) b in
           _Abst a x.elt f
       | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
@@ -102,26 +98,29 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             | Some(f) -> f ()
           end
       | P_Meta(id,ts) ->
-          let id =
-            match id with
-            | M_User(id) -> Defined(id)
-            | M_Sys(n)   -> Internal(n)
-            | M_Bad(n)   ->
-                fatal "Unknown metavariable [?%i] %a" n Pos.print t.pos
-          in
-          let ts = Array.map (scope env) ts in
-          let ar = Array.length ts in
-          begin
-            try
-              let m = find_meta id in
-              if m.meta_arity <> ar then
-                fatal "[%a] expects %i arguments (%d given) %a\n"
-                  pp_meta m m.meta_arity ar Pos.print t.pos;
-              _Meta m ts
-            with Not_found ->
-              let ctx = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
-              build_meta id ctx
-          end
+        let ts = Array.map (scope env) ts in
+        let m =
+          match id with
+          | M_Bad k -> fatal "Unknown metavariable [?%i] %a" k Pos.print t.pos
+          | M_Sys k ->
+             begin
+              try find_meta (Internal k)
+              with Not_found -> assert false
+             (* Cannot happen since the existence of [k] is checked
+               during parsing. *)
+             end
+          | M_User s ->
+             let id = Defined s in
+             begin
+              try find_meta id
+              with Not_found ->
+                (* We create a new user-defined metavariable. *)
+                let c = List.map (fun (_,(x,(_,a))) -> (x,a)) env in
+                let t = build_meta_type c false in
+                add_meta s t (List.length c)
+             end
+        in
+        _Meta m ts
     in
     scope env t
 
