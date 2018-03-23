@@ -49,10 +49,11 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
       fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
     end
 
-(** [build_meta id ctx] declares the (new) metavariable [id] which environment
-    contains all the variable of the “context” [ctx] (last variable
-    first). Note that a new metavariable is also created for the type
-    of the metavariable. *)
+(** [build_meta id ctx] declares the (new) user-defined metavariable
+    [id] which environment contains all the variable of the “context”
+    [ctx] (last variable first). Note that a new metavariable is also
+    created for the type of [id]. [id] must be of the form
+    [Defined(s)]. *)
 let build_meta : meta_name -> (tvar * tbox) list -> tbox = fun id ctx ->
   (* We create a new metavariable [m] for the type of [id]. *)
   let (vs,a) =
@@ -67,7 +68,7 @@ let build_meta : meta_name -> (tvar * tbox) list -> tbox = fun id ctx ->
   let m = new_meta a (Array.length vs) in
   let a = Meta(m, Array.map mkfree vs) in
   (* We declare the metavariable [id]. *)
-  let s = match id with Defined(id) -> id | Internal(_) -> assert false in
+  let s = match id with Defined(s) -> s | Internal(_) -> assert false in
   let mid = add_meta s a (Array.length vs) in
   _Meta mid (Array.map Bindlib.box_of_var vs)
 
