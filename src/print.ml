@@ -25,9 +25,7 @@ let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let pp_meta : out_channel -> meta -> unit = fun oc m ->
   if !(m.meta_value) <> None then assert false;
-  match m.meta_id with
-  | Id.User(s) -> Printf.fprintf oc "?%s" s
-  | Id.Sys(k)  -> Printf.fprintf oc "?%i" k
+  output_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->

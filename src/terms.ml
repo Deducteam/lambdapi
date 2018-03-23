@@ -81,16 +81,87 @@ type term =
 
 (** Representation of a metavariable. *)
  and meta =
-  { meta_id    : Id.t
+  { meta_name  : meta_name
   ; meta_type  : term
   ; meta_arity : int
   ; meta_value : tmbinder option ref }
+
+ and meta_name =
+   | Defined  of string
+   | Internal of int
 
 (* NOTE a metavariable is represented using a multiple binder. It can hence be
    instanciated with an open term,  provided that its which free variables are
    in the environment.  The values for the free variables are provided  by the
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
+
+(** Representation of the existing meta-variables. *)
+type meta_map =
+  { str_map   : meta StrMap.t
+	; int_map   : meta IntMap.t
+	; free_keys : Cofin.t }
+
+(** [empty_meta_map] is an emptu meta-variable map. *)
+let empty_meta_map : meta_map =
+  { str_map   = StrMap.empty
+  ; int_map   = IntMap.empty
+  ; free_keys = Cofin.full }
+
+(** [all_metas] is the reference in which the meta-variables are stored. *)
+let all_metas : meta_map ref = ref empty_meta_map
+
+(** [find_meta name] returns the meta-variable mapped to [name] in [all_metas]
+    or raises [Not_found] if the name is not mapped. *)
+let find_meta : meta_name -> meta = fun name ->
+  match name with
+  | Defined(id) -> StrMap.find id !all_metas.str_map
+  | Internal(k) -> IntMap.find k  !all_metas.int_map
+
+(** [add_meta id a n] creates a new user-defined meta-variables named [id], of
+    type [a], and of arity [n]. Note that [all_metas] is updated automatically
+    at the same time. *)
+let add_meta : string -> term -> int -> meta = fun id a n ->
+  let m =
+    { meta_name  = Defined(id)
+	  ; meta_type  = a
+	  ; meta_arity = n
+	  ; meta_value = ref None }
+  in
+  let str_map = StrMap.add id m !all_metas.str_map in
+  all_metas := {!all_metas with str_map}; m
+
+(** [new_meta a n] creates a new internal meta-variables of type [a] and arity
+    [n]. Note that [all_metas] is updated automatically at the same time. *)
+let new_meta : term -> int -> meta = fun a n ->
+  let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
+  let m =
+    { meta_name  = Internal(k)
+	  ; meta_type  = a
+	  ; meta_arity = n
+	  ; meta_value = ref None }
+  in
+  let int_map = IntMap.add k m !all_metas.int_map in
+  all_metas := {!all_metas with int_map; free_keys}; m
+ 
+let exists_meta : meta_name -> bool = fun name ->
+  match name with
+  | Defined(id) -> StrMap.mem id !all_metas.str_map
+  | Internal(k) -> IntMap.mem k  !all_metas.int_map
+   
+(** [unset u] returns [true] if [u] is not instanciated. *)
+let unset : meta -> bool = fun u -> !(u.meta_value) = None
+
+(** [unfold t] unfolds the toplevel metavariable in [t]. *)
+let rec unfold : term -> term = fun t ->
+  match t with
+  | Meta(m,e) ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (Bindlib.msubst b e)
+      end
+  | _        -> t
 
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
@@ -110,48 +181,6 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
-
-(** Map from [Meta.id] to [meta]. *)
-let id_map : meta Id.map ref = ref Id.empty
-
-(** [find_meta id] returns the meta mapped to [id] in [!id_map] or raises
-    Not_found. *)
-let find_meta : Id.t -> meta = fun id -> Id.find id !id_map
-
-let exists_sys : int -> bool = fun k -> Id.mem_sys k !id_map
-    
-(** [add_meta s typ n] updates [id_map] by mapping [User s] to a an
-    uninstantiated [meta] of id [User s], type [typ] and arity [n]. *)
-let add_meta : string -> term -> int -> meta = fun s typ n ->
-  let m = { meta_id = Id.User s
-	  ; meta_type = typ
-	  ; meta_arity = n
-	  ; meta_value = ref None } in
-  id_map := Id.add_user s m !id_map;
-  m
-
-(** [new_meta typ n] generates a new identifier [id] and a new
-    uninstantiated meta [m] with id [id], type [typ] and arity [n],
-    and updates [id_map] by mapping [id] to [m]. *)
-let new_meta : term -> int -> meta = fun typ n ->
-  let fn k =
-    { meta_id    = Id.Sys(k)
-	  ; meta_type  = typ
-	  ; meta_arity = n
-	  ; meta_value = ref None }
-  in
-  let (m, map) = Id.add_sys fn !id_map in
-  id_map := map; m
-    
-(** [unset u] returns [true] if [u] is not instanciated. *)
-let unset : meta -> bool = fun u -> !(u.meta_value) = None
-
-(** [unfold t] unfolds the toplevel metavariable in [t]. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Meta({meta_value = {contents = Some(f)}}, ar) ->
-     unfold (Bindlib.msubst f ar)
-  | _                                        -> t
 
 (** Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
@@ -193,8 +222,11 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
 let _Meta : meta -> tbox array -> tbox = fun u ar ->
   Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
 
-let _ITag : int -> tbox = fun i -> Bindlib.box (ITag(i))
+(** [_ITag i] injects the [ITag(i)] constructor in the [bindbox] type. *)
+let _ITag : int -> tbox = fun i ->
+  Bindlib.box (ITag(i))
 
+(** [_Wild] injects the constructor [Wild] in the [bindbox] type. *)
 let _Wild : tbox = Bindlib.box Wild
 
 (** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
@@ -237,3 +269,10 @@ let symbol_type : symbol -> term = fun s ->
   match s with
   | Sym(s) -> s.sym_type
   | Def(d) -> d.def_type
+
+(** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
+let meta_name : meta -> string = fun m ->
+  match m.meta_name with
+  | Defined(id) -> Printf.sprintf "?%s" id
+  | Internal(k) -> Printf.sprintf "?%i" k
+

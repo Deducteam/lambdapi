@@ -53,7 +53,7 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
     contains all the variable of the “context” [ctx] (last variable
     first). Note that a new metavariable is also created for the type
     of the metavariable. *)
-let build_meta : Id.t -> (tvar * tbox) list -> tbox = fun id ctx ->
+let build_meta : meta_name -> (tvar * tbox) list -> tbox = fun id ctx ->
   (* We create a new metavariable [m] for the type of [id]. *)
   let (vs,a) =
     let build (vs,b) (x,a) =
@@ -67,7 +67,7 @@ let build_meta : Id.t -> (tvar * tbox) list -> tbox = fun id ctx ->
   let m = new_meta a (Array.length vs) in
   let a = Meta(m, Array.map mkfree vs) in
   (* We declare the metavariable [id]. *)
-  let s = match id with Id.User s -> s | Id.Sys _ -> assert false in
+  let s = match id with Defined(id) -> id | Internal(_) -> assert false in
   let mid = add_meta s a (Array.length vs) in
   _Meta mid (Array.map Bindlib.box_of_var vs)
 
@@ -102,10 +102,9 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
           end
       | P_Meta(id,ts) ->
           let id =
-            let open Id in
             match id with
-            | M_User(id) -> User(id)
-            | M_Sys(n)   -> Sys(n)
+            | M_User(id) -> Defined(id)
+            | M_Sys(n)   -> Internal(n)
             | M_Bad(n)   ->
                 fatal "Unknown metavariable [?%i] %a" n Pos.print t.pos
           in

@@ -76,7 +76,7 @@ let parser meta =
   (* Internal meta-variable by key. *)
   | "?" - n:''[1-9][0-9]*''             ->
       let n = int_of_string n in
-      if Terms.exists_sys n then M_Sys(n) else M_Bad(n)
+      if Terms.(exists_meta (Internal(n))) then M_Sys(n) else M_Bad(n)
   (* User-defined meta-variable by name. *)
   | "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(id)
 
