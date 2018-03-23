@@ -144,6 +144,7 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
  
+(** [exists_meta name] tells whether [name] is mapped in [all_metas]. *)
 let exists_meta : meta_name -> bool = fun name ->
   match name with
   | Defined(id) -> StrMap.mem id !all_metas.str_map
