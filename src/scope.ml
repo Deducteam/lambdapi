@@ -13,25 +13,25 @@ open Pos
 let wrn_no_type : bool ref = ref false
 
 (** Representation of an environment for variables. *)
-type env = (string * (tvar * (strloc * tbox))) list
+type env = (string * (tvar * tbox)) list
 
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
-let add_env : string -> tvar -> (strloc * tbox) -> env -> env =
-  fun s v x env -> if s = "_" then env else (s,(v,x))::env
+let add_env : string -> tvar -> tbox -> env -> env =
+  fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_var sign env mp x] returns a bindbox corresponding to a variable  of
-    the environment [env], or to a symbol named [x] which module path is [mp].
-    In the case where [mp] is empty,  we first search [x] in the environement,
+(** [find_var sign env mp qid] returns a bindbox corresponding to a variable  of
+    the environment [env], or to a symbol named [s] which module path is [mp].
+    In the case where [mp] is empty,  we first search [s] in the environment,
     and if it is not mapped we also search in the current signature [sign]. If
     the name does not correspond to anything, the program fails gracefully. *)
 let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
-  let (mp, x) = qid.elt in
+  let (mp, s) = qid.elt in
   if mp = [] then
     (* No module path, search the environment first. *)
     begin
-      try Bindlib.box_of_var (fst (List.assoc x env)) with Not_found ->
-      try _Symb (Sign.find sign x) with Not_found ->
-      fatal "Unbound variable or symbol %S...\n%!" x
+      try Bindlib.box_of_var (fst (List.assoc s env)) with Not_found ->
+      try _Symb (Sign.find sign s) with Not_found ->
+      fatal "Unbound variable or symbol %S...\n%!" s
     end
   else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
     (* Module path is not available (not loaded), fail. *)
@@ -45,15 +45,15 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
     begin
       (* Cannot fail. *)
       let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
-      try _Symb (Sign.find sign x) with Not_found ->
-      fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
+      try _Symb (Sign.find sign s) with Not_found ->
+      fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
     end
 
 (** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
     .. -> xn:Tn -> t]. *)
 let build_prod : env -> tbox -> term = fun c t ->
-  let fn b (_,(v,(_,a))) =
+  let fn b (_,(v,a)) =
     Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
   in Bindlib.unbox (List.fold_left fn t c)
 
@@ -90,7 +90,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
       | P_Type        -> _Type
       | P_Prod(x,a,b) ->
           let a = scope env a in
-          let f v = scope (add_env x.elt v (x,a) env) b in
+          let f v = scope (add_env x.elt v a env) b in
           _Prod a x.elt f
       | P_Abst(x,ao,b) ->
           let a =
@@ -98,7 +98,7 @@ let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
             | Some(a) -> scope env a
             | None    -> build_meta_app env true
           in
-          let f v = scope (add_env x.elt v (x,a) env) b in
+          let f v = scope (add_env x.elt v a env) b in
           _Abst a x.elt f
       | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
       | P_Wild        ->
@@ -173,13 +173,13 @@ let to_patt : env -> Sign.t -> p_term -> patt = fun env sign t ->
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
 let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
   fun sign (xs_ty_map,t,u) ->
-    (*Reminder: type p_rule = (strloc * p_term option) list * p_term * p_term*)
+    (*Reminder: p_rule = (strloc * p_term option) list * p_term * p_term*)
     let xs = List.map fst xs_ty_map in
     (* Scoping the LHS and RHS. *)
-    let fn x = x.elt, (Bindlib.new_var mkfree x.elt, (x, _Type) (*FIXME?*))
+    let fn x = x.elt, (Bindlib.new_var mkfree x.elt,_Type) (*FIXME?*) in
     let env = List.map fn xs in
     let (s, l, wcs) = to_patt env sign t in
-    (*Reminder: type patt = def * tbox list * tvar array*)
+    (*Reminder: patt = def * tbox list * tvar array*)
     let arity = List.length l in
     let l = Bindlib.box_list l in
     let u = to_tbox ~env sign u in
@@ -196,9 +196,7 @@ let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
     let xs = Array.append xs wcs in
     let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
     let ty_map = List.map (fun (n,(x,_)) -> (x, List.assoc n xs_ty_map)) env in
-    let fn x =
-      let n = Bindlib.name_of x in
-      (n, (x, (Pos.none n, _Type)))
+    let fn x = Bindlib.name_of x, (x, _Type) (*FIXME*)
     in
     let add_var (env, ctx) x =
       let a =
