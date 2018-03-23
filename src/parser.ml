@@ -74,11 +74,11 @@ let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta =
   (* Internal meta-variable by key. *)
-  | "?" - n:''[1-9][0-9]*''             ->
-      let n = int_of_string n in
-      if Terms.(exists_meta (Internal(n))) then M_Sys(n) else M_Bad(n)
+  | "?" - s:''[1-9][0-9]*''             ->
+      let k = int_of_string s in
+      if Terms.(exists_meta (Internal(k))) then M_Sys(k) else M_Bad(k)
   (* User-defined meta-variable by name. *)
-  | "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(id)
+  | "?" - s:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(s)
 
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =

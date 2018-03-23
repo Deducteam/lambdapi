@@ -115,38 +115,38 @@ let all_metas : meta_map ref = ref empty_meta_map
     or raises [Not_found] if the name is not mapped. *)
 let find_meta : meta_name -> meta = fun name ->
   match name with
-  | Defined(id) -> StrMap.find id !all_metas.str_map
+  | Defined(s) -> StrMap.find s !all_metas.str_map
   | Internal(k) -> IntMap.find k  !all_metas.int_map
-
-(** [add_meta id a n] creates a new user-defined meta-variables named [id], of
-    type [a], and of arity [n]. Note that [all_metas] is updated automatically
-    at the same time. *)
-let add_meta : string -> term -> int -> meta = fun id a n ->
-  let m = { meta_name  = Defined(id)
-         ; meta_type  = a
-         ; meta_arity = n
-         ; meta_value = ref None }
-  in
-  let str_map = StrMap.add id m !all_metas.str_map in
-  all_metas := {!all_metas with str_map}; m
-
-(** [new_meta a n] creates a new internal meta-variables of type [a] and arity
-    [n]. Note that [all_metas] is updated automatically at the same time. *)
-let new_meta : term -> int -> meta = fun a n ->
-  let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
-  let m = { meta_name  = Internal(k)
-         ; meta_type  = a
-         ; meta_arity = n
-         ; meta_value = ref None }
-  in
-  let int_map = IntMap.add k m !all_metas.int_map in
-  all_metas := {!all_metas with int_map; free_keys}; m
 
 (** [exists_meta name] tells whether [name] is mapped in [all_metas]. *)
 let exists_meta : meta_name -> bool = fun name ->
   match name with
-  | Defined(id) -> StrMap.mem id !all_metas.str_map
+  | Defined(s) -> StrMap.mem s !all_metas.str_map
   | Internal(k) -> IntMap.mem k  !all_metas.int_map
+
+(** [add_meta s a n] creates a new user-defined meta-variable named [s], of
+    type [a] and arity [n]. Note that [all_metas] is updated automatically
+    at the same time. *)
+let add_meta : string -> term -> int -> meta = fun s a n ->
+  let m = { meta_name  = Defined(s)
+          ; meta_type  = a
+          ; meta_arity = n
+          ; meta_value = ref None }
+  in
+  let str_map = StrMap.add s m !all_metas.str_map in
+  all_metas := {!all_metas with str_map}; m
+
+(** [new_meta a n] creates a new internal meta-variable of type [a] and arity
+    [n]. Note that [all_metas] is updated automatically at the same time. *)
+let new_meta : term -> int -> meta = fun a n ->
+  let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
+  let m = { meta_name  = Internal(k)
+          ; meta_type  = a
+          ; meta_arity = n
+          ; meta_value = ref None }
+  in
+  let int_map = IntMap.add k m !all_metas.int_map in
+  all_metas := {!all_metas with int_map; free_keys}; m
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
