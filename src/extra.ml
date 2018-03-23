@@ -49,7 +49,7 @@ module Array =
     (** [pp pp_e sep oc a] prints the array list [a] on the channel [oc] using
         [sep] as separator, and [pp_e] for printing the elements. *)
     let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
-      List.pp pp_elt sep oc (to_list a)
+      List.pp pp_elt sep oc (to_list a) (*FIXME:avoid call to [to_list]?*)
   end
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
