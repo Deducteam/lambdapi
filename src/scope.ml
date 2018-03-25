@@ -244,6 +244,60 @@ let scope_rule : Sign.t -> p_rule -> def * rule = fun sign (p_lhs, p_rhs) ->
   (* We put everything together to build the rule. *)
   (sym, {lhs; rhs; arity = List.length lhs})
 
+(** [translate_old_rule r] transforms the legacy representation of a rule into
+    the new representation. This function will be removed soon. *)
+let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
+  let ctx = List.map (fun (x,_) -> x.elt) ctx in
+  let rec build_lhs env t =
+    match t.elt with
+    | P_Vari(qid)   ->
+        let (mp,x) = qid.elt in
+        if mp = [] && not (List.mem x env) && List.mem x ctx then
+          Pos.make t.pos (P_Meta(M_User(x),[||]))
+          (* FIXME need more for Miller patterns. *)
+        else Pos.make t.pos (P_Vari(qid))
+    | P_Type        -> fatal "Invalid legacy pattern %a\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "Invalid legacy pattern %a\n" Pos.print t.pos
+    | P_Abst(x,a,u) ->
+        if a <> None then fatal "Invalid legacy pattern %a\n" Pos.print t.pos;
+        let u = build_lhs (x.elt::env) u in
+        Pos.make t.pos (P_Abst(x,a,u))
+    | P_Appl(t1,t2) ->
+        let t1 = build_lhs env t1 in
+        let t2 = build_lhs env t2 in
+        Pos.make t.pos (P_Appl(t1,t2))
+    | P_Wild        -> t
+    | P_Meta(_,_)   ->
+        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+  in
+  let rec build_rhs env t =
+    match t.elt with
+    | P_Vari(qid)   ->
+        let (mp,x) = qid.elt in
+        if mp = [] && not (List.mem x env) && List.mem x ctx then
+          Pos.make t.pos (P_Meta(M_User(x),[||]))
+          (* FIXME need more for Miller patterns. *)
+        else Pos.make t.pos (P_Vari(qid))
+    | P_Type        -> t
+    | P_Prod(x,a,b) ->
+        let a = build_rhs env a in
+        let b = build_rhs (x.elt::env) b in
+        Pos.make t.pos (P_Prod(x,a,b))
+    | P_Abst(x,a,u) ->
+        let a = match a with Some(a) -> Some(build_rhs env a) | _ -> None in
+        let u = build_rhs (x.elt::env) u in
+        Pos.make t.pos (P_Abst(x,a,u))
+    | P_Appl(t1,t2) ->
+        let t1 = build_rhs env t1 in
+        let t2 = build_rhs env t2 in
+        Pos.make t.pos (P_Appl(t1,t2))
+    | P_Wild        ->
+        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+    | P_Meta(_,_)   ->
+        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+  in
+  (build_lhs [] lhs, build_rhs [] rhs)
+
 (** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
     signature [sign]. In case of error, the program gracefully fails. *)
 let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
@@ -264,7 +318,9 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
       in
       Def(o, x, a, t)
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
-  | P_OldRules(rs)      -> assert false (* TODO *)
+  | P_OldRules(rs)      ->
+      let rs = List.map translate_old_rule rs in
+      Rules(List.map (scope_rule sign) rs)
   | P_Import(path)      -> Import(path)
   | P_Debug(b,s)        -> Debug(b,s)
   | P_Verb(n)           -> Verb(n)
