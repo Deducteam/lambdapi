@@ -81,7 +81,7 @@ let check_rule : Sign.t -> def -> rule -> unit = fun sign s rule ->
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
-    | Abst(a,t)   -> _Abst (to_m a) (Bindlib.binder_name t) (to_m_binder t)
+    | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (to_m_binder t)
     | Appl(t,u)   -> _Appl (to_m t) (to_m u)
     | Patt(i,n,m) ->
         begin
