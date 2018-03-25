@@ -17,16 +17,16 @@ let set_meta : meta -> tmbinder -> unit = fun m v ->
 (** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
 let rec occurs : meta -> term -> bool = fun r t ->
   match unfold t with
-  | Prod(a,b) -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Abst(a,t) -> occurs r a || occurs r (Bindlib.subst t Kind)
-  | Appl(t,u) -> occurs r t || occurs r u
-  | Meta(u,e) -> u == r || Array.exists (occurs r) e
-  | Type      -> false
-  | Kind      -> false
-  | Vari(_)   -> false
-  | Symb(_)   -> false
-  | ITag(_)   -> false
-  | Wild      -> false
+  | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Appl(t,u)   -> occurs r t || occurs r u
+  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
+  | Type        -> false
+  | Kind        -> false
+  | Vari(_)     -> false
+  | Symb(_)     -> false
+  | Patt(_,_,_) -> assert false
+  | TEnv(_,_)   -> assert false
 
 (** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
     telling whether it succeeded or not.  Note that the function also verifies
@@ -52,10 +52,10 @@ let unify : term -> term -> bool = fun a b ->
     | (Prod(a1,b1)  , Prod(a2,b2)  ) -> unify a1 a2 && unify_binder b1 b2
     | (Abst(a1,t1)  , Abst(a2,t2)  ) -> unify a1 a2 && unify_binder t1 t2
     | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify t1 t2 && unify u1 u2
-    | (Wild         , _            ) -> assert false
-    | (_            , Wild         ) -> assert false
-    | (ITag(_)      , _            ) -> assert false
-    | (_            , ITag(_)      ) -> assert false
+    | (Patt(_,_,_)  , _            ) -> assert false
+    | (_            , Patt(_,_,_)  ) -> assert false
+    | (TEnv(_,_)    , _            ) -> assert false
+    | (_            , TEnv(_,_)    ) -> assert false
     | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
     | (Meta(u,e)    , b            ) when instantiate u e b -> true
     | (a            , Meta(u,e)    ) -> instantiate u e a

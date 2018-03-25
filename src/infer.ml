@@ -91,8 +91,8 @@ let rec infer : problem -> ctxt -> term -> problem * term =
        end
     (* No rule apply. *)
     | Kind        -> assert false
-    | ITag(_)     -> assert false
-    | Wild        -> assert false
+    | Patt(_,_,_) -> assert false
+    | TEnv(_,_)   -> assert false
   in
   if !debug_type then
     log "INFR" (gre "%a; %a ⊢ %a : %a") pp_problem p pp_ctxt c pp t pp typ_t;
@@ -119,10 +119,10 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
        let p = add_constr c a b p in
        let x,u,v,c = unbind_tbinder2 c a f g in
        add_constr c u v p
-    | Wild, _
-    | _, Wild
-    | ITag _, _
-    | _, ITag _ -> assert false
+    | Patt _, _
+    | _, Patt _
+    | TEnv _, _
+    | _, TEnv _ -> assert false
     | _, _ -> raise (Error (E_not_convertible (t,u)))
 
 let infer : ctxt -> term -> term option = fun c t ->

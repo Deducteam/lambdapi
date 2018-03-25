@@ -101,8 +101,8 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Appl) u:(expr `Atom)
       when p = `Appl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
-  | m:meta "[" e:(expr `Appl) es:{"," (expr `Appl)}* "]"
-      when p = `Atom -> in_pos _loc (P_Meta(m, Array.of_list (e::es)))
+  | m:meta e:env?[[]]
+      when p = `Atom -> in_pos _loc (P_Meta(m, Array.of_list e))
   (* Parentheses *)
   | "(" t:(expr `Func) ")"
       when p = `Atom
@@ -112,48 +112,57 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   | t:(expr `Atom)
       when p = `Appl
 
+(** [env] is a parser for a metavariable environment. *)
+and parser env = "[" t:(expr `Appl) ts:{"," (expr `Appl)}* "]" -> t::ts
+
 (** [expr] is the entry point of the parser for expressions, which include all
     terms, types and patterns. *)
 let expr = expr `Func
 
 (** Representation of a reduction rule, with its context. *)
-type p_rule = (strloc * p_term option) list * p_term * p_term
+type old_p_rule = (strloc * p_term option) list * p_term * p_term
+type p_rule = p_term * p_term
 
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Static symbol declaration. *)
-  | P_NewSym of strloc * p_term
+  | P_NewSym   of strloc * p_term
   (** Definable symbol declaration. *)
-  | P_NewDef of strloc * p_term
+  | P_NewDef   of strloc * p_term
   (** Rewriting rules declaration. *)
-  | P_Rules  of p_rule list
+  | P_Rules    of p_rule list
+  | P_OldRules of old_p_rule list
   (** Quick definition. *)
-  | P_Def    of bool * strloc * p_term option * p_term
+  | P_Def      of bool * strloc * p_term option * p_term
   (** Import an external signature. *)
-  | P_Import of module_path
+  | P_Import   of module_path
   (** Set debugging flags. *)
-  | P_Debug  of bool * string
+  | P_Debug    of bool * string
   (** Set the verbosity level. *)
-  | P_Verb   of int
+  | P_Verb     of int
   (** Type inference command. *)
-  | P_Infer  of p_term * Eval.config
+  | P_Infer    of p_term * Eval.config
   (** Normalisation command. *)
-  | P_Eval   of p_term * Eval.config
+  | P_Eval     of p_term * Eval.config
   (** Type-checking command. *)
-  | P_Test_T of bool * bool * p_term * p_term
+  | P_Test_T   of bool * bool * p_term * p_term
   (** Convertibility command. *)
-  | P_Test_C of bool * bool * p_term * p_term
+  | P_Test_C   of bool * bool * p_term * p_term
   (** Unimplemented command. *)
-  | P_Other  of strloc
+  | P_Other    of strloc
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
 
+(** [rule] is a parser for a single rewriting rule. *)
+let parser rule = t:expr "-->" u:expr
+
 (** [context] is a parser for a rewriting rule context. *)
 let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 
-(** [rule] is a parser for a single rewriting rule. *)
-let parser rule = _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
+(** [old_rule] is a parser for a single rewriting rule (old syntax). *)
+let parser old_rule =
+  _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
 
 let parser arg = "(" ident ":" expr ")"
 
@@ -201,7 +210,8 @@ let parser cmd_aux =
   | _def_ x:ident ":" a:expr         -> P_NewDef(x,a)
   | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
   | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
-  | rs:rule+                         -> P_Rules(rs)
+  | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
+  | rs:old_rule+                     -> P_OldRules(rs)
   | "#REQUIRE" path:mod_path         -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+'' -> P_Debug(f = "+", s)
   | "#VERBOSE" n:''[-+]?[0-9]+''     -> P_Verb(int_of_string n)

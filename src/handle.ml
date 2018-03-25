@@ -44,21 +44,20 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   let s = Sign.new_definable sg x a in
   let rule =
-    let lhs = Bindlib.mvbind mkfree [||] (fun _ -> Bindlib.box []) in
     let rhs =
       let t = Bindlib.box t in
-      Bindlib.mvbind mkfree [||] (fun _ -> t)
+      Bindlib.mvbind te_mkfree [||] (fun _ -> t)
     in
-    {arity = 0; lhs = Bindlib.unbox lhs ; rhs = Bindlib.unbox rhs}
+    {arity = 0; lhs = [] ; rhs = Bindlib.unbox rhs}
   in
   Sign.add_rule sg s rule
 
 (** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
-let handle_rules = fun sign rs ->
-  let rs = List.map (Sr.check_rule sign) rs in
-  List.iter (fun (s,_,_,rule) -> Sign.add_rule sign s rule) rs
+let handle_rules : Sign.t -> (def * rule) list -> unit = fun sign rs ->
+  List.iter (fun (s,r) -> Sr.check_rule sign s r) rs;
+  List.iter (fun (s,r) -> Sign.add_rule sign s r) rs
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)

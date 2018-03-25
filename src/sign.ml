@@ -46,22 +46,19 @@ let link : t -> unit = fun sign ->
       Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
     in
     match unfold t with
-    | Vari(x)   -> t
-    | Type      -> t
-    | Kind      -> t
-    | Symb(s)   -> Symb(link_symb s)
-    | Prod(a,b) -> Prod(link_term a, link_binder b)
-    | Abst(a,t) -> Abst(link_term a, link_binder t)
-    | Appl(t,u) -> Appl(link_term t, link_term u)
-    | Meta(_,_) -> assert false
-    | ITag(_)   -> assert false
-    | Wild      -> Wild
+    | Vari(x)     -> t
+    | Type        -> t
+    | Kind        -> t
+    | Symb(s)     -> Symb(link_symb s)
+    | Prod(a,b)   -> Prod(link_term a, link_binder b)
+    | Abst(a,t)   -> Abst(link_term a, link_binder t)
+    | Appl(t,u)   -> Appl(link_term t, link_term u)
+    | Meta(_,_)   -> assert false
+    | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
+    | TEnv(t,m)   -> TEnv(t, Array.map link_term m)
   and link_rule r =
-    let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
-    let lhs = List.map link_term lhs in
-    let lhs = Bindlib.box_list (List.map lift lhs) in
-    let lhs = Bindlib.unbox (Bindlib.bind_mvar xs lhs) in
-    let (xs, rhs) = Bindlib.unmbind mkfree r.rhs in
+    let lhs = List.map link_term r.lhs in
+    let (xs, rhs) = Bindlib.unmbind te_mkfree r.rhs in
     let rhs = lift (link_term rhs) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
@@ -105,10 +102,15 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type <- Wild in
-  let unlink_def s = s.def_type <- Wild; s.def_rules <- [] in
+  let unlink_sym s = s.sym_type <- Kind in
+  let unlink_def s = s.def_type <- Kind; s.def_rules <- [] in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
+    let unlink_term_env t =
+      match t with
+      | TE_Some(b) -> unlink_term (snd (Bindlib.unmbind mkfree b))
+      | _          -> ()
+    in
     match unfold t with
     | Vari(x)      -> ()
     | Type         -> ()
@@ -119,12 +121,11 @@ let unlink : t -> unit = fun sign ->
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
     | Meta(_,_)    -> assert false
-    | ITag(_)      -> assert false
-    | Wild         -> ()
+    | Patt(_,_,m)  -> Array.iter unlink_term m
+    | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
   and unlink_rule r =
-    let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
-    List.iter unlink_term lhs;
-    let (xs, rhs) = Bindlib.unmbind mkfree r.rhs in
+    List.iter unlink_term r.lhs;
+    let (xs, rhs) = Bindlib.unmbind te_mkfree r.rhs in
     unlink_term rhs
   in
   let fn _ sym =

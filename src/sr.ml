@@ -72,6 +72,13 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
 
 (** [check_rule sign r] check whether rule [r] is well-typed, in the signature
     [sign]. The program fails gracefully in case of error. *)
+let check_rule : Sign.t -> def -> rule -> unit = fun sign s rule ->
+  wrn "RULES NOT TYPED: %a.\n" pp_rule (s, rule);
+  () (* TODO *)
+
+(*
+(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
+    [sign]. The program fails gracefully in case of error. *)
 let check_rule sign (ctx, s, t, u, rule) =
   (* Infer the type of the LHS and the constraints. *)
   let (tt, tt_constrs) =
@@ -100,3 +107,4 @@ let check_rule sign (ctx, s, t, u, rule) =
     end;
   (* Adding the rule. *)
   (s,t,u,rule)
+*)

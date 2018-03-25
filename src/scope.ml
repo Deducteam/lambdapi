@@ -78,159 +78,180 @@ let build_meta_app : env -> bool -> tbox =
     let m = new_meta t (List.length env) in
     _Meta m vs
 
-(** [scope new_wildcard env sign t] transforms the parsing level term [t] into
-    an actual term using the free variables of the environment [env], and  the
-    symbols of the signature [sign]. Wildcards are replaced by new
-    metavariables. *)
-let scope : (unit -> tbox) option -> env -> Sign.t -> p_term -> tbox =
-  fun new_wildcard env sign t ->
-    let rec scope env t =
-      match t.elt with
-      | P_Vari(qid)   -> find_var sign env qid
-      | P_Type        -> _Type
-      | P_Prod(x,a,b) ->
-          let a = scope env a in
-          let f v = scope (add_env x.elt v a env) b in
-          _Prod a x.elt f
-      | P_Abst(x,ao,b) ->
-          let a =
-            match ao with
-            | Some(a) -> scope env a
-            | None    -> build_meta_app env true
-          in
-          let f v = scope (add_env x.elt v a env) b in
-          _Abst a x.elt f
-      | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-      | P_Wild        ->
-          begin
-            match new_wildcard with
-            | Some(f) -> f ()
-            | None    -> build_meta_app env false
-          end
-      | P_Meta(id,ts) ->
-        let ts = Array.map (scope env) ts in
-        let m =
-          match id with
-          | M_Bad k -> fatal "Unknown metavariable [?%i] %a" k Pos.print t.pos
-          | M_Sys k ->
-             begin
-              try find_meta (Internal k)
-              with Not_found -> assert false
-             (* Cannot happen since the existence of [k] is checked
-               during parsing. *)
-             end
-          | M_User s ->
-             let id = Defined s in
-             begin
-              try find_meta id
-              with Not_found ->
-                let t, _ = build_meta_type env false in
-                add_meta s t (List.length env)
-             end
+let build_meta_name loc id =
+  match id with
+  | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
+  | M_Sys(k)  -> Internal(k)
+  | M_User(s) -> Defined(s)
+
+(** [scope_term sign t] TODO *)
+let scope_term : Sign.t -> p_term -> term = fun sign t ->
+  let rec scope : env -> p_term -> tbox = fun env t ->
+    match t.elt with
+    | P_Vari(qid)   -> find_var sign env qid
+    | P_Type        -> _Type
+    | P_Prod(x,a,b) ->
+        let a = scope env a in
+        _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
+    | P_Abst(x,a,t) ->
+        let a =
+          match a with
+          | Some(a) -> scope env a
+          | None    -> build_meta_app env true
         in
-        _Meta m ts
-    in
-    scope env t
-
-(** [to_tbox ~env sign t] is a convenient interface for [scope]. *)
-let to_tbox : ?env:env -> Sign.t -> p_term -> tbox =
-  fun ?(env=[]) sign t -> scope None env sign t
-
-(** [to_term ~env sign t] composes [to_tbox] with [Bindlib.unbox]. *)
-let to_term : ?env:env -> Sign.t -> p_term -> term =
-  fun ?(env=[]) sign t -> Bindlib.unbox (scope None env sign t)
-
-(** Representation of a pattern as its head symbol, the list of its arguments,
-    and an array of variables corresponding to wildcards. *)
-type patt = def * tbox list * tvar array
-
-(** [to_patt env sign t] transforms the parsing level term [t] into a
-    pattern. Wildcards are replaced by fresh *variables* (not
-    metavariables). The function also checks that it has a definable
-    symbol as a head term, and gracefully fails otherwise. *)
-let to_patt : env -> Sign.t -> p_term -> patt = fun env sign t ->
-  let wildcards = ref [] in
-  let counter = ref 0 in
-  let new_wildcard () =
-    let s = "#" ^ string_of_int !counter in
-    let v = Bindlib.new_var mkfree s in
-    incr counter; wildcards := v :: !wildcards; Bindlib.box_of_var v
+        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
+    | P_Wild        -> build_meta_app env false
+    | P_Meta(id,ts) ->
+        let id = build_meta_name t.pos id in
+        let m =
+          try find_meta id with Not_found ->
+            let s = match id with Defined(s) -> s | _ -> assert false in
+            let (t,_) = build_meta_type env false in
+            add_meta s t (List.length env)
+        in
+        _Meta m (Array.map (scope env) ts)
   in
-  let t = Bindlib.unbox (scope (Some new_wildcard) env sign t) in
-  let (head, args) = get_args t in
-  match head with
-  | Symb(Def(s)) -> (s, List.map lift args, Array.of_list !wildcards)
-  | Symb(Sym(s)) -> fatal "%s is not a definable symbol...\n" s.sym_name
-  | _            -> fatal "%a is not a valid pattern...\n" pp t
+  Bindlib.unbox (scope [] t)
+
+type meta_map = (string * int) list
+type full_lhs = def * term list
+
+(** [scope_lhs sign map t] TODO *)
+let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
+  let fresh =
+    let c = ref (-1) in
+    fun () -> incr c; Printf.sprintf "#%i" !c
+  in
+  let rec scope : env -> p_term -> tbox = fun env t ->
+    match t.elt with
+    | P_Vari(qid)   -> find_var sign env qid
+    | P_Type        -> fatal "Invalid pattern %a\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "Invalid pattern %a\n" Pos.print t.pos
+    | P_Abst(x,a,t) ->
+        let a =
+          match a with
+          | Some(a) -> fatal "Type in LHS %a" Pos.print a.pos
+          | None    -> build_meta_app env true
+        in
+        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
+    | P_Wild        ->
+        let e = List.map (fun (_,(x,_)) -> Bindlib.box_of_var x) env in
+        _Patt None (fresh ()) (Array.of_list e)
+    | P_Meta(m,e)   ->
+        let e = Array.map (scope env) e in
+        let m =
+          match m with
+          | M_User(s) -> s
+          | _         -> fatal "invalid pattern %a\n" Pos.print t.pos
+        in
+        let i = try Some(List.assoc m map) with Not_found -> None in
+        _Patt i m e
+  in
+  match get_args (Bindlib.unbox (scope [] t)) with
+  | (Symb(Def(s)), ts) -> (s, ts)
+  | (Symb(Sym(s)), _ ) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
+
+type rhs = (term_env, term) Bindlib.mbinder
+
+(** [scope_rhs sign map t] TODO *)
+let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
+  let names = Array.of_list (List.map fst map) in
+  let metas = Bindlib.new_mvar (fun m -> TE_Vari(m)) names in
+  let rec scope : env -> p_term -> tbox = fun env t ->
+    match t.elt with
+    | P_Vari(qid)   -> find_var sign env qid
+    | P_Type        -> _Type
+    | P_Prod(x,a,b) ->
+        let a = scope env a in
+        _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
+    | P_Abst(x,a,t) ->
+        let a =
+          match a with
+          | Some(a) -> scope env a
+          | None    -> build_meta_app env true
+        in
+        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
+    | P_Wild        -> fatal "wildcard in RHS %a" Pos.print t.pos
+    | P_Meta(m,e)   ->
+        let e = Array.map (scope env) e in
+        let m =
+          match m with
+          | M_User(s) -> s
+          | _         -> fatal "invalid action %a\n" Pos.print t.pos
+        in
+        let i = try List.assoc m map with Not_found -> assert false in
+        _TEnv (Bindlib.box_of_var metas.(i)) e
+  in
+  Bindlib.unbox (Bindlib.bind_mvar metas (scope [] t))
+
+(** [meta_vars t] TODO *)
+let meta_vars : p_term -> (string * int) list * string list = fun t ->
+  let rec meta_vars acc t =
+    match t.elt with
+    | P_Vari(_)           -> acc
+    | P_Type              -> acc
+    | P_Prod(_,a,b)       -> meta_vars (meta_vars acc a) b
+    | P_Abst(_,None   ,b) -> meta_vars acc b
+    | P_Abst(_,Some(a),b) -> meta_vars (meta_vars acc a) b
+    | P_Appl(t,u)         -> meta_vars (meta_vars acc t) u
+    | P_Wild              -> acc
+    | P_Meta(M_User(m),e) ->
+        let ((ar,nl) as acc) = Array.fold_left meta_vars acc e in
+        if m = "_" then acc else
+        let l = Array.length e in
+        begin
+          try
+            if List.assoc m ar <> l then
+              fatal "Arity mismatch for the meta variable %S...\n" m;
+            if List.mem m nl then acc else (ar, m::nl)
+          with Not_found -> ((m,l)::ar, nl)
+        end
+    | P_Meta(_,_)         ->
+        fatal "invalid rule member %a" Pos.print t.pos
+  in meta_vars ([],[]) t
 
 (** [scope_rule sign r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
-    includes the context, the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : Sign.t -> p_rule -> ctxt * def * term * term * rule =
-  (* Reminder: p_rule = (strloc * p_term option) list * p_term * p_term. *)
-  (* Reminder: rule =
-  { lhs   : (term, term list) Bindlib.mbinder (** Left-hand side (pattern). *)
-  ; rhs   : tmbinder (** Right-hand side. *)
-  ; arity : int (** Minimal number of argument for the rule to apply. *) } *)
-  fun sign (xs_ty_map,t,u) ->
-    let xs = List.map fst xs_ty_map in
-    (* Scoping the LHS and RHS. *)
-    let fn x = x.elt, (Bindlib.new_var mkfree x.elt, _Type) in
-    (* FIXME? We set the type of [x] to [Type] because a type is
-       required by [scope] in its [env] argument. *)
-    let env = List.map fn xs in
-    (* Reminder: env = (string * (tvar * tbox)) list. *)
-    let (s, l, wcs) = to_patt env sign t in
-    (* Reminder: patt = def * tbox list * tvar array. *)
-    let arity = List.length l in
-    let l = Bindlib.box_list l in
-    let u = to_tbox ~env sign u in
-    (* Building the definition. *)
-    let xs = Array.of_list (List.map (fun (_,(v,_)) -> v) env) in
-    let lhs =
-      (* Bind rule variables and wildcard variables in the LHS. *)
-      let lhs = Bindlib.bind_mvar xs l in
-      let lhs = Bindlib.bind_mvar wcs lhs in
-      let lhs = Bindlib.unbox lhs in
-      (* Substitute the wildcard variables by Wild. *)
-      Bindlib.msubst lhs (Array.map (fun _ -> Wild) wcs)
+    includes the context the symbol, the LHS / RHS as terms and the rule. *)
+let scope_rule : Sign.t -> p_rule -> def * rule = fun sign (p_lhs, p_rhs) ->
+  (* Compute the set of the meta-variables on both sides. *)
+  let (mvs_lhs, nl) = meta_vars p_lhs in
+  let (mvs    , _ ) = meta_vars p_rhs in
+  (* NOTE: to reject non-left-linear rules, we can check [nl = []] here. *)
+  (* Check that the meta-variables of the RHS exist in the LHS. *)
+  let check_in_lhs (m,i) =
+    let j =
+      try List.assoc m mvs_lhs with Not_found ->
+      fatal "Unknown meta variable %S...\n" m
     in
-    (* Bind the rule variables in the RHS. *)
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar xs u) in
-    (* Constructing the typing context. *)
-    let xs_wcs = Array.append xs wcs in
-    let xs_ty_map = List.map (fun (n,a) -> (n.elt,a)) xs_ty_map in
-    let ty_map = List.map (fun (n,(v,_)) -> (v, List.assoc n xs_ty_map)) env in
-    let fn v = Bindlib.name_of v, (v, _Type) in
-    (*FIXME? We set the type of [x] to [Type]*)
-    let add_var (env, ctx) x =
-      let a =
-        try
-          match snd (List.find (fun (y,_) -> Bindlib.eq_vars y x) ty_map) with
-          | None    -> raise Not_found
-          | Some(a) -> to_tbox ~env sign a
-        with Not_found ->
-          _Meta (new_meta Type 0) (Array.map Bindlib.box_of_var xs_wcs)
-         (* FIXME? We set the type of [x] some metavariable applied to
-            [xs_wcs]. *)
-      in
-      (fn x :: env, add_tvar x (Bindlib.unbox a) ctx)
-    in
-    let wcs = List.map fn (Array.to_list wcs) in
-    let _, ctx = Array.fold_left add_var (wcs, empty_ctxt) xs_wcs in
-    (* Constructing the rule. *)
-    let t = add_args (Symb(Def s)) (Bindlib.unbox l) in
-    let u = Bindlib.unbox u in
-    (ctx, s, t, u, { lhs ; rhs ; arity })
+    if i <> j then fatal "Arity mismatch for the meta variable %S...\n" m
+  in
+  List.iter check_in_lhs mvs;
+  let mvs = List.map fst mvs in
+  (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
+  let nl = List.filter (fun m -> not (List.mem m mvs)) nl in
+  let mvs = List.mapi (fun i m -> (m,i)) (mvs @ nl) in
+  (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
+  (* NOTE: meta-variables not in [mvs] can be considerd as wildcards. *)
+  (* We scope the LHS and add index in the enviroment for meta-variables. *)
+  let (sym, lhs) = scope_lhs sign mvs p_lhs in
+  (* We scope the RHS and bind the meta-variables. *)
+  let rhs = scope_rhs sign mvs p_rhs in
+  (* We put everything together to build the rule. *)
+  (sym, {lhs; rhs; arity = List.length lhs})
 
 (** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
     signature [sign]. In case of error, the program gracefully fails. *)
 let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   match cmd with
-  | P_NewSym(x,a)       -> NewSym(x, to_term sign a)
-  | P_NewDef(x,a)       -> NewDef(x, to_term sign a)
+  | P_NewSym(x,a)       -> NewSym(x, scope_term sign a)
+  | P_NewDef(x,a)       -> NewDef(x, scope_term sign a)
   | P_Def(o,x,a,t)      ->
-      let t = to_term sign t in
+      let t = scope_term sign t in
       let a =
         match a with
         | None    ->
@@ -239,20 +260,21 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
               | Some(a) -> a
               | None    -> fatal "Unable to infer the type of [%a]\n" pp t
             end
-        | Some(a) -> to_term sign a
+        | Some(a) -> scope_term sign a
       in
       Def(o, x, a, t)
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
+  | P_OldRules(rs)      -> assert false (* TODO *)
   | P_Import(path)      -> Import(path)
   | P_Debug(b,s)        -> Debug(b,s)
   | P_Verb(n)           -> Verb(n)
-  | P_Infer(t,c)        -> Infer(to_term sign t, c)
-  | P_Eval(t,c)         -> Eval(to_term sign t, c)
+  | P_Infer(t,c)        -> Infer(scope_term sign t, c)
+  | P_Eval(t,c)         -> Eval(scope_term sign t, c)
   | P_Test_T(ia,mf,t,a) ->
-      let contents = HasType(to_term sign t, to_term sign a) in
+      let contents = HasType(scope_term sign t, scope_term sign a) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_Test_C(ia,mf,t,u) ->
-      let contents = Convert(to_term sign t, to_term sign u) in
+      let contents = Convert(scope_term sign t, scope_term sign u) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_Other(c)          -> Other(c)
 

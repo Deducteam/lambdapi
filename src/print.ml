@@ -34,29 +34,36 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     let pp_func = pp `Func in
     let pp_appl = pp `Appl in
     let pp_atom = pp `Atom in
+    let pp_env oc ar =
+      if Array.length ar <> 0 then out "[%a]" (Array.pp pp_appl ",") ar
+    in
+    let pp_term_env oc te =
+      match te with
+      | TE_Vari(m) -> out "&%s" (Bindlib.name_of m)
+      | _          -> assert false
+    in
     match (unfold t, p) with
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)  , _    ) -> pp_tvar oc x
-    | (Type     , _    ) -> output_string oc "Type"
-    | (Kind     , _    ) -> output_string oc "Kind"
-    | (Symb(s)  , _    ) -> pp_symbol oc s
-    | (Meta(m,e), _    ) ->
-        if Array.length e = 0 then pp_meta oc m
-        else out "%a[%a]" pp_meta m (Array.pp pp_appl ",") e
-    | (ITag(i)  , _    ) -> out "<%i>" i
+    | (Vari(x)    , _    ) -> pp_tvar oc x
+    | (Type       , _    ) -> output_string oc "Type"
+    | (Kind       , _    ) -> output_string oc "Kind"
+    | (Symb(s)    , _    ) -> pp_symbol oc s
+    | (Meta(m,e)  , _    ) -> out "%a%a" pp_meta m pp_env e
+    | (Patt(_,n,e), _    ) -> out "&%s%a" n pp_env e
+    | (TEnv(t,e)  , _    ) -> out "<%a>%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(t,u), `Appl)
-    | (Appl(t,u), `Func) -> out "%a %a" pp_appl t pp_atom u
+    | (Appl(t,u)  , `Appl)
+    | (Appl(t,u)  , `Func) -> out "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(a,t), `Func) ->
+    | (Abst(a,t)  , `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
         out "%a:%a => %a" pp_tvar x pp_func a pp_func t
-    | (Prod(a,b), `Func) ->
+    | (Prod(a,b)  , `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
         if Bindlib.binder_occur b then out "%a:" pp_tvar x;
         out "%a -> %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
-    | (_        , _    ) -> out "(%a)" pp_func t
+    | (_          , _    ) -> out "(%a)" pp_func t
   in
   pp `Func oc (Bindlib.unbox (lift t))
 
@@ -65,9 +72,8 @@ let pp : out_channel -> term -> unit = pp_term
 
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
 let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
-  let (xs,lhs) = Bindlib.unmbind mkfree rule.lhs in
-  let lhs = add_args (Symb(Def def)) lhs in
-  let rhs = Bindlib.msubst rule.rhs (Array.map mkfree xs) in
+  let lhs = add_args (Symb(Def def)) rule.lhs in
+  let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
   Printf.fprintf oc "%a → %a" pp lhs pp rhs
 
 (** [pp_ctxt oc ctx] prints the context [ctx] to the channel [oc]. *)

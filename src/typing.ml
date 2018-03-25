@@ -43,17 +43,17 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
   let res =
     match unfold t with
     (* Sort *)
-    | Type      ->
+    | Type        ->
         unify c Kind
     (* Variable *)
-    | Vari(x)   ->
+    | Vari(x)     ->
         let cx = try find_tvar x ctx with Not_found -> assert false in
         unify_modulo cx c
     (* Symbol *)
-    | Symb(s)   ->
+    | Symb(s)     ->
         unify_modulo (symbol_type s) c
     (* Product *)
-    | Prod(a,b) ->
+    | Prod(a,b)   ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
@@ -64,7 +64,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
           | c    -> err "[%a] is not a sort...\n" pp c; false
         end
     (* Abstraction *)
-    | Abst(a,t) ->
+    | Abst(a,t)   ->
         begin
           let (x,tx) = Bindlib.unbind mkfree t in
           let c = whnf c in
@@ -92,7 +92,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
               assert(unfold c == c); false
         end
     (* Application *)
-    | Appl(t,u) ->
+    | Appl(t,u)   ->
         begin
           match infer sign ctx t with
           | None    -> wrn "Cannot infer the type of [%a]\n%!" pp t; false
@@ -114,10 +114,10 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
               end
         end
     (* No rule apply. *)
-    | Kind      -> assert false
-    | ITag(_)   -> assert false
-    | Meta(_,_) -> assert false
-    | Wild      -> assert false
+    | Kind        -> assert false
+    | Meta(_,_)   -> assert false
+    | Patt(_,_,_) -> assert false
+    | TEnv(_,_)   -> assert false
   in
   if !debug_type then
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;

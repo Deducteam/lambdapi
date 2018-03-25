@@ -22,16 +22,16 @@ type term =
   | Appl of term * term
   (** Metavariable. *)
   | Meta of meta * term array
-  (** Integer tag (used for pattern-matching). *)
-  | ITag of int
-  (** Wildcard (used for pattern-matching). *)
-  | Wild
+  (** Pattern variable (used for pattern-matching). *)
+  | Patt of int option * string * term array
+  (** Term environment (used for pattern-matching). *)
+  | TEnv of term_env * term array
 
 (** Representation of a free term variable. *)
  and tvar = term Bindlib.var
 
 (** Representation of the binding of a term variable in a term. *)
- and tbinder = (term, term) Bindlib.binder
+ and tbinder  = (term, term) Bindlib.binder
  and tmbinder = (term, term) Bindlib.mbinder
 
 (** Representation of a (static or definable) symbol. *)
@@ -57,13 +57,19 @@ type term =
   ; mutable def_rules : rule list   (** Reduction rules for the symbol. *)
   ; def_path          : module_path (** Module in which it is defined.  *) }
 
+
 (** Representation of a reduction rule. The definition of a rule is split into
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
     in the context are bound on both sides of the rule. *)
  and rule =
-  { lhs   : (term, term list) Bindlib.mbinder (** Left-hand side (pattern). *)
-  ; rhs   : tmbinder (** Right-hand side. *)
-  ; arity : int (** Minimal number of argument for the rule to apply. *) }
+  { lhs   : term list                        (* Left-hand side.    *)
+  ; rhs   : (term_env, term) Bindlib.mbinder (* Right-hand side.   *)
+  ; arity : int (** Minimal number of arguments to apply the rule. *) }
+
+ and term_env =
+  | TE_Vari of term_env Bindlib.var
+  | TE_Some of (term, term) Bindlib.mbinder
+  | TE_None
 
 (* NOTE the pattern for a rule (or [lhs]) is stored as a list of arguments for
    the definable symbol on which the rule is defined. The symbol itself is not
@@ -154,13 +160,14 @@ let unset : meta -> bool = fun u -> !(u.meta_value) = None
 (** [unfold t] unfolds the toplevel metavariable in [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta(m,e) ->
+  | Meta(m,e)            ->
       begin
         match !(m.meta_value) with
         | None    -> t
         | Some(b) -> unfold (Bindlib.msubst b e)
       end
-  | _        -> t
+  | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
+  | _                    -> t
 
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
@@ -180,6 +187,9 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
 
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
+
+(** Injection of [Bindlib] variables into term place-holders. *)
+let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
 
 (** Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
@@ -221,12 +231,11 @@ let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
 let _Meta : meta -> tbox array -> tbox = fun u ar ->
   Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
 
-(** [_ITag i] injects the [ITag(i)] constructor in the [bindbox] type. *)
-let _ITag : int -> tbox = fun i ->
-  Bindlib.box (ITag(i))
+let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
+  Bindlib.box_apply (fun ar -> Patt(i,n,ar)) (Bindlib.box_array ar)
 
-(** [_Wild] injects the constructor [Wild] in the [bindbox] type. *)
-let _Wild : tbox = Bindlib.box Wild
+let _TEnv : term_env Bindlib.bindbox -> tbox array -> tbox = fun te ar ->
+  Bindlib.box_apply2 (fun te ar -> TEnv(te,ar)) te (Bindlib.box_array ar)
 
 (** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
     variables, making them available for binding. At the same time,  the names
@@ -234,16 +243,16 @@ let _Wild : tbox = Bindlib.box Wild
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   match unfold t with
-  | Vari(x)   -> _Vari x
-  | Type      -> _Type
-  | Kind      -> _Kind
-  | Symb(s)   -> _Symb s
-  | Prod(a,b) -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
-  | Abst(a,t) -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
-  | Appl(t,u) -> _Appl (lift t) (lift u)
-  | Meta(r,m) -> _Meta r (Array.map lift m)
-  | ITag(i)   -> _ITag i
-  | Wild      -> _Wild
+  | Vari(x)     -> _Vari x
+  | Type        -> _Type
+  | Kind        -> _Kind
+  | Symb(s)     -> _Symb s
+  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Appl(t,u)   -> _Appl (lift t) (lift u)
+  | Meta(r,m)   -> _Meta r (Array.map lift m)
+  | Patt(i,n,m) -> _Patt i n (Array.map lift m)
+  | TEnv(t,m)   -> _TEnv (Bindlib.box t) (Array.map lift m)
 
 (** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
     and [args] is the list of its arguments. *)
