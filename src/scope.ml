@@ -143,15 +143,25 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
         let (a,_) = build_meta_type env false in
         ty_map := (m, a) :: !ty_map;
         _Patt None m (Array.of_list e)
-    | P_Meta(m,e)   ->
-        let e = Array.map (scope env) e in
+    | P_Meta(m,ts)  ->
+        let e = Array.map (scope env) ts in
         let m =
           match m with
           | M_User(s) -> s
           | _         -> fatal "invalid pattern %a\n" Pos.print t.pos
         in
         let i = try Some(List.assoc m map) with Not_found -> None in
-        let (a,_) = build_meta_type env false in
+        let (a,_) =
+          let fn (x,_) =
+            let gn t =
+              match t.elt with
+              | P_Vari({elt = ([], y)}) -> x = y
+              | _                       -> false
+            in
+            Array.exists gn ts
+          in
+          build_meta_type (List.filter fn env) false
+        in
         ty_map := (m, a) :: !ty_map;
         _Patt i m e
   in
