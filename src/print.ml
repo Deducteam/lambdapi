@@ -39,7 +39,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     in
     let pp_term_env oc te =
       match te with
-      | TE_Vari(m) -> out "&%s" (Bindlib.name_of m)
+      | TE_Vari(m) -> out "?%s" (Bindlib.name_of m)
       | _          -> assert false
     in
     match (unfold t, p) with
@@ -49,7 +49,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Kind       , _    ) -> output_string oc "Kind"
     | (Symb(s)    , _    ) -> pp_symbol oc s
     | (Meta(m,e)  , _    ) -> out "%a%a" pp_meta m pp_env e
-    | (Patt(_,n,e), _    ) -> out "&%s%a" n pp_env e
+    | (Patt(_,n,e), _    ) -> out "?%s%a" n pp_env e
     | (TEnv(t,e)  , _    ) -> out "<%a>%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(t,u)  , `Appl)
