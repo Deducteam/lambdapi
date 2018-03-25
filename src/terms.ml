@@ -62,9 +62,10 @@ type term =
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
     in the context are bound on both sides of the rule. *)
  and rule =
-  { lhs   : term list                        (* Left-hand side.    *)
-  ; rhs   : (term_env, term) Bindlib.mbinder (* Right-hand side.   *)
-  ; arity : int (** Minimal number of arguments to apply the rule. *) }
+  { lhs    : term list                        (* Left-hand side.    *)
+  ; rhs    : (term_env, term) Bindlib.mbinder (* Right-hand side.   *)
+  ; ty_map : (string * term) list (* Types for pattern variables.   *)
+  ; arity  : int (** Minimal number of arguments to apply the rule. *) }
 
  and term_env =
   | TE_Vari of term_env Bindlib.var

@@ -48,7 +48,7 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
       let t = Bindlib.box t in
       Bindlib.mvbind te_mkfree [||] (fun _ -> t)
     in
-    {arity = 0; lhs = [] ; rhs = Bindlib.unbox rhs}
+    {arity = 0; lhs = []; ty_map = []; rhs = Bindlib.unbox rhs}
   in
   Sign.add_rule sg s rule
 

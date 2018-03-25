@@ -115,7 +115,7 @@ let scope_term : Sign.t -> p_term -> term = fun sign t ->
   Bindlib.unbox (scope [] t)
 
 type meta_map = (string * int) list
-type full_lhs = def * term list
+type full_lhs = def * term list * (string * term) list
 
 (** [scope_lhs sign map t] TODO *)
 let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
@@ -123,22 +123,26 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
     let c = ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
   in
+  let ty_map = ref [] in (* stores the type of each pattern variable. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_var sign env qid
-    | P_Type        -> fatal "Invalid pattern %a\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "Invalid pattern %a\n" Pos.print t.pos
+    | P_Type        -> fatal "invalid pattern %a\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "invalid pattern %a\n" Pos.print t.pos
     | P_Abst(x,a,t) ->
         let a =
           match a with
-          | Some(a) -> fatal "Type in LHS %a" Pos.print a.pos
+          | Some(a) -> fatal "type in LHS %a" Pos.print a.pos
           | None    -> build_meta_app env true
         in
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> Bindlib.box_of_var x) env in
-        _Patt None (fresh ()) (Array.of_list e)
+        let m = fresh () in
+        let (a,_) = build_meta_type env false in
+        ty_map := (m, a) :: !ty_map;
+        _Patt None m (Array.of_list e)
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
         let m =
@@ -147,10 +151,12 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
           | _         -> fatal "invalid pattern %a\n" Pos.print t.pos
         in
         let i = try Some(List.assoc m map) with Not_found -> None in
+        let (a,_) = build_meta_type env false in
+        ty_map := (m, a) :: !ty_map;
         _Patt i m e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
-  | (Symb(Def(s)), ts) -> (s, ts)
+  | (Symb(Def(s)), ts) -> (s, ts, !ty_map)
   | (Symb(Sym(s)), _ ) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
@@ -206,7 +212,7 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
         begin
           try
             if List.assoc m ar <> l then
-              fatal "Arity mismatch for the meta variable %S...\n" m;
+              fatal "arity mismatch for the meta variable %S...\n" m;
             if List.mem m nl then acc else (ar, m::nl)
           with Not_found -> ((m,l)::ar, nl)
         end
@@ -226,9 +232,9 @@ let scope_rule : Sign.t -> p_rule -> def * rule = fun sign (p_lhs, p_rhs) ->
   let check_in_lhs (m,i) =
     let j =
       try List.assoc m mvs_lhs with Not_found ->
-      fatal "Unknown meta variable %S...\n" m
+      fatal "unknown pattern variable %S...\n" m
     in
-    if i <> j then fatal "Arity mismatch for the meta variable %S...\n" m
+    if i <> j then fatal "arity mismatch for pattern variable %S...\n" m
   in
   List.iter check_in_lhs mvs;
   let mvs = List.map fst mvs in
@@ -238,11 +244,11 @@ let scope_rule : Sign.t -> p_rule -> def * rule = fun sign (p_lhs, p_rhs) ->
   (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
   (* NOTE: meta-variables not in [mvs] can be considerd as wildcards. *)
   (* We scope the LHS and add index in the enviroment for meta-variables. *)
-  let (sym, lhs) = scope_lhs sign mvs p_lhs in
+  let (sym, lhs, ty_map) = scope_lhs sign mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs sign mvs p_rhs in
   (* We put everything together to build the rule. *)
-  (sym, {lhs; rhs; arity = List.length lhs})
+  (sym, {lhs; rhs; ty_map; arity = List.length lhs})
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
@@ -256,10 +262,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           Pos.make t.pos (P_Meta(M_User(x),[||]))
           (* FIXME need more for Miller patterns. *)
         else Pos.make t.pos (P_Vari(qid))
-    | P_Type        -> fatal "Invalid legacy pattern %a\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "Invalid legacy pattern %a\n" Pos.print t.pos
+    | P_Type        -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
     | P_Abst(x,a,u) ->
-        if a <> None then fatal "Invalid legacy pattern %a\n" Pos.print t.pos;
+        if a <> None then fatal "invalid legacy pattern %a\n" Pos.print t.pos;
         let u = build_lhs (x.elt::env) u in
         Pos.make t.pos (P_Abst(x,a,u))
     | P_Appl(t1,t2) ->
@@ -268,7 +274,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
         Pos.make t.pos (P_Appl(t1,t2))
     | P_Wild        -> t
     | P_Meta(_,_)   ->
-        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
   in
   let rec build_rhs env t =
     match t.elt with
@@ -292,9 +298,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
         let t2 = build_rhs env t2 in
         Pos.make t.pos (P_Appl(t1,t2))
     | P_Wild        ->
-        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
     | P_Meta(_,_)   ->
-        fatal "Invalid legacy rule syntax %a\n" Pos.print t.pos
+        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
   in
   (build_lhs [] lhs, build_rhs [] rhs)
 

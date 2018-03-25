@@ -73,38 +73,68 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
 (** [check_rule sign r] check whether rule [r] is well-typed, in the signature
     [sign]. The program fails gracefully in case of error. *)
 let check_rule : Sign.t -> def -> rule -> unit = fun sign s rule ->
-  if !debug_type then wrn "RULES NOT TYPED: %a.\n" pp_rule (s, rule);
-  () (* TODO *)
-
-(*
-(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
-    [sign]. The program fails gracefully in case of error. *)
-let check_rule sign (ctx, s, t, u, rule) =
+  (** We process the LHS to replace patterns variables by metavariables. *)
+  let arity = Bindlib.mbinder_arity rule.rhs in
+  let metas = Array.init arity (fun _ -> None) in
+  let rec to_m : term -> tbox = fun t ->
+    let to_m_binder b x = to_m (Bindlib.subst b (mkfree x)) in
+    match unfold t with
+    | Vari(x)     -> _Vari x
+    | Symb(s)     -> _Symb s
+    | Abst(a,t)   -> _Abst (to_m a) (Bindlib.binder_name t) (to_m_binder t)
+    | Appl(t,u)   -> _Appl (to_m t) (to_m u)
+    | Patt(i,n,m) ->
+        begin
+          let m = Array.map to_m m in
+          let l = Array.length m in
+          match i with
+          | None    -> _Meta (new_meta (List.assoc n rule.ty_map) l) m
+          | Some(i) ->
+              match metas.(i) with
+              | Some(v) -> _Meta v m
+              | None    ->
+                  let v = new_meta (List.assoc n rule.ty_map) l in
+                  metas.(i) <- Some(v);
+                  _Meta v m
+        end
+    | Type        -> assert false (* Cannot appear in LHS. *)
+    | Kind        -> assert false (* Cannot appear in LHS. *)
+    | Prod(a,b)   -> assert false (* Cannot appear in LHS. *)
+    | Meta(r,m)   -> assert false (* Cannot appear in LHS. *)
+    | TEnv(t,m)   -> assert false (* Cannot appear in LHS. *)
+  in
+  let lhs = List.map (fun p -> Bindlib.unbox (to_m p)) rule.lhs in
+  let lhs = add_args (Symb(Def(s))) lhs in
+  (** We substitute the RHS with the corresponding metavariables.*)
+  let fn m =
+    let m = match m with Some(m) -> m | None -> assert false in
+    let names = Array.init m.meta_arity (Printf.sprintf "x%i") in
+    TE_Some(Bindlib.mbinder_from_fun names (fun e -> Meta(m,e)))
+  in
+  let te_envs = Array.map fn metas in
+  let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (tt, tt_constrs) =
-    match infer_with_constrs sign ctx t with
+  let (ty_lhs, lhs_constrs) =
+    match infer_with_constrs sign [] lhs with
     | Some(a) -> a
-    | None    -> fatal "Unable to infer the type of [%a]\n" pp t
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp lhs
   in
   (* Infer the type of the RHS and the constraints. *)
-  let (tu, tu_constrs) =
-    match infer_with_constrs sign ctx u with
+  let (ty_rhs, rhs_constrs) =
+    match infer_with_constrs sign [] rhs with
     | Some(a) -> a
-    | None    -> fatal "Unable to infer the type of [%a]\n" pp u
+    | None    -> fatal "Unable to infer the type of [%a]\n" pp rhs
   in
   (* Checking the implication of constraints. *)
   let check_constraint (a,b) =
-    if not (eq_modulo_constrs tt_constrs a b) then
+    if not (eq_modulo_constrs lhs_constrs a b) then
       fatal "A constraint is not satisfied...\n"
   in
-  List.iter check_constraint tu_constrs;
+  List.iter check_constraint rhs_constrs;
   (* Checking if the rule is well-typed. *)
-  if not (eq_modulo_constrs tt_constrs tt tu) then
+  if not (eq_modulo_constrs lhs_constrs ty_lhs ty_rhs) then
     begin
-      err "Infered type for LHS: %a\n" pp tt;
-      err "Infered type for RHS: %a\n" pp tu;
-      fatal "[%a → %a] is ill-typed\n" pp t pp u
-    end;
-  (* Adding the rule. *)
-  (s,t,u,rule)
-*)
+      err "Infered type for LHS: %a\n" pp ty_lhs;
+      err "Infered type for RHS: %a\n" pp ty_rhs;
+      fatal "[%a] is ill-typed\n" pp_rule (s, rule)
+    end
