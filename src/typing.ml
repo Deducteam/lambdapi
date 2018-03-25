@@ -114,8 +114,11 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
               end
         end
     (* No rule apply. *)
+    | Meta(m,e)   ->
+        let v = Bindlib.new_var mkfree (meta_name m) in
+        let ctx = add_tvar v m.meta_type ctx in
+        has_type sign ctx (add_args (Vari(v)) (Array.to_list e)) c
     | Kind        -> assert false
-    | Meta(_,_)   -> assert false
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
   in
