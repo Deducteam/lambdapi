@@ -40,13 +40,11 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         let (ha,argsa) = get_args a in
         let (hb,argsb) = get_args b in
         match (unfold ha, unfold hb) with
-        | (Symb(Sym(sa)), Symb(Sym(sb))) when sa == sb ->
+        | (Symb(sa), Symb(sb))
+            when sa == sb && not sa.sym_definable && not sb.sym_definable ->
             let cs =
               try List.combine argsa argsb @ cs with Invalid_argument _ -> cs
             in
-            build_sub acc cs
-        | (Symb(Def(sa)), Symb(Def(sb))) when sa == sb ->
-            wrn "%s may not be injective...\n%!" sa.def_name;
             build_sub acc cs
         | (Vari(x)      , _            ) when argsa = [] ->
             build_sub ((x,b)::acc) cs
@@ -72,7 +70,7 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
 
 (** [check_rule sign r] check whether rule [r] is well-typed, in the signature
     [sign]. The program fails gracefully in case of error. *)
-let check_rule : Sign.t -> def -> rule -> unit = fun sign s rule ->
+let check_rule : Sign.t -> symbol -> rule -> unit = fun sign s rule ->
   (** We process the LHS to replace patterns variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -104,7 +102,7 @@ let check_rule : Sign.t -> def -> rule -> unit = fun sign s rule ->
     | TEnv(t,m)   -> assert false (* Cannot appear in LHS. *)
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m p)) rule.lhs in
-  let lhs = add_args (Symb(Def(s))) lhs in
+  let lhs = add_args (Symb(s)) lhs in
   (** We substitute the RHS with the corresponding metavariables.*)
   let fn m =
     let m = match m with Some(m) -> m | None -> assert false in

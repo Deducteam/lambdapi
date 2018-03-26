@@ -7,11 +7,7 @@ open Sign
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
 let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
-  let (path, name) =
-    match s with
-    | Sym(sym) -> (sym.sym_path, sym.sym_name)
-    | Def(def) -> (def.def_path, def.def_name)
-  in
+  let (path, name) = (s.sym_path, s.sym_name) in
   let full =
     if path = Stack.top Sign.loading then name
     else String.concat "." (path @ [name])
@@ -71,8 +67,8 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
 let pp : out_channel -> term -> unit = pp_term
 
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
-let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
-  let lhs = add_args (Symb(Def def)) rule.lhs in
+let pp_rule : out_channel -> symbol * rule -> unit = fun oc (sym,rule) ->
+  let lhs = add_args (Symb(sym)) rule.lhs in
   let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
   Printf.fprintf oc "%a → %a" pp lhs pp rhs
 

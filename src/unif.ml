@@ -47,8 +47,7 @@ let unify : term -> term -> bool = fun a b ->
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Type         , Type         ) -> true
     | (Kind         , Kind         ) -> true
-    | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
-    | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
+    | (Symb(s1)     , Symb(s2)     ) -> s1 == s2
     | (Prod(a1,b1)  , Prod(a2,b2)  ) -> unify a1 a2 && unify_binder b1 b2
     | (Abst(a1,t1)  , Abst(a2,t2)  ) -> unify a1 a2 && unify_binder t1 t2
     | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify t1 t2 && unify u1 u2

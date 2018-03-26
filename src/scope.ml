@@ -128,10 +128,10 @@ let scope_term : Sign.t -> p_term -> term = fun sign t ->
 (** Association list giving an environment index to “pattern variable”. *)
 type meta_map = (string * int) list
 
-(** Representation of a rule LHS (or pattern). It contains the head symbol and 
+(** Representation of a rule LHS (or pattern). It contains the head symbol and
     the list of arguments (first two elements).  The last component associates
     a type to each “pattern variable” in the arguments. *)
-type full_lhs = def * term list * (string * term) list
+type full_lhs = symbol * term list * (string * term) list
 
 (** [scope_lhs sign map t] computes a rule LHS from the parser-level term [t],
     in the signature [sign].  The association list [map] gives the position of
@@ -186,8 +186,9 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
         _Patt i m e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
-  | (Symb(Def(s)), ts) -> (s, ts, !ty_map)
-  | (Symb(Sym(s)), _ ) -> fatal "%s is not a definable symbol...\n" s.sym_name
+  | (Symb(s), ts) ->
+     if s.sym_definable then (s, ts, !ty_map)
+     else fatal "%s is not a definable symbol...\n" s.sym_name
   | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
@@ -268,7 +269,7 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
 (** [scope_rule sign r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : Sign.t -> p_rule -> def * rule = fun sign (p_lhs, p_rhs) ->
+let scope_rule : Sign.t -> p_rule -> symbol * rule = fun sign (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in

@@ -17,13 +17,13 @@ let gen_obj : bool ref = ref false
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
 let handle_newsym : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign a); ignore (Sign.new_static sign n a)
+  ignore (Typing.sort_type sign a); ignore (Sign.new_symbol sign n a false)
 
 (** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
     with type [a] (and no reduction rule). If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. *)
 let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign a); ignore (Sign.new_definable sign n a)
+  ignore (Typing.sort_type sign a); ignore (Sign.new_symbol sign n a true)
 
 (** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
     is well-typed, which means that [t] has type [a]. In case of error (typing
@@ -32,7 +32,7 @@ let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  ignore (Sign.new_definable sg x a)
+  ignore (Sign.new_symbol sg x a true)
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
@@ -42,7 +42,7 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type sg a);
   if not (Typing.has_type sg empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  let s = Sign.new_definable sg x a in
+  let s = Sign.new_symbol sg x a true in
   let rule =
     let rhs =
       let t = Bindlib.box t in
@@ -55,7 +55,7 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
 (** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
-let handle_rules : Sign.t -> (def * rule) list -> unit = fun sign rs ->
+let handle_rules : Sign.t -> (symbol * rule) list -> unit = fun sign rs ->
   List.iter (fun (s,r) -> Sr.check_rule sign s r) rs;
   List.iter (fun (s,r) -> Sign.add_rule sign s r) rs
 

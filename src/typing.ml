@@ -51,7 +51,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
         unify_modulo cx c
     (* Symbol *)
     | Symb(s)     ->
-        unify_modulo (symbol_type s) c
+        unify_modulo s.sym_type c
     (* Product *)
     | Prod(a,b)   ->
         begin

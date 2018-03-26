@@ -38,27 +38,17 @@ type term =
  and tmbinder = (term, term) Bindlib.mbinder
 
 (** Representation of a (static or definable) symbol. *)
- and symbol = Sym of sym | Def of def
-
-(** Representation of a static symbol. *)
- and sym =
+ and symbol =
   { sym_name          : string      (** Name of the symbol. *)
   ; mutable sym_type  : term        (** Type of the symbol. *)
-  ; sym_path          : module_path (** Module in which it is defined. *) }
+  ; sym_path          : module_path (** Module in which it is defined. *)
+  ; mutable sym_rules : rule list   (** Reduction rules for the symbol. *)
+  ; sym_definable     : bool        (** If rules can be added. *) }
 
 (* NOTE the [sym_type] must be mutable so that we can have maximal sharing for
    symbols (two identical symbols are physically equal). We only set the value
    when loading a signature from a file, to link referenced symbols with their
-   original definition (in other signatures in memory). Definable symbols also
-   need their [def_type] field to be mutable for the same reason. *)
-
-(** Representation of a definable symbol, which carries its reduction rules in
-    a reference. It should be updated to add new rules. *)
- and def =
-  { def_name          : string      (** Name of the symbol. *)
-  ; mutable def_type  : term        (** Type of the symbol. *)
-  ; mutable def_rules : rule list   (** Reduction rules for the symbol. *)
-  ; def_path          : module_path (** Module in which it is defined.  *) }
+   original definition (in other signatures in memory). *)
 
 (** Representation of a reduction rule. The definition of a rule is split into
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
@@ -204,12 +194,6 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** Injection of [Bindlib] variables into term place-holders. *)
 let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
-
-(** [symbol_type s] returns the type of the given symbol [s]. *)
-let symbol_type : symbol -> term = fun s ->
-  match s with
-  | Sym(s) -> s.sym_type
-  | Def(d) -> d.def_type
 
 (******************************************************************************)
 (* Typing contexts *)

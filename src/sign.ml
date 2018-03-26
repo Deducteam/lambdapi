@@ -63,33 +63,23 @@ let link : t -> unit = fun sign ->
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
   and link_symb s =
-    let (name, path) =
-      match s with
-      | Sym(s) -> (s.sym_name, s.sym_path)
-      | Def(s) -> (s.def_name, s.def_path)
-    in
-    if path = sign.path then s else
+    if s.sym_path = sign.path then s else
     try
-      let sign = Hashtbl.find loaded path in
-      try find sign name with Not_found -> assert false
+      let sign = Hashtbl.find loaded s.sym_path in
+      try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
-  let fn _ sym =
-    match sym with
-    | Sym(s) -> s.sym_type <- link_term s.sym_type
-    | Def(s) -> s.def_type <- link_term s.def_type;
-                s.def_rules <- List.map link_rule s.def_rules
+  let fn _ s =
+    s.sym_type <- link_term s.sym_type;
+    s.sym_rules <- List.map link_rule s.sym_rules;
   in
   Hashtbl.iter fn sign.symbols;
   let gn path ls =
     let sign = try Hashtbl.find loaded path with Not_found -> assert false in
     let h (n, r) =
       let r = link_rule r in
-      let _ =
-        match find sign n with
-        | Sym(s) -> assert false
-        | Def(s) -> s.def_rules <- s.def_rules @ [r]
-      in
+      let s = find sign n in
+      s.sym_rules <- s.sym_rules @ [r];
       (n, r)
     in
     Some(List.map h ls)
@@ -102,8 +92,7 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type <- Kind in
-  let unlink_def s = s.def_type <- Kind; s.def_rules <- [] in
+  let unlink_sym s = s.sym_type <- Kind; s.sym_rules <- [] in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
     let unlink_term_env t =
@@ -115,8 +104,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(x)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(Sym(s)) -> if s.sym_path <> sign.path then unlink_sym s
-    | Symb(Def(s)) -> if s.def_path <> sign.path then unlink_def s
+    | Symb(s)      -> if s.sym_path <> sign.path then unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
@@ -128,39 +116,26 @@ let unlink : t -> unit = fun sign ->
     let (xs, rhs) = Bindlib.unmbind te_mkfree r.rhs in
     unlink_term rhs
   in
-  let fn _ sym =
-    match sym with
-    | Sym(s) -> unlink_term s.sym_type
-    | Def(s) -> unlink_term s.def_type; List.iter unlink_rule s.def_rules
-  in
+  let fn _ s = unlink_term s.sym_type; List.iter unlink_rule s.sym_rules in
   Hashtbl.iter fn sign.symbols;
-  let gn _ ls =
-    List.iter (fun (_, r) -> unlink_rule r) ls
-  in
+  let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   Hashtbl.iter gn sign.deps
 
-(** [new_static sign name a] creates a new, static symbol named [name] of type
-    [a] the signature [sign]. The created symbol is also returned. *)
-let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
+(** [new_symbol sign name a definable] creates a new symbol named
+    [name] of type [a] in the signature [sign]. The created symbol is
+    also returned. *)
+let new_symbol : t -> strloc -> term -> bool -> symbol =
+  fun sign s sym_type definable ->
   let { elt = sym_name; pos } = s in
   if Hashtbl.mem sign.symbols sym_name then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
-  let sym_path = sign.path in
-  let sym = { sym_name ; sym_type ; sym_path } in
-  Hashtbl.add sign.symbols sym_name (Sym(sym));
+  let sym = { sym_name = sym_name
+            ; sym_type = sym_type
+            ; sym_path = sign.path
+            ; sym_rules = []
+            ; sym_definable = definable } in
+  Hashtbl.add sign.symbols sym_name (sym);
   out 3 "(stat) %s\n" sym_name; sym
-
-(** [new_definable sign name a] creates a fresh definable symbol named [name],
-    without any reduction rules, and of type [a] in the signature [sign]. Note
-    that the created symbol is also returned. *)
-let new_definable : t -> strloc -> term -> def = fun sign s def_type ->
-  let { elt = def_name; pos } = s in
-  if Hashtbl.mem sign.symbols def_name then
-    wrn "Redefinition of symbol %S at %a.\n" def_name Pos.print pos;
-  let def_path = sign.path in
-  let def = { def_name ; def_type ; def_rules = [] ; def_path } in
-  Hashtbl.add sign.symbols def_name (Def(def));
-  out 3 "(defi) %s\n" def_name; def
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -192,12 +167,12 @@ let read : string -> t = fun fname ->
 (** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
     the rule does not correspond to a symbol of the current signature,  it  is
     also stored in the dependencies. *)
-let add_rule : t -> def -> rule -> unit = fun sign def r ->
-  def.def_rules <- def.def_rules @ [r];
-  out 3 "(rule) added a rule for symbol %s\n" def.def_name;
-  if def.def_path <> sign.path then
+let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
+  sym.sym_rules <- sym.sym_rules @ [r];
+  out 3 "(rule) added a rule for symbol %s\n" sym.sym_name;
+  if sym.sym_path <> sign.path then
     let m =
-      try Hashtbl.find sign.deps def.def_path
+      try Hashtbl.find sign.deps sym.sym_path
       with Not_found -> assert false
     in
-    Hashtbl.replace sign.deps def.def_path ((def.def_name, r) :: m)
+    Hashtbl.replace sign.deps sym.sym_path ((sym.sym_name, r) :: m)

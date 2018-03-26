@@ -14,8 +14,7 @@ let eq : term -> term -> bool = fun a b ->
     | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Type         , Type         ) -> true
     | (Kind         , Kind         ) -> true
-    | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
-    | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
+    | (Symb(s1)     , Symb(s2)) -> s1 == s2
     | (Prod(a1,b1)  , Prod(a2,b2)  ) -> eq a1 a2 && eq_binder b1 b2
     | (Abst(a1,t1)  , Abst(a2,t2)  ) -> eq a1 a2 && eq_binder t1 t2
     | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq t1 t2 && eq u1 u2
@@ -58,7 +57,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* Beta reduction. *)
   | (Abst(_,f)   , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
-  | (Symb(Def(s)), stk    ) as st ->
+  | (Symb(s), stk    ) as st ->
       begin
         match find_rule s stk with
         | None        -> st
@@ -70,7 +69,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
-and find_rule : def -> stack -> (term * stack) option = fun s stk ->
+and find_rule : symbol -> stack -> (term * stack) option = fun s stk ->
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -87,7 +86,7 @@ and find_rule : def -> stack -> (term * stack) option = fun s stk ->
     in
     match_args r.lhs stk
   in
-  List.map_find match_rule s.def_rules
+  List.map_find match_rule s.sym_rules
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for
     pattern variables (using the [ITag] node) are stored in [ar], at the index

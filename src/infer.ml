@@ -54,7 +54,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
     | Vari(x)     ->
        begin try p, find_tvar x c with Not_found -> assert false end
     (* Symbol *)
-    | Symb(s)     -> p, symbol_type s
+    | Symb(s)     -> p, s.sym_type
     (* Product *)
     | Prod(t,f) ->
        begin
@@ -139,13 +139,13 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
     | _, TEnv _ -> assert false
     | Appl(_,_), _
     | _, Appl(_,_) -> assert false (* a head cannot be an application *)
-    | Symb(Sym(s1)), Symb(Sym(s2)) ->
+    | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
        if s1 == s2 && n1 = n2 then
          let fn p a b = add_constr c a b p in
          List.fold_left2 fn p ts1 ts2
        else raise (Error (E_not_convertible (t1,t2)))
-    | Symb(Def(s1)), Symb(Def(s2)) when s1==s2 && n1 = n2 -> p
-    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p
+    | Symb(s1), Symb(s2) when s1==s2 && n1 = n2 -> p (*FIXME*)
+    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p (*FIXME*)
     | _, _ -> (c,t1,t2)::p
 
 let has_type : ctxt -> term -> term -> bool = fun c t u ->
