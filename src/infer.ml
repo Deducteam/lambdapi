@@ -35,6 +35,20 @@ let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
     then add_tvar x t c else c in
   x,u,v,c
 
+exception Exit
+
+let distinct_vars a =
+  let acc = ref [] in
+  let fn t =
+    match t with
+    | Vari v ->
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
+       else acc := v::!acc
+    | _ -> raise Exit
+  in
+  let res = try Array.iter fn a; true with Exit -> false in
+  acc := []; res
+
 type error =
   | E_not_a_sort of term
   | E_not_a_product of term
@@ -117,9 +131,11 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
          if ts2 = [] then p
          else raise (Error (E_not_typable t2))
        else raise (Error (E_not_typable t1))
+
     | Vari x, Vari y ->
        if Bindlib.eq_vars x y && n1 = n2 then add_constr2 c ts1 ts2 p
        else raise (Error (E_not_convertible (t1,t2)))
+
     | Prod(a,f), Prod(b,g) ->
        if ts1=[] then
          if ts2=[] then
@@ -128,23 +144,34 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
            add_constr c u v p
          else raise (Error (E_not_typable t2))
        else raise (Error (E_not_typable t1))
+
     | Abst(a,f), Abst(b,g) ->
        (* [ts1] and [ts2] are empty since [t1] and [t2] are in whnf. *)
        let p = add_constr c a b p in
        let x,u,v,c = unbind_tbinder2 c a f g in
        add_constr c u v p
-    | Patt _, _
-    | _, Patt _
-    | TEnv _, _
-    | _, TEnv _ -> assert false
-    | Appl(_,_), _
-    | _, Appl(_,_) -> assert false (* a head cannot be an application *)
+
     | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
        if s1 == s2 && n1 = n2 then add_constr2 c ts1 ts2 p
        else raise (Error (E_not_convertible (t1,t2)))
+
     | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> p
+
     | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 && n1 = 0 && n2 = 0 -> p
-    | _, _ -> (c,t1,t2)::p
+
+    | Meta(m,a), _ when n1 = 0 && distinct_vars a
+(*FIXME:&& not (occurs m t2) *) ->
+       let get_var = function Vari v -> v | _ -> assert false in
+       let b = Array.map get_var a in
+       Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
+       p
+
+    | Meta(_,_), _
+    | _, Meta(_,_)
+    | Symb(_), _
+    | _, Symb(_) -> (c,t1,t2)::p
+
+    | _, _ -> raise (Error (E_not_convertible (t1,t2)))
 
 and add_constr2 : ctxt -> term list -> term list -> problem -> problem =
   fun c ts1 ts2 p ->
