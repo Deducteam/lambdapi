@@ -71,7 +71,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
         let p = check p c t Type in
         let x,u,c = unbind_tbinder c t f in
         let p, typ_u = infer p c u in
-        p, prod x t u
+        p, prod x t typ_u
        end
     (* Application *)
     | Appl(t,u) ->
