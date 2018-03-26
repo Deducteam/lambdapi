@@ -56,19 +56,19 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
    the final dot), and this is one way to resolve it by being “greedy”. *)
 
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
-let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
+let parser _wild_ = s:''[_][_'a-zA-Z0-9]*'' ->
   if s <> "_" then Earley.give_up ()
 
 (** [_Type_] is an atomic parser for the special ["Type"] identifier. *)
-let parser _Type_ = s:''[T][y][p][e][_a-zA-Z0-9]*'' ->
+let parser _Type_ = s:''[T][y][p][e][_'a-zA-Z0-9]*'' ->
   if s <> "Type" then Earley.give_up ()
 
 (** [_def_] is an atomic parser for the ["def"] keyword. *)
-let parser _def_ = s:''[d][e][f][_a-zA-Z0-9]*'' ->
+let parser _def_ = s:''[d][e][f][_'a-zA-Z0-9]*'' ->
   if s <> "def" then Earley.give_up ()
 
 (** [_thm_] is an atomic parser for the ["thm"] keyword. *)
-let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
+let parser _thm_ = s:''[t][h][m][_'a-zA-Z0-9]*'' ->
   if s <> "thm" then Earley.give_up ()
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
@@ -167,8 +167,8 @@ let parser old_rule =
   _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
 
 let parser arg =
-  | "(" x:ident ":" a:expr ")" -> x, Some(a)
-(*  | x:ident -> x, None*)
+  | "(" x:ident ":" a:expr ")" -> (x, Some(a))
+  | x:ident                    -> (x, None   )
 
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
 let parser def_def = xs:arg* ao:{":" expr}? ":=" t:expr ->
@@ -210,7 +210,7 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident xs:arg* ":" a:expr       -> P_NewSym(x, build_prod xs a)
+  | x:ident ":" a:expr               -> P_NewSym(x,a)
   | _def_ x:ident ":" a:expr         -> P_NewDef(x,a)
   | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
   | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
