@@ -1,16 +1,29 @@
-OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
+OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet -docflags -hide-warnings
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
+.PHONY: all
+all: bin doc
+
 #### Compilation #############################################################
 
-.PHONY: all
-all: lambdapi.native
+.PHONY: bin
+bin: lambdapi.native doc
 
 lambdapi.native: _build/src/lambdapi.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
 	$(OCAMLBUILD) src/lambdapi.native
+
+#### Documentation ###########################################################
+
+.PHONY: doc
+doc: lambdapi.docdir/index.html
+
+lambdapi.docdir/index.html: _build/src/lambdapi.docdir/index.html
+
+_build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
+	$(OCAMLBUILD) src/lambdapi.docdir/index.html
 
 #### Unit tests ##############################################################
 
