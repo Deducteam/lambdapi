@@ -305,9 +305,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
     | P_Type        -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
     | P_Prod(_,_,_) -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
     | P_Abst(x,a,u) ->
-        if a <> None then wrn "type in legacy pattern %a\n" Pos.print t.pos;
+        if a <> None then fatal "type in legacy pattern %a\n" Pos.print t.pos;
         let u = build_lhs (x.elt::env) u in
-        Pos.make t.pos (P_Abst(x,None,u))
+        Pos.make t.pos (P_Abst(x,a,u))
     | P_Appl(t1,t2) ->
         let t1 = build_lhs env t1 in
         let t2 = build_lhs env t2 in
