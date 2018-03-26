@@ -4,6 +4,9 @@ open Console
 open Extra
 open Files
 
+(******************************************************************************)
+(* Terms *)
+
 (** Representation of terms (and types). *)
 type term =
   (** Free variable. *)
@@ -57,7 +60,6 @@ type term =
   ; mutable def_rules : rule list   (** Reduction rules for the symbol. *)
   ; def_path          : module_path (** Module in which it is defined.  *) }
 
-
 (** Representation of a reduction rule. The definition of a rule is split into
     a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
     in the context are bound on both sides of the rule. *)
@@ -102,6 +104,15 @@ type term =
    in the environment.  The values for the free variables are provided  by the
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
+
+(******************************************************************************)
+(* Metavariables *)
+
+(** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
+let meta_name : meta -> string = fun m ->
+  match m.meta_name with
+  | Defined(s) -> Printf.sprintf "?%s" s
+  | Internal(k) -> Printf.sprintf "?%i" k
 
 (** Representation of the existing meta-variables. *)
 type meta_map =
@@ -170,6 +181,39 @@ let rec unfold : term -> term = fun t ->
   | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
   | _                    -> t
 
+(** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
+    and [args] is the list of its arguments. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get_args acc t =
+    match unfold t with
+    | Appl(t,u) -> get_args (u::acc) t
+    | t         -> (t, acc)
+  in get_args [] t
+
+(** [add_args h args] builds the application of a term [h] to a list [args] of
+    of arguments. This function is the inverse of [get_args]. *)
+let add_args : term -> term list -> term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | u::args -> add_args (Appl(t,u)) args
+  in add_args t args
+
+(** Injection of [Bindlib] variables into terms. *)
+let mkfree : tvar -> term = fun x -> Vari(x)
+
+(** Injection of [Bindlib] variables into term place-holders. *)
+let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
+
+(** [symbol_type s] returns the type of the given symbol [s]. *)
+let symbol_type : symbol -> term = fun s ->
+  match s with
+  | Sym(s) -> s.sym_type
+  | Def(d) -> d.def_type
+
+(******************************************************************************)
+(* Typing contexts *)
+
 (** Representation of a typing context, associating a type (or [Term.term]) to
     free [Bindlib] variables. *)
 type ctxt = (tvar * term) list
@@ -186,11 +230,8 @@ let add_tvar : tvar -> term -> ctxt -> ctxt =
 let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
-(** Injection of [Bindlib] variables into terms. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
-
-(** Injection of [Bindlib] variables into term place-holders. *)
-let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
+(******************************************************************************)
+(* Boxed terms *)
 
 (** Short name for boxed terms. *)
 type tbox = term Bindlib.bindbox
@@ -254,33 +295,3 @@ let rec lift : term -> tbox = fun t ->
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(t,m)   -> _TEnv (Bindlib.box t) (Array.map lift m)
-
-(** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
-    and [args] is the list of its arguments. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
-    match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
-
-(** [add_args h args] builds the application of a term [h] to a list [args] of
-    of arguments. This function is the inverse of [get_args]. *)
-let add_args : term -> term list -> term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args (Appl(t,u)) args
-  in add_args t args
-
-(** [symbol_type s] returns the type of the given symbol [s]. *)
-let symbol_type : symbol -> term = fun s ->
-  match s with
-  | Sym(s) -> s.sym_type
-  | Def(d) -> d.def_type
-
-(** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
-let meta_name : meta -> string = fun m ->
-  match m.meta_name with
-  | Defined(id) -> Printf.sprintf "?%s" id
-  | Internal(k) -> Printf.sprintf "?%i" k
