@@ -148,6 +148,16 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
     | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p
     | _, _ -> (c,t1,t2)::p
 
+let has_type : ctxt -> term -> term -> bool = fun c t u ->
+  let p = check [] c t u in
+  p = []
+
+let sort_type : ctxt -> term -> bool = fun c t ->
+  let p, typ_t = infer [] c t in
+  match typ_t with
+  | Type | Kind -> p = []
+  | _ -> false
+
 let infer : ctxt -> term -> term option = fun c t ->
   let p, typ_t = infer [] c t in
   if p = [] then Some typ_t else None
