@@ -171,7 +171,7 @@ let parser arg =
 (*  | x:ident -> x, None*)
 
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
-let parser def_def = xs:arg* ao:{":" ao:expr}? ":=" t:expr ->
+let parser def_def = xs:arg* ao:{":" expr}? ":=" t:expr ->
   let fn (x,a) t = Pos.none (P_Abst(x,a,t)) in
     let t = List.fold_right fn xs t in
     let ao =
