@@ -27,7 +27,7 @@ U : N -> Type.
 
 (; Decoding function. ;)
 
-def T : i : N -> U i -> Type.
+def T : !i, U i -> Type.
 
 (; Prop is an abbreviation for the universe 0; ;)
 
@@ -47,17 +47,17 @@ nat : U 1.
 
 (; Cumulativity: [lift i] maps [U i] to [U (s i)]. ;)
 
-lift : i : N -> U i -> U (s i).
+lift : !i, U i -> U (s i).
 
 (; Code for the product type in universe i. *)
 
-pi : i : N -> a : U i -> (T i a -> U i) -> U i.
+pi : !i, !a : U i, (T _ a -> U i) -> U i.
 
 [i, a, f] T _ (pi i a f) --> x : T i a -> T i (f x).
 
 (; Code for the type of vectors in universe i. ;)
 
-vec : i : N -> a : U i -> N -> U i.
+vec : !i, U i -> N -> U i.
 
-nil : i : N -> a : U i -> T i (vec i a 0).
-cons : i : N -> a : U i -> x : T i a -> n : N -> T i (vec i a n) -> T i (vec i a (s n)).
+nil : !i, !a : U i, T i (vec i a 0).
+cons : !i, !a : U i, T _ a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
