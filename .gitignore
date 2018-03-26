@@ -2,6 +2,7 @@
 *~
 _build
 lambdapi.native
+lambdapi.docdir
 libraries/*.tar.gz
 libraries/*.zip
 libraries/plein_de_dks
