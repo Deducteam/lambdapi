@@ -363,7 +363,7 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
         match a with
         | None    ->
             begin
-              match Typing.infer sign empty_ctxt t with
+              match Typing.infer empty_ctxt t with
               | Some(a) -> a
               | None    -> fatal "Unable to infer the type of [%a]\n" pp t
             end

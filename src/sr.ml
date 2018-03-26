@@ -7,12 +7,12 @@ open Eval
 open Unif
 open Typing
 
-(** [infer_with_constrs sign ctx t] is similar to [infer sign ctx t] but it is
+(** [infer_with_constrs ctx t] is similar to [infer ctx t] but it is
     run in constraint mode (see [constraints]). In case of success a couple of
     a type and a set of constraints is returned. *)
-let infer_with_constrs : Sign.t -> ctxt -> term -> (term * constrs) option =
-  fun sign ctx t ->
-    match in_constrs_mode (infer sign ctx) t with
+let infer_with_constrs : ctxt -> term -> (term * constrs) option =
+  fun ctx t ->
+    match in_constrs_mode (infer ctx) t with
     | (None   , _ ) ->
         if !debug_patt then
           log "patt" "unable to infer a type for [%a]" pp t;
@@ -68,9 +68,9 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
   if !debug_patt then log "patt" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
-(** [check_rule sign r] check whether rule [r] is well-typed, in the signature
-    [sign]. The program fails gracefully in case of error. *)
-let check_rule : Sign.t -> symbol -> rule -> unit = fun sign s rule ->
+(** [check_rule r] check whether rule [r] is well-typed. The program
+    fails gracefully in case of error. *)
+let check_rule : symbol -> rule -> unit = fun s rule ->
   (** We process the LHS to replace patterns variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -113,13 +113,13 @@ let check_rule : Sign.t -> symbol -> rule -> unit = fun sign s rule ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   let (ty_lhs, lhs_constrs) =
-    match infer_with_constrs sign [] lhs with
+    match infer_with_constrs [] lhs with
     | Some(a) -> a
     | None    -> fatal "Unable to infer the type of [%a]\n" pp lhs
   in
   (* Infer the type of the RHS and the constraints. *)
   let (ty_rhs, rhs_constrs) =
-    match infer_with_constrs sign [] rhs with
+    match infer_with_constrs [] rhs with
     | Some(a) -> a
     | None    -> fatal "Unable to infer the type of [%a]\n" pp rhs
   in

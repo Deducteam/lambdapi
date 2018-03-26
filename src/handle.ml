@@ -17,20 +17,20 @@ let gen_obj : bool ref = ref false
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
 let handle_newsym : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign a); ignore (Sign.new_symbol sign n a false)
+  ignore (Typing.sort_type empty_ctxt a); ignore (Sign.new_symbol sign n a false)
 
 (** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
     with type [a] (and no reduction rule). If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. *)
 let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type sign a); ignore (Sign.new_symbol sign n a true)
+  ignore (Typing.sort_type empty_ctxt a); ignore (Sign.new_symbol sign n a true)
 
 (** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
     is well-typed, which means that [t] has type [a]. In case of error (typing
     or sorting), the program fails gracefully. *)
 let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type sg a);
-  if not (Typing.has_type sg empty_ctxt t a) then
+  ignore (Typing.sort_type empty_ctxt a);
+  if not (Typing.has_type empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   ignore (Sign.new_symbol sg x a true)
 
@@ -39,8 +39,8 @@ let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
     this amounts to define a symbol with a single reduction rule.  In case  of
     error (typing, sorting, ...) the program fails gracefully. *)
 let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type sg a);
-  if not (Typing.has_type sg empty_ctxt t a) then
+  ignore (Typing.sort_type empty_ctxt a);
+  if not (Typing.has_type empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
   let s = Sign.new_symbol sg x a true in
   let rule =
@@ -56,13 +56,13 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
 let handle_rules : Sign.t -> (symbol * rule) list -> unit = fun sign rs ->
-  List.iter (fun (s,r) -> Sr.check_rule sign s r) rs;
+  List.iter (fun (s,r) -> Sr.check_rule s r) rs;
   List.iter (fun (s,r) -> Sign.add_rule sign s r) rs
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  match Infer.infer empty_ctxt t with
+  match Typing.infer empty_ctxt t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
@@ -80,8 +80,8 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
       if Eval.eq_modulo t u then out 3 "(conv) OK\n"
       else fatal "cannot convert %a and %a...\n" pp t pp u
   | (HasType(t,a), false, false) ->
-      ignore (Typing.sort_type sign a);
-      if not (Typing.has_type sign empty_ctxt t a) then
+      ignore (Typing.sort_type empty_ctxt a);
+      if not (Typing.has_type empty_ctxt t a) then
         fatal "%a does not have type %a...\n" pp t pp a;
       out 3 "(chck) OK\n"
   | (_           , _    , _    ) ->

@@ -26,19 +26,19 @@ let to_prod r e xo =
   let p = Bindlib.unbox (_Prod a x fn) in
   if not (instantiate r e p) then assert false (* cannot fail *)
 
-(** [infer sign ctx t] tries to infer a type for the term [t] in context [ctx]
-    and with the signature [sign]. If the function is not able to infer a type
-    then [None] is returned. Otherwise, [Some a] is returned, where [a] is the
-    (fully evaluated) infered type. *)
-let rec infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
+(** [infer ctx t] tries to infer a type for the term [t] in context
+    [ctx]. If the function is not able to infer a type then [None] is
+    returned. Otherwise, [Some a] is returned, where [a] is the (fully
+    evaluated) infered type. *)
+let rec infer : ctxt -> term -> term option = fun ctx t ->
   let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
   let a = Bindlib.unbox(_Meta (new_meta Type 0) (Array.of_list env)) in
-  if has_type sign ctx t a then Some(whnf a) else None
+  if has_type ctx t a then Some(whnf a) else None
 
-(** [has_type sign ctx t a] tests whether the term [t] has type [a] in context
-    [ctx] and with the signature [sign]. Note that inference can be  performed
-    using an [a] that is a metavariable. *)
-and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
+(** [has_type ctx t a] tests whether the term [t] has type [a] in
+    context [ctx]. Note that inference can be performed using an [a]
+    that is a metavariable. *)
+and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
   if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
     match unfold t with
@@ -57,8 +57,8 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
-          has_type sign (if uses_x then add_tvar x a ctx else ctx) bx c &&
-          has_type sign ctx a Type &&
+          has_type (if uses_x then add_tvar x a ctx else ctx) bx c &&
+          has_type ctx a Type &&
           match whnf c with
           | Type -> true | Kind -> true
           | c    -> err "[%a] is not a sort...\n" pp c; false
@@ -78,10 +78,10 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = add_tvar x a ctx in
               unify_modulo a c &&
-              has_type sign ctx_x tx bx &&
-              has_type sign ctx a Type &&
+              has_type ctx_x tx bx &&
+              has_type ctx a Type &&
               begin
-                match infer sign ctx_x bx with
+                match infer ctx_x bx with
                 | Some(Type) -> true
                 | Some(Kind) -> true
                 | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
@@ -94,7 +94,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     (* Application *)
     | Appl(t,u)   ->
         begin
-          match infer sign ctx t with
+          match infer ctx t with
           | None    -> wrn "Cannot infer the type of [%a]\n%!" pp t; false
           | Some(a) ->
               begin
@@ -106,7 +106,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
                 match unfold a with
                 | Prod(a,b) ->
                     unify_modulo (Bindlib.subst b u) c
-                    && has_type sign ctx u a
+                    && has_type ctx u a
                 | a         ->
                     err "Product expected for [%a], found [%a]...\n%!"
                       pp t pp a;
@@ -117,7 +117,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     | Meta(m,e)   ->
         let v = Bindlib.new_var mkfree (meta_name m) in
         let ctx = add_tvar v m.meta_type ctx in
-        has_type sign ctx (add_args (Vari(v)) (Array.to_list e)) c
+        has_type ctx (add_args (Vari(v)) (Array.to_list e)) c
     | Kind        -> assert false
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
@@ -126,11 +126,11 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
-(** [infer sign ctx t] is a wrapper function for the [infer] function  defined
+(** [infer ctx t] is a wrapper function for the [infer] function  defined
     earlier. It is mainly used to obtain fine-grained logs. *)
-let infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
+let infer : ctxt -> term -> term option = fun ctx t ->
   if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
-  let res = infer sign ctx t in
+  let res = infer ctx t in
   if !debug then
     begin
       match res with
@@ -139,19 +139,19 @@ let infer : Sign.t -> ctxt -> term -> term option = fun sign ctx t ->
     end;
   res
 
-(** [has_type sign ctx t a] is a wrapper function for the [has_type]  function
+(** [has_type ctx t a] is a wrapper function for the [has_type]  function
     defined earlier. It is mainly used to obtain fine-grained logs. *)
-let has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
+let has_type : ctxt -> term -> term -> bool = fun ctx t c ->
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
-  let res = has_type sign ctx t c in
+  let res = has_type ctx t c in
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
-(** [sort_type sign a] infers the sort of the type [a]. The result type may be
+(** [sort_type a] infers the sort of the type [a]. The result type may be
     be [Type] or [Kind]. If [a] is not well-sorted type then the program fails
     gracefully. *)
-let sort_type : Sign.t -> term -> term = fun sign a ->
-  match infer sign empty_ctxt a with
+let sort_type : ctxt -> term -> term = fun c a ->
+  match infer c a with
   | Some(Kind) -> Kind
   | Some(Type) -> Type
   | Some(s)    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
