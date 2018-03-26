@@ -61,7 +61,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
         let p = check p c t Type in
         let x,u,c = unbind_tbinder c t f in
         let p, typ_u = infer p c u in
-        match typ_u with
+        match whnf typ_u with
         | Type | Kind -> p, typ_u
         | _ -> raise (Error (E_not_a_sort typ_u))
        end
@@ -78,7 +78,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
        begin
         let p, typ_u = infer p c u in
         let p, typ_t = infer p c t in
-        match typ_t with
+        match whnf typ_t with
         | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
         | _ -> raise (Error (E_not_a_product typ_t))
        end
@@ -92,7 +92,7 @@ let rec infer : problem -> ctxt -> term -> problem * term =
         infer p c (add_args (Vari v) (Array.to_list ts))
        end
     (* No rule apply. *)
-    | Kind        -> assert false
+    | Kind        -> raise (Error (E_not_typable t))
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
   in
@@ -118,7 +118,7 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
          else raise (Error (E_not_typable t2))
        else raise (Error (E_not_typable t1))
     | Vari x, Vari y ->
-       if Bindlib.eq_vars x y then p
+       if Bindlib.eq_vars x y && n1 = n2 then add_constr2 c ts1 ts2 p
        else raise (Error (E_not_convertible (t1,t2)))
     | Prod(a,f), Prod(b,g) ->
        if ts1=[] then
@@ -140,13 +140,16 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
     | Appl(_,_), _
     | _, Appl(_,_) -> assert false (* a head cannot be an application *)
     | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
-       if s1 == s2 && n1 = n2 then
-         let fn p a b = add_constr c a b p in
-         List.fold_left2 fn p ts1 ts2
+       if s1 == s2 && n1 = n2 then add_constr2 c ts1 ts2 p
        else raise (Error (E_not_convertible (t1,t2)))
-    | Symb(s1), Symb(s2) when s1==s2 && n1 = n2 -> p (*FIXME*)
-    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p (*FIXME*)
+    | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> p
+    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 && n1 = 0 && n2 = 0 -> p
     | _, _ -> (c,t1,t2)::p
+
+and add_constr2 : ctxt -> term list -> term list -> problem -> problem =
+  fun c ts1 ts2 p ->
+    let fn p a b = add_constr c a b p in
+    List.fold_left2 fn p ts1 ts2
 
 let has_type : ctxt -> term -> term -> bool = fun c t u ->
   let p = check [] c t u in
