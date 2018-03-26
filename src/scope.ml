@@ -19,11 +19,12 @@ type env = (string * (tvar * tbox)) list
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_var sign env mp qid] returns a bindbox corresponding to a variable  of
-    the environment [env], or to a symbol named [s] which module path is [mp].
-    In the case where [mp] is empty,  we first search [s] in the environment,
-    and if it is not mapped we also search in the current signature [sign]. If
-    the name does not correspond to anything, the program fails gracefully. *)
+(** [find_var sign env qid] returns the bindbox corresponding to a variable of
+    the environment [env], or to a symbol, which name corresponds to [qid]. In
+    the case where the module path [fst qid.elt] is empty, we first search for
+    the name [snd qid.elt] in the environment, and if it is not mapped we also
+    search in the current signature [sign]. If the name does not correspond to
+    anything, the program fails gracefully. *)
 let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
   let (mp, s) = qid.elt in
   if mp = [] then
@@ -170,11 +171,17 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
   | (Symb(Sym(s)), _ ) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
+(** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** [scope_rhs sign map t] TODO *)
+(** [scope_rhs sign map t] computes a rule RHS frim the parser-level term [t],
+    in the signature [sign].  The association list [map] gives the position of
+    every “pattern variable” in the constructed multiple binder. *)
 let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
-  let names = Array.of_list (List.map fst map) in
+  let names =
+    let sorted_map = List.sort (fun (_,i) (_,j) -> i - j) map in
+    Array.of_list (List.map fst sorted_map)
+  in
   let metas = Bindlib.new_mvar (fun m -> TE_Vari(m)) names in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
@@ -204,15 +211,20 @@ let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
   in
   Bindlib.unbox (Bindlib.bind_mvar metas (scope [] t))
 
-(** [meta_vars t] TODO *)
+(** [meta_vars t] returns a couple [(mvs,nl)]. The first compoment [mvs] is an
+    association list giving the arity of all the “pattern variables” appearing
+    in the parser-level term [t]. The second component [nl] contains the names
+    of the “pattern variables” that appear non-linearly.  If a given  “pattern
+    variable” occurs with different arities the program fails gracefully. *)
 let meta_vars : p_term -> (string * int) list * string list = fun t ->
   let rec meta_vars acc t =
     match t.elt with
     | P_Vari(_)           -> acc
     | P_Type              -> acc
     | P_Prod(_,a,b)       -> meta_vars (meta_vars acc a) b
-    | P_Abst(_,None   ,b) -> meta_vars acc b
-    | P_Abst(_,Some(a),b) -> meta_vars (meta_vars acc a) b
+    (*| P_Abst(_,Some(a),b) -> meta_vars (meta_vars acc a) t*)
+    (* FIXME can “pattern variables” appear in abstraction types in RHS? *)
+    | P_Abst(_,_,t)       -> meta_vars acc t
     | P_Appl(t,u)         -> meta_vars (meta_vars acc t) u
     | P_Wild              -> acc
     | P_Meta(M_User(m),e) ->
