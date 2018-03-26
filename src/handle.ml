@@ -17,13 +17,15 @@ let gen_obj : bool ref = ref false
     named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
     the program fails gracefully. *)
 let handle_newsym : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type empty_ctxt a); ignore (Sign.new_symbol sign n a false)
+  ignore (Typing.sort_type empty_ctxt a);
+  ignore (Sign.new_symbol sign n a false)
 
 (** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
     with type [a] (and no reduction rule). If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. *)
 let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type empty_ctxt a); ignore (Sign.new_symbol sign n a true)
+  ignore (Typing.sort_type empty_ctxt a);
+  ignore (Sign.new_symbol sign n a true)
 
 (** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
     is well-typed, which means that [t] has type [a]. In case of error (typing
