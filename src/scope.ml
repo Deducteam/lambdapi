@@ -79,13 +79,19 @@ let build_meta_app : env -> bool -> tbox =
     let m = new_meta t (List.length env) in
     _Meta m vs
 
+(** [build_meta_name loc id] builds a meta-variable name from its parser-level
+    representation [id]. The position [loc] of [id] is used to build an  error
+    message in the case where [id] is invalid. *)
 let build_meta_name loc id =
   match id with
   | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
   | M_Sys(k)  -> Internal(k)
   | M_User(s) -> Defined(s)
 
-(** [scope_term sign t] TODO *)
+(** [scope_term sign t] transforms a parser-level term [t] into an actual term
+    (using Bindlib), in the signature [sign]. Note that wildcards [P_Wild] are
+    transformed into fresh meta-variables.  The same goes for the type carried
+    by abstractions when it is not given. *)
 let scope_term : Sign.t -> p_term -> term = fun sign t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
@@ -115,10 +121,19 @@ let scope_term : Sign.t -> p_term -> term = fun sign t ->
   in
   Bindlib.unbox (scope [] t)
 
+(** Association list giving an environment index to “pattern variable”. *)
 type meta_map = (string * int) list
+
+(** Representation of a rule LHS (or pattern). It contains the head symbol and 
+    the list of arguments (first two elements).  The last component associates
+    a type to each “pattern variable” in the arguments. *)
 type full_lhs = def * term list * (string * term) list
 
-(** [scope_lhs sign map t] TODO *)
+(** [scope_lhs sign map t] computes a rule LHS from the parser-level term [t],
+    in the signature [sign].  The association list [map] gives the position of
+    every “pattern variable” in the environment.  Note that only the variables
+    that are bound in the RHS (or that occur non-linearly in the LHS) have  an
+    associated index in [map]. *)
 let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
   let fresh =
     let c = ref (-1) in
@@ -171,10 +186,13 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
   | (Symb(Sym(s)), _ ) -> fatal "%s is not a definable symbol...\n" s.sym_name
   | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
+(* NOTE wildcards are given a unique name so that we can produce more readable
+   outputs. Their name is forme of a ['#'] character followed by a number. *)
+
 (** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** [scope_rhs sign map t] computes a rule RHS frim the parser-level term [t],
+(** [scope_rhs sign map t] computes a rule RHS from the parser-level term [t],
     in the signature [sign].  The association list [map] gives the position of
     every “pattern variable” in the constructed multiple binder. *)
 let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
