@@ -20,7 +20,7 @@ type p_term = p_term_aux loc
  and p_term_aux =
   | P_Vari of qident
   | P_Type
-  | P_Prod of strloc * p_term * p_term
+  | P_Prod of strloc * p_term option * p_term
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
@@ -32,7 +32,7 @@ type p_term = p_term_aux loc
 
 (** [build_prod xs a] build a product by abstracting away the arguments of the
     list [xs] on the body [a]. *)
-let build_prod : (strloc * p_term) list -> p_term -> p_term = fun xs a ->
+let build_prod : (strloc * p_term option) list -> p_term -> p_term = fun xs a ->
    List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b))) xs a
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
@@ -90,6 +90,8 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
       when p = `Atom -> in_pos _loc P_Type
   (* Product *)
   | x:{ident ":"}?[Pos.none "_"] a:(expr `Appl) "->" b:(expr `Func)
+      when p = `Func -> in_pos _loc (P_Prod(x,Some(a),b))
+  | "!" x:ident a:{":" (expr `Appl)}? "," b:(expr `Func)
       when p = `Func -> in_pos _loc (P_Prod(x,a,b))
   (* Wildcard *)
   | _wild_
@@ -164,11 +166,13 @@ let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 let parser old_rule =
   _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
 
-let parser arg = "(" ident ":" expr ")"
+let parser arg =
+  | "(" x:ident ":" a:expr ")" -> x, Some(a)
+(*  | x:ident -> x, None*)
 
 (** [def_def] is a parser for one specifc syntax of symbol definition. *)
 let parser def_def = xs:arg* ao:{":" ao:expr}? ":=" t:expr ->
-  let fn (x,a) t = Pos.none (P_Abst(x, Some(a), t)) in
+  let fn (x,a) t = Pos.none (P_Abst(x,a,t)) in
     let t = List.fold_right fn xs t in
     let ao =
       match ao with

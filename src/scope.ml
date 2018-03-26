@@ -98,7 +98,11 @@ let scope_term : Sign.t -> p_term -> term = fun sign t ->
     | P_Vari(qid)   -> find_var sign env qid
     | P_Type        -> _Type
     | P_Prod(x,a,b) ->
-        let a = scope env a in
+        let a =
+          match a with
+          | Some(a) -> scope env a
+          | None    -> build_meta_app env true
+        in
         _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let a =
@@ -205,7 +209,8 @@ let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
     match t.elt with
     | P_Vari(qid)   -> find_var sign env qid
     | P_Type        -> _Type
-    | P_Prod(x,a,b) ->
+    | P_Prod(x,None,b) -> fatal "missing type %a" Pos.print t.pos
+    | P_Prod(x,Some(a),b) ->
         let a = scope env a in
         _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
     | P_Abst(x,a,t) ->
@@ -237,14 +242,14 @@ let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
 let meta_vars : p_term -> (string * int) list * string list = fun t ->
   let rec meta_vars acc t =
     match t.elt with
-    | P_Vari(_)           -> acc
-    | P_Type              -> acc
-    | P_Prod(_,a,b)       -> meta_vars (meta_vars acc a) b
-    (*| P_Abst(_,Some(a),b) -> meta_vars (meta_vars acc a) t*)
-    (* FIXME can “pattern variables” appear in abstraction types in RHS? *)
-    | P_Abst(_,_,t)       -> meta_vars acc t
-    | P_Appl(t,u)         -> meta_vars (meta_vars acc t) u
+    | P_Vari(_)
+    | P_Type
     | P_Wild              -> acc
+    | P_Prod(_,None,b)
+    | P_Abst(_,None,b)    -> meta_vars acc b
+    | P_Prod(_,Some(a),b)
+    | P_Abst(_,Some(a),b)
+    | P_Appl(a,b)         -> meta_vars (meta_vars acc a) b
     | P_Meta(M_User(m),e) ->
         let ((ar,nl) as acc) = Array.fold_left meta_vars acc e in
         if m = "_" then acc else
@@ -325,10 +330,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           (* FIXME need more for Miller patterns. *)
         else Pos.make t.pos (P_Vari(qid))
     | P_Type        -> t
-    | P_Prod(x,a,b) ->
+    | P_Prod(x,None,b) -> assert false
+    | P_Prod(x,Some(a),b) ->
         let a = build_rhs env a in
         let b = build_rhs (x.elt::env) b in
-        Pos.make t.pos (P_Prod(x,a,b))
+        Pos.make t.pos (P_Prod(x,Some(a),b))
     | P_Abst(x,a,u) ->
         let a = match a with Some(a) -> Some(build_rhs env a) | _ -> None in
         let u = build_rhs (x.elt::env) u in
