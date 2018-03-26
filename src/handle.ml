@@ -62,11 +62,6 @@ let handle_rules : Sign.t -> (def * rule) list -> unit = fun sign rs ->
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  match Typing.infer sign empty_ctxt t with
-  | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
-  | None    -> fatal "%a : unable to infer\n%!" pp t
-
-let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
   match Infer.infer empty_ctxt t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
