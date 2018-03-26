@@ -23,7 +23,7 @@ type cmd = cmd_aux loc
   | NewDef of strloc * term
   (** Rewriting rules declaration. *)
   | Rules  of (def * rule) list
-  (** Quick definition. *)
+  (** Quick definition (opaque when the boolean is [true]). *)
   | Def    of bool * strloc * term * term
   (** Import an external signature. *)
   | Import of module_path

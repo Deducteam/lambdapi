@@ -134,7 +134,7 @@ type p_cmd =
   (** Rewriting rules declaration. *)
   | P_Rules    of p_rule list
   | P_OldRules of old_p_rule list
-  (** Quick definition. *)
+  (** Quick definition (opaque when the boolean is [true]). *)
   | P_Def      of bool * strloc * p_term option * p_term
   (** Import an external signature. *)
   | P_Import   of module_path
