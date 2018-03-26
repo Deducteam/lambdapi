@@ -4,6 +4,7 @@ open Terms
 open Print
 open Extra
 open Console
+open Eval
 
 let prod x t u = Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
 
@@ -38,6 +39,7 @@ type error =
   | E_not_a_sort of term
   | E_not_a_product of term
   | E_not_convertible of term * term
+  | E_not_typable of term
 
 exception Error of error
 
@@ -104,18 +106,30 @@ and check : problem -> ctxt -> term -> term -> problem =
     add_constr c typ_t u p
 
 and add_constr : ctxt -> term -> term -> problem -> problem =
-  fun c t u p ->
-    match t, u with
-    | Symb(Sym(s1)), Symb(Sym(s2)) when s1 == s2 -> p
-    | Symb(Def(s1)), Symb(Def(s2)) when s1 == s2 -> p
-    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p
+  fun c t1 t2 p ->
+    let t1 = whnf t1 and t2 = whnf t2 in
+    let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
+    let n1 = List.length ts1 and n2 = List.length ts2 in
+    match h1, h2 with
     | Type, Type
-    | Kind, Kind -> p
+    | Kind, Kind ->
+       if ts1 = [] then
+         if ts2 = [] then p
+         else raise (Error (E_not_typable t2))
+       else raise (Error (E_not_typable t1))
     | Vari x, Vari y ->
        if Bindlib.eq_vars x y then p
-       else raise (Error (E_not_convertible (t,u)))
-    | Prod(a,f), Prod(b,g)
+       else raise (Error (E_not_convertible (t1,t2)))
+    | Prod(a,f), Prod(b,g) ->
+       if ts1=[] then
+         if ts2=[] then
+           let p = add_constr c a b p in
+           let x,u,v,c = unbind_tbinder2 c a f g in
+           add_constr c u v p
+         else raise (Error (E_not_typable t2))
+       else raise (Error (E_not_typable t1))
     | Abst(a,f), Abst(b,g) ->
+       (* [ts1] and [ts2] are empty since [t1] and [t2] are in whnf. *)
        let p = add_constr c a b p in
        let x,u,v,c = unbind_tbinder2 c a f g in
        add_constr c u v p
@@ -123,9 +137,17 @@ and add_constr : ctxt -> term -> term -> problem -> problem =
     | _, Patt _
     | TEnv _, _
     | _, TEnv _ -> assert false
-    | _, _ -> raise (Error (E_not_convertible (t,u)))
+    | Appl(_,_), _
+    | _, Appl(_,_) -> assert false (* a head cannot be an application *)
+    | Symb(Sym(s1)), Symb(Sym(s2)) ->
+       if s1 == s2 && n1 = n2 then
+         let fn p a b = add_constr c a b p in
+         List.fold_left2 fn p ts1 ts2
+       else raise (Error (E_not_convertible (t1,t2)))
+    | Symb(Def(s1)), Symb(Def(s2)) when s1==s2 && n1 = n2 -> p
+    | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 -> p
+    | _, _ -> (c,t1,t2)::p
 
 let infer : ctxt -> term -> term option = fun c t ->
   let p, typ_t = infer [] c t in
   if p = [] then Some typ_t else None
-
