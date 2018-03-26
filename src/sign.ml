@@ -108,8 +108,8 @@ let unlink : t -> unit = fun sign ->
     let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
     let unlink_term_env t =
       match t with
-      | TE_Some(b) -> unlink_term (snd (Bindlib.unmbind mkfree b))
-      | _          -> ()
+      | TE_Vari(_) -> ()
+      | _          -> assert false (* Should not happen, matching-specific. *)
     in
     match unfold t with
     | Vari(x)      -> ()
@@ -120,8 +120,8 @@ let unlink : t -> unit = fun sign ->
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
-    | Meta(_,_)    -> assert false
-    | Patt(_,_,m)  -> Array.iter unlink_term m
+    | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
+    | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
   and unlink_rule r =
     List.iter unlink_term r.lhs;
