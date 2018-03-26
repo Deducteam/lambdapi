@@ -9,10 +9,12 @@ open Eval
 (** [set_meta u v] sets the value of the metavariable [m] to [v]. Note
     that [m] should not have already been instanciated. *)
 let set_meta : meta -> tmbinder -> unit = fun m v ->
-  m.meta_value := Some(v);
   if !debug_meta then
-    let (env,a) = Bindlib.unmbind mkfree v in
-    log "meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
+    begin
+      let (env,a) = Bindlib.unmbind mkfree v in
+      log "meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
+    end;
+  m.meta_value := Some(v)
 
 (** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
 let rec occurs : meta -> term -> bool = fun r t ->
