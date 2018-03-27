@@ -13,19 +13,14 @@ open Pos
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
 
-(** [handle_newsym sign n a] extends the signature [sign] with a static symbol
-    named [n], with type [a]. If [a] does not have sort [Type] or [Kind], then
-    the program fails gracefully. *)
-let handle_newsym : Sign.t -> strloc -> term -> unit = fun sign n a ->
+(** [handle_symdecl b sign n a] extends the signature [sign] with a
+    symbol named [n] and type [a]. If [a] does not have sort [Type] or
+    [Kind], then the program fails gracefully. [b] indicates whether
+    this symbol can have rules. *)
+let handle_symdecl : Sign.t -> bool -> strloc -> term -> unit =
+  fun sign b n a ->
   ignore (Typing.sort_type empty_ctxt a);
-  ignore (Sign.new_symbol sign n a false)
-
-(** [handle_newdef sign n a] extends [sign] with a definable symbol named [n],
-    with type [a] (and no reduction rule). If [a] does not have sort [Type] or
-    [Kind], then the program fails gracefully. *)
-let handle_newdef : Sign.t -> strloc -> term -> unit = fun sign n a ->
-  ignore (Typing.sort_type empty_ctxt a);
-  ignore (Sign.new_symbol sign n a true)
+  ignore (Sign.new_symbol sign b n a)
 
 (** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
     is well-typed, which means that [t] has type [a]. In case of error (typing
@@ -34,7 +29,7 @@ let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type empty_ctxt a);
   if not (Typing.has_type empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  ignore (Sign.new_symbol sg x a true)
+  ignore (Sign.new_symbol sg true x a)
 
 (** [handle_defin sign x a t] extends [sign] with a definable symbol with name
     [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
@@ -44,7 +39,7 @@ let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
   ignore (Typing.sort_type empty_ctxt a);
   if not (Typing.has_type empty_ctxt t a) then
     fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  let s = Sign.new_symbol sg x a true in
+  let s = Sign.new_symbol sg true x a in
   let rule =
     let rhs =
       let t = Bindlib.box t in
@@ -105,10 +100,10 @@ and handle_cmds : Sign.t -> p_cmd loc list -> unit = fun sign cmds ->
     try
       let cmd = scope_cmd sign cmd in
       match cmd.elt with
-      | NewSym(n,a)  -> handle_newsym sign n a
-      | NewDef(n,a)  -> handle_newdef sign n a
+      | SymDecl(b,n,a) -> handle_symdecl sign b n a
       | Rules(rs)    -> handle_rules sign rs
-      | Def(o,n,a,t) -> (if o then handle_opaque else handle_defin) sign n a t
+      | SymDef(o,n,a,t) ->
+         (if o then handle_opaque else handle_defin) sign n a t
       | Import(path) -> handle_import sign path
       | Debug(v,s)   -> set_debug v s
       | Verb(n)      -> verbose := n

@@ -355,9 +355,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
     signature [sign]. In case of error, the program gracefully fails. *)
 let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   match cmd with
-  | P_NewSym(x,a)       -> NewSym(x, scope_term sign a)
-  | P_NewDef(x,a)       -> NewDef(x, scope_term sign a)
-  | P_Def(o,x,a,t)      ->
+  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term sign a)
+  | P_SymDef(o,x,a,t) ->
       let t = scope_term sign t in
       let a =
         match a with
@@ -369,7 +368,7 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
             end
         | Some(a) -> scope_term sign a
       in
-      Def(o, x, a, t)
+      SymDef(o, x, a, t)
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
   | P_OldRules(rs)      ->
       let rs = List.map translate_old_rule rs in

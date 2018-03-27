@@ -17,14 +17,12 @@ type test =
 (** Representation of a toplevel command. *)
 type cmd = cmd_aux loc
  and cmd_aux =
-  (** Static symbol declaration. *)
-  | NewSym of strloc * term
-  (** Definable symbol declaration. *)
-  | NewDef of strloc * term
+  (** Symbol declaration (definable when the boolean is [true]). *)
+  | SymDecl of bool * strloc * term
   (** Rewriting rules declaration. *)
   | Rules  of (symbol * rule) list
-  (** Quick definition (opaque when the boolean is [true]). *)
-  | Def    of bool * strloc * term * term
+  (** Symbol definition (opaque when the boolean is [true]). *)
+  | SymDef of bool * strloc * term * term
   (** Import an external signature. *)
   | Import of module_path
   (** Set debugging flags. *)

@@ -124,8 +124,8 @@ let unlink : t -> unit = fun sign ->
 (** [new_symbol sign name a definable] creates a new symbol named
     [name] of type [a] in the signature [sign]. The created symbol is
     also returned. *)
-let new_symbol : t -> strloc -> term -> bool -> symbol =
-  fun sign s sym_type definable ->
+let new_symbol : t -> bool -> strloc -> term -> symbol =
+  fun sign definable s sym_type ->
   let { elt = sym_name; pos } = s in
   if Hashtbl.mem sign.symbols sym_name then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;

@@ -127,15 +127,13 @@ type p_rule = p_term * p_term
 
 (** Representation of a toplevel command. *)
 type p_cmd =
-  (** Static symbol declaration. *)
-  | P_NewSym   of strloc * p_term
-  (** Definable symbol declaration. *)
-  | P_NewDef   of strloc * p_term
+  (** Symbol declaration (definable when the boolean is [true]). *)
+  | P_SymDecl  of bool * strloc * p_term
+  (** Quick definition (opaque when the boolean is [true]). *)
+  | P_SymDef   of bool * strloc * p_term option * p_term
   (** Rewriting rules declaration. *)
   | P_Rules    of p_rule list
   | P_OldRules of old_p_rule list
-  (** Quick definition (opaque when the boolean is [true]). *)
-  | P_Def      of bool * strloc * p_term option * p_term
   (** Import an external signature. *)
   | P_Import   of module_path
   (** Set debugging flags. *)
@@ -210,10 +208,10 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr               -> P_NewSym(x,a)
-  | _def_ x:ident ":" a:expr         -> P_NewDef(x,a)
-  | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
-  | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
+  | x:ident ":" a:expr               -> P_SymDecl(false,x,a)
+  | _def_ x:ident ":" a:expr         -> P_SymDecl(true ,x,a)
+  | _def_ x:ident (ao,t):def_def     -> P_SymDef(false,x,ao,t)
+  | _thm_ x:ident (ao,t):def_def     -> P_SymDef(true ,x,ao,t)
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
   | rs:old_rule+                     -> P_OldRules(rs)
   | "#REQUIRE" path:mod_path         -> P_Import(path)
