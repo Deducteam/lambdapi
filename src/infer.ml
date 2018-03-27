@@ -46,7 +46,6 @@ let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
 exception Exit
-
 let distinct_vars (a:term array) : bool =
   let acc = ref [] in
   let fn t =
@@ -65,6 +64,8 @@ exception E_not_a_product of term
 exception E_not_convertible of term * term
 exception E_not_typable of term
 
+(** [infer p c t] returns a pair [(p',u)] where [p'] extends [p] with
+    possibly new constraints for [t] to be of type [u]. *)
 let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
   if !debug_type then log "INFR" "%a; %a ⊢ %a : ?" pp_problem p pp_ctxt c pp t;
   let p, typ_t =
@@ -121,10 +122,14 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
     log "INFR" (gre "%a; %a ⊢ %a : %a") pp_problem p pp_ctxt c pp t pp typ_t;
   p, typ_t
 
+(** [check p c t u] extends [p] with possibly new constraints for [t]
+    to be of type [u] in context [c]. *)
 and check (p:problem) (c:ctxt) (t:term) (u:term) : problem =
   let p, typ_t = infer p c t in
   add_constr c typ_t u p
 
+(** [add_constr c t1 t2 p] extends [p] with possibly new constraints
+    for [t1] to be convertible to [t2] in context [c]. *)
 and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   let t1 = whnf t1 and t2 = whnf t2 in
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
@@ -178,20 +183,30 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | _, _ -> raise (E_not_convertible (t1,t2))
 
+(** [add_constr2 c ts1 ts2 p] extends [p] with possibly new
+    constraints for the terms of [ts1] and [ts2] to be pairwise
+    convertible in context [c]. *)
 and add_constr2 (c:ctxt) (ts1:term list) (ts2:term list) (p:problem) : problem =
   let fn p a b = add_constr c a b p in
   List.fold_left2 fn p ts1 ts2
 
+(** [has_type c t u] returns [true] iff [t] has type [u] in context
+    [c]. *)
 let has_type (c:ctxt) (t:term) (u:term) : bool =
   let p = check [] c t u in
   p = []
 
+(** [sort_type c t] returns [true] iff [t] has type a sort in context
+    [c]. *)
 let sort_type (c:ctxt) (t:term) : bool =
   let p, typ_t = infer [] c t in
   match typ_t with
   | Type | Kind -> p = []
   | _ -> false
 
+(** If [infer c t] returns [Some u], then [t] has type [u] in context
+    [c]. If it returns [None] then some constraints could not be
+    solved. *)
 let infer (c:ctxt) (t:term) : term option =
   let p, typ_t = infer [] c t in
   if p = [] then Some typ_t else None
