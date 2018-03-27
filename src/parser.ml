@@ -145,9 +145,9 @@ type p_cmd =
   (** Normalisation command. *)
   | P_Eval     of p_term * Eval.config
   (** Type-checking command. *)
-  | P_Test_T   of bool * bool * p_term * p_term
+  | P_TestType of bool * bool * p_term * p_term
   (** Convertibility command. *)
-  | P_Test_C   of bool * bool * p_term * p_term
+  | P_TestConv of bool * bool * p_term * p_term
   (** Unimplemented command. *)
   | P_Other    of strloc
 
@@ -217,8 +217,8 @@ let parser cmd_aux =
   | "#REQUIRE" path:mod_path         -> P_Import(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+'' -> P_Debug(f = "+", s)
   | "#VERBOSE" n:''[-+]?[0-9]+''     -> P_Verb(int_of_string n)
-  | (ia,mf):check t:expr "::" a:expr -> P_Test_T(ia,mf,t,a)
-  | (ia,mf):check t:expr "==" u:expr -> P_Test_C(ia,mf,t,u)
+  | (ia,mf):check t:expr "::" a:expr -> P_TestType(ia,mf,t,a)
+  | (ia,mf):check t:expr "==" u:expr -> P_TestConv(ia,mf,t,u)
   | "#INFER" c:eval_config t:expr    -> P_Infer(t,c)
   | "#EVAL" c:eval_config t:expr     -> P_Eval(t,c)
   | c:"#NAME" _:ident                -> P_Other(in_pos _loc_c c)

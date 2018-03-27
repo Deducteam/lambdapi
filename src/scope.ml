@@ -378,10 +378,10 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   | P_Verb(n)           -> Verb(n)
   | P_Infer(t,c)        -> Infer(scope_term sign t, c)
   | P_Eval(t,c)         -> Eval(scope_term sign t, c)
-  | P_Test_T(ia,mf,t,a) ->
+  | P_TestType(ia,mf,t,a) ->
       let contents = HasType(scope_term sign t, scope_term sign a) in
       Test({is_assert = ia; must_fail = mf; contents})
-  | P_Test_C(ia,mf,t,u) ->
+  | P_TestConv(ia,mf,t,u) ->
       let contents = Convert(scope_term sign t, scope_term sign u) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_Other(c)          -> Other(c)
