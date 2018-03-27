@@ -9,25 +9,25 @@ open Eval
 (** [set_meta u v] sets the value of the metavariable [m] to [v]. Note
     that [m] should not have already been instanciated. *)
 let set_meta : meta -> tmbinder -> unit = fun m v ->
-  if !debug_meta then
+  if !debug_unif then
     begin
       let (env,a) = Bindlib.unmbind mkfree v in
-      log "meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
+      log "UNIF" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
     end;
   m.meta_value := Some(v)
 
 (** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
 let rec occurs : meta -> term -> bool = fun r t ->
   match unfold t with
-  | Prod(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Abst(a,t)   -> occurs r a || occurs r (Bindlib.subst t Kind)
+  | Prod(a,b)
+  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
   | Appl(t,u)   -> occurs r t || occurs r u
   | Meta(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type        -> false
-  | Kind        -> false
-  | Vari(_)     -> false
+  | Type
+  | Kind
+  | Vari(_)
   | Symb(_)     -> false
-  | Patt(_,_,_) -> assert false
+  | Patt(_,_,_)
   | TEnv(_,_)   -> assert false
 
 (** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
