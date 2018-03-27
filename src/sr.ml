@@ -68,9 +68,16 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
   if !debug_patt then log "patt" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
+(** Representation of a rule specification, used for checking SR. *)
+type rspec =
+  { rspec_symbol : symbol               (** Head symbol of the rule.    *)
+  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
+  ; rspec_rule   : rule                 (** The rule itself.            *) }
+
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
-let check_rule : symbol -> rule -> unit = fun s rule ->
+let check_rule : rspec -> unit = fun spec ->
+  let {rspec_symbol = s; rspec_ty_map = ty_map; rspec_rule = rule} = spec in
   (** We process the LHS to replace patterns variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -86,12 +93,12 @@ let check_rule : symbol -> rule -> unit = fun s rule ->
           let m = Array.map to_m m in
           let l = Array.length m in
           match i with
-          | None    -> _Meta (new_meta (List.assoc n rule.ty_map) l) m
+          | None    -> _Meta (new_meta (List.assoc n ty_map) l) m
           | Some(i) ->
               match metas.(i) with
               | Some(v) -> _Meta v m
               | None    ->
-                  let v = new_meta (List.assoc n rule.ty_map) l in
+                  let v = new_meta (List.assoc n ty_map) l in
                   metas.(i) <- Some(v);
                   _Meta v m
         end

@@ -7,6 +7,7 @@ open Print
 open Parser
 open Cmd
 open Pos
+open Sr
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
@@ -269,7 +270,7 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
 (** [scope_rule sign r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : Sign.t -> p_rule -> symbol * rule = fun sign (p_lhs, p_rhs) ->
+let scope_rule : Sign.t -> p_rule -> rspec = fun sign (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
@@ -294,7 +295,8 @@ let scope_rule : Sign.t -> p_rule -> symbol * rule = fun sign (p_lhs, p_rhs) ->
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs sign mvs p_rhs in
   (* We put everything together to build the rule. *)
-  (sym, {lhs; rhs; ty_map; arity = List.length lhs})
+  let rule = {lhs; rhs; arity = List.length lhs} in
+  {rspec_symbol = sym; rspec_ty_map = ty_map; rspec_rule = rule}
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)

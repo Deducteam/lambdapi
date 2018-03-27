@@ -8,6 +8,7 @@ open Terms
 open Print
 open Cmd
 open Pos
+open Sr
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -61,16 +62,16 @@ let handle_defin : Sign.t -> strloc -> term option -> term -> unit =
         let t = Bindlib.box t in
         Bindlib.mvbind te_mkfree [||] (fun _ -> t)
       in
-      {arity = 0; lhs = []; ty_map = []; rhs = Bindlib.unbox rhs}
+      {arity = 0; lhs = []; rhs = Bindlib.unbox rhs}
     in
     Sign.add_rule sg s rule
 
 (** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
-let handle_rules : Sign.t -> (symbol * rule) list -> unit = fun sign rs ->
-  List.iter (fun (s,r) -> Sr.check_rule s r) rs;
-  List.iter (fun (s,r) -> Sign.add_rule sign s r) rs
+let handle_rules : Sign.t -> rspec list -> unit = fun sign rs ->
+  List.iter check_rule rs;
+  List.iter (fun s -> Sign.add_rule sign s.rspec_symbol s.rspec_rule) rs
 
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)

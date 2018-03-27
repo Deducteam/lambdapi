@@ -56,7 +56,6 @@ type term =
  and rule =
   { lhs    : term list                        (* Left-hand side.    *)
   ; rhs    : (term_env, term) Bindlib.mbinder (* Right-hand side.   *)
-  ; ty_map : (string * term) list (* Types for pattern variables.   *)
   ; arity  : int (** Minimal number of arguments to apply the rule. *) }
 
  and term_env =
