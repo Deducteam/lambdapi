@@ -16,14 +16,14 @@ let prod : tvar -> term -> term -> term = fun x t u ->
 type constr = ctxt * term * term
 
 let pp_constr : out_channel -> constr -> unit = fun oc (c,t,u) ->
-  Printf.fprintf oc "%a ⊢ %a ~ %a" pp_ctxt c pp t pp u
+  Printf.fprintf oc "%a ~ %a" pp t pp u
 
 (** Representation of sets of constraints. *)
 type problem = constr list
 
 let pp_problem : out_channel -> problem -> unit = fun oc p ->
   if p = [] then output_string oc "∅"
-  else List.pp pp_constr ", " oc p
+  else Printf.fprintf oc "{%a}" (List.pp pp_constr ", ") p
 
 (** [unbind_tbinder c t f] returns [(x,u,c')] where [(x,u)] is the
     result of unbinding [f], and [c'] the extension of [c] with [x]
@@ -57,6 +57,12 @@ let distinct_vars (a:term array) : bool =
   in
   let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
   acc := []; res
+
+(** [eq_var t u] checks that [t] and [u] are the same variable. *)
+let eq_var (t:term) (u:term) : bool =
+  match t, u with
+  | Vari x, Vari y -> Bindlib.eq_vars x y
+  | _, _ -> false
 
 (** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
 exception Exit_occurs
@@ -181,7 +187,8 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> p
 
-  | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 && n1 = 0 && n2 = 0 -> p
+  | Meta(m1,a1), Meta(m2,a2)
+    when m1==m2 && Array.for_all2 eq_var a1 a2 && n1 = 0 && n2 = 0 -> p
 
   | Meta(m,a), _ when n1 = 0 && distinct_vars a && not (occurs m t2) ->
      let get_var = function Vari v -> v | _ -> assert false in
@@ -198,7 +205,13 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   | Meta(_,_), _
   | _, Meta(_,_)
   | Symb(_), _
-  | _, Symb(_) -> (c,t1,t2)::p
+  | _, Symb(_) ->
+     if Terms.eq t1 t2 then p
+     else
+       begin
+         if !debug_unif then log "CSTR" (gre "%a ~ %a") pp t1 pp t2;
+         (c,t1,t2)::p
+       end
 
   | _, _ -> raise (E_not_convertible (t1,t2))
 
