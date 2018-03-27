@@ -98,6 +98,9 @@ type term =
 (******************************************************************************)
 (* Metavariables *)
 
+(** [unset u] returns [true] if [u] is not instanciated. *)
+let unset : meta -> bool = fun u -> !(u.meta_value) = None
+
 (** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
 let meta_name : meta -> string = fun m ->
   match m.meta_name with
@@ -156,8 +159,8 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
 
-(** [unset u] returns [true] if [u] is not instanciated. *)
-let unset : meta -> bool = fun u -> !(u.meta_value) = None
+(******************************************************************************)
+(* Functions on terms *)
 
 (** [unfold t] unfolds the toplevel metavariable in [t]. *)
 let rec unfold : term -> term = fun t ->
@@ -194,6 +197,24 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** Injection of [Bindlib] variables into term place-holders. *)
 let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
+
+(** [eq t u] tests the equality of the two terms [t] and [u] (modulo
+    alpha-equivalence). *)
+let rec eq : term -> term -> bool = fun a b ->
+  match unfold a, unfold b with
+  | Vari(x1)   , Vari(x2)    -> Bindlib.eq_vars x1 x2
+  | Type       , Type
+  | Kind       , Kind        -> true
+  | Symb(s1)   , Symb(s2)    -> s1 == s2
+  | Prod(a1,b1), Prod(a2,b2)
+  | Abst(a1,b1), Abst(a2,b2) -> eq a1 a2 && Bindlib.eq_binder mkfree eq b1 b2
+  | Appl(t1,u1), Appl(t2,u2) -> eq t1 t2 && eq u1 u2
+  | Patt(_,_,_), _
+  | _          , Patt(_,_,_)
+  | TEnv(_,_)  , _
+  | _          , TEnv(_,_)   -> assert false
+  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq a1 a2
+  | _          , _           -> false
 
 (******************************************************************************)
 (* Typing contexts *)
