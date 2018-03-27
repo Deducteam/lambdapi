@@ -45,18 +45,37 @@ let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
   x,u,v,c
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
-exception Exit
+exception Exit_distinct_vars
 let distinct_vars (a:term array) : bool =
   let acc = ref [] in
   let fn t =
     match t with
     | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit_distinct_vars
        else acc := v::!acc
-    | _ -> raise Exit
+    | _ -> raise Exit_distinct_vars
   in
-  let res = try Array.iter fn a; true with Exit -> false in
+  let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
   acc := []; res
+
+(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
+exception Exit_occurs
+let occurs (m:meta) (t:term) : bool =
+  let rec occurs (t:term) : unit =
+    match t with
+    | Patt(_,_,_) | TEnv(_,_) -> assert false
+    | Vari(_) | Type | Kind | Symb(_) -> ()
+    | Prod(a,f) | Abst(a,f) ->
+       begin
+         occurs a;
+         let _,b = Bindlib.unbind mkfree f in
+         occurs b
+       end
+    | Appl(a,b) -> occurs a; occurs b
+    | Meta(m',ts) ->
+       if m==m' then raise Exit_occurs else Array.iter occurs ts
+  in
+  try occurs t; false with Exit_occurs -> true
 
 (** Exceptions that can be raised by the inference algorithm. *)
 exception E_not_a_sort of term
@@ -70,14 +89,17 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
   if !debug_type then log "INFR" "%a; %a ⊢ %a : ?" pp_problem p pp_ctxt c pp t;
   let p, typ_t =
     match unfold t with
-    (* Sort *)
+    | Patt(_,_,_) | TEnv(_,_) -> assert false
+
     | Type        -> p, Kind
-    (* Variable *)
+
+    | Kind        -> raise (E_not_typable t)
+
     | Vari(x)     ->
        begin try p, find_tvar x c with Not_found -> assert false end
-    (* Symbol *)
+
     | Symb(s)     -> p, s.sym_type
-    (* Product *)
+
     | Prod(t,f) ->
        begin
         let p = check p c t Type in
@@ -87,7 +109,7 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
         | Type | Kind -> p, typ_u
         | _ -> raise (E_not_a_sort typ_u)
        end
-    (* Abstraction *)
+
     | Abst(t,f) ->
        begin
         let p = check p c t Type in
@@ -95,7 +117,7 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
         let p, typ_u = infer p c u in
         p, prod x t typ_u
        end
-    (* Application *)
+
     | Appl(t,u) ->
        begin
         let p, typ_u = infer p c u in
@@ -104,7 +126,7 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
         | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
         | _ -> raise (E_not_a_product typ_t)
        end
-    (* Metavariable *)
+
     | Meta(m, ts) ->
        (* The type of [Meta(m,ts)] is the same as [add_args v ts]
          where [v] is some fresh variable with the same type as [m]. *)
@@ -113,10 +135,6 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
         let c = add_tvar v m.meta_type c in
         infer p c (add_args (Vari v) (Array.to_list ts))
        end
-    (* No rule apply. *)
-    | Kind        -> raise (E_not_typable t)
-    | Patt(_,_,_) -> assert false
-    | TEnv(_,_)   -> assert false
   in
   if !debug_type then
     log "INFR" (gre "%a; %a ⊢ %a : %a") pp_problem p pp_ctxt c pp t pp typ_t;
@@ -129,7 +147,8 @@ and check (p:problem) (c:ctxt) (t:term) (u:term) : problem =
   add_constr c typ_t u p
 
 (** [add_constr c t1 t2 p] extends [p] with possibly new constraints
-    for [t1] to be convertible to [t2] in context [c]. *)
+    for [t1] to be convertible to [t2] in context [c]. We assume that,
+    for every [i], either [ti] is [Kind] or [ti] is typable. *)
 and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   let t1 = whnf t1 and t2 = whnf t2 in
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
@@ -137,26 +156,21 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   match h1, h2 with
   | Type, Type
   | Kind, Kind ->
-     if ts1 = [] then
-       if ts2 = [] then p
-       else raise (E_not_typable t2)
-     else raise (E_not_typable t1)
+     (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
+     p
 
   | Vari x, Vari y ->
      if Bindlib.eq_vars x y && n1 = n2 then add_constr2 c ts1 ts2 p
      else raise (E_not_convertible (t1,t2))
 
   | Prod(a,f), Prod(b,g) ->
-     if ts1=[] then
-       if ts2=[] then
-         let p = add_constr c a b p in
-         let x,u,v,c = unbind_tbinder2 c a f g in
-         add_constr c u v p
-       else raise (E_not_typable t2)
-     else raise (E_not_typable t1)
+     (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
+     let p = add_constr c a b p in
+     let x,u,v,c = unbind_tbinder2 c a f g in
+     add_constr c u v p
 
   | Abst(a,f), Abst(b,g) ->
-       (* [ts1] and [ts2] are empty since [t1] and [t2] are in whnf. *)
+     (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
      let p = add_constr c a b p in
      let x,u,v,c = unbind_tbinder2 c a f g in
      add_constr c u v p
@@ -169,11 +183,16 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | Meta(m1,a1), Meta(m2,a2) when m1==m2 && a1==a2 && n1 = 0 && n2 = 0 -> p
 
-  | Meta(m,a), _ when n1 = 0 && distinct_vars a
-(*FIXME:&& not (occurs m t2) *) ->
+  | Meta(m,a), _ when n1 = 0 && distinct_vars a && not (occurs m t2) ->
      let get_var = function Vari v -> v | _ -> assert false in
      let b = Array.map get_var a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
+     p
+
+  | _, Meta(m,a) when n1 = 0 && distinct_vars a && not (occurs m t1) ->
+     let get_var = function Vari v -> v | _ -> assert false in
+     let b = Array.map get_var a in
+     Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
      p
 
   | Meta(_,_), _
@@ -185,7 +204,8 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
 (** [add_constr2 c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
-    convertible in context [c]. *)
+    convertible in context [c]. [ts1] and [ts2] must have the same
+    length. *)
 and add_constr2 (c:ctxt) (ts1:term list) (ts2:term list) (p:problem) : problem =
   let fn p a b = add_constr c a b p in
   List.fold_left2 fn p ts1 ts2
