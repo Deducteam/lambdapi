@@ -22,32 +22,48 @@ let handle_symdecl : Sign.t -> bool -> strloc -> term -> unit =
   ignore (Typing.sort_type empty_ctxt a);
   ignore (Sign.new_symbol sign b n a)
 
-(** [handle_opaque sign x a t] checks that the opaque definition of symbol [x]
-    is well-typed, which means that [t] has type [a]. In case of error (typing
-    or sorting), the program fails gracefully. *)
-let handle_opaque : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type empty_ctxt a);
-  if not (Typing.has_type empty_ctxt t a) then
-    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  ignore (Sign.new_symbol sg true x a)
+(** [check_def_type x None t] infers the type of [t] and returns
+    it. [check_def_type x (Some a) t] checks that [a] has a sort as
+    type and that [t] has type [a], and it returns [a]. In case of
+    error (typing or sorting), the program fails gracefully. *)
+let check_def_type : Sign.t -> strloc -> term option -> term -> term =
+  fun sg x ao t ->
+    match ao with
+    | None ->
+       begin
+         match Typing.infer empty_ctxt t with
+         | None -> fatal "Unable to infer the type of [%a]\n" pp t
+         | Some a -> a
+       end
+    | Some a ->
+       begin
+         ignore (Typing.sort_type empty_ctxt a);
+         if not (Typing.has_type empty_ctxt t a) then
+           fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
+         else a
+       end
 
-(** [handle_defin sign x a t] extends [sign] with a definable symbol with name
-    [x] and type [a], and then adds a simple rewriting rule to  [t]. Note that
-    this amounts to define a symbol with a single reduction rule.  In case  of
-    error (typing, sorting, ...) the program fails gracefully. *)
-let handle_defin : Sign.t -> strloc -> term -> term -> unit = fun sg x a t ->
-  ignore (Typing.sort_type empty_ctxt a);
-  if not (Typing.has_type empty_ctxt t a) then
-    fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos;
-  let s = Sign.new_symbol sg true x a in
-  let rule =
-    let rhs =
-      let t = Bindlib.box t in
-      Bindlib.mvbind te_mkfree [||] (fun _ -> t)
+(** [handle_opaque sign x ao t] checks the definition of [x] and adds
+    [x] in the signature. *)
+let handle_opaque : Sign.t -> strloc -> term option -> term -> unit =
+  fun sg x ao t ->
+    let a = check_def_type sg x ao t in
+    ignore (Sign.new_symbol sg true x a)
+
+(** [handle_defin sign x ao t] does the same as [handle_opaque sign x
+    ao t] and add the rule [x --> t]. *)
+let handle_defin : Sign.t -> strloc -> term option -> term -> unit =
+  fun sg x ao t ->
+    let a = check_def_type sg x ao t in
+    let s = Sign.new_symbol sg true x a in
+    let rule =
+      let rhs =
+        let t = Bindlib.box t in
+        Bindlib.mvbind te_mkfree [||] (fun _ -> t)
+      in
+      {arity = 0; lhs = []; ty_map = []; rhs = Bindlib.unbox rhs}
     in
-    {arity = 0; lhs = []; ty_map = []; rhs = Bindlib.unbox rhs}
-  in
-  Sign.add_rule sg s rule
+    Sign.add_rule sg s rule
 
 (** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
@@ -102,8 +118,8 @@ and handle_cmds : Sign.t -> p_cmd loc list -> unit = fun sign cmds ->
       match cmd.elt with
       | SymDecl(b,n,a) -> handle_symdecl sign b n a
       | Rules(rs)    -> handle_rules sign rs
-      | SymDef(o,n,a,t) ->
-         (if o then handle_opaque else handle_defin) sign n a t
+      | SymDef(b,n,ao,t) ->
+         (if b then handle_opaque else handle_defin) sign n ao t
       | Import(path) -> handle_import sign path
       | Debug(v,s)   -> set_debug v s
       | Verb(n)      -> verbose := n

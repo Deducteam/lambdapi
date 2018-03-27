@@ -356,19 +356,14 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
 let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   match cmd with
   | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term sign a)
-  | P_SymDef(o,x,a,t) ->
+  | P_SymDef(b,x,ao,t) ->
       let t = scope_term sign t in
-      let a =
-        match a with
-        | None    ->
-            begin
-              match Typing.infer empty_ctxt t with
-              | Some(a) -> a
-              | None    -> fatal "Unable to infer the type of [%a]\n" pp t
-            end
-        | Some(a) -> scope_term sign a
+      let ao =
+        match ao with
+        | None    -> None
+        | Some(a) -> Some(scope_term sign a)
       in
-      SymDef(o, x, a, t)
+      SymDef(b,x,ao,t)
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
   | P_OldRules(rs)      ->
       let rs = List.map translate_old_rule rs in

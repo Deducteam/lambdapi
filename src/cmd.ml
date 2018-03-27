@@ -22,7 +22,7 @@ type cmd = cmd_aux loc
   (** Rewriting rules declaration. *)
   | Rules  of (symbol * rule) list
   (** Symbol definition (opaque when the boolean is [true]). *)
-  | SymDef of bool * strloc * term * term
+  | SymDef of bool * strloc * term option * term
   (** Import an external signature. *)
   | Import of module_path
   (** Set debugging flags. *)
