@@ -94,6 +94,12 @@ type term =
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
 
+(** Injection of [Bindlib] variables into terms. *)
+let mkfree : tvar -> term = fun x -> Vari(x)
+
+(** Injection of [Bindlib] variables into term place-holders. *)
+let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
+
 (******************************************************************************)
 (* Metavariables *)
 
@@ -158,6 +164,39 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
 
+(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
+(*REMOVE:let rec occurs : meta -> term -> bool = fun r t ->
+  match unfold t with
+  | Prod(a,b)
+  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Appl(t,u)   -> occurs r t || occurs r u
+  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
+  | Type
+  | Kind
+  | Vari(_)
+  | Symb(_)     -> false
+  | Patt(_,_,_)
+  | TEnv(_,_)   -> assert false*)
+
+(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
+exception Exit_occurs
+let occurs (m:meta) (t:term) : bool =
+  let rec occurs (t:term) : unit =
+    match t with
+    | Patt(_,_,_) | TEnv(_,_) -> assert false
+    | Vari(_) | Type | Kind | Symb(_) -> ()
+    | Prod(a,f) | Abst(a,f) ->
+       begin
+         occurs a;
+         let _,b = Bindlib.unbind mkfree f in
+         occurs b
+       end
+    | Appl(a,b) -> occurs a; occurs b
+    | Meta(m',ts) ->
+       if m==m' then raise Exit_occurs else Array.iter occurs ts
+  in
+  try occurs t; false with Exit_occurs -> true
+
 (******************************************************************************)
 (* Functions on terms *)
 
@@ -191,12 +230,6 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** Injection of [Bindlib] variables into terms. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
-
-(** Injection of [Bindlib] variables into term place-holders. *)
-let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
-
 (** [eq t u] tests the equality of the two terms [t] and [u] (modulo
     alpha-equivalence). *)
 let rec eq : term -> term -> bool = fun a b ->
@@ -214,6 +247,23 @@ let rec eq : term -> term -> bool = fun a b ->
   | _          , TEnv(_,_)   -> assert false
   | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq a1 a2
   | _          , _           -> false
+
+(** [distinct_vars a] checks that [a] is made of distinct variables. *)
+exception Exit_distinct_vars
+let distinct_vars (a:term array) : bool =
+  let acc = ref [] in
+  let fn t =
+    match t with
+    | Vari v ->
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit_distinct_vars
+       else acc := v::!acc
+    | _ -> raise Exit_distinct_vars
+  in
+  let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
+  acc := []; res
+
+(** [to_var t] returns [x] if [t = Vari x] and fails otherwise. *)
+let to_var (t:term) : tvar = match t with Vari x -> x | _ -> assert false
 
 (******************************************************************************)
 (* Typing contexts *)
