@@ -194,19 +194,19 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
      let get_var = function Vari v -> v | _ -> assert false in
      let b = Array.map get_var a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
-     p
+     recompute_constrs p
 
-  | _, Meta(m,a) when n1 = 0 && distinct_vars a && not (occurs m t1) ->
+  | _, Meta(m,a) when n2 = 0 && distinct_vars a && not (occurs m t1) ->
      let get_var = function Vari v -> v | _ -> assert false in
      let b = Array.map get_var a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
-     p
+     recompute_constrs p
 
   | Meta(_,_), _
   | _, Meta(_,_)
   | Symb(_), _
   | _, Symb(_) ->
-     if Terms.eq t1 t2 then p
+     if eq_modulo t1 t2 then p
      else
        begin
          if !debug_unif then log "CSTR" (gre "%a ~ %a") pp t1 pp t2;
@@ -214,6 +214,11 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
        end
 
   | _, _ -> raise (E_not_convertible (t1,t2))
+
+(** [recompute_constrs p] iterates [add_constr] on [p]. *)
+and recompute_constrs (p:problem) : problem =
+  let fn p (c,a,b) = add_constr c a b p in
+  List.fold_left fn [] p
 
 (** [add_constr2 c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
@@ -223,23 +228,32 @@ and add_constr2 (c:ctxt) (ts1:term list) (ts2:term list) (p:problem) : problem =
   let fn p a b = add_constr c a b p in
   List.fold_left2 fn p ts1 ts2
 
+(** Solve constraints. *)
+let solve (p:problem) : unit =
+  match p with
+  | (_,a,b)::_ -> fatal "cannot solve the constraint [%a] ~ [%a]\n" pp a pp b
+  | [] -> ()
+
 (** [has_type c t u] returns [true] iff [t] has type [u] in context
     [c]. *)
 let has_type (c:ctxt) (t:term) (u:term) : bool =
   let p = check [] c t u in
-  p = []
+  solve p;
+  true
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context
     [c]. *)
-let sort_type (c:ctxt) (t:term) : bool =
+let sort_type (c:ctxt) (t:term) : term =
   let p, typ_t = infer [] c t in
+  solve p;
   match typ_t with
-  | Type | Kind -> p = []
-  | _ -> false
+  | Type | Kind -> typ_t
+  | _ -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp typ_t
 
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be
     solved. *)
 let infer (c:ctxt) (t:term) : term option =
   let p, typ_t = infer [] c t in
-  if p = [] then Some typ_t else None
+  solve p;
+  Some typ_t
