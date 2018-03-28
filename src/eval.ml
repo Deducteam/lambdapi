@@ -5,27 +5,6 @@ open Console
 open Terms
 open Print
 
-(** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
-    the comparison, metavariables are not instantiated. *)
-let eq : term -> term -> bool = fun a b ->
-  let rec eq a b = a == b ||
-    let eq_binder = Bindlib.eq_binder mkfree eq in
-    match (unfold a, unfold b) with
-    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Type         , Type         ) -> true
-    | (Kind         , Kind         ) -> true
-    | (Symb(s1)     , Symb(s2)) -> s1 == s2
-    | (Prod(a1,b1)  , Prod(a2,b2)  ) -> eq a1 a2 && eq_binder b1 b2
-    | (Abst(a1,t1)  , Abst(a2,t2)  ) -> eq a1 a2 && eq_binder t1 t2
-    | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq t1 t2 && eq u1 u2
-    | (Patt(_,_,_)  , _            ) -> assert false
-    | (_            , Patt(_,_,_)  ) -> assert false
-    | (TEnv(_,_)    , _            ) -> assert false
-    | (_            , TEnv(_,_)    ) -> assert false
-    | (Meta(m1,ar1) , Meta(m2,ar2) ) -> m1 == m2 && Array.for_all2 eq ar1 ar2
-    | (_            , _            ) -> false
-  in eq a b
-
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = term ref list
 
