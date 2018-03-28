@@ -1,0 +1,65 @@
+#NAME miller.
+
+R : Type.
+0 : R.
+
+sh : R -> R.
+ch : R -> R.
+def d : (R -> R) -> (R -> R).
+[] d sh --> ch.
+[] d ch --> sh.
+[] d (x => sh x) --> ch.
+[] d (x => ch x) --> sh.
+
+R2 : Type.
+pair : R -> R -> R2.
+
+def dx : (R -> R -> R) -> (R -> R -> R).
+(;
+[F] dx (x => y => F x) --> x => y => (d (x => F x)) x.
+[F] dx (x => y => F y) --> x => y => 0.
+;)
+[F] dx (x => y => F x) --> x:R => y:R => (d (x => F x)) x.
+[F] dx (x => y => F y) --> x:R => y:R => 0.
+
+def dy : (R -> R -> R) -> (R -> R -> R).
+(;
+[F] dy (x => y => F x) --> x => y => 0.
+[F] dy (x => y => F y) --> x => y => (d (x => F x)) x.
+;)
+[F] dy (x => y => F x) --> x:R => y:R => 0.
+[F] dy (x => y => F y) --> x:R => y:R => (d (x => F x)) x.
+
+def grad : (R -> R -> R) -> (R -> R -> R2).
+[F] grad F --> x => y => pair ((dx F) x y) ((dy F) x y).
+
+
+def trans : (R -> R -> R) -> (R -> R -> R).
+[F] trans (x => y => F x y) --> x => y => F y x.
+
+def flip : (R -> R -> R2) -> (R -> R -> R2).
+[F,G] flip (x => y => pair (F x y) (G x y)) --> x => y => pair (G x y) (F x y).
+
+
+def f : R -> R -> R := x : R => y : R => ch x.
+
+#SNF grad (trans f).
+#SNF flip (grad f).
+
+#SNF g : (R -> R -> R) => grad (trans g).
+#SNF g : (R -> R -> R) => flip (grad g).
+
+
+#EVAL grad (trans f).
+#EVAL flip (grad f).
+
+#EVAL g : (R -> R -> R) => grad (trans g).
+#EVAL g : (R -> R -> R) => flip (grad g).
+
+(; Expected:
+x => y => pair 0 (sh x)
+x => y => pair 0 (sh x)
+g:(R -> R -> R) => x => y => pair (dx (trans g) x y) (dy (trans g) x y)
+g:(R -> R -> R) => x => y => pair (dy g x y) (dx g x y)
+SUCCESS File 'miller.dk' was successfully checked.
+;)

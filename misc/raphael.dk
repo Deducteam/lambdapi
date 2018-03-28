@@ -1,0 +1,54 @@
+type : Type.
+def term : type -> Type.
+
+eq : A : type -> term A -> term A -> type.
+def Eq (A : type) (a : term A) (b : term A) : Type := term (eq A a b).
+
+refl : A : type -> a : term A -> Eq A a a.
+sym : A : type -> a : term A -> b : term A -> Eq A a b -> Eq A b a.
+def trans : A : type -> a : term A -> b : term A -> c : term A ->
+            Eq A a b -> Eq A b c -> Eq A a c.
+
+[A,a,b,h] trans A a b a h (sym A a b h) --> refl A a
+[A,a,b,h] trans A b a b (sym A a b h) h --> refl A b
+[A,a,b,h] trans A a b b h (refl A b) --> h
+[A,a,b,h] trans A a a b (refl A a) h --> h
+[A,w,x,y,z,h,h',h''] trans A w x z h (trans A x y z h' h'') -->
+  trans A w y z (trans A w x y h h') h''.
+
+def bpi : X : type -> x : term X -> y : term X -> h : Eq X x y ->
+          P : (y : term X -> Eq X x y -> type) ->
+          term (P x (refl X x)) -> term (P y h).
+
+(; The left-hand side ;)
+
+def bpi_trans_1 (X : type) (x : term X) (y : term X) (z : term X)
+                (P : z : term X -> Eq X y z -> type)
+                (h : Eq X x y) (h' : Eq X y z)
+                (p : term (P x (sym X x y h))) :
+                term (P z h') :=
+  bpi X y z h' (z : term X => h' : Eq X y z => P z h')
+     (bpi X x y h
+          (z : term X => h'' : Eq X x z => P z (trans X y x z (sym X x y h) h''))
+          p).
+
+(; The right-hand side ;)
+
+def bpi_trans_2 (X : type) (x : term X) (y : term X) (z : term X)
+                (P : z : term X -> Eq X y z -> type)
+                (h : Eq X x y) (h' : Eq X y z)
+                (p : term (P x (sym X x y h))) : term (P z h') :=
+  bpi X x z (trans X x y z h h')
+    (z : term X => h'' : Eq X x z => P z (trans X y x z (sym X x y h) h'')) p.
+
+(; The following rule is rejected by Dedukti with the error message
+"The type could not be infered." ;)
+
+[X,x,y,z,P,h,h',p]
+  bpi X y z h' P
+     (bpi X x y h
+          (z => h'' => P z (trans X y x z (sym X x y h) h''))
+          p)
+    -->
+  bpi X x z (trans X x y z h h')
+    (z => h'' => P z (trans X y x z (sym X x y h) h'')) p.

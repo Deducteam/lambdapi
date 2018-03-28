@@ -1,0 +1,56 @@
+#NAME miller.
+
+R : Type.
+0 : R.
+def p : R -> R -> R.
+[x] p 0 x --> x.
+[x] p x 0 --> x.
+
+sh : R -> R.
+ch : R -> R.
+def d : (R -> R) -> (R -> R).
+[] d sh --> ch.
+[] d ch --> sh.
+[] d (x => sh x) --> ch.
+[] d (x => ch x) --> sh.
+
+R2 : Type.
+pair : R -> R -> R2.
+
+def dx : (R -> R -> R) -> (R -> R -> R).
+[F] dx (x => y => F x) --> x:R => y:R => (d (x => F x)) x.
+[F] dx (x => y => F y) --> x:R => y:R => 0.
+
+def dy : (R -> R -> R) -> (R -> R -> R).
+[F] dy (x => y => F x) --> x:R => y:R => 0.
+[F] dy (x => y => F y) --> x:R => y:R => (d (x => F x)) x.
+
+def grad : (R -> R -> R) -> (R -> R -> R2).
+[F] grad F --> x => y => pair ((dx F) x y) ((dy F) x y).
+
+def plus : (R -> R -> R) -> (R -> R -> R) -> (R -> R -> R).
+[F,G] plus F G --> (x => y => p (F x y) (G x y)).
+[F,G] dx (x => y => p (F x y) (G x y)) -->
+		 x => y => p ((dx (x => y => F x y)) x y)
+				     ((dx (x => y => G x y)) x y).
+[F,G] dy (x => y => p (F x y) (G x y)) -->
+		 x => y => p ((dy (x => y => F x y)) x y)
+				     ((dy (x => y => G x y)) x y).
+
+def trans : (R -> R -> R) -> (R -> R -> R).
+[F] trans F --> x => y => F y x.
+
+def flip : (R -> R -> R2) -> (R -> R -> R2).
+[F,G] flip (x => y => pair (F x y) (G x y)) --> x => y => pair (G x y) (F x y).
+
+
+def f : R -> R -> R := plus (x : R => y : R => ch x) (x : R => y : R => sh y).
+
+
+#SNF flip (grad f).
+#SNF grad (trans f).
+
+#EVAL flip (grad f).
+#EVAL grad (trans f).
+
+#CHECK grad (trans f) == flip (grad f).

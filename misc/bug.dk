@@ -1,0 +1,18 @@
+#NAME bug.
+
+def A : Type.
+def eA : A -> Type.
+a : A.
+[] A --> eA a.
+
+B : Type.
+def eB : B -> Type.
+
+(;   a  has type (eA a)        ;)
+(;   eB has type (B -> Type)   ;)
+#INFER a.
+#INFER eB.
+
+(; There is no reason for (eA a) and B to be convertible       ;)
+(; and yet dedukti successfully typechecks the following rule. ;)
+[] eB a --> eA a.
