@@ -108,7 +108,7 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
   if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
-and eq_modulo : term -> term -> bool = fun a b ->
+(*REMOVE:and eq_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -130,6 +130,36 @@ and eq_modulo : term -> term -> bool = fun a b ->
            let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
            eq_modulo ((a1,a2)::(b1,b2)::l)
         | _ -> eq a b && eq_modulo l
+  in
+  let res = eq_modulo [(a,b)] in
+  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res*)
+
+and eq_modulo : term -> term -> bool = fun a b ->
+  if !debug_equa then log "equa" "%a == %a" pp a pp b;
+  let rec eq_modulo l =
+    match l with
+    | []                   -> true
+    | (a,b)::l             ->
+       match whnf a, whnf b with
+       | Patt(_,_,_), _
+       | _, Patt(_,_,_)
+       | TEnv(_,_), _
+       | _, TEnv(_,_) -> assert false
+       | Type, Type
+       | Kind, Kind -> true
+       | Vari(x1), Vari(x2) -> Bindlib.eq_vars x1 x2
+       | Symb(s1), Symb(s2) -> s1 == s2
+       | Prod(a1,b1), Prod(a2,b2)
+       | Abst(a1,b1), Abst(a2,b2) ->
+          let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
+          eq_modulo ((a1,a2)::(b1,b2)::l)
+       | Appl(t1,u1), Appl(t2,u2) ->
+          eq_modulo ((u1,u2)::(t1,t2)::l)
+       | Meta(m1,a1), Meta(m2,a2) ->
+          m1 == m2
+          && let a1 = Array.to_list a1 and a2 = Array.to_list a2 in
+             eq_modulo (List.fold_left2 (fun l t u -> (t,u)::l) l a1 a2)
+       | _, _ -> false
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
