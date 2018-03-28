@@ -1,0 +1,9 @@
+def Bool : Type.
+T : Bool.
+
+def Nat : Type.
+0 : Nat.
+
+def S : Nat -> Nat.
+[] S T --> 0.
+

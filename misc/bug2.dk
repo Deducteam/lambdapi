@@ -1,0 +1,13 @@
+N : Type.
+
+0 : N.
+
+B : Type.
+
+T : B.
+
+def A : B -> Type.
+
+def f : A T -> Type.
+
+[] f B --> B.
