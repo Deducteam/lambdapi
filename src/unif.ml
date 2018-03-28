@@ -6,39 +6,24 @@ open Terms
 open Print
 open Eval
 
-(** [set_meta u v] sets the value of the metavariable [m] to [v]. Note
-    that [m] should not have already been instanciated. *)
+(** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
 let set_meta : meta -> tmbinder -> unit = fun m v ->
   if !debug_unif then
     begin
-      let (env,a) = Bindlib.unmbind mkfree v in
-      log "UNIF" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") env pp a
+      let (xs,v) = Bindlib.unmbind mkfree v in
+      log "inst" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
   m.meta_value := Some(v)
 
-(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
-let rec occurs : meta -> term -> bool = fun r t ->
-  match unfold t with
-  | Prod(a,b)
-  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Appl(t,u)   -> occurs r t || occurs r u
-  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type
-  | Kind
-  | Vari(_)
-  | Symb(_)     -> false
-  | Patt(_,_,_)
-  | TEnv(_,_)   -> assert false
-
-(** [instantiate u t] tries to instantiate [u] with [t], and returns a boolean
-    telling whether it succeeded or not.  Note that the function also verifies
-    that the body of the metavariable (the binder) is closed. *)
-let instantiate : meta -> term array -> term -> bool = fun u env a ->
-  assert(unset u);
-  not (occurs u a) &&
-  let to_var t = match t with Vari v -> v | _ -> assert false in
-  let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
-  Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
+(** [instantiate m ts v] tries to instantiate [m] with [v], and
+    returns a boolean telling whether it succeeded or not. Note that
+    the function also verifies that the body of the metavariable (the
+    binder) is closed. [ts] must be a sequence of distinct variables. *)
+let instantiate : meta -> term array -> term -> bool = fun m ts v ->
+  assert(unset m);
+  distinct_vars ts && not (occurs m v) &&
+  let b = Bindlib.bind_mvar (Array.map to_var ts) (lift v) in
+  Bindlib.is_closed b && (set_meta m (Bindlib.unbox b); true)
 
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly
     instantiating metavariables. *)
