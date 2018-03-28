@@ -164,39 +164,6 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
 
-(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
-(*REMOVE:let rec occurs : meta -> term -> bool = fun r t ->
-  match unfold t with
-  | Prod(a,b)
-  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Appl(t,u)   -> occurs r t || occurs r u
-  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type
-  | Kind
-  | Vari(_)
-  | Symb(_)     -> false
-  | Patt(_,_,_)
-  | TEnv(_,_)   -> assert false*)
-
-(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
-exception Exit_occurs
-let occurs (m:meta) (t:term) : bool =
-  let rec occurs (t:term) : unit =
-    match t with
-    | Patt(_,_,_) | TEnv(_,_) -> assert false
-    | Vari(_) | Type | Kind | Symb(_) -> ()
-    | Prod(a,f) | Abst(a,f) ->
-       begin
-         occurs a;
-         let _,b = Bindlib.unbind mkfree f in
-         occurs b
-       end
-    | Appl(a,b) -> occurs a; occurs b
-    | Meta(m',ts) ->
-       if m==m' then raise Exit_occurs else Array.iter occurs ts
-  in
-  try occurs t; false with Exit_occurs -> true
-
 (******************************************************************************)
 (* Functions on terms *)
 
@@ -264,6 +231,39 @@ let distinct_vars (a:term array) : bool =
 
 (** [to_var t] returns [x] if [t = Vari x] and fails otherwise. *)
 let to_var (t:term) : tvar = match t with Vari x -> x | _ -> assert false
+
+(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
+(*REMOVE:let rec occurs : meta -> term -> bool = fun r t ->
+  match unfold t with
+  | Prod(a,b)
+  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
+  | Appl(t,u)   -> occurs r t || occurs r u
+  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
+  | Type
+  | Kind
+  | Vari(_)
+  | Symb(_)     -> false
+  | Patt(_,_,_)
+  | TEnv(_,_)   -> assert false*)
+
+(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
+exception Exit_occurs
+let occurs (m:meta) (t:term) : bool =
+  let rec occurs (t:term) : unit =
+    match unfold t with
+    | Patt(_,_,_) | TEnv(_,_) -> assert false
+    | Vari(_) | Type | Kind | Symb(_) -> ()
+    | Prod(a,f) | Abst(a,f) ->
+       begin
+         occurs a;
+         let _,b = Bindlib.unbind mkfree f in
+         occurs b
+       end
+    | Appl(a,b) -> occurs a; occurs b
+    | Meta(m',ts) ->
+       if m==m' then raise Exit_occurs else Array.iter occurs ts
+  in
+  try occurs t; false with Exit_occurs -> true
 
 (******************************************************************************)
 (* Typing contexts *)
