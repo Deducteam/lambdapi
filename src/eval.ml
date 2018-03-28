@@ -146,9 +146,9 @@ and eq_modulo : term -> term -> bool = fun a b ->
        | TEnv(_,_), _
        | _, TEnv(_,_) -> assert false
        | Type, Type
-       | Kind, Kind -> true
-       | Vari(x1), Vari(x2) -> Bindlib.eq_vars x1 x2
-       | Symb(s1), Symb(s2) -> s1 == s2
+       | Kind, Kind -> eq_modulo l
+       | Vari(x1), Vari(x2) -> Bindlib.eq_vars x1 x2 && eq_modulo l
+       | Symb(s1), Symb(s2) -> s1 == s2 && eq_modulo l
        | Prod(a1,b1), Prod(a2,b2)
        | Abst(a1,b1), Abst(a2,b2) ->
           let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
