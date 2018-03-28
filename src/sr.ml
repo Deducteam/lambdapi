@@ -78,6 +78,7 @@ type rspec =
     fails gracefully in case of error. *)
 let check_rule : rspec -> unit = fun spec ->
   let {rspec_symbol = s; rspec_ty_map = ty_map; rspec_rule = rule} = spec in
+  if !debug_patt then log "patt" "Typing the rule [%a]" pp_rule (s, rule);
   (** We process the LHS to replace patterns variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -142,4 +143,6 @@ let check_rule : rspec -> unit = fun spec ->
       err "Infered type for LHS: %a\n" pp ty_lhs;
       err "Infered type for RHS: %a\n" pp ty_rhs;
       fatal "[%a] is ill-typed\n" pp_rule (s, rule)
-    end
+    end;
+  if !debug_patt then
+    log "patt" (gre "The rule [%a] is well-typed.") pp_rule (s, rule)
