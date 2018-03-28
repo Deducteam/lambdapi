@@ -157,8 +157,9 @@ and eq_modulo : term -> term -> bool = fun a b ->
           eq_modulo ((u1,u2)::(t1,t2)::l)
        | Meta(m1,a1), Meta(m2,a2) ->
           m1 == m2
-          && let a1 = Array.to_list a1 and a2 = Array.to_list a2 in
-             eq_modulo (List.fold_left2 (fun l t u -> (t,u)::l) l a1 a2)
+          && let l = ref l in
+             Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
+             eq_modulo !l
        | _, _ -> false
   in
   let res = eq_modulo [(a,b)] in
