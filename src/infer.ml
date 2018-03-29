@@ -132,8 +132,49 @@ and check (p:problem) (c:ctxt) (t:term) (u:term) : problem =
     for [t1] to be convertible to [t2] in context [c]. We assume that,
     for every [i], either [ti] is [Kind] or [ti] is typable. *)
 and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
-  if !debug_unif then log "UNIF" "[%a] ~?~ [%a]" pp t1 pp t2;
-  let t1 = whnf t1 and t2 = whnf t2 in
+  if !debug_unif then log "unif" "[%a] ~?~ [%a]" pp t1 pp t2;
+  match unfold t1, unfold t2 with
+  | Type, Type
+  | Kind, Kind -> p
+
+  | Vari x, Vari y ->
+     if Bindlib.eq_vars x y then p
+     else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+
+  | Prod(a,f), Prod(b,g)
+  | Abst(a,f), Abst(b,g) ->
+     let p = add_constr c a b p in
+     let x,u,v,c = unbind_tbinder2 c a f g in
+     add_constr c u v p
+
+  | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
+     if s1 == s2 then p
+     else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+
+  | Meta(m1,a1), Meta(m2,a2) when m1==m2 && Array.for_all2 eq_var a1 a2 -> p
+
+  | Meta(m,a), _ when distinct_vars a && not (occurs m t2) ->
+     let b = Array.map to_var a in
+     Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
+     recompute_constrs p
+
+  | _, Meta(m,a) when distinct_vars a && not (occurs m t1) ->
+     let b = Array.map to_var a in
+     Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
+     recompute_constrs p
+
+  | Meta(_,_), _
+  | _, Meta(_,_) -> raw_add_constr c t1 t2 p
+
+  | Symb(_), _
+  | _, Symb(_)
+  | Appl(_,_), _
+  | _, Appl(_,_) ->
+     if Terms.eq t1 t2 then p else add_constr_whnf c (whnf t1) (whnf t2) p
+
+  | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+
+and add_constr_whnf (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
   match h1, h2 with
@@ -180,15 +221,13 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   | Meta(_,_), _
   | _, Meta(_,_)
   | Symb(_), _
-  | _, Symb(_) ->
-     if eq_modulo t1 t2 then p
-     else
-       begin
-         if !debug_unif then log "CSTR" (gre "%a ~ %a") pp t1 pp t2;
-         (c,t1,t2)::p
-       end
+  | _, Symb(_) -> if eq_modulo t1 t2 then p else raw_add_constr c t1 t2 p
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
+
+and raw_add_constr c t1 t2 p =
+  if !debug_unif then log "CSTR" (gre "%a ~ %a") pp t1 pp t2;
+  (c,t1,t2)::p
 
 (** [recompute_constrs p] iterates [add_constr] on [p]. *)
 and recompute_constrs (p:problem) : problem =
