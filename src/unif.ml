@@ -11,7 +11,7 @@ let set_meta : meta -> tmbinder -> unit = fun m v ->
   if !debug_unif then
     begin
       let (xs,v) = Bindlib.unmbind mkfree v in
-      log "UNIF" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
+      log "unif" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
   m.meta_value := Some(v)
 
@@ -79,13 +79,13 @@ let add_constraint : term -> term -> bool = fun a b ->
   match !constraints with
   | None    -> false
   | Some(l) ->
-      if !debug_patt then log "cnst" "new constraint [%a == %a]." pp a pp b;
+      if !debug_unif then log "unif" "add constraint %a = %a" pp a pp b;
       constraints := Some((a, b)::l); true
 
 (** [unify_modulo a b] tests equality modulo rewriting between  the
     terms [a] and [b]. *)
 let unify_modulo : term -> term -> bool = fun a b ->
-  if !debug_equa then log "unif" "%a == %a" pp a pp b;
+  if !debug_unif then log "unif" "%a = %a" pp a pp b;
   let rec unify_modulo l =
     match l with
     | []                   -> true
@@ -113,4 +113,4 @@ let unify_modulo : term -> term -> bool = fun a b ->
             add_constraint a b && unify_modulo l
   in
   let res = unify_modulo [(a,b)] in
-  if !debug_equa then log "unif" (r_or_g res "%a == %a") pp a pp b; res
+  if !debug_unif then log "unif" (r_or_g res "%a = %a") pp a pp b; res

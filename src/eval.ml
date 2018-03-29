@@ -21,10 +21,10 @@ let to_term : term -> stack -> term = fun t args ->
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating %a" pp t;
+  if !debug_eval then log "eval" "evaluating [%a]" pp (unfold t);
   let (u, stk) = whnf_stk t [] in
   let u = to_term u stk in
-  if !debug_eval then log "eval" "produced %a" pp u; u
+  (*if !debug_eval then log "eval" "produced [%a]" pp u;*) u
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -55,11 +55,14 @@ and find_rule : symbol -> stack -> (term * stack) option = fun s stk ->
     if r.arity > stk_len then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
     let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
-    if !debug_eval then log "eval" "RULE trying rule [%a]" pp_rule (s,r);
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args ps ts =
       match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
+      | ([]   , _    ) ->
+         begin
+           if !debug_eval then log "eval" "%a" pp_rule (s,r);
+           Some(Bindlib.msubst r.rhs env, ts)
+         end
       | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
@@ -72,7 +75,7 @@ and find_rule : symbol -> stack -> (term * stack) option = fun s stk ->
     they denote. In case several different values are found for a same pattern
     variable, equality modulo is computed to check compatibility. *)
 and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
-  if !debug_eval then log "matc" "[%a] =~= [%a]" pp p pp !t;
+  if !debug_matc then log "matc" "[%a] =~= [%a]" pp p pp !t;
   let res =
     (* First handle patterns that do not need the evaluated term. *)
     match p with
@@ -105,7 +108,7 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
     | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
     | (_                , _            ) -> false
   in
-  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
+  if !debug_matc then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 (*REMOVE:and eq_modulo : term -> term -> bool = fun a b ->

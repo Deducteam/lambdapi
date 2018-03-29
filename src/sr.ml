@@ -14,16 +14,15 @@ let infer_with_constrs : ctxt -> term -> (term * constrs) option =
   fun ctx t ->
     match in_constrs_mode (infer ctx) t with
     | (None   , _ ) ->
-        if !debug_patt then
-          log "patt" "unable to infer a type for [%a]" pp t;
+        if !debug_sr then log "sr" "unable to infer a type for [%a]" pp t;
         None
     | (Some(a), cs) ->
-        if !debug_patt then
+        if !debug_sr then
           begin
-            log "patt" "inferred type [%a] for [%a]" pp a pp t;
-            let fn (x,a) = log "patt" "  with\t%a\t: %a" pp_tvar x pp a in
+            log "sr" "inferred type [%a] for [%a]" pp a pp t;
+            let fn (x,a) = log "sr" "  with\t%a\t: %a" pp_tvar x pp a in
             List.iter fn (List.rev ctx);
-            let fn (a,b) = log "patt" "  where\t%a == %a" pp a pp b in
+            let fn (a,b) = log "sr" "  where\t%a == %a" pp a pp b in
             List.iter fn cs
           end;
         Some(a, cs)
@@ -60,12 +59,12 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
 (** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
     modulo rewriting and a list of (valid) constraints [cs]. *)
 let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
-  if !debug_patt then log "patt" "%a == %a (with constraints)" pp a pp b;
+  if !debug_sr then log "sr" "%a == %a (with constraints)" pp a pp b;
   let (xs,sub) = subst_from_constrs constrs in
   let p = Bindlib.box_pair (lift a) (lift b) in
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (a,b) = Bindlib.msubst p sub in
-  if !debug_patt then log "patt" "%a == %a (after substitution)" pp a pp b;
+  if !debug_sr then log "sr" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
 (** Representation of a rule specification, used for checking SR. *)
@@ -78,7 +77,7 @@ type rspec =
     fails gracefully in case of error. *)
 let check_rule : rspec -> unit = fun spec ->
   let {rspec_symbol = s; rspec_ty_map = ty_map; rspec_rule = rule} = spec in
-  if !debug_patt then log "patt" "Typing the rule [%a]" pp_rule (s, rule);
+  if !debug_sr then log "sr" "Typing the rule [%a]" pp_rule (s, rule);
   (** We process the LHS to replace patterns variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -144,5 +143,5 @@ let check_rule : rspec -> unit = fun spec ->
       err "Infered type for RHS: %a\n" pp ty_rhs;
       fatal "[%a] is ill-typed\n" pp_rule (s, rule)
     end;
-  if !debug_patt then
-    log "patt" (gre "The rule [%a] is well-typed.") pp_rule (s, rule)
+  if !debug_sr then
+    log "sr" (gre "The rule [%a] is well-typed.") pp_rule (s, rule)

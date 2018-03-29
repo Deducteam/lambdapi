@@ -39,7 +39,7 @@ let rec infer : ctxt -> term -> term option = fun ctx t ->
     context [ctx]. Note that inference can be performed using an [a]
     that is a metavariable. *)
 and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
-  if !debug_type then log "TYPE" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
+  if !debug_type then log "type" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
   let res =
     match unfold t with
     (* Sort *)
@@ -123,13 +123,13 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
     | TEnv(_,_)   -> assert false
   in
   if !debug_type then
-    log "TYPE" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
+    log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
   res
 
 (** [infer ctx t] is a wrapper function for the [infer] function  defined
     earlier. It is mainly used to obtain fine-grained logs. *)
 let infer : ctxt -> term -> term option = fun ctx t ->
-  if !debug then log "infr" "%a ⊢ %a : ?" pp_ctxt ctx pp t;
+  if !debug then log "infr" "%a ⊢ %a" pp_ctxt ctx pp t;
   let res = infer ctx t in
   if !debug then
     begin

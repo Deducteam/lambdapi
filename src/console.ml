@@ -30,14 +30,15 @@ let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
 let verbose    = ref 1
 let debug      = ref false
 let debug_eval = ref false
+let debug_matc = ref false
 let debug_unif = ref false
-let debug_patt = ref false
+let debug_sr   = ref false
 let debug_type = ref false
 let debug_equa = ref false
 
 (** [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_unif || !debug_patt ||
+  !debug || !debug_eval || !debug_unif || !debug_sr || !debug_matc ||
   !debug_type || !debug_equa
 
 (** [set_debug value str] sets the debugging flags corresponding to characters
@@ -48,7 +49,8 @@ let set_debug : bool -> string -> unit = fun value ->
     | 'a' -> debug      := value
     | 'e' -> debug_eval := value
     | 'u' -> debug_unif := value
-    | 'p' -> debug_patt := value
+    | 'm' -> debug_matc := value
+    | 'p' -> debug_sr   := value
     | 't' -> debug_type := value
     | 'q' -> debug_equa := value
     | _   -> wrn "Unknown debug flag %C\n" c
