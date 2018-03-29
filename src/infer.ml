@@ -48,8 +48,8 @@ let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
     then add_tvar x t c else c in
   x,u,v,c
 
-(** [eq_var t u] checks that [t] and [u] are the same variable. *)
-let eq_var (t:term) (u:term) : bool =
+(** [equal_vari t u] checks that [t] and [u] are the same variable. *)
+let equal_vari (t:term) (u:term) : bool =
   match t, u with
   | Vari x, Vari y -> Bindlib.eq_vars x y
   | _, _ -> false
@@ -91,7 +91,7 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
     | Appl(t,u) ->
        let p, typ_u = infer p c u in
        let p, typ_t = infer p c t in
-       (* We build the product type [x:typ_u -> m[x1,..,xn,x]] where [m]
+       (* We build the product type [a = x:typ_u -> m[x1,..,xn,x]] where [m]
           is a new metavariable. *)
        let x = Bindlib.new_var mkfree "x" in
        let c' = (x,typ_u)::c in
@@ -100,10 +100,11 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
        let m = new_meta typ_m n in
        let vs = List.rev_map (fun (x,_) -> Vari x) c' in
        let m_vs = Meta(m, Array.of_list vs) in
-       let new_typ_t = prod x typ_u m_vs in
-       let p = add_constr c typ_t new_typ_t p in
+       let a = prod x typ_u m_vs in
+       (* We add the constraint [a = typ_t]. *)
+       let p = add_constr c a typ_t p in
        let typ =
-         match new_typ_t with
+         match a with
          | Prod(_,f) -> Bindlib.subst f u
          | _ -> assert false
        in
@@ -137,21 +138,20 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   | Type, Type
   | Kind, Kind -> p
 
-  | Vari x, Vari y ->
-     if Bindlib.eq_vars x y then p
-     else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+  | _, Kind
+  | Kind, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+
+  | Vari x, Vari y when Bindlib.eq_vars x y -> p
 
   | Prod(a,f), Prod(b,g)
   | Abst(a,f), Abst(b,g) ->
      let p = add_constr c a b p in
-     let x,u,v,c = unbind_tbinder2 c a f g in
-     add_constr c u v p
+     let x,u,v,c' = unbind_tbinder2 c a f g in
+     add_constr c' u v p
 
-  | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
-     if s1 == s2 then p
-     else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+  | Symb(s1), Symb(s2) when s1 == s2 -> p
 
-  | Meta(m1,a1), Meta(m2,a2) when m1==m2 && Array.for_all2 eq_var a1 a2 -> p
+  | Meta(m1,a1), Meta(m2,a2) when m1==m2 && Array.for_all2 equal_vari a1 a2 -> p
 
   | Meta(m,a), _ when distinct_vars a && not (occurs m t2) ->
      let b = Array.map to_var a in
@@ -174,39 +174,40 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
+(** [add_constr_whnf c t1 t2 p] extends [p] with possibly new
+    constraints for [t1] to be convertible to [t2] in context [c]. We
+    assume that, for every [i], either [ti] is [Kind] or [ti] is
+    typable. We also assume that [t1] and [t2] are in whnf. *)
 and add_constr_whnf (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
   match h1, h2 with
   | Type, Type
-  | Kind, Kind ->
+  | Kind, Kind -> p
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
-     p
 
-  | Vari x, Vari y ->
-     if Bindlib.eq_vars x y && n1 = n2 then add_constr2 c ts1 ts2 p
-     else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
+  | _, Kind
+  | Kind, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
-  | Prod(a,f), Prod(b,g) ->
+  | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
+     add_constr_args c ts1 ts2 p
+
+  | Prod(a,f), Prod(b,g)
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
-     let p = add_constr c a b p in
-     let x,u,v,c = unbind_tbinder2 c a f g in
-     add_constr c u v p
-
   | Abst(a,f), Abst(b,g) ->
      (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
      let p = add_constr c a b p in
-     let x,u,v,c = unbind_tbinder2 c a f g in
-     add_constr c u v p
+     let x,u,v,c' = unbind_tbinder2 c a f g in
+     add_constr c' u v p
 
   | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
-     if s1 == s2 && n1 = n2 then add_constr2 c ts1 ts2 p
+     if s1 == s2 && n1 = n2 then add_constr_args c ts1 ts2 p
      else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
   | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> p
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1==m2 && Array.for_all2 eq_var a1 a2 && n1 = 0 && n2 = 0 -> p
+    when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> p
 
   | Meta(m,a), _ when n1 = 0 && distinct_vars a && not (occurs m t2) ->
      let b = Array.map to_var a in
@@ -219,9 +220,11 @@ and add_constr_whnf (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
      recompute_constrs p
 
   | Meta(_,_), _
-  | _, Meta(_,_)
+  | _, Meta(_,_) -> raw_add_constr c t1 t2 p
+
   | Symb(_), _
   | _, Symb(_) -> if eq_modulo t1 t2 then p else raw_add_constr c t1 t2 p
+  (*FIXME? detect whether [t1] or [t2] can be reduced after instantiation*)
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
@@ -234,11 +237,12 @@ and recompute_constrs (p:problem) : problem =
   let fn p (c,a,b) = add_constr c a b p in
   List.fold_left fn [] p
 
-(** [add_constr2 c ts1 ts2 p] extends [p] with possibly new
+(** [add_constr_args c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
     convertible in context [c]. [ts1] and [ts2] must have the same
     length. *)
-and add_constr2 (c:ctxt) (ts1:term list) (ts2:term list) (p:problem) : problem =
+and add_constr_args (c:ctxt) (ts1:term list) (ts2:term list) (p:problem)
+    : problem =
   let fn p a b = add_constr c a b p in
   List.fold_left2 fn p ts1 ts2
 
