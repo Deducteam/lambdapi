@@ -8,8 +8,12 @@ open Eval
 
 (** [prod x t u] creates the dependent product of [t] and [u] by
     binding [x] in [u]. *)
-let prod : tvar -> term -> term -> term = fun x t u ->
+let prod (x:tvar) (t:term) (u:term) : term =
   Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
+
+(** [prod_ctxt c u] iterates [prod] over [c]. *)
+let prod_ctxt (c:ctxt) (t:term) : term =
+  List.fold_left (fun t (x,a) -> prod x a t) t c
 
 (** Representation of a convertibility constraint between two terms in
     a context. *)
@@ -44,62 +48,21 @@ let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
     then add_tvar x t c else c in
   x,u,v,c
 
-(** [distinct_vars a] checks that [a] is made of distinct variables. *)
-exception Exit_distinct_vars
-let distinct_vars (a:term array) : bool =
-  let acc = ref [] in
-  let fn t =
-    match t with
-    | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit_distinct_vars
-       else acc := v::!acc
-    | _ -> raise Exit_distinct_vars
-  in
-  let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
-  acc := []; res
-
 (** [eq_var t u] checks that [t] and [u] are the same variable. *)
 let eq_var (t:term) (u:term) : bool =
   match t, u with
   | Vari x, Vari y -> Bindlib.eq_vars x y
   | _, _ -> false
 
-(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
-exception Exit_occurs
-let occurs (m:meta) (t:term) : bool =
-  let rec occurs (t:term) : unit =
-    match t with
-    | Patt(_,_,_) | TEnv(_,_) -> assert false
-    | Vari(_) | Type | Kind | Symb(_) -> ()
-    | Prod(a,f) | Abst(a,f) ->
-       begin
-         occurs a;
-         let _,b = Bindlib.unbind mkfree f in
-         occurs b
-       end
-    | Appl(a,b) -> occurs a; occurs b
-    | Meta(m',ts) ->
-       if m==m' then raise Exit_occurs else Array.iter occurs ts
-  in
-  try occurs t; false with Exit_occurs -> true
-
-(** Exceptions that can be raised by the inference algorithm. *)
-exception E_not_a_sort of term
-exception E_not_a_product of term
-exception E_not_convertible of term * term
-exception E_not_typable of term
-
 (** [infer p c t] returns a pair [(p',u)] where [p'] extends [p] with
     possibly new constraints for [t] to be of type [u]. *)
 let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
-  if !debug_type then log "INFR" "%a; %a ⊢ %a : ?" pp_problem p pp_ctxt c pp t;
+  if !debug_type then log "INFR" "%a; %a ⊢ %a" pp_problem p pp_ctxt c pp t;
   let p, typ_t =
     match unfold t with
-    | Patt(_,_,_) | TEnv(_,_) -> assert false
+    | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
 
     | Type        -> p, Kind
-
-    | Kind        -> raise (E_not_typable t)
 
     | Vari(x)     ->
        begin try p, find_tvar x c with Not_found -> assert false end
@@ -111,9 +74,10 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
         let p = check p c t Type in
         let x,u,c = unbind_tbinder c t f in
         let p, typ_u = infer p c u in
-        match whnf typ_u with
+        let typ_u = whnf typ_u in
+        match typ_u with
         | Type | Kind -> p, typ_u
-        | _ -> raise (E_not_a_sort typ_u)
+        | _ -> fatal "[%a] has type [%a] (not a sort)\n" pp u pp typ_u
        end
 
     | Abst(t,f) ->
@@ -125,13 +89,25 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
        end
 
     | Appl(t,u) ->
-       begin
-        let p, typ_u = infer p c u in
-        let p, typ_t = infer p c t in
-        match whnf typ_t with
-        | Prod(a,f) -> add_constr c a typ_u p, Bindlib.subst f u
-        | _ -> raise (E_not_a_product typ_t)
-       end
+       let p, typ_u = infer p c u in
+       let p, typ_t = infer p c t in
+       (* We build the product type [x:typ_u -> m[x1,..,xn,x]] where [m]
+          is a new metavariable. *)
+       let x = Bindlib.new_var mkfree "x" in
+       let c' = (x,typ_u)::c in
+       let typ_m = prod_ctxt c' Type in
+       let n = List.length c' in
+       let m = new_meta typ_m n in
+       let vs = List.rev_map (fun (x,_) -> Vari x) c' in
+       let m_vs = Meta(m, Array.of_list vs) in
+       let new_typ_t = prod x typ_u m_vs in
+       let p = add_constr c typ_t new_typ_t p in
+       let typ =
+         match new_typ_t with
+         | Prod(_,f) -> Bindlib.subst f u
+         | _ -> assert false
+       in
+       p, typ
 
     | Meta(m, ts) ->
        (* The type of [Meta(m,ts)] is the same as [add_args v ts]
@@ -156,6 +132,7 @@ and check (p:problem) (c:ctxt) (t:term) (u:term) : problem =
     for [t1] to be convertible to [t2] in context [c]. We assume that,
     for every [i], either [ti] is [Kind] or [ti] is typable. *)
 and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
+  if !debug_unif then log "UNIF" "[%a] ~?~ [%a]" pp t1 pp t2;
   let t1 = whnf t1 and t2 = whnf t2 in
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
@@ -167,7 +144,7 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | Vari x, Vari y ->
      if Bindlib.eq_vars x y && n1 = n2 then add_constr2 c ts1 ts2 p
-     else raise (E_not_convertible (t1,t2))
+     else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
   | Prod(a,f), Prod(b,g) ->
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
@@ -183,7 +160,7 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
 
   | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
      if s1 == s2 && n1 = n2 then add_constr2 c ts1 ts2 p
-     else raise (E_not_convertible (t1,t2))
+     else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
   | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> p
 
@@ -191,14 +168,12 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
     when m1==m2 && Array.for_all2 eq_var a1 a2 && n1 = 0 && n2 = 0 -> p
 
   | Meta(m,a), _ when n1 = 0 && distinct_vars a && not (occurs m t2) ->
-     let get_var = function Vari v -> v | _ -> assert false in
-     let b = Array.map get_var a in
+     let b = Array.map to_var a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
      recompute_constrs p
 
   | _, Meta(m,a) when n2 = 0 && distinct_vars a && not (occurs m t1) ->
-     let get_var = function Vari v -> v | _ -> assert false in
-     let b = Array.map get_var a in
+     let b = Array.map to_var a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
      recompute_constrs p
 
@@ -213,7 +188,7 @@ and add_constr (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
          (c,t1,t2)::p
        end
 
-  | _, _ -> raise (E_not_convertible (t1,t2))
+  | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
 (** [recompute_constrs p] iterates [add_constr] on [p]. *)
 and recompute_constrs (p:problem) : problem =
@@ -246,6 +221,7 @@ let has_type (c:ctxt) (t:term) (u:term) : bool =
 let sort_type (c:ctxt) (t:term) : term =
   let p, typ_t = infer [] c t in
   solve p;
+  let typ_t = whnf typ_t in
   match typ_t with
   | Type | Kind -> typ_t
   | _ -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp typ_t
