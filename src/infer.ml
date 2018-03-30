@@ -6,15 +6,6 @@ open Extra
 open Console
 open Eval
 
-(** [prod x t u] creates the dependent product of [t] and [u] by
-    binding [x] in [u]. *)
-let prod (x:tvar) (t:term) (u:term) : term =
-  Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
-
-(** [prod_ctxt c u] iterates [prod] over [c]. *)
-let prod_ctxt (c:ctxt) (t:term) : term =
-  List.fold_left (fun t (x,a) -> prod x a t) t c
-
 (** Representation of a convertibility constraint between two terms in
     a context. *)
 type constr = ctxt * term * term
@@ -57,7 +48,7 @@ let equal_vari (t:term) (u:term) : bool =
 (** [infer p c t] returns a pair [(p',u)] where [p'] extends [p] with
     possibly new constraints for [t] to be of type [u]. *)
 let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
-  if !debug_type then log "INFR" "%a; %a ⊢ %a" pp_problem p pp_ctxt c pp t;
+  if !debug_type then log "infr" "%a; %a ⊢ %a" pp_problem p pp_ctxt c pp t;
   let p, typ_t =
     match unfold t with
     | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
@@ -72,8 +63,8 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
     | Prod(t,f) ->
        begin
         let p = check p c t Type in
-        let x,u,c = unbind_tbinder c t f in
-        let p, typ_u = infer p c u in
+        let x,u,c' = unbind_tbinder c t f in
+        let p, typ_u = infer p c' u in
         let typ_u = whnf typ_u in
         match typ_u with
         | Type | Kind -> p, typ_u
@@ -83,8 +74,8 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
     | Abst(t,f) ->
        begin
         let p = check p c t Type in
-        let x,u,c = unbind_tbinder c t f in
-        let p, typ_u = infer p c u in
+        let x,u,c' = unbind_tbinder c t f in
+        let p, typ_u = infer p c' u in
         p, prod x t typ_u
        end
 
@@ -120,7 +111,7 @@ let rec infer (p:problem) (c:ctxt) (t:term) : problem * term =
        end
   in
   if !debug_type then
-    log "INFR" (gre "%a; %a ⊢ %a : %a") pp_problem p pp_ctxt c pp t pp typ_t;
+    log "infr" (gre "%a; %a ⊢ %a : %a") pp_problem p pp_ctxt c pp t pp typ_t;
   p, typ_t
 
 (** [check p c t u] extends [p] with possibly new constraints for [t]
@@ -209,15 +200,25 @@ and add_constr_whnf (c:ctxt) (t1:term) (t2:term) (p:problem) : problem =
   | Meta(m1,a1), Meta(m2,a2)
     when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> p
 
-  | Meta(m,a), _ when n1 = 0 && distinct_vars a && not (occurs m t2) ->
-     let b = Array.map to_var a in
-     Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
-     recompute_constrs p
+  | Meta(m,ts), v when n1 = 0 && distinct_vars ts && not (occurs m v) ->
+     let xs = Array.map to_var ts in
+     let v = Bindlib.bind_mvar xs (lift v) in
+     if Bindlib.is_closed v then
+       begin
+         Unif.set_meta m (Bindlib.unbox v);
+         recompute_constrs p
+       end
+     else fatal "cannot instantiate %a" pp_meta m
 
-  | _, Meta(m,a) when n2 = 0 && distinct_vars a && not (occurs m t1) ->
-     let b = Array.map to_var a in
-     Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
-     recompute_constrs p
+  | v, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m v) ->
+     let xs = Array.map to_var ts in
+     let v = Bindlib.bind_mvar xs (lift v) in
+     if Bindlib.is_closed v then
+       begin
+         Unif.set_meta m (Bindlib.unbox v);
+         recompute_constrs p
+       end
+     else fatal "cannot instantiate %a" pp_meta m
 
   | Meta(_,_), _
   | _, Meta(_,_) -> raw_add_constr c t1 t2 p
@@ -255,6 +256,7 @@ let solve (p:problem) : unit =
 (** [has_type c t u] returns [true] iff [t] has type [u] in context
     [c]. *)
 let has_type (c:ctxt) (t:term) (u:term) : bool =
+  if !debug then log "has_type" "[%a] : [%a]" pp t pp u;
   let p = check [] c t u in
   solve p;
   true
@@ -262,6 +264,7 @@ let has_type (c:ctxt) (t:term) (u:term) : bool =
 (** [sort_type c t] returns [true] iff [t] has type a sort in context
     [c]. *)
 let sort_type (c:ctxt) (t:term) : term =
+  if !debug then log "sort_type" "[%a]" pp t;
   let p, typ_t = infer [] c t in
   solve p;
   let typ_t = whnf typ_t in
@@ -273,6 +276,7 @@ let sort_type (c:ctxt) (t:term) : term =
     [c]. If it returns [None] then some constraints could not be
     solved. *)
 let infer (c:ctxt) (t:term) : term option =
+  if !debug then log "infer" "[%a]" pp t;
   let p, typ_t = infer [] c t in
   solve p;
   Some typ_t
