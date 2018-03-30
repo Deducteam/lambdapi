@@ -31,49 +31,49 @@ let to_prod r e xo =
     returned. Otherwise, [Some a] is returned, where [a] is the (fully
     evaluated) infered type. *)
 let rec infer : ctxt -> term -> term option = fun ctx t ->
-  let env = List.map (fun (x,_) -> Bindlib.box_of_var x) ctx in
-  let a = Bindlib.unbox(_Meta (new_meta Type 0) (Array.of_list env)) in
+  let vs = List.map (fun (x,_) -> _Vari x) ctx in
+  let m = new_meta Type 0 in
+  let a = Bindlib.unbox(_Meta m (Array.of_list vs)) in
   if has_type ctx t a then Some(whnf a) else None
 
 (** [has_type ctx t a] tests whether the term [t] has type [a] in
     context [ctx]. Note that inference can be performed using an [a]
     that is a metavariable. *)
-and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
-  if !debug_type then log "type" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp c;
+and has_type : ctxt -> term -> term -> bool = fun ctx t typ ->
+  if !debug_type then log "type" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp typ;
   let res =
     match unfold t with
-    (* Sort *)
     | Type        ->
-        unify c Kind
-    (* Variable *)
+        unify typ Kind
+
     | Vari(x)     ->
-        let cx = try find_tvar x ctx with Not_found -> assert false in
-        unify_modulo cx c
-    (* Symbol *)
+        let typ_x = try find_tvar x ctx with Not_found -> assert false in
+        unify_modulo typ_x typ
+
     | Symb(s)     ->
-        unify_modulo s.sym_type c
-    (* Product *)
+        unify_modulo s.sym_type typ
+
     | Prod(a,b)   ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
-          has_type (if uses_x then add_tvar x a ctx else ctx) bx c &&
+          has_type (if uses_x then add_tvar x a ctx else ctx) bx typ &&
           has_type ctx a Type &&
-          match whnf c with
+          match whnf typ with
           | Type -> true | Kind -> true
-          | c    -> err "[%a] is not a sort...\n" pp c; false
+          | typ    -> err "[%a] is not a sort...\n" pp typ; false
         end
-    (* Abstraction *)
+
     | Abst(a,t)   ->
         begin
           let (x,tx) = Bindlib.unbind mkfree t in
-          let c = whnf c in
+          let typ = whnf typ in
           begin
-            match c with
+            match typ with
             | Meta(r,e) -> to_prod r e (Some(Bindlib.binder_name t))
             | _         -> ()
           end;
-          match unfold c with
+          match unfold typ with
           | Prod(c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = add_tvar x a ctx in
@@ -87,11 +87,11 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
                 | Some(a)    -> wrn "BUG3 ([%a] not a sort)\n" pp a; false
                 | None       -> wrn "BUG3 (cannot infer sort)\n"; false
               end
-          | c         ->
-              err "Product type expected, found [%a]...\n" pp c;
-              assert(unfold c == c); false
+          | typ         ->
+              err "Product type expected, found [%a]...\n" pp typ;
+              assert(unfold typ == typ); false
         end
-    (* Application *)
+
     | Appl(t,u)   ->
         begin
           match infer ctx t with
@@ -105,25 +105,26 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t c ->
                 end;
                 match unfold a with
                 | Prod(a,b) ->
-                    unify_modulo (Bindlib.subst b u) c
+                    unify_modulo (Bindlib.subst b u) typ
                     && has_type ctx u a
                 | a         ->
                     err "Product expected for [%a], found [%a]...\n%!"
                       pp t pp a;
-                    assert(unfold c == c); false
+                    assert(unfold typ == typ); false
               end
         end
-    (* No rule apply. *)
+
     | Meta(m,e)   ->
         let v = Bindlib.new_var mkfree (meta_name m) in
         let ctx = add_tvar v m.meta_type ctx in
-        has_type ctx (add_args (Vari(v)) (Array.to_list e)) c
-    | Kind        -> assert false
-    | Patt(_,_,_) -> assert false
+        has_type ctx (add_args (Vari(v)) (Array.to_list e)) typ
+
+    | Kind
+    | Patt(_,_,_)
     | TEnv(_,_)   -> assert false
   in
   if !debug_type then
-    log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
+    log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp typ;
   res
 
 (** [infer ctx t] is a wrapper function for the [infer] function  defined
