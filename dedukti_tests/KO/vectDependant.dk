@@ -32,7 +32,7 @@ def id_bis : n:Nat -> Vec (S_bis n) -> Vec (S_bis n).
 [n,l] id_bis _ (cns_bis n l) --> cns_bis n l.
 [m,n,l] id_bis m (cns_bis n l) --> cns_bis n l.
 
-(; Does not work anymore... (ill-typed rule since S_bis is definable). ;)
+(; Should not be accepted since S_bis is not injective. ;)
 def tail_bis : n:Nat -> Vec (S_bis n) -> Vec n.
 [n, l] tail_bis n (cns_bis _ l) --> l.
 
