@@ -100,6 +100,103 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 (** Injection of [Bindlib] variables into term place-holders. *)
 let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
 
+(** [unfold t] unfolds the toplevel metavariable in [t]. *)
+let rec unfold : term -> term = fun t ->
+  match t with
+  | Meta(m,e)            ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (Bindlib.msubst b e)
+      end
+  | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
+  | _                    -> t
+
+(******************************************************************************)
+(* Typing contexts *)
+
+(** Representation of a typing context, associating a type (or [Term.term]) to
+    free [Bindlib] variables. *)
+type ctxt = (tvar * term) list
+
+(** [empty_ctxt] is the empty context. *)
+let empty_ctxt : ctxt = []
+
+(** [add_tvar x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
+let add_tvar : tvar -> term -> ctxt -> ctxt =
+  fun x a ctx -> (x,a)::ctx
+
+(** [find_tvar x ctx] gives the type of variable [x] in the context [ctx]. The
+    exception [Not_found] is raised if the variable is not in the context. *)
+let find_tvar : tvar -> ctxt -> term = fun x ctx ->
+    snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
+
+(******************************************************************************)
+(* Boxed terms *)
+
+(** Short name for boxed terms. *)
+type tbox = term Bindlib.bindbox
+
+(** [_Vari x] injects the free variable [x] into the bindbox so that it may be
+    available for binding. *)
+let _Vari : tvar -> tbox = Bindlib.box_of_var
+
+(** [_Type] injects the constructor [Type] in the [bindbox] type. *)
+let _Type : tbox = Bindlib.box Type
+
+(** [_Kind] injects the constructor [Kind] in the [bindbox] type. *)
+let _Kind : tbox = Bindlib.box Kind
+
+(** [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
+let _Symb : symbol -> tbox = fun s -> Bindlib.box (Symb(s))
+
+(** [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
+let _Appl : tbox -> tbox -> tbox = fun t u ->
+  Bindlib.box_apply2 (fun t u -> Appl(t,u)) t u
+
+(** [_Prod a x f] lifts a dependent product node to the [bindbox] type given a
+    boxed term [a] (the type of the domain), a prefered name [x] for the bound
+    variable, and a function [f] to build the [binder] (codomain). *)
+let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
+  let b = Bindlib.vbind mkfree x f in
+  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
+
+(** [_Abst a x f] lifts an abstraction node to the [bindbox] type given a term
+    [a] (the type of the bound variable),  the prefered name [x] for the bound
+    variable, and the function [f] to build the [binder] (body). *)
+let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
+  let b = Bindlib.vbind mkfree x f in
+  Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
+
+(** [_Meta u ar] lifts a metavariable [u] to the [bindbox] type, given
+    its environment [ar]. The metavariable should not  be instanciated
+    when calling this function. *)
+let _Meta : meta -> tbox array -> tbox = fun u ar ->
+  Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
+
+let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
+  Bindlib.box_apply (fun ar -> Patt(i,n,ar)) (Bindlib.box_array ar)
+
+let _TEnv : term_env Bindlib.bindbox -> tbox array -> tbox = fun te ar ->
+  Bindlib.box_apply2 (fun te ar -> TEnv(te,ar)) te (Bindlib.box_array ar)
+
+(** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
+    variables, making them available for binding. At the same time,  the names
+    of the bound variables are automatically updated by [Bindlib]. *)
+let rec lift : term -> tbox = fun t ->
+  let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
+  match unfold t with
+  | Vari(x)     -> _Vari x
+  | Type        -> _Type
+  | Kind        -> _Kind
+  | Symb(s)     -> _Symb s
+  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
+  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Appl(t,u)   -> _Appl (lift t) (lift u)
+  | Meta(r,m)   -> _Meta r (Array.map lift m)
+  | Patt(i,n,m) -> _Patt i n (Array.map lift m)
+  | TEnv(t,m)   -> _TEnv (Bindlib.box t) (Array.map lift m)
+
 (******************************************************************************)
 (* Metavariables *)
 
@@ -166,18 +263,6 @@ let new_meta : term -> int -> meta = fun a n ->
 
 (******************************************************************************)
 (* Functions on terms *)
-
-(** [unfold t] unfolds the toplevel metavariable in [t]. *)
-let rec unfold : term -> term = fun t ->
-  match t with
-  | Meta(m,e)            ->
-      begin
-        match !(m.meta_value) with
-        | None    -> t
-        | Some(b) -> unfold (Bindlib.msubst b e)
-      end
-  | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
-  | _                    -> t
 
 (** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
     and [args] is the list of its arguments. *)
@@ -265,87 +350,11 @@ let occurs (m:meta) (t:term) : bool =
   in
   try occurs t; false with Exit_occurs -> true
 
-(******************************************************************************)
-(* Typing contexts *)
+(** [prod x t u] creates the dependent product of [t] and [u] by
+    binding [x] in [u]. *)
+let prod (x:tvar) (t:term) (u:term) : term =
+  Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
 
-(** Representation of a typing context, associating a type (or [Term.term]) to
-    free [Bindlib] variables. *)
-type ctxt = (tvar * term) list
-
-(** [empty_ctxt] is the empty context. *)
-let empty_ctxt : ctxt = []
-
-(** [add_tvar x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
-let add_tvar : tvar -> term -> ctxt -> ctxt =
-  fun x a ctx -> (x,a)::ctx
-
-(** [find_tvar x ctx] gives the type of variable [x] in the context [ctx]. The
-    exception [Not_found] is raised if the variable is not in the context. *)
-let find_tvar : tvar -> ctxt -> term = fun x ctx ->
-    snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
-
-(******************************************************************************)
-(* Boxed terms *)
-
-(** Short name for boxed terms. *)
-type tbox = term Bindlib.bindbox
-
-(** [_Vari x] injects the free variable [x] into the bindbox so that it may be
-    available for binding. *)
-let _Vari : tvar -> tbox = Bindlib.box_of_var
-
-(** [_Type] injects the constructor [Type] in the [bindbox] type. *)
-let _Type : tbox = Bindlib.box Type
-
-(** [_Kind] injects the constructor [Kind] in the [bindbox] type. *)
-let _Kind : tbox = Bindlib.box Kind
-
-(** [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
-let _Symb : symbol -> tbox = fun s -> Bindlib.box (Symb(s))
-
-(** [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
-let _Appl : tbox -> tbox -> tbox = fun t u ->
-  Bindlib.box_apply2 (fun t u -> Appl(t,u)) t u
-
-(** [_Prod a x f] lifts a dependent product node to the [bindbox] type given a
-    boxed term [a] (the type of the domain), a prefered name [x] for the bound
-    variable, and a function [f] to build the [binder] (codomain). *)
-let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
-  let b = Bindlib.vbind mkfree x f in
-  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
-
-(** [_Abst a x f] lifts an abstraction node to the [bindbox] type given a term
-    [a] (the type of the bound variable),  the prefered name [x] for the bound
-    variable, and the function [f] to build the [binder] (body). *)
-let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
-  let b = Bindlib.vbind mkfree x f in
-  Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
-
-(** [_Meta u ar] lifts a metavariable [u] to the [bindbox] type, given
-    its environment [ar]. The metavariable should not  be instanciated
-    when calling this function. *)
-let _Meta : meta -> tbox array -> tbox = fun u ar ->
-  Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
-
-let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
-  Bindlib.box_apply (fun ar -> Patt(i,n,ar)) (Bindlib.box_array ar)
-
-let _TEnv : term_env Bindlib.bindbox -> tbox array -> tbox = fun te ar ->
-  Bindlib.box_apply2 (fun te ar -> TEnv(te,ar)) te (Bindlib.box_array ar)
-
-(** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
-    variables, making them available for binding. At the same time,  the names
-    of the bound variables are automatically updated by [Bindlib]. *)
-let rec lift : term -> tbox = fun t ->
-  let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
-  match unfold t with
-  | Vari(x)     -> _Vari x
-  | Type        -> _Type
-  | Kind        -> _Kind
-  | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
-  | Appl(t,u)   -> _Appl (lift t) (lift u)
-  | Meta(r,m)   -> _Meta r (Array.map lift m)
-  | Patt(i,n,m) -> _Patt i n (Array.map lift m)
-  | TEnv(t,m)   -> _TEnv (Bindlib.box t) (Array.map lift m)
+(** [prod_ctxt c u] iterates [prod] over [c]. *)
+let prod_ctxt (c:ctxt) (t:term) : term =
+  List.fold_left (fun t (x,a) -> prod x a t) t c
