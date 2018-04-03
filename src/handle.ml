@@ -5,6 +5,7 @@ open Terms
 open Print
 open Cmd
 open Pos
+open Sign
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -143,7 +144,7 @@ and compile : Sign.t -> bool -> Files.module_path -> unit =
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Hashtbl.mem Sign.(!current_state.s_loaded) path then
+  if Hashtbl.mem !current_state.s_loaded path then
     out 2 "Already loaded [%s]\n%!" src
   else
     begin
@@ -151,20 +152,20 @@ and compile : Sign.t -> bool -> Files.module_path -> unit =
         begin
           let forced = if force then " (forced)" else "" in
           out 2 "Loading [%s]%s\n%!" src forced;
-          Stack.push path Sign.(!current_state.s_loading);
+          Stack.push path !current_state.s_loading;
           let sign = Sign.create path in
-          Hashtbl.add Sign.(!current_state.s_loaded) path sign;
+          Hashtbl.add !current_state.s_loaded path sign;
           handle_cmds sign (Parser.parse_file src);
           if !gen_obj then Sign.write sign obj;
-          ignore (Stack.pop Sign.(!current_state.s_loading));
+          ignore (Stack.pop !current_state.s_loading);
           out 1 "Checked [%s]\n%!" src;
         end
       else
         begin
           out 2 "Loading [%s]\n%!" src;
           let sign = Sign.read obj in
-          Hashtbl.iter (fun mp _ -> compile sign false mp) Sign.(sign.deps);
-          Hashtbl.add Sign.(!current_state.s_loaded) path sign;
+          Hashtbl.iter (fun mp _ -> compile sign false mp) sign.deps;
+          Hashtbl.add !current_state.s_loaded path sign;
           Sign.link sign;
           out 2 "Loaded  [%s]\n%!" obj;
         end;
