@@ -20,13 +20,13 @@ type env = (string * (tvar * tbox)) list
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_var sign env qid] returns the bindbox corresponding to a variable of
+(** [find_ident sign env qid] returns the bindbox corresponding to a variable of
     the environment [env], or to a symbol, which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
     search in the current signature [sign]. If the name does not correspond to
     anything, the program fails gracefully. *)
-let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
+let find_ident : Sign.t -> env -> qident -> tbox = fun sign env qid ->
   let (mp, s) = qid.elt in
   if mp = [] then
     (* No module path, search the environment first. *)
@@ -46,7 +46,9 @@ let find_var : Sign.t -> env -> qident -> tbox = fun sign env qid ->
     (* Module path loaded, look for symbol. *)
     begin
       (* Cannot fail. *)
-      let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
+      let sign =
+        try Hashtbl.find Sign.(!current_state.s_loaded) mp
+        with _ -> assert false in
       try _Symb (Sign.find sign s) with Not_found ->
       fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
     end
@@ -96,7 +98,7 @@ let build_meta_name loc id =
 let scope_term : Sign.t -> p_term -> term = fun sign t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_var sign env qid
+    | P_Vari(qid)   -> find_ident sign env qid
     | P_Type        -> _Type
     | P_Prod(x,a,b) ->
         let a =
@@ -147,7 +149,7 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
   let ty_map = ref [] in (* stores the type of each pattern variable. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_var sign env qid
+    | P_Vari(qid)   -> find_ident sign env qid
     | P_Type        -> fatal "invalid pattern %a\n" Pos.print t.pos
     | P_Prod(_,_,_) -> fatal "invalid pattern %a\n" Pos.print t.pos
     | P_Abst(x,a,t) ->
@@ -209,7 +211,7 @@ let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
   let metas = Bindlib.new_mvar (fun m -> TE_Vari(m)) names in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_var sign env qid
+    | P_Vari(qid)   -> find_ident sign env qid
     | P_Type        -> _Type
     | P_Prod(x,None,b) -> fatal "missing type %a" Pos.print t.pos
     | P_Prod(x,Some(a),b) ->

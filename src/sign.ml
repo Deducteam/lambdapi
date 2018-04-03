@@ -9,7 +9,7 @@ open Pos
     defined in a single module (or file). *)
 type t =
   { symbols : (string, symbol) Hashtbl.t
-  ; path    : module_path
+  ; path    : module_path (*FIXME: remove*)
   ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
@@ -17,26 +17,42 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
+(** [create path] creates an empty signature with module path [path]. *)
+let create : module_path -> t = fun path ->
+  { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
+
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> symbol =
   fun sign name -> Hashtbl.find sign.symbols name
 
-(** [loading] contains the [module_path] of the signatures (or files) that are
+(** System state.*)
+type state =
+  (** [loaded] stores the signatures of the known (already compiled) modules. An
+    important invariant is that all the occurrences of a symbol are physically
+    equal (even across different signatures). In particular, this requires the
+      objects to be copied when loading an object file. *)
+  { s_loaded : (module_path, t) Hashtbl.t
+
+  (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-let loading : module_path Stack.t = Stack.create ()
+  ; s_loading : module_path Stack.t
 
-(** [loaded] stores the signatures of the known (already compiled) modules. An
-    important invariant is that all the occurrences of a symbol are physically
-    equal (even across different signatures). In particular, this requires the
-    objects to be copied when loading an object file. *)
-let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
+  ; s_path : module_path
 
-(** [create path] creates an empty signature with module path [path]. *)
-let create : module_path -> t = fun path ->
-  { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
+  ; s_sign : t }
+
+(** Initial state. *)
+let initial_state (mp:module_path) : state =
+  { s_loaded = Hashtbl.create 7
+  ; s_loading = Stack.create ()
+  ; s_path = mp
+  ; s_sign = create mp }
+
+(** Current state. *)
+let current_state = ref (initial_state [])
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -65,7 +81,7 @@ let link : t -> unit = fun sign ->
   and link_symb s =
     if s.sym_path = sign.path then s else
     try
-      let sign = Hashtbl.find loaded s.sym_path in
+      let sign = Hashtbl.find !current_state.s_loaded s.sym_path in
       try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
@@ -75,7 +91,9 @@ let link : t -> unit = fun sign ->
   in
   Hashtbl.iter fn sign.symbols;
   let gn path ls =
-    let sign = try Hashtbl.find loaded path with Not_found -> assert false in
+    let sign =
+      try Hashtbl.find !current_state.s_loaded path
+      with Not_found -> assert false in
     let h (n, r) =
       let r = link_rule r in
       let s = find sign n in

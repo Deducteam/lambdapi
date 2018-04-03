@@ -6,8 +6,8 @@ open Files
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let modpath = module_path fname in
-  Hashtbl.clear Sign.loaded;
-  Handle.compile true modpath
+  let st = Sign.initial_state modpath in
+  Handle.compile Sign.(st.s_sign) true modpath
 
 (* Main program. *)
 let _ =
