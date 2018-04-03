@@ -105,7 +105,7 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
 let rec handle_import : Sign.t -> Files.module_path -> unit = fun sign path ->
   if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
-  compile sign false path
+  compile false path
 
 (** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
     state [sign]. The program fails gracefully in case of error. *)
@@ -133,12 +133,12 @@ and handle_cmds : Sign.t -> Parser.p_cmd loc list -> unit = fun sign cmds ->
   in
   List.iter handle_cmd cmds
 
-(** [compile sign force path] compiles the file corresponding to [path],
+(** [compile force path] compiles the file corresponding to [path],
     when it is necessary (the corresponding object file does not
     exist, must be updated, or [force] is [true]).  In that case, the
     produced signature is stored in the corresponding object file. *)
-and compile : Sign.t -> bool -> Files.module_path -> unit =
-  fun sign force path ->
+and compile : bool -> Files.module_path -> unit =
+  fun force path ->
   let base = String.concat "/" path in
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
@@ -163,7 +163,7 @@ and compile : Sign.t -> bool -> Files.module_path -> unit =
         begin
           out 2 "Loading [%s]\n%!" src;
           let sign = Sign.read obj in
-          Hashtbl.iter (fun mp _ -> compile sign false mp) sign.deps;
+          Hashtbl.iter (fun mp _ -> compile false mp) sign.deps;
           Hashtbl.add !current_state.s_loaded path sign;
           Sign.link sign;
           out 2 "Loaded  [%s]\n%!" obj;

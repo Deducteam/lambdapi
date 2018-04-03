@@ -7,8 +7,7 @@ open Sign
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let modpath = module_path fname in
-  current_state := initial_state modpath;
-  Handle.compile !current_state.s_sign true modpath
+  Handle.compile true modpath
 
 (* Main program. *)
 let _ =
