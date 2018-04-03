@@ -9,7 +9,7 @@ open Pos
     defined in a single module (or file). *)
 type t =
   { symbols : (string, symbol) Hashtbl.t
-  ; path    : module_path (*FIXME: remove*)
+  ; path    : module_path
   ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
