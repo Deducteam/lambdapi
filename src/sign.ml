@@ -38,21 +38,15 @@ type state =
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-  ; s_loading : module_path Stack.t
+  ; s_loading : module_path Stack.t }
 
-  ; s_path : module_path
-
-  ; s_sign : t }
-
-(** Initial state. *)
-let initial_state (mp:module_path) : state =
+(** Create a new state. *)
+let new_state() : state =
   { s_loaded = Hashtbl.create 7
-  ; s_loading = Stack.create ()
-  ; s_path = mp
-  ; s_sign = create mp }
+  ; s_loading = Stack.create () }
 
 (** Current state. *)
-let current_state = ref (initial_state [])
+let current_state : state ref = ref (new_state())
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
