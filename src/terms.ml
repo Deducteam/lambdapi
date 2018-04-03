@@ -185,6 +185,12 @@ let _TEnv : term_env Bindlib.bindbox -> tbox array -> tbox = fun te ar ->
     of the bound variables are automatically updated by [Bindlib]. *)
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
+  let lift_term_env te =
+    match te with
+    | TE_Vari(x) -> Bindlib.box_of_var x
+    | TE_Some(b) -> assert false
+    | TE_None    -> assert false
+  in
   match unfold t with
   | Vari(x)     -> _Vari x
   | Type        -> _Type
@@ -195,7 +201,7 @@ let rec lift : term -> tbox = fun t ->
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
-  | TEnv(t,m)   -> _TEnv (Bindlib.box t) (Array.map lift m)
+  | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
 
 (******************************************************************************)
 (* Metavariables *)
