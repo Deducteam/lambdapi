@@ -2,12 +2,13 @@
 
 open Console
 open Files
+open Sign
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let modpath = module_path fname in
-  let st = Sign.initial_state modpath in
-  Handle.compile Sign.(st.s_sign) true modpath
+  current_state := initial_state modpath;
+  Handle.compile !current_state.s_sign true modpath
 
 (* Main program. *)
 let _ =
