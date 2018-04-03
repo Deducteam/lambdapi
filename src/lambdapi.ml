@@ -5,10 +5,7 @@ open Files
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
-  let modpath =
-    try module_path fname with Invalid_argument _ ->
-    fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
-  in
+  let modpath = module_path fname in
   Hashtbl.clear Sign.loaded;
   Handle.compile true modpath
 

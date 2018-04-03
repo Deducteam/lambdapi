@@ -18,16 +18,20 @@ type module_path = string list
     on the file name, and it should correspond to [src_extension]. When [path]
     is invalid, [Invalid_argument "invalid module path"] is raised. *)
 let module_path : string -> module_path = fun fname ->
-  let check p = if not p then invalid_arg "invalid module path" in
-  check (Filename.check_suffix fname src_extension);
-  check (Filename.is_relative fname);
+  if not (Filename.check_suffix fname src_extension) then
+    fatal "invalid file extension for %s (expected %s)" fname src_extension;
+  if not (Filename.is_relative fname) then
+    fatal "invalid path for %s (expected relative path)" fname;
   let base = Filename.chop_extension (Filename.basename fname) in
   let dir = Filename.dirname fname in
-  check (dir <> Filename.parent_dir_name);
+  if dir = Filename.parent_dir_name then
+    fatal "invalid path for %s (%s not allowed)" fname Filename.parent_dir_name;
   let rec build_path acc dir =
     let dirbase = Filename.basename dir in
     let dirdir  = Filename.dirname  dir in
-    check (dirdir <> Filename.parent_dir_name);
+    if dirdir = Filename.parent_dir_name then
+      fatal "invalid path for %s (%s not allowed)"
+        fname Filename.parent_dir_name;
     if dirbase = Filename.current_dir_name then acc
     else build_path (dirbase::acc) dirdir
   in
