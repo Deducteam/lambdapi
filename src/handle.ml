@@ -103,7 +103,6 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
 (** [handle_import sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
 let rec handle_import : Sign.t -> Files.module_path -> unit = fun sign path ->
-  let open Sign in
   if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
   compile sign false path
