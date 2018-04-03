@@ -32,18 +32,18 @@ let rec whnf : term -> term = fun t ->
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
-  | (Appl(f,u)   , stk    )       -> whnf_stk f (ref u :: stk)
+  | (Appl(f,u), stk    )       -> whnf_stk f (ref u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,f)   , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
+  | (Abst(_,f), u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
-  | (Symb(s), stk    ) as st ->
+  | (Symb(s)  , stk    ) as st ->
       begin
         match find_rule s stk with
         | None        -> st
         | Some(t,stk) -> whnf_stk t stk
       end
   (* In head normal form. *)
-  | (_           , _      ) as st -> st
+  | (_        , _      ) as st -> st
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
