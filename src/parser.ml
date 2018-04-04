@@ -134,8 +134,8 @@ type p_cmd =
   (** Rewriting rules declaration. *)
   | P_Rules    of p_rule list
   | P_OldRules of old_p_rule list
-  (** Import an external signature. *)
-  | P_Import   of module_path
+  (** Require an external signature. *)
+  | P_Require   of module_path
   (** Set debugging flags. *)
   | P_Debug    of bool * string
   (** Set the verbosity level. *)
@@ -214,7 +214,7 @@ let parser cmd_aux =
   | _thm_ x:ident (ao,t):def_def     -> P_SymDef(true ,x,ao,t)
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
   | rs:old_rule+                     -> P_OldRules(rs)
-  | "#REQUIRE" path:mod_path         -> P_Import(path)
+  | "#REQUIRE" path:mod_path         -> P_Require(path)
   | "#DEBUG" f:''[+-]'' s:''[a-z]+'' -> P_Debug(f = "+", s)
   | "#VERBOSE" n:''[-+]?[0-9]+''     -> P_Verb(int_of_string n)
   | (ia,mf):check t:expr "::" a:expr -> P_TestType(ia,mf,t,a)

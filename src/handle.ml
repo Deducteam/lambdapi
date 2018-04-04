@@ -101,9 +101,9 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
       (* TODO *)
       wrn "Test not implemented...\n"
 
-(** [handle_import sign path] compiles the signature corresponding to  [path],
+(** [handle_require sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
-let rec handle_import : Sign.t -> Files.module_path -> unit = fun sign path ->
+let rec handle_require : Sign.t -> Files.module_path -> unit = fun sign path ->
   if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
   compile false path
@@ -119,7 +119,7 @@ and handle_cmds : Sign.t -> Parser.p_cmd loc list -> unit = fun sign cmds ->
       | Rules(rs)    -> handle_rules sign rs
       | SymDef(b,n,ao,t) ->
          (if b then handle_opaque else handle_defin) sign n ao t
-      | Import(path) -> handle_import sign path
+      | Require(path) -> handle_require sign path
       | Debug(v,s)   -> set_debug v s
       | Verb(n)      -> verbose := n
       | Infer(t,c)   -> handle_infer sign t c

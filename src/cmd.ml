@@ -23,8 +23,8 @@ type cmd = cmd_aux loc
   | Rules  of Sr.rspec list
   (** Symbol definition (opaque when the boolean is [true]). *)
   | SymDef of bool * strloc * term option * term
-  (** Import an external signature. *)
-  | Import of module_path
+  (** Require an external signature. *)
+  | Require of module_path
   (** Set debugging flags. *)
   | Debug  of bool * string
   (** Set the verbosity level. *)
