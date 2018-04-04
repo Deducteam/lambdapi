@@ -104,7 +104,6 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
 (** [handle_require sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Sign.t -> Files.module_path -> unit = fun sign path ->
-  if path = sign.path then fatal "Cannot require the current module...\n%!";
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
   compile false path
 
@@ -145,7 +144,7 @@ and compile : bool -> Files.module_path -> unit =
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
   if Stack.mem !current_state.s_loading path then
-    fatal "cyclic dependencies: %a -> %a"
+    fatal "cyclic dependencies: %a -> %a\n"
       (List.pp Files.pp_path " -> ") (Stack.to_list !current_state.s_loading)
       Files.pp_path path
   else
