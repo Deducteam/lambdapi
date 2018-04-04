@@ -7,6 +7,7 @@ open Cmd
 open Pos
 open Sign
 open Extra
+open Infer2
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -18,7 +19,7 @@ let gen_obj : bool ref = ref false
     this symbol can have rules. *)
 let handle_symdecl : Sign.t -> bool -> strloc -> term -> unit =
   fun sign b n a ->
-  ignore (Infer2.sort_type empty_ctxt a);
+  ignore (sort_type empty_ctxt a);
   ignore (Sign.new_symbol sign b n a)
 
 (** [check_def_type x None t] infers the type of [t] and returns
@@ -30,14 +31,14 @@ let check_def_type : Sign.t -> strloc -> term option -> term -> term =
     match ao with
     | None ->
        begin
-         match Infer2.infer empty_ctxt t with
+         match infer empty_ctxt t with
          | None -> fatal "Unable to infer the type of [%a]\n" pp t
          | Some a -> a
        end
     | Some a ->
        begin
-         ignore (Infer2.sort_type empty_ctxt a);
-         if not (Infer2.has_type empty_ctxt t a) then
+         ignore (sort_type empty_ctxt a);
+         if not (has_type empty_ctxt t a) then
            fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
          else a
        end
@@ -75,7 +76,7 @@ let handle_rules : Sign.t -> Sr.rspec list -> unit = fun sign rs ->
 (** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
     of error, the program fails gracefully. *)
 let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  match Infer2.infer empty_ctxt t with
+  match infer empty_ctxt t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
@@ -93,13 +94,59 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
       if Eval.eq_modulo t u then out 3 "(conv) OK\n"
       else fatal "cannot convert %a and %a...\n" pp t pp u
   | (HasType(t,a), false, false) ->
-      ignore (Infer2.sort_type empty_ctxt a);
-      if not (Infer2.has_type empty_ctxt t a) then
+      ignore (sort_type empty_ctxt a);
+      if not (has_type empty_ctxt t a) then
         fatal "%a does not have type %a...\n" pp t pp a;
       out 3 "(chck) OK\n"
   | (_           , _    , _    ) ->
       (* TODO *)
       wrn "Test not implemented...\n"
+
+(** [handle_start_proof sign s a] starts a proof of [a] named [s]. *)
+let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =
+  (* We check that we are not already in a proof. *)
+  if !current_state.s_theorem <> None then fatal "already in proof";
+  (* We check that [s] is not already used. *)
+  if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
+  (* We check that [a] is typable by a sort. *)
+  ignore (sort_type empty_ctxt a);
+  (* We start the proof mode. *)
+  let m = add_meta s.elt a 0 in
+  let goal =
+    { g_meta = m
+    ; g_hyps = []
+    ; g_type = a }
+  in
+  let thm =
+    { t_proof = m
+    ; t_open_goals = [goal]
+    ; t_focus = goal }
+  in
+  current_state := { !current_state with s_theorem = Some thm }
+
+
+(** [handle_print_focus()] prints the focused goal. *)
+let handle_print_focus() : unit =
+  (* We check that we are in a proof. *)
+  match !current_state.s_theorem with
+  | None -> fatal "not in a proof"
+  | Some thm -> pp_goal stdout thm.t_focus
+
+(** [handle_intro sign s] applies the [intro] tactic. *)
+let handle_intro (sign:Sign.t) (s:strloc) : unit =
+  (* We check that we are in a proof. *)
+  match !current_state.s_theorem with
+  | None -> fatal "not in a proof"
+  | Some thm ->
+     begin
+       let g = thm.t_focus in
+       (* We check that [s] is not already used. *)
+       if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used\n" s.elt;
+       (* We instantiate the focused meta by
+          [[x:M[x1,..,xn]N[x1,..,xn,x]] where [x1,..,xn] are the
+          hypotheses, [x] is fresh variable named [s.elt], [M] and [N]
+          are new metavariables. *)
+     end
 
 (** [handle_require sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
@@ -127,6 +174,8 @@ and handle_cmds : Sign.t -> Parser.p_cmd loc list -> unit = fun sign cmds ->
       | Other(c)     ->
           if !debug then
             wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
+      | StartProof(s,a) -> handle_start_proof sign s a
+      | PrintFocus   -> handle_print_focus()
     with e ->
       fatal "Uncaught exception on a command at %a\n%s\n%!"
         Pos.print cmd.pos (Printexc.to_string e)

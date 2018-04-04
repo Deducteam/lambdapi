@@ -77,3 +77,11 @@ let pp_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
   let pp_e oc (x,a) = Printf.fprintf oc "%a : %a" pp_tvar x pp a in
   if ctx = [] then output_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)
+
+let pp_hyp oc (s,t) = Printf.fprintf oc "%s : %a" s pp t
+
+let pp_hyps oc l = List.pp pp_hyp "\n" oc l
+
+let sep = "------------------------------------------------------------------\n"
+
+let pp_goal oc g = Printf.fprintf oc "%a%s%a\n" pp_hyps g.g_hyps sep pp g.g_type
