@@ -6,6 +6,7 @@ open Print
 open Cmd
 open Pos
 open Sign
+open Extra
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -143,8 +144,10 @@ and compile : bool -> Files.module_path -> unit =
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Hashtbl.mem !current_state.s_loaded path then
-    out 2 "Already loaded [%s]\n%!" src
+  if Stack.mem !current_state.s_loading path then
+    fatal "cyclic dependencies: %a -> %a"
+      (List.pp Files.pp_path " -> ") (Stack.to_list !current_state.s_loading)
+      Files.pp_path path
   else
     begin
       if force || Files.more_recent src obj then
