@@ -131,6 +131,12 @@ let add_tvar : tvar -> term -> ctxt -> ctxt =
 let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
+(** [exists_tvar x ctx] says if [x] is in the context [ctx]. *)
+exception Exit_exists_tvar
+let exists_tvar (v:tvar) (c:ctxt) : bool =
+  let f (x,_) = if Bindlib.eq_vars v x then raise Exit_exists_tvar in
+  try List.iter f c; false with Exit_exists_tvar -> true
+
 (******************************************************************************)
 (* Boxed terms *)
 
@@ -364,3 +370,18 @@ let prod (x:tvar) (t:term) (u:term) : term =
 (** [prod_ctxt c u] iterates [prod] over [c]. *)
 let prod_ctxt (c:ctxt) (t:term) : term =
   List.fold_left (fun t (x,a) -> prod x a t) t c
+
+(******************************************************************************)
+(* Representation of goals and proofs. *)
+
+(** Representation of a goal. *)
+type goal =
+  { g_meta : meta
+  ; g_hyps : (string * term) list
+  ; g_type : term }
+
+(** Representation of a theorem. *)
+type theorem =
+  { t_proof : meta
+  ; t_open_goals : goal list
+  ; t_focus : goal }

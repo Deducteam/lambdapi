@@ -26,6 +26,10 @@ let create : module_path -> t = fun path ->
 let find : t -> string -> symbol =
   fun sign name -> Hashtbl.find sign.symbols name
 
+(** [mem sign name] checks whether the symbol named [name] exists in [sign]. *)
+let mem : t -> string -> bool =
+  fun sign name -> Hashtbl.mem sign.symbols name
+
 (** System state.*)
 type state =
   (** [loaded] stores the signatures of the known (already compiled) modules. An
@@ -38,15 +42,31 @@ type state =
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-  ; s_loading : module_path Stack.t }
+  ; s_loading : module_path Stack.t
+
+  (** Top-level module path. *)
+  ; s_path : module_path
+
+  (** Ongoing proof if any. *)
+  ; s_theorem : theorem option }
 
 (** Create a new state. *)
-let new_state() : state =
+let new_state (mp:module_path) : state =
   { s_loaded = Hashtbl.create 7
-  ; s_loading = Stack.create () }
+  ; s_loading = Stack.create ()
+  ; s_path = mp
+  ; s_theorem = None }
 
 (** Current state. *)
-let current_state : state ref = ref (new_state())
+let current_state : state ref = ref (new_state [])
+
+(** [theorem()] returns the current theorem if we are in a proof. It
+    fails otherwise. *)
+let theorem() : theorem =
+  (* We check that we are in a proof. *)
+  match !current_state.s_theorem with
+  | None -> fatal "not in a proof"
+  | Some thm -> thm
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->

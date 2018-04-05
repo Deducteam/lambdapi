@@ -150,6 +150,10 @@ type p_cmd =
   | P_TestConv of bool * bool * p_term * p_term
   (** Unimplemented command. *)
   | P_Other    of strloc
+  (** Start a proof. *)
+  | P_StartProof of strloc * p_term
+  (** Print focused goal. *)
+  | P_PrintFocus
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -222,6 +226,8 @@ let parser cmd_aux =
   | "#INFER" c:eval_config t:expr    -> P_Infer(t,c)
   | "#EVAL" c:eval_config t:expr     -> P_Eval(t,c)
   | c:"#NAME" _:ident                -> P_Other(in_pos _loc_c c)
+  | "#PROOF" x:ident ":" a:expr      -> P_StartProof(x,a)
+  | "#PRINT"                         -> P_PrintFocus
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c

@@ -37,3 +37,7 @@ type cmd = cmd_aux loc
   | Test   of test
   (** Unimplemented command. *)
   | Other  of strloc
+  (** Start proof. *)
+  | StartProof of strloc * term
+  (** Print focused goal. *)
+  | PrintFocus

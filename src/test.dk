@@ -18,8 +18,10 @@ def 1 := s 0.
 
 def add : N -> N -> N.
 
-[x] add 0 x --> x.
-[x, y] add (s x) y --> s (add x y).
+add 0 ?x --> ?x.
+add (s ?x) ?y --> s (add ?x ?y).
+
+#EVAL (add (s 1) (s 1)).
 
 (; Type code universes. ;)
 
@@ -32,6 +34,8 @@ def T : !i, U i -> Type.
 (; Prop is an abbreviation for the universe 0; ;)
 
 def Prop := U 0.
+
+def P := T 0.
 
 (; Code for the type of booleans in the universe 1. ;)
 
@@ -53,11 +57,38 @@ lift : !i, U i -> U (s i).
 
 pi : !i, !a : U i, (T _ a -> U i) -> U i.
 
-[i, a, f] T _ (pi i a f) --> x : T i a -> T i (f x).
+T _ (pi ?i ?a ?f) --> x : T ?i ?a -> T ?i (f x).
 
 (; Code for the type of vectors in universe i. ;)
 
 vec : !i, U i -> N -> U i.
 
-nil : !i, !a : U i, T i (vec i a 0).
-cons : !i, !a : U i, T _ a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
+nil : !i, !a, T _ (vec i a 0).
+cons : !i, !a, T i a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
+
+(; Induction principle on N. *)
+
+nat_ind : !p:N -> Prop, P (p 0) -> (!n, P (p n) -> P (p (s n))) -> !n, P (p n).
+
+nat_ind _  ?u _  0      --> ?u.
+nat_ind ?p ?u ?v (s ?n) --> ?v ?n (nat_ind ?p ?u ?v ?n).
+
+(; Boolean equality on N. ;)
+
+def beq : N->N->B.
+
+beq 0 0 --> true.
+beq (s ?x) (s ?y) --> beq ?x ?y.
+beq 0 (s _) --> false.
+beq (s _) 0 --> false.
+
+(; Leibniz equality. ;)
+
+eq : !i, !a:U i, T _ a -> T _ a -> Prop.
+
+refl : !i, !a, !x, T _ (eq i a x x).
+
+(; 0 is right neutral for add. ;)
+
+#PROOF add0r : !n : T 1 nat, P (eq 1 nat (add n 0) n).
+#PRINT.

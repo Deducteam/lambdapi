@@ -384,6 +384,8 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
       let contents = Convert(scope_term sign t, scope_term sign u) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_Other(c)          -> Other(c)
+  | P_StartProof(s,a)   -> StartProof(s, scope_term sign a)
+  | P_PrintFocus        -> PrintFocus
 
 (** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
     signature [sign], and forwards the source code position of the command. In
