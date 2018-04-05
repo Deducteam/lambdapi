@@ -27,31 +27,32 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 
 #### Unit tests ##############################################################
 
-OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
-KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
-TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
+OK_TESTFILES = $(wildcard tests/OK/*.dk)
+KO_TESTFILES = $(wildcard tests/KO/*.dk)
+TESTFILES    = $(wildcard examples/*.dk)
 
 .PHONY: tests
 tests: lambdapi.native
 	@echo "## OK tests ##"
 	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
-		echo -n "Testing file \"$$file\" " ; \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;32mOK\033[0m" || echo -e "\033[0;31mKO\033[0m" ; \
+		  && echo -e "\033[0;32mOK\033[0m $$file"   \
+	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
 	done
 	@echo "## KO tests ##"
 	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
-		echo -n "$$file " ; \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;31mOK\033[0m" || echo -e "\033[0;32mKO\033[0m" ; \
+		  && echo -e "\033[0;31mOK\033[0m $$file"   \
+			|| echo -e "\033[0;32mKO\033[0m $$file" ; \
 	done
-	@echo "## Tests... ##"
+	@echo "## Examples ##"
 	@rm -f $(TESTFILES:.dk=.dko)
 	@for file in $(TESTFILES) ; do \
-		echo "$$file" ; \
-		./lambdapi.native --verbose 0 $$file ; \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		  && echo -e "\033[0;32mOK\033[0m $$file"   \
+	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
 	done
 
 #### Library tests ###########################################################
