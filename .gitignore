@@ -5,6 +5,7 @@ lambdapi.native
 lambdapi.docdir
 libraries/*.tar.gz
 libraries/*.zip
+libraries/plein_de_dks
 libraries/dklib
 libraries/focalide
 libraries/holide

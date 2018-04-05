@@ -1,7 +1,0 @@
-#NAME part41.
-
-s : Type.
-P : s -> Type.
-
-def Thm : x:s -> (P x) -> (P x) := x:s => a:(P x) => a.
-

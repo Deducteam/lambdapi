@@ -62,6 +62,11 @@ matita: lambdapi.native
 	@echo "## Compiling the Matita's arithmetic library ##"
 	@cd libraries && ./matita.sh
 
+.PHONY: plein_de_dks
+plein_de_dks: lambdapi.native
+	@echo "## Compiling “plein de dks” ##"
+	@cd libraries && ./plein_de_dks.sh
+
 .PHONY: focalide
 focalide: lambdapi.native
 	@echo "## Compiling focalide library ##"
@@ -100,7 +105,7 @@ clean:
 
 .PHONY: distclean
 distclean: clean
-	@cd libraries && ./matita.sh clean
+	@cd libraries && ./plein_de_dks.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
 	@cd libraries && ./iprover.sh clean
@@ -112,6 +117,7 @@ distclean: clean
 
 .PHONY: fullclean
 fullclean: distclean
+	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./matita.sh fullclean
 	@cd libraries && ./focalide.sh fullclean
 	@cd libraries && ./holide.sh fullclean

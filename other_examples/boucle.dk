@@ -1,6 +1,0 @@
-#NAME bool.
-
-Bool : Type.
-
-def boucle : Bool -> Bool.
-[x] boucle x --> boucle x.
