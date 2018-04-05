@@ -124,29 +124,29 @@ let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =
   in
   current_state := { !current_state with s_theorem = Some thm }
 
-
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
-  (* We check that we are in a proof. *)
-  match !current_state.s_theorem with
-  | None -> fatal "not in a proof"
-  | Some thm -> pp_goal stdout thm.t_focus
+  let thm = theorem() in pp_goal stdout thm.t_focus
+
+(** [handle_refine sign t] instantiates the focus goal by [t]. *)
+(*let handle_refine (sign:Sign.t) (t:term) : unit =
+  let thm = theorem() in
+  let g = thm.t_focus in
+  let m = g.g_meta in
+  (* We check that [m] does not occur in [t]. *)
+  if occurs m t then fatal "invalid refinement\n"
+  (* Binding of hypotheses in [t]. *)
+  let ns = List.map fst g.g_hyps in
+  let vs = new_mvar mkfree (Array.of_list ns) in
+  let mb = Bindlib.bind_mvar vs (lift t) in*)
 
 (** [handle_intro sign s] applies the [intro] tactic. *)
 let handle_intro (sign:Sign.t) (s:strloc) : unit =
-  (* We check that we are in a proof. *)
-  match !current_state.s_theorem with
-  | None -> fatal "not in a proof"
-  | Some thm ->
-     begin
-       let g = thm.t_focus in
-       (* We check that [s] is not already used. *)
-       if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used\n" s.elt;
-       (* We instantiate the focused meta by
-          [[x:M[x1,..,xn]N[x1,..,xn,x]] where [x1,..,xn] are the
-          hypotheses, [x] is fresh variable named [s.elt], [M] and [N]
-          are new metavariables. *)
-     end
+  let thm = theorem() in
+  let g = thm.t_focus in
+  (* We check that [s] is not already used. *)
+  if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used\n" s.elt;
+  fatal "not yet implemented\n"
 
 (** [handle_require sign path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
