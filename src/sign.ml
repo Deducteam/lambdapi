@@ -60,6 +60,14 @@ let new_state (mp:module_path) : state =
 (** Current state. *)
 let current_state : state ref = ref (new_state [])
 
+(** [theorem()] returns the current theorem if we are in a proof. It
+    fails otherwise. *)
+let theorem() : theorem =
+  (* We check that we are in a proof. *)
+  match !current_state.s_theorem with
+  | None -> fatal "not in a proof"
+  | Some thm -> thm
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
