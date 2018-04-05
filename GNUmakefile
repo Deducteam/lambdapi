@@ -29,8 +29,7 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 
 OK_TESTFILES = $(wildcard dedukti_tests/OK/*.dk)
 KO_TESTFILES = $(wildcard dedukti_tests/KO/*.dk)
-TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk) \
-	$(wildcard other_examples/*.dk)
+TESTFILES    = $(wildcard tests/*.dk) $(wildcard examples/*.dk)
 
 .PHONY: tests
 tests: lambdapi.native
