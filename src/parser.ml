@@ -42,36 +42,30 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   if List.mem id ["Type"; "_"] then Earley.give_up (); (fs,x)
 
 (** [cmd name] is an atomic parser for the command ["#" ^ name]. *)
-let parser cmd name = id:''#[A-Z]+'' ->
-  if id <> "#" ^ name then Earley.give_up ()
+let parser cmd name = s:''#[_'a-zA-Z0-9]+'' ->
+  if s <> "#" ^ name then Earley.give_up ()
 
 (* Defined commands. *)
-let _CHECK     = cmd "CHECK"
-let _CHECKNOT  = cmd "CHECKNOT"
-let _ASSERT    = cmd "ASSERT"
-let _ASSERTNOT = cmd "ASSERTNOT"
-let _REQUIRE   = cmd "REQUIRE"
-let _INFER     = cmd "INFER"
-let _EVAL      = cmd "EVAL"
-let _VERBOSE   = cmd "VERBOSE"
-let _DEBUG     = cmd "DEBUG"
-let _NAME      = cmd "NAME"
+let _CHECK_     = cmd "CHECK"
+let _CHECKNOT_  = cmd "CHECKNOT"
+let _ASSERT_    = cmd "ASSERT"
+let _ASSERTNOT_ = cmd "ASSERTNOT"
+let _REQUIRE_   = cmd "REQUIRE"
+let _INFER_     = cmd "INFER"
+let _EVAL_      = cmd "EVAL"
+let _VERBOSE_   = cmd "VERBOSE"
+let _DEBUG_     = cmd "DEBUG"
+let _NAME_      = cmd "NAME"
 
-(** [_wild_] is an atomic parser for the special ["_"] identifier. *)
-let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
-  if s <> "_" then Earley.give_up ()
+(** [keyword name] is an atomic parser for the keywork [name]. *)
+let parser keyword name = s:''[_'a-zA-Z0-9]*'' ->
+  if s <> name then Earley.give_up ()
 
-(** [_Type_] is an atomic parser for the special ["Type"] identifier. *)
-let parser _Type_ = s:''Type[_a-zA-Z0-9]*'' ->
-  if s <> "Type" then Earley.give_up ()
-
-(** [_def_] is an atomic parser for the ["def"] keyword. *)
-let parser _def_ = s:''def[_a-zA-Z0-9]*'' ->
-  if s <> "def" then Earley.give_up ()
-
-(** [_thm_] is an atomic parser for the ["thm"] keyword. *)
-let parser _thm_ = s:''thm[_a-zA-Z0-9]*'' ->
-  if s <> "thm" then Earley.give_up ()
+(* Defined keywords. *)
+let _wild_ = keyword "_"
+let _Type_ = keyword "Type"
+let _def_  = keyword "def"
+let _thm_  = keyword "thm"
 
 (** [expr p] is a parser for an expression at priority [p]. *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
@@ -180,10 +174,10 @@ let parser eval_config =
       Eval.{strategy; steps = Some(n)}
 
 let parser check =
-  | _CHECKNOT  -> (false, true )
-  | _CHECK     -> (false, false)
-  | _ASSERTNOT -> (true , true )
-  | _ASSERT    -> (true , false)
+  | _CHECKNOT_  -> (false, true )
+  | _CHECK_     -> (false, false)
+  | _ASSERTNOT_ -> (true , true )
+  | _ASSERT_    -> (true , false)
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
@@ -192,14 +186,14 @@ let parser cmd_aux =
   | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
   | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
   | rs:rule+                         -> P_Rules(rs)
-  | _REQUIRE path:mod_path           -> P_Import(path)
-  | _DEBUG f:''[+-]'' s:''[a-z]+''   -> P_Debug(f = "+", s)
-  | _VERBOSE n:''[-+]?[0-9]+''       -> P_Verb(int_of_string n)
+  | _REQUIRE_ path:mod_path          -> P_Import(path)
+  | _DEBUG_ f:''[+-]'' s:''[a-z]+''  -> P_Debug(f = "+", s)
+  | _VERBOSE_ n:''[-+]?[0-9]+''      -> P_Verb(int_of_string n)
   | (ia,mf):check t:expr "::" a:expr -> P_Test_T(ia,mf,t,a)
   | (ia,mf):check t:expr "==" u:expr -> P_Test_C(ia,mf,t,u)
-  | _INFER c:eval_config t:expr      -> P_Infer(t,c)
-  | _EVAL c:eval_config t:expr       -> P_Eval(t,c)
-  | _NAME _:ident                    -> P_Other(in_pos _loc "#NAME")
+  | _INFER_ c:eval_config t:expr     -> P_Infer(t,c)
+  | _EVAL_ c:eval_config t:expr      -> P_Eval(t,c)
+  | _NAME_ _:ident                   -> P_Other(in_pos _loc "#NAME")
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
