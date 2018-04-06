@@ -11,6 +11,15 @@ let obj_extension : string = ".dko"
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
 
+(** [OrderedType] module for [module_path]. *)
+module Path = struct
+  type t = module_path
+  let compare : t -> t -> int = Pervasives.compare
+end
+
+(* Functional maps with [module_path] keys. *)
+module PathMap = Map.Make(Path)
+
 (** [pp oc mp] prints [mp] to channel [oc]. *)
 let pp_path (oc:out_channel) (mp:module_path) : unit =
   output_string oc (String.concat "." mp)
