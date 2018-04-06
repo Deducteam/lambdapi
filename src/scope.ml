@@ -20,7 +20,7 @@ type env = (string * (tvar * tbox)) list
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_ident sign env qid] returns the bindbox corresponding to a variable of
+(** [find_ident sign env qid] returns a bindbox corresponding to a variable of
     the environment [env], or to a symbol, which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
@@ -30,28 +30,22 @@ let find_ident : Sign.t -> env -> qident -> tbox = fun sign env qid ->
   let (mp, s) = qid.elt in
   if mp = [] then
     (* No module path, search the environment first. *)
-    begin
-      try Bindlib.box_of_var (fst (List.assoc s env)) with Not_found ->
-      try _Symb (Sign.find sign s) with Not_found ->
-      fatal "Unbound variable or symbol %S...\n%!" s
-    end
+    try Bindlib.box_of_var (fst (List.assoc s env)) with Not_found ->
+    try _Symb (Sign.find sign s) with Not_found ->
+    fatal "Unbound variable or symbol %S...\n%!" s
   else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
     (* Module path is not available (not loaded), fail. *)
-    begin
-      let cur = String.concat "." Sign.(sign.path) in
-      let req = String.concat "." mp in
-      fatal "No module %s loaded in %s...\n%!" req cur
-    end
+    let cur = String.concat "." Sign.(sign.path) in
+    let req = String.concat "." mp in
+    fatal "No module %s loaded in %s...\n%!" req cur
   else
     (* Module path loaded, look for symbol. *)
-    begin
-      (* Cannot fail. *)
-      let sign =
-        try Hashtbl.find Sign.(!current_state.s_loaded) mp
-        with _ -> assert false in
-      try _Symb (Sign.find sign s) with Not_found ->
-      fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
-    end
+    let sign =
+      try Hashtbl.find Sign.(!current_state.s_loaded) mp
+      with _ -> assert false (* cannot fail. *)
+    in
+    try _Symb (Sign.find sign s) with Not_found ->
+    fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
 
 (** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
