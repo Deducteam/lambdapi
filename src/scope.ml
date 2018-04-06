@@ -36,7 +36,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     fatal "Unbound variable or symbol %S...\n%!" s
   else
     let sign = Sign.current_sign() in
-    if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
+    if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
     (* Module path is not available (not loaded), fail. *)
     let cur = String.concat "." Sign.(sign.path) in
     let req = String.concat "." mp in

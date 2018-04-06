@@ -8,6 +8,7 @@ open Pos
 open Sign
 open Extra
 open Infer2
+open Files
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -176,7 +177,8 @@ let handle_intro (s:strloc) : unit =
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Files.module_path -> unit = fun path ->
   let sign = current_sign() in
-  if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
+  if not (PathMap.mem path !(sign.deps)) then
+    sign.deps := PathMap.add path [] !(sign.deps);
   compile false path
 
 (** [handle_cmds cmds] interprets the commands of [cmds] in order. The
@@ -241,7 +243,7 @@ and compile : bool -> Files.module_path -> unit =
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      Hashtbl.iter (fun mp _ -> compile false mp) sign.deps;
+      PathMap.iter (fun mp _ -> compile false mp) !(sign.deps);
       Hashtbl.add !current_state.s_loaded path sign;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;

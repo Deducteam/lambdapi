@@ -11,7 +11,7 @@ open Extra
 type t =
   { symbols : symbol StrMap.t ref
   ; path    : module_path
-  ; deps    : (module_path, (string * rule) list) Hashtbl.t }
+  ; deps    : (string * rule) list PathMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -20,7 +20,7 @@ type t =
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun path ->
-  { path ; symbols = ref StrMap.empty ; deps = Hashtbl.create 11 }
+  { path ; symbols = ref StrMap.empty ; deps = ref PathMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -124,7 +124,7 @@ let link : t -> unit = fun sign ->
     in
     Some(List.map h ls)
   in
-  Hashtbl.filter_map_inplace gn sign.deps
+  sign.deps := filter_map gn !(sign.deps)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -159,7 +159,7 @@ let unlink : t -> unit = fun sign ->
   let fn _ s = unlink_term s.sym_type; List.iter unlink_rule s.sym_rules in
   StrMap.iter fn !(sign.symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
-  Hashtbl.iter gn sign.deps
+  PathMap.iter gn !(sign.deps)
 
 (** [new_symbol sign name a definable] creates a new symbol named
     [name] of type [a] in the signature [sign]. The created symbol is
@@ -212,7 +212,7 @@ let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
   out 3 "(rule) added a rule for symbol %s\n" sym.sym_name;
   if sym.sym_path <> sign.path then
     let m =
-      try Hashtbl.find sign.deps sym.sym_path
+      try PathMap.find sym.sym_path !(sign.deps)
       with Not_found -> assert false
     in
-    Hashtbl.replace sign.deps sym.sym_path ((sym.sym_name, r) :: m)
+    sign.deps := replace sym.sym_path ((sym.sym_name, r) :: m) !(sign.deps)

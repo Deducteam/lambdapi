@@ -20,6 +20,27 @@ end
 (* Functional maps with [module_path] keys. *)
 module PathMap = Map.Make(Path)
 
+(** filter_map f tbl applies f to all bindings in table tbl
+    and update each binding depending on the result of f. If f returns
+    None, the binding is discarded. If it returns Some new_val, the
+    binding is update to associate the key to new_val. *)
+let filter_map
+    : (module_path -> 'b -> 'b option) -> 'b PathMap.t -> 'b PathMap.t
+  = fun f map ->
+    let g key value new_map =
+      match f key value with
+      | Some new_value -> PathMap.add key new_value new_map
+      | None -> new_map
+    in
+    PathMap.fold g map PathMap.empty
+
+(** [replace key value map] creates a map with the same bindings as
+    [map] except for [x] that is mapped to [value]. *)
+let replace key value map =
+  PathMap.add key value (PathMap.remove key map)
+(* With OCaml 4.06.0, we can do:
+   PathMap.update key (fun _ -> Some value) map *)
+
 (** [pp oc mp] prints [mp] to channel [oc]. *)
 let pp_path (oc:out_channel) (mp:module_path) : unit =
   output_string oc (String.concat "." mp)
