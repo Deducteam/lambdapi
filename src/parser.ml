@@ -41,20 +41,36 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
   let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
   if List.mem id ["Type"; "_"] then Earley.give_up (); (fs,x)
 
+(** [cmd name] is an atomic parser for the command ["#" ^ name]. *)
+let parser cmd name = id:''#[A-Z]+'' ->
+  if id <> "#" ^ name then Earley.give_up ()
+
+(* Defined commands. *)
+let _CHECK     = cmd "CHECK"
+let _CHECKNOT  = cmd "CHECKNOT"
+let _ASSERT    = cmd "ASSERT"
+let _ASSERTNOT = cmd "ASSERTNOT"
+let _REQUIRE   = cmd "REQUIRE"
+let _INFER     = cmd "INFER"
+let _EVAL      = cmd "EVAL"
+let _VERBOSE   = cmd "VERBOSE"
+let _DEBUG     = cmd "DEBUG"
+let _NAME      = cmd "NAME"
+
 (** [_wild_] is an atomic parser for the special ["_"] identifier. *)
 let parser _wild_ = s:''[_][_a-zA-Z0-9]*'' ->
   if s <> "_" then Earley.give_up ()
 
 (** [_Type_] is an atomic parser for the special ["Type"] identifier. *)
-let parser _Type_ = s:''[T][y][p][e][_a-zA-Z0-9]*'' ->
+let parser _Type_ = s:''Type[_a-zA-Z0-9]*'' ->
   if s <> "Type" then Earley.give_up ()
 
 (** [_def_] is an atomic parser for the ["def"] keyword. *)
-let parser _def_ = s:''[d][e][f][_a-zA-Z0-9]*'' ->
+let parser _def_ = s:''def[_a-zA-Z0-9]*'' ->
   if s <> "def" then Earley.give_up ()
 
 (** [_thm_] is an atomic parser for the ["thm"] keyword. *)
-let parser _thm_ = s:''[t][h][m][_a-zA-Z0-9]*'' ->
+let parser _thm_ = s:''thm[_a-zA-Z0-9]*'' ->
   if s <> "thm" then Earley.give_up ()
 
 (** [expr p] is a parser for an expression at priority [p]. *)
@@ -164,10 +180,10 @@ let parser eval_config =
       Eval.{strategy; steps = Some(n)}
 
 let parser check =
-  | "#CHECKNOT"  -> (false, true )
-  | "#CHECK"     -> (false, false)
-  | "#ASSERTNOT" -> (true , true )
-  | "#ASSERT"    -> (true , false)
+  | _CHECKNOT  -> (false, true )
+  | _CHECK     -> (false, false)
+  | _ASSERTNOT -> (true , true )
+  | _ASSERT    -> (true , false)
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
@@ -176,14 +192,14 @@ let parser cmd_aux =
   | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
   | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
   | rs:rule+                         -> P_Rules(rs)
-  | "#REQUIRE" path:mod_path         -> P_Import(path)
-  | "#DEBUG" f:''[+-]'' s:''[a-z]+'' -> P_Debug(f = "+", s)
-  | "#VERBOSE" n:''[-+]?[0-9]+''     -> P_Verb(int_of_string n)
+  | _REQUIRE path:mod_path           -> P_Import(path)
+  | _DEBUG f:''[+-]'' s:''[a-z]+''   -> P_Debug(f = "+", s)
+  | _VERBOSE n:''[-+]?[0-9]+''       -> P_Verb(int_of_string n)
   | (ia,mf):check t:expr "::" a:expr -> P_Test_T(ia,mf,t,a)
   | (ia,mf):check t:expr "==" u:expr -> P_Test_C(ia,mf,t,u)
-  | "#INFER" c:eval_config t:expr    -> P_Infer(t,c)
-  | "#EVAL" c:eval_config t:expr     -> P_Eval(t,c)
-  | c:"#NAME" _:ident                -> P_Other(in_pos _loc_c c)
+  | _INFER c:eval_config t:expr      -> P_Infer(t,c)
+  | _EVAL c:eval_config t:expr       -> P_Eval(t,c)
+  | _NAME _:ident                    -> P_Other(in_pos _loc "#NAME")
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
