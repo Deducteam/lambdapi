@@ -13,21 +13,22 @@ open Infer2
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
 
-(** [handle_symdecl sign b n a] extends the signature [sign] with a
+(** [handle_symdecl b n a] extends the current signature with a
     symbol named [n] and type [a]. If [a] does not have sort [Type] or
     [Kind], then the program fails gracefully. [b] indicates whether
     this symbol can have rules. *)
-let handle_symdecl : Sign.t -> bool -> strloc -> term -> unit =
-  fun sign b n a ->
-  ignore (sort_type empty_ctxt a);
-  ignore (Sign.new_symbol sign b n a)
+let handle_symdecl : bool -> strloc -> term -> unit =
+  fun b n a ->
+    ignore (sort_type empty_ctxt a);
+    let sign = current_sign() in
+    ignore (Sign.new_symbol sign b n a)
 
 (** [check_def_type x None t] infers the type of [t] and returns
     it. [check_def_type x (Some a) t] checks that [a] has a sort as
     type and that [t] has type [a], and it returns [a]. In case of
     error (typing or sorting), the program fails gracefully. *)
-let check_def_type : Sign.t -> strloc -> term option -> term -> term =
-  fun sign x ao t ->
+let check_def_type : strloc -> term option -> term -> term =
+  fun x ao t ->
     match ao with
     | None ->
        begin
@@ -43,18 +44,20 @@ let check_def_type : Sign.t -> strloc -> term option -> term -> term =
          else a
        end
 
-(** [handle_opaque sign x ao t] checks the definition of [x] and adds
-    [x] in the signature. *)
-let handle_opaque : Sign.t -> strloc -> term option -> term -> unit =
-  fun sign x ao t ->
-    let a = check_def_type sign x ao t in
+(** [handle_opaque x ao t] checks the definition of [x] and adds
+    [x] in the current signature. *)
+let handle_opaque : strloc -> term option -> term -> unit =
+  fun x ao t ->
+    let a = check_def_type x ao t in
+    let sign = current_sign() in
     ignore (Sign.new_symbol sign true x a)
 
-(** [handle_defin sign x ao t] does the same as [handle_opaque sign x ao
-    t] and add the rule [x --> t]. *)
-let handle_defin : Sign.t -> strloc -> term option -> term -> unit =
-  fun sign x ao t ->
-    let a = check_def_type sign x ao t in
+(** [handle_defin x ao t] does the same as [handle_opaque x ao t] and
+    add the rule [x --> t]. *)
+let handle_defin : strloc -> term option -> term -> unit =
+  fun x ao t ->
+    let a = check_def_type x ao t in
+    let sign = current_sign() in
     let s = Sign.new_symbol sign true x a in
     let rule =
       let rhs =
@@ -65,31 +68,32 @@ let handle_defin : Sign.t -> strloc -> term option -> term -> unit =
     in
     Sign.add_rule sign s rule
 
-(** [handle_rules sign rs] checks that the rules of [rs] are well-typed, while
+(** [handle_rules rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
-let handle_rules : Sign.t -> Sr.rspec list -> unit = fun sign rs ->
+let handle_rules : Sr.rspec list -> unit = fun rs ->
   let open Sr in
   List.iter check_rule rs;
+  let sign = current_sign() in
   List.iter (fun s -> Sign.add_rule sign s.rspec_symbol s.rspec_rule) rs
 
-(** [handle_infer sign t] attempts to infer the type of [t] in [sign]. In case
+(** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
-let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
+let handle_infer : term -> Eval.config -> unit = fun t c ->
   match infer empty_ctxt t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
-(** [handle_eval sign t] evaluates the term [t]. *)
-let handle_eval : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
+(** [handle_eval t] evaluates the term [t]. *)
+let handle_eval : term -> Eval.config -> unit = fun t c ->
   match infer empty_ctxt t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal "unable to infer the type of [%a]\n" pp t
 
-(** [handle_test sign test] runs the test [test] in the state [sign]. When
-    the test does not succeed, the program may fail gracefully or continue its
-    exection depending on the value of [test.is_assert]. *)
-let handle_test : Sign.t -> test -> unit = fun sign test ->
+(** [handle_test test] runs the test [test]. When the test does not
+    succeed, the program may fail gracefully or continue its exection
+    depending on the value of [test.is_assert]. *)
+let handle_test : test -> unit = fun test ->
   let pp_test : out_channel -> test -> unit = fun oc test ->
     if test.must_fail then output_string oc "¬(";
     begin
@@ -112,11 +116,12 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
   | (false, true ) -> fatal "Assertion failed: [%a]\n" pp_test test
   | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
-(** [handle_start_proof sign s a] starts a proof of [a] named [s]. *)
-let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =
+(** [handle_start_proof s a] starts a proof of [a] named [s]. *)
+let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that we are not already in a proof. *)
   if !current_state.s_theorem <> None then fatal "already in proof";
   (* We check that [s] is not already used. *)
+  let sign = current_sign() in
   if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
   (* We check that [a] is typable by a sort. *)
   ignore (sort_type empty_ctxt a);
@@ -136,11 +141,11 @@ let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
-  let thm = theorem() in pp_goal stdout thm.t_focus
+  let thm = current_theorem() in pp_goal stdout thm.t_focus
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
 let handle_refine (t:term) : unit =
-  let thm = theorem() in
+  let thm = current_theorem() in
   let g = thm.t_focus in
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
@@ -159,41 +164,42 @@ let handle_refine (t:term) : unit =
   let vs = Array.of_list (List.map fst env) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
 
-(** [handle_intro sign s] applies the [intro] tactic. *)
-let handle_intro (sign:Sign.t) (s:strloc) : unit =
-  let thm = theorem() in
+(** [handle_intro s] applies the [intro] tactic. *)
+let handle_intro (s:strloc) : unit =
+  let thm = current_theorem() in
   let g = thm.t_focus in
   (* We check that [s] is not already used. *)
   if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used\n" s.elt;
   fatal "not yet implemented\n"
 
-(** [handle_require sign path] compiles the signature corresponding to  [path],
+(** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
-let rec handle_require : Sign.t -> Files.module_path -> unit = fun sign path ->
+let rec handle_require : Files.module_path -> unit = fun path ->
+  let sign = current_sign() in
   if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
   compile false path
 
-(** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
-    state [sign]. The program fails gracefully in case of error. *)
-and handle_cmds : Sign.t -> Parser.p_cmd loc list -> unit = fun sign cmds ->
+(** [handle_cmds cmds] interprets the commands of [cmds] in order. The
+    program fails gracefully in case of error. *)
+and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
   let handle_cmd cmd =
     try
-      let cmd = Scope.scope_cmd sign cmd in
+      let cmd = Scope.scope_cmd cmd in
       match cmd.elt with
-      | SymDecl(b,n,a) -> handle_symdecl sign b n a
-      | Rules(rs) -> handle_rules sign rs
+      | SymDecl(b,n,a) -> handle_symdecl b n a
+      | Rules(rs) -> handle_rules rs
       | SymDef(b,n,ao,t) ->
-         (if b then handle_opaque else handle_defin) sign n ao t
-      | Require(path) -> handle_require sign path
+         (if b then handle_opaque else handle_defin) n ao t
+      | Require(path) -> handle_require path
       | Debug(v,s) -> set_debug v s
       | Verb(n) -> verbose := n
-      | Infer(t,c) -> handle_infer sign t c
-      | Eval(t,c) -> handle_eval sign t c
-      | Test(test) -> handle_test sign test
+      | Infer(t,c) -> handle_infer t c
+      | Eval(t,c) -> handle_eval t c
+      | Test(test) -> handle_test test
       | Other(c) ->
           if !debug then
             wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
-      | StartProof(s,a) -> handle_start_proof sign s a
+      | StartProof(s,a) -> handle_start_proof s a
       | PrintFocus -> handle_print_focus()
       | Refine(t) -> handle_refine t
     with e ->
@@ -226,7 +232,7 @@ and compile : bool -> Files.module_path -> unit =
       Stack.push path !current_state.s_loading;
       let sign = Sign.create path in
       Hashtbl.add !current_state.s_loaded path sign;
-      handle_cmds sign (Parser.parse_file src);
+      handle_cmds (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
       ignore (Stack.pop !current_state.s_loading);
       out 1 "Checked [%s]\n%!" src;

@@ -20,20 +20,23 @@ type env = (string * (tvar * tbox)) list
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_ident sign env qid] returns a bindbox corresponding to a variable of
+(** [find_ident env qid] returns a bindbox corresponding to a variable of
     the environment [env], or to a symbol, which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
-    search in the current signature [sign]. If the name does not correspond to
+    search in the current signature. If the name does not correspond to
     anything, the program fails gracefully. *)
-let find_ident : Sign.t -> env -> qident -> tbox = fun sign env qid ->
+let find_ident : env -> qident -> tbox = fun env qid ->
   let (mp, s) = qid.elt in
   if mp = [] then
     (* No module path, search the environment first. *)
     try Bindlib.box_of_var (fst (List.assoc s env)) with Not_found ->
-    try _Symb (Sign.find sign s) with Not_found ->
+      try let sign = Sign.current_sign() in
+          _Symb (Sign.find sign s) with Not_found ->
     fatal "Unbound variable or symbol %S...\n%!" s
-  else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
+  else
+    let sign = Sign.current_sign() in
+    if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
     (* Module path is not available (not loaded), fail. *)
     let cur = String.concat "." Sign.(sign.path) in
     let req = String.concat "." mp in
@@ -85,14 +88,14 @@ let build_meta_name loc id =
   | M_Sys(k)  -> Internal(k)
   | M_User(s) -> Defined(s)
 
-(** [scope_term sign t] transforms a parser-level term [t] into an actual term
-    (using Bindlib), in the signature [sign]. Note that wildcards [P_Wild] are
+(** [scope_term t] transforms a parser-level term [t] into an actual term
+    (using Bindlib). Note that wildcards [P_Wild] are
     transformed into fresh meta-variables.  The same goes for the type carried
     by abstractions when it is not given. *)
-let scope_term : Sign.t -> p_term -> term = fun sign t ->
+let scope_term : p_term -> term = fun t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_ident sign env qid
+    | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
     | P_Prod(x,a,b) ->
         let a =
@@ -130,12 +133,12 @@ type meta_map = (string * int) list
     a type to each “pattern variable” in the arguments. *)
 type full_lhs = symbol * term list * (string * term) list
 
-(** [scope_lhs sign map t] computes a rule LHS from the parser-level term [t],
-    in the signature [sign].  The association list [map] gives the position of
+(** [scope_lhs map t] computes a rule LHS from the parser-level term [t].
+    The association list [map] gives the position of
     every “pattern variable” in the environment.  Note that only the variables
     that are bound in the RHS (or that occur non-linearly in the LHS) have  an
     associated index in [map]. *)
-let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
+let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let fresh =
     let c = ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
@@ -143,7 +146,7 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
   let ty_map = ref [] in (* stores the type of each pattern variable. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_ident sign env qid
+    | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> fatal "invalid pattern %a\n" Pos.print t.pos
     | P_Prod(_,_,_) -> fatal "invalid pattern %a\n" Pos.print t.pos
     | P_Abst(x,a,t) ->
@@ -194,10 +197,10 @@ let scope_lhs : Sign.t -> meta_map -> p_term -> full_lhs = fun sign map t ->
 (** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** [scope_rhs sign map t] computes a rule RHS from the parser-level term [t],
-    in the signature [sign].  The association list [map] gives the position of
+(** [scope_rhs map t] computes a rule RHS from the parser-level term [t].
+    The association list [map] gives the position of
     every “pattern variable” in the constructed multiple binder. *)
-let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
+let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
   let names =
     let sorted_map = List.sort (fun (_,i) (_,j) -> i - j) map in
     Array.of_list (List.map fst sorted_map)
@@ -205,7 +208,7 @@ let scope_rhs : Sign.t -> meta_map -> p_term -> rhs = fun sign map t ->
   let metas = Bindlib.new_mvar (fun m -> TE_Vari(m)) names in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
-    | P_Vari(qid)   -> find_ident sign env qid
+    | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
     | P_Prod(x,None,b) -> fatal "missing type %a" Pos.print t.pos
     | P_Prod(x,Some(a),b) ->
@@ -263,10 +266,10 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
         fatal "invalid rule member %a" Pos.print t.pos
   in meta_vars ([],[]) t
 
-(** [scope_rule sign r] scopes a parsing level reduction rule, producing every
+(** [scope_rule r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : Sign.t -> p_rule -> rspec = fun sign (p_lhs, p_rhs) ->
+let scope_rule : p_rule -> rspec = fun (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
@@ -287,9 +290,9 @@ let scope_rule : Sign.t -> p_rule -> rspec = fun sign (p_lhs, p_rhs) ->
   (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
   (* NOTE: meta-variables not in [mvs] can be considerd as wildcards. *)
   (* We scope the LHS and add index in the enviroment for meta-variables. *)
-  let (sym, lhs, ty_map) = scope_lhs sign mvs p_lhs in
+  let (sym, lhs, ty_map) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
-  let rhs = scope_rhs sign mvs p_rhs in
+  let rhs = scope_rhs mvs p_rhs in
   (* We put everything together to build the rule. *)
   let rule = {lhs; rhs; arity = List.length lhs} in
   {rspec_symbol = sym; rspec_ty_map = ty_map; rspec_rule = rule}
@@ -349,41 +352,41 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   in
   (build_lhs [] lhs, build_rhs [] rhs)
 
-(** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
-    signature [sign]. In case of error, the program gracefully fails. *)
-let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
+(** [scope_cmd_aux cmd] scopes the parser level command [cmd].
+    In case of error, the program gracefully fails. *)
+let scope_cmd_aux : p_cmd -> cmd_aux = fun cmd ->
   match cmd with
-  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term sign a)
+  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term a)
   | P_SymDef(b,x,ao,t) ->
-      let t = scope_term sign t in
+      let t = scope_term t in
       let ao =
         match ao with
         | None    -> None
-        | Some(a) -> Some(scope_term sign a)
+        | Some(a) -> Some(scope_term a)
       in
       SymDef(b,x,ao,t)
-  | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
+  | P_Rules(rs)         -> Rules(List.map scope_rule rs)
   | P_OldRules(rs)      ->
       let rs = List.map translate_old_rule rs in
-      Rules(List.map (scope_rule sign) rs)
+      Rules(List.map scope_rule rs)
   | P_Require(path)     -> Require(path)
   | P_Debug(b,s)        -> Debug(b,s)
   | P_Verb(n)           -> Verb(n)
-  | P_Infer(t,c)        -> Infer(scope_term sign t, c)
-  | P_Eval(t,c)         -> Eval(scope_term sign t, c)
+  | P_Infer(t,c)        -> Infer(scope_term t, c)
+  | P_Eval(t,c)         -> Eval(scope_term t, c)
   | P_TestType(ia,mf,t,a) ->
-      let contents = HasType(scope_term sign t, scope_term sign a) in
+      let contents = HasType(scope_term t, scope_term a) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_TestConv(ia,mf,t,u) ->
-      let contents = Convert(scope_term sign t, scope_term sign u) in
+      let contents = Convert(scope_term t, scope_term u) in
       Test({is_assert = ia; must_fail = mf; contents})
   | P_Other(c)          -> Other(c)
-  | P_StartProof(s,a)   -> StartProof(s, scope_term sign a)
+  | P_StartProof(s,a)   -> StartProof(s, scope_term a)
   | P_PrintFocus        -> PrintFocus
-  | P_Refine(t)         -> Refine (scope_term sign t)
+  | P_Refine(t)         -> Refine (scope_term t)
 
-(** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the
-    signature [sign], and forwards the source code position of the command. In
+(** [scope_cmd_aux cmd] scopes the parser level command [cmd],
+    and forwards the source code position of the command. In
     case of error, the program gracefully fails. *)
-let scope_cmd : Sign.t -> p_cmd loc -> cmd = fun sign cmd ->
-  {elt = scope_cmd_aux sign cmd.elt; pos = cmd.pos}
+let scope_cmd : p_cmd loc -> cmd = fun cmd ->
+  {elt = scope_cmd_aux cmd.elt; pos = cmd.pos}
