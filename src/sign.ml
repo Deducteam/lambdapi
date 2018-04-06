@@ -4,11 +4,12 @@ open Console
 open Files
 open Terms
 open Pos
+open Extra
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { symbols : (string, symbol) Hashtbl.t
+  { symbols : symbol StrMap.t ref
   ; path    : module_path
   ; deps    : (module_path, (string * rule) list) Hashtbl.t }
 
@@ -19,16 +20,16 @@ type t =
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun path ->
-  { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
+  { path ; symbols = ref StrMap.empty ; deps = Hashtbl.create 11 }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> symbol =
-  fun sign name -> Hashtbl.find sign.symbols name
+  fun sign name -> StrMap.find name !(sign.symbols)
 
 (** [mem sign name] checks whether the symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool =
-  fun sign name -> Hashtbl.mem sign.symbols name
+  fun sign name -> StrMap.mem name !(sign.symbols)
 
 (** System state.*)
 type state =
@@ -110,7 +111,7 @@ let link : t -> unit = fun sign ->
     s.sym_type <- link_term s.sym_type;
     s.sym_rules <- List.map link_rule s.sym_rules;
   in
-  Hashtbl.iter fn sign.symbols;
+  StrMap.iter fn !(sign.symbols);
   let gn path ls =
     let sign =
       try Hashtbl.find !current_state.s_loaded path
@@ -156,7 +157,7 @@ let unlink : t -> unit = fun sign ->
     unlink_term rhs
   in
   let fn _ s = unlink_term s.sym_type; List.iter unlink_rule s.sym_rules in
-  Hashtbl.iter fn sign.symbols;
+  StrMap.iter fn !(sign.symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   Hashtbl.iter gn sign.deps
 
@@ -166,14 +167,14 @@ let unlink : t -> unit = fun sign ->
 let new_symbol : t -> bool -> strloc -> term -> symbol =
   fun sign definable s sym_type ->
   let { elt = sym_name; pos } = s in
-  if Hashtbl.mem sign.symbols sym_name then
+  if StrMap.mem sym_name !(sign.symbols) then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
   let sym = { sym_name = sym_name
             ; sym_type = sym_type
             ; sym_path = sign.path
             ; sym_rules = []
             ; sym_definable = definable } in
-  Hashtbl.add sign.symbols sym_name (sym);
+  sign.symbols := StrMap.add sym_name sym !(sign.symbols);
   out 3 "(stat) %s\n" sym_name; sym
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
