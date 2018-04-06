@@ -82,25 +82,34 @@ let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
 
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  (* FIXME check typing? *)
+  ignore (infer empty_ctxt t);
   out 3 "(eval) %a\n" pp (Eval.eval c t)
 
 (** [handle_test sign test] runs the test [test] in the state [sign]. When
     the test does not succeed, the program may fail gracefully or continue its
     exection depending on the value of [test.is_assert]. *)
 let handle_test : Sign.t -> test -> unit = fun sign test ->
-  match (test.contents, test.is_assert, test.must_fail) with
-  | (Convert(t,u), false, false) ->
-      if Eval.eq_modulo t u then out 3 "(conv) OK\n"
-      else fatal "cannot convert %a and %a...\n" pp t pp u
-  | (HasType(t,a), false, false) ->
-      ignore (sort_type empty_ctxt a);
-      if not (has_type empty_ctxt t a) then
-        fatal "%a does not have type %a...\n" pp t pp a;
-      out 3 "(chck) OK\n"
-  | (_           , _    , _    ) ->
-      (* TODO *)
-      wrn "Test not implemented...\n"
+  let pp_test : out_channel -> test -> unit = fun oc test ->
+    if test.must_fail then output_string oc "¬(";
+    begin
+      match test.contents with
+      | Convert(t,u) -> Printf.fprintf oc "%a == %a" pp t pp u
+      | HasType(t,a) -> Printf.fprintf oc "%a :: %a" pp t pp a
+    end;
+    if test.must_fail then output_string oc ")"
+  in
+  let result =
+    match test.contents with
+    | Convert(t,u) -> Eval.eq_modulo t u
+    | HasType(t,a) -> ignore (sort_type empty_ctxt a);
+                      try has_type empty_ctxt t a with _ -> false
+  in
+  let success = result = not test.must_fail in
+  match (success, test.is_assert) with
+  | (true , true ) -> ()
+  | (true , false) -> out 3 "(chck) OK\n"
+  | (false, true ) -> fatal "Assertion failed: [%a]\n" pp_test test
+  | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
 (** [handle_start_proof sign s a] starts a proof of [a] named [s]. *)
 let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =

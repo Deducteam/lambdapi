@@ -32,7 +32,17 @@ let equal_vari (t:term) (u:term) : bool =
   | _, _ -> false
 
 (** Constraints. *)
-let constraints : (ctxt * term * term) list ref = ref []
+type problem = ctxt * term * term
+let constraints : problem list ref = ref []
+
+let with_constraints : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
+  try
+    constraints := [];
+    let r = fn e in
+    let cs = !constraints in
+    constraints := [];
+    (cs, r)
+  with e -> constraints := []; raise e
 
 (** [add_constr c t1 t2] extends [!constraints] with possibly new constraints
     for [t1] to be convertible to [t2] in context [c]. We assume that,
@@ -253,40 +263,26 @@ and check (c:ctxt) (t:term) (a:term) : unit =
      end
 
 (** Solve constraints. *)
-let solve() : unit =
-  match !constraints with
-  | (_,a,b)::_ -> fatal "cannot solve the constraint [%a] ~ [%a]\n" pp a pp b
-  | [] -> ()
+let solve : problem list -> bool = fun cs ->
+  let msg (_,a,b) = wrn "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b in
+  List.iter msg cs; cs = []
 
-(** [has_type c t u] returns [true] iff [t] has type [u] in context
-    [c]. *)
-let has_type (c:ctxt) (t:term) (u:term) : bool =
-  constraints := [];
-  try
-    check c t u;
-    solve();
-    true
-  with e -> constraints := []; raise e
+(** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
+let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
+  let (cs, r) = with_constraints (check ctxt t) a in
+  solve cs
 
-(** [sort_type c t] returns [true] iff [t] has type a sort in context
-    [c]. *)
-let sort_type (c:ctxt) (t:term) : term =
-  constraints := [];
-  try
-    let typ_t = infer c t in
-    solve();
-    match unfold typ_t with
-    | Type | Kind -> typ_t
-    | _ -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp typ_t
-  with e -> constraints := []; raise e
+(** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
+let sort_type : ctxt -> term -> term = fun ctx a ->
+  let (cs, s) = with_constraints (infer ctx) a in
+  if not (solve cs) then fatal "Constraints cannot be solved.\n";
+  match unfold s with
+  | Type
+  | Kind -> s
+  | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
 
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
-    [c]. If it returns [None] then some constraints could not be
-    solved. *)
-let infer (c:ctxt) (t:term) : term option =
-  constraints := [];
-  try
-    let typ_t = infer c t in
-    solve();
-    Some typ_t
-  with e -> constraints := []; raise e
+    [c]. If it returns [None] then some constraints could not be solved. *)
+let infer : ctxt -> term -> term option = fun ctx t ->
+  let (cs, a) = with_constraints (infer ctx) t in
+  if not (solve cs) then None else Some(a)
