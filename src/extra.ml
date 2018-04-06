@@ -52,33 +52,14 @@ module Array =
       List.pp pp_elt sep oc (to_list a) (*FIXME:avoid call to [to_list]?*)
   end
 
-exception Exit_stack_mem
-
 module Stack =
   struct
     include Stack
 
-    (** [mem s a] checks whether [a] occurs in [s]. *)
-    let mem : 'a t -> 'a -> bool = fun s a ->
-      let f x = if x=a then raise Exit_stack_mem in
-      try iter f s; false with Exit_stack_mem -> true
-
-    (** [to_list s] returns the list of elements of [s] from bottom to top. *)
-    let to_list : 'a t -> 'a list = fun s ->
-      let f acc a = a :: acc in
-      fold f [] s
-
-    (** [pp pp_elt sep oc s] prints the stack [s] on the channel [oc]
-        using [sep] as separator and [pp_elt] for printing the elements. *)
-    let pp : 'a pp -> string -> 'a t pp = fun pp_elt sep oc s ->
-      if length s > 0 then
-        begin
-          let x = pop s in
-          pp_elt oc x;
-          let f a = Printf.fprintf oc "%s%a" sep pp_elt a in
-          iter f s;
-          push x s
-        end
+    (** [mem e s] checks whether the element [e] occurs in the stack [s]. *)
+    let mem : 'a -> 'a t -> bool = fun e s ->
+      let test x = if x = e then raise Exit in
+      try iter test s; false with Exit -> true
   end
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation

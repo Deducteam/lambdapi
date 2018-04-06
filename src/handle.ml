@@ -212,10 +212,13 @@ and compile : bool -> Files.module_path -> unit =
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Stack.mem !current_state.s_loading path then
-    fatal "cyclic dependencies: %a -> %a\n"
-      (List.pp Files.pp_path " -> ") (Stack.to_list !current_state.s_loading)
-      Files.pp_path path
+  if Stack.mem path !current_state.s_loading then
+    begin
+      err "Circular dependencies detected for %a...\n" Files.pp_path path;
+      err "Dependency stack:\n";
+      Stack.iter (err "  - %a\n" Files.pp_path) !current_state.s_loading;
+      fatal "Build aborted\n"
+    end
   else
     begin
       if force || Files.more_recent src obj then
