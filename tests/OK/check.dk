@@ -1,0 +1,8 @@
+N : Type.
+0 : N.
+S : N -> N.
+
+#CHECK 0 :: N.
+#CHECKNOT S :: N.
+#ASSERT 0 :: N.
+#ASSERTNOT S :: N.
