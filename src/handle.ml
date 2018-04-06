@@ -82,8 +82,9 @@ let handle_infer : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
 
 (** [handle_eval sign t] evaluates the term [t]. *)
 let handle_eval : Sign.t -> term -> Eval.config -> unit = fun sign t c ->
-  ignore (infer empty_ctxt t);
-  out 3 "(eval) %a\n" pp (Eval.eval c t)
+  match infer empty_ctxt t with
+  | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
+  | None    -> fatal "unable to infer the type of [%a]\n" pp t
 
 (** [handle_test sign test] runs the test [test] in the state [sign]. When
     the test does not succeed, the program may fail gracefully or continue its
