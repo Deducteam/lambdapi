@@ -41,3 +41,5 @@ type cmd = cmd_aux loc
   | StartProof of strloc * term
   (** Print focused goal. *)
   | PrintFocus
+  (** Refine the focused goal. *)
+  | Refine of term

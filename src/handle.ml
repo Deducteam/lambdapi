@@ -128,17 +128,26 @@ let handle_start_proof (sign:Sign.t) (s:strloc) (a:term) : unit =
 let handle_print_focus() : unit =
   let thm = theorem() in pp_goal stdout thm.t_focus
 
-(** [handle_refine sign t] instantiates the focus goal by [t]. *)
-(*let handle_refine (sign:Sign.t) (t:term) : unit =
+(** [handle_refine t] instantiates the focus goal by [t]. *)
+let handle_refine (t:term) : unit =
   let thm = theorem() in
   let g = thm.t_focus in
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
-  if occurs m t then fatal "invalid refinement\n"
+  if occurs m t then fatal "invalid refinement\n";
   (* Binding of hypotheses in [t]. *)
-  let ns = List.map fst g.g_hyps in
-  let vs = new_mvar mkfree (Array.of_list ns) in
-  let mb = Bindlib.bind_mvar vs (lift t) in*)
+  let box (s,a) = (Bindlib.new_var mkfree s,lift a) in
+  let env = List.map box g.g_hyps in
+  let bt = lift t in
+  (* Check that [t] has the correct type. *)
+  let abst u (x,a) =
+    Bindlib.box_apply2 (fun a f -> Abst(a,f)) a (Bindlib.bind_var x u) in
+  let u = Bindlib.unbox (List.fold_left abst bt env) in
+  if not (Infer2.has_type empty_ctxt u m.meta_type) then
+    fatal "invalid refinement\n";
+  (* Instantiation. *)
+  let vs = Array.of_list (List.map fst env) in
+  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
 
 (** [handle_intro sign s] applies the [intro] tactic. *)
 let handle_intro (sign:Sign.t) (s:strloc) : unit =
@@ -162,20 +171,21 @@ and handle_cmds : Sign.t -> Parser.p_cmd loc list -> unit = fun sign cmds ->
       let cmd = Scope.scope_cmd sign cmd in
       match cmd.elt with
       | SymDecl(b,n,a) -> handle_symdecl sign b n a
-      | Rules(rs)    -> handle_rules sign rs
+      | Rules(rs) -> handle_rules sign rs
       | SymDef(b,n,ao,t) ->
          (if b then handle_opaque else handle_defin) sign n ao t
       | Require(path) -> handle_require sign path
-      | Debug(v,s)   -> set_debug v s
-      | Verb(n)      -> verbose := n
-      | Infer(t,c)   -> handle_infer sign t c
-      | Eval(t,c)    -> handle_eval sign t c
-      | Test(test)   -> handle_test sign test
-      | Other(c)     ->
+      | Debug(v,s) -> set_debug v s
+      | Verb(n) -> verbose := n
+      | Infer(t,c) -> handle_infer sign t c
+      | Eval(t,c) -> handle_eval sign t c
+      | Test(test) -> handle_test sign test
+      | Other(c) ->
           if !debug then
             wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
       | StartProof(s,a) -> handle_start_proof sign s a
-      | PrintFocus   -> handle_print_focus()
+      | PrintFocus -> handle_print_focus()
+      | Refine(t) -> handle_refine t
     with e ->
       fatal "Uncaught exception on a command at %a\n%s\n%!"
         Pos.print cmd.pos (Printexc.to_string e)
