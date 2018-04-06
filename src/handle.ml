@@ -233,7 +233,8 @@ and compile : bool -> Files.module_path -> unit =
       out 2 "Loading [%s]%s\n%!" src forced;
       Stack.push path !current_state.s_loading;
       let sign = Sign.create path in
-      Hashtbl.add !current_state.s_loaded path sign;
+      !current_state.s_loaded
+        := PathMap.add path sign !(!current_state.s_loaded);
       handle_cmds (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
       ignore (Stack.pop !current_state.s_loading);
@@ -244,7 +245,8 @@ and compile : bool -> Files.module_path -> unit =
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> compile false mp) !(sign.deps);
-      Hashtbl.add !current_state.s_loaded path sign;
+      !current_state.s_loaded
+        := PathMap.add path sign !(!current_state.s_loaded);
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end

@@ -44,7 +44,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
   else
     (* Module path loaded, look for symbol. *)
     let sign =
-      try Hashtbl.find Sign.(!current_state.s_loaded) mp
+      try PathMap.find mp !Sign.(!current_state.s_loaded)
       with _ -> assert false (* cannot fail. *)
     in
     try _Symb (Sign.find sign s) with Not_found ->

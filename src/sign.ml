@@ -37,7 +37,7 @@ type state =
     important invariant is that all the occurrences of a symbol are physically
     equal (even across different signatures). In particular, this requires the
       objects to be copied when loading an object file. *)
-  { s_loaded : (module_path, t) Hashtbl.t
+  { s_loaded : t PathMap.t ref
 
   (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
@@ -53,7 +53,7 @@ type state =
 
 (** Create a new state. *)
 let new_state (mp:module_path) : state =
-  { s_loaded = Hashtbl.create 7
+  { s_loaded = ref PathMap.empty
   ; s_loading = Stack.create ()
   ; s_path = mp
   ; s_theorem = None }
@@ -66,7 +66,7 @@ let current_sign() =
   let mp =
     try Stack.top !current_state.s_loading
     with Stack.Empty -> !current_state.s_path
-  in Hashtbl.find !current_state.s_loaded mp
+  in PathMap.find mp !(!current_state.s_loaded)
 
 (** [current_theorem()] returns the current theorem if we are in a
     proof. It fails otherwise. *)
@@ -103,7 +103,7 @@ let link : t -> unit = fun sign ->
   and link_symb s =
     if s.sym_path = sign.path then s else
     try
-      let sign = Hashtbl.find !current_state.s_loaded s.sym_path in
+      let sign = PathMap.find s.sym_path !(!current_state.s_loaded) in
       try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
@@ -114,7 +114,7 @@ let link : t -> unit = fun sign ->
   StrMap.iter fn !(sign.symbols);
   let gn path ls =
     let sign =
-      try Hashtbl.find !current_state.s_loaded path
+      try PathMap.find path !(!current_state.s_loaded)
       with Not_found -> assert false in
     let h (n, r) =
       let r = link_rule r in
