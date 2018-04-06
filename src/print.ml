@@ -8,8 +8,9 @@ open Sign
     name is qualified when the symbol is not defined in the current module. *)
 let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
   let (path, name) = (s.sym_path, s.sym_name) in
+  let sign = current_sign() in
   let full =
-    if path = Stack.top !current_state.s_loading then name
+    if path = sign.path then name
     else String.concat "." (path @ [name])
   in
   output_string oc full

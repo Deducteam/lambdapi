@@ -43,7 +43,7 @@ type state =
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-  ; s_loading : module_path Stack.t
+  ; s_loading : module_path list ref
 
   (** Top-level module path. *)
   ; s_path : module_path
@@ -54,7 +54,7 @@ type state =
 (** Create a new state. *)
 let new_state (mp:module_path) : state =
   { s_loaded = ref PathMap.empty
-  ; s_loading = Stack.create ()
+  ; s_loading = ref []
   ; s_path = mp
   ; s_theorem = None }
 
@@ -64,8 +64,9 @@ let current_state : state ref = ref (new_state [])
 (** [current_sign()] returns the current signature. *)
 let current_sign() =
   let mp =
-    try Stack.top !current_state.s_loading
-    with Stack.Empty -> !current_state.s_path
+    match !(!current_state.s_loading) with
+    | mp :: _ -> mp
+    | [] -> !current_state.s_path
   in PathMap.find mp !(!current_state.s_loaded)
 
 (** [current_theorem()] returns the current theorem if we are in a

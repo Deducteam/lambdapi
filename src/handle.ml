@@ -220,24 +220,24 @@ and compile : bool -> Files.module_path -> unit =
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if Stack.mem path !current_state.s_loading then
+  if List.mem path !(!current_state.s_loading) then
     begin
       err "Circular dependencies detected for %a...\n" Files.pp_path path;
       err "Dependency stack:\n";
-      Stack.iter (err "  - %a\n" Files.pp_path) !current_state.s_loading;
+      List.iter (err "  - %a\n" Files.pp_path) !(!current_state.s_loading);
       fatal "Build aborted\n"
     end;
   if force || Files.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
-      Stack.push path !current_state.s_loading;
+      !current_state.s_loading := path :: !(!current_state.s_loading);
       let sign = Sign.create path in
       !current_state.s_loaded
         := PathMap.add path sign !(!current_state.s_loaded);
       handle_cmds (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
-      ignore (Stack.pop !current_state.s_loading);
+      !current_state.s_loading := List.tl !(!current_state.s_loading);
       out 1 "Checked [%s]\n%!" src;
     end
   else
