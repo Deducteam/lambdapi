@@ -8,7 +8,7 @@ all: bin doc
 #### Compilation #############################################################
 
 .PHONY: bin
-bin: lambdapi.native doc
+bin: lambdapi.native
 
 lambdapi.native: _build/src/lambdapi.native
 
