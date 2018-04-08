@@ -37,6 +37,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Meta(m,e), _    ) -> pformat "?%i[%a]" m.meta_key
                                 (Array.pp (pp `Appl) ",") e
     | (ITag(i)  , _    ) -> pformat "[%i]" i
+    | (Wild     , _    ) -> pstring "_"
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(t,u), `Appl)
     | (Appl(t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
