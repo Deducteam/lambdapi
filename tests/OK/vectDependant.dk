@@ -29,8 +29,11 @@ def S_bis : Nat -> Nat.
 cns_bis : n:Nat -> Vec n -> Vec (S_bis n).
 
 def id_bis : n:Nat -> Vec (S_bis n) -> Vec (S_bis n).
+[n,l] id_bis n (cns_bis n l) --> cns_bis n l.
+(;
 [n,l] id_bis _ (cns_bis n l) --> cns_bis n l.
 [m,n,l] id_bis m (cns_bis n l) --> cns_bis n l.
+;)
 
 (; Does not work anymore... (ill-typed rule since S_bis is definable). ;)
 (;

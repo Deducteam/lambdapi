@@ -46,7 +46,7 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
             in
             build_sub acc cs
         | (Symb(Def(sa)), Symb(Def(sb))) when sa == sb ->
-            wrn "%s may not be injective...\n%!" sa.def_name;
+            (*wrn "%s may not be injective...\n%!" sa.def_name;*)
             build_sub acc cs
         | (Vari(x)      , _            ) when argsa = [] ->
             build_sub ((x,b)::acc) cs

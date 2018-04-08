@@ -4,7 +4,6 @@ open Console
 open Terms
 open Print
 open Eval
-open Unif
 
 (** [to_prod r e xo] instantiates the metavariable [r] (with [e] as an
     environment) using a product type formed with fresh metavariables.
@@ -22,7 +21,7 @@ let to_prod r e xo =
   in
   let x = match xo with Some(x) -> x | None -> "_" in
   let p = Bindlib.unbox (_Prod a x fn) in
-  if not (instantiate r e p) then assert false (* cannot fail *)
+  if not (Unif.instantiate r e p) then assert false (* cannot fail *)
 
 (** [infer sign ctx t] tries to infer a type for the term [t] in context [ctx]
     and with the signature [sign]. If the function is not able to infer a type
@@ -42,14 +41,14 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
     match unfold t with
     (* Sort *)
     | Type      ->
-        unify c Kind
+        Unif.unify c Kind
     (* Variable *)
     | Vari(x)   ->
         let cx = try find_tvar x ctx with Not_found -> assert false in
-        unify_modulo cx c
+        Unif.unify_modulo cx c
     (* Symbol *)
     | Symb(s)   ->
-        unify_modulo (symbol_type s) c
+        Unif.unify_modulo (symbol_type s) c
     (* Product *)
     | Prod(a,b) ->
         begin
@@ -75,7 +74,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
           | Prod(c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
               let ctx_x = add_tvar x a ctx in
-              unify_modulo a c &&
+              Unif.unify_modulo a c &&
               has_type sign ctx_x tx bx &&
               has_type sign ctx a Type &&
               begin
@@ -103,7 +102,7 @@ and has_type : Sign.t -> ctxt -> term -> term -> bool = fun sign ctx t c ->
                 end;
                 match unfold a with
                 | Prod(a,b) ->
-                    unify_modulo (Bindlib.subst b u) c
+                    Unif.unify_modulo (Bindlib.subst b u) c
                     && has_type sign ctx u a
                 | a         ->
                     err "Product expected for [%a], found [%a]...\n%!"
