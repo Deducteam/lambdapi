@@ -143,8 +143,8 @@ let unify_modulo : term -> term -> bool = fun a b ->
     | (_            , Wild         )
     | (ITag(_)      , _            )
     | (_            , ITag(_)      )
-    | (Type         , Type         ) -> assert (args = []); unify_list l
-    | (Kind         , Kind         ) -> assert (args = []); unify_list l
+    | (Type         , Type         ) -> assert (args = []); unify_modulo l
+    | (Kind         , Kind         ) -> assert (args = []); unify_modulo l
     | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
         assert (args = []);
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
