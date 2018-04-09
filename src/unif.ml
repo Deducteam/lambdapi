@@ -38,12 +38,14 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
 
+let c = ref 0
+
 (** [unify_list l] tests equality between all the pairs of terms of [l], while
     possibly instantiating metavariables. *)
 let rec unify_list : (term * term) list -> bool = fun l ->
   match l with
   | []                   -> true
-  | (a,b)::l when a == b -> unify_list l
+  | (a,b)::l when a == b -> incr c; if !c mod 1000 = 0 then wrn "HERE %i\n" !c; unify_list l
   | (a,b)::l             ->
       match (unfold a, unfold b) with
       | (Wild         , _            ) -> assert false
@@ -127,7 +129,6 @@ let unify_modulo : term -> term -> bool = fun a b ->
       | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,args)
       | (Meta(m,e)  , b          ) when instantiate m e b -> get_args args a b
       | (a          , Meta(m,e)  ) when instantiate m e a -> get_args args a b
-      | (_          , Meta(_,_)  ) -> assert false
       | (_          , _          ) -> (a,b,args)
     in
     let unif =
