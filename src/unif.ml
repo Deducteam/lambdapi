@@ -132,10 +132,9 @@ let unify_modulo : term -> term -> bool = fun a b ->
     let unif =
       match !constraints with
       | None -> (fun a b -> unify_modulo [(a,b)])
-      | _    -> unify
+      | _    -> eq
     in
     let (a,b,args) = get_args [] a b in
-    let args = List.rev args in
     match (unfold a, unfold b) with
     | (Wild         , _            )
     | (_            , Wild         )
