@@ -33,7 +33,6 @@ install:
   - make install_vim
 script:
   - make tests
-  - echo "OK"
 os:
   - linux
 notifications:
