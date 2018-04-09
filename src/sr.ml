@@ -53,7 +53,7 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         | (_            , Vari(x)      ) when argsb = [] ->
             build_sub ((x,a)::acc) cs
         | (a            , b            ) ->
-            wrn "Cannot use constraint [%a ~ %a]...\n" pp a pp b;
+            wrn "Ignored constraint [%a ~ %a]...\n" pp a pp b;
             build_sub acc cs
   in
   let (xs, ts) = List.split (build_sub [] cs) in
