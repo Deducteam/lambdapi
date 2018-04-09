@@ -41,8 +41,11 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         let (hb,argsb) = get_args b in
         match (unfold ha, unfold hb) with
         | (Symb(Sym(sa)), Symb(Sym(sb))) when sa == sb ->
-            let cs = try List.combine argsa argsb @ cs with _ -> cs in
-            build_sub acc cs
+            let args =
+              try List.combine argsa argsb @ cs with _ ->
+              fatal "Unsatisfiable constraint [%a ~ %a]...\n" pp a pp b
+            in
+            build_sub acc (args @ cs)
         | (Symb(Def(sa)), Symb(Def(sb))) when sa == sb ->
             build_sub acc cs
         | (Vari(x)      , _            ) when argsa = [] ->
@@ -50,7 +53,7 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         | (_            , Vari(x)      ) when argsb = [] ->
             build_sub ((x,a)::acc) cs
         | (a            , b            ) ->
-            wrn "Not implemented [%a] [%a]...\n%!" pp a pp b;
+            wrn "Cannot use constraint [%a ~ %a]...\n" pp a pp b;
             build_sub acc cs
   in
   let sub = build_sub [] cs in
