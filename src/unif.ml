@@ -38,6 +38,8 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
 
+(** [unify_list l] tests equality between all the pairs of terms of [l], while
+    possibly instantiating metavariables. *)
 let rec unify_list : (term * term) list -> bool = fun l ->
   match l with
   | []                   -> true
@@ -60,8 +62,7 @@ let rec unify_list : (term * term) list -> bool = fun l ->
       | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
           let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
           unify_list ((a1,a2)::(t1,t2)::l)
-      | (Appl(t1,u1)  , Appl(t2,u2)  ) ->
-          unify_list ((t1,t2)::(u1,u2)::l)
+      | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify_list ((t1,t2)::(u1,u2)::l)
       | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 ->
           let l = ref l in
           Array.iter2 (fun a b -> l := (a,b)::!l) e1 e2;
@@ -70,7 +71,6 @@ let rec unify_list : (term * term) list -> bool = fun l ->
       | (a            , Meta(u,e)    ) -> instantiate u e a && unify_list l
       | (_            , _            ) -> false
 
-    
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly
     instantiating metavariables. *)
 let unify : term -> term -> bool = fun a b ->
