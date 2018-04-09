@@ -56,8 +56,8 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
             wrn "Cannot use constraint [%a ~ %a]...\n" pp a pp b;
             build_sub acc cs
   in
-  let sub = build_sub [] cs in
-  (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
+  let (xs, ts) = List.split (build_sub [] cs) in
+  (Array.of_list xs, Array.of_list ts)
 
 (** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
     modulo rewriting and a list of (valid) constraints [cs]. *)
