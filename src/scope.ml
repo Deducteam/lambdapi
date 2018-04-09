@@ -13,9 +13,6 @@ open Sr
     of its domain). *)
 let wrn_no_type : bool ref = ref false
 
-(** Representation of an environment for variables. *)
-type env = (string * (tvar * tbox)) list
-
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
@@ -29,11 +26,15 @@ let add_env : string -> tvar -> tbox -> env -> env =
 let find_ident : env -> qident -> tbox = fun env qid ->
   let (mp, s) = qid.elt in
   if mp = [] then
-    (* No module path, search the environment first. *)
-    try Bindlib.box_of_var (fst (List.assoc s env)) with Not_found ->
-      try let sign = Sign.current_sign() in
-          _Symb (Sign.find sign s) with Not_found ->
-    fatal "Unbound variable or symbol %S...\n%!" s
+    (* No module path, search the local environment first. *)
+    try _Vari (fst (List.assoc s env))
+    with Not_found ->
+      (* Then, search in hypotheses. *)
+      try _Vari (fst (List.assoc s (Sign.focus_goal_hyps())))
+      with Not_found ->
+        (* Then, search in the global environment. *)
+        try _Symb (Sign.find (Sign.current_sign()) s)
+        with Not_found -> fatal "Unbound variable or symbol %S...\n%!" s
   else
     let sign = Sign.current_sign() in
     if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then

@@ -374,10 +374,13 @@ let prod_ctxt (c:ctxt) (t:term) : term =
 (******************************************************************************)
 (* Representation of goals and proofs. *)
 
+(** Representation of an environment for variables. *)
+type env = (string * (tvar * tbox)) list
+
 (** Representation of a goal. *)
 type goal =
   { g_meta : meta
-  ; g_hyps : (string * term) list
+  ; g_hyps : env
   ; g_type : term }
 
 (** Representation of a theorem. *)

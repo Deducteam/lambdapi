@@ -77,6 +77,13 @@ let current_theorem() : theorem =
   | None -> fatal "not in a proof"
   | Some thm -> thm
 
+(** [focus_goal_hyps()] returns the hypotheses of the currently
+    focused goal if we are in a proof, or the empty list otherwise. *)
+let focus_goal_hyps() : env =
+  match !current_state.s_theorem with
+  | None -> []
+  | Some thm -> thm.t_focus.g_hyps
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =

@@ -151,18 +151,17 @@ let handle_refine (t:term) : unit =
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
   if occurs m t then fatal "invalid refinement\n";
-  (* Binding of hypotheses in [t]. *)
-  let box (s,a) = (Bindlib.new_var mkfree s,lift a) in
-  let env = List.map box g.g_hyps in
-  let bt = lift t in
   (* Check that [t] has the correct type. *)
-  let abst u (x,a) =
-    Bindlib.box_apply2 (fun a f -> Abst(a,f)) a (Bindlib.bind_var x u) in
-  let u = Bindlib.unbox (List.fold_left abst bt env) in
+  let bt = lift t in
+  let abst u (_,(x,a)) =
+    Bindlib.box_apply2 (fun a f -> Abst(a,f))
+      a
+      (Bindlib.bind_var x u) in
+  let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Infer2.has_type empty_ctxt u m.meta_type) then
     fatal "invalid refinement\n";
   (* Instantiation. *)
-  let vs = Array.of_list (List.map fst env) in
+  let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
 
 (** [handle_intro s] applies the [intro] tactic. *)
