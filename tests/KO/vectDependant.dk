@@ -35,7 +35,6 @@ def id_bis : n:Nat -> Vec (S_bis n) -> Vec (S_bis n).
 def tail_bis : n:Nat -> Vec (S_bis n) -> Vec n.
 [n, l] tail_bis n (cns_bis _ l) --> l.
 
-(;
 def left  : Vec 3.
 [] left  --> cns 2 (cns 1 (cns 0 nil)).
 
@@ -45,4 +44,3 @@ def right : Vec 2.
 #EVAL left.
 #EVAL right.
 #CHECK left == right.
-;)
