@@ -37,30 +37,44 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let to_var t = match t with Vari v -> v | _ -> assert false in
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
+
+let rec unify_list : (term * term) list -> bool = fun l ->
+  match l with
+  | []                   -> true
+  | (a,b)::l when a == b -> unify_list l
+  | (a,b)::l             ->
+      match (unfold a, unfold b) with
+      | (Wild         , _            ) -> assert false
+      | (_            , Wild         ) -> assert false
+      | (ITag(_)      , _            ) -> assert false
+      | (_            , ITag(_)      ) -> assert false
+      | (Type         , Type         ) -> unify_list l
+      | (Kind         , Kind         ) -> unify_list l
+      | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2 && unify_list l
+      | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2 && unify_list l
+      | (Vari(x1)     , Vari(x2)     ) ->
+          Bindlib.eq_vars x1 x2 && unify_list l
+      | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
+          let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+          unify_list ((a1,a2)::(b1,b2)::l)
+      | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
+          let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+          unify_list ((a1,a2)::(t1,t2)::l)
+      | (Appl(t1,u1)  , Appl(t2,u2)  ) ->
+          unify_list ((t1,t2)::(u1,u2)::l)
+      | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 ->
+          let l = ref l in
+          Array.iter2 (fun a b -> l := (a,b)::!l) e1 e2;
+          unify_list !l
+      | (Meta(u,e)    , b            ) when instantiate u e b -> unify_list l
+      | (a            , Meta(u,e)    ) -> instantiate u e a && unify_list l
+      | (_            , _            ) -> false
+
     
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly
     instantiating metavariables. *)
 let unify : term -> term -> bool = fun a b ->
-  let rec unify a b = a == b ||
-    let unify_binder = Bindlib.eq_binder mkfree unify in
-    match (unfold a, unfold b) with
-    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Type         , Type         ) -> true
-    | (Kind         , Kind         ) -> true
-    | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
-    | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
-    | (Prod(a1,b1)  , Prod(a2,b2)  ) -> unify a1 a2 && unify_binder b1 b2
-    | (Abst(a1,t1)  , Abst(a2,t2)  ) -> unify a1 a2 && unify_binder t1 t2
-    | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify t1 t2 && unify u1 u2
-    | (Wild         , _            ) -> assert false
-    | (_            , Wild         ) -> assert false
-    | (ITag(_)      , _            ) -> assert false
-    | (_            , ITag(_)      ) -> assert false
-    | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 -> assert(e1 == e2); true
-    | (Meta(u,e)    , b            ) when instantiate u e b -> true
-    | (a            , Meta(u,e)    ) -> instantiate u e a
-    | (_            , _            ) -> false
-  in unify a b
+  unify_list [(a,b)]
 
 (* NOTE it might be a good idea to undo metavariable instantiations in
    the case where [unify a b] returns [false].  This can be achieved using the
@@ -98,104 +112,68 @@ let add_constraint : term -> term -> bool = fun a b ->
 
 (** [unify_modulo a b] tests equality modulo rewriting between  the
     terms [a] and [b]. *)
-(*
 let unify_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "unif" "%a == %a" pp a pp b;
   let rec unify_modulo l =
-    if l <> [] && !debug_equa then
-      begin
-        let f oc (a,b) = Printf.fprintf oc "        - %a == %a" pp a pp b in
-        log "unif" "List of equations to prove:\n%a" (List.pp f "\n") l;
-      end;
     match l with
     | []                      -> true
     | (a,b)::l when unify a b -> unify_modulo l
     | (a,b)::l                ->
-        let (a,sa) = whnf_stk a [] in
-        let (b,sb) = whnf_stk b [] in
-        let rec sync acc la lb =
-          match (la, lb) with
-          | ([]   , []   ) -> (a, b, acc)
-          | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
-          | (la   , []   ) -> (to_term a (List.rev la), b, acc)
-          | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
-        in
-        let (a,b,l') = sync [] (List.rev sa) (List.rev sb) in
-        match (a, b) with
-        | (Symb(Sym(sa)), Symb(Sym(sb))) ->
-            sa == sb && unify_modulo (l' @ l)
-        | (Abst(aa,ba)  , Abst(ab,bb)  ) ->
-            assert (l' = []);
-            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            unify_modulo ((aa,ab)::(ba,bb)::l)
-        | (Prod(aa,ba)  , Prod(ab,bb)  ) ->
-            assert (l' = []);
-            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            unify_modulo ((aa,ab)::(ba,bb)::l)
-        | (a            , b            ) ->
-            let fn (a,b) = unify a b || add_constraint a b in
-            List.for_all fn ((a,b)::l') && unify_modulo l
-  in
-  let res = unify_modulo [(a,b)] in
-  if !debug_equa then log "unif" (r_or_g res "%a == %a") pp a pp b; res
-  *)
-
-let unify_modulo : term -> term -> bool = fun a b ->
-  if !debug_equa then log "unif" "%a == %a" pp a pp b;
-  let rec unify_modulo a b = eq a b ||
     let a = whnf a in
     let b = whnf b in
-    let rec get_args l a b =
+    let rec get_args args a b =
       match (unfold a, unfold b) with
-      | (Appl(t1,u1), Appl(t2,u2)) -> get_args ((u1,u2)::l) t1 t2
-      | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,l)
-      | (Meta(m,e)  , b          ) when instantiate m e b -> get_args l a b
-      | (a          , Meta(m,e)  ) when instantiate m e a -> get_args l a b
+      | (Appl(t1,u1), Appl(t2,u2)) -> get_args ((u1,u2)::args) t1 t2
+      | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,args)
+      | (Meta(m,e)  , b          ) when instantiate m e b -> get_args args a b
+      | (a          , Meta(m,e)  ) when instantiate m e a -> get_args args a b
       | (_          , Meta(_,_)  ) -> assert false
-      | (_          , _          ) -> (a,b,l)
+      | (_          , _          ) -> (a,b,args)
     in
     let unif =
       match !constraints with
-      | None -> unify_modulo
+      | None -> (fun a b -> unify_modulo [(a,b)])
       | _    -> unify
     in
-    let (a,b,l) = get_args [] a b in
-    let l = List.rev l in
+    let (a,b,args) = get_args [] a b in
+    let args = List.rev args in
     match (unfold a, unfold b) with
-    | (Wild         , _            ) -> assert false
-    | (_            , Wild         ) -> assert false
-    | (ITag(_)      , _            ) -> assert false
-    | (_            , ITag(_)      ) -> assert false
-    | (Type         , Type         ) -> assert (l = []); true
-    | (Kind         , Kind         ) -> assert (l = []); true
+    | (Wild         , _            )
+    | (_            , Wild         )
+    | (ITag(_)      , _            )
+    | (_            , ITag(_)      )
+    | (Type         , Type         ) -> assert (args = []); unify_list l
+    | (Kind         , Kind         ) -> assert (args = []); unify_list l
     | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
-        assert (l = []);
-        unify_modulo a1 a2 &&
-        unify_modulo_binder b1 b2
+        assert (args = []);
+        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+        unify_modulo ((a1,a2)::(b1,b2)::l)
     | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
-        assert (l = []);
-        unify_modulo a1 a2 &&
-        unify_modulo_binder t1 t2
+        assert (args = []);
+        let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+        unify_modulo ((a1,a2)::(t1,t2)::l)
     | (Vari(x1)     , Vari(x2)     ) when Bindlib.eq_vars x1 x2 ->
-        List.for_all (fun (a,b) -> unif a b || add_constraint a b) l
+        List.for_all (fun (a,b) -> unif a b || add_constraint a b) args &&
+        unify_modulo l
     | (Symb(Sym(s1)), Symb(Sym(s2))) ->
-        s1 == s2 &&
-        List.for_all (fun (a,b) -> unify_modulo a b) l
-    | (Symb(Def(s1)), Symb(Def(s2))) when s1 == s2 && l = [] -> true
+        s1 == s2 && unify_modulo (args @ l)
+    | (Symb(Def(s1)), Symb(Def(s2))) when s1 == s2 && args = [] ->
+        unify_modulo l
     | (Meta(u1,e1)  , Meta(u2,e2)  ) ->
         u1 == u2 &&
         Array.for_all2 (fun a b -> unif a b || add_constraint a b) e1 e2 &&
-        List.for_all (fun (a,b) -> unif a b || add_constraint a b) l
+        List.for_all (fun (a,b) -> unif a b || add_constraint a b) args &&
+        unify_modulo l
     | (a            , b            ) ->
         match !constraints with
-        | None -> unify a b && List.for_all (fun (a,b) -> unif a b) l
+        | None ->
+            unify a b &&
+            (List.for_all (fun (a,b) -> unif a b) args) &&
+            unify_modulo l
         | _    ->
-            let a = add_args a (List.map fst l) in
-            let b = add_args b (List.map snd l) in
-            add_constraint a b
-  and unify_modulo_binder b1 b2 =
-    let (_,a1,a2) = Bindlib.unbind2 mkfree b1 b2 in
-    unify_modulo a1 a2
+            let a = add_args a (List.map fst args) in
+            let b = add_args b (List.map snd args) in
+            add_constraint a b && unify_modulo l
   in
-  let res = unify_modulo a b in
+  let res = unify_modulo [(a,b)] in
   if !debug_equa then log "unif" (r_or_g res "%a == %a") pp a pp b; res
