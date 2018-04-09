@@ -4,6 +4,7 @@ open Console
 open Terms
 open Print
 open Eval
+open Unif
 
 (** [to_prod r e xo] instantiates the metavariable [r] (with [e] as an
     environment) using a product type formed with fresh metavariables.
