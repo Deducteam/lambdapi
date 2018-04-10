@@ -223,4 +223,4 @@ let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
       try PathMap.find sym.sym_path !(sign.deps)
       with Not_found -> assert false
     in
-    sign.deps := replace sym.sym_path ((sym.sym_name, r) :: m) !(sign.deps)
+    sign.deps := PathMap.add sym.sym_path ((sym.sym_name,r) :: m) !(sign.deps)

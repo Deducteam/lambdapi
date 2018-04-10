@@ -34,12 +34,6 @@ let filter_map
     in
     PathMap.fold g map PathMap.empty
 
-(** [replace key value map] creates a map with the same bindings as
-    [map] except for [x] that is mapped to [value]. *)
-let replace key value map =
-  PathMap.add key value (PathMap.remove key map)
-(* With OCaml >= 4.06.0: “PathMap.update key (fun _ -> Some value) map” *)
-
 (** [pp oc mp] prints [mp] to channel [oc]. *)
 let pp_path (oc:out_channel) (mp:module_path) : unit =
   output_string oc (String.concat "." mp)
