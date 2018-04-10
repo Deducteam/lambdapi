@@ -37,8 +37,8 @@ let filter_map
 (** [replace key value map] creates a map with the same bindings as
     [map] except for [x] that is mapped to [value]. *)
 let replace key value map =
-  PathMap.update key (fun _ -> Some value) map
-(* With OCaml < 4.06.0: PathMap.add key value (PathMap.remove key map) *)
+  PathMap.add key value (PathMap.remove key map)
+(* With OCaml >= 4.06.0: “PathMap.update key (fun _ -> Some value) map” *)
 
 (** [pp oc mp] prints [mp] to channel [oc]. *)
 let pp_path (oc:out_channel) (mp:module_path) : unit =
