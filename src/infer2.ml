@@ -33,6 +33,7 @@ let equal_vari (t:term) (u:term) : bool =
 
 (** Constraints. *)
 type problem = ctxt * term * term
+
 let constraints : problem list ref = ref []
 
 let with_constraints : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
@@ -44,11 +45,19 @@ let with_constraints : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
     (cs, r)
   with e -> constraints := []; raise e
 
-(** [add_constr c t1 t2] extends [!constraints] with possibly new constraints
-    for [t1] to be convertible to [t2] in context [c]. We assume that,
-    for every [i], either [ti] is [Kind] or [ti] is typable. *)
-let rec add_constr (c:ctxt) (t1:term) (t2:term) : unit =
+(** [add_constraint c t1 t2] extends [!constraints] with possibly new
+    constraints for [t1] to be convertible to [t2] in context [c]. We
+    assume that, for every [i], either [ti] is [Kind] or [ti] is
+    typable. *)
+let rec add_constraint (c:ctxt) (t1:term) (t2:term) : unit =
+  add_constraints [c,t1,t2]
+
+and add_constraints (l:problem list) : unit =
+  match l with
+  | [] -> ()
+  | (c,t1,t2)::l ->
   if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
+  if not (t1 == t2) then
   match unfold t1, unfold t2 with
   | Type, Type
   | Kind, Kind -> ()
@@ -57,9 +66,8 @@ let rec add_constr (c:ctxt) (t1:term) (t2:term) : unit =
 
   | Prod(a,f), Prod(b,g)
   | Abst(a,f), Abst(b,g) ->
-     add_constr c a b;
      let _,u,v,c' = unbind_tbinder2 c a f g in
-     add_constr c' u v
+     add_constraints ((c,a,b)::(c',u,v)::l)
 
   | Symb(s1), Symb(s2) when s1 == s2 -> ()
 
@@ -73,21 +81,32 @@ let rec add_constr (c:ctxt) (t1:term) (t2:term) : unit =
      instantiate m ts t1
 
   | Meta(_,_), _
-  | _, Meta(_,_) -> raw_add_constr c t1 t2
+  | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints l
 
   | Symb(_), _
   | _, Symb(_)
   | Appl(_,_), _
   | _, Appl(_,_) ->
-     if not (Terms.eq t1 t2) then add_constr_whnf c (whnf t1) (whnf t2)
+     begin
+       if not (Terms.eq t1 t2) then add_constraint_whnf c t1 t2;
+       add_constraints l
+     end
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
-(** [add_constr_whnf c t1 t2] extends [!constraints] with possibly new
-    constraints for [t1] to be convertible to [t2] in context [c]. We
-    assume that, for every [i], either [ti] is [Kind] or [ti] is
-    typable. We also assume that [t1] and [t2] are in whnf. *)
-and add_constr_whnf (c:ctxt) (t1:term) (t2:term) : unit =
+(** [add_constraint_whnf c t1 t2] normalizes [t1] and [t2] and extends
+    [!constraints] with possibly new constraints for [t1] to be
+    convertible to [t2] in context [c]. We assume that, for every [i],
+    either [ti] is [Kind] or [ti] is typable. We also assume that [t1]
+    and [t2] are in whnf. *)
+and add_constraint_whnf (c:ctxt) (t1:term) (t2:term) : unit =
+  add_constraints_whnf [c,t1,t2]
+
+and add_constraints_whnf (l:problem list) : unit =
+  match l with
+  | [] -> ()
+  | (c,t1,t2)::l ->
+  let t1 = whnf t1 and t2 = whnf t2 in
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
   match h1, h2 with
@@ -96,18 +115,17 @@ and add_constr_whnf (c:ctxt) (t1:term) (t2:term) : unit =
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
 
   | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
-     add_constr_args c ts1 ts2
+     add_constraints_whnf_args c ts1 ts2 l
 
   | Prod(a,f), Prod(b,g)
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
   | Abst(a,f), Abst(b,g) ->
      (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
-     add_constr c a b;
      let _,u,v,c' = unbind_tbinder2 c a f g in
-     add_constr c' u v
+     add_constraints_whnf ((c,a,b)::(c',u,v)::l)
 
   | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
-     if s1 == s2 && n1 = n2 then add_constr_args c ts1 ts2
+     if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
      else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
   | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> ()
@@ -122,17 +140,21 @@ and add_constr_whnf (c:ctxt) (t1:term) (t2:term) : unit =
      instantiate m ts t1
 
   | Meta(_,_), _
-  | _, Meta(_,_) -> raw_add_constr c t1 t2
+  | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints_whnf l
 
   | Symb(_), _
   | _, Symb(_) ->
-     if not (eq_modulo t1 t2) then raw_add_constr c t1 t2
-  (*FIXME? detect whether [t1] or [t2] can be reduced after instantiation*)
+     begin
+       if not (eq_modulo t1 t2) then raw_add_constraint c t1 t2;
+       add_constraints_whnf l
+     end
+  (*FIXME? try to detect whether [t1] or [t2] can be reduced after
+    instantiation*)
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
-and raw_add_constr c t1 t2 =
-  if !debug_unif then log "raw_add_constr" "[%a] ~ [%a]" pp t1 pp t2;
+and raw_add_constraint c t1 t2 =
+  if !debug_unif then log "raw_add_constraint" "[%a] ~ [%a]" pp t1 pp t2;
   constraints := (c,t1,t2)::!constraints
 
 (** Instantiate [m[t1,..,tn]] by [v], and recompute [!constraints]. We
@@ -153,18 +175,20 @@ and instantiate (m:meta) (ts:term array) (v:term) : unit =
   Unif.set_meta m (Bindlib.unbox bv);
   recompute_constraints()
 
-(** [recompute_constraints p] iterates [add_constr] on [p]. *)
+(** [recompute_constraints p] iterates [add_constraint] on [p]. *)
 and recompute_constraints() : unit =
   let cs = !constraints in
   constraints := [];
-  List.iter (fun (c,a,b) -> add_constr c a b) cs
+  add_constraints cs
 
-(** [add_constr_args c ts1 ts2 p] extends [p] with possibly new
+(** [add_constraint_args c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
     convertible in context [c]. [ts1] and [ts2] must have the same
     length. *)
-and add_constr_args (c:ctxt) (ts1:term list) (ts2:term list) : unit =
-  List.iter2 (fun a b -> add_constr c a b) ts1 ts2
+and add_constraints_whnf_args
+    (c:ctxt) (ts1:term list) (ts2:term list) (l:problem list) : unit =
+  add_constraints_whnf
+    (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) l ts1 ts2)
 
 (** [create_meta c] creates a term [m[x1,,,xn]] where [m] is a new
     metavariable and [x1,..,xn] are the variables of [c]. *)
@@ -201,13 +225,13 @@ and check (c:ctxt) (t:term) (a:term) : unit =
   match unfold t with
   | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
 
-  | Type -> add_constr c a Kind
+  | Type -> add_constraint c a Kind
 
   | Vari(x) ->
      let typ_x = try find_tvar x c with Not_found -> assert false in
-     add_constr c a typ_x
+     add_constraint c a typ_x
 
-  | Symb(s) -> add_constr c a s.sym_type
+  | Symb(s) -> add_constraint c a s.sym_type
 
   | Prod(t,f) ->
      begin
@@ -232,7 +256,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
        match unfold a with
        | Prod(b,g) ->
           begin
-            add_constr c b t;
+            add_constraint c b t;
             let _,u,d,c' = unbind_tbinder2 c t f g in
             check c' u d
           end
@@ -249,7 +273,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
          | _ -> ()
        end;
        match unfold typ_t with
-       | Prod(b,g) -> check c u b; add_constr c a (Bindlib.subst g u)
+       | Prod(b,g) -> check c u b; add_constraint c a (Bindlib.subst g u)
        | _ -> fatal "[%a] is not a product\n" pp typ_t
      end
 
