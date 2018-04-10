@@ -38,35 +38,77 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
 
+let split_args : term -> term -> term * term * (term * term) list =
+  let rec split args a b =
+    match (unfold a, unfold b) with
+    | (Appl(t1,u1), Appl(t2,u2)) -> split ((u1,u2)::args) t1 t2
+    (*
+    | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,args)
+    | (Meta(m,e)  , b          ) when instantiate m e b -> wrn "COUCOU1\n"; split args a b
+    | (a          , Meta(m,e)  ) when instantiate m e a -> wrn "COUCOU2\n"; split args a b
+    *)
+    | (a          , b          ) -> (a,b,args)
+  in split []
+
+let eq_list : (term * term) list -> bool =
+  List.for_all (fun (a,b) -> eq a b)
+
 (** [unify_list l] tests equality between all the pairs of terms of [l], while
     possibly instantiating metavariables. *)
 let rec unify_list : (term * term) list -> bool = fun l ->
   match l with
   | []                   -> true
-  | (a,b)::l when a == b -> unify_list l
   | (a,b)::l             ->
-      match (unfold a, unfold b) with
+      let (a,b,args) = split_args a b in
+      match (a, b) with
       | (Wild         , _            ) -> assert false
       | (_            , Wild         ) -> assert false
       | (ITag(_)      , _            ) -> assert false
       | (_            , ITag(_)      ) -> assert false
-      | (Type         , Type         ) -> unify_list l
-      | (Kind         , Kind         ) -> unify_list l
-      | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2 && unify_list l
-      | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2 && unify_list l
+      | (Appl(_,_)    , Appl(_,_)    ) -> assert false
+      | (Type         , Type         ) -> assert(args = []); unify_list l
+      | (Kind         , Kind         ) -> assert(args = []); unify_list l
+      | (Symb(Sym(s1)), Symb(Sym(s2))) ->
+          s1 == s2 &&
+          unify_list (args @ l)
+      | (Symb(Def(s1)), Symb(Def(s2))) ->
+          s1 == s2 &&
+          eq_list args &&
+          unify_list l
       | (Vari(x1)     , Vari(x2)     ) ->
-          Bindlib.eq_vars x1 x2 && unify_list l
+          Bindlib.eq_vars x1 x2 &&
+          eq_list args &&
+          unify_list l
       | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
+          assert(args = []);
           let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
           unify_list ((a1,a2)::(b1,b2)::l)
       | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
+          (* FIXME may have args! *)
           let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+          eq_list args &&
           unify_list ((a1,a2)::(t1,t2)::l)
-      | (Appl(t1,u1)  , Appl(t2,u2)  ) -> unify_list ((t1,t2)::(u1,u2)::l)
       | (Meta(u1,e1)  , Meta(u2,e2)  ) when u1 == u2 ->
-          let l = ref l in
-          Array.iter2 (fun a b -> l := (a,b)::!l) e1 e2;
-          unify_list !l
+          let args = ref args in
+          Array.iter2 (fun a b -> args := (a,b)::!args) e1 e2;
+          eq_list !args &&
+          unify_list l
+      (*
+      | (Meta(m,e)    , Appl(_,_)    ) ->
+          begin
+            let (h,ts) = get_args b in
+            match h with
+            | Symb(Sym(s)) -> wrn "HERE1\n"; false
+            | _            -> wrn "THERE\n"; false
+          end
+      | (Appl(_,_)    , Meta(m,e)    ) ->
+          begin
+            let (h,ts) = get_args a in
+            match h with
+            | Symb(Sym(s)) -> wrn "HERE2\n"; false
+            | _            -> wrn "THERE\n"; false
+          end
+      *)
       | (Meta(u,e)    , b            ) when instantiate u e b -> unify_list l
       | (a            , Meta(u,e)    ) -> instantiate u e a && unify_list l
       | (_            , _            ) -> false
@@ -121,20 +163,12 @@ let unify_modulo : term -> term -> bool = fun a b ->
     | (a,b)::l                ->
     let a = whnf a in
     let b = whnf b in
-    let rec get_args args a b =
-      match (unfold a, unfold b) with
-      | (Appl(t1,u1), Appl(t2,u2)) -> get_args ((u1,u2)::args) t1 t2
-      | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,args)
-      | (Meta(m,e)  , b          ) when instantiate m e b -> get_args args a b
-      | (a          , Meta(m,e)  ) when instantiate m e a -> get_args args a b
-      | (_          , _          ) -> (a,b,args)
-    in
     let unif =
       match !constraints with
       | None -> (fun a b -> unify_modulo [(a,b)])
       | _    -> eq
     in
-    let (a,b,args) = get_args [] a b in
+    let (a,b,args) = split_args a b in
     match (unfold a, unfold b) with
     | (Wild         , _            )
     | (_            , Wild         )
