@@ -59,42 +59,43 @@ and add_constraints (l:problem list) : unit =
      if t1 == t2 then add_constraints l
      else
        begin
-  if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
-  match unfold t1, unfold t2 with
-  | Type, Type
-  | Kind, Kind -> ()
+         if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
+         match unfold t1, unfold t2 with
+         | Type, Type
+         | Kind, Kind -> ()
 
-  | Vari x, Vari y when Bindlib.eq_vars x y -> ()
+         | Vari x, Vari y when Bindlib.eq_vars x y -> ()
 
-  | Prod(a,f), Prod(b,g)
-  | Abst(a,f), Abst(b,g) ->
-     let _,u,v,c' = unbind_tbinder2 c a f g in
-     add_constraints ((c,a,b)::(c',u,v)::l)
+         | Prod(a,f), Prod(b,g)
+         | Abst(a,f), Abst(b,g) ->
+            let _,u,v,c' = unbind_tbinder2 c a f g in
+            add_constraints ((c,a,b)::(c',u,v)::l)
 
-  | Symb(s1), Symb(s2) when s1 == s2 -> ()
+         | Symb(s1), Symb(s2) when s1 == s2 -> ()
 
-  | Meta(m1,a1), Meta(m2,a2) when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
-     ()
+         | Meta(m1,a1), Meta(m2,a2)
+           when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
+            ()
 
-  | Meta(m,ts), _ when distinct_vars ts && not (occurs m t2) ->
-     instantiate m ts t2
+         | Meta(m,ts), _ when distinct_vars ts && not (occurs m t2) ->
+            instantiate m ts t2
 
-  | _, Meta(m,ts) when distinct_vars ts && not (occurs m t1) ->
-     instantiate m ts t1
+         | _, Meta(m,ts) when distinct_vars ts && not (occurs m t1) ->
+            instantiate m ts t1
 
-  | Meta(_,_), _
-  | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints l
+         | Meta(_,_), _
+         | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints l
 
-  | Symb(_), _
-  | _, Symb(_)
-  | Appl(_,_), _
-  | _, Appl(_,_) ->
-     begin
-       if not (Terms.eq t1 t2) then add_constraint_whnf c t1 t2;
-       add_constraints l
-     end
+         | Symb(_), _
+         | _, Symb(_)
+         | Appl(_,_), _
+         | _, Appl(_,_) ->
+            begin
+              if not (Terms.eq t1 t2) then add_constraint_whnf c t1 t2;
+              add_constraints l
+            end
 
-  | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+         | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
        end
 
 (** [add_constraint_whnf c t1 t2] normalizes [t1] and [t2] and extends
@@ -109,52 +110,52 @@ and add_constraints_whnf (l:problem list) : unit =
   match l with
   | [] -> ()
   | (c,t1,t2)::l ->
-  let t1 = whnf t1 and t2 = whnf t2 in
-  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
-  let n1 = List.length ts1 and n2 = List.length ts2 in
-  match h1, h2 with
-  | Type, Type
-  | Kind, Kind -> ()
+     let t1 = whnf t1 and t2 = whnf t2 in
+     let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
+     let n1 = List.length ts1 and n2 = List.length ts2 in
+     match h1, h2 with
+     | Type, Type
+     | Kind, Kind -> ()
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
 
-  | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
-     add_constraints_whnf_args c ts1 ts2 l
+     | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
+        add_constraints_whnf_args c ts1 ts2 l
 
-  | Prod(a,f), Prod(b,g)
+     | Prod(a,f), Prod(b,g)
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
-  | Abst(a,f), Abst(b,g) ->
+     | Abst(a,f), Abst(b,g) ->
      (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
-     let _,u,v,c' = unbind_tbinder2 c a f g in
-     add_constraints_whnf ((c,a,b)::(c',u,v)::l)
+        let _,u,v,c' = unbind_tbinder2 c a f g in
+        add_constraints_whnf ((c,a,b)::(c',u,v)::l)
 
-  | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
-     if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
-     else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
+     | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
+        if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
+        else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
-  | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> ()
+     | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> ()
 
-  | Meta(m1,a1), Meta(m2,a2)
-    when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> ()
+     | Meta(m1,a1), Meta(m2,a2)
+       when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> ()
 
-  | Meta(m,ts), _ when n1 = 0 && distinct_vars ts && not (occurs m t2) ->
-     instantiate m ts t2
+     | Meta(m,ts), _ when n1 = 0 && distinct_vars ts && not (occurs m t2) ->
+        instantiate m ts t2
 
-  | _, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m t1) ->
-     instantiate m ts t1
+     | _, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m t1) ->
+        instantiate m ts t1
 
-  | Meta(_,_), _
-  | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints_whnf l
+     | Meta(_,_), _
+     | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints_whnf l
 
-  | Symb(_), _
-  | _, Symb(_) ->
-     begin
-       if not (eq_modulo t1 t2) then raw_add_constraint c t1 t2;
-       add_constraints_whnf l
-     end
-  (*FIXME? try to detect whether [t1] or [t2] can be reduced after
-    instantiation*)
+     | Symb(_), _
+     | _, Symb(_) ->
+        begin
+          if not (eq_modulo t1 t2) then raw_add_constraint c t1 t2;
+          add_constraints_whnf l
+        end
+     (*FIXME? try to detect whether [t1] or [t2] can be reduced after
+       instantiation*)
 
-  | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+     | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
 and raw_add_constraint c t1 t2 =
   if !debug_unif then log "raw_add_constraint" "[%a] ~ [%a]" pp t1 pp t2;
