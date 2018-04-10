@@ -56,8 +56,10 @@ and add_constraints (l:problem list) : unit =
   match l with
   | [] -> ()
   | (c,t1,t2)::l ->
+     if t1 == t2 then add_constraints l
+     else
+       begin
   if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
-  if not (t1 == t2) then
   match unfold t1, unfold t2 with
   | Type, Type
   | Kind, Kind -> ()
@@ -93,6 +95,7 @@ and add_constraints (l:problem list) : unit =
      end
 
   | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+       end
 
 (** [add_constraint_whnf c t1 t2] normalizes [t1] and [t2] and extends
     [!constraints] with possibly new constraints for [t1] to be
