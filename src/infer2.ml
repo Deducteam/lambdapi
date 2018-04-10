@@ -62,26 +62,26 @@ and add_constraints (l:problem list) : unit =
          if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
          match unfold t1, unfold t2 with
          | Type, Type
-         | Kind, Kind -> ()
+         | Kind, Kind -> add_constraints l
 
-         | Vari x, Vari y when Bindlib.eq_vars x y -> ()
+         | Vari x, Vari y when Bindlib.eq_vars x y -> add_constraints l
 
          | Prod(a,f), Prod(b,g)
          | Abst(a,f), Abst(b,g) ->
             let _,u,v,c' = unbind_tbinder2 c a f g in
             add_constraints ((c,a,b)::(c',u,v)::l)
 
-         | Symb(s1), Symb(s2) when s1 == s2 -> ()
+         | Symb(s1), Symb(s2) when s1 == s2 -> add_constraints l
 
          | Meta(m1,a1), Meta(m2,a2)
            when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
-            ()
+            add_constraints l
 
          | Meta(m,ts), _ when distinct_vars ts && not (occurs m t2) ->
-            instantiate m ts t2
+            instantiate m ts t2; add_constraints l
 
          | _, Meta(m,ts) when distinct_vars ts && not (occurs m t1) ->
-            instantiate m ts t1
+            instantiate m ts t1; add_constraints l
 
          | Meta(_,_), _
          | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints l
@@ -111,11 +111,12 @@ and add_constraints_whnf (l:problem list) : unit =
   | [] -> ()
   | (c,t1,t2)::l ->
      let t1 = whnf t1 and t2 = whnf t2 in
+     if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
      let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
      let n1 = List.length ts1 and n2 = List.length ts2 in
      match h1, h2 with
      | Type, Type
-     | Kind, Kind -> ()
+     | Kind, Kind -> add_constraints_whnf l
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
 
      | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
@@ -132,16 +133,18 @@ and add_constraints_whnf (l:problem list) : unit =
         if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
         else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
 
-     | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 -> ()
+     | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 ->
+        add_constraints_whnf l
 
      | Meta(m1,a1), Meta(m2,a2)
-       when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> ()
+       when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 ->
+        add_constraints_whnf l
 
      | Meta(m,ts), _ when n1 = 0 && distinct_vars ts && not (occurs m t2) ->
-        instantiate m ts t2
+        instantiate m ts t2; add_constraints_whnf l
 
      | _, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m t1) ->
-        instantiate m ts t1
+        instantiate m ts t1; add_constraints_whnf l
 
      | Meta(_,_), _
      | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints_whnf l
