@@ -308,10 +308,10 @@ let rec eq_list : (term * term) list -> unit = fun l ->
   | [] -> ()
   | (a,b) :: l ->
      match unfold a, unfold b with
-     | Vari(x1)   , Vari(x2) when Bindlib.eq_vars x1 x2 -> ()
+     | Vari(x1)   , Vari(x2) when Bindlib.eq_vars x1 x2 -> eq_list l
      | Type       , Type
-     | Kind       , Kind        -> ()
-     | Symb(s1)   , Symb(s2) when s1 == s2 -> ()
+     | Kind       , Kind        -> eq_list l
+     | Symb(s1)   , Symb(s2) when s1 == s2 -> eq_list l
      | Prod(a1,b1), Prod(a2,b2)
      | Abst(a1,b1), Abst(a2,b2) ->
         let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
