@@ -143,27 +143,24 @@ and compile : bool -> string list -> unit = fun force path ->
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
   if Hashtbl.mem Sign.loaded path then out 2 "Already loaded [%s]\n%!" src
+  else if force || more_recent src obj then
+    begin
+      let forced = if force then " (forced)" else "" in
+      out 2 "Loading [%s]%s\n%!" src forced;
+      Stack.push path Sign.loading;
+      let sign = Sign.create path in
+      Hashtbl.add Sign.loaded path sign;
+      handle_cmds sign (parse_file src);
+      if !gen_obj then Sign.write sign obj;
+      ignore (Stack.pop Sign.loading);
+      out 1 "Checked [%s]\n%!" src;
+    end
   else
     begin
-      if force || more_recent src obj then
-        begin
-          let forced = if force then " (forced)" else "" in
-          out 2 "Loading [%s]%s\n%!" src forced;
-          Stack.push path Sign.loading;
-          let sign = Sign.create path in
-          Hashtbl.add Sign.loaded path sign;
-          handle_cmds sign (parse_file src);
-          if !gen_obj then Sign.write sign obj;
-          ignore (Stack.pop Sign.loading);
-          out 1 "Checked [%s]\n%!" src;
-        end
-      else
-        begin
-          out 2 "Loading [%s]\n%!" src;
-          let sign = Sign.read obj in
-          Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
-          Hashtbl.add Sign.loaded path sign;
-          Sign.link sign;
-          out 2 "Loaded  [%s]\n%!" obj;
-        end;
+      out 2 "Loading [%s]\n%!" src;
+      let sign = Sign.read obj in
+      Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
+      Hashtbl.add Sign.loaded path sign;
+      Sign.link sign;
+      out 2 "Loaded  [%s]\n%!" obj;
     end
