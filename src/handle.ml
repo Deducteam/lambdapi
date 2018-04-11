@@ -142,17 +142,24 @@ and compile : bool -> string list -> unit = fun force path ->
   let src = base ^ src_extension in
   let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
+  if List.mem path !Sign.loading then
+    begin
+      err "Circular dependencies detected in file %S.\n" src;
+      err "Dependency stack for module \"%a\":\n" Files.pp_path path;
+      List.iter (err "  - \"%a\"\n" Files.pp_path) !Sign.loading;
+      fatal "Build aborted...\n"
+    end;
   if Hashtbl.mem Sign.loaded path then out 2 "Already loaded [%s]\n%!" src
   else if force || more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
-      Stack.push path Sign.loading;
+      Sign.loading := path :: !Sign.loading;
       let sign = Sign.create path in
       Hashtbl.add Sign.loaded path sign;
       handle_cmds sign (parse_file src);
       if !gen_obj then Sign.write sign obj;
-      ignore (Stack.pop Sign.loading);
+      Sign.loading := List.tl !Sign.loading;
       out 1 "Checked [%s]\n%!" src;
     end
   else

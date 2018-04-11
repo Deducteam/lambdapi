@@ -23,10 +23,18 @@ let find : t -> string -> symbol =
   fun sign name -> Hashtbl.find sign.symbols name
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
-    being processed. They are stored in a stack due to dependencies. Note that
-    the topmost element corresponds to the current module.  If a [module_path]
-    appears twice in the stack, then there is a circular dependency. *)
-let loading : module_path Stack.t = Stack.create ()
+    currently being processed. They are stored in a stack-like manner, so that
+    we can detect circular dependencies. The topmost element is at the head of
+    the list, and it should always correspond to the current module. The other
+    elements are stored in reverse requirement order. As a consequence, we can
+    detect a circular dependency by ensuring that [loading] cannot contain the
+    same [module_path] twice. *)
+let loading : module_path list ref = ref []
+
+(** [current_module_path ()] gives the [module_path] of the current module. It
+    corresponds to the module that is currently being loaded. *)
+let current_module_path : unit -> module_path = fun () ->
+  try List.hd !loading with _ -> assert false (* Cannot fail *)
 
 (** [loaded] stores the signatures of the known (already compiled) modules. An
     important invariant is that all the occurrences of a symbol are physically
