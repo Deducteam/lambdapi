@@ -26,17 +26,17 @@ let pp_meta : out_channel -> meta -> unit = fun oc m ->
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : out_channel -> term -> unit = fun oc t ->
-  let out fmt = Printf.fprintf oc fmt in
+  let out oc fmt = Printf.fprintf oc fmt in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let pp_func = pp `Func in
     let pp_appl = pp `Appl in
     let pp_atom = pp `Atom in
     let pp_env oc ar =
-      if Array.length ar <> 0 then out "[%a]" (Array.pp pp_appl ",") ar
+      if Array.length ar <> 0 then out oc "[%a]" (Array.pp pp_appl ",") ar
     in
     let pp_term_env oc te =
       match te with
-      | TE_Vari(m) -> out "?%s" (Bindlib.name_of m)
+      | TE_Vari(m) -> out oc "?%s" (Bindlib.name_of m)
       | _          -> assert false
     in
     match (unfold t, p) with
@@ -45,22 +45,22 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Type       , _    ) -> output_string oc "Type"
     | (Kind       , _    ) -> output_string oc "Kind"
     | (Symb(s)    , _    ) -> pp_symbol oc s
-    | (Meta(m,e)  , _    ) -> out "%a%a" pp_meta m pp_env e
-    | (Patt(_,n,e), _    ) -> out "?%s%a" n pp_env e
-    | (TEnv(t,e)  , _    ) -> out "<%a>%a" pp_term_env t pp_env e
+    | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
+    | (Patt(_,n,e), _    ) -> out oc "?%s%a" n pp_env e
+    | (TEnv(t,e)  , _    ) -> out oc "<%a>%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(t,u)  , `Appl)
-    | (Appl(t,u)  , `Func) -> out "%a %a" pp_appl t pp_atom u
+    | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t)  , `Func) ->
         let (x,t) = Bindlib.unbind mkfree t in
-        out "%a:%a => %a" pp_tvar x pp_func a pp_func t
+        out oc "%a:%a => %a" pp_tvar x pp_func a pp_func t
     | (Prod(a,b)  , `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
-        if Bindlib.binder_occur b then out "%a:" pp_tvar x;
-        out "%a -> %a" pp_appl a pp_func c
+        if Bindlib.binder_occur b then out oc "%a:" pp_tvar x;
+        out oc "%a -> %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
-    | (_          , _    ) -> out "(%a)" pp_func t
+    | (_          , _    ) -> out oc "(%a)" pp_func t
   in
   pp `Func oc (Bindlib.unbox (lift t))
 

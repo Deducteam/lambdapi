@@ -1,6 +1,5 @@
 (** Term representation. *)
 
-open Console
 open Extra
 open Files
 
@@ -203,7 +202,7 @@ let rec lift : term -> tbox = fun t ->
   let lift_term_env te =
     match te with
     | TE_Vari(x) -> Bindlib.box_of_var x
-    | TE_Some(b) -> assert false
+    | TE_Some(_) -> assert false
     | TE_None    -> assert false
   in
   match unfold t with
