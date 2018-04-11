@@ -12,18 +12,14 @@ open Eval
 let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
   let rec build_sub acc cs =
     match cs with
-    | []        -> acc
+    | []          -> acc
     | (c,a,b)::cs ->
-        let (ha,argsa) = get_args a in
-        let (hb,argsb) = get_args b in
+       let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
+       let na = List.length argsa and nb = List.length argsb in
         match (unfold ha, unfold hb) with
-        | (Symb(sa), Symb(sb))
-            when sa == sb && not sa.sym_definable && not sb.sym_definable ->
-            let cs =
-              try List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) cs argsa argsb
-              with Invalid_argument _ -> cs
-            in
-            build_sub acc cs
+        | (Symb(sa), Symb(sb)) when sa == sb && na = nb && sa.sym_rules=[] ->
+           build_sub acc
+             (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) cs argsa argsb)
         | (Vari(x)      , _            ) when argsa = [] ->
             build_sub ((x,b)::acc) cs
         | (_            , Vari(x)      ) when argsb = [] ->
@@ -32,8 +28,8 @@ let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
             wrn "Not implemented [%a] [%a]...\n%!" pp a pp b;
             build_sub acc cs
   in
-  let sub = build_sub [] cs in
-  (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
+  let (vs,ts) = List.split (build_sub [] cs) in
+  (Array.of_list vs, Array.of_list ts)
 
 (** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
     modulo rewriting and a list of (valid) constraints [cs]. *)
@@ -94,10 +90,10 @@ let check_rule : rspec -> unit = fun spec ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) =
-    Infer2.with_constraints (Infer2.raw_infer empty_ctxt) lhs in
+    Infer2.constraints_of (Infer2.raw_infer empty_ctxt) lhs in
   (* Infer the type of the RHS and the constraints. *)
   let (rhs_constrs, ty_rhs) =
-    Infer2.with_constraints (Infer2.raw_infer empty_ctxt) rhs in
+    Infer2.constraints_of (Infer2.raw_check empty_ctxt) rhs in
   (* Checking the implication of constraints. *)
   let check_constraint (_,a,b) =
     if not (eq_modulo_constrs lhs_constrs a b) then
