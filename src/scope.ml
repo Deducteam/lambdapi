@@ -288,8 +288,8 @@ let scope_rule : p_rule -> rspec = fun (p_lhs, p_rhs) ->
   let nl = List.filter (fun m -> not (List.mem m mvs)) nl in
   let mvs = List.mapi (fun i m -> (m,i)) (mvs @ nl) in
   (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
-  (* NOTE: meta-variables not in [mvs] can be considerd as wildcards. *)
-  (* We scope the LHS and add index in the enviroment for meta-variables. *)
+  (* NOTE: meta-variables not in [mvs] can be considered as wildcards. *)
+  (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
   let (sym, lhs, ty_map) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs mvs p_rhs in
