@@ -7,7 +7,6 @@ open Print
 open Parser
 open Cmd
 open Pos
-open Sr
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
