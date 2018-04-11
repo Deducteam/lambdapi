@@ -1,6 +1,7 @@
 (** Signature for symbols. *)
 
 open Console
+open Extra
 open Files
 open Terms
 open Pos
@@ -8,9 +9,9 @@ open Pos
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { symbols : (string, symbol) Hashtbl.t
+  { symbols : (string, symbol) Assoc.t
   ; path    : module_path
-  ; deps    : (module_path, (string * rule) list) Hashtbl.t }
+  ; deps    : (module_path, (string * rule) list) Assoc.t }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -20,7 +21,7 @@ type t =
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> symbol =
-  fun sign name -> Hashtbl.find sign.symbols name
+  fun sign name -> Assoc.find sign.symbols name
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     currently being processed. They are stored in a stack-like manner, so that
@@ -40,11 +41,25 @@ let current_module_path : unit -> module_path = fun () ->
     important invariant is that all the occurrences of a symbol are physically
     equal (even across different signatures). In particular, this requires the
     objects to be copied when loading an object file. *)
-let loaded : (module_path, t) Hashtbl.t = Hashtbl.create 7
+let loaded : t list ref = ref []
+
+let get_loaded : module_path -> t = fun path ->
+  let rec find l =
+    match l with
+    | []   -> raise Not_found
+    | s::l -> if s.path = path then s else find l
+  in
+  find !loaded
+
+let is_loaded : module_path -> bool = fun path ->
+  try ignore (get_loaded path); true with Not_found -> false
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun path ->
-  { path ; symbols = Hashtbl.create 37 ; deps = Hashtbl.create 11 }
+  let symbols = Assoc.create () in
+  let deps = Assoc.create () in
+  let sign = { path ; symbols ; deps } in
+  loaded := sign :: !loaded; sign
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -80,10 +95,8 @@ let link : t -> unit = fun sign ->
       | Def(s) -> (s.def_name, s.def_path)
     in
     if path = sign.path then s else
-    try
-      let sign = Hashtbl.find loaded path in
-      try find sign name with Not_found -> assert false
-    with Not_found -> assert false
+    let sign = try get_loaded path with Not_found -> assert false in
+    try find sign name with Not_found -> assert false
   in
   let fn _ sym =
     match sym with
@@ -91,9 +104,9 @@ let link : t -> unit = fun sign ->
     | Def(s) -> s.def_type <- link_term s.def_type;
                 s.def_rules <- List.map link_rule s.def_rules
   in
-  Hashtbl.iter fn sign.symbols;
+  Assoc.iter fn sign.symbols;
   let gn path ls =
-    let sign = try Hashtbl.find loaded path with Not_found -> assert false in
+    let sign = try get_loaded path with Not_found -> assert false in
     let h (n, r) =
       let r = link_rule r in
       let _ =
@@ -103,9 +116,9 @@ let link : t -> unit = fun sign ->
       in
       (n, r)
     in
-    Some(List.map h ls)
+    List.map h ls
   in
-  Hashtbl.filter_map_inplace gn sign.deps
+  Assoc.map_inplace gn sign.deps
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -140,21 +153,19 @@ let unlink : t -> unit = fun sign ->
     | Sym(s) -> unlink_term s.sym_type
     | Def(s) -> unlink_term s.def_type; List.iter unlink_rule s.def_rules
   in
-  Hashtbl.iter fn sign.symbols;
-  let gn _ ls =
-    List.iter (fun (_, r) -> unlink_rule r) ls
-  in
-  Hashtbl.iter gn sign.deps
+  Assoc.iter fn sign.symbols;
+  let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
+  Assoc.iter gn sign.deps
 
 (** [new_static sign name a] creates a new, static symbol named [name] of type
     [a] the signature [sign]. The created symbol is also returned. *)
 let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
   let { elt = sym_name; pos } = s in
-  if Hashtbl.mem sign.symbols sym_name then
+  if Assoc.mem sign.symbols sym_name then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
   let sym_path = sign.path in
   let sym = { sym_name ; sym_type ; sym_path } in
-  Hashtbl.add sign.symbols sym_name (Sym(sym));
+  Assoc.add sign.symbols sym_name (Sym(sym));
   out 3 "(stat) %s\n" sym_name; sym
 
 (** [new_definable sign name a] creates a fresh definable symbol named [name],
@@ -162,11 +173,11 @@ let new_static : t -> strloc -> term -> sym = fun sign s sym_type ->
     that the created symbol is also returned. *)
 let new_definable : t -> strloc -> term -> def = fun sign s def_type ->
   let { elt = def_name; pos } = s in
-  if Hashtbl.mem sign.symbols def_name then
+  if Assoc.mem sign.symbols def_name then
     wrn "Redefinition of symbol %S at %a.\n" def_name Pos.print pos;
   let def_path = sign.path in
   let def = { def_name ; def_type ; def_rules = [] ; def_path } in
-  Hashtbl.add sign.symbols def_name (Def(def));
+  Assoc.add sign.symbols def_name (Def(def));
   out 3 "(defi) %s\n" def_name; def
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
@@ -188,7 +199,7 @@ let read : string -> t = fun fname ->
   let ic = open_in fname in
   try
     let sign = Marshal.from_channel ic in
-    close_in ic; sign
+    close_in ic; loaded := sign :: !loaded; sign
   with Failure _ ->
     close_in ic;
     fatal "File [%s] is incompatible with the current binary...\n" fname
@@ -203,8 +214,5 @@ let add_rule : t -> def -> rule -> unit = fun sign def r ->
   def.def_rules <- def.def_rules @ [r];
   out 3 "(rule) added a rule for symbol %s\n" def.def_name;
   if def.def_path <> sign.path then
-    let m =
-      try Hashtbl.find sign.deps def.def_path
-      with Not_found -> assert false
-    in
-    Hashtbl.replace sign.deps def.def_path ((def.def_name, r) :: m)
+    let fn m = (def.def_name, r) :: m in
+    try Assoc.update sign.deps def.def_path fn with Not_found -> assert false

@@ -1,6 +1,7 @@
 (** Scoping. *)
 
 open Console
+open Extra
 open Files
 open Terms
 open Print
@@ -29,7 +30,7 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
         try _Symb (Sign.find sign x) with Not_found ->
         fatal "Unbound variable or symbol %S...\n%!" x
       end
-    else if not Sign.(mp = sign.path || Hashtbl.mem sign.deps mp) then
+    else if not Sign.(mp = sign.path || Assoc.mem sign.deps mp) then
       (* Module path is not available (not loaded). *)
       begin
         let cur = String.concat "." Sign.(sign.path) in
@@ -40,7 +41,7 @@ let find_var : Sign.t -> env -> module_path -> string -> tbox =
       (* Module path loaded, look for symbol. *)
       begin
         (* Cannot fail. *)
-        let sign = try Hashtbl.find Sign.loaded mp with _ -> assert false in
+        let sign = try Sign.get_loaded mp with _ -> assert false in
         try _Symb (Sign.find sign x) with Not_found ->
         fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [x]))
       end
