@@ -32,7 +32,6 @@ let equal_vari (t:term) (u:term) : bool =
   | _, _ -> false
 
 (** Constraints. *)
-type problem = ctxt * term * term
 
 let constraints : problem list ref = ref []
 
@@ -216,8 +215,8 @@ let to_prod m ts so =
   let p = Bindlib.unbox (_Prod a s f) in
   instantiate m ts p add_constraints []
 
-(** [infer c t] returns a type for [t] in [c]. *)
-let rec infer (c:ctxt) (t:term) : term =
+(** [raw_infer c t] returns a type for [t] in [c]. *)
+let rec raw_infer (c:ctxt) (t:term) : term =
   let m_vs = create_meta c in
   check c t m_vs;
   m_vs
@@ -269,7 +268,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
 
   | Appl(t,u) ->
      begin
-       let typ_t = infer c t in
+       let typ_t = raw_infer c t in
        let typ_t = whnf typ_t in
        begin
          match typ_t with
@@ -302,7 +301,7 @@ let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type : ctxt -> term -> term = fun ctx a ->
-  let (cs, s) = with_constraints (infer ctx) a in
+  let (cs, s) = with_constraints (raw_infer ctx) a in
   if not (solve cs) then fatal "Constraints cannot be solved.\n";
   match unfold s with
   | Type
@@ -312,5 +311,5 @@ let sort_type : ctxt -> term -> term = fun ctx a ->
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be solved. *)
 let infer : ctxt -> term -> term option = fun ctx t ->
-  let (cs, a) = with_constraints (infer ctx) t in
+  let (cs, a) = with_constraints (raw_infer ctx) t in
   if not (solve cs) then None else Some(a)

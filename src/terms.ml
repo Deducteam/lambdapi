@@ -143,6 +143,9 @@ let exists_tvar (v:tvar) (c:ctxt) : bool =
   let f (x,_) = if Bindlib.eq_vars v x then raise Exit_exists_tvar in
   try List.iter f c; false with Exit_exists_tvar -> true
 
+(** Unification problem. *)
+type problem = ctxt * term * term
+
 (******************************************************************************)
 (* Boxed terms *)
 
