@@ -37,6 +37,28 @@ let equal_vari (t:term) (u:term) : bool =
 
 let constraints : problem list ref = ref []
 
+let generate_constraints : bool ref = ref true
+
+let raw_add_constraint c t1 t2 =
+  if !generate_constraints then
+    begin
+      if !debug_unif then log "raw_add_constraint" "[%a] [%a]" pp t1 pp t2;
+      constraints := (c,t1,t2)::!constraints
+    end
+  else
+    begin
+      err "[%a] is not convertible to [%a]\n" pp t1 pp t2;
+      raise Exit
+    end
+
+let without_generating_constraints : ('a -> 'b) -> 'a -> 'b = fun fn x ->
+  try
+    generate_constraints := false;
+    let res = fn x in
+    generate_constraints := true;
+    res
+  with e -> generate_constraints := true; raise e
+
 let constraints_of : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
   try
     constraints := [];
@@ -163,10 +185,6 @@ and add_constraints_whnf (l:problem list) : unit =
        instantiation*)
 
      | _, _ -> err "[%a] and [%a] are not convertible\n" pp t1 pp t2; fail()
-
-and raw_add_constraint c t1 t2 =
-  if !debug_unif then log "raw_add_constraint" "[%a] [%a]" pp t1 pp t2;
-  constraints := (c,t1,t2)::!constraints
 
 (** Instantiate [m[t1,..,tn]] by [v], and recompute [!constraints]. We
     assume that [t1,..,tn] are distinct variables and that [m] does
