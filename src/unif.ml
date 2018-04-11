@@ -50,14 +50,12 @@ let split_args : term -> term -> term * term * (term * term) list =
     | (a          , b          ) -> (a,b,args)
   in split []
 
-let eq_list : (term * term) list -> bool =
-  List.for_all (fun (a,b) -> eq a b)
-
 (** [unify_list l] tests equality between all the pairs of terms of [l], while
     possibly instantiating metavariables. *)
 let rec unify_list : (term * term) list -> bool = fun l ->
   match l with
   | []                   -> true
+  | (a,b)::l when a == b -> unify_list l
   | (a,b)::l             ->
       let (a,b,args) = split_args a b in
       match (a, b) with
