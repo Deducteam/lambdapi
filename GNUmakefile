@@ -3,7 +3,7 @@ BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
 .PHONY: all
-all: bin doc
+all: bin
 
 #### Compilation #############################################################
 
