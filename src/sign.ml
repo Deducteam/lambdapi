@@ -84,6 +84,19 @@ let focus_goal_hyps() : env =
   | None -> []
   | Some thm -> thm.t_focus.g_hyps
 
+(** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
+    name is qualified when the symbol is not defined in the current module. *)
+let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
+  let (path, name) = (s.sym_path, s.sym_name) in
+  let sign = current_sign() in
+  let full =
+    if path = sign.path then name
+    else String.concat "." (path @ [name])
+  in
+  output_string oc full
+
+let _ = Print.pp_symbol := pp_symbol
+
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
@@ -183,7 +196,7 @@ let new_symbol : t -> bool -> strloc -> term -> symbol =
             ; sym_rules = []
             ; sym_definable = definable } in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
-  out 3 "(stat) %s\n" sym_name; sym
+  out 3 "add %s\n" sym_name; sym
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -217,7 +230,7 @@ let read : string -> t = fun fname ->
     also stored in the dependencies. *)
 let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
   sym.sym_rules <- sym.sym_rules @ [r];
-  out 3 "(rule) added a rule for symbol %s\n" sym.sym_name;
+  out 3 "add %a\n" Print.pp_rule (sym, r);
   if sym.sym_path <> sign.path then
     let m =
       try PathMap.find sym.sym_path !(sign.deps)

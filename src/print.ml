@@ -2,18 +2,13 @@
 
 open Extra
 open Terms
-open Sign
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
-  let (path, name) = (s.sym_path, s.sym_name) in
-  let sign = current_sign() in
-  let full =
-    if path = sign.path then name
-    else String.concat "." (path @ [name])
-  in
-  output_string oc full
+let default_pp_symbol : symbol pp = fun oc s ->
+  output_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
+
+let pp_symbol : symbol pp ref = ref default_pp_symbol
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
@@ -44,7 +39,7 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
     | (Vari(x)    , _    ) -> pp_tvar oc x
     | (Type       , _    ) -> output_string oc "Type"
     | (Kind       , _    ) -> output_string oc "Kind"
-    | (Symb(s)    , _    ) -> pp_symbol oc s
+    | (Symb(s)    , _    ) -> !pp_symbol oc s
     | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
     | (Patt(_,n,e), _    ) -> out oc "?%s%a" n pp_env e
     | (TEnv(t,e)  , _    ) -> out oc "<%a>%a" pp_term_env t pp_env e
