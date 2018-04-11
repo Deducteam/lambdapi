@@ -78,10 +78,10 @@ and add_constraints (l:problem list) : unit =
             add_constraints l
 
          | Meta(m,ts), _ when distinct_vars ts && not (occurs m t2) ->
-            instantiate m ts t2; add_constraints l
+            instantiate m ts t2 add_constraints l
 
          | _, Meta(m,ts) when distinct_vars ts && not (occurs m t1) ->
-            instantiate m ts t1; add_constraints l
+            instantiate m ts t1 add_constraints l
 
          | Meta(_,_), _
          | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints l
@@ -141,10 +141,10 @@ and add_constraints_whnf (l:problem list) : unit =
         add_constraints_whnf l
 
      | Meta(m,ts), _ when n1 = 0 && distinct_vars ts && not (occurs m t2) ->
-        instantiate m ts t2; add_constraints_whnf l
+        instantiate m ts t2 add_constraints_whnf l
 
      | _, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m t1) ->
-        instantiate m ts t1; add_constraints_whnf l
+        instantiate m ts t1 add_constraints_whnf l
 
      | Meta(_,_), _
      | _, Meta(_,_) -> raw_add_constraint c t1 t2; add_constraints_whnf l
@@ -168,7 +168,8 @@ and raw_add_constraint c t1 t2 =
     assume that [t1,..,tn] are distinct variables and that [m] does
     not occur in [v]. Fails if [v] contains free variables distinct
     from [t1,..,tn]. *)
-and instantiate (m:meta) (ts:term array) (v:term) : unit =
+and instantiate (m:meta) (ts:term array) (v:term)
+    (add_constr : problem list -> unit) (l:problem list) : unit =
   let xs = Array.map to_var ts in
   let bv = Bindlib.bind_mvar xs (lift v) in
   (*FIXME:if Bindlib.is_closed bv then
@@ -180,13 +181,9 @@ and instantiate (m:meta) (ts:term array) (v:term) : unit =
     fatal "cannot instantiate %a[%a] by [%a]"
     pp_meta m (Array.pp pp ",") ts pp v*)
   Unif.set_meta m (Bindlib.unbox bv);
-  recompute_constraints()
-
-(** [recompute_constraints p] iterates [add_constraint] on [p]. *)
-and recompute_constraints() : unit =
   let cs = !constraints in
   constraints := [];
-  add_constraints cs
+  add_constr (l @ cs)
 
 (** [add_constraint_args c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
@@ -217,7 +214,7 @@ let to_prod m ts so =
   let f x = _Meta m2 (Array.append bts [|_Vari x|]) in
   let s = match so with Some s -> s | None -> "x" in
   let p = Bindlib.unbox (_Prod a s f) in
-  instantiate m ts p
+  instantiate m ts p add_constraints []
 
 (** [infer c t] returns a type for [t] in [c]. *)
 let rec infer (c:ctxt) (t:term) : term =
