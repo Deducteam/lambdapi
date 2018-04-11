@@ -11,6 +11,10 @@ let obj_extension : string = ".dko"
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
 
+(** [pp_path oc path] prints the module path [path] to channel [oc]. *)
+let pp_path : out_channel -> module_path -> unit = fun oc path ->
+  output_string oc (String.concat "." path)
+
 (** [module_path path] computes the [module_path] corresponding to a  relative
     file [path], which should not use [".."]. The returned list is formed with
     the subdirectories along the [path], and it is terminated by the file name

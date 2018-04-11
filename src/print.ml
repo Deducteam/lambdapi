@@ -12,11 +12,9 @@ let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
     | Sym(sym) -> (sym.sym_path, sym.sym_name)
     | Def(def) -> (def.def_path, def.def_name)
   in
-  let full =
-    if path = Stack.top Sign.loading then name
-    else String.concat "." (path @ [name])
-  in
-  output_string oc full
+  if path <> Sign.current_module_path () then
+    List.iter (Printf.fprintf oc "%s.") path;
+  output_string oc name
 
 let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
   output_string oc (Bindlib.name_of x)
