@@ -322,9 +322,9 @@ let rec eq_list : (term * term) list -> unit = fun l ->
      | TEnv(_,_)  , _
      | _          , TEnv(_,_)   -> assert false
      | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-        (*IMPROVE*)
-        let a1 = Array.to_list a1 and a2 = Array.to_list a2 in
-        eq_list (List.fold_left2 (fun l a b -> (a,b)::l) l a1 a2)
+        let l = ref l in
+        Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
+        eq_list !l
      | _          , _           -> raise Exit
 
 let eq : term -> term -> bool = fun a b ->
