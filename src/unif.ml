@@ -38,14 +38,18 @@ let instantiate : meta -> term array -> term -> bool = fun u env a ->
   let b = Bindlib.bind_mvar (Array.map to_var env) (lift a) in
   Bindlib.is_closed b && (set_meta u (Bindlib.unbox b); true)
 
+(** [split_args t1 t2] extracts the maximum possible number of arguments  from
+    [t1] and [t2]. The triple that is returned contains the remaining parts of
+    the terms (their heads) and the list of the arguments put into pairs. Note
+    that one of the returned terms must not be an application. *)
 let split_args : term -> term -> term * term * (term * term) list =
   let rec split args a b =
     match (unfold a, unfold b) with
     | (Appl(t1,u1), Appl(t2,u2)) -> split ((u1,u2)::args) t1 t2
-    (*
+    (* FIXME should we unify ?
     | (Meta(u1,e1), Meta(u2,e2)) when u1 == u2 -> (a,b,args)
-    | (Meta(m,e)  , b          ) when instantiate m e b -> wrn "COUCOU1\n"; split args a b
-    | (a          , Meta(m,e)  ) when instantiate m e a -> wrn "COUCOU2\n"; split args a b
+    | (Meta(m,e)  , b          ) when instantiate m e b -> split args a b
+    | (a          , Meta(m,e)  ) when instantiate m e a -> split args a b
     *)
     | (a          , b          ) -> (a,b,args)
   in split []
@@ -82,7 +86,7 @@ let rec unify_list : (term * term) list -> bool = fun l ->
           let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
           unify_list ((a1,a2)::(b1,b2)::l)
       | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
-          (* FIXME may have args! *)
+          (* NOTE [a] and [b] are not in WHNF, [args] can be non-empty. *)
           let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
           eq_list args &&
           unify_list ((a1,a2)::(t1,t2)::l)
@@ -91,7 +95,7 @@ let rec unify_list : (term * term) list -> bool = fun l ->
           Array.iter2 (fun a b -> args := (a,b)::!args) e1 e2;
           eq_list !args &&
           unify_list l
-      (*
+      (* FIXME if we prevent these unifications, many examples fail.
       | (Meta(m,e)    , Appl(_,_)    ) ->
           begin
             let (h,ts) = get_args b in

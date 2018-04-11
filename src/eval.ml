@@ -5,6 +5,8 @@ open Console
 open Terms
 open Print
 
+(** [eq_list l] tests the equality among the pairs of terms given in [l]. Note
+    during the comparison, metavariables are not instantiated. *)
 let rec eq_list : (term * term) list -> bool = fun l ->
   match l with
   | []                   -> true
