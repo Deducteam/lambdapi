@@ -225,7 +225,9 @@ and compile : bool -> Files.module_path -> unit =
       List.iter (err "  - %a\n" Files.pp_path) !(!current_state.s_loading);
       fatal "Build aborted\n"
     end;
-  if force || Files.more_recent src obj then
+  if PathMap.mem path !(!current_state.s_loaded) then
+    out 2 "Already loaded [%s]\n%!" src
+  else if force || Files.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
