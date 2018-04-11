@@ -9,7 +9,7 @@ let compile : string -> unit = fun fname ->
     try module_path fname with Invalid_argument _ ->
     fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
   in
-  Hashtbl.clear Sign.loaded;
+  Sign.loaded := [];
   Handle.compile true modpath
 
 (* Main program. *)

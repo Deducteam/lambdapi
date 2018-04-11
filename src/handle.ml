@@ -1,6 +1,7 @@
 (** Toplevel commands. *)
 
 open Console
+open Extra
 open Parser
 open Scope
 open Files
@@ -103,8 +104,9 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
     if necessary, so that it becomes available for further commands. *)
 let rec handle_import : Sign.t -> module_path -> unit = fun sign path ->
   let open Sign in
-  if path = sign.path then fatal "Cannot require the current module...\n%!";
-  if not (Hashtbl.mem sign.deps path) then Hashtbl.add sign.deps path [];
+  if path = sign.path then
+    fatal "Self-referential import in \"%a\"...\n" Files.pp_path path;
+  if not (Assoc.mem sign.deps path) then Assoc.add sign.deps path [];
   compile false path
 
 (** [handle_cmds sign cmds] interprets the commands of [cmds] in order, in the
@@ -149,14 +151,13 @@ and compile : bool -> string list -> unit = fun force path ->
       List.iter (err "  - \"%a\"\n" Files.pp_path) !Sign.loading;
       fatal "Build aborted...\n"
     end;
-  if Hashtbl.mem Sign.loaded path then out 2 "Already loaded [%s]\n%!" src
+  if Sign.is_loaded path then out 2 "Already loaded [%s]\n%!" src
   else if force || more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
       Sign.loading := path :: !Sign.loading;
       let sign = Sign.create path in
-      Hashtbl.add Sign.loaded path sign;
       handle_cmds sign (parse_file src);
       if !gen_obj then Sign.write sign obj;
       Sign.loading := List.tl !Sign.loading;
@@ -166,8 +167,7 @@ and compile : bool -> string list -> unit = fun force path ->
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      Hashtbl.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
-      Hashtbl.add Sign.loaded path sign;
+      Assoc.iter (fun mp _ -> compile false mp) Sign.(sign.deps);
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end

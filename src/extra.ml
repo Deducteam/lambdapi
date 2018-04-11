@@ -143,3 +143,47 @@ module Cofin =
                 List.iter (Printf.fprintf oc "∪%a" pelt) s;
                 Printf.fprintf oc ")"
   end
+
+(** Imperative association lists. *)
+module Assoc :
+  sig
+    type ('a,'b) t
+    val create : unit -> ('a,'b) t
+    val add : ('a,'b) t -> 'a -> 'b -> unit
+    val find : ('a,'b) t -> 'a -> 'b
+    val mem : ('a,'b) t -> 'a -> bool
+    val iter : ('a -> 'b -> unit) -> ('a,'b) t -> unit
+    val update : ('a,'b) t -> 'a -> ('b -> 'b) -> unit
+    val map_inplace : ('a -> 'b -> 'b) -> ('a,'b) t -> unit
+  end =
+  struct
+    type ('a,'b) t = ('a * 'b) list ref
+
+    let create : unit -> ('a,'b) t =
+      fun () -> ref []
+
+    let add : ('a,'b) t -> 'a -> 'b -> unit =
+      fun m k v -> m := (k,v) :: !m
+
+    let find : ('a,'b) t -> 'a -> 'b =
+      fun m k -> List.assoc k !m
+
+    let mem : ('a,'b) t -> 'a -> bool =
+      fun m k -> List.mem_assoc k !m
+
+    let iter : ('a -> 'b -> unit) -> ('a,'b) t -> unit =
+      fun fn m -> List.iter (fun (k,v) -> fn k v) !m
+
+    let update : ('a,'b) t -> 'a -> ('b -> 'b) -> unit =
+      fun m k f ->
+        let rec aux acc l =
+          match l with
+          | []              -> raise Not_found
+          | ((h,v) as c)::l ->
+              if k = h then acc @ (h, f v) :: l else aux (c::acc) l
+        in
+        m := aux [] !m
+
+    let map_inplace : ('a -> 'b -> 'b) -> ('a,'b) t -> unit =
+      fun fn m -> m := List.map (fun (k,v) -> (k, fn k v)) !m
+  end
