@@ -11,7 +11,7 @@ let set_meta : meta -> tmbinder -> unit = fun m v ->
   if !debug_unif then
     begin
       let (xs,v) = Bindlib.unmbind mkfree v in
-      log "unif" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
+      log "set_meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
   m.meta_value := Some(v)
 
