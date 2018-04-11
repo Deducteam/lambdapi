@@ -110,7 +110,7 @@ let handle_test : test -> unit = fun test ->
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
   | (true , true ) -> ()
-  | (true , false) -> out 3 "(chck) OK\n"
+  | (true , false) -> out 3 "(check) OK\n"
   | (false, true ) -> fatal "Assertion failed: [%a]\n" pp_test test
   | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
