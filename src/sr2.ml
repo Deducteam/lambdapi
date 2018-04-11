@@ -31,23 +31,11 @@ let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
   let (vs,ts) = List.split (build_sub [] cs) in
   (Array.of_list vs, Array.of_list ts)
 
-(** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
-    modulo rewriting and a list of (valid) constraints [cs]. *)
-let eq_modulo_constrs : problem list -> term -> term -> bool
-  = fun constrs a b ->
-  if !debug_sr then log "sr" "%a == %a (with constraints)" pp a pp b;
-  let (xs,sub) = subst_from_constrs constrs in
-  let p = Bindlib.box_pair (lift a) (lift b) in
-  let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
-  let (a,b) = Bindlib.msubst p sub in
-  if !debug_sr then log "sr" "%a == %a (after substitution)" pp a pp b;
-  eq_modulo a b
-
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : rspec -> unit = fun spec ->
   let {rspec_symbol = s; rspec_ty_map = ty_map; rspec_rule = rule} = spec in
-  if !debug_sr then log "sr" "Typing the rule [%a]" pp_rule (s, rule);
+  if !debug_sr then log "sr" "checking %a" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -91,12 +79,13 @@ let check_rule : rspec -> unit = fun spec ->
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) =
     Infer2.constraints_of (Infer2.raw_infer empty_ctxt) lhs in
-  (* Infer the type of the RHS and the constraints. *)
-  let (rhs_constrs, ty_rhs) =
-    Infer2.constraints_of (Infer2.raw_check empty_ctxt) rhs in
-  (* Checking the implication of constraints. *)
-  let check_constraint (_,a,b) =
-    if not (eq_modulo_constrs lhs_constrs a b) then
-      fatal "A constraint is not satisfied...\n"
-  in
-  List.iter check_constraint rhs_constrs
+  if !debug_sr then
+    log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_problems lhs_constrs;
+  (* Turn constraints into a substitution and apply it. *)
+  let (xs,ts) = subst_from_constrs lhs_constrs in
+  let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
+  let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
+  let (rhs,ty_lhs) = Bindlib.msubst p ts in
+  (* Check that RHS has the same type as the LHS. *)
+  ignore (Infer2.without_generating_constraints
+            (Infer2.has_type empty_ctxt rhs) ty_lhs)
