@@ -41,23 +41,23 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         let (hb,argsb) = get_args b in
         match (unfold ha, unfold hb) with
         | (Symb(Sym(sa)), Symb(Sym(sb))) when sa == sb ->
-            let cs =
-              try List.combine argsa argsb @ cs with Invalid_argument _ -> cs
+            let args =
+              try List.combine argsa argsb @ cs with _ ->
+              fatal "Unsatisfiable constraint [%a ~ %a]...\n" pp a pp b
             in
-            build_sub acc cs
+            build_sub acc (args @ cs)
         | (Symb(Def(sa)), Symb(Def(sb))) when sa == sb ->
-            wrn "%s may not be injective...\n%!" sa.def_name;
             build_sub acc cs
         | (Vari(x)      , _            ) when argsa = [] ->
             build_sub ((x,b)::acc) cs
         | (_            , Vari(x)      ) when argsb = [] ->
             build_sub ((x,a)::acc) cs
         | (a            , b            ) ->
-            wrn "Not implemented [%a] [%a]...\n%!" pp a pp b;
+            wrn "Ignored constraint [%a ~ %a]...\n" pp a pp b;
             build_sub acc cs
   in
-  let sub = build_sub [] cs in
-  (Array.of_list (List.map fst sub), Array.of_list (List.map snd sub))
+  let (xs, ts) = List.split (build_sub [] cs) in
+  (Array.of_list xs, Array.of_list ts)
 
 (** [eq_modulo_constrs cs t u] checks  whether the terms [t] and [u] are equal
     modulo rewriting and a list of (valid) constraints [cs]. *)

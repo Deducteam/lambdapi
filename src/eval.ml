@@ -5,27 +5,40 @@ open Console
 open Terms
 open Print
 
+(** [eq_list l] tests the equality among the pairs of terms given in [l]. Note
+    during the comparison, metavariables are not instantiated. *)
+let rec eq_list : (term * term) list -> bool = fun l ->
+  match l with
+  | []                   -> true
+  | (a,b)::l when a == b -> eq_list l
+  | (a,b)::l             ->
+      match (unfold a, unfold b) with
+      | (a            , b            ) when a == b -> eq_list l
+      | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2 && eq_list l
+      | (Type         , Type         ) -> eq_list l
+      | (Kind         , Kind         ) -> eq_list l
+      | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2 && eq_list l
+      | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2 && eq_list l
+      | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
+          let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+          eq_list ((a1,a2)::(b1,b2)::l)
+      | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
+          let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+          eq_list ((a1,a2)::(t1,t2)::l)
+      | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq_list ((t1,t2)::(u1,u2)::l)
+      | (Wild         , _            ) -> assert false
+      | (_            , Wild         ) -> assert false
+      | (ITag(_)      , _            ) -> assert false
+      | (_            , ITag(_)      ) -> assert false
+      | (Meta(m1,ar1)  , Meta(m2,ar2)) ->
+          m1 == m2 &&
+          let l = ref l in Array.iter2 (fun a b -> l := (a,b) :: !l) ar1 ar2;
+          eq_list !l
+      | (_            , _            ) -> false
+
 (** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
     the comparison, metavariables are not instantiated. *)
-let eq : term -> term -> bool = fun a b ->
-  let rec eq a b = a == b ||
-    let eq_binder = Bindlib.eq_binder mkfree eq in
-    match (unfold a, unfold b) with
-    | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Type         , Type         ) -> true
-    | (Kind         , Kind         ) -> true
-    | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2
-    | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2
-    | (Prod(a1,b1)  , Prod(a2,b2)  ) -> eq a1 a2 && eq_binder b1 b2
-    | (Abst(a1,t1)  , Abst(a2,t2)  ) -> eq a1 a2 && eq_binder t1 t2
-    | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq t1 t2 && eq u1 u2
-    | (Wild         , _            ) -> assert false
-    | (_            , Wild         ) -> assert false
-    | (ITag(_)      , _            ) -> assert false
-    | (_            , ITag(_)      ) -> assert false
-    | (Meta(m1,ar1)  , Meta(m2,ar2)) -> m1 == m2 && Array.for_all2 eq ar1 ar2
-    | (_            , _            ) -> false
-  in eq a b
+let eq : term -> term -> bool = fun a b -> a == b || eq_list [(a,b)]
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = term ref list
