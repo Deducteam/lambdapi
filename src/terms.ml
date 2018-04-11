@@ -137,10 +137,9 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
 (** [exists_tvar x ctx] says if [x] is in the context [ctx]. *)
-exception Exit_exists_tvar
 let exists_tvar (v:tvar) (c:ctxt) : bool =
-  let f (x,_) = if Bindlib.eq_vars v x then raise Exit_exists_tvar in
-  try List.iter f c; false with Exit_exists_tvar -> true
+  let f (x,_) = if Bindlib.eq_vars v x then raise Exit in
+  try List.iter f c; false with Exit -> true
 
 (** Unification problem. *)
 type problem = ctxt * term * term
@@ -321,17 +320,16 @@ let rec eq : term -> term -> bool = fun a b ->
   | _          , _           -> false
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
-exception Exit_distinct_vars
 let distinct_vars (a:term array) : bool =
   let acc = ref [] in
   let fn t =
     match t with
     | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit_distinct_vars
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
        else acc := v::!acc
-    | _ -> raise Exit_distinct_vars
+    | _ -> raise Exit
   in
-  let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
+  let res = try Array.iter fn a; true with Exit -> false in
   acc := []; res
 
 (** [to_var t] returns [x] if [t = Vari x] and fails otherwise. *)
@@ -352,7 +350,6 @@ let to_var (t:term) : tvar = match t with Vari x -> x | _ -> assert false
   | TEnv(_,_)   -> assert false*)
 
 (** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
-exception Exit_occurs
 let occurs (m:meta) (t:term) : bool =
   let rec occurs (t:term) : unit =
     match unfold t with
@@ -366,9 +363,9 @@ let occurs (m:meta) (t:term) : bool =
        end
     | Appl(a,b) -> occurs a; occurs b
     | Meta(m',ts) ->
-       if m==m' then raise Exit_occurs else Array.iter occurs ts
+       if m==m' then raise Exit else Array.iter occurs ts
   in
-  try occurs t; false with Exit_occurs -> true
+  try occurs t; false with Exit -> true
 
 (** [prod x t u] creates the dependent product of [t] and [u] by
     binding [x] in [u]. *)
