@@ -138,10 +138,10 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res*)
 
 and eq_modulo : term -> term -> bool = fun a b ->
-  if !debug_equa then log "equa" "%a == %a" pp a pp b;
+  if !debug_equa then log "eq_modulo" "[%a] [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
-    | []                   -> true
+    | []                   -> ()
     | (a,b)::l             ->
        match whnf a, whnf b with
        | Patt(_,_,_), _
@@ -150,22 +150,21 @@ and eq_modulo : term -> term -> bool = fun a b ->
        | _, TEnv(_,_) -> assert false
        | Type, Type
        | Kind, Kind -> eq_modulo l
-       | Vari(x1), Vari(x2) -> Bindlib.eq_vars x1 x2 && eq_modulo l
-       | Symb(s1), Symb(s2) -> s1 == s2 && eq_modulo l
+       | Vari(x1), Vari(x2) when Bindlib.eq_vars x1 x2 -> eq_modulo l
+       | Symb(s1), Symb(s2) when s1 == s2 -> eq_modulo l
        | Prod(a1,b1), Prod(a2,b2)
        | Abst(a1,b1), Abst(a2,b2) ->
           let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
           eq_modulo ((a1,a2)::(b1,b2)::l)
        | Appl(t1,u1), Appl(t2,u2) ->
           eq_modulo ((u1,u2)::(t1,t2)::l)
-       | Meta(m1,a1), Meta(m2,a2) ->
-          m1 == m2
-          && let l = ref l in
-             Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
-             eq_modulo !l
-       | _, _ -> false
+       | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+          let l = ref l in
+          Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
+          eq_modulo !l
+       | _, _ -> raise Exit
   in
-  let res = eq_modulo [(a,b)] in
+  let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
 
 (** [snf t] computes the strong normal form of the term [t]. *)
