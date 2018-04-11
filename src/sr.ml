@@ -67,12 +67,6 @@ let eq_modulo_constrs : constrs -> term -> term -> bool = fun constrs a b ->
   if !debug_sr then log "sr" "%a == %a (after substitution)" pp a pp b;
   eq_modulo a b
 
-(** Representation of a rule specification, used for checking SR. *)
-type rspec =
-  { rspec_symbol : symbol               (** Head symbol of the rule.    *)
-  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
-  ; rspec_rule   : rule                 (** The rule itself.            *) }
-
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : rspec -> unit = fun spec ->

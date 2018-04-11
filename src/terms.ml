@@ -94,6 +94,12 @@ type term =
    second argument of the [Meta] constructor,  which can be used to substitute
    the binder whenever the metavariable has been instanciated. *)
 
+(** Representation of a rule specification, used for checking SR. *)
+type rspec =
+  { rspec_symbol : symbol               (** Head symbol of the rule.    *)
+  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
+  ; rspec_rule   : rule                 (** The rule itself.            *) }
+
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
 

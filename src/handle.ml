@@ -72,7 +72,7 @@ let handle_defin : strloc -> term option -> term -> unit =
 (** [handle_rules rs] checks that the rules of [rs] are well-typed, while
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
-let handle_rules : Sr.rspec list -> unit = fun rs ->
+let handle_rules : rspec list -> unit = fun rs ->
   let open Sr in
   List.iter check_rule rs;
   let sign = current_sign() in
