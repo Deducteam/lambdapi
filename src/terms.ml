@@ -303,21 +303,32 @@ let add_args : term -> term list -> term = fun t args ->
 
 (** [eq t u] tests the equality of the two terms [t] and [u] (modulo
     alpha-equivalence). *)
-let rec eq : term -> term -> bool = fun a b ->
-  match unfold a, unfold b with
-  | Vari(x1)   , Vari(x2)    -> Bindlib.eq_vars x1 x2
-  | Type       , Type
-  | Kind       , Kind        -> true
-  | Symb(s1)   , Symb(s2)    -> s1 == s2
-  | Prod(a1,b1), Prod(a2,b2)
-  | Abst(a1,b1), Abst(a2,b2) -> eq a1 a2 && Bindlib.eq_binder mkfree eq b1 b2
-  | Appl(t1,u1), Appl(t2,u2) -> eq t1 t2 && eq u1 u2
-  | Patt(_,_,_), _
-  | _          , Patt(_,_,_)
-  | TEnv(_,_)  , _
-  | _          , TEnv(_,_)   -> assert false
-  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq a1 a2
-  | _          , _           -> false
+let rec eq_list : (term * term) list -> unit = fun l ->
+  match l with
+  | [] -> ()
+  | (a,b) :: l ->
+     match unfold a, unfold b with
+     | Vari(x1)   , Vari(x2) when Bindlib.eq_vars x1 x2 -> ()
+     | Type       , Type
+     | Kind       , Kind        -> ()
+     | Symb(s1)   , Symb(s2) when s1 == s2 -> ()
+     | Prod(a1,b1), Prod(a2,b2)
+     | Abst(a1,b1), Abst(a2,b2) ->
+        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+        eq_list ((a1,a2)::(b1,b2)::l)
+     | Appl(t1,u1), Appl(t2,u2) -> eq_list ((t1,t2)::(u1,u2)::l)
+     | Patt(_,_,_), _
+     | _          , Patt(_,_,_)
+     | TEnv(_,_)  , _
+     | _          , TEnv(_,_)   -> assert false
+     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+        (*IMPROVE*)
+        let a1 = Array.to_list a1 and a2 = Array.to_list a2 in
+        eq_list (List.fold_left2 (fun l a b -> (a,b)::l) l a1 a2)
+     | _          , _           -> raise Exit
+
+let eq : term -> term -> bool = fun a b ->
+  try eq_list [a,b]; true with Exit -> false
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
 let distinct_vars (a:term array) : bool =
