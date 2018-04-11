@@ -6,6 +6,8 @@ open Extra
 open Console
 open Eval
 
+let fail() = raise Exit
+
 (** [unbind_tbinder c t f] returns [(x,u,c')] where [(x,u)] is the
     result of unbinding [f], and [c'] the extension of [c] with [x]
     mapped to [t]. *)
@@ -94,7 +96,8 @@ and add_constraints (l:problem list) : unit =
               add_constraints l
             end
 
-         | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+         | _, _ ->
+            err "[%a] and [%a] are not convertible\n" pp t1 pp t2; fail()
        end
 
 (** [add_constraint_whnf c t1 t2] normalizes [t1] and [t2] and extends
@@ -130,7 +133,9 @@ and add_constraints_whnf (l:problem list) : unit =
 
      | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
         if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
-        else fatal "[%a] and [%a] are not convertible\n" pp h1 pp h2
+        else begin
+          err "[%a] and [%a] are not convertible\n" pp t1 pp t2; fail()
+        end
 
      | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 ->
         add_constraints_whnf l
@@ -157,7 +162,7 @@ and add_constraints_whnf (l:problem list) : unit =
      (*FIXME? try to detect whether [t1] or [t2] can be reduced after
        instantiation*)
 
-     | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+     | _, _ -> err "[%a] and [%a] are not convertible\n" pp t1 pp t2; fail()
 
 and raw_add_constraint c t1 t2 =
   if !debug_unif then log "raw_add_constraint" "[%a] ~ [%a]" pp t1 pp t2;
@@ -176,9 +181,9 @@ and instantiate (m:meta) (ts:term array) (v:term)
       Unif.set_meta m (Bindlib.unbox bv);
       recompute_constraints()
     end
-  else
-    fatal "cannot instantiate %a[%a] by [%a]"
-    pp_meta m (Array.pp pp ",") ts pp v*)
+  else begin
+    err "cannot instantiate %a[%a] by [%a]"
+      pp_meta m (Array.pp pp ",") ts pp v; fail() end*)
   Unif.set_meta m (Bindlib.unbox bv);
   let cs = !constraints in
   constraints := [];
@@ -243,7 +248,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
        check c' u a;
        match unfold a with
        | Type | Kind -> ()
-       | _ -> fatal "[%a] is not a sort\n" pp a
+       | _ -> err "[%a] is not a sort\n" pp a; fail()
      end
 
   | Abst(t,f) ->
@@ -263,7 +268,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
             let _,u,d,c' = unbind_tbinder2 c t f g in
             check c' u d
           end
-       | _ -> fatal "[%a] is not a product\n" pp a
+       | _ -> err "[%a] is not a product\n" pp a; fail()
      end
 
   | Appl(t,u) ->
@@ -277,7 +282,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
        end;
        match unfold typ_t with
        | Prod(b,g) -> check c u b; add_constraint c a (Bindlib.subst g u)
-       | _ -> fatal "[%a] is not a product\n" pp typ_t
+       | _ -> err "[%a] is not a product\n" pp typ_t; fail()
      end
 
   | Meta(m, ts) ->
@@ -302,11 +307,12 @@ let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type : ctxt -> term -> term = fun ctx a ->
   let (cs, s) = with_constraints (raw_infer ctx) a in
-  if not (solve cs) then fatal "Constraints cannot be solved.\n";
+  if not (solve cs) then
+    begin err "Constraints cannot be solved.\n"; fail() end;
   match unfold s with
   | Type
   | Kind -> s
-  | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp a pp s
+  | _    -> err "[%a] has type [%a] (not a sort)...\n" pp a pp s; fail()
 
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be solved. *)
