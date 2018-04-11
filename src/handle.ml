@@ -73,8 +73,7 @@ let handle_defin : strloc -> term option -> term -> unit =
     adding them to the corresponding symbol. The program fails gracefully when
     an error occurs. *)
 let handle_rules : rspec list -> unit = fun rs ->
-  let open Sr in
-  List.iter check_rule rs;
+  List.iter Sr2.check_rule rs;
   let sign = current_sign() in
   List.iter (fun s -> Sign.add_rule sign s.rspec_symbol s.rspec_rule) rs
 
