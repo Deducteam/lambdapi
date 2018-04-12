@@ -40,24 +40,24 @@ let rec infer : Ctxt.t -> term -> term option = fun ctx t ->
     context [ctx]. Note that inference can be performed using an [a]
     that is a metavariable. *)
 and has_type : Ctxt.t -> term -> term -> bool = fun ctx t typ ->
-  if !debug_type then log "type" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp typ;
+  if !debug_type then log "type" "%a ⊢ %a : %a%!" Ctxt.pp ctx pp t pp typ;
   let res =
     match unfold t with
     | Type        ->
         unify typ Kind
 
     | Vari(x)     ->
-        let typ_x = try find_tvar x ctx with Not_found -> assert false in
+        let typ_x = try Ctxt.find x ctx with Not_found -> assert false in
         unify_modulo typ_x typ
 
     | Symb(s)     ->
-        unify_modulo s.sym_type typ
+        unify_modulo !(s.sym_type) typ
 
     | Prod(a,b)   ->
         begin
           let (x,bx) = Bindlib.unbind mkfree b in
           let uses_x = Bindlib.binder_occur b in
-          has_type (if uses_x then add_tvar x a ctx else ctx) bx typ &&
+          has_type (if uses_x then Ctxt.add x a ctx else ctx) bx typ &&
           has_type ctx a Type &&
           match whnf typ with
           | Type -> true | Kind -> true
@@ -76,7 +76,7 @@ and has_type : Ctxt.t -> term -> term -> bool = fun ctx t typ ->
           match unfold typ with
           | Prod(c,b) ->
               let bx = Bindlib.subst b (mkfree x) in
-              let ctx_x = add_tvar x a ctx in
+              let ctx_x = Ctxt.add x a ctx in
               unify_modulo a c &&
               has_type ctx_x tx bx &&
               has_type ctx a Type &&
@@ -116,7 +116,7 @@ and has_type : Ctxt.t -> term -> term -> bool = fun ctx t typ ->
 
     | Meta(m,e)   ->
         let v = Bindlib.new_var mkfree (meta_name m) in
-        let ctx = add_tvar v m.meta_type ctx in
+        let ctx = Ctxt.add v m.meta_type ctx in
         has_type ctx (add_args (Vari(v)) (Array.to_list e)) typ
 
     | Kind
@@ -124,18 +124,18 @@ and has_type : Ctxt.t -> term -> term -> bool = fun ctx t typ ->
     | TEnv(_,_)   -> assert false
   in
   if !debug_type then
-    log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp typ;
+    log "type" (r_or_g res "%a ⊢ %a : %a") Ctxt.pp ctx pp t pp typ;
   res
 
 (** [infer ctx t] is a wrapper function for the [infer] function  defined
     earlier. It is mainly used to obtain fine-grained logs. *)
 let infer : Ctxt.t -> term -> term option = fun ctx t ->
-  if !debug then log "infr" "%a ⊢ %a" pp_ctxt ctx pp t;
+  if !debug then log "infr" "%a ⊢ %a" Ctxt.pp ctx pp t;
   let res = infer ctx t in
   if !debug then
     begin
       match res with
-      | Some(a) -> log "infr" (gre "%a ⊢ %a : %a") pp_ctxt ctx pp t pp a
+      | Some(a) -> log "infr" (gre "%a ⊢ %a : %a") Ctxt.pp ctx pp t pp a
       | None    -> err "Cannot infer the type of [%a]\n" pp t
     end;
   res
@@ -143,9 +143,9 @@ let infer : Ctxt.t -> term -> term option = fun ctx t ->
 (** [has_type ctx t a] is a wrapper function for the [has_type]  function
     defined earlier. It is mainly used to obtain fine-grained logs. *)
 let has_type : Ctxt.t -> term -> term -> bool = fun ctx t c ->
-  if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
+  if !debug then log "type" "%a ⊢ %a : %a" Ctxt.pp ctx pp t pp c;
   let res = has_type ctx t c in
-  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
+  if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") Ctxt.pp ctx pp t pp c;
   res
 
 (** [sort_type a] infers the sort of the type [a]. The result type may be

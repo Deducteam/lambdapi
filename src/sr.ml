@@ -10,7 +10,7 @@ open Typing
 (** [infer_with_constrs ctx t] is similar to [infer ctx t] but it is
     run in constraint mode (see [constraints]). In case of success a couple of
     a type and a set of constraints is returned. *)
-let infer_with_constrs : ctxt -> term -> (term * constrs) option =
+let infer_with_constrs : Ctxt.t -> term -> (term * constrs) option =
   fun ctx t ->
     match in_constrs_mode (infer ctx) t with
     | (None   , _ ) ->
@@ -40,7 +40,7 @@ let subst_from_constrs : constrs -> tvar array * term array = fun cs ->
         let (hb,argsb) = get_args b in
         match (unfold ha, unfold hb) with
         | (Symb(sa), Symb(sb))
-            when sa == sb && not sa.sym_definable && not sb.sym_definable ->
+            when sa == sb && sa.sym_const && sb.sym_const ->
             let cs =
               try List.combine argsa argsb @ cs with Invalid_argument _ -> cs
             in

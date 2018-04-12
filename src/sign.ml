@@ -197,7 +197,7 @@ let new_symbol : t -> bool -> strloc -> term -> sym =
             ; sym_type = ref sym_type
             ; sym_path = sign.path
             ; sym_rules = ref []
-            ; sym_definable = definable } in
+            ; sym_const = not definable } in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
   out 3 "[symb] %s\n" sym_name; sym
 

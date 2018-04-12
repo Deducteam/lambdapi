@@ -185,10 +185,10 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         _Patt i m e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
-  | (Symb(s), ts) ->
-     if s.sym_definable then (s, ts, !ty_map)
-     else fatal "%s is not a definable symbol...\n" s.sym_name
-  | (_           , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
+  | (Symb(s), _ ) when s.sym_const ->
+      fatal "%s is not a definable symbol...\n" s.sym_name
+  | (Symb(s), ts) -> (s, ts, !ty_map)
+  | (_      , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
    outputs. Their name is forme of a ['#'] character followed by a number. *)

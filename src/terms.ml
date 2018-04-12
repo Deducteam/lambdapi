@@ -1,6 +1,6 @@
 (** Term representation.
 
-    This module defines the main asbstract syntax tree representation of terms
+    This module defines the main abstract syntax tree representation for terms
     (including types), which relies on the {!module:Bindlib} library. A set of
     functions are also provided for basic term manipulations. *)
 
@@ -9,7 +9,7 @@ open Files
 
 (** {6 Term and rewriting rules representation} *)
 
-(** Reprerentation of a term (or type). *)
+(** Representation of a term (or type). *)
 type term =
   | Vari of term Bindlib.var
   (** Free variable. *)
@@ -52,35 +52,44 @@ type term =
     applies, the metavariables that are bound in the RHS are substituted using
     an environment that was constructed during the matching of the LHS. *)
 
-(** Representation of a (static or definable) symbol. *)
+(** Representation of a constant or function symbol. *)
  and sym =
-  { sym_name      : string        (** Name of the symbol. *)
-  ; sym_type      : term ref      (** Type of the symbol. *)
-  ; sym_path      : module_path   (** Module in which it is defined.  *)
-  ; sym_rules     : rule list ref (** Reduction rules for the symbol. *)
-  ; sym_definable : bool          (** If rules can be added. *) }
+  { sym_name  : string        (** Name of the symbol. *)
+  ; sym_type  : term ref      (** Type of the symbol. *)
+  ; sym_path  : module_path   (** Module in which it is defined.  *)
+  ; sym_rules : rule list ref (** Rewriting rules for the symbol. *)
+  ; sym_const : bool          (** Tells whether it is constant.   *) }
 
-(* NOTE the [sym_type] must be mutable so that we can have maximal sharing for
-   symbols (two identical symbols are physically equal). We only set the value
-   when loading a signature from a file, to link referenced symbols with their
-   original definition (in other signatures in memory). *)
+(** The {!recfield:sym_type} field contains a reference for a technical reason
+    related to the representation of signatures as binary files (see functions
+    {!val:Sign.link} and {!val:Sign.unlink}). This is necessary to ensure that
+    two identical symbols are always physically equal, even across signatures.
+    It should not be mutated for any other reason.
 
-(** Representation of a reduction rule. The definition of a rule is split into
-    a left-hand side [lhs] and a right-and sides [rhs]. The variables that are
-    in the context are bound on both sides of the rule. *)
+    The rewriting rules associated to a symbol are stored in the symbol itself
+    (in the {!recfield:sym_rules}). Note that a symbol should not be given any
+    reduction rule if it is marked as constant (i.e., if {!recfield:sym_const}
+    has value [true]). *)
+
+(** Representation of a rewriting rule. *)
  and rule =
-  { lhs    : term list                        (* Left-hand side.    *)
-  ; rhs    : (term_env, term) Bindlib.mbinder (* Right-hand side.   *)
-  ; arity  : int (** Minimal number of arguments to apply the rule. *) }
+  { lhs   : term list                        (** Left  hand side.  *)
+  ; rhs   : (term_env, term) Bindlib.mbinder (** Right hand side.  *)
+  ; arity : int (** Required number of arguments to be applicable. *) }
+
+(** A rewriting rule is formed of a LHS (left hand side), which is the pattern
+    that should be matched for the rule to apply, and a RHS (right hand side),
+    which gives the action to perform if the rule applies.
+
+    The LHS (or pattern) of a rewriting rule is always formed of a head symbol
+    (on which the rule is defined) applied to a list of arguments. The list of
+    arguments is given in {!recfield:lhs}, but the head symbol itself does not
+    need to be stored since the rules are always carried by symbols. *)
 
  and term_env =
   | TE_Vari of term_env Bindlib.var
   | TE_Some of (term, term) Bindlib.mbinder
   | TE_None
-
-(* NOTE the pattern for a rule (or [lhs]) is stored as a list of arguments for
-   the definable symbol on which the rule is defined. The symbol itself is not
-   given as rules are stored in symbols. *)
 
 (* NOTE to check if rule [r] applies to term [t] using our representation, one
    should first substitute the [r.lhs] binder (using [Bindlib.msubst]) with an
