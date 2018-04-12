@@ -1,33 +1,38 @@
-(** Term representation. *)
+(** Term representation.
+
+    This module defines the main asbstract syntax tree representation of terms
+    (incliding types), which relies on the {!module:Bindlib} library. A set of
+    functions are also provided for basic term manipulations. *)
 
 open Extra
 open Files
 
-(******************************************************************************)
-(* Terms *)
+(** {6 Term and rewriting rules representation} *)
 
 (** Representation of terms (and types). *)
 type term =
-  (** Free variable. *)
   | Vari of tvar
-  (** "Type" constant. *)
+  (** Free variable. *)
   | Type
-  (** "Kind" constant. *)
+  (** "Type" constant. *)
   | Kind
-  (** Symbol (static or definable). *)
+  (** "Kind" constant. *)
   | Symb of symbol
-  (** Dependent product. *)
+  (** Symbol (static or definable). *)
   | Prod of term * tbinder
-  (** Abstraction. *)
+  (** Dependent product. *)
   | Abst of term * tbinder
-  (** Application. *)
+  (** Abstraction. *)
   | Appl of term * term
-  (** Metavariable. *)
+  (** Application. *)
   | Meta of meta * term array
-  (** Pattern variable (used for pattern-matching). *)
+  (** Metavariable. *)
   | Patt of int option * string * term array
-  (** Term environment (used for pattern-matching). *)
+  (** Pattern variable (used for pattern-matching). *)
   | TEnv of term_env * term array
+  (** Term environment (used for pattern-matching). *)
+
+(** Note that in [Patt(i,s,ar)], ... *)
 
 (** Representation of a free term variable. *)
  and tvar = term Bindlib.var
