@@ -54,11 +54,11 @@ type term =
 
 (** Representation of a (static or definable) symbol. *)
  and symbol =
-  { sym_name          : string      (** Name of the symbol. *)
-  ; mutable sym_type  : term        (** Type of the symbol. *)
-  ; sym_path          : module_path (** Module in which it is defined. *)
-  ; mutable sym_rules : rule list   (** Reduction rules for the symbol. *)
-  ; sym_definable     : bool        (** If rules can be added. *) }
+  { sym_name      : string        (** Name of the symbol. *)
+  ; sym_type      : term ref      (** Type of the symbol. *)
+  ; sym_path      : module_path   (** Module in which it is defined.  *)
+  ; sym_rules     : rule list ref (** Reduction rules for the symbol. *)
+  ; sym_definable : bool          (** If rules can be added. *) }
 
 (* NOTE the [sym_type] must be mutable so that we can have maximal sharing for
    symbols (two identical symbols are physically equal). We only set the value

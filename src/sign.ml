@@ -129,8 +129,8 @@ let link : t -> unit = fun sign ->
     with Not_found -> assert false
   in
   let fn _ s =
-    s.sym_type <- link_term s.sym_type;
-    s.sym_rules <- List.map link_rule s.sym_rules;
+    s.sym_type  := link_term !(s.sym_type);
+    s.sym_rules := List.map link_rule !(s.sym_rules);
   in
   StrMap.iter fn !(sign.symbols);
   let gn path ls =
@@ -140,7 +140,7 @@ let link : t -> unit = fun sign ->
     let h (n, r) =
       let r = link_rule r in
       let s = find sign n in
-      s.sym_rules <- s.sym_rules @ [r];
+      s.sym_rules := !(s.sym_rules) @ [r];
       (n, r)
     in
     Some(List.map h ls)
@@ -153,7 +153,7 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type <- Kind; s.sym_rules <- [] in
+  let unlink_sym s = s.sym_type := Kind; s.sym_rules := [] in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
     let unlink_term_env t =
@@ -177,7 +177,10 @@ let unlink : t -> unit = fun sign ->
     let (_, rhs) = Bindlib.unmbind te_mkfree r.rhs in
     unlink_term rhs
   in
-  let fn _ s = unlink_term s.sym_type; List.iter unlink_rule s.sym_rules in
+  let fn _ s =
+    unlink_term !(s.sym_type);
+    List.iter unlink_rule !(s.sym_rules)
+  in
   StrMap.iter fn !(sign.symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.deps)
@@ -191,9 +194,9 @@ let new_symbol : t -> bool -> strloc -> term -> symbol =
   if StrMap.mem sym_name !(sign.symbols) then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
   let sym = { sym_name = sym_name
-            ; sym_type = sym_type
+            ; sym_type = ref sym_type
             ; sym_path = sign.path
-            ; sym_rules = []
+            ; sym_rules = ref []
             ; sym_definable = definable } in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
   out 3 "[symb] %s\n" sym_name; sym
@@ -229,7 +232,7 @@ let read : string -> t = fun fname ->
     the rule does not correspond to a symbol of the current signature,  it  is
     also stored in the dependencies. *)
 let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
-  sym.sym_rules <- sym.sym_rules @ [r];
+  sym.sym_rules := !(sym.sym_rules) @ [r];
   out 3 "[rule] %a\n" Print.pp_rule (sym, r);
   if sym.sym_path <> sign.path then
     let m =

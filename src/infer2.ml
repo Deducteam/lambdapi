@@ -147,7 +147,7 @@ and add_constraints_whnf (l:unif list) : unit =
         let (c',u,v) = Ctxt.unbind2 c a f g in
         add_constraints_whnf ((c,a,b)::(c',u,v)::l)
 
-     | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
+     | Symb(s1), Symb(s2) when !(s1.sym_rules) = [] && !(s2.sym_rules) = [] ->
         if s1 == s2 && n1 = n2 then add_constraints_whnf_args c ts1 ts2 l
         else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
 
@@ -249,7 +249,7 @@ and raw_check (c:Ctxt.t) (t:term) (a:term) : unit =
      let typ_x = try Ctxt.find x c with Not_found -> assert false in
      add_constraint c a typ_x
 
-  | Symb(s) -> add_constraint c a s.sym_type
+  | Symb(s) -> add_constraint c a !(s.sym_type)
 
   | Prod(t,f) ->
      begin

@@ -71,7 +71,7 @@ and find_rule : symbol -> stack -> (term * stack) option = fun s stk ->
     in
     match_args r.lhs stk
   in
-  List.map_find match_rule s.sym_rules
+  List.map_find match_rule !(s.sym_rules)
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for
     pattern variables (using the [ITag] node) are stored in [ar], at the index

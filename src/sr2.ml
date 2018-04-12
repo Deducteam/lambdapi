@@ -17,7 +17,7 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
        let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
        let na = List.length argsa and nb = List.length argsb in
         match (unfold ha, unfold hb) with
-        | (Symb(sa), Symb(sb)) when sa == sb && na = nb && sa.sym_rules=[] ->
+        | (Symb(sa), Symb(sb)) when sa == sb && na=nb && !(sa.sym_rules)=[] ->
            build_sub acc
              (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) cs argsa argsb)
         | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
