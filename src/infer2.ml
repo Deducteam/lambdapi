@@ -320,7 +320,7 @@ let solve : problem list -> bool = fun cs ->
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
-  let (cs, r) = constraints_of (raw_check ctxt t) a in
+  let (cs, _) = constraints_of (raw_check ctxt t) a in
   solve cs
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)

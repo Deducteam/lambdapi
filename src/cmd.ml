@@ -12,7 +12,7 @@ type test_type =
 type test =
   { is_assert : bool (** Should the program fail if the test fails? *)
   ; must_fail : bool (** Is this test supposed to fail? *)
-  ; contents  : test_type  (** The test itself. *) }
+  ; test_type : test_type  (** The test itself. *) }
 
 (** Representation of a toplevel command. *)
 type cmd = cmd_aux loc

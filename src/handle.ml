@@ -95,14 +95,14 @@ let handle_test : test -> unit = fun test ->
   let pp_test : out_channel -> test -> unit = fun oc test ->
     if test.must_fail then output_string oc "¬(";
     begin
-      match test.contents with
+      match test.test_type with
       | Convert(t,u) -> Printf.fprintf oc "%a == %a" pp t pp u
       | HasType(t,a) -> Printf.fprintf oc "%a :: %a" pp t pp a
     end;
     if test.must_fail then output_string oc ")"
   in
   let result =
-    match test.contents with
+    match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
     | HasType(t,a) -> ignore (sort_type empty_ctxt a);
                       try has_type empty_ctxt t a with _ -> false

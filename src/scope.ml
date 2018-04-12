@@ -3,7 +3,6 @@
 open Console
 open Files
 open Terms
-open Print
 open Parser
 open Cmd
 open Pos
@@ -210,7 +209,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
-    | P_Prod(x,None,b) -> fatal "missing type %a" Pos.print t.pos
+    | P_Prod(_,None,_) -> fatal "missing type %a" Pos.print t.pos
     | P_Prod(x,Some(a),b) ->
         let a = scope env a in
         _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
@@ -332,7 +331,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           (* FIXME need more for Miller patterns. *)
         else Pos.make t.pos (P_Vari(qid))
     | P_Type        -> t
-    | P_Prod(x,None,b) -> assert false
+    | P_Prod(_,None,_) -> assert false
     | P_Prod(x,Some(a),b) ->
         let a = build_rhs env a in
         let b = build_rhs (x.elt::env) b in
@@ -375,11 +374,11 @@ let scope_cmd_aux : p_cmd -> cmd_aux = fun cmd ->
   | P_Infer(t,c)        -> Infer(scope_term t, c)
   | P_Eval(t,c)         -> Eval(scope_term t, c)
   | P_TestType(ia,mf,t,a) ->
-      let contents = HasType(scope_term t, scope_term a) in
-      Test({is_assert = ia; must_fail = mf; contents})
+      let test_type = HasType(scope_term t, scope_term a) in
+      Test({is_assert = ia; must_fail = mf; test_type})
   | P_TestConv(ia,mf,t,u) ->
-      let contents = Convert(scope_term t, scope_term u) in
-      Test({is_assert = ia; must_fail = mf; contents})
+      let test_type = Convert(scope_term t, scope_term u) in
+      Test({is_assert = ia; must_fail = mf; test_type})
   | P_Other(c)          -> Other(c)
   | P_StartProof(s,a)   -> StartProof(s, scope_term a)
   | P_PrintFocus        -> PrintFocus

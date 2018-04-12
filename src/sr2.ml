@@ -3,7 +3,6 @@
 open Console
 open Terms
 open Print
-open Eval
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
@@ -62,9 +61,9 @@ let check_rule : rspec -> unit = fun spec ->
         end
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
-    | Prod(a,b)   -> assert false (* Cannot appear in LHS. *)
-    | Meta(r,m)   -> assert false (* Cannot appear in LHS. *)
-    | TEnv(t,m)   -> assert false (* Cannot appear in LHS. *)
+    | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m p)) rule.lhs in
   let lhs = add_args (Symb(s)) lhs in
