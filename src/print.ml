@@ -11,16 +11,16 @@ let default_pp_symbol : symbol pp = fun oc s ->
 let pp_symbol : symbol pp ref = ref default_pp_symbol
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
-let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
+let pp_tvar : tvar pp = fun oc x ->
   output_string oc (Bindlib.name_of x)
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let pp_meta : out_channel -> meta -> unit = fun oc m ->
+let pp_meta : meta pp = fun oc m ->
   if !(m.meta_value) <> None then assert false;
   output_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-let pp_term : out_channel -> term -> unit = fun oc t ->
+let pp_term : term pp = fun oc t ->
   let out oc fmt = Printf.fprintf oc fmt in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let pp_func = pp `Func in
@@ -60,10 +60,10 @@ let pp_term : out_channel -> term -> unit = fun oc t ->
   pp `Func oc (Bindlib.unbox (lift t))
 
 (** [pp] is a short synonym of [pp_term]. *)
-let pp : out_channel -> term -> unit = pp_term
+let pp : term pp = pp_term
 
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
-let pp_rule : out_channel -> symbol * rule -> unit = fun oc (sym,rule) ->
+let pp_rule : (symbol * rule) pp = fun oc (sym,rule) ->
   let lhs = add_args (Symb(sym)) rule.lhs in
   let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
   Printf.fprintf oc "%a → %a" pp lhs pp rhs

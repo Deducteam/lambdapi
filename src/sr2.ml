@@ -9,7 +9,7 @@ open Infer2
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
+let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
   let rec build_sub acc cs =
     match cs with
     | []          -> acc
@@ -78,7 +78,7 @@ let check_rule : rspec -> unit = fun spec ->
   let (lhs_constrs, ty_lhs) =
     Infer2.constraints_of (Infer2.raw_infer Ctxt.empty) lhs in
   if !debug_sr then
-    log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_problems lhs_constrs;
+    log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
