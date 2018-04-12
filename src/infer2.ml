@@ -102,12 +102,12 @@ and add_constraints (l:problem list) : unit =
            when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
             add_constraints l
 
-         | Meta(m,ts), _ when can_instantiate m
-             && distinct_vars ts && not (occurs m t2) ->
+         | Meta(m,ts), _
+           when can_instantiate m && distinct_vars ts && not (occurs m t2) ->
             instantiate m ts t2 add_constraints l
 
-         | _, Meta(m,ts) when can_instantiate m
-             && distinct_vars ts && not (occurs m t1) ->
+         | _, Meta(m,ts)
+           when can_instantiate m && distinct_vars ts && not (occurs m t1) ->
             instantiate m ts t1 add_constraints l
 
          | Meta(_,_), _
@@ -200,18 +200,19 @@ and instantiate (m:meta) (ts:term array) (v:term)
     (add_constr : problem list -> unit) (l:problem list) : unit =
   let xs = Array.map to_var ts in
   let bv = Bindlib.bind_mvar xs (lift v) in
-  (*FIXME:if Bindlib.is_closed bv then
+  if Bindlib.is_closed bv then
     begin
       Unif.set_meta m (Bindlib.unbox bv);
-      recompute_constraints()
+      let cs = !constraints in
+      constraints := [];
+      add_constr (l @ cs)
     end
-  else begin
-    err "cannot instantiate %a[%a] by [%a]"
-      pp_meta m (Array.pp pp ",") ts pp v; fail() end*)
-  Unif.set_meta m (Bindlib.unbox bv);
-  let cs = !constraints in
-  constraints := [];
-  add_constr (l @ cs)
+  else
+    begin
+      err "cannot instantiate %a[%a] by [%a]"
+        pp_meta m (Array.pp pp ",") ts pp v;
+      fail()
+    end
 
 (** [add_constraint_args c ts1 ts2 p] extends [p] with possibly new
     constraints for the terms of [ts1] and [ts2] to be pairwise
