@@ -68,6 +68,8 @@ let constraints_of : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
     (cs, r)
   with e -> constraints := []; raise e
 
+let can_instantiate (m:meta) : bool = !generate_constraints || internal m
+
 (** [add_constraint c t1 t2] extends [!constraints] with possibly new
     constraints for [t1] to be convertible to [t2] in context [c]. We
     assume that, for every [i], either [ti] is [Kind] or [ti] is
@@ -100,10 +102,12 @@ and add_constraints (l:problem list) : unit =
            when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
             add_constraints l
 
-         | Meta(m,ts), _ when distinct_vars ts && not (occurs m t2) ->
+         | Meta(m,ts), _ when can_instantiate m
+             && distinct_vars ts && not (occurs m t2) ->
             instantiate m ts t2 add_constraints l
 
-         | _, Meta(m,ts) when distinct_vars ts && not (occurs m t1) ->
+         | _, Meta(m,ts) when can_instantiate m
+             && distinct_vars ts && not (occurs m t1) ->
             instantiate m ts t1 add_constraints l
 
          | Meta(_,_), _
@@ -166,10 +170,12 @@ and add_constraints_whnf (l:problem list) : unit =
        when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 ->
         add_constraints_whnf l
 
-     | Meta(m,ts), _ when n1 = 0 && distinct_vars ts && not (occurs m t2) ->
+     | Meta(m,ts), _ when can_instantiate m
+         && n1 = 0 && distinct_vars ts && not (occurs m t2) ->
         instantiate m ts t2 add_constraints_whnf l
 
-     | _, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m t1) ->
+     | _, Meta(m,ts) when can_instantiate m
+         && n2 = 0 && distinct_vars ts && not (occurs m t1) ->
         instantiate m ts t1 add_constraints_whnf l
 
      | Meta(_,_), _
@@ -276,7 +282,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
        let a = whnf a in
        begin
          match a with
-         | Meta(m,ts) when distinct_vars ts ->
+         | Meta(m,ts) when can_instantiate m && distinct_vars ts ->
             to_prod m ts (Some(Bindlib.binder_name f))
          | _ -> ()
        end;
@@ -296,7 +302,8 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
        let typ_t = whnf typ_t in
        begin
          match typ_t with
-         | Meta(m,ts) when distinct_vars ts -> to_prod m ts None
+         | Meta(m,ts) when can_instantiate m && distinct_vars ts ->
+            to_prod m ts None
          | _ -> ()
        end;
        match unfold typ_t with
