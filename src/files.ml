@@ -1,7 +1,5 @@
 (** File utilities. *)
 
-open Console
-
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".dk"
 

@@ -69,7 +69,7 @@ let link : t -> unit = fun sign ->
       Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
     in
     match unfold t with
-    | Vari(x)   -> t
+    | Vari(_)   -> t
     | Type      -> t
     | Kind      -> t
     | Symb(s)   -> Symb(link_symb s)
@@ -111,7 +111,7 @@ let link : t -> unit = fun sign ->
       let r = link_rule r in
       let _ =
         match find sign n with
-        | Sym(s) -> assert false
+        | Sym(_) -> assert false
         | Def(s) -> s.def_rules <- s.def_rules @ [r]
       in
       (n, r)
@@ -131,7 +131,7 @@ let unlink : t -> unit = fun sign ->
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
     match unfold t with
-    | Vari(x)      -> ()
+    | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
     | Symb(Sym(s)) -> if s.sym_path <> sign.path then unlink_sym s
@@ -143,9 +143,9 @@ let unlink : t -> unit = fun sign ->
     | ITag(_)      -> assert false
     | Wild         -> ()
   and unlink_rule r =
-    let (xs, lhs) = Bindlib.unmbind mkfree r.lhs in
+    let (_, lhs) = Bindlib.unmbind mkfree r.lhs in
     List.iter unlink_term lhs;
-    let (xs, rhs) = Bindlib.unmbind mkfree r.rhs in
+    let (_, rhs) = Bindlib.unmbind mkfree r.rhs in
     unlink_term rhs
   in
   let fn _ sym =

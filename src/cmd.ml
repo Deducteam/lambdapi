@@ -12,7 +12,7 @@ type test_type =
 type test =
   { is_assert : bool (** Should the program fail if the test fails? *)
   ; must_fail : bool (** Is this test supposed to fail? *)
-  ; contents  : test_type  (** The test itself. *) }
+  ; test_type : test_type  (** The test itself. *) }
 
 (** Representation of a toplevel command. *)
 type cmd = cmd_aux loc
@@ -24,7 +24,7 @@ type cmd = cmd_aux loc
   (** Rewriting rules declaration. *)
   | Rules  of (ctxt * def * term * term * rule) list
   (** Quick definition. *)
-  | Def    of bool * strloc * term * term
+  | SymDef of bool * strloc * term * term
   (** Import an external signature. *)
   | Import of module_path
   (** Set debugging flags. *)

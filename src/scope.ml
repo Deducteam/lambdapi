@@ -173,7 +173,7 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   match cmd with
   | P_NewSym(x,a)       -> NewSym(x, to_term sign a)
   | P_NewDef(x,a)       -> NewDef(x, to_term sign a)
-  | P_Def(o,x,a,t)      ->
+  | P_SymDef(o,x,a,t)   ->
       begin
         let t = to_term sign t in
         let a =
@@ -186,7 +186,7 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
               end
           | Some(a) -> to_term sign a
         in
-        Def(o, x, a, t)
+        SymDef(o, x, a, t)
       end
   | P_Rules(rs)         -> Rules(List.map (scope_rule sign) rs)
   | P_Import(path)      -> Import(path)
@@ -197,11 +197,11 @@ let scope_cmd_aux : Sign.t -> p_cmd -> cmd_aux = fun sign cmd ->
   | P_Test_T(ia,mf,t,a) ->
       let t = to_term sign t in
       let a = to_term sign a in
-      Test({is_assert = ia; must_fail = mf; contents = HasType(t,a)})
+      Test({is_assert = ia; must_fail = mf; test_type = HasType(t,a)})
   | P_Test_C(ia,mf,t,u) ->
       let t = to_term sign t in
       let u = to_term sign u in
-      Test({is_assert = ia; must_fail = mf; contents = Convert(t,u)})
+      Test({is_assert = ia; must_fail = mf; test_type = Convert(t,u)})
   | P_Other(c)          -> Other(c)
 
 (** [scope_cmd_aux sign cmd] scopes the parser level command [cmd],  using the

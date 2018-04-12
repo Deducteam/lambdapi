@@ -156,7 +156,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
         | (Prod(aa,ba), Prod(ab,bb)) ->
             let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
             eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (a          , b          ) -> false
+        | (_          , _          ) -> false
   in
   let res = eq_modulo [(a,b)] in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
@@ -206,6 +206,6 @@ let eval : config -> term -> term = fun c t ->
   | (SNF , None   ) -> snf t
   | (HNF , None   ) -> hnf t
   (* TODO implement the rest. *)
-  | (WHNF, Some(m)) -> wrn "number of steps not supported for WHNF...\n"; t
-  | (HNF , Some(m)) -> wrn "number of steps not supported for HNF...\n"; t
-  | (SNF , Some(m)) -> wrn "number of steps not supported for SNF...\n";  t
+  | (WHNF, Some(_)) -> wrn "number of steps not supported for WHNF...\n"; t
+  | (HNF , Some(_)) -> wrn "number of steps not supported for HNF...\n";  t
+  | (SNF , Some(_)) -> wrn "number of steps not supported for SNF...\n";  t

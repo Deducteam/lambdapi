@@ -110,7 +110,7 @@ module Cofin =
       let rec remove i s =
         match s with
         | []                  -> [(i,i)]
-        | (l,r)::_ when i < l -> (i,i) :: s
+        | (l,_)::_ when i < l -> (i,i) :: s
         | (l,r)::s when i > r -> (l,r) :: remove i s
         | _                   -> invalid_arg "Cofinite.remove";
       in

@@ -112,7 +112,7 @@ type p_cmd =
   (** Rewriting rules declaration. *)
   | P_Rules  of p_rule list
   (** Quick definition. *)
-  | P_Def    of bool * strloc * p_term option * p_term
+  | P_SymDef of bool * strloc * p_term option * p_term
   (** Import an external signature. *)
   | P_Import of module_path
   (** Set debugging flags. *)
@@ -183,8 +183,8 @@ let parser check =
 let parser cmd_aux =
   | x:ident xs:arg* ":" a:expr       -> P_NewSym(x, build_prod xs a)
   | _def_ x:ident ":" a:expr         -> P_NewDef(x,a)
-  | _def_ x:ident (ao,t):def_def     -> P_Def(false,x,ao,t)
-  | _thm_ x:ident (ao,t):def_def     -> P_Def(true ,x,ao,t)
+  | _def_ x:ident (ao,t):def_def     -> P_SymDef(false,x,ao,t)
+  | _thm_ x:ident (ao,t):def_def     -> P_SymDef(true ,x,ao,t)
   | rs:rule+                         -> P_Rules(rs)
   | _REQUIRE_ path:mod_path          -> P_Import(path)
   | _DEBUG_ f:''[+-]'' s:''[a-z]+''  -> P_Debug(f = "+", s)

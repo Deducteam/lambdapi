@@ -81,14 +81,14 @@ let handle_test : Sign.t -> test -> unit = fun sign test ->
   let pp_test : out_channel -> test -> unit = fun oc test ->
     if test.must_fail then output_string oc "¬(";
     begin
-      match test.contents with
+      match test.test_type with
       | Convert(t,u) -> Printf.fprintf oc "%a == %a" pp t pp u
       | HasType(t,a) -> Printf.fprintf oc "%a :: %a" pp t pp a
     end;
     if test.must_fail then output_string oc ")"
   in
   let result =
-    match test.contents with
+    match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
     | HasType(t,a) -> ignore (Typing.sort_type sign a);
                       try Typing.has_type sign empty_ctxt t a with _ -> false
@@ -115,18 +115,19 @@ and handle_cmds : Sign.t -> p_cmd loc list -> unit = fun sign cmds ->
   let handle_cmd cmd =
     try
       let cmd = scope_cmd sign cmd in
+      let handle_symdef o = if o then handle_opaque else handle_defin in
       match cmd.elt with
-      | NewSym(n,a)  -> handle_newsym sign n a
-      | NewDef(n,a)  -> handle_newdef sign n a
-      | Rules(rs)    -> handle_rules sign rs
-      | Def(o,n,a,t) -> (if o then handle_opaque else handle_defin) sign n a t
-      | Import(path) -> handle_import sign path
-      | Debug(v,s)   -> set_debug v s
-      | Verb(n)      -> verbose := n
-      | Infer(t,c)   -> handle_infer sign t c
-      | Eval(t,c)    -> handle_eval sign t c
-      | Test(test)   -> handle_test sign test
-      | Other(c)     ->
+      | NewSym(n,a)     -> handle_newsym sign n a
+      | NewDef(n,a)     -> handle_newdef sign n a
+      | Rules(rs)       -> handle_rules sign rs
+      | SymDef(o,n,a,t) -> handle_symdef o sign n a t
+      | Import(path)    -> handle_import sign path
+      | Debug(v,s)      -> set_debug v s
+      | Verb(n)         -> verbose := n
+      | Infer(t,c)      -> handle_infer sign t c
+      | Eval(t,c)       -> handle_eval sign t c
+      | Test(test)      -> handle_test sign test
+      | Other(c)        ->
           if !debug then
             wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
     with e ->

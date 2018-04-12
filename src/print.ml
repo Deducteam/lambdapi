@@ -2,7 +2,6 @@
 
 open Extra
 open Terms
-open Sign
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
