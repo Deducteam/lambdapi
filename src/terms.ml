@@ -11,7 +11,7 @@ open Files
 
 (** Reprerentation of a term (or type). *)
 type term =
-  | Vari of tvar
+  | Vari of term Bindlib.var
   (** Free variable. *)
   | Type
   (** "Type" constant. *)
@@ -19,9 +19,9 @@ type term =
   (** "Kind" constant. *)
   | Symb of symbol
   (** Symbol (static or definable). *)
-  | Prod of term * tbinder
+  | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
-  | Abst of term * tbinder
+  | Abst of term * (term, term) Bindlib.binder
   (** Abstraction. *)
   | Appl of term * term
   (** Application. *)
@@ -51,15 +51,6 @@ type term =
     rewriting rule, the metavariable [te] must be bound. When a rewriting rule
     applies, the metavariables that are bound in the RHS are substituted using
     an environment that was constructed during the matching of the LHS. *)
-
-(** Free {!type:term} variable. *)
- and tvar = term Bindlib.var
-
-(** Binding of a {!type:term} in a {!type:term}. *)
- and tbinder  = (term, term) Bindlib.binder
-
-(** Binding of a several {!type:term} in a {!type:term}. *)
- and tmbinder = (term, term) Bindlib.mbinder
 
 (** Representation of a (static or definable) symbol. *)
  and symbol =
@@ -106,7 +97,7 @@ type term =
   { meta_name  : meta_name
   ; meta_type  : term
   ; meta_arity : int
-  ; meta_value : tmbinder option ref }
+  ; meta_value : (term, term) Bindlib.mbinder option ref }
 
  and meta_name =
    | Defined  of string
@@ -129,6 +120,11 @@ type rspec =
   ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
   ; rspec_rule   : rule                 (** The rule itself.            *) }
 
+(** Free {!type:term} variable. *)
+type tvar = term Bindlib.var
+
+type tbinder = (term, term) Bindlib.binder
+
 (** Injection of [Bindlib] variables into terms. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
 
@@ -146,33 +142,6 @@ let rec unfold : term -> term = fun t ->
       end
   | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
   | _                    -> t
-
-(******************************************************************************)
-(* Typing contexts *)
-
-(** Representation of a typing context, associating a type (or [Term.term]) to
-    free [Bindlib] variables. *)
-type ctxt = (tvar * term) list
-
-(** [empty_ctxt] is the empty context. *)
-let empty_ctxt : ctxt = []
-
-(** [add_tvar x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
-let add_tvar : tvar -> term -> ctxt -> ctxt =
-  fun x a ctx -> (x,a)::ctx
-
-(** [find_tvar x ctx] gives the type of variable [x] in the context [ctx]. The
-    exception [Not_found] is raised if the variable is not in the context. *)
-let find_tvar : tvar -> ctxt -> term = fun x ctx ->
-    snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
-
-(** [exists_tvar x ctx] says if [x] is in the context [ctx]. *)
-let exists_tvar (v:tvar) (c:ctxt) : bool =
-  let f (x,_) = if Bindlib.eq_vars v x then raise Exit in
-  try List.iter f c; false with Exit -> true
-
-(** Unification problem. *)
-type problem = ctxt * term * term
 
 (******************************************************************************)
 (* Boxed terms *)
@@ -203,6 +172,9 @@ let _Appl : tbox -> tbox -> tbox = fun t u ->
 let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let b = Bindlib.vbind mkfree x f in
   Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
+
+let _Prod_bv : tbox -> tvar -> tbox -> tbox = fun a x b ->
+  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a (Bindlib.bind_var x b)
 
 (** [_Abst a x f] lifts an abstraction node to the [bindbox] type given a term
     [a] (the type of the bound variable),  the prefered name [x] for the bound
@@ -407,15 +379,6 @@ let occurs (m:meta) (t:term) : bool =
        if m==m' then raise Exit else Array.iter occurs ts
   in
   try occurs t; false with Exit -> true
-
-(** [prod x t u] creates the dependent product of [t] and [u] by
-    binding [x] in [u]. *)
-let prod (x:tvar) (t:term) (u:term) : term =
-  Prod(t, Bindlib.unbox (Bindlib.bind_var x (lift u)))
-
-(** [prod_ctxt c u] iterates [prod] over [c]. *)
-let prod_ctxt (c:ctxt) (t:term) : term =
-  List.fold_left (fun t (x,a) -> prod x a t) t c
 
 (******************************************************************************)
 (* Representation of goals and proofs. *)

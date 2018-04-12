@@ -3,6 +3,7 @@
 open Console
 open Terms
 open Print
+open Infer2
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
@@ -75,7 +76,7 @@ let check_rule : rspec -> unit = fun spec ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) =
-    Infer2.constraints_of (Infer2.raw_infer empty_ctxt) lhs in
+    Infer2.constraints_of (Infer2.raw_infer Ctxt.empty) lhs in
   if !debug_sr then
     log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_problems lhs_constrs;
   (* Turn constraints into a substitution and apply it. *)
@@ -85,4 +86,4 @@ let check_rule : rspec -> unit = fun spec ->
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that RHS has the same type as the LHS. *)
   ignore (Infer2.without_generating_constraints
-            (Infer2.has_type empty_ctxt rhs) ty_lhs)
+            (Infer2.has_type Ctxt.empty rhs) ty_lhs)

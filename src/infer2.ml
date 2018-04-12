@@ -6,30 +6,22 @@ open Extra
 open Console
 open Eval
 
-(** [unbind_tbinder c t f] returns [(x,u,c')] where [(x,u)] is the
-    result of unbinding [f], and [c'] the extension of [c] with [x]
-    mapped to [t]. *)
-let unbind_tbinder (c:ctxt) (t:term) (f:tbinder) : tvar * term * ctxt =
-  let x,u = Bindlib.unbind mkfree f in
-  let c = if Bindlib.binder_occur f then add_tvar x t c else c in
-  x,u,c
-
-(** [unbind_tbinder2 c t f g] returns [(x,u,v,c')] where [(x,u,v)] is
-    the result of unbinding [f] and [g], and [c'] the extension of [c]
-    with [x] mapped to [t]. *)
-let unbind_tbinder2 (c:ctxt) (t:term) (f:tbinder) (g:tbinder)
-    : tvar * term * term * ctxt =
-  let x,u,v = Bindlib.unbind2 mkfree f g in
-  let c =
-    if Bindlib.binder_occur f || Bindlib.binder_occur g
-    then add_tvar x t c else c in
-  x,u,v,c
-
 (** [equal_vari t u] checks that [t] and [u] are the same variable. *)
 let equal_vari (t:term) (u:term) : bool =
   match t, u with
   | Vari x, Vari y -> Bindlib.eq_vars x y
   | _, _ -> false
+
+(** Unification problem. *)
+type problem = Ctxt.t * term * term
+
+let pp_problem : problem pp = fun oc (_,t,u) ->
+  Printf.fprintf oc "%a = %a" pp t pp u
+
+let pp_problems : problem list pp = fun oc l ->
+  match l with
+  | [] -> ()
+  | _ -> Printf.fprintf oc " if %a" (List.pp pp_problem ", ") l
 
 (** Constraints. *)
 
@@ -72,7 +64,7 @@ let can_instantiate (m:meta) : bool = !generate_constraints || internal m
     constraints for [t1] to be convertible to [t2] in context [c]. We
     assume that, for every [i], either [ti] is [Kind] or [ti] is
     typable. *)
-let rec add_constraint (c:ctxt) (t1:term) (t2:term) : unit =
+let rec add_constraint (c:Ctxt.t) (t1:term) (t2:term) : unit =
   add_constraints [c,t1,t2]
 
 and add_constraints (l:problem list) : unit =
@@ -91,7 +83,7 @@ and add_constraints (l:problem list) : unit =
 
          | Prod(a,f), Prod(b,g)
          | Abst(a,f), Abst(b,g) ->
-            let _,u,v,c' = unbind_tbinder2 c a f g in
+            let (c',u,v) = Ctxt.unbind2 c a f g in
             add_constraints ((c,a,b)::(c',u,v)::l)
 
          | Symb(s1), Symb(s2) when s1 == s2 -> add_constraints l
@@ -129,7 +121,7 @@ and add_constraints (l:problem list) : unit =
     convertible to [t2] in context [c]. We assume that, for every [i],
     either [ti] is [Kind] or [ti] is typable. We also assume that [t1]
     and [t2] are in whnf. *)
-and add_constraint_whnf (c:ctxt) (t1:term) (t2:term) : unit =
+and add_constraint_whnf (c:Ctxt.t) (t1:term) (t2:term) : unit =
   add_constraints_whnf [c,t1,t2]
 
 and add_constraints_whnf (l:problem list) : unit =
@@ -152,7 +144,7 @@ and add_constraints_whnf (l:problem list) : unit =
      (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
      | Abst(a,f), Abst(b,g) ->
      (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
-        let _,u,v,c' = unbind_tbinder2 c a f g in
+        let (c',u,v) = Ctxt.unbind2 c a f g in
         add_constraints_whnf ((c,a,b)::(c',u,v)::l)
 
      | Symb(s1), Symb(s2) when s1.sym_rules = [] && s2.sym_rules = [] ->
@@ -211,14 +203,14 @@ and instantiate (m:meta) (ts:term array) (v:term)
     convertible in context [c]. [ts1] and [ts2] must have the same
     length. *)
 and add_constraints_whnf_args
-    (c:ctxt) (ts1:term list) (ts2:term list) (l:problem list) : unit =
+    (c:Ctxt.t) (ts1:term list) (ts2:term list) (l:problem list) : unit =
   add_constraints_whnf
     (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) l ts1 ts2)
 
 (** [create_meta c] creates a term [m[x1,,,xn]] where [m] is a new
     metavariable and [x1,..,xn] are the variables of [c]. *)
-let create_meta (c:ctxt) : term =
-  let typ_m = prod_ctxt c Type in
+let create_meta (c:Ctxt.t) : term =
+  let typ_m = Ctxt.to_prod c Type in
   let m = new_meta typ_m (List.length c) in
   let vs = List.rev_map (fun (x,_) -> Vari x) c in
   Meta(m, Array.of_list vs)
@@ -238,7 +230,7 @@ let to_prod m ts so =
   instantiate m ts p add_constraints []
 
 (** [raw_infer c t] returns a type for [t] in [c]. *)
-let rec raw_infer (c:ctxt) (t:term) : term =
+let rec raw_infer (c:Ctxt.t) (t:term) : term =
   if !debug_type then log "infer" "[%a]" pp t;
   let m_vs = create_meta c in
   raw_check c t m_vs;
@@ -246,7 +238,7 @@ let rec raw_infer (c:ctxt) (t:term) : term =
 
 (** [raw_check c t a] checks that [t] is of type [a] in [c]. [a] must be
     [Kind] or be typable by a sort. *)
-and raw_check (c:ctxt) (t:term) (a:term) : unit =
+and raw_check (c:Ctxt.t) (t:term) (a:term) : unit =
   if !debug_type then log "typing" "[%a] [%a]" pp t pp a;
   match unfold t with
   | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
@@ -254,7 +246,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
   | Type -> add_constraint c a Kind
 
   | Vari(x) ->
-     let typ_x = try find_tvar x c with Not_found -> assert false in
+     let typ_x = try Ctxt.find x c with Not_found -> assert false in
      add_constraint c a typ_x
 
   | Symb(s) -> add_constraint c a s.sym_type
@@ -262,7 +254,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
   | Prod(t,f) ->
      begin
        raw_check c t Type;
-       let _,u,c' = unbind_tbinder c t f in
+       let (c',u) = Ctxt.unbind c t f in
        raw_check c' u a;
        match unfold a with
        | Type | Kind -> ()
@@ -283,7 +275,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
        | Prod(b,g) ->
           begin
             add_constraint c b t;
-            let _,u,d,c' = unbind_tbinder2 c t f g in
+            let (c',u,d) = Ctxt.unbind2 c t f g in
             raw_check c' u d
           end
        | _ -> fatal "[%a] is not a product\n" pp a
@@ -309,7 +301,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
         where [v] is some fresh variable with the same type as [m]. *)
      begin
        let v = Bindlib.new_var mkfree (meta_name m) in
-       let c' = add_tvar v m.meta_type c in
+       let c' = Ctxt.add v m.meta_type c in
        raw_check c' (add_args (Vari v) (Array.to_list ts)) a
      end
 
@@ -319,12 +311,12 @@ let solve : problem list -> bool = fun cs ->
   List.iter msg cs; cs = []
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
-let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
+let has_type : Ctxt.t -> term -> term -> bool = fun ctxt t a ->
   let (cs, _) = constraints_of (raw_check ctxt t) a in
   solve cs
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
-let sort_type : ctxt -> term -> term = fun ctx a ->
+let sort_type : Ctxt.t -> term -> term = fun ctx a ->
   let (cs, s) = constraints_of (raw_infer ctx) a in
   if not (solve cs) then fatal "Constraints cannot be solved.\n";
   match unfold s with
@@ -334,6 +326,6 @@ let sort_type : ctxt -> term -> term = fun ctx a ->
 
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be solved. *)
-let infer : ctxt -> term -> term option = fun ctx t ->
+let infer : Ctxt.t -> term -> term option = fun ctx t ->
   let (cs, a) = constraints_of (raw_infer ctx) t in
   if not (solve cs) then None else Some(a)

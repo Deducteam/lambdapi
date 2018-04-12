@@ -7,7 +7,7 @@ open Print
 open Eval
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
-let set_meta : meta -> tmbinder -> unit = fun m v ->
+let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
   if !debug_unif then
     begin
       let (xs,v) = Bindlib.unmbind mkfree v in

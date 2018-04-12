@@ -20,7 +20,7 @@ let gen_obj : bool ref = ref false
     this symbol can have rules. *)
 let handle_symdecl : bool -> strloc -> term -> unit =
   fun b n a ->
-    ignore (sort_type empty_ctxt a);
+    ignore (sort_type Ctxt.empty a);
     let sign = current_sign() in
     ignore (Sign.new_symbol sign b n a)
 
@@ -33,14 +33,14 @@ let check_def_type : strloc -> term option -> term -> term =
     match ao with
     | None ->
        begin
-         match infer empty_ctxt t with
+         match infer Ctxt.empty t with
          | None -> fatal "Unable to infer the type of [%a]\n" pp t
          | Some a -> a
        end
     | Some a ->
        begin
-         ignore (sort_type empty_ctxt a);
-         if not (has_type empty_ctxt t a) then
+         ignore (sort_type Ctxt.empty a);
+         if not (has_type Ctxt.empty t a) then
            fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
          else a
        end
@@ -78,13 +78,13 @@ let handle_defin : strloc -> term option -> term -> unit =
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
 let handle_infer : term -> Eval.config -> unit = fun t c ->
-  match infer empty_ctxt t with
+  match infer Ctxt.empty t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
 (** [handle_eval t] evaluates the term [t]. *)
 let handle_eval : term -> Eval.config -> unit = fun t c ->
-  match infer empty_ctxt t with
+  match infer Ctxt.empty t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal "unable to infer the type of [%a]\n" pp t
 
@@ -104,8 +104,8 @@ let handle_test : test -> unit = fun test ->
   let result =
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
-    | HasType(t,a) -> ignore (sort_type empty_ctxt a);
-                      try has_type empty_ctxt t a with _ -> false
+    | HasType(t,a) -> ignore (sort_type Ctxt.empty a);
+                      try has_type Ctxt.empty t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
@@ -122,7 +122,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   let sign = current_sign() in
   if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
   (* We check that [a] is typable by a sort. *)
-  ignore (sort_type empty_ctxt a);
+  ignore (sort_type Ctxt.empty a);
   (* We start the proof mode. *)
   let m = add_meta s.elt a 0 in
   let goal =
@@ -155,7 +155,7 @@ let handle_refine (t:term) : unit =
       a
       (Bindlib.bind_var x u) in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Infer2.has_type empty_ctxt u m.meta_type) then
+  if not (Infer2.has_type Ctxt.empty u m.meta_type) then
     fatal "invalid refinement\n";
   (* Instantiation. *)
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
