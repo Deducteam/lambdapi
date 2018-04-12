@@ -22,8 +22,16 @@ let wrn : ('a, out_channel, unit) format -> 'a =
 let err : ('a, out_channel, unit) format -> 'a =
   fun fmt -> Printf.eprintf (red fmt)
 
-(** [fatal fmt] is like [err fmt], but it aborts the program with [exit 1]. *)
+(** Exception raised in case of failure. *)
+exception Fatal
+
+(** [fatal fmt] is like [err fmt], but it raises [Fatal]. *)
 let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
+  fun fmt -> Printf.kfprintf (fun _ -> raise Fatal) stderr (red fmt)
+
+(** [abort fmt] is similar to [fatal fmt], but it calls [exit 1], which cannot
+    be catched in any way (the program just terminates with an error. *)
+let abort : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
   fun fmt -> Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
 
 (* Various debugging / message flags. *)

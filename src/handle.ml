@@ -185,26 +185,28 @@ and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
   let handle_cmd cmd =
     try
       let cmd = Scope.scope_cmd cmd in
+      let handle_symdef o = if o then handle_opaque else handle_defin in
       match cmd.elt with
-      | SymDecl(b,n,a) -> handle_symdecl b n a
-      | Rules(rs) -> handle_rules rs
-      | SymDef(b,n,ao,t) ->
-         (if b then handle_opaque else handle_defin) n ao t
-      | Require(path) -> handle_require path
-      | Debug(v,s) -> set_debug v s
-      | Verb(n) -> verbose := n
-      | Infer(t,c) -> handle_infer t c
-      | Eval(t,c) -> handle_eval t c
-      | Test(test) -> handle_test test
-      | Other(c) ->
+      | SymDecl(b,n,a)  -> handle_symdecl b n a
+      | Rules(rs)       -> handle_rules rs
+      | SymDef(o,n,a,t) -> handle_symdef o n a t
+      | Require(path)   -> handle_require path
+      | Debug(v,s)      -> set_debug v s
+      | Verb(n)         -> verbose := n
+      | Infer(t,c)      -> handle_infer t c
+      | Eval(t,c)       -> handle_eval t c
+      | Test(test)      -> handle_test test
+      | StartProof(s,a) -> handle_start_proof s a
+      | PrintFocus      -> handle_print_focus()
+      | Refine(t)       -> handle_refine t
+      (* Legacy commands. *)
+      | Other(c)        ->
           if !debug then
             wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
-      | StartProof(s,a) -> handle_start_proof s a
-      | PrintFocus -> handle_print_focus()
-      | Refine(t) -> handle_refine t
-    with e ->
-      fatal "Uncaught exception on a command at %a\n%s\n%!"
-        Pos.print cmd.pos (Printexc.to_string e)
+    with
+    | Fatal -> exit 1
+    | e     -> abort "Uncaught exception on a command at %a\n%s\n%!"
+                 Pos.print cmd.pos (Printexc.to_string e);
   in
   List.iter handle_cmd cmds
 
