@@ -1,4 +1,4 @@
-OCAMLBUILD = ocamlbuild -use-ocamlfind -cflags -w,A-4-50
+OCAMLBUILD = ocamlbuild -use-ocamlfind -cflags -w,A-4-50-9-44
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
