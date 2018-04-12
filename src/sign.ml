@@ -9,7 +9,7 @@ open Extra
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { symbols : symbol StrMap.t ref
+  { symbols : sym StrMap.t ref
   ; path    : module_path
   ; deps    : (string * rule) list PathMap.t ref }
 
@@ -24,7 +24,7 @@ let create : module_path -> t = fun path ->
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
-let find : t -> string -> symbol =
+let find : t -> string -> sym =
   fun sign name -> StrMap.find name !(sign.symbols)
 
 (** [mem sign name] checks whether the symbol named [name] exists in [sign]. *)
@@ -86,7 +86,7 @@ let focus_goal_hyps() : env =
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
+let pp_symbol : out_channel -> sym -> unit = fun oc s ->
   let (path, name) = (s.sym_path, s.sym_name) in
   let sign = current_sign() in
   let full =
@@ -188,7 +188,7 @@ let unlink : t -> unit = fun sign ->
 (** [new_symbol sign name a definable] creates a new symbol named
     [name] of type [a] in the signature [sign]. The created symbol is
     also returned. *)
-let new_symbol : t -> bool -> strloc -> term -> symbol =
+let new_symbol : t -> bool -> strloc -> term -> sym =
   fun sign definable s sym_type ->
   let { elt = sym_name; pos } = s in
   if StrMap.mem sym_name !(sign.symbols) then
@@ -231,7 +231,7 @@ let read : string -> t = fun fname ->
 (** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
     the rule does not correspond to a symbol of the current signature,  it  is
     also stored in the dependencies. *)
-let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
+let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   out 3 "[rule] %a\n" Print.pp_rule (sym, r);
   if sym.sym_path <> sign.path then

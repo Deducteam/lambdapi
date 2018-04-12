@@ -5,10 +5,10 @@ open Terms
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let default_pp_symbol : symbol pp = fun oc s ->
+let default_pp_symbol : sym pp = fun oc s ->
   output_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
 
-let pp_symbol : symbol pp ref = ref default_pp_symbol
+let pp_symbol : sym pp ref = ref default_pp_symbol
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
@@ -63,7 +63,7 @@ let pp_term : term pp = fun oc t ->
 let pp : term pp = pp_term
 
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
-let pp_rule : (symbol * rule) pp = fun oc (sym,rule) ->
+let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   let lhs = add_args (Symb(sym)) rule.lhs in
   let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
   Printf.fprintf oc "%a → %a" pp lhs pp rhs

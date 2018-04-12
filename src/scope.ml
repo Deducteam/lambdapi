@@ -130,7 +130,7 @@ type meta_map = (string * int) list
 (** Representation of a rule LHS (or pattern). It contains the head symbol and
     the list of arguments (first two elements).  The last component associates
     a type to each “pattern variable” in the arguments. *)
-type full_lhs = symbol * term list * (string * term) list
+type full_lhs = sym * term list * (string * term) list
 
 (** [scope_lhs map t] computes a rule LHS from the parser-level term [t].
     The association list [map] gives the position of

@@ -51,7 +51,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
-and find_rule : symbol -> stack -> (term * stack) option = fun s stk ->
+and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)

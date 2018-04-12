@@ -17,7 +17,7 @@ type term =
   (** "Type" constant. *)
   | Kind
   (** "Kind" constant. *)
-  | Symb of symbol
+  | Symb of sym
   (** Symbol (static or definable). *)
   | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
@@ -53,7 +53,7 @@ type term =
     an environment that was constructed during the matching of the LHS. *)
 
 (** Representation of a (static or definable) symbol. *)
- and symbol =
+ and sym =
   { sym_name      : string        (** Name of the symbol. *)
   ; sym_type      : term ref      (** Type of the symbol. *)
   ; sym_path      : module_path   (** Module in which it is defined.  *)
@@ -116,7 +116,7 @@ let internal (m:meta) : bool =
 
 (** Representation of a rule specification, used for checking SR. *)
 type rspec =
-  { rspec_symbol : symbol               (** Head symbol of the rule.    *)
+  { rspec_symbol : sym                  (** Head symbol of the rule.    *)
   ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
   ; rspec_rule   : rule                 (** The rule itself.            *) }
 
@@ -160,7 +160,7 @@ let _Type : tbox = Bindlib.box Type
 let _Kind : tbox = Bindlib.box Kind
 
 (** [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
-let _Symb : symbol -> tbox = fun s -> Bindlib.box (Symb(s))
+let _Symb : sym -> tbox = fun s -> Bindlib.box (Symb(s))
 
 (** [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
 let _Appl : tbox -> tbox -> tbox = fun t u ->
