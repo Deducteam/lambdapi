@@ -19,13 +19,9 @@ let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
         | (Symb(sa), Symb(sb)) when sa == sb && na = nb && sa.sym_rules=[] ->
            build_sub acc
              (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) cs argsa argsb)
-        | (Vari(x)      , _            ) when argsa = [] ->
-            build_sub ((x,b)::acc) cs
-        | (_            , Vari(x)      ) when argsb = [] ->
-            build_sub ((x,a)::acc) cs
-        | (a            , b            ) ->
-            wrn "Not implemented [%a] [%a]...\n%!" pp a pp b;
-            build_sub acc cs
+        | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
+        | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs
+        | (a            , b            ) -> build_sub acc cs
   in
   let (vs,ts) = List.split (build_sub [] cs) in
   (Array.of_list vs, Array.of_list ts)

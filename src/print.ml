@@ -80,7 +80,7 @@ let pp_problem : problem pp = fun oc (_,t,u) ->
 let pp_problems : problem list pp = fun oc l ->
   match l with
   | [] -> ()
-  | _ -> Printf.fprintf oc "if %a" (List.pp pp_problem ", ") l
+  | _ -> Printf.fprintf oc " if %a" (List.pp pp_problem ", ") l
 
 let pp_hyp oc (s,(_,t)) = Printf.fprintf oc "%s : %a" s pp (Bindlib.unbox t)
 

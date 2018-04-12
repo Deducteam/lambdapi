@@ -18,29 +18,32 @@ Vec : Nat -> Type.
 nil : Vec 0.
 cns : n : Nat -> Vec n -> Vec (S n).
 
-def tail : n:Nat -> Vec (S n) -> Vec n.
-[n,l] tail n (cns _ l) --> l.
-
 def f : Nat -> Nat.
+
 []  f 0         --> S (S 0).
 []  f (S 0)     --> S (S 0).
 [n] f (S (S n)) --> S (S (f n)).
 
 cnsf : n:Nat -> Vec n -> Vec (f n).
 
-def idf : n:Nat -> Vec (f n) -> Vec (f n).
-[n,l] idf _ (cnsf n l) --> cnsf n l.
-
-(; Should not be accepted since f is not injective. ;)
 def tailf : n:Nat -> Vec (f n) -> Vec n.
-[n, l] tailf n (cnsf _ l) --> l.
+
+(; Should not be accepted since f is not injective
+  and this breask subject reduction as shown below. ;)
+
+[n, v] tailf n (cnsf _ v) --> v.
 
 def left  : Vec 3.
+
 [] left  --> cns 2 (cns 1 (cns 0 nil)).
 
 def right : Vec 2.
+
 [] right --> tailf 2 (cnsf 3 left).
 
 #EVAL left.
 #EVAL right.
 #CHECK left == right.
+
+(; Subject reduction is broken: left of type (Vec 3) reduces to right
+of type (Vec 2), and right is NOT of type (Vec 3). ;)

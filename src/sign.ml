@@ -196,7 +196,7 @@ let new_symbol : t -> bool -> strloc -> term -> symbol =
             ; sym_rules = []
             ; sym_definable = definable } in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
-  out 3 "add %s\n" sym_name; sym
+  out 3 "[symb] %s\n" sym_name; sym
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -230,7 +230,7 @@ let read : string -> t = fun fname ->
     also stored in the dependencies. *)
 let add_rule : t -> symbol -> rule -> unit = fun sign sym r ->
   sym.sym_rules <- sym.sym_rules @ [r];
-  out 3 "add %a\n" Print.pp_rule (sym, r);
+  out 3 "[rule] %a\n" Print.pp_rule (sym, r);
   if sym.sym_path <> sign.path then
     let m =
       try PathMap.find sym.sym_path !(sign.deps)
