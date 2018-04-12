@@ -19,31 +19,34 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,!u)) args
   in to_term t args
 
+(** Evaluation step counter. *)
+let steps : int ref = ref 0
+
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating [%a]" pp (unfold t);
   let (u, stk) = whnf_stk t [] in
-  let u = to_term u stk in
-  (*if !debug_eval then log "eval" "produced [%a]" pp u;*) u
+  to_term u stk
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
     sense of [whnf]. *)
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
-  match (unfold t, stk) with
+  let st = (unfold t, stk) in
+  match st with
   (* Push argument to the stack. *)
-  | (Appl(f,u), stk    )       -> whnf_stk f (ref u :: stk)
+  | (Appl(f,u), stk    ) -> whnf_stk f (ref u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,f), u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
+  | (Abst(_,f), u::stk ) -> incr steps; whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
-  | (Symb(s)  , stk    ) as st ->
+  | (Symb(s)  , stk    ) ->
       begin
         match find_rule s stk with
         | None        -> st
-        | Some(t,stk) -> whnf_stk t stk
+        | Some(t,stk) -> incr steps; whnf_stk t stk
       end
   (* In head normal form. *)
-  | (_        , _      ) as st -> st
+  | (_        , _      ) -> st
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
@@ -166,6 +169,12 @@ and eq_modulo : term -> term -> bool = fun a b ->
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
+
+let whnf : term -> term = fun t ->
+  let t = unfold t in
+  steps := 0;
+  let u = whnf t in
+  if !steps = 0 then t else u
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 let rec snf : term -> term = fun t ->
