@@ -55,12 +55,12 @@ let set_debug : bool -> string -> unit = fun value ->
   let enable c =
     match c with
     | 'a' -> debug      := value
-    | 'e' -> debug_eval := value
+    | 'r' -> debug_eval := value
     | 'u' -> debug_unif := value
     | 'm' -> debug_matc := value
-    | 'p' -> debug_sr   := value
+    | 's' -> debug_sr   := value
     | 't' -> debug_type := value
-    | 'q' -> debug_equa := value
+    | 'e' -> debug_equa := value
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable

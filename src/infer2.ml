@@ -37,7 +37,29 @@ let equal_vari (t:term) (u:term) : bool =
 
 let constraints : problem list ref = ref []
 
-let with_constraints : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
+let generate_constraints : bool ref = ref true
+
+let raw_add_constraint c t1 t2 =
+  if !generate_constraints then
+    begin
+      if !debug_unif then log "raw_add_constraint" "[%a] [%a]" pp t1 pp t2;
+      constraints := (c,t1,t2)::!constraints
+    end
+  else
+    begin
+      err "[%a] is not convertible to [%a]\n" pp t1 pp t2;
+      raise Exit
+    end
+
+let without_generating_constraints : ('a -> 'b) -> 'a -> 'b = fun fn x ->
+  try
+    generate_constraints := false;
+    let res = fn x in
+    generate_constraints := true;
+    res
+  with e -> generate_constraints := true; raise e
+
+let constraints_of : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
   try
     constraints := [];
     let r = fn e in
@@ -164,10 +186,6 @@ and add_constraints_whnf (l:problem list) : unit =
 
      | _, _ -> err "[%a] and [%a] are not convertible\n" pp t1 pp t2; fail()
 
-and raw_add_constraint c t1 t2 =
-  if !debug_unif then log "raw_add_constraint" "[%a] ~ [%a]" pp t1 pp t2;
-  constraints := (c,t1,t2)::!constraints
-
 (** Instantiate [m[t1,..,tn]] by [v], and recompute [!constraints]. We
     assume that [t1,..,tn] are distinct variables and that [m] does
     not occur in [v]. Fails if [v] contains free variables distinct
@@ -222,14 +240,15 @@ let to_prod m ts so =
 
 (** [raw_infer c t] returns a type for [t] in [c]. *)
 let rec raw_infer (c:ctxt) (t:term) : term =
+  if !debug_type then log "infer" "[%a]" pp t;
   let m_vs = create_meta c in
-  check c t m_vs;
+  raw_check c t m_vs;
   m_vs
 
-(** [check c t a] checks that [t] is of type [a] in [c]. [a] must be
+(** [raw_check c t a] checks that [t] is of type [a] in [c]. [a] must be
     [Kind] or be typable by a sort. *)
-and check (c:ctxt) (t:term) (a:term) : unit =
-  if !debug_type then log "check" "[%a] [%a]" pp t pp a;
+and raw_check (c:ctxt) (t:term) (a:term) : unit =
+  if !debug_type then log "typing" "[%a] [%a]" pp t pp a;
   match unfold t with
   | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
 
@@ -243,9 +262,9 @@ and check (c:ctxt) (t:term) (a:term) : unit =
 
   | Prod(t,f) ->
      begin
-       check c t Type;
+       raw_check c t Type;
        let _,u,c' = unbind_tbinder c t f in
-       check c' u a;
+       raw_check c' u a;
        match unfold a with
        | Type | Kind -> ()
        | _ -> err "[%a] is not a sort\n" pp a; fail()
@@ -253,7 +272,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
 
   | Abst(t,f) ->
      begin
-       check c t Type;
+       raw_check c t Type;
        let a = whnf a in
        begin
          match a with
@@ -266,7 +285,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
           begin
             add_constraint c b t;
             let _,u,d,c' = unbind_tbinder2 c t f g in
-            check c' u d
+            raw_check c' u d
           end
        | _ -> err "[%a] is not a product\n" pp a; fail()
      end
@@ -281,7 +300,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
          | _ -> ()
        end;
        match unfold typ_t with
-       | Prod(b,g) -> check c u b; add_constraint c a (Bindlib.subst g u)
+       | Prod(b,g) -> raw_check c u b; add_constraint c a (Bindlib.subst g u)
        | _ -> err "[%a] is not a product\n" pp typ_t; fail()
      end
 
@@ -291,7 +310,7 @@ and check (c:ctxt) (t:term) (a:term) : unit =
      begin
        let v = Bindlib.new_var mkfree (meta_name m) in
        let c' = add_tvar v m.meta_type c in
-       check c' (add_args (Vari v) (Array.to_list ts)) a
+       raw_check c' (add_args (Vari v) (Array.to_list ts)) a
      end
 
 (** Solve constraints. *)
@@ -301,12 +320,12 @@ let solve : problem list -> bool = fun cs ->
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type : ctxt -> term -> term -> bool = fun ctxt t a ->
-  let (cs, r) = with_constraints (check ctxt t) a in
+  let (cs, r) = constraints_of (raw_check ctxt t) a in
   solve cs
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type : ctxt -> term -> term = fun ctx a ->
-  let (cs, s) = with_constraints (raw_infer ctx) a in
+  let (cs, s) = constraints_of (raw_infer ctx) a in
   if not (solve cs) then
     begin err "Constraints cannot be solved.\n"; fail() end;
   match unfold s with
@@ -317,5 +336,5 @@ let sort_type : ctxt -> term -> term = fun ctx a ->
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be solved. *)
 let infer : ctxt -> term -> term option = fun ctx t ->
-  let (cs, a) = with_constraints (raw_infer ctx) t in
+  let (cs, a) = constraints_of (raw_infer ctx) t in
   if not (solve cs) then None else Some(a)

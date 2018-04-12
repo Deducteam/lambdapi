@@ -137,10 +137,9 @@ let find_tvar : tvar -> ctxt -> term = fun x ctx ->
     snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
 (** [exists_tvar x ctx] says if [x] is in the context [ctx]. *)
-exception Exit_exists_tvar
 let exists_tvar (v:tvar) (c:ctxt) : bool =
-  let f (x,_) = if Bindlib.eq_vars v x then raise Exit_exists_tvar in
-  try List.iter f c; false with Exit_exists_tvar -> true
+  let f (x,_) = if Bindlib.eq_vars v x then raise Exit in
+  try List.iter f c; false with Exit -> true
 
 (** Unification problem. *)
 type problem = ctxt * term * term
@@ -304,34 +303,44 @@ let add_args : term -> term list -> term = fun t args ->
 
 (** [eq t u] tests the equality of the two terms [t] and [u] (modulo
     alpha-equivalence). *)
-let rec eq : term -> term -> bool = fun a b ->
-  match unfold a, unfold b with
-  | Vari(x1)   , Vari(x2)    -> Bindlib.eq_vars x1 x2
-  | Type       , Type
-  | Kind       , Kind        -> true
-  | Symb(s1)   , Symb(s2)    -> s1 == s2
-  | Prod(a1,b1), Prod(a2,b2)
-  | Abst(a1,b1), Abst(a2,b2) -> eq a1 a2 && Bindlib.eq_binder mkfree eq b1 b2
-  | Appl(t1,u1), Appl(t2,u2) -> eq t1 t2 && eq u1 u2
-  | Patt(_,_,_), _
-  | _          , Patt(_,_,_)
-  | TEnv(_,_)  , _
-  | _          , TEnv(_,_)   -> assert false
-  | Meta(m1,a1), Meta(m2,a2) -> m1 == m2 && Array.for_all2 eq a1 a2
-  | _          , _           -> false
+let rec eq_list : (term * term) list -> unit = fun l ->
+  match l with
+  | [] -> ()
+  | (a,b) :: l ->
+     match unfold a, unfold b with
+     | Vari(x1)   , Vari(x2) when Bindlib.eq_vars x1 x2 -> eq_list l
+     | Type       , Type
+     | Kind       , Kind        -> eq_list l
+     | Symb(s1)   , Symb(s2) when s1 == s2 -> eq_list l
+     | Prod(a1,b1), Prod(a2,b2)
+     | Abst(a1,b1), Abst(a2,b2) ->
+        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+        eq_list ((a1,a2)::(b1,b2)::l)
+     | Appl(t1,u1), Appl(t2,u2) -> eq_list ((t1,t2)::(u1,u2)::l)
+     | Patt(_,_,_), _
+     | _          , Patt(_,_,_)
+     | TEnv(_,_)  , _
+     | _          , TEnv(_,_)   -> assert false
+     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+        let l = ref l in
+        Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
+        eq_list !l
+     | _          , _           -> raise Exit
+
+let eq : term -> term -> bool = fun a b ->
+  try eq_list [a,b]; true with Exit -> false
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
-exception Exit_distinct_vars
 let distinct_vars (a:term array) : bool =
   let acc = ref [] in
   let fn t =
     match t with
     | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit_distinct_vars
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
        else acc := v::!acc
-    | _ -> raise Exit_distinct_vars
+    | _ -> raise Exit
   in
-  let res = try Array.iter fn a; true with Exit_distinct_vars -> false in
+  let res = try Array.iter fn a; true with Exit -> false in
   acc := []; res
 
 (** [to_var t] returns [x] if [t = Vari x] and fails otherwise. *)
@@ -352,7 +361,6 @@ let to_var (t:term) : tvar = match t with Vari x -> x | _ -> assert false
   | TEnv(_,_)   -> assert false*)
 
 (** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
-exception Exit_occurs
 let occurs (m:meta) (t:term) : bool =
   let rec occurs (t:term) : unit =
     match unfold t with
@@ -366,9 +374,9 @@ let occurs (m:meta) (t:term) : bool =
        end
     | Appl(a,b) -> occurs a; occurs b
     | Meta(m',ts) ->
-       if m==m' then raise Exit_occurs else Array.iter occurs ts
+       if m==m' then raise Exit else Array.iter occurs ts
   in
-  try occurs t; false with Exit_occurs -> true
+  try occurs t; false with Exit -> true
 
 (** [prod x t u] creates the dependent product of [t] and [u] by
     binding [x] in [u]. *)

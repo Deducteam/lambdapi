@@ -45,13 +45,19 @@ let check_def_type : strloc -> term option -> term -> term =
          else a
        end
 
+(** [handle_rule r] checks that the rule [r] preserves typing, while
+    adding it to the corresponding symbol. The program fails
+    gracefully when an error occurs. *)
+let handle_rule : rspec -> unit = fun r ->
+  Sr2.check_rule r;
+  Sign.add_rule (current_sign()) r.rspec_symbol r.rspec_rule
+
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)
 let handle_opaque : strloc -> term option -> term -> unit =
   fun x ao t ->
     let a = check_def_type x ao t in
-    let sign = current_sign() in
-    ignore (Sign.new_symbol sign true x a)
+    ignore (Sign.new_symbol (current_sign()) true x a)
 
 (** [handle_defin x ao t] does the same as [handle_opaque x ao t] and
     add the rule [x --> t]. *)
@@ -67,15 +73,7 @@ let handle_defin : strloc -> term option -> term -> unit =
       in
       {arity = 0; lhs = []; rhs = Bindlib.unbox rhs}
     in
-    Sign.add_rule sign s rule
-
-(** [handle_rules rs] checks that the rules of [rs] are well-typed, while
-    adding them to the corresponding symbol. The program fails gracefully when
-    an error occurs. *)
-let handle_rules : rspec list -> unit = fun rs ->
-  List.iter Sr2.check_rule rs;
-  let sign = current_sign() in
-  List.iter (fun s -> Sign.add_rule sign s.rspec_symbol s.rspec_rule) rs
+    Sign.add_rule (current_sign()) s rule
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
@@ -112,7 +110,7 @@ let handle_test : test -> unit = fun test ->
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
   | (true , true ) -> ()
-  | (true , false) -> out 3 "(chck) OK\n"
+  | (true , false) -> out 3 "(check) OK\n"
   | (false, true ) -> fatal "Assertion failed: [%a]\n" pp_test test
   | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
@@ -188,7 +186,7 @@ and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
       let handle_symdef o = if o then handle_opaque else handle_defin in
       match cmd.elt with
       | SymDecl(b,n,a)  -> handle_symdecl b n a
-      | Rules(rs)       -> handle_rules rs
+      | Rules(rs)       -> List.iter handle_rule rs
       | SymDef(o,n,a,t) -> handle_symdef o n a t
       | Require(path)   -> handle_require path
       | Debug(v,s)      -> set_debug v s
