@@ -1,7 +1,7 @@
 (** Term representation.
 
     This module defines the main asbstract syntax tree representation of terms
-    (incliding types), which relies on the {!module:Bindlib} library. A set of
+    (including types), which relies on the {!module:Bindlib} library. A set of
     functions are also provided for basic term manipulations. *)
 
 open Extra
@@ -9,7 +9,7 @@ open Files
 
 (** {6 Term and rewriting rules representation} *)
 
-(** Representation of terms (and types). *)
+(** Reprerentation of a term (or type). *)
 type term =
   | Vari of tvar
   (** Free variable. *)
@@ -26,19 +26,39 @@ type term =
   | Appl of term * term
   (** Application. *)
   | Meta of meta * term array
-  (** Metavariable. *)
+  (** Metavariable with its environment. *)
   | Patt of int option * string * term array
-  (** Pattern variable (used for pattern-matching). *)
+  (** Pattern variable (used in the LHS of rewriting rules). *)
   | TEnv of term_env * term array
-  (** Term environment (used for pattern-matching). *)
+  (** Term environment (used in the RHS of rewriting rules). *)
 
-(** Note that in [Patt(i,s,ar)], ... *)
+(** The {!const:Patt(i,s,ar)} constructor represents a pattern variable, which
+    may only appear in the LHS (left hand side or pattern) of rewriting rules.
+    It is identified by a {!type:string} name [s] (unique in a rewriting rule)
+    and it carries an environment [ar] that should contain a set of (distinct)
+    free variables (i.e., terms of the form {!const:Vari(x)}). They correspond
+    to the only free variables that may appear in a matched term. Note that we
+    must use the type {!type:term array} so that the variable may be bound. In
+    particular, the type {!type:tvar array} would not be suitable. The element
+    [i] (of type {!type:int option}) gives the index (if any) of the slot that
+    is reserved for the matched term in the environment of the RHS (right hand
+    side or action) of the rewriting rule. When [i] is {!const:None}, then the
+    variable is not bound in the RHS. When it is {!const:Some(i)}, then either
+    it is bound in the RHS, or it appears non-linearly in the LHS.
 
-(** Representation of a free term variable. *)
+    The {!const:TEnv(te,ar)} constructor corresponds to a form of metavariable
+    [te], with an associated environment [ar]. When it is used in the RHS of a
+    rewriting rule, the metavariable [te] must be bound. When a rewriting rule
+    applies, the metavariables that are bound in the RHS are substituted using
+    an environment that was constructed during the matching of the LHS. *)
+
+(** Free {!type:term} variable. *)
  and tvar = term Bindlib.var
 
-(** Representation of the binding of a term variable in a term. *)
+(** Binding of a {!type:term} in a {!type:term}. *)
  and tbinder  = (term, term) Bindlib.binder
+
+(** Binding of a several {!type:term} in a {!type:term}. *)
  and tmbinder = (term, term) Bindlib.mbinder
 
 (** Representation of a (static or definable) symbol. *)
