@@ -84,12 +84,14 @@ type term =
     The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of arguments. The list of
     arguments is given in {!recfield:lhs}, but the head symbol itself does not
-    need to be stored since the rules are always carried by symbols. *)
+    need to be stored in the rule (rules are contained in symbols). In a rule,
+    the {!recfield:arity} field gives the number of arguments contained in the
+    LHS. In other words, [r.arity] is always equal to [List.length r.lhs], and
+    it gives the minimal number of arguments that is required to match the LHS
+    of the rule.
 
- and term_env =
-  | TE_Vari of term_env Bindlib.var
-  | TE_Some of (term, term) Bindlib.mbinder
-  | TE_None
+    The RHS (or action) or a rewriting rule is represented by a term, in which
+    metavariables have been bound. *)
 
 (* NOTE to check if rule [r] applies to term [t] using our representation, one
    should first substitute the [r.lhs] binder (using [Bindlib.msubst]) with an
@@ -100,6 +102,11 @@ type term =
    [t]. If they are not equal then the rule does not match. Otherwise, [t] may
    be rewritten to the term obtained by substituting [r.rhs] with [args] (note
    that its pattern variables should have been substituted at this point. *)
+
+ and term_env =
+  | TE_Vari of term_env Bindlib.var
+  | TE_Some of (term, term) Bindlib.mbinder
+  | TE_None
 
 (** Representation of a metavariable. *)
  and meta =
