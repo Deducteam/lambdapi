@@ -30,7 +30,7 @@ let to_prod r e xo =
     [ctx]. If the function is not able to infer a type then [None] is
     returned. Otherwise, [Some a] is returned, where [a] is the (fully
     evaluated) infered type. *)
-let rec infer : ctxt -> term -> term option = fun ctx t ->
+let rec infer : Ctxt.t -> term -> term option = fun ctx t ->
   let vs = List.map (fun (x,_) -> _Vari x) ctx in
   let m = new_meta Type 0 in
   let a = Bindlib.unbox(_Meta m (Array.of_list vs)) in
@@ -39,7 +39,7 @@ let rec infer : ctxt -> term -> term option = fun ctx t ->
 (** [has_type ctx t a] tests whether the term [t] has type [a] in
     context [ctx]. Note that inference can be performed using an [a]
     that is a metavariable. *)
-and has_type : ctxt -> term -> term -> bool = fun ctx t typ ->
+and has_type : Ctxt.t -> term -> term -> bool = fun ctx t typ ->
   if !debug_type then log "type" "%a ⊢ %a : %a%!" pp_ctxt ctx pp t pp typ;
   let res =
     match unfold t with
@@ -129,7 +129,7 @@ and has_type : ctxt -> term -> term -> bool = fun ctx t typ ->
 
 (** [infer ctx t] is a wrapper function for the [infer] function  defined
     earlier. It is mainly used to obtain fine-grained logs. *)
-let infer : ctxt -> term -> term option = fun ctx t ->
+let infer : Ctxt.t -> term -> term option = fun ctx t ->
   if !debug then log "infr" "%a ⊢ %a" pp_ctxt ctx pp t;
   let res = infer ctx t in
   if !debug then
@@ -142,7 +142,7 @@ let infer : ctxt -> term -> term option = fun ctx t ->
 
 (** [has_type ctx t a] is a wrapper function for the [has_type]  function
     defined earlier. It is mainly used to obtain fine-grained logs. *)
-let has_type : ctxt -> term -> term -> bool = fun ctx t c ->
+let has_type : Ctxt.t -> term -> term -> bool = fun ctx t c ->
   if !debug then log "type" "%a ⊢ %a : %a" pp_ctxt ctx pp t pp c;
   let res = has_type ctx t c in
   if !debug then log "type" (r_or_g res "%a ⊢ %a : %a") pp_ctxt ctx pp t pp c;
@@ -151,7 +151,7 @@ let has_type : ctxt -> term -> term -> bool = fun ctx t c ->
 (** [sort_type a] infers the sort of the type [a]. The result type may be
     be [Type] or [Kind]. If [a] is not well-sorted type then the program fails
     gracefully. *)
-let sort_type : ctxt -> term -> term = fun c a ->
+let sort_type : Ctxt.t -> term -> term = fun c a ->
   match infer c a with
   | Some(Kind) -> Kind
   | Some(Type) -> Type
