@@ -21,7 +21,7 @@ let subst_from_constrs : problem list -> tvar array * term array = fun cs ->
              (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) cs argsa argsb)
         | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
         | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs
-        | (a            , b            ) -> build_sub acc cs
+        | (_,_) -> build_sub acc cs
   in
   let (vs,ts) = List.split (build_sub [] cs) in
   (Array.of_list vs, Array.of_list ts)
