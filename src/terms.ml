@@ -92,6 +92,11 @@ type term =
    | Defined  of string
    | Internal of int
 
+let internal (m:meta) : bool =
+  match m.meta_name with
+  | Defined _ -> false
+  | Internal _ -> true
+
 (* NOTE a metavariable is represented using a multiple binder. It can hence be
    instanciated with an open term,  provided that its which free variables are
    in the environment.  The values for the free variables are provided  by the

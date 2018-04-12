@@ -41,19 +41,21 @@ let check_rule : rspec -> unit = fun spec ->
     | Symb(s)     -> _Symb s
     | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (to_m_binder t)
     | Appl(t,u)   -> _Appl (to_m t) (to_m u)
-    | Patt(i,n,m) ->
+    | Patt(i,n,a) ->
         begin
-          let m = Array.map to_m m in
-          let l = Array.length m in
+          let a = Array.map to_m a in
+          let k = Array.length a in
           match i with
-          | None    -> _Meta (new_meta (List.assoc n ty_map) l) m
+          | None    ->
+             let m = add_meta n (List.assoc n ty_map) k in
+             _Meta m a
           | Some(i) ->
               match metas.(i) with
-              | Some(v) -> _Meta v m
+              | Some(m) -> _Meta m a
               | None    ->
-                  let v = new_meta (List.assoc n ty_map) l in
-                  metas.(i) <- Some(v);
-                  _Meta v m
+                  let m = add_meta n (List.assoc n ty_map) k in
+                  metas.(i) <- Some(m);
+                  _Meta m a
         end
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
