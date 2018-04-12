@@ -33,7 +33,7 @@ let equal_vari (t:term) (u:term) : bool =
 
 (** Constraints. *)
 
-let constraints : problem list ref = ref []
+let constraints : unif list ref = ref []
 
 let generate_constraints : bool ref = ref true
 
@@ -57,7 +57,7 @@ let without_generating_constraints : ('a -> 'b) -> 'a -> 'b = fun fn x ->
     res
   with e -> generate_constraints := true; raise e
 
-let constraints_of : ('a -> 'b) -> 'a -> problem list * 'b = fun fn e ->
+let constraints_of : ('a -> 'b) -> 'a -> unif list * 'b = fun fn e ->
   try
     constraints := [];
     let r = fn e in
@@ -75,7 +75,7 @@ let can_instantiate (m:meta) : bool = !generate_constraints || internal m
 let rec add_constraint (c:ctxt) (t1:term) (t2:term) : unit =
   add_constraints [c,t1,t2]
 
-and add_constraints (l:problem list) : unit =
+and add_constraints (l:unif list) : unit =
   match l with
   | [] -> ()
   | (c,t1,t2)::l ->
@@ -132,7 +132,7 @@ and add_constraints (l:problem list) : unit =
 and add_constraint_whnf (c:ctxt) (t1:term) (t2:term) : unit =
   add_constraints_whnf [c,t1,t2]
 
-and add_constraints_whnf (l:problem list) : unit =
+and add_constraints_whnf (l:unif list) : unit =
   match l with
   | [] -> ()
   | (c,t1,t2)::l ->
@@ -193,7 +193,7 @@ and add_constraints_whnf (l:problem list) : unit =
     not occur in [v]. Fails if [v] contains free variables distinct
     from [t1,..,tn]. *)
 and instantiate (m:meta) (ts:term array) (v:term)
-    (add_constr : problem list -> unit) (l:problem list) : unit =
+    (add_constr : unif list -> unit) (l:unif list) : unit =
   let xs = Array.map to_var ts in
   let bv = Bindlib.bind_mvar xs (lift v) in
   if Bindlib.is_closed bv then
@@ -211,7 +211,7 @@ and instantiate (m:meta) (ts:term array) (v:term)
     convertible in context [c]. [ts1] and [ts2] must have the same
     length. *)
 and add_constraints_whnf_args
-    (c:ctxt) (ts1:term list) (ts2:term list) (l:problem list) : unit =
+    (c:ctxt) (ts1:term list) (ts2:term list) (l:unif list) : unit =
   add_constraints_whnf
     (List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) l ts1 ts2)
 
@@ -314,7 +314,7 @@ and raw_check (c:ctxt) (t:term) (a:term) : unit =
      end
 
 (** Solve constraints. *)
-let solve : problem list -> bool = fun cs ->
+let solve : unif list -> bool = fun cs ->
   let msg (_,a,b) = wrn "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b in
   List.iter msg cs; cs = []
 
