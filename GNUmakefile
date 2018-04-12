@@ -1,9 +1,11 @@
-OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet -docflags -hide-warnings
+OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
+CFLAGS     = -cflags -w,A-4-50-9-44
+DFLAGS     = -docflags -hide-warnings
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
 .PHONY: all
-all: bin doc
+all: bin
 
 #### Compilation #############################################################
 
@@ -13,7 +15,8 @@ bin: lambdapi.native
 lambdapi.native: _build/src/lambdapi.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
-	$(OCAMLBUILD) src/lambdapi.native
+	@echo "[OPT] lambdapi.native"
+	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
 
 #### Documentation ###########################################################
 
@@ -23,7 +26,8 @@ doc: lambdapi.docdir/index.html
 lambdapi.docdir/index.html: _build/src/lambdapi.docdir/index.html
 
 _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
-	$(OCAMLBUILD) src/lambdapi.docdir/index.html
+	@echo "[DOC] lambdapi.docdir/index.html"
+	@$(OCAMLBUILD) $(DFLAGS) src/lambdapi.docdir/index.html
 
 #### Unit tests ##############################################################
 
@@ -101,7 +105,7 @@ zenon: lambdapi.native
 
 .PHONY: clean
 clean:
-	@ocamlbuild -clean
+	@$(OCAMLBUILD) -clean
 
 .PHONY: distclean
 distclean: clean
