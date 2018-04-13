@@ -44,6 +44,7 @@ let make_prod c no =
   d, make_codomain c no d
 
 type typing = ctxt * term * term
+
 type unif = ctxt * term * term
 
 type problem = typing list * term list * unif list * unif list * unif list
@@ -52,94 +53,114 @@ type strat =
   | Typ | Sort | Unif | Whnf | CheckEnd
   | Repeat of strat list
 
-let default_strat = Repeat [Sort; Typ; Unif; Whnf; CheckEnd]
+let rec pp_strat : strat pp = fun oc strat ->
+  match strat with
+  | Typ -> output_string oc "T"
+  | Sort -> output_string oc "S"
+  | Unif -> output_string oc "U"
+  | Whnf -> output_string oc "W"
+  | CheckEnd -> output_string oc "E"
+  | Repeat strats -> Printf.fprintf oc "[%a]" pp_strats strats
+
+and pp_strats : strat list pp = fun oc strats -> List.pp pp_strat "" oc strats
+
+let default_strat = Repeat [Typ; Sort; Unif; Whnf; CheckEnd]
 
 let generate_constraints : bool ref = ref true
 
 let can_instantiate (m:meta) : bool = !generate_constraints || internal m
 
+let recompute : bool ref = ref false
+
 let instantiate (m:meta) (ts:term array) (v:term) : bool =
   can_instantiate m && distinct_vars ts && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (Array.map to_var ts) (lift v) in
-  Bindlib.is_closed bv && (Unif.set_meta m (Bindlib.unbox bv); true)
+  Bindlib.is_closed bv &&
+    (Unif.set_meta m (Bindlib.unbox bv); recompute := true; true)
 
-let rec solve strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+let not_convertible t1 t2 =
+  fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+
+let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+  if !debug then log "solve" "%a" pp_strats strats;
   match strats with
   | [] -> ()
-  | strat :: strats ->
+  | strat :: strats' ->
      match strat with
-     | Typ -> solve_typs strats p
-     | Sort -> solve_sorts strats p
-     | Unif -> solve_unifs strats p
-     | Whnf -> solve_whnfs strats p
+     | Typ -> solve_typs strats' p
+     | Sort -> solve_sorts strats' p
+     | Unif -> solve_unifs strats' p
+     | Whnf -> solve_whnfs strats' p
      | Repeat l' -> solve (l' @ strats) p
      | CheckEnd ->
         if typs = [] && sorts = [] && unifs = [] && whnfs = [] then
           if unsolved = [] then ()
+          else if !recompute then
+            begin
+              recompute := false;
+              solve (Unif::strats) ([],[],unsolved,[],[])
+            end
           else fatal "cannot solve constraints\n"
-        else solve strats p
+        else solve strats' p
 
-and solve_typs strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+and solve_typs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
   match typs with
   | [] -> solve strats p
-  | (c,t,a)::l -> solve_typ c t a strats (l,sorts,unsolved,unifs,whnfs)
+  | (c,t,a)::l -> solve_typ c t a strats (l,sorts,unifs,whnfs,unsolved)
 
-and solve_sorts strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+and solve_sorts strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
   match sorts with
   | [] -> solve strats p
-  | a::l ->
-     match unfold a with
-     | Type | Kind -> solve_sorts strats (typs,l,unsolved,unifs,whnfs)
-     | _ -> fatal "[%a] is not a sort\n" pp a
+  | a::l -> solve_sort a strats (typs,l,unifs,whnfs,unsolved)
 
-and solve_unifs strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+and solve_unifs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
   match unifs with
   | [] -> solve strats p
-  | (c,t,u)::l -> solve_unif c t u strats (typs,sorts,unsolved,l,whnfs)
+  | (c,t,u)::l -> solve_unif c t u strats (typs,sorts,l,whnfs,unsolved)
 
-and solve_whnfs strats ((typs,sorts,unsolved,unifs,whnfs) as p)
+and solve_whnfs strats ((typs,sorts,unifs,whnfs,unsolved) as p)
     : unit =
   match whnfs with
   | [] -> solve strats p
-  | (c,t,u)::l -> solve_whnf c t u strats (typs,sorts,unsolved,unifs,l)
+  | (c,t,u)::l -> solve_whnf c t u strats (typs,sorts,unifs,l,unsolved)
 
-and solve_typ c t a strats ((typs,sorts,unsolved,unifs,whnfs) as p) =
-  if !debug_type then log "typing" "[%a] [%a]" pp t pp a;
+and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
+  if !debug_type then log "solve_typ" "[%a] [%a]" pp t pp a;
   match unfold t with
   | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
 
   | Type ->
      solve (Unif::Typ::strats)
-       (typs,sorts,unsolved,(c,a,Kind)::unifs,whnfs)
+       (typs,sorts,(c,Kind,a)::unifs,whnfs,unsolved)
 
   | Vari(x) ->
      let typ_x = try Ctxt.find x c with Not_found -> assert false in
      solve (Unif::Typ::strats)
-       (typs,sorts,unsolved,(c,a,typ_x)::unifs,whnfs)
+       (typs,sorts,(c,typ_x,a)::unifs,whnfs,unsolved)
 
   | Symb(s) ->
      solve (Unif::Typ::strats)
-       (typs,sorts,unsolved,(c,a,!(s.sym_type))::unifs,whnfs)
+       (typs,sorts,(c,!(s.sym_type),a)::unifs,whnfs,unsolved)
 
   | Prod(t,u_binder) ->
      let c',u = Ctxt.unbind c t u_binder in
      solve (Typ::Sort::strats)
-       ((c,t,Type)::(c',u,a)::typs,a::sorts,unsolved,unifs,whnfs)
+       ((c,t,Type)::(c',u,a)::typs,a::sorts,unifs,whnfs,unsolved)
 
   | Abst(t,b_binder) ->
      let no = Some(Bindlib.binder_name b_binder) in
      let u_binder = make_codomain c no t in
      let p = Prod(t,u_binder) in
      let c',b,u = Ctxt.unbind2 c t b_binder u_binder in
-     solve (Unif::Typ::strats)
-       ((c,t,Type)::(c',b,u)::typs,sorts,unsolved,(c,p,a)::unifs,whnfs)
+     solve (Typ::Unif::strats)
+       ((c,t,Type)::(c',b,u)::typs,sorts,(c,p,a)::unifs,whnfs,unsolved)
 
   | Appl(t,u) ->
      let v, w_binder = make_prod c None in
      let p = Prod(v, w_binder) in
      let a' = Bindlib.subst w_binder u in
      solve (Typ::Unif::strats)
-       ((c,t,p)::(c,u,v)::typs,sorts,unsolved,(c,a',a)::unifs,whnfs)
+       ((c,t,p)::(c,u,v)::typs,sorts,(c,a',a)::unifs,whnfs,unsolved)
 
   | Meta(m, ts) ->
      (* The type of [Meta(m,ts)] is the same as [add_args v ts]
@@ -149,22 +170,27 @@ and solve_typ c t a strats ((typs,sorts,unsolved,unifs,whnfs) as p) =
      let t' = add_args (Vari v) (Array.to_list ts) in
      solve_typ c' t' a strats p
 
-and solve_unif c t1 t2 strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+and solve_sort a strats p : unit =
+  if !debug_type then log "solve_sort" "[%a]" pp a;
+  match unfold a with
+  | Type | Kind -> solve_sorts strats p
+  | _ -> fatal "[%a] is not a sort\n" pp a
+
+and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
   if t1 == t2 then solve_unifs strats p
   else
     begin
-      if !debug_unif then log "unif" "[%a] [%a]" pp t1 pp t2;
+      if !debug_unif then log "solve_unif" "[%a] [%a]" pp t1 pp t2;
       match unfold t1, unfold t2 with
       | Type, Type
       | Kind, Kind -> solve (Unif::strats) p
 
-      | Vari x, Vari y when Bindlib.eq_vars x y -> solve_unifs strats p
+      | Vari x, Vari y when Bindlib.eq_vars x y -> solve (Unif::strats) p
 
-      | Prod(a,f), Prod(b,g)
-      | Abst(a,f), Abst(b,g) ->
+      | Prod(a,f), Prod(b,g) | Abst(a,f), Abst(b,g) ->
          let c',u,v = Ctxt.unbind2 c a f g in
          solve (Unif::strats)
-           (typs,sorts,unsolved,(c,a,b)::(c',u,v)::unifs,whnfs)
+           (typs,sorts,(c,a,b)::(c',u,v)::unifs,whnfs,unsolved)
 
       | Symb(s1), Symb(s2) when s1 == s2 -> solve (Unif::strats) p
 
@@ -177,21 +203,23 @@ and solve_unif c t1 t2 strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
 
       | Meta(_,_), _
       | _, Meta(_,_) ->
-         solve (Unif::strats) (typs,sorts,(c,t1,t2)::unsolved,unifs,whnfs)
+         solve (Unif::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
-      | Symb(_), _
-      | _, Symb(_)
-      | Appl(_,_), _
-      | _, Appl(_,_) ->
-         solve (Unif::Whnf::strats)
-           (typs,sorts,unsolved,unifs,(c,t1,t2)::whnfs)
+      | Symb(s), _ when !(s.sym_rules) <> [] ->
+         solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
 
-      | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+      | _, Symb(s) when !(s.sym_rules) <> [] ->
+         solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
+
+      | Appl(_,_), _ | _, Appl(_,_) ->
+         solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
+
+      | _, _ -> not_convertible t1 t2
     end
 
-and solve_whnf c t1 t2 strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
+and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
   let t1 = whnf t1 and t2 = whnf t2 in
-  if !debug_unif then log "whnf_unif" "[%a] [%a]" pp t1 pp t2;
+  if !debug_unif then log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
   match h1, h2 with
@@ -201,65 +229,67 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unsolved,unifs,whnfs) as p) : unit =
 
   | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
      let unifs = List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) unifs ts1 ts2 in
-     solve (Whnf::strats) (typs,sorts,unsolved,unifs,whnfs)
+     solve (Whnf::strats) (typs,sorts,unifs,whnfs,unsolved)
 
   | Prod(a,f), Prod(b,g)
   (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
   | Abst(a,f), Abst(b,g) ->
   (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
      let c',u,v = Ctxt.unbind2 c a f g in
-     let unifs = (c,a,b)::(c',u,v)::unifs in
-     solve (Whnf::strats) (typs,sorts,unsolved,unifs,whnfs)
+     solve (Unif::Whnf::strats)
+       (typs,sorts,(c,a,b)::(c',u,v)::unifs,whnfs,unsolved)
+
+  | Symb(s1), Symb(s2) when s1 == s2 && n1 = 0 && n2 = 0 ->
+     solve (Whnf::strats) p
 
   | Symb(s1), Symb(s2) when !(s1.sym_rules) = [] && !(s2.sym_rules) = [] ->
      if s1 == s2 && n1 = n2 then
        let unifs =
          List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) unifs ts1 ts2 in
-       solve (Whnf::strats) (typs,sorts,unsolved,unifs,whnfs)
-     else fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
-
-  | Symb(s1), Symb(s2) when s1==s2 && n1 = 0 && n2 = 0 ->
-     solve (Whnf::strats) p
+       solve (Unif::Whnf::strats) (typs,sorts,unifs,whnfs,unsolved)
+     else not_convertible t1 t2
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 ->
+    when m1 == m2 && n1 = 0 && n2 = 0 && Array.for_all2 equal_vari a1 a2 ->
      solve (Whnf::strats) p
 
-  | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 ->
-     solve (Whnf::strats) p
-
-  | _, Meta(m,ts) when n2 = 0 && instantiate m ts t1 ->
-     solve (Whnf::strats) p
+  | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 -> solve (Whnf::strats) p
+  | _, Meta(m,ts) when n2 = 0 && instantiate m ts t1 -> solve (Whnf::strats) p
 
   | Meta(_,_), _
   | _, Meta(_,_) ->
-     let unsolved = (c,t1,t2)::unsolved in
-     solve (Whnf::strats) (typs,sorts,unsolved,unifs,whnfs)
+     solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
-  | Symb(_), _
-  | _, Symb(_) ->
+  | Symb(s), _ when !(s.sym_rules) <> [] ->
      if eq_modulo t1 t2 then solve (Whnf::strats) p
-     else let unsolved = (c,t1,t2)::unsolved in
-          solve (Whnf::strats) (typs,sorts,unsolved,unifs,whnfs)
-  (*FIXME? try to detect whether [t1] or [t2] can be reduced after
-    instantiation*)
+     else solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
-  | _, _ -> fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+  | _, Symb(s) when !(s.sym_rules) <> [] ->
+     if eq_modulo t1 t2 then solve (Whnf::strats) p
+     else solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
+
+  | _, _ -> not_convertible t1 t2
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
+  recompute := false;
+  if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
   solve [default_strat] ([c,t,a],[],[],[],[]);
   true
 
 (** If [infer c t] returns [Some u], then [t] has type [u] in context
     [c]. If it returns [None] then some constraints could not be solved. *)
 let infer (c:ctxt) (t:term) : term option =
+  recompute := false;
+  if !debug_type then log "infer" "[%a]" pp t;
   let a = make_meta c (make_sort()) in
   solve [default_strat] ([c,t,a],[],[],[],[]);
   Some a
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:ctxt) (t:term) : term =
+  recompute := false;
+  if !debug_type then log "sort_type" "[%a]" pp t;
   let a = make_meta c (make_sort()) in
   solve [default_strat] ([c,t,a],[],[],[],[]);
   match unfold a with
