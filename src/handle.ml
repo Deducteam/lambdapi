@@ -177,36 +177,37 @@ let rec handle_require : Files.module_path -> unit = fun path ->
     sign.deps := PathMap.add path [] !(sign.deps);
   compile false path
 
+(** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
+    function may raise the [Fatal] exceptions. *)
+and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
+  let cmd = Scope.scope_cmd cmd in
+  let handle_symdef o = if o then handle_opaque else handle_defin in
+  try
+    match cmd.elt with
+    | SymDecl(b,n,a)  -> handle_symdecl b n a
+    | Rules(rs)       -> List.iter handle_rule rs
+    | SymDef(o,n,a,t) -> handle_symdef o n a t
+    | Require(path)   -> handle_require path
+    | Debug(v,s)      -> set_debug v s
+    | Verb(n)         -> verbose := n
+    | Infer(t,c)      -> handle_infer t c
+    | Eval(t,c)       -> handle_eval t c
+    | Test(test)      -> handle_test test
+    | StartProof(s,a) -> handle_start_proof s a
+    | PrintFocus      -> handle_print_focus()
+    | Refine(t)       -> handle_refine t
+    (* Legacy commands. *)
+    | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
+                           c.elt Pos.print c.pos
+  with
+  | Fatal -> raise Fatal
+  | e     -> fatal "Uncaught exception on a command at %a\n%s\n%!"
+               Pos.print cmd.pos (Printexc.to_string e)
+
 (** [handle_cmds cmds] interprets the commands of [cmds] in order. The
     program fails gracefully in case of error. *)
 and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
-  let handle_cmd cmd =
-    try
-      let cmd = Scope.scope_cmd cmd in
-      let handle_symdef o = if o then handle_opaque else handle_defin in
-      match cmd.elt with
-      | SymDecl(b,n,a)  -> handle_symdecl b n a
-      | Rules(rs)       -> List.iter handle_rule rs
-      | SymDef(o,n,a,t) -> handle_symdef o n a t
-      | Require(path)   -> handle_require path
-      | Debug(v,s)      -> set_debug v s
-      | Verb(n)         -> verbose := n
-      | Infer(t,c)      -> handle_infer t c
-      | Eval(t,c)       -> handle_eval t c
-      | Test(test)      -> handle_test test
-      | StartProof(s,a) -> handle_start_proof s a
-      | PrintFocus      -> handle_print_focus()
-      | Refine(t)       -> handle_refine t
-      (* Legacy commands. *)
-      | Other(c)        ->
-          if !debug then
-            wrn "Unknown command %S at %a.\n" c.elt Pos.print c.pos
-    with
-    | Fatal -> exit 1
-    | e     -> abort "Uncaught exception on a command at %a\n%s\n%!"
-                 Pos.print cmd.pos (Printexc.to_string e);
-  in
-  List.iter handle_cmd cmds
+  List.iter (fun cmd -> try handle_cmd cmd with Fatal -> exit 1) cmds
 
 (** [compile force path] compiles the file corresponding to [path],
     when it is necessary (the corresponding object file does not
@@ -250,3 +251,34 @@ and compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
+
+module Pure :
+  sig
+    type command
+    type state
+
+    type result =
+      | OK    of state
+      | Error of string
+
+    val initial_state : state
+
+    val handle_command : state -> command -> result
+  end =
+  struct
+    open Timed
+
+    type command = Parser.p_cmd loc
+
+    type state = Time.t
+
+    type result =
+      | OK    of state
+      | Error of string
+
+    let initial_state : state = Time.save ()
+
+    let handle_command : state -> command -> result = fun t cmd ->
+      Time.rollback t;
+      try handle_cmd cmd; OK(Time.save ()) with Fatal -> Error ""
+  end
