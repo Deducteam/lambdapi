@@ -32,6 +32,8 @@ P : numeral -> Type.
 P2: n:numeral -> P n -> Type.
 
 y : P test_.
+
+(; should fail since test and test_ are not equivalent ;)
 z: P2 test y.
 
 #EVAL zero.
