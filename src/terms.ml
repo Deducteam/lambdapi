@@ -5,7 +5,8 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
-open Files
+
+(****************************************************************************)
 
 (** {6 Term and rewriting rules representation} *)
 
@@ -32,6 +33,15 @@ type term =
   | TEnv of term_env * term array
   (** Term environment (used in the RHS of rewriting rules). *)
 
+(** Representation of an higher-order term. *)
+ and term_env =
+  | TE_Vari of term_env Bindlib.var
+  (** Free higher-oder term variable (for printing only). *)
+  | TE_Some of (term, term) Bindlib.mbinder
+  (** Higher-order term to instantiate the RHS of rewriting rules. *)
+  | TE_None
+  (** Dummy higher-order term (initial value in RHS environment). *)
+
 (** The {!const:Patt(i,s,ar)} constructor represents a pattern variable, which
     may only appear in the LHS (left hand side or pattern) of rewriting rules.
     It is identified by a {!type:string} name [s] (unique in a rewriting rule)
@@ -54,11 +64,16 @@ type term =
 
 (** Representation of a constant or function symbol. *)
  and sym =
-  { sym_name  : string        (** Name of the symbol. *)
-  ; sym_type  : term ref      (** Type of the symbol. *)
-  ; sym_path  : module_path   (** Module in which it is defined.  *)
-  ; sym_rules : rule list ref (** Rewriting rules for the symbol. *)
-  ; sym_const : bool          (** Tells whether it is constant.   *) }
+  { sym_name  : string
+  (** Name of the symbol. *)
+  ; sym_type  : term ref
+  (** Type of the symbol. *)
+  ; sym_path  : Files.module_path
+  (** Module in which it is defined.  *)
+  ; sym_rules : rule list ref
+  (** Rewriting rules for the symbol. *)
+  ; sym_const : bool
+  (** Tells whether it is constant.   *) }
 
 (** The {!recfield:sym_type} field contains a reference for a technical reason
     related to the representation of signatures as binary files (see functions
@@ -73,9 +88,12 @@ type term =
 
 (** Representation of a rewriting rule. *)
  and rule =
-  { lhs   : term list                        (** Left  hand side.  *)
-  ; rhs   : (term_env, term) Bindlib.mbinder (** Right hand side.  *)
-  ; arity : int (** Required number of arguments to be applicable. *) }
+  { lhs   : term list
+  (** Left  hand side.  *)
+  ; rhs   : (term_env, term) Bindlib.mbinder
+  (** Right hand side.  *)
+  ; arity : int
+  (** Required number of arguments to be applicable. *) }
 
 (** A rewriting rule is formed of a LHS (left hand side), which is the pattern
     that should be matched for the rule to apply, and a RHS (right hand side),
@@ -91,136 +109,154 @@ type term =
     of the rule.
 
     The RHS (or action) or a rewriting rule is represented by a term, in which
-    metavariables have been bound. *)
+    metavariables of type {!type:term_env} are bound. These metavariables must
+    be substituted with an environment of type {!type:term_env array} (that is
+    constructed when matching the LHS) to effectively apply the rule.
 
-(* NOTE to check if rule [r] applies to term [t] using our representation, one
-   should first substitute the [r.lhs] binder (using [Bindlib.msubst]) with an
-   array of pattern variables [args] (which size should match the arity of the
-   binder), thus obtaining a term list [lhs]. Then, to check if [r] applies to
-   term [t] (which head must be the definable symbol corresponding to [r]) one
-   should test  equality (with unification) between [lhs] and the arguments of
-   [t]. If they are not equal then the rule does not match. Otherwise, [t] may
-   be rewritten to the term obtained by substituting [r.rhs] with [args] (note
-   that its pattern variables should have been substituted at this point. *)
-
- and term_env =
-  | TE_Vari of term_env Bindlib.var
-  | TE_Some of (term, term) Bindlib.mbinder
-  | TE_None
-
-(** Representation of a metavariable. *)
+    During evaluation, we will only try to apply rewriting rules when reducing
+    the application of a symbol [s] to a list of argument [ts]. At this point,
+    [s.sym_rules] contains every rule [r] that may potentially apply. To check
+    if [r] applies, one must match the elements of [r.lhs] with those of [ts],
+    while building an environment [ar] of type {!type:term_env array}. In this
+    process, a pattern of the form {!const:Patt(Some(i),s,ar)} matched against
+    a term [u] intuitively results in [ar.(i)] being set to [u]. If every term
+    can be matched against the corresponding pattern, the environment [ar] can
+    then be substituted in [r.rhs] with [Bindlib.msubst r.rhs ar] to build the
+    result of the application of the rewriting rule. *)
+   
+(** Representation of a metavariable for unification. *)
  and meta =
   { meta_name  : meta_name
+  (** Unique name of the metavariable. *)
   ; meta_type  : term
+  (** Type of the metavariable. *)
   ; meta_arity : int
-  ; meta_value : (term, term) Bindlib.mbinder option ref }
+  (** Arity of the metavariable (environment size). *)
+  ; meta_value : (term, term) Bindlib.mbinder option ref
+  (** Definition of the metavariable, if known. *) }
 
+(** Representation of the name of a metavariable. *)
  and meta_name =
-   | Defined  of string
-   | Internal of int
+  | Defined  of string
+  (** User-defined metavariable name. *)
+  | Internal of int
+  (** Generated metavariable identifier. *)
 
-let internal (m:meta) : bool =
-  match m.meta_name with
-  | Defined _ -> false
-  | Internal _ -> true
+(** A metavariable is represented using a multiple binder, and it can hence be
+    instantiated with an open term, provided that its free variables appear in
+    the attached environment [ar] in terms of the form {!const:Meta(m,ar}. The
+    environment [ar] should only contain (distinct) free variables, as for the
+    {!const:Patt(i,s,ar)} constructor. *)
 
-(* NOTE a metavariable is represented using a multiple binder. It can hence be
-   instanciated with an open term,  provided that its which free variables are
-   in the environment.  The values for the free variables are provided  by the
-   second argument of the [Meta] constructor,  which can be used to substitute
-   the binder whenever the metavariable has been instanciated. *)
-
-(** Representation of a rule specification, used for checking SR. *)
-type rspec =
-  { rspec_symbol : sym                  (** Head symbol of the rule.    *)
-  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
-  ; rspec_rule   : rule                 (** The rule itself.            *) }
-
-(** Free {!type:term} variable. *)
-type tvar = term Bindlib.var
-
-type tbinder = (term, term) Bindlib.binder
-
-(** Injection of [Bindlib] variables into terms. *)
-let mkfree : tvar -> term = fun x -> Vari(x)
-
-(** Injection of [Bindlib] variables into term place-holders. *)
-let te_mkfree : term_env Bindlib.var -> term_env = fun x -> TE_Vari(x)
-
-(** [unfold t] unfolds the toplevel metavariable in [t]. *)
+(** [unfold t] repeatedly unfolds the definition of the top level metavariable
+    of [t] until a significant {!type:term} constructor is found. Note that it
+    may an uninstantiated metavariable or any other form of term. However, the
+    returned term cannot be an instantiated metavariable. In the case where no
+    unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta(m,e)            ->
-      begin
-        match !(m.meta_value) with
-        | None    -> t
-        | Some(b) -> unfold (Bindlib.msubst b e)
-      end
-  | TEnv(TE_Some(f), ar) -> unfold (Bindlib.msubst f ar)
+  | Meta({meta_value = {contents = Some(b)}}, ar)
+  | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
   | _                    -> t
 
-(******************************************************************************)
-(* Boxed terms *)
+(** Note that the {!val:unfold} function should (almost always) be used before
+    matching over a value of type {!type:term}. *)
 
-(** Short name for boxed terms. *)
+(****************************************************************************)
+
+(** {6 Type synonyms and basic functions (related to {!module:Bindlib})} *)
+
+(** A short name for the binding of a term in a term. *)
+type tbinder = (term, term) Bindlib.binder
+
+(** A short name for the type of a free term variable. *)
+type tvar = term Bindlib.var
+
+(** A short name for the type of a term in a {!type:Bindlib.bindbox}. *)
 type tbox = term Bindlib.bindbox
 
-(** [_Vari x] injects the free variable [x] into the bindbox so that it may be
-    available for binding. *)
+(** A short name for the type of a free {!type:term_env} variable. *)
+type tevar = term_env Bindlib.var
+
+(** A short name for the type of a boxed {!type:term_env}. *)
+type tebox = term_env Bindlib.bindbox
+
+(** [mkfree x] injects the [Bindlib] variable [x] in a term. *)
+let mkfree : tvar -> term = fun x -> Vari(x)
+
+(** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
+let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
+
+(****************************************************************************)
+
+(** {6 Smart constructors and lifting (related to {!module:Bindlib})} *)
+
+(** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
+    it may be available for binding. *)
 let _Vari : tvar -> tbox = Bindlib.box_of_var
 
-(** [_Type] injects the constructor [Type] in the [bindbox] type. *)
+(** [_Type] injects the constructor [Type] into the {!type:tbox} type. *)
 let _Type : tbox = Bindlib.box Type
 
-(** [_Kind] injects the constructor [Kind] in the [bindbox] type. *)
+(** [_Kind] injects the constructor [Kind] into the {!type:tbox} type. *)
 let _Kind : tbox = Bindlib.box Kind
 
-(** [_Symb s] injects the constructor [Symb(s)] in the [bindbox] type. *)
-let _Symb : sym -> tbox = fun s -> Bindlib.box (Symb(s))
+(** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
+    symbols are closed object they do not require lifting. *)
+let _Symb : sym -> tbox = fun s ->
+  Bindlib.box (Symb(s))
 
-(** [_Appl t u] lifts the application of [t] and [u] to the [bindbox] type. *)
-let _Appl : tbox -> tbox -> tbox = fun t u ->
-  Bindlib.box_apply2 (fun t u -> Appl(t,u)) t u
+(** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
+    terms [t] and [u]. *)
+let _Appl : tbox -> tbox -> tbox =
+  Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
-(** [_Prod a x f] lifts a dependent product node to the [bindbox] type given a
-    boxed term [a] (the type of the domain), a prefered name [x] for the bound
-    variable, and a function [f] to build the [binder] (codomain). *)
+(** [_Prod a x f] lifts a dependent product node to the {!type:tbox} type. The
+    boxed term [a] is the domain of the product, the {!type:string} [x] is the
+    preferred name for the bound variable,  and [f] is a function for building
+    the codomain of the product. *)
 let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
   let b = Bindlib.vbind mkfree x f in
   Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
 
+(** [_Prod_bv a x b] is an alternative smart constructor for products. *)
 let _Prod_bv : tbox -> tvar -> tbox -> tbox = fun a x b ->
   Bindlib.box_apply2 (fun a b -> Prod(a,b)) a (Bindlib.bind_var x b)
 
-(** [_Abst a x f] lifts an abstraction node to the [bindbox] type given a term
-    [a] (the type of the bound variable),  the prefered name [x] for the bound
-    variable, and the function [f] to build the [binder] (body). *)
+(** [_Abst a x f] lifts an abstraction node to the {!type:tbox} type given the
+    boxed term [a] (used as the type of the bound variable), the prefered name
+    [x] for the bound variable, and the function [f] to build the body. *)
 let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
-  let b = Bindlib.vbind mkfree x f in
-  Bindlib.box_apply2 (fun a b -> Abst(a,b)) a b
+  let t = Bindlib.vbind mkfree x f in
+  Bindlib.box_apply2 (fun a t -> Abst(a,t)) a t
 
-(** [_Meta u ar] lifts a metavariable [u] to the [bindbox] type, given
-    its environment [ar]. The metavariable should not  be instanciated
-    when calling this function. *)
+(** [_Abst_bv a x b] is an alternative smart constructor for abstractions. *)
+let _Abst_bv : tbox -> tvar -> tbox -> tbox = fun a x t ->
+  Bindlib.box_apply2 (fun a t -> Abst(a,t)) a (Bindlib.bind_var x t)
+
+(** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
+    environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
+    objects so they do not require lifting. *)
 let _Meta : meta -> tbox array -> tbox = fun u ar ->
   Bindlib.box_apply (fun ar -> Meta(u,ar)) (Bindlib.box_array ar)
 
+(** [_Patt i n ar] lifts a pattern variable to the {!type:tbox} type. *)
 let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
   Bindlib.box_apply (fun ar -> Patt(i,n,ar)) (Bindlib.box_array ar)
 
-let _TEnv : term_env Bindlib.bindbox -> tbox array -> tbox = fun te ar ->
+(** [_TEnv te ar] lifts a term environment to the {!type:tbox} type. *)
+let _TEnv : tebox -> tbox array -> tbox = fun te ar ->
   Bindlib.box_apply2 (fun te ar -> TEnv(te,ar)) te (Bindlib.box_array ar)
 
-(** [lift t] lifts a [term] [t] to the [bindbox] type, thus gathering its free
-    variables, making them available for binding. At the same time,  the names
-    of the bound variables are automatically updated by [Bindlib]. *)
+(** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
+    effect of gathering its free variables, making them available for binding.
+    Bound variable names are automatically updated in the process. *)
 let rec lift : term -> tbox = fun t ->
   let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   let lift_term_env te =
     match te with
     | TE_Vari(x) -> Bindlib.box_of_var x
-    | TE_Some(_) -> assert false
-    | TE_None    -> assert false
+    | _          -> Bindlib.box te (* closed objects *)
   in
   match unfold t with
   | Vari(x)     -> _Vari x
@@ -234,7 +270,15 @@ let rec lift : term -> tbox = fun t ->
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
 
-(******************************************************************************)
+(** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
+    metavariable has been removed (collapsed), and the name of bound variables
+    have been updated. *)
+let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(****************************************************************************)
+
+(** {6 FIXME} *)
+
 (* Metavariables *)
 
 (** [unset u] returns [true] if [u] is not instanciated. *)
@@ -245,6 +289,11 @@ let meta_name : meta -> string = fun m ->
   match m.meta_name with
   | Defined(s) -> Printf.sprintf "?%s" s
   | Internal(k) -> Printf.sprintf "?%i" k
+
+let internal (m:meta) : bool =
+  match m.meta_name with
+  | Defined _  -> false
+  | Internal _ -> true
 
 (** Representation of the existing meta-variables. *)
 type meta_map =
@@ -298,7 +347,7 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
 
-(******************************************************************************)
+(****************************************************************************)
 (* Functions on terms *)
 
 (** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
@@ -396,7 +445,13 @@ let occurs (m:meta) (t:term) : bool =
   in
   try occurs t; false with Exit -> true
 
-(******************************************************************************)
+(** Representation of a rule specification, used for checking SR. *)
+type rspec =
+  { rspec_symbol : sym                  (** Head symbol of the rule.    *)
+  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
+  ; rspec_rule   : rule                 (** The rule itself.            *) }
+
+(****************************************************************************)
 (* Representation of goals and proofs. *)
 
 (** Representation of an environment for variables. *)

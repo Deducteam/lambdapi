@@ -57,7 +57,7 @@ let pp_term : term pp = fun oc t ->
     (* Anything else needs parentheses. *)
     | (_          , _    ) -> out oc "(%a)" pp_func t
   in
-  pp `Func oc (Bindlib.unbox (lift t))
+  pp `Func oc (cleanup t)
 
 (** [pp] is a short synonym of [pp_term]. *)
 let pp : term pp = pp_term
