@@ -277,7 +277,105 @@ let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
 
 (****************************************************************************)
 
+(** {6 Basic functions on terms} *)
+
+(** [to_tvars ar] extracts and array of {!type:tvar} from an array of terms of
+    the form {!const:Vari(x)}. The function fails if any elements of [ar] does
+    not correspond to a free variable. *)
+let to_tvars : term array -> tvar array =
+  Array.map (function Vari(x) -> x | _ -> assert false)
+
+(** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
+    [h] is the head term of [t] and [args] is the list of arguments applied to
+    [h] in [t]. The returned [h] cannot be an {!constr:Appl} node. *)
+let get_args : term -> term * term list = fun t ->
+  let rec get_args acc t =
+    match unfold t with
+    | Appl(t,u) -> get_args (u::acc) t
+    | t         -> (t, acc)
+  in get_args [] t
+
+(** [add_args t args] builds the application of the {!type:term} [t] to a list
+    arguments [args]. When [args] is empty, the returned value is (physically)
+    equal to [t]. *)
+let add_args : term -> term list -> term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | u::args -> add_args (Appl(t,u)) args
+  in add_args t args
+
+(** [eq t u] tests the equality of [t] and [u] modulo α-equivalence. Note that
+    the behavious of the function is unspecified when [t] or [u] contain terms
+    of the form {!const:Patt(i,s,e)} or {!const:TEnv(te,e)} (in the case where
+    [te] is not of the form {!const:TE_Some(b)}). *)
+let eq : term -> term -> bool = fun a b -> a == b ||
+  let exception Not_equal in
+  let unbind b1 b2 =
+    let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+    (b1,b2)
+  in
+  let rec eq l =
+    match l with
+    | []       -> ()
+    | (a,b)::l ->
+    match (unfold a, unfold b) with
+    | (a          , b          ) when a == b -> eq l
+    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
+    | (Type       , Type       )
+    | (Kind       , Kind       ) -> eq l
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
+    | (Prod(a1,b1), Prod(a2,b2))
+    | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind b1 b2)::l)
+    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
+    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 -> assert(e1 == e2); eq l
+    | (Patt(_,_,_), _          )
+    | (_          , Patt(_,_,_))
+    | (TEnv(_,_)  , _          )
+    | (_          , TEnv(_,_)  ) -> assert false
+    | (_          , _          ) -> raise Not_equal
+  in
+  try eq [(a,b)]; true with Not_equal -> false
+
+(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
+    for {!val:eq}, the behaviour of this function is unspecified when [t] uses
+    the {!const:Patt} or {!const:TEnv} constructor. *)
+let occurs : meta -> term -> bool = fun m t ->
+  let exception Occurs in
+  let unbind b = snd (Bindlib.unbind mkfree b) in
+  let rec occurs l =
+    match l with
+    | []   -> ()
+    | a::l ->
+    match unfold a with
+    | Patt(_,_,_) | TEnv(_,_)         -> assert false
+    | Vari(_) | Type | Kind | Symb(_) -> occurs l
+    | Prod(a,b) | Abst(a,b)           -> occurs (a::(unbind b)::l)
+    | Appl(t,u)                       -> occurs (t::u::l)
+    | Meta(v,_) when m == v           -> raise Occurs
+    | Meta(_,e)                       ->
+        assert(Array.for_all (function Vari(_) -> true | _ -> false) e);
+        occurs l
+  in
+  try occurs [t]; false with Occurs -> true
+
+(** [distinct_vars a] checks that [a] is made of distinct variables. *)
+let distinct_vars (a:term array) : bool =
+  let acc = ref [] in
+  let fn t =
+    match t with
+    | Vari v ->
+       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
+       else acc := v::!acc
+    | _ -> raise Exit
+  in
+  let res = try Array.iter fn a; true with Exit -> false in
+  acc := []; res
+
+(****************************************************************************)
+
 (** {6 FIXME} *)
+
 
 (* Metavariables *)
 
@@ -346,104 +444,6 @@ let new_meta : term -> int -> meta = fun a n ->
   in
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
-
-(****************************************************************************)
-(* Functions on terms *)
-
-(** [get_args t] returns a tuple [(h, args)] where [h] if the head of the term
-    and [args] is the list of its arguments. *)
-let get_args : term -> term * term list = fun t ->
-  let rec get_args acc t =
-    match unfold t with
-    | Appl(t,u) -> get_args (u::acc) t
-    | t         -> (t, acc)
-  in get_args [] t
-
-(** [add_args h args] builds the application of a term [h] to a list [args] of
-    of arguments. This function is the inverse of [get_args]. *)
-let add_args : term -> term list -> term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args (Appl(t,u)) args
-  in add_args t args
-
-(** [eq t u] tests the equality of the two terms [t] and [u] (modulo
-    alpha-equivalence). *)
-let rec eq_list : (term * term) list -> unit = fun l ->
-  match l with
-  | [] -> ()
-  | (a,b) :: l ->
-     match unfold a, unfold b with
-     | Vari(x1)   , Vari(x2) when Bindlib.eq_vars x1 x2 -> eq_list l
-     | Type       , Type
-     | Kind       , Kind        -> eq_list l
-     | Symb(s1)   , Symb(s2) when s1 == s2 -> eq_list l
-     | Prod(a1,b1), Prod(a2,b2)
-     | Abst(a1,b1), Abst(a2,b2) ->
-        let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-        eq_list ((a1,a2)::(b1,b2)::l)
-     | Appl(t1,u1), Appl(t2,u2) -> eq_list ((t1,t2)::(u1,u2)::l)
-     | Patt(_,_,_), _
-     | _          , Patt(_,_,_)
-     | TEnv(_,_)  , _
-     | _          , TEnv(_,_)   -> assert false
-     | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-        let l = ref l in
-        Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
-        eq_list !l
-     | _          , _           -> raise Exit
-
-let eq : term -> term -> bool = fun a b ->
-  try eq_list [a,b]; true with Exit -> false
-
-(** [distinct_vars a] checks that [a] is made of distinct variables. *)
-let distinct_vars (a:term array) : bool =
-  let acc = ref [] in
-  let fn t =
-    match t with
-    | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
-       else acc := v::!acc
-    | _ -> raise Exit
-  in
-  let res = try Array.iter fn a; true with Exit -> false in
-  acc := []; res
-
-(** [to_var t] returns [x] if [t = Vari x] and fails otherwise. *)
-let to_var (t:term) : tvar = match t with Vari x -> x | _ -> assert false
-
-(** [occurs u t] checks whether the metavariable [u] occurs in [t]. *)
-(*REMOVE:let rec occurs : meta -> term -> bool = fun r t ->
-  match unfold t with
-  | Prod(a,b)
-  | Abst(a,b)   -> occurs r a || occurs r (Bindlib.subst b Kind)
-  | Appl(t,u)   -> occurs r t || occurs r u
-  | Meta(u,e)   -> u == r || Array.exists (occurs r) e
-  | Type
-  | Kind
-  | Vari(_)
-  | Symb(_)     -> false
-  | Patt(_,_,_)
-  | TEnv(_,_)   -> assert false*)
-
-(** [occurs m t] checks whether the metavariable [m] occurs in [t]. *)
-let occurs (m:meta) (t:term) : bool =
-  let rec occurs (t:term) : unit =
-    match unfold t with
-    | Patt(_,_,_) | TEnv(_,_) -> assert false
-    | Vari(_) | Type | Kind | Symb(_) -> ()
-    | Prod(a,f) | Abst(a,f) ->
-       begin
-         occurs a;
-         let _,b = Bindlib.unbind mkfree f in
-         occurs b
-       end
-    | Appl(a,b) -> occurs a; occurs b
-    | Meta(m',ts) ->
-       if m==m' then raise Exit else Array.iter occurs ts
-  in
-  try occurs t; false with Exit -> true
 
 (** Representation of a rule specification, used for checking SR. *)
 type rspec =

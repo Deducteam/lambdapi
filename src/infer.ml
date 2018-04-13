@@ -147,12 +147,12 @@ and add_constr (c:Ctxt.t) (t1:term) (t2:term) (p:problem) : problem =
   | Meta(m1,a1), Meta(m2,a2) when m1==m2 && Array.for_all2 equal_vari a1 a2 -> p
 
   | Meta(m,a), _ when distinct_vars a && not (occurs m t2) ->
-     let b = Array.map to_var a in
+     let b = to_tvars a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t2)));
      recompute_constrs p
 
   | _, Meta(m,a) when distinct_vars a && not (occurs m t1) ->
-     let b = Array.map to_var a in
+     let b = to_tvars a in
      Unif.set_meta m (Bindlib.unbox (Bindlib.bind_mvar b (lift t1)));
      recompute_constrs p
 
@@ -203,7 +203,7 @@ and add_constr_whnf (c:Ctxt.t) (t1:term) (t2:term) (p:problem) : problem =
     when m1==m2 && Array.for_all2 equal_vari a1 a2 && n1 = 0 && n2 = 0 -> p
 
   | Meta(m,ts), v when n1 = 0 && distinct_vars ts && not (occurs m v) ->
-     let xs = Array.map to_var ts in
+     let xs = to_tvars ts in
      let v = Bindlib.bind_mvar xs (lift v) in
      if Bindlib.is_closed v then
        begin
@@ -213,7 +213,7 @@ and add_constr_whnf (c:Ctxt.t) (t1:term) (t2:term) (p:problem) : problem =
      else fatal "cannot instantiate %a" pp_meta m
 
   | v, Meta(m,ts) when n2 = 0 && distinct_vars ts && not (occurs m v) ->
-     let xs = Array.map to_var ts in
+     let xs = to_tvars ts in
      let v = Bindlib.bind_mvar xs (lift v) in
      if Bindlib.is_closed v then
        begin

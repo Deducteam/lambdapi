@@ -20,9 +20,9 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     the function also verifies that the body of the metavariable (the
     binder) is closed. [ts] must be a sequence of distinct variables. *)
 let instantiate : meta -> term array -> term -> bool = fun m ts v ->
-  assert(unset m);
-  distinct_vars ts && not (occurs m v) &&
-  let b = Bindlib.bind_mvar (Array.map to_var ts) (lift v) in
+  assert(unset m && distinct_vars ts);
+  not (occurs m v) &&
+  let b = Bindlib.bind_mvar (to_tvars ts) (lift v) in
   Bindlib.is_closed b && (set_meta m (Bindlib.unbox b); true)
 
 (** [unify t u] tests the equality of the two terms [t] and [u] while possibly

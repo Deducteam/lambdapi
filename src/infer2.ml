@@ -186,7 +186,7 @@ and add_constraints_whnf (l:unif list) : unit =
     from [t1,..,tn]. *)
 and instantiate (m:meta) (ts:term array) (v:term)
     (add_constr : unif list -> unit) (l:unif list) : unit =
-  let xs = Array.map to_var ts in
+  let xs = to_tvars ts in
   let bv = Bindlib.bind_mvar xs (lift v) in
   if Bindlib.is_closed bv then
     begin
