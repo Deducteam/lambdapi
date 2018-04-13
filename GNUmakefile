@@ -1,6 +1,6 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
 CFLAGS     = -cflags -w,A-4-50-9-44
-DFLAGS     = -docflags -hide-warnings
+DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
