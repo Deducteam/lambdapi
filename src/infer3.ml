@@ -74,7 +74,7 @@ let recompute : bool ref = ref false
 
 let instantiate (m:meta) (ts:term array) (v:term) : bool =
   can_instantiate m && distinct_vars ts && not (occurs m v) &&
-  let bv = Bindlib.bind_mvar (Array.map to_var ts) (lift v) in
+  let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
   Bindlib.is_closed bv &&
     (Unif.set_meta m (Bindlib.unbox bv); recompute := true; true)
 
