@@ -49,10 +49,10 @@ let check_def_type : strloc -> term option -> term -> term =
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
-let handle_rule : rspec -> unit = fun r ->
+let handle_rule : sym * rule -> unit = fun (s,r) ->
   fail_if_in_proof();
-  Sr2.check_rule r;
-  Sign.add_rule (current_sign()) r.rspec_symbol r.rspec_rule
+  Sr2.check_rule (s, r);
+  Sign.add_rule (current_sign()) s r
 
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)

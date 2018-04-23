@@ -49,35 +49,6 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     try _Symb (Sign.find sign s) with Not_found ->
     fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
 
-(** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
-    free variables in [x1, .., xn], build the product type [x1:T1 ->
-    .. -> xn:Tn -> t]. *)
-let build_prod : env -> tbox -> term = fun c t ->
-  let fn b (_,(v,a)) =
-    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
-  in Bindlib.unbox (List.fold_left fn t c)
-
-(** [build_type is_type env] builds the product of [env] over [a] where
-    [a] is [Type] if [is_type], and a new metavariable
-    otherwise. Returns the array of variables of [env] too. *)
-let build_meta_type : env -> bool -> term * tbox array =
-  fun env is_type ->
-    let a = build_prod env _Type in
-    let fn (_,(v,_)) = Bindlib.box_of_var v in
-    let vs = Array.of_list (List.rev_map fn env) in
-    if is_type then a, vs
-    else (* We create a new metavariable. *)
-      let m = new_meta a (List.length env) in
-      build_prod env (_Meta m vs), vs
-
-(** [build_meta_app is_type c] builds a new metavariable of type
-    [build_meta_type is_type c]. *)
-let build_meta_app : env -> bool -> tbox =
-  fun env is_type ->
-    let t, vs = build_meta_type env is_type in
-    let m = new_meta t (List.length env) in
-    _Meta m vs
-
 (** [build_meta_name loc id] builds a meta-variable name from its parser-level
     representation [id]. The position [loc] of [id] is used to build an  error
     message in the case where [id] is invalid. *)
@@ -128,21 +99,18 @@ let scope_term : p_term -> term = fun t ->
 type meta_map = (string * int) list
 
 (** Representation of a rule LHS (or pattern). It contains the head symbol and
-    the list of arguments (first two elements).  The last component associates
-    a type to each “pattern variable” in the arguments. *)
-type full_lhs = sym * term list * (string * term) list
+    the list of arguments. *)
+type full_lhs = sym * term list
 
-(** [scope_lhs map t] computes a rule LHS from the parser-level term [t].
-    The association list [map] gives the position of
-    every “pattern variable” in the environment.  Note that only the variables
-    that are bound in the RHS (or that occur non-linearly in the LHS) have  an
-    associated index in [map]. *)
+(** [scope_lhs map t] computes a rule LHS from the parser-level term [t].  The
+    association list [map] gives the index that is reserved in the environment
+    for “pattern variables”.  Only the variables that are bound in the RHS (or
+    appear non-linearly in the LHS) have an associated index in [map]. *)
 let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let fresh =
     let c = ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
   in
-  let ty_map = ref [] in (* stores the type of each pattern variable. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -159,8 +127,6 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> Bindlib.box_of_var x) env in
         let m = fresh () in
-        let (a,_) = build_meta_type env false in
-        ty_map := (m, a) :: !ty_map;
         _Patt None m (Array.of_list e)
     | P_Meta(m,ts)  ->
         let e = Array.map (scope env) ts in
@@ -170,24 +136,12 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
           | _         -> fatal "invalid pattern %a\n" Pos.print t.pos
         in
         let i = try Some(List.assoc m map) with Not_found -> None in
-        let (a,_) =
-          let fn (x,_) =
-            let gn t =
-              match t.elt with
-              | P_Vari({elt = ([], y)}) -> x = y
-              | _                       -> false
-            in
-            Array.exists gn ts
-          in
-          build_meta_type (List.filter fn env) false
-        in
-        ty_map := (m, a) :: !ty_map;
         _Patt i m e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
       fatal "%s is not a definable symbol...\n" s.sym_name
-  | (Symb(s), ts) -> (s, ts, !ty_map)
+  | (Symb(s), ts) -> (s, ts)
   | (_      , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
@@ -271,7 +225,7 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
 (** [scope_rule r] scopes a parsing level reduction rule, producing every
     element that is necessary to check its type and print error messages. This
     includes the context the symbol, the LHS / RHS as terms and the rule. *)
-let scope_rule : p_rule -> rspec = fun (p_lhs, p_rhs) ->
+let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
@@ -292,12 +246,11 @@ let scope_rule : p_rule -> rspec = fun (p_lhs, p_rhs) ->
   (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
   (* NOTE: meta-variables not in [mvs] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
-  let (sym, lhs, ty_map) = scope_lhs mvs p_lhs in
+  let (sym, lhs) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs mvs p_rhs in
   (* We put everything together to build the rule. *)
-  let rule = {lhs; rhs; arity = List.length lhs} in
-  {rspec_symbol = sym; rspec_ty_map = ty_map; rspec_rule = rule}
+  (sym, {lhs; rhs; arity = List.length lhs})
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)

@@ -446,17 +446,40 @@ let new_meta : term -> int -> meta = fun a n ->
   let int_map = IntMap.add k m !all_metas.int_map in
   all_metas := {!all_metas with int_map; free_keys}; m
 
-(** Representation of a rule specification, used for checking SR. *)
-type rspec =
-  { rspec_symbol : sym                  (** Head symbol of the rule.    *)
-  ; rspec_ty_map : (string * term) list (** Type for pattern variables. *)
-  ; rspec_rule   : rule                 (** The rule itself.            *) }
-
 (****************************************************************************)
 (* Representation of goals and proofs. *)
 
 (** Representation of an environment for variables. *)
 type env = (string * (tvar * tbox)) list
+
+(** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
+    free variables in [x1, .., xn], build the product type [x1:T1 ->
+    .. -> xn:Tn -> t]. *)
+let build_prod : env -> tbox -> term = fun c t ->
+  let fn b (_,(v,a)) =
+    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
+  in Bindlib.unbox (List.fold_left fn t c)
+
+(** [build_type is_type env] builds the product of [env] over [a] where
+    [a] is [Type] if [is_type], and a new metavariable
+    otherwise. Returns the array of variables of [env] too. *)
+let build_meta_type : env -> bool -> term * tbox array =
+  fun env is_type ->
+    let a = build_prod env _Type in
+    let fn (_,(v,_)) = Bindlib.box_of_var v in
+    let vs = Array.of_list (List.rev_map fn env) in
+    if is_type then a, vs
+    else (* We create a new metavariable. *)
+      let m = new_meta a (List.length env) in
+      build_prod env (_Meta m vs), vs
+
+(** [build_meta_app is_type c] builds a new metavariable of type
+    [build_meta_type is_type c]. *)
+let build_meta_app : env -> bool -> tbox =
+  fun env is_type ->
+    let t, vs = build_meta_type env is_type in
+    let m = new_meta t (List.length env) in
+    _Meta m vs
 
 (** Representation of a goal. *)
 type goal =
