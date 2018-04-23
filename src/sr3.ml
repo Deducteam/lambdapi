@@ -29,8 +29,7 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
 
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
-let check_rule : rspec -> unit = fun spec ->
-  let {rspec_symbol = s; rspec_ty_map = ty_map; rspec_rule = rule} = spec in
+let check_rule : sym * rule -> unit = fun (s,rule) ->
   if !debug_sr then log "sr" "checking %a" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
@@ -48,15 +47,17 @@ let check_rule : rspec -> unit = fun spec ->
           let k = Array.length a in
           match i with
           | None    ->
-             let m = add_meta n (List.assoc n ty_map) k in
+             let (mt,_) = build_meta_type [] false in (* FIXME [] *)
+             let m = add_meta n mt k in
              _Meta m a
           | Some(i) ->
               match metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                  let m = add_meta n (List.assoc n ty_map) k in
-                  metas.(i) <- Some(m);
-                  _Meta m a
+                 let (mt,_) = build_meta_type [] false in (* FIXME [] *)
+                 let m = add_meta n mt k in
+                 metas.(i) <- Some(m);
+                 _Meta m a
         end
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)

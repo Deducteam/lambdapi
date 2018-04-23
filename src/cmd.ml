@@ -20,7 +20,7 @@ type cmd = cmd_aux loc
   (** Symbol declaration (definable when the boolean is [true]). *)
   | SymDecl of bool * strloc * term
   (** Rewriting rules declaration. *)
-  | Rules  of rspec list
+  | Rules  of (sym * rule) list
   (** Symbol definition (opaque when the boolean is [true]). *)
   | SymDef of bool * strloc * term option * term
   (** Require an external signature. *)
