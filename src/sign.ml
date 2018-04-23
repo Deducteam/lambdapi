@@ -31,57 +31,42 @@ let find : t -> string -> sym =
 let mem : t -> string -> bool =
   fun sign name -> StrMap.mem name !(sign.symbols)
 
-(** System state.*)
-type state =
-  (** [loaded] stores the signatures of the known (already compiled) modules. An
+(** [loaded] stores the signatures of the known (already compiled) modules. An
     important invariant is that all the occurrences of a symbol are physically
     equal (even across different signatures). In particular, this requires the
-      objects to be copied when loading an object file. *)
-  { s_loaded : t PathMap.t ref
+    objects to be copied when loading an object file. *)
+let loaded : t PathMap.t ref = ref PathMap.empty
 
-  (** [loading] contains the [module_path] of the signatures (or files) that are
+(** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-  ; s_loading : module_path list ref
+let loading : module_path list ref = ref []
 
-  (** Top-level module path. *)
-  ; s_path : module_path
+let theorem : theorem option ref = ref None
 
-  (** Ongoing proof if any. *)
-  ; s_theorem : theorem option }
-
-(** Create a new state. *)
-let new_state (mp:module_path) : state =
-  { s_loaded = ref PathMap.empty
-  ; s_loading = ref []
-  ; s_path = mp
-  ; s_theorem = None }
-
-(** Current state. *)
-let current_state : state ref = ref (new_state [])
-
-(** [current_sign()] returns the current signature. *)
-let current_sign() =
+(** [current_sign ()] returns the current signature. *)
+let current_sign () =
   let mp =
-    match !(!current_state.s_loading) with
+    match !loading with
     | mp :: _ -> mp
-    | [] -> !current_state.s_path
-  in PathMap.find mp !(!current_state.s_loaded)
+    | []      -> assert false
+  in
+  PathMap.find mp !loaded
 
-(** [current_theorem()] returns the current theorem if we are in a
+(** [current_theorem ()] returns the current theorem if we are in a
     proof. It fails otherwise. *)
-let current_theorem() : theorem =
+let current_theorem () : theorem =
   (* We check that we are in a proof. *)
-  match !current_state.s_theorem with
-  | None -> fatal "not in a proof"
+  match !theorem with
+  | None     -> fatal "not in a proof"
   | Some thm -> thm
 
-(** [focus_goal_hyps()] returns the hypotheses of the currently
+(** [focus_goal_hyps ()] returns the hypotheses of the currently
     focused goal if we are in a proof, or the empty list otherwise. *)
-let focus_goal_hyps() : env =
-  match !current_state.s_theorem with
-  | None -> []
+let focus_goal_hyps () : env =
+  match !theorem with
+  | None     -> []
   | Some thm -> thm.t_focus.g_hyps
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
@@ -124,7 +109,7 @@ let link : t -> unit = fun sign ->
   and link_symb s =
     if s.sym_path = sign.path then s else
     try
-      let sign = PathMap.find s.sym_path !(!current_state.s_loaded) in
+      let sign = PathMap.find s.sym_path !loaded in
       try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
@@ -135,7 +120,7 @@ let link : t -> unit = fun sign ->
   StrMap.iter fn !(sign.symbols);
   let gn path ls =
     let sign =
-      try PathMap.find path !(!current_state.s_loaded)
+      try PathMap.find path !loaded
       with Not_found -> assert false in
     let h (n, r) =
       let r = link_rule r in

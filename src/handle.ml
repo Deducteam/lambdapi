@@ -117,7 +117,7 @@ let handle_test : test -> unit = fun test ->
 (** [handle_start_proof s a] starts a proof of [a] named [s]. *)
 let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that we are not already in a proof. *)
-  if !current_state.s_theorem <> None then fatal "already in proof";
+  if !Sign.theorem <> None then fatal "already in proof";
   (* We check that [s] is not already used. *)
   let sign = current_sign() in
   if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
@@ -135,7 +135,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
     ; t_open_goals = [goal]
     ; t_focus = goal }
   in
-  current_state := { !current_state with s_theorem = Some thm }
+  theorem := Some thm
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
@@ -219,26 +219,25 @@ and compile : bool -> Files.module_path -> unit =
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
-  if List.mem path !(!current_state.s_loading) then
+  if List.mem path !loading then
     begin
       err "Circular dependencies detected for %a...\n" Files.pp_path path;
       err "Dependency stack:\n";
-      List.iter (err "  - %a\n" Files.pp_path) !(!current_state.s_loading);
+      List.iter (err "  - %a\n" Files.pp_path) !loading;
       fatal "Build aborted\n"
     end;
-  if PathMap.mem path !(!current_state.s_loaded) then
+  if PathMap.mem path !loaded then
     out 2 "Already loaded [%s]\n%!" src
   else if force || Files.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
-      !current_state.s_loading := path :: !(!current_state.s_loading);
+      loading := path :: !loading;
       let sign = Sign.create path in
-      !current_state.s_loaded
-        := PathMap.add path sign !(!current_state.s_loaded);
+      loaded := PathMap.add path sign !loaded;
       handle_cmds (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
-      !current_state.s_loading := List.tl !(!current_state.s_loading);
+      loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
     end
   else
@@ -246,8 +245,7 @@ and compile : bool -> Files.module_path -> unit =
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> compile false mp) !(sign.deps);
-      !current_state.s_loaded
-        := PathMap.add path sign !(!current_state.s_loaded);
+      loaded := PathMap.add path sign !loaded;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
