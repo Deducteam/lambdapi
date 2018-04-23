@@ -152,7 +152,7 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         let a =
           match a with
           | Some(a) -> fatal "type in LHS %a" Pos.print a.pos
-          | None    -> build_meta_app env true
+          | None    -> scope env (Pos.none P_Wild)
         in
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
@@ -209,15 +209,18 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
-    | P_Prod(_,None,_) -> fatal "missing type %a" Pos.print t.pos
-    | P_Prod(x,Some(a),b) ->
-        let a = scope env a in
+    | P_Prod(x,a,b) ->
+        let a =
+          match a with
+          | None    -> fatal "missing type %a" Pos.print t.pos
+          | Some(a) -> scope env a
+        in
         _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let a =
           match a with
           | Some(a) -> scope env a
-          | None    -> build_meta_app env true
+          | None    -> fatal "missing type %a" Pos.print t.pos
         in
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
