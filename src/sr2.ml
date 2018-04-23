@@ -75,8 +75,7 @@ let check_rule : rspec -> unit = fun spec ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) =
-    constraints_of (raw_infer Ctxt.empty) lhs in
+  let (lhs_constrs, ty_lhs) = constraints_of (raw_infer Ctxt.empty) lhs in
   if !debug_sr then
     log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
   (* Turn constraints into a substitution and apply it. *)
@@ -84,5 +83,5 @@ let check_rule : rspec -> unit = fun spec ->
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
-  (* Check that RHS has the same type as the LHS. *)
+  (* Check that the RHS has the same type as the LHS. *)
   ignore (without_generating_constraints (has_type Ctxt.empty rhs) ty_lhs)
