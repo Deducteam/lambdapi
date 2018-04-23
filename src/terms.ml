@@ -123,7 +123,7 @@ type term =
     can be matched against the corresponding pattern, the environment [ar] can
     then be substituted in [r.rhs] with [Bindlib.msubst r.rhs ar] to build the
     result of the application of the rewriting rule. *)
-   
+
 (** Representation of a metavariable for unification. *)
  and meta =
   { meta_name  : meta_name
@@ -353,9 +353,10 @@ let occurs : meta -> term -> bool = fun m t ->
     | Prod(a,b) | Abst(a,b)           -> occurs (a::(unbind b)::l)
     | Appl(t,u)                       -> occurs (t::u::l)
     | Meta(v,_) when m == v           -> raise Occurs
-    | Meta(_,e)                       ->
-        assert(Array.for_all (function Vari(_) -> true | _ -> false) e);
-        occurs l
+    | Meta(_,ts)                       ->
+       let l = ref l in
+       Array.iter (fun t -> l := t::!l) ts;
+       occurs !l
   in
   try occurs [t]; false with Occurs -> true
 

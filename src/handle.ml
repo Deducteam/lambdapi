@@ -155,7 +155,7 @@ let handle_refine (t:term) : unit =
       a
       (Bindlib.bind_var x u) in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Infer2.has_type Ctxt.empty u m.meta_type) then
+  if not (has_type Ctxt.empty u m.meta_type) then
     fatal "invalid refinement\n";
   (* Instantiation. *)
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
