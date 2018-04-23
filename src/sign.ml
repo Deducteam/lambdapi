@@ -62,6 +62,12 @@ let current_theorem () : theorem =
   | None     -> fatal "not in a proof"
   | Some thm -> thm
 
+(** [fail_if_in_proof()] fails we are in a proof. Does nothing otherwise. *)
+let fail_if_in_proof() : unit =
+  match !theorem with
+  | None     -> ()
+  | Some _ -> fatal "in a proof"
+
 (** [focus_goal_hyps ()] returns the hypotheses of the currently
     focused goal if we are in a proof, or the empty list otherwise. *)
 let focus_goal_hyps () : env =
