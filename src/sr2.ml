@@ -76,7 +76,7 @@ let check_rule : rspec -> unit = fun spec ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) =
-    Infer2.constraints_of (Infer2.raw_infer Ctxt.empty) lhs in
+    constraints_of (raw_infer Ctxt.empty) lhs in
   if !debug_sr then
     log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
   (* Turn constraints into a substitution and apply it. *)
@@ -85,5 +85,4 @@ let check_rule : rspec -> unit = fun spec ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that RHS has the same type as the LHS. *)
-  ignore (Infer2.without_generating_constraints
-            (Infer2.has_type Ctxt.empty rhs) ty_lhs)
+  ignore (without_generating_constraints (has_type Ctxt.empty rhs) ty_lhs)
