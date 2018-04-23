@@ -7,7 +7,7 @@ open Cmd
 open Pos
 open Sign
 open Extra
-open Infer2
+open Infer3
 open Files
 
 (** [gen_obj] indicates whether we should generate object files when compiling
@@ -20,6 +20,7 @@ let gen_obj : bool ref = ref false
     this symbol can have rules. *)
 let handle_symdecl : bool -> strloc -> term -> unit =
   fun b n a ->
+    fail_if_in_proof();
     ignore (sort_type Ctxt.empty a);
     let sign = current_sign() in
     ignore (Sign.new_symbol sign b n a)
@@ -49,6 +50,7 @@ let check_def_type : strloc -> term option -> term -> term =
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
 let handle_rule : rspec -> unit = fun r ->
+  fail_if_in_proof();
   Sr2.check_rule r;
   Sign.add_rule (current_sign()) r.rspec_symbol r.rspec_rule
 
@@ -56,6 +58,7 @@ let handle_rule : rspec -> unit = fun r ->
     [x] in the current signature. *)
 let handle_opaque : strloc -> term option -> term -> unit =
   fun x ao t ->
+    fail_if_in_proof();
     let a = check_def_type x ao t in
     ignore (Sign.new_symbol (current_sign()) true x a)
 
@@ -73,7 +76,7 @@ let handle_defin : strloc -> term option -> term -> unit =
       in
       {arity = 0; lhs = []; rhs = Bindlib.unbox rhs}
     in
-    Sign.add_rule (current_sign()) s rule
+    Sign.add_rule sign s rule
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
@@ -117,7 +120,7 @@ let handle_test : test -> unit = fun test ->
 (** [handle_start_proof s a] starts a proof of [a] named [s]. *)
 let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that we are not already in a proof. *)
-  if !Sign.theorem <> None then fatal "already in proof";
+  fail_if_in_proof();
   (* We check that [s] is not already used. *)
   let sign = current_sign() in
   if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
