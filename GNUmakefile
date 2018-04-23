@@ -41,22 +41,24 @@ tests: lambdapi.native
 	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
+		&& echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 	@echo "## KO tests ##"
 	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;31mOK\033[0m $$file"   \
-			|| echo -e "\033[0;32mKO\033[0m $$file" ; \
+		&& echo -e "\033[0;31mOK\033[0m $$file"   \
+		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
 	done
 	@echo "## Examples ##"
 	@rm -f $(TESTFILES:.dk=.dko)
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
+	  && echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 
 #### Library tests ###########################################################

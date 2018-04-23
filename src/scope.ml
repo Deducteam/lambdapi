@@ -212,7 +212,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     | P_Prod(x,a,b) ->
         let a =
           match a with
-          | None    -> fatal "missing type %a" Pos.print t.pos
+          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
           | Some(a) -> scope env a
         in
         _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
@@ -220,7 +220,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
         let a =
           match a with
           | Some(a) -> scope env a
-          | None    -> fatal "missing type %a" Pos.print t.pos
+          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
         in
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
