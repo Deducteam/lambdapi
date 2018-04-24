@@ -172,12 +172,16 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
        ((c,t,p)::(c,u,v)::typs,sorts,(c,a',a)::unifs,whnfs,unsolved)
 
   | Meta(m, ts) ->
-     (* The type of [Meta(m,ts)] is the same as [add_args v ts]
-        where [v] is some fresh variable with the same type as [m]. *)
-     let v = Bindlib.new_var mkfree (meta_name m) in
-     let c' = Ctxt.add v m.meta_type c in
-     let t' = add_args (Vari v) (Array.to_list ts) in
-     solve_typ c' t' a strats p
+     (* The type of [Meta(m,ts)] is the same as [add_args f ts]
+        where [f] is some fresh symbol with the same type as [m]. *)
+     let s =
+       { sym_name = meta_name m
+       ; sym_type = ref m.meta_type
+       ; sym_path = []
+       ; sym_rules = ref []
+       ; sym_const = true } in
+     let t = add_args (Symb s) (Array.to_list ts) in
+     solve_typ c t a strats p
 
 and solve_sort a strats p : unif list =
   if !debug_type then log "solve_sort" "[%a]" pp a;
