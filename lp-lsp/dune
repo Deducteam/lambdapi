@@ -1,18 +1,3 @@
-; (library
-;  ((name lptop_extra)
-;   (public_name lptop.extra)
-;   (modules (:standard \ (lpargs lptop lplsp)))
-;   (preprocess (per_module
-;                ((pps (ppx_sexp_conv ppx_deriving_yojson)) (feedback lpapi lpdoc))))
-;   (libraries (lambdapi.core sexplib yojson ppx_deriving_yojson.runtime))))
-
-; (executable
-;  ((name lptop)
-;   (public_name lptop)
-;   (modules (lpargs lptop))
-;   (package lptop)
-;   (libraries (lptop.extra cmdliner))))
-
 (executable
  (name lp_lsp)
  (public_name lp-lsp)

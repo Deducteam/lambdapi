@@ -1,8 +1,11 @@
-synopsis: "Implementation of the λΠ-calculus modulo rewriting"
+synopsis: "Implementation of the λΠ-calculus modulo rewriting ─ LSP server"
 description:
 """
 Lambdapi is an implementation of the λΠ-calculus modulo rewriting, that is
 mostly compatible with Dedukti (https://github.com/Deducteam/Dedukti).
+
+This package provides a Language Server Protocol helper for IDEs to
+check lambdapi files.
 """
 opam-version: "2.0"
 maintainer: "dedukti-dev@inria.fr"
