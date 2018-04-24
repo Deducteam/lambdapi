@@ -27,6 +27,29 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
   let (vs,ts) = List.split (build_sub [] cs) in
   (Array.of_list vs, Array.of_list ts)
 
+(** [build_meta_type k] builds the type [x_1:t_1 -> .. -> x_k:t_k ->
+    t_{k+1}] where [x1,..,x_k] are fresh variables, [t_i =
+    M_i[x_1,..,x_{i-1}]], [M_i] is a new metavariable of arity [i-1]
+    and type [x_1:t_1 -> .. -> x_{i-1}:t_{i-1} -> Type]. *)
+let build_meta_type : int -> term = fun k ->
+  assert (k>=0);
+  let vs = Bindlib.new_mvar mkfree (Array.make k "x") in
+  let rec build_prod k p =
+    if k = 0 then p
+    else
+      let k = k-1 in
+      let mk_typ = Bindlib.unbox (build_prod k _Type) in
+      let mk = new_meta mk_typ k in
+      let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
+      let b = Bindlib.bind_var vs.(k) p in
+      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
+      build_prod k p
+  in
+  let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
+  let mk = new_meta mk_typ k in
+  let tk = _Meta mk (Array.map _Vari vs) in
+  Bindlib.unbox (build_prod k tk)
+
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * rule -> unit = fun (s,rule) ->
@@ -47,15 +70,13 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
           let k = Array.length a in
           match i with
           | None    ->
-             let (mt,_) = build_meta_type [] false in (* FIXME [] *)
-             let m = add_meta n mt k in
+             let m = add_meta n (build_meta_type k) k in
              _Meta m a
           | Some(i) ->
               match metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                 let (mt,_) = build_meta_type [] false in (* FIXME [] *)
-                 let m = add_meta n mt k in
+                 let m = add_meta n (build_meta_type k) k in
                  metas.(i) <- Some(m);
                  _Meta m a
         end
