@@ -143,7 +143,7 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
       fatal "LHS with no head symbol at [%a].\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
-   outputs. Their name is forme of a ['#'] character followed by a number. *)
+   error messages. The names are formed of a number prefixed by ['#']. *)
 
 (** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
