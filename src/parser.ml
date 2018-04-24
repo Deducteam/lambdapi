@@ -279,5 +279,9 @@ let blank buf pos =
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is displayerd and the program fails. *)
-let parse_file : string -> p_cmd loc list =
-  Earley.(handle_exception (parse_file (parser {l:cmd "."}*) blank))
+let parse_file : string -> p_cmd loc list = fun fname ->
+  let open Earley in
+  try parse_file (parser {l:cmd "."}*) blank fname
+  with Parse_error(buf,pos) ->
+    let loc = Some(Pos.locate buf pos buf pos) in
+    fatal "Parse error at [%a].\n" Pos.print loc
