@@ -47,6 +47,14 @@ type typing = ctxt * term * term
 
 type unif = ctxt * term * term
 
+let pp_unif : unif pp = fun oc (_,t,u) ->
+  Printf.fprintf oc "%a = %a" pp t pp u
+
+let pp_unifs : unif list pp = fun oc l ->
+  match l with
+  | [] -> ()
+  | _ -> Printf.fprintf oc " if %a" (List.pp pp_unif ", ") l
+
 type problem = typing list * term list * unif list * unif list * unif list
 
 type strat =
@@ -66,25 +74,26 @@ and pp_strats : strat list pp = fun oc strats -> List.pp pp_strat "" oc strats
 
 let default_strat = Repeat [Typ; Sort; Unif; Whnf; CheckEnd]
 
-let generate_constraints : bool ref = ref true
-
-let can_instantiate (m:meta) : bool = !generate_constraints || internal m
+let can_instantiate : bool ref = ref true
 
 let recompute : bool ref = ref false
 
 let instantiate (m:meta) (ts:term array) (v:term) : bool =
-  can_instantiate m && distinct_vars ts && not (occurs m v) &&
+  (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
   Bindlib.is_closed bv &&
     (Unif.set_meta m (Bindlib.unbox bv); recompute := true; true)
 
-let not_convertible t1 t2 =
-  fatal "[%a] and [%a] are not convertible\n" pp t1 pp t2
+exception Exit_solve
 
-let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+let not_convertible t1 t2 =
+  err "[%a] and [%a] are not convertible\n" pp t1 pp t2;
+  raise Exit_solve
+
+let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   if !debug then log "solve" "%a" pp_strats strats;
   match strats with
-  | [] -> ()
+  | [] -> assert false
   | strat :: strats' ->
      match strat with
      | Typ -> solve_typs strats' p
@@ -94,32 +103,32 @@ let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
      | Repeat l' -> solve (l' @ strats) p
      | CheckEnd ->
         if typs = [] && sorts = [] && unifs = [] && whnfs = [] then
-          if unsolved = [] then ()
+          if unsolved = [] then []
           else if !recompute then
             begin
               recompute := false;
               solve (Unif::strats) ([],[],unsolved,[],[])
             end
-          else fatal "cannot solve constraints\n"
+          else unsolved
         else solve strats' p
 
-and solve_typs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+and solve_typs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match typs with
   | [] -> solve strats p
   | (c,t,a)::l -> solve_typ c t a strats (l,sorts,unifs,whnfs,unsolved)
 
-and solve_sorts strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+and solve_sorts strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match sorts with
   | [] -> solve strats p
   | a::l -> solve_sort a strats (typs,l,unifs,whnfs,unsolved)
 
-and solve_unifs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+and solve_unifs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match unifs with
   | [] -> solve strats p
   | (c,t,u)::l -> solve_unif c t u strats (typs,sorts,l,whnfs,unsolved)
 
 and solve_whnfs strats ((typs,sorts,unifs,whnfs,unsolved) as p)
-    : unit =
+    : unif list =
   match whnfs with
   | [] -> solve strats p
   | (c,t,u)::l -> solve_whnf c t u strats (typs,sorts,unifs,l,unsolved)
@@ -170,13 +179,14 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
      let t' = add_args (Vari v) (Array.to_list ts) in
      solve_typ c' t' a strats p
 
-and solve_sort a strats p : unit =
+and solve_sort a strats p : unif list =
   if !debug_type then log "solve_sort" "[%a]" pp a;
   match unfold a with
   | Type | Kind -> solve_sorts strats p
   | _ -> fatal "[%a] is not a sort\n" pp a
 
-and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
+    : unif list =
   if t1 == t2 then solve_unifs strats p
   else
     begin
@@ -203,7 +213,7 @@ and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
 
       | Meta(_,_), _
       | _, Meta(_,_) ->
-         solve (Unif::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
+         solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
 
       | Symb(s), _ when !(s.sym_rules) <> [] ->
          solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
@@ -217,7 +227,8 @@ and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
       | _, _ -> not_convertible t1 t2
     end
 
-and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
+and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
+    : unif list =
   let t1 = whnf t1 and t2 = whnf t2 in
   if !debug_unif then log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
@@ -270,28 +281,55 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unit =
 
   | _, _ -> not_convertible t1 t2
 
+(** [solve b strats p] sets [can_instantiate] to [b] and returns
+    [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
+let solve b strats p : unif list option =
+  can_instantiate := b;
+  recompute := false;
+  try Some (solve strats p) with Exit_solve -> None
+
+let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
-  recompute := false;
   if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
-  solve [default_strat] ([c,t,a],[],[],[],[]);
-  true
+  match solve true [default_strat] ([c,t,a],[],[],[],[]) with
+  | Some l -> List.iter msg l; l = []
+  | None -> false
 
-(** If [infer c t] returns [Some u], then [t] has type [u] in context
-    [c]. If it returns [None] then some constraints could not be solved. *)
-let infer (c:ctxt) (t:term) : term option =
-  recompute := false;
-  if !debug_type then log "infer" "[%a]" pp t;
+(** [has_type_no_inst c t u] returns [true] iff [t] has type [u] in
+    context [c] without instantiating any metavariable. *)
+let has_type_no_inst (c:ctxt) (t:term) (a:term) : bool =
+  if !debug_type then log "has_type_no_inst" "[%a] [%a]" pp t pp a;
+  match solve false [default_strat] ([c,t,a],[],[],[],[]) with
+  | Some l -> List.iter msg l; l = []
+  | None -> false
+
+(** [constrained_infer c t] returns a pair [a,l] where [l] is a list
+    of unification problems for [a] to be the type of [t] in context [c]. *)
+let constrained_infer (c:ctxt) (t:term) : unif list * term =
+  if !debug_type then log "constrained_infer" "[%a]" pp t;
   let a = make_meta c (make_sort()) in
-  solve [default_strat] ([c,t,a],[],[],[],[]);
-  Some a
+  match solve true [default_strat] ([c,t,a],[],[],[],[]) with
+  | Some l -> l, a
+  | None -> raise Fatal
+
+(** [infer c t] returns [Some u] if [t] has type [u] in context [c],
+    and [None] otherwise. *)
+let infer (c:ctxt) (t:term) : term option =
+  let l, a = constrained_infer c t in
+  if l = [] then Some a else (List.iter msg l; None)
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:ctxt) (t:term) : term =
-  recompute := false;
   if !debug_type then log "sort_type" "[%a]" pp t;
   let a = make_meta c (make_sort()) in
-  solve [default_strat] ([c,t,a],[],[],[],[]);
-  match unfold a with
-  | Type | Kind -> a
-  | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp a
+  match solve true [default_strat] ([c,t,a],[],[],[],[]) with
+  | Some [] ->
+     begin
+       match unfold a with
+       | Type | Kind -> a
+       | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp a
+     end
+  | Some l -> List.iter msg l; raise Fatal
+  | None -> raise Fatal

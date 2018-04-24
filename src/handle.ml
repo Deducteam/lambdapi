@@ -7,8 +7,9 @@ open Cmd
 open Pos
 open Sign
 open Extra
-open Infer3
 open Files
+open Infer3
+open Sr3
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -51,7 +52,7 @@ let check_def_type : strloc -> term option -> term -> term =
     gracefully when an error occurs. *)
 let handle_rule : sym * rule -> unit = fun (s,r) ->
   fail_if_in_proof();
-  Sr2.check_rule (s, r);
+  check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
 (** [handle_opaque x ao t] checks the definition of [x] and adds
