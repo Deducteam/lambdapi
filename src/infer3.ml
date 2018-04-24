@@ -297,12 +297,15 @@ let has_type (c:ctxt) (t:term) (a:term) : bool =
   | Some l -> List.iter msg l; l = []
   | None -> false
 
-(** [has_type_no_inst c t u] returns [true] iff [t] has type [u] in
-    context [c] without instantiating any metavariable. *)
-let has_type_no_inst (c:ctxt) (t:term) (a:term) : bool =
-  if !debug_type then log "has_type_no_inst" "[%a] [%a]" pp t pp a;
+(** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
+    [u] in context [c] and constraints [cs] without instantiating any
+    user-defined metavariable. *)
+let has_type_with_constrs (cs:unif list) (c:ctxt) (t:term) (a:term) : bool =
+  if !debug_type then log "has_type_with_constrs" "[%a] [%a]" pp t pp a;
   match solve false [default_strat] ([c,t,a],[],[],[],[]) with
-  | Some l -> List.iter msg l; l = []
+  | Some l ->
+     let l = List.filter (fun x -> not (List.mem x cs)) l in
+     List.iter msg l; l = []
   | None -> false
 
 (** [constrained_infer c t] returns a pair [a,l] where [l] is a list

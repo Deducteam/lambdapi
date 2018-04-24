@@ -84,5 +84,5 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  if not (has_type_no_inst Ctxt.empty rhs ty_lhs) then
+  if not (has_type_with_constrs lhs_constrs Ctxt.empty rhs ty_lhs) then
     fatal "rule [%a] does not preserve typing\n" pp_rule (s,rule)
