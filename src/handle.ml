@@ -30,22 +30,17 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     it. [check_def_type x (Some a) t] checks that [a] has a sort as
     type and that [t] has type [a], and it returns [a]. In case of
     error (typing or sorting), the program fails gracefully. *)
-let check_def_type : strloc -> term option -> term -> term =
-  fun x ao t ->
-    match ao with
-    | None ->
-       begin
-         match infer Ctxt.empty t with
-         | None -> fatal "Unable to infer the type of [%a]\n" pp t
-         | Some a -> a
-       end
-    | Some a ->
-       begin
-         ignore (sort_type Ctxt.empty a);
-         if not (has_type Ctxt.empty t a) then
-           fatal "Cannot type the definition of %s %a\n" x.elt Pos.print x.pos
-         else a
-       end
+let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
+  match ao with
+  | Some(a) ->
+      ignore (sort_type Ctxt.empty a);
+      if has_type Ctxt.empty t a then a else
+      fatal "Cannot type the definition of [%s] at [%a].\n"
+        x.elt Pos.print x.pos;
+  | None    ->
+      match infer Ctxt.empty t with
+      | None    -> fatal "Unable to infer the type of [%a].\n" pp t
+      | Some(a) -> a
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
@@ -222,7 +217,7 @@ and compile : bool -> Files.module_path -> unit =
   let base = String.concat "/" path in
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
-  if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
+  if not (Sys.file_exists src) then fatal "File [%s] not found.\n" src;
   if List.mem path !loading then
     begin
       err "Circular dependencies detected in [%s].\n" src;
