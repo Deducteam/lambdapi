@@ -22,24 +22,20 @@ let add_env : string -> tvar -> tbox -> env -> env =
     search in the current signature. If the name does not correspond to
     anything, the program fails gracefully. *)
 let find_ident : env -> qident -> tbox = fun env qid ->
-  let (mp, s) = qid.elt in
+  let {elt = (mp, s); pos} = qid in
   if mp = [] then
     (* No module path, search the local environment first. *)
-    try _Vari (fst (List.assoc s env))
-    with Not_found ->
-      (* Then, search in hypotheses. *)
-      try _Vari (fst (List.assoc s (Sign.focus_goal_hyps())))
-      with Not_found ->
-        (* Then, search in the global environment. *)
-        try _Symb (Sign.find (Sign.current_sign()) s)
-        with Not_found -> fatal "Unbound variable or symbol %S...\n%!" s
+    try _Vari (fst (List.assoc s env)) with Not_found ->
+    (* Then, search in hypotheses. *)
+    try _Vari (fst (List.assoc s (Sign.focus_goal_hyps()))) with Not_found ->
+    (* Then, search in the global environment. *)
+    try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
+    fatal "Unbound variable or symbol [%s] at [%a].\n" s Pos.print pos
   else
     let sign = Sign.current_sign() in
     if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
     (* Module path is not available (not loaded), fail. *)
-    let cur = String.concat "." Sign.(sign.path) in
-    let req = String.concat "." mp in
-    fatal "No module %s loaded in %s...\n%!" req cur
+    fatal "No module [%a] loaded at [%a].\n" Files.pp_path mp Pos.print pos
   else
     (* Module path loaded, look for symbol. *)
     let sign =
@@ -47,7 +43,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
       with _ -> assert false (* cannot fail. *)
     in
     try _Symb (Sign.find sign s) with Not_found ->
-    fatal "Unbound symbol %S...\n%!" (String.concat "." (mp @ [s]))
+    fatal "Unbound symbol [%a.%s] at [%a].\n" Files.pp_path mp s Pos.print pos
 
 (** [build_meta_name loc id] builds a meta-variable name from its parser-level
     representation [id]. The position [loc] of [id] is used to build an  error
