@@ -223,3 +223,18 @@ else
 	install -m 644 editors/vim/ftdetect/dedukti.vim $(VIMDIR)/ftdetect
 	@echo -e "\e[36mVim mode installed.\e[39m"
 endif
+
+OPAM_REPO=/home/egallego/external/coq/opam-deducteam
+OPAM_LP_VER=$(shell dune-release log -t)
+# Prior to build:
+# - topkg log edit && topkg tag commit [or edit by yourself]
+# - topkg tag                          [or git tag]
+opam_release:
+	rm -rf _build
+	dune-release distrib
+	dune-release publish distrib
+	dune-release opam pkg -n lambdapi
+	dune-release opam pkg -n lambdapi-lsp
+	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
+	cp -a _build/lambdapi-lsp.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi-lsp/
+	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi] new version $(OPAM_LP_VER)"

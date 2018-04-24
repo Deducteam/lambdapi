@@ -1,0 +1,18 @@
+opam-version: "1.2"
+maintainer: "dedukti-dev@inria.fr"
+authors: "Emilio Jesús Gallego Arias <e@x80.org>"
+homepage: "https://github.com/rlepigre/lambdapi"
+bug-reports: "https://github.com/rlepigre/lambdapi/issues"
+dev-repo: "https://github.com/ejgallego/lambdapi.git"
+license: "GPL 3.0"
+
+available: [ ocaml-version >= "4.06.1" ]
+
+depends: [
+  "dune"        { build }
+  "lambdapi"  # { = version }
+  "yojson"
+]
+
+build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
+
