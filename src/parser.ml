@@ -248,33 +248,39 @@ let parser cmd_aux =
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
 
-(** Blank function for basic blank characters (' ', '\t', '\r' and '\n')
-    and line comments starting with "//". *)
+(** Blank function for ignoring basic blank characters ([' '], ['\t'], ['\r'],
+    ['\n']) and (possibly nested) comments delimited by ["(;"] and [";)"]. *)
 let blank buf pos =
-  let rec fn state prev ((buf0, pos0) as curr) =
+  let rec fn state stack prev ((buf0, pos0) as curr) =
     let open Input in
     let (c, buf1, pos1) = read buf0 pos0 in
     let next = (buf1, pos1) in
-    match (state, c) with
-    (* Basic blancs. *)
-    | (`Ini, ' '   )
-    | (`Ini, '\t'  )
-    | (`Ini, '\r'  )
-    | (`Ini, '\n'  ) -> fn `Ini curr next
-    (* Opening comment. *)
-    | (`Ini, '('   ) -> fn `Opn curr next
-    | (`Opn, ';'   ) -> fn `Com curr next
-    (* Closing comment. *)
-    | (`Com, ';'   ) -> fn `Cls curr next
-    | (`Cls, ')'   ) -> fn `Ini curr next
-    | (`Cls, _     ) -> fn `Com curr next
-    (* Other. *)
-    | (`Com, '\255') -> fatal "Unclosed comment...\n"
-    | (`Com, _     ) -> fn `Com curr next
-    | (`Opn, _     ) -> prev
-    | (`Ini, _     ) -> curr
+    match (state, stack, c) with
+    (* Basic blancs (not inside comment). *)
+    | (`Ini, []  , ' '   )
+    | (`Ini, []  , '\t'  )
+    | (`Ini, []  , '\r'  )
+    | (`Ini, []  , '\n'  ) -> fn `Ini stack curr next
+    (* Opening of a comment (pushed on the stack). *)
+    | (`Ini, _   , '('   ) -> fn `Opn stack curr next
+    | (`Opn, _   , ';'   ) ->
+        let loc = Pos.locate (fst prev) (snd prev) (fst curr) (snd curr) in
+        fn `Ini (Some(loc)::stack) curr next
+    (* Closing of a comment (popped from the stack). *)
+    | (`Ini, _::_, ';'   ) -> fn `Cls stack curr next
+    | (`Cls, _::s, ')'   ) -> fn `Ini s curr next
+    (* Error on end of file if in a comment. *)
+    | (_   , p::_, '\255') -> fatal "Unclosed comment at [%a].\n" Pos.print p
+    (* Ignoring any character inside comments. *)
+    | (`Cls, []  , _     ) -> assert false (* impossible *)
+    | (`Cls, _::_, _     )
+    | (`Opn, _::_, _     ) -> fn `Ini stack curr next
+    | (`Ini, _::_, _     ) -> fn `Ini stack curr next
+    (* End of the blanks. *)
+    | (`Opn, []  , _     ) -> prev
+    | (`Ini, []  , _     ) -> curr
   in
-  fn `Ini (buf, pos) (buf, pos)
+  fn `Ini [] (buf, pos) (buf, pos)
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
