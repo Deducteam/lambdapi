@@ -199,7 +199,7 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
     | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                            c.elt Pos.print c.pos
   with
-  | Fatal -> raise Fatal
+  | Fatal -> fatal "Error at [%a].\n" Pos.print cmd.pos
   | e     -> fatal "Uncaught exception on a command at %a\n%s\n%!"
                Pos.print cmd.pos (Printexc.to_string e)
 
