@@ -114,12 +114,12 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
-    | P_Type        -> fatal "invalid pattern %a\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "invalid pattern %a\n" Pos.print t.pos
+    | P_Type        -> fatal "[Type] in a LHS at [%a].\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "Product in a LHS at [%a].\n" Pos.print t.pos
     | P_Abst(x,a,t) ->
         let a =
           match a with
-          | Some(a) -> fatal "type in LHS %a" Pos.print a.pos
+          | Some(a) -> fatal "Type in a LHS at [%a].\n" Pos.print a.pos
           | None    -> scope env (Pos.none P_Wild)
         in
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
@@ -133,16 +133,18 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         let m =
           match m with
           | M_User(s) -> s
-          | _         -> fatal "invalid pattern %a\n" Pos.print t.pos
+          | _         ->
+              fatal "Metavariable in a LHS at [%a].\n" Pos.print t.pos
         in
         let i = try Some(List.assoc m map) with Not_found -> None in
         _Patt i m e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
-      fatal "%s is not a definable symbol...\n" s.sym_name
+      fatal "LHS with a static head symbol at [%a].\n" Pos.print t.pos
   | (Symb(s), ts) -> (s, ts)
-  | (_      , _ ) -> fatal "invalid pattern %a\n" Pos.print t.pos
+  | (_      , _ ) ->
+      fatal "LHS with no head symbol at [%a].\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
    outputs. Their name is forme of a ['#'] character followed by a number. *)
