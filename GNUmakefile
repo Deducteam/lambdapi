@@ -174,3 +174,18 @@ endif
 opam-release:
 	dune-release distrib
 	dune-release opam pkg
+
+OPAM_REPO=/home/egallego/external/coq/opam-deducteam
+OPAM_LP_VER=$(shell dune-release log -t)
+# Prior to build:
+# - dune-release log edit && dune-release tag commit [or edit by yourself]
+# - dune-release tag                                 [or git tag]
+lsp_release:
+	rm -rf _build
+	dune-release distrib
+	dune-release publish distrib
+#	dune-release opam pkg -p lambdapi
+	dune-release opam pkg -p lambdapi-lsp
+	# cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
+	cp -a _build/lambdapi-lsp.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi-lsp/
+	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi-lsp] new version $(OPAM_LP_VER)"

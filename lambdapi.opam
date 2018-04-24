@@ -25,4 +25,4 @@ depends: [
   "timed"        { >= "1.0"   }
 ]
 
-build: [ [ "jbuilder" "build" "-p" name "-j" jobs ] ]
+build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
