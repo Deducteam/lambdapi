@@ -97,7 +97,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) = constrained_infer Ctxt.empty lhs in
+  let (lhs_constrs, ty_lhs) = infer_constr Ctxt.empty lhs in
   if !debug_sr then log "sr" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
@@ -105,5 +105,5 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  if not (has_type_with_constrs lhs_constrs Ctxt.empty rhs ty_lhs) then
+  if not (has_type_with_constr lhs_constrs Ctxt.empty rhs ty_lhs) then
     fatal "rule [%a] does not preserve typing\n" pp_rule (s,rule)

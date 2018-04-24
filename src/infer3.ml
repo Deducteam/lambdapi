@@ -304,7 +304,7 @@ let has_type (c:ctxt) (t:term) (a:term) : bool =
 (** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
     [u] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
-let has_type_with_constrs (cs:unif list) (c:ctxt) (t:term) (a:term) : bool =
+let has_type_with_constr (cs:unif list) (c:ctxt) (t:term) (a:term) : bool =
   if !debug_type then log "has_type_with_constrs" "[%a] [%a]" pp t pp a;
   match solve false [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l ->
@@ -312,10 +312,10 @@ let has_type_with_constrs (cs:unif list) (c:ctxt) (t:term) (a:term) : bool =
      List.iter msg l; l = []
   | None -> false
 
-(** [constrained_infer c t] returns a pair [a,l] where [l] is a list
+(** [infer_constr c t] returns a pair [a,l] where [l] is a list
     of unification problems for [a] to be the type of [t] in context [c]. *)
-let constrained_infer (c:ctxt) (t:term) : unif list * term =
-  if !debug_type then log "constrained_infer" "[%a]" pp t;
+let infer_constr (c:ctxt) (t:term) : unif list * term =
+  if !debug_type then log "infer_constr" "[%a]" pp t;
   let a = make_meta c (make_sort()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> l, a
@@ -324,7 +324,7 @@ let constrained_infer (c:ctxt) (t:term) : unif list * term =
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
 let infer (c:ctxt) (t:term) : term option =
-  let l, a = constrained_infer c t in
+  let l, a = infer_constr c t in
   if l = [] then Some a else (List.iter msg l; None)
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
