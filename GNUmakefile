@@ -31,9 +31,9 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 
 #### Unit tests ##############################################################
 
-OK_TESTFILES = $(wildcard tests/OK/*.dk)
-KO_TESTFILES = $(wildcard tests/KO/*.dk)
-TESTFILES    = $(wildcard examples/*.dk)
+OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk))
+KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk))
+TESTFILES    = $(sort $(wildcard examples/*.dk))
 
 .PHONY: tests
 tests: lambdapi.native
