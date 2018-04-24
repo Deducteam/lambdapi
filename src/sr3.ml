@@ -30,7 +30,7 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * rule -> unit = fun (s,rule) ->
-  if !debug_sr then log "sr" "checking %a" pp_rule (s, rule);
+  if !debug_sr then log "sr" "%a" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
