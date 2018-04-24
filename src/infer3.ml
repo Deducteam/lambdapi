@@ -24,8 +24,8 @@ let make_meta (c:ctxt) (t:term) : term =
 
 (** [make_meta_sort] creates a term [m[]] where [m] is a metavariable
     that should be instantiated by a sort. *)
-let make_sort() : term = (*make_meta [] Kind*)
-  Meta(new_meta Kind 0,[||])
+let make_sort() : term =
+  Meta(new_meta Kind 0,[||]) (*equivalent to: make_meta [] Kind*)
 
 (** [make_codomain c no t] creates a term [m[x1,..,xn,x]] of type a
     sort where [x1,..,xn] are the variables of [c] and [x] a new variable
