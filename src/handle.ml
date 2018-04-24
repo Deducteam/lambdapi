@@ -225,10 +225,10 @@ and compile : bool -> Files.module_path -> unit =
   if not (Sys.file_exists src) then fatal "File not found: %s\n" src;
   if List.mem path !loading then
     begin
-      err "Circular dependencies detected for %a...\n" Files.pp_path path;
-      err "Dependency stack:\n";
-      List.iter (err "  - %a\n" Files.pp_path) !loading;
-      fatal "Build aborted\n"
+      err "Circular dependencies detected in [%s].\n" src;
+      err "Dependency stack for module [%a]:\n" Files.pp_path path;
+      List.iter (err "  - [%a]\n" Files.pp_path) !loading;
+      fatal "Build aborted.\n"
     end;
   if PathMap.mem path !loaded then
     out 2 "Already loaded [%s]\n%!" src
