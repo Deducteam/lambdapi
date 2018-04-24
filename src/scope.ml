@@ -126,14 +126,14 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         _Patt None m (Array.of_list e)
     | P_Meta(m,ts)  ->
         let e = Array.map (scope env) ts in
-        let m =
+        let s =
           match m with
           | M_User(s) -> s
           | _         ->
-              fatal "Metavariable in a LHS at [%a].\n" Pos.print t.pos
+              fatal "System metavariable in a LHS at [%a].\n" Pos.print t.pos
         in
-        let i = try Some(List.assoc m map) with Not_found -> None in
-        _Patt i m e
+        let i = try Some(List.assoc s map) with Not_found -> None in
+        _Patt i s e
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
