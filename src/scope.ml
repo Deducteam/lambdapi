@@ -2,10 +2,11 @@
 
 open Console
 open Files
-open Terms
 open Parser
+open Terms
 open Cmd
 open Pos
+open Extra
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
@@ -212,7 +213,8 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
         begin
           try
             if List.assoc m ar <> l then
-              fatal "arity mismatch for the meta variable %S...\n" m;
+              fatal "%a: arity mismatch for metavariable %S\n"
+                Pos.print t.pos m;
             if List.mem m nl then acc else (ar, m::nl)
           with Not_found -> ((m,l)::ar, nl)
         end
@@ -234,7 +236,9 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
       try List.assoc m mvs_lhs with Not_found ->
       fatal "unknown pattern variable %S...\n" m
     in
-    if i <> j then fatal "arity mismatch for pattern variable %S...\n" m
+    if i <> j then
+      fatal "%a: arity mismatch for pattern variable %S\n"
+        Pos.print p_lhs.pos m;
   in
   List.iter check_in_lhs mvs;
   let mvs = List.map fst mvs in
@@ -254,56 +258,50 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   let ctx = List.map (fun (x,_) -> x.elt) ctx in
-  let rec build_lhs env t =
-    match t.elt with
-    | P_Vari(qid)   ->
-        let (mp,x) = qid.elt in
-        if mp = [] && not (List.mem x env) && List.mem x ctx then
-          Pos.make t.pos (P_Meta(M_User(x),[||]))
-          (* FIXME need more for Miller patterns. *)
-        else Pos.make t.pos (P_Vari(qid))
-    | P_Type        -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "invalid legacy pattern %a\n" Pos.print t.pos
-    | P_Abst(x,a,u) ->
-        if a <> None then fatal "type in legacy pattern %a\n" Pos.print t.pos;
-        let u = build_lhs (x.elt::env) u in
-        Pos.make t.pos (P_Abst(x,a,u))
-    | P_Appl(t1,t2) ->
-        let t1 = build_lhs env t1 in
-        let t2 = build_lhs env t2 in
-        Pos.make t.pos (P_Appl(t1,t2))
-    | P_Wild        -> t
-    | P_Meta(_,_)   ->
-        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
+  let is_pat_var env x = not (List.mem x env) && List.mem x ctx in
+  let arity = Hashtbl.create 7 in
+  let rec build env t =
+    let h, lts = Parser.get_args t in
+    match h.elt with
+    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
+       let lts = List.map (fun (p,t) -> p,build env t) lts in
+       begin
+         try
+           let n = Hashtbl.find arity x in
+           let lts1, lts2 = List.cut lts n in
+           let ts1 = List.map snd lts1 in
+           let h = Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts1)) in
+           Parser.add_args h lts2
+         with Not_found ->
+           Hashtbl.add arity x (List.length lts);
+           let ts = List.map snd lts in
+           Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts))
+       end
+    | _ ->
+       match t.elt with
+       | P_Vari(_)
+       | P_Type
+       | P_Wild -> t
+       | P_Prod(_,None,_) -> assert false
+       | P_Prod(x,Some(a),b) ->
+          let a = build env a in
+          let b = build (x.elt::env) b in
+          Pos.make t.pos (P_Prod(x,Some(a),b))
+       | P_Abst(x,a,u) ->
+          let a = match a with Some(a) -> Some(build env a) | _ -> None in
+          let u = build (x.elt::env) u in
+          Pos.make t.pos (P_Abst(x,a,u))
+       | P_Appl(t1,t2) ->
+          let t1 = build env t1 in
+          let t2 = build env t2 in
+          Pos.make t.pos (P_Appl(t1,t2))
+       | P_Meta(_,_)   ->
+          fatal "%a: invalid legacy rule syntax\n" Pos.print t.pos
   in
-  let rec build_rhs env t =
-    match t.elt with
-    | P_Vari(qid)   ->
-        let (mp,x) = qid.elt in
-        if mp = [] && not (List.mem x env) && List.mem x ctx then
-          Pos.make t.pos (P_Meta(M_User(x),[||]))
-          (* FIXME need more for Miller patterns. *)
-        else Pos.make t.pos (P_Vari(qid))
-    | P_Type        -> t
-    | P_Prod(_,None,_) -> assert false
-    | P_Prod(x,Some(a),b) ->
-        let a = build_rhs env a in
-        let b = build_rhs (x.elt::env) b in
-        Pos.make t.pos (P_Prod(x,Some(a),b))
-    | P_Abst(x,a,u) ->
-        let a = match a with Some(a) -> Some(build_rhs env a) | _ -> None in
-        let u = build_rhs (x.elt::env) u in
-        Pos.make t.pos (P_Abst(x,a,u))
-    | P_Appl(t1,t2) ->
-        let t1 = build_rhs env t1 in
-        let t2 = build_rhs env t2 in
-        Pos.make t.pos (P_Appl(t1,t2))
-    | P_Wild        ->
-        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
-    | P_Meta(_,_)   ->
-        fatal "invalid legacy rule syntax %a\n" Pos.print t.pos
-  in
-  (build_lhs [] lhs, build_rhs [] rhs)
+  let l = build [] lhs in
+  let r = build [] rhs in
+  (* the order is important for setting arities properly *)
+  (l,r)
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd].
     In case of error, the program gracefully fails. *)
