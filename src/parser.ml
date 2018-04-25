@@ -30,6 +30,26 @@ type p_term = p_term_aux loc
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
    pattern ['_']. *)
 
+(** [get_args t] decomposes the {!type:p_term} [t] into a pair [(h,args)], where
+    [h] is the head p_term of [t] and [args] is the list of arguments applied to
+    [h] in [t]. The returned [h] cannot be an {!constr:P_Appl} node. *)
+let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
+  let rec get_args acc t =
+    match t.elt with
+    | P_Appl(u,v) -> get_args ((t.pos,v)::acc) u
+    | _         -> (t, acc)
+  in get_args [] t
+
+(** [add_args t args] builds the application of the {!type:p_term} [t] to a list
+    arguments [args]. When [args] is empty, the returned value is (physically)
+    equal to [t]. *)
+let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | (p,u)::args -> add_args (Pos.make p (P_Appl(t,u))) args
+  in add_args t args
+
 (** [build_prod xs a] build a product by abstracting away the arguments of the
     list [xs] on the body [a]. *)
 let build_prod : (strloc * p_term option) list -> p_term -> p_term = fun xs a ->
