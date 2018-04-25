@@ -172,9 +172,7 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
      let no = Some(Bindlib.binder_name b_binder) in
      let u_binder = make_binder c no t in
      let p = Prod(t,u_binder) in
-     (*let c',b,u = Ctxt.unbind2 c t b_binder u_binder in*)
-     let x,b,u = Bindlib.unbind2 mkfree b_binder u_binder in
-     let c' = Ctxt.add x t c in
+     let c',b,u = Ctxt.unbind2 c t b_binder u_binder in
      solve (Typ::Unif::strats)
        ((c,t,Type)::(c',b,u)::typs,sorts,(c,p,a)::unifs,whnfs,unsolved)
 
