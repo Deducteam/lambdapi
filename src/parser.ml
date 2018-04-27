@@ -268,6 +268,9 @@ let parser cmd_aux =
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
 
+(** [cmd_list] parses a list of commands (the main entry point). *)
+let parser cmd_list = {cmd "."}*
+
 (** Blank function for ignoring basic blank characters ([' '], ['\t'], ['\r'],
     ['\n']) and (possibly nested) comments delimited by ["(;"] and [";)"]. *)
 let blank buf pos =
@@ -307,7 +310,7 @@ let blank buf pos =
     the error position is displayerd and the program fails. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
   let open Earley in
-  try parse_file (parser {l:cmd "."}*) blank fname
+  try parse_file cmd_list blank fname
   with Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal "Parse error at [%a].\n" Pos.print loc
