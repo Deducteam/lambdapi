@@ -251,7 +251,7 @@ and compile : bool -> Files.module_path -> unit =
 
 module Pure :
   sig
-    type command
+    type command = Parser.p_cmd loc
     type state
 
     type result =
