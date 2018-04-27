@@ -37,7 +37,8 @@ let unbind2 : t -> term -> tbinder -> tbinder -> t * term * term =
   fun ctx a b1 b2 ->
     let occurs = Bindlib.binder_occur b1 || Bindlib.binder_occur b2 in
     let (x,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-    if occurs then (add x a ctx, b1, b2) else (ctx, b1, b2)
+    let c = if occurs then add x a ctx else ctx in
+    (c, b1, b2)
 
 (** [to_prod ctx t] builds a product type by abstracting over the context [ctx]
     in the term [t]. *)

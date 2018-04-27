@@ -14,6 +14,24 @@ let equal_vari (t:term) (u:term) : bool =
   | Vari x, Vari y -> Bindlib.eq_vars x y
   | _, _ -> false
 
+let make_type() =
+  let md = new_meta Type 0 in
+  Meta(md,[||])
+
+(* Does not work:
+
+let make_binder no d =
+  let n = match no with Some n -> n | None -> "x" in
+  let v = Bindlib.new_var mkfree n in
+  let mc_typ = Prod(d, Bindlib.unbox (Bindlib.bind_var v _Type (*FIXME?*))) in
+  let mc = new_meta mc_typ 1 in
+  let c = _Meta mc [|_Vari v|] in
+  Bindlib.unbox (Bindlib.bind_var v c)
+
+let make_prod() =
+  let d = make_type() in d, make_binder None d
+*)
+
 (** [make_meta c] creates a term [m[x1,..,xn]] of type [t] where [m]
     is a new metavariable and [x1,..,xn] are the variables of [c]. *)
 let make_meta (c:ctxt) (t:term) : term =
@@ -22,26 +40,20 @@ let make_meta (c:ctxt) (t:term) : term =
   let vs = List.rev_map (fun (v,_) -> Vari v) c in
   Meta(m, Array.of_list vs)
 
-(** [make_meta_sort] creates a term [m[]] where [m] is a metavariable
-    that should be instantiated by a sort. *)
-let make_sort() : term =
-  Meta(new_meta Kind 0,[||]) (*equivalent to: make_meta [] Kind*)
-
-(** [make_codomain c no t] creates a term [m[x1,..,xn,x]] of type a
-    sort where [x1,..,xn] are the variables of [c] and [x] a new variable
-    of name [no]. *)
-let make_codomain c no t =
+(** [make_binder c no t] creates a binder of v in [m[x1,..,xn,v]] of
+    type a sort where [x1,..,xn] are the variables of [c] and [v] a
+    new variable of name [no]. *)
+let make_binder (c:ctxt) (no:string option) (d:term) : tbinder =
   let n = match no with Some n -> n | None -> "x" in
-  let x = Bindlib.new_var mkfree n in
-  let u = make_meta ((x,t)::c) (make_sort()) in
-  Bindlib.unbox (Bindlib.bind_var x (lift u))
+  let v = Bindlib.new_var mkfree n in
+  let u = make_meta ((v,d)::c) (make_type()) in
+  Bindlib.unbox (Bindlib.bind_var v (lift u))
 
-(** [make_prod c no] creates a term [x:m1[x1,..,xn]->m2[x1,..,xn,x]]
+(** [make_prod c] creates a term [x:m1[x1,..,xn]->m2[x1,..,xn,x]]
     of type a sort where [x1,..,xn] are the variables of [c] and [x] a
     new variable of name [no]. *)
-let make_prod c no =
-  let d = make_meta c (make_sort()) in
-  d, make_codomain c no d
+let make_prod c =
+  let d = make_meta c (make_type()) in d, make_binder c None d
 
 type typing = ctxt * term * term
 
@@ -158,14 +170,14 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
 
   | Abst(t,b_binder) ->
      let no = Some(Bindlib.binder_name b_binder) in
-     let u_binder = make_codomain c no t in
+     let u_binder = make_binder c no t in
      let p = Prod(t,u_binder) in
      let c',b,u = Ctxt.unbind2 c t b_binder u_binder in
      solve (Typ::Unif::strats)
        ((c,t,Type)::(c',b,u)::typs,sorts,(c,p,a)::unifs,whnfs,unsolved)
 
   | Appl(t,u) ->
-     let v, w_binder = make_prod c None in
+     let v, w_binder = make_prod c in
      let p = Prod(v, w_binder) in
      let a' = Bindlib.subst w_binder u in
      solve (Typ::Unif::strats)
@@ -316,7 +328,7 @@ let has_type_with_constr (cs:unif list) (c:ctxt) (t:term) (a:term) : bool =
     of unification problems for [a] to be the type of [t] in context [c]. *)
 let infer_constr (c:ctxt) (t:term) : unif list * term =
   if !debug_type then log "infer_constr" "[%a]" pp t;
-  let a = make_meta c (make_sort()) in
+  let a = make_meta c (make_type()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> l, a
   | None -> raise Fatal
@@ -330,7 +342,7 @@ let infer (c:ctxt) (t:term) : term option =
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:ctxt) (t:term) : term =
   if !debug_type then log "sort_type" "[%a]" pp t;
-  let a = make_meta c (make_sort()) in
+  let a = make_meta c (make_type()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some [] ->
      begin

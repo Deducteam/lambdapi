@@ -27,14 +27,14 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
   let (vs,ts) = List.split (build_sub [] cs) in
   (Array.of_list vs, Array.of_list ts)
 
-    (* Does not work in examples/cic.dk
+(* Does not work in examples/cic.dk
 
 let build_meta_type : int -> term = fun k ->
   let m' = new_meta Type (*FIXME?*) k in
   let m_typ = Meta(m',[||]) in
   let m = new_meta m_typ k in
   Meta(m,[||])
-    *)
+*)
 
 (** [build_meta_type k] builds the type [x_1:t_1 -> .. -> x_k:t_k ->
     t_{k+1}] where [x1,..,x_k] are fresh variables, [t_i =
