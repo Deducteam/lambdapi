@@ -162,9 +162,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
        | Appl(t1,u1), Appl(t2,u2) ->
           eq_modulo ((u1,u2)::(t1,t2)::l)
        | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
-          let l = ref l in
-          Array.iter2 (fun a b -> l := (a,b)::!l) a1 a2;
-          eq_modulo !l
+          eq_modulo (List.add_array2 a1 a2 l)
        | _, _ -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in

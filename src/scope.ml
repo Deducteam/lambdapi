@@ -211,7 +211,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
         let m =
           match m with
           | M_User(s) -> s
-          | _         -> fatal "invalid action %a\n" Pos.print t.pos
+          | _         -> fatal "invalid term %a\n" Pos.print t.pos
         in
         let i = try List.assoc m map with Not_found -> assert false in
         _TEnv (Bindlib.box_of_var metas.(i)) e

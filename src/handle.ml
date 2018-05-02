@@ -21,13 +21,22 @@ let handle_symdecl : bool -> strloc -> term -> unit =
   fun b n a ->
     fail_if_in_proof();
     ignore (Solve.sort_type Ctxt.empty a);
+    (*FIXME: check that [a] contains no un instantiated metavariables.*)
     let sign = current_sign() in
     ignore (Sign.new_symbol sign b n a)
 
+(** [handle_rule r] checks that the rule [r] preserves typing, while
+    adding it to the corresponding symbol. The program fails
+    gracefully when an error occurs. *)
+let handle_rule : sym * rule -> unit = fun (s,r) ->
+  fail_if_in_proof();
+  Sr.check_rule (s, r);
+  Sign.add_rule (current_sign()) s r
+
 (** [check_def_type x None t] infers the type of [t] and returns
-    it. [check_def_type x (Some a) t] checks that [a] has a sort as
-    type and that [t] has type [a], and it returns [a]. In case of
-    error (typing or sorting), the program fails gracefully. *)
+    it. [check_def_type x (Some a) t] checks that [a] is typable by a
+    sort and [t] has type [a], and returns [a]. In case of error
+    (typing or sorting), the program fails gracefully. *)
 let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
   match ao with
   | Some(a) ->
@@ -40,20 +49,13 @@ let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
       | None    -> fatal "Unable to infer the type of [%a].\n" pp t
       | Some(a) -> a
 
-(** [handle_rule r] checks that the rule [r] preserves typing, while
-    adding it to the corresponding symbol. The program fails
-    gracefully when an error occurs. *)
-let handle_rule : sym * rule -> unit = fun (s,r) ->
-  fail_if_in_proof ();
-  Sr.check_rule (s,r);
-  Sign.add_rule (current_sign ()) s r
-
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)
 let handle_opaque : strloc -> term option -> term -> unit =
   fun x ao t ->
     fail_if_in_proof();
     let a = check_def_type x ao t in
+    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
     ignore (Sign.new_symbol (current_sign()) true x a)
 
 (** [handle_defin x ao t] does the same as [handle_opaque x ao t] and
@@ -61,6 +63,7 @@ let handle_opaque : strloc -> term option -> term -> unit =
 let handle_defin : strloc -> term option -> term -> unit =
   fun x ao t ->
     let a = check_def_type x ao t in
+    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
     let sign = current_sign() in
     let s = Sign.new_symbol sign true x a in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar [||] (lift t)) in
@@ -116,17 +119,17 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
   let m = add_meta s.elt a 0 in
-  let goal =
+  let g =
     { g_meta = m
     ; g_hyps = []
     ; g_type = a }
   in
-  let thm =
+  let t =
     { t_proof = m
-    ; t_open_goals = [goal]
-    ; t_focus = goal }
+    ; t_goals = [g]
+    ; t_focus = g }
   in
-  theorem := Some thm
+  theorem := Some t
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
@@ -239,6 +242,8 @@ and compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
+
+(** Interface to PLOF. *)
 
 module Pure :
   sig
