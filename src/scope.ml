@@ -55,6 +55,35 @@ let build_meta_name loc id =
   | M_Sys(k)  -> Internal(k)
   | M_User(s) -> Defined(s)
 
+(** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
+    free variables in [x1, .., xn], build the product type [x1:T1 ->
+    .. -> xn:Tn -> t]. *)
+let build_prod : env -> tbox -> term = fun c t ->
+  let fn b (_,(v,a)) =
+    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
+  in Bindlib.unbox (List.fold_left fn t c)
+
+(** [build_type is_type env] builds the product of [env] over [a] where
+    [a] is [Type] if [is_type], and a new metavariable
+    otherwise. Returns the array of variables of [env] too. *)
+let build_meta_type : env -> bool -> term * tbox array =
+  fun env is_type ->
+    let a = build_prod env _Type in
+    let fn (_,(v,_)) = Bindlib.box_of_var v in
+    let vs = Array.of_list (List.rev_map fn env) in
+    if is_type then a, vs
+    else (* We create a new metavariable. *)
+      let m = new_meta a (List.length env) in
+      build_prod env (_Meta m vs), vs
+
+(** [build_meta_app is_type c] builds a new metavariable of type
+    [build_meta_type is_type c]. *)
+let build_meta_app : env -> bool -> tbox =
+  fun env is_type ->
+    let t, vs = build_meta_type env is_type in
+    let m = new_meta t (List.length env) in
+    _Meta m vs
+
 (** [scope_term t] transforms a parser-level term [t] into an actual term
     (using Bindlib). Note that wildcards [P_Wild] are
     transformed into fresh meta-variables.  The same goes for the type carried
