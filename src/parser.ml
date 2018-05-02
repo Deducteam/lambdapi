@@ -124,7 +124,7 @@ let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Product *)
   | x:{ident ":"}?[Pos.none "_"] a:(expr `Appl) "->" b:(expr `Func)
       when p = `Func -> in_pos _loc (P_Prod(x,Some(a),b))
-  | "!" x:ident a:{":" (expr `Appl)}? "," b:(expr `Func)
+  | "!" x:ident a:{":" (expr `Func)}? "," b:(expr `Func)
       when p = `Func -> in_pos _loc (P_Prod(x,a,b))
   (* Wildcard *)
   | _wild_
