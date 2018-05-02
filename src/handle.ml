@@ -23,24 +23,9 @@ let handle_symdecl : bool -> strloc -> term -> unit =
   fun b n a ->
     fail_if_in_proof();
     ignore (sort_type Ctxt.empty a);
+    (*FIXME: check that [a] contains no un instantiated metavariables.*)
     let sign = current_sign() in
     ignore (Sign.new_symbol sign b n a)
-
-(** [check_def_type x None t] infers the type of [t] and returns
-    it. [check_def_type x (Some a) t] checks that [a] has a sort as
-    type and that [t] has type [a], and it returns [a]. In case of
-    error (typing or sorting), the program fails gracefully. *)
-let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
-  match ao with
-  | Some(a) ->
-      ignore (sort_type Ctxt.empty a);
-      if has_type Ctxt.empty t a then a else
-      fatal "Cannot type the definition of [%s] at [%a].\n"
-        x.elt Pos.print x.pos;
-  | None    ->
-      match infer Ctxt.empty t with
-      | None    -> fatal "Unable to infer the type of [%a].\n" pp t
-      | Some(a) -> a
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
@@ -50,12 +35,33 @@ let handle_rule : sym * rule -> unit = fun (s,r) ->
   check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
+(** [check_def_type x None t] infers the type of [t] and returns
+    it. [check_def_type x (Some a) t] checks that [a] is typable by a
+    sort and [t] has type [a], and returns [a]. In case of error
+    (typing or sorting), the program fails gracefully. *)
+let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
+  match ao with
+  | Some(a) ->
+     begin
+       ignore (sort_type Ctxt.empty a);
+       if has_type Ctxt.empty t a then
+         a
+       else
+         fatal "Cannot type the definition of [%s] at [%a].\n"
+           x.elt Pos.print x.pos
+     end
+  | None    ->
+      match infer Ctxt.empty t with
+      | None    -> fatal "Unable to infer the type of [%a].\n" pp t
+      | Some(a) -> a
+
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)
 let handle_opaque : strloc -> term option -> term -> unit =
   fun x ao t ->
     fail_if_in_proof();
     let a = check_def_type x ao t in
+    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
     ignore (Sign.new_symbol (current_sign()) true x a)
 
 (** [handle_defin x ao t] does the same as [handle_opaque x ao t] and
@@ -63,6 +69,7 @@ let handle_opaque : strloc -> term option -> term -> unit =
 let handle_defin : strloc -> term option -> term -> unit =
   fun x ao t ->
     let a = check_def_type x ao t in
+    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
     let sign = current_sign() in
     let s = Sign.new_symbol sign true x a in
     let rule =
@@ -248,6 +255,8 @@ and compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
+
+(** Interface to PLOF. *)
 
 module Pure :
   sig
