@@ -32,16 +32,16 @@ module List =
       | []    -> None
       | e::es -> match f e with None -> map_find f es | res -> res
 
-    (** [cut l k] returns a pair of lists [l1,l2] such that [l=l1@l2] and
-        [length l1 = max(length(l),k)]. *)
+    (** [cut l k] returns a pair of lists [(l1,l2)] such that [l1] has length
+        [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
     let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
-      let rec cut acc l k (*>=0*) =
-        match l, k with
-        | [], _ | _, 0 -> List.rev acc, []
-        | x::l', _ -> cut (x::acc) l' (k-1)
+      let rec cut acc l k =
+        if k <= 0 then (List.rev acc, l) else
+        match l with
+        | []   -> (List.rev acc, l)
+        | x::l -> cut (x::acc) l (k-1)
       in
-      if k <= 0 then [], l else cut [] l k
-
+      if k <= 0 then ([], l) else cut [] l k
   end
 
 module Array =
