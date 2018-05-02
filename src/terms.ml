@@ -451,6 +451,8 @@ let new_meta : term -> int -> meta = fun a n ->
 (** Representation of an environment for variables. *)
 type env = (string * (tvar * tbox)) list
 
+let tvar_of_name (_,(v,_)) = _Vari v
+
 (** Representation of a goal. *)
 type goal =
   { g_meta : meta

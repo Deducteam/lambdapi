@@ -69,8 +69,7 @@ let build_prod : env -> tbox -> term = fun c t ->
 let build_meta_type : env -> bool -> term * tbox array =
   fun env is_type ->
     let a = build_prod env _Type in
-    let fn (_,(v,_)) = Bindlib.box_of_var v in
-    let vs = Array.of_list (List.rev_map fn env) in
+    let vs = Array.of_list (List.rev_map tvar_of_name env) in
     if is_type then a, vs
     else (* We create a new metavariable. *)
       let m = new_meta a (List.length env) in
@@ -151,7 +150,7 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
-        let e = List.map (fun (_,(x,_)) -> Bindlib.box_of_var x) env in
+        let e = List.map tvar_of_name env in
         let m = fresh () in
         _Patt None m (Array.of_list e)
     | P_Meta(m,ts)  ->
