@@ -9,20 +9,18 @@ open Eval
 type ctxt = Ctxt.t
 
 (** [equal_vari t u] checks that [t] and [u] are variables and are equal. *)
-let equal_vari (t:term) (u:term) : bool =
-  match t, u with
-  | Vari x, Vari y -> Bindlib.eq_vars x y
-  | _, _ -> false
+let equal_vari : term -> term -> bool = fun t u ->
+  match (unfold t, unfold u) with
+  | (Vari x, Vari y) -> Bindlib.eq_vars x y
+  | (_     , _     ) -> false
 
-(** [make_type()] generates a term [m[]] where [m] is a fresh
-    metavariable of arity 0 and tye [Type]. *)
-let make_type() =
-  let md = new_meta Type 0 in
-  Meta(md,[||])
+(** [make_type ()] generates a term [m[]] where [m] is a fresh metavariable of
+    arity [0] and type [Type]. *)
+let make_type () = Meta(new_meta Type 0, [||])
 
-(** [make_meta c t] creates a term [m[x1,..,xn]] of type [t] where [m]
-    is a new metavariable and [x1,..,xn] are the variables of [c]. *)
-let make_meta (c:ctxt) (t:term) : term =
+(** [make_meta c t] creates a term [m[x1,..,xn]] of type [t] where [m] is a
+    new metavariable and [x1,..,xn] are the variables of [c]. *)
+let make_meta : ctxt -> term -> term = fun c t ->
   let typ_m = Ctxt.to_prod c t in
   let m = new_meta typ_m (List.length c) in
   let vs = List.rev_map (fun (v,_) -> Vari v) c in
@@ -360,7 +358,7 @@ let has_type (c:ctxt) (t:term) (a:term) : bool =
   if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> List.iter msg l; l = []
-  | None -> false
+  | None   -> false
 
 (** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
     [u] in context [c] and constraints [cs] without instantiating any
