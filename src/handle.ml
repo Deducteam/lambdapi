@@ -157,7 +157,7 @@ let handle_refine (t:term) : unit =
   if not (has_type Ctxt.empty u m.meta_type) then
     fatal "invalid refinement\n";
   (* Instantiation. *)
-  let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
+  let vs = Array.of_list (List.map var_of_name g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
 
 (** [handle_intro s] applies the [intro] tactic. *)
