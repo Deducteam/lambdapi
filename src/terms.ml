@@ -187,6 +187,9 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 (** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
 
+let unbind b = let (_,b) = Bindlib.unbind mkfree b in b
+let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in (b1,b2)
+
 (****************************************************************************)
 
 (** {6 Smart constructors and lifting (related to {!module:Bindlib})} *)
@@ -311,10 +314,6 @@ let add_args : term -> term list -> term = fun t args ->
     [te] is not of the form {!const:TE_Some(b)}). *)
 let eq : term -> term -> bool = fun a b -> a == b ||
   let exception Not_equal in
-  let unbind b1 b2 =
-    let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-    (b1,b2)
-  in
   let rec eq l =
     match l with
     | []       -> ()
@@ -326,7 +325,7 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind b1 b2)::l)
+    | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 -> assert(e1 == e2); eq l
     | (Patt(_,_,_), _          )
@@ -342,7 +341,6 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     the {!const:Patt} or {!const:TEnv} constructor. *)
 let occurs : meta -> term -> bool = fun m t ->
   let exception Occurs in
-  let unbind b = snd (Bindlib.unbind mkfree b) in
   let rec occurs l =
     match l with
     | []   -> ()
@@ -353,10 +351,7 @@ let occurs : meta -> term -> bool = fun m t ->
     | Prod(a,b) | Abst(a,b)           -> occurs (a::(unbind b)::l)
     | Appl(t,u)                       -> occurs (t::u::l)
     | Meta(v,_) when m == v           -> raise Occurs
-    | Meta(_,ts)                       ->
-       let l = ref l in
-       Array.iter (fun t -> l := t::!l) ts;
-       occurs !l
+    | Meta(_,ts)                      -> occurs (List.add_array ts l)
   in
   try occurs [t]; false with Occurs -> true
 
@@ -372,6 +367,28 @@ let distinct_vars (a:term array) : bool =
   in
   let res = try Array.iter fn a; true with Exit -> false in
   acc := []; res
+
+(** [has_uninst_metas t] says whether [t] contains uninstantiated
+    metavariables. *)
+let has_uninst_metas : term -> bool = fun t ->
+  let exception Has_uninst_metas in
+  let check_meta m =
+    match m.meta_name with
+    | Defined _ -> ()
+    | Internal _ -> raise Has_uninst_metas
+  in
+  let rec hum : term list -> unit = fun l ->
+    match l with
+    | [] -> ()
+    | t :: l ->
+       match unfold t with
+       | Meta(m,ts)  -> check_meta m; hum (List.add_array ts l)
+       | Vari(_) | Type | Kind | Symb(_) -> hum l
+       | Prod(a,b) | Abst(a,b) -> hum (a :: unbind b :: l)
+       | Appl(t,u)   -> hum (t :: u :: l)
+       | Patt(_,_,_) -> assert false
+       | TEnv(_,_)  -> assert false
+  in try hum [t]; false with Has_uninst_metas -> true
 
 (****************************************************************************)
 
@@ -459,6 +476,7 @@ type goal =
   { g_meta : meta
   ; g_hyps : env
   ; g_type : term }
+(* NOTE: [g_hyps] and [g_type] are a decomposition of the type of [g_meta]. *)
 
 (** Representation of a theorem. *)
 type theorem =
