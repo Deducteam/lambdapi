@@ -1,0 +1,7 @@
+type : Type.
+def term : type -> Type.
+
+pi : A : type -> (term A -> type) -> type.
+[A,B] term (pi A B) --> a : term A -> term (B a).
+
+def i (A : type) (B : term A -> type) : term (pi A B) := z : term A => z.
