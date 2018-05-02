@@ -53,11 +53,11 @@ nat : U 1.
 
 lift : !i, U i -> U (s i).
 
-(; Code for the product type in universe i. *)
+(; Code for the product type in universe i. ;)
 
 pi : !i, !a : U i, (T _ a -> U i) -> U i.
 
-T _ (pi ?i ?a ?f) --> x : T ?i ?a -> T ?i (f x).
+T _ (pi ?i ?a ?f) --> x : T ?i ?a -> T ?i (?f x).
 
 (; Code for the type of vectors in universe i. ;)
 
@@ -66,9 +66,9 @@ vec : !i, U i -> N -> U i.
 nil : !i, !a, T _ (vec i a 0).
 cons : !i, !a, T i a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
 
-(; Induction principle on N. *)
+(; Induction principle on N. ;)
 
-nat_ind : !p:N -> Prop, P (p 0) -> (!n, P (p n) -> P (p (s n))) -> !n, P (p n).
+def nat_ind : !p:N -> Prop, P (p 0) -> (!n, P (p n) -> P (p (s n))) -> !n, P (p n).
 
 nat_ind _  ?u _  0      --> ?u.
 nat_ind ?p ?u ?v (s ?n) --> ?v ?n (nat_ind ?p ?u ?v ?n).
