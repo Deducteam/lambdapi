@@ -66,26 +66,26 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
-  let rec to_m : term -> tbox = fun t ->
-    let to_m_binder b x = to_m (Bindlib.subst b (mkfree x)) in
+  let rec to_m : int -> term -> tbox = fun k t ->
+    let to_m_binder k b x = to_m k (Bindlib.subst b (mkfree x)) in
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
-    | Abst(a,t)   -> _Abst (to_m a) (Bindlib.binder_name t) (to_m_binder t)
-    | Appl(t,u)   -> _Appl (to_m t) (to_m u)
+    | Abst(a,t)   -> _Abst (to_m 0 a) (Bindlib.binder_name t) (to_m_binder 0 t)
+    | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin
-          let a = Array.map to_m a in
-          let k = Array.length a in
+          let a = Array.map (to_m 0) a in
+          let l = Array.length a in
           match i with
           | None    ->
-             let m = add_meta n (build_meta_type k) k in
+             let m = add_meta n (build_meta_type (l+k)) l in
              _Meta m a
           | Some(i) ->
               match metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                 let m = add_meta n (build_meta_type k) k in
+                 let m = add_meta n (build_meta_type (l+k)) l in
                  metas.(i) <- Some(m);
                  _Meta m a
         end
@@ -95,7 +95,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs = List.map (fun p -> Bindlib.unbox (to_m p)) rule.lhs in
+  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = add_args (Symb(s)) lhs in
   (** We substitute the RHS with the corresponding metavariables.*)
   let fn m =
