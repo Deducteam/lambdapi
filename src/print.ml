@@ -52,8 +52,9 @@ let pp_term : term pp = fun oc t ->
         out oc "%a:%a => %a" pp_tvar x pp_func a pp_func t
     | (Prod(a,b)  , `Func) ->
         let (x,c) = Bindlib.unbind mkfree b in
-        if Bindlib.binder_occur b then out oc "%a:" pp_tvar x;
-        out oc "%a -> %a" pp_appl a pp_func c
+        if Bindlib.binder_occur b then
+          out oc "!%a:%a, %a" pp_tvar x pp_appl a pp_func c
+        else out oc "%a -> %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
     | (_          , _    ) -> out oc "(%a)" pp_func t
   in
