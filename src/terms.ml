@@ -463,5 +463,5 @@ type goal =
 (** Representation of a theorem. *)
 type theorem =
   { t_proof : meta
-  ; t_open_goals : goal list
+  ; t_goals : goal list
   ; t_focus : goal }

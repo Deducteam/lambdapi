@@ -124,17 +124,17 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   ignore (sort_type Ctxt.empty a);
   (* We start the proof mode. *)
   let m = add_meta s.elt a 0 in
-  let goal =
+  let g =
     { g_meta = m
     ; g_hyps = []
     ; g_type = a }
   in
-  let thm =
+  let t =
     { t_proof = m
-    ; t_open_goals = [goal]
-    ; t_focus = goal }
+    ; t_goals = [g]
+    ; t_focus = g }
   in
-  theorem := Some thm
+  theorem := Some t
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
