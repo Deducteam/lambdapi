@@ -8,31 +8,19 @@ open Eval
 
 type ctxt = Ctxt.t
 
-(** [equal_vari t u] checks that [t] and [u] are the same variable. *)
+(** [equal_vari t u] checks that [t] and [u] are variables and are equal. *)
 let equal_vari (t:term) (u:term) : bool =
   match t, u with
   | Vari x, Vari y -> Bindlib.eq_vars x y
   | _, _ -> false
 
+(** [make_type()] generates a term [m[]] where [m] is a fresh
+    metavariable of arity 0 and tye [Type]. *)
 let make_type() =
   let md = new_meta Type 0 in
   Meta(md,[||])
 
-(* Does not work:
-
-let make_binder no d =
-  let n = match no with Some n -> n | None -> "x" in
-  let v = Bindlib.new_var mkfree n in
-  let mc_typ = Prod(d, Bindlib.unbox (Bindlib.bind_var v _Type (*FIXME?*))) in
-  let mc = new_meta mc_typ 1 in
-  let c = _Meta mc [|_Vari v|] in
-  Bindlib.unbox (Bindlib.bind_var v c)
-
-let make_prod() =
-  let d = make_type() in d, make_binder None d
-*)
-
-(** [make_meta c] creates a term [m[x1,..,xn]] of type [t] where [m]
+(** [make_meta c t] creates a term [m[x1,..,xn]] of type [t] where [m]
     is a new metavariable and [x1,..,xn] are the variables of [c]. *)
 let make_meta (c:ctxt) (t:term) : term =
   let typ_m = Ctxt.to_prod c t in
@@ -40,23 +28,25 @@ let make_meta (c:ctxt) (t:term) : term =
   let vs = List.rev_map (fun (v,_) -> Vari v) c in
   Meta(m, Array.of_list vs)
 
-(** [make_binder c no t] creates a binder of v in [m[x1,..,xn,v]] of
-    type a sort where [x1,..,xn] are the variables of [c] and [v] a
-    new variable of name [no]. *)
+(** [make_binder c no d] creates a binder obtained by binding v in the
+    term [m[x1,..,xn,v]] of type a sort where [x1,..,xn] are the
+    variables of [c] and [v] is a new variable of name [no]. *)
 let make_binder (c:ctxt) (no:string option) (d:term) : tbinder =
   let n = match no with Some n -> n | None -> "x" in
   let v = Bindlib.new_var mkfree n in
   let u = make_meta ((v,d)::c) (make_type()) in
   Bindlib.unbox (Bindlib.bind_var v (lift u))
 
-(** [make_prod c] creates a term [x:m1[x1,..,xn]->m2[x1,..,xn,x]]
-    of type a sort where [x1,..,xn] are the variables of [c] and [x] a
+(** [make_prod c] creates a term [x:m1[x1,..,xn]->m2[x1,..,xn,x]] of
+    type a sort where [x1,..,xn] are the variables of [c] and [x] is a
     new variable of name [no]. *)
 let make_prod c =
   let d = make_meta c (make_type()) in d, make_binder c None d
 
+(** Representation of typing problems. *)
 type typing = ctxt * term * term
 
+(** Representation of unification problems. *)
 type unif = ctxt * term * term
 
 let pp_unif : unif pp = fun oc (_,t,u) ->
@@ -67,11 +57,24 @@ let pp_unifs : unif list pp = fun oc l ->
   | [] -> ()
   | _ -> Printf.fprintf oc " if %a" (List.pp pp_unif ", ") l
 
+(** Representation of problems:
+    1. a list of typing problems;
+    2. a list of sort problems, that is, terms whose types must be sorts;
+    3. a list of unification problems;
+    4. a list of unification problems that must weak-head-normalized first;
+    5. a list of unification problems that have not been solved yet. *)
+
 type problem = typing list * term list * unif list * unif list * unif list
 
+(** Representation of solving strategies. *)
 type strat =
-  | Typ | Sort | Unif | Whnf | CheckEnd
-  | Repeat of strat list
+  | Typ (** deal with typing problems *)
+  | Sort (** deal with sorting problems *)
+  | Unif (** deal with unification problems *)
+  | Whnf
+  (** deal with unification problems that must be weak-head-normalized first *)
+  | CheckEnd (** check whether there is something else we can do *)
+  | Repeat of strat list (** repeat a list of strategies *)
 
 let rec pp_strat : strat pp = fun oc strat ->
   match strat with
@@ -84,6 +87,7 @@ let rec pp_strat : strat pp = fun oc strat ->
 
 and pp_strats : strat list pp = fun oc strats -> List.pp pp_strat "" oc strats
 
+(** Default strategy. *)
 let default_strat = Repeat [Typ; Sort; Unif; Whnf; CheckEnd]
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
@@ -95,22 +99,33 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     end;
   m.meta_value := Some(v)
 
+(** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
+(** Boolean saying whether unsolved unification problems need to be
+    rechecked. *)
 let recompute : bool ref = ref false
 
+(** [instantiate m ts v] check whether [m] can be instantiated to
+    solve the unification problem [m[ts] = v]. Actually make the
+    instantiation if it is possible. *)
 let instantiate (m:meta) (ts:term array) (v:term) : bool =
   (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
   Bindlib.is_closed bv &&
     (set_meta m (Bindlib.unbox bv); recompute := true; true)
 
+(** Exception raised by the solving algorithm when an irrecuperable
+    error is found. *)
 exception Exit_solve
 
 let not_convertible t1 t2 =
   err "[%a] and [%a] are not convertible\n" pp t1 pp t2;
   raise Exit_solve
 
+(** [solve s p] tries to solve the problem [p] following the strategy
+    list [s]. When it stops, it returns the list of unsolved
+    unification problems. *)
 let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   if !debug then log "solve" "%a" pp_strats strats;
   match strats with
@@ -133,27 +148,42 @@ let rec solve strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
           else unsolved
         else solve strats' p
 
+(** [solve_typs s p] tries to solve the typing problems of [p]. Then,
+    it continues with the remaining problems following the strategy
+    list [s]. *)
 and solve_typs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match typs with
   | [] -> solve strats p
   | (c,t,a)::l -> solve_typ c t a strats (l,sorts,unifs,whnfs,unsolved)
 
+(** [solve_sorts s p] tries to solve the sorting problems of [p]. Then,
+    it continues with the remaining problems following the strategy
+    list [s]. *)
 and solve_sorts strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match sorts with
   | [] -> solve strats p
   | a::l -> solve_sort a strats (typs,l,unifs,whnfs,unsolved)
 
+(** [solve_unifs s p] tries to solve the unification problems of
+    [p]. Then, it continues with the remaining problems following the
+    strategy list [s]. *)
 and solve_unifs strats ((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =
   match unifs with
   | [] -> solve strats p
   | (c,t,u)::l -> solve_unif c t u strats (typs,sorts,l,whnfs,unsolved)
 
+(** [solve_whnfs s p] tries to solve the unification problems of [p]
+    that msut be weak-head-normalized first. Then, it continues with
+    the remaining problems following the strategy list [s]. *)
 and solve_whnfs strats ((typs,sorts,unifs,whnfs,unsolved) as p)
     : unif list =
   match whnfs with
   | [] -> solve strats p
   | (c,t,u)::l -> solve_whnf c t u strats (typs,sorts,unifs,l,unsolved)
 
+(** [solve_typ c t a s p] tries to solve the typing problem
+    [(c,t,a)]. Then, it continues with the remaining problems
+    following the strategy list [s]. *)
 and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
   if !debug_type then log "solve_typ" "[%a] [%a]" pp t pp a;
   match unfold t with
@@ -204,12 +234,18 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
      let t = add_args (Symb s) (Array.to_list ts) in
      solve_typ c t a strats p
 
+(** [solve_sort a s p] tries to solve the sorting problem [a]. Then,
+    it continues with the remaining problems following the strategy
+    list [s]. *)
 and solve_sort a strats p : unif list =
   if !debug_type then log "solve_sort" "[%a]" pp a;
   match unfold a with
   | Type | Kind -> solve_sorts strats p
   | _ -> fatal "[%a] is not a sort\n" pp a
 
+(** [solve_unif c t1 t2 s p] tries to solve the unificaton problem
+    [(c,t1,t2)]. Then, it continues with the remaining problems
+    following the strategy list [s]. *)
 and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
     : unif list =
   if t1 == t2 then solve_unifs strats p
@@ -252,6 +288,10 @@ and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
       | _, _ -> not_convertible t1 t2
     end
 
+(** [solve_whnf c t1 t2 s p] tries to solve the unificaton problem
+    [(c,t1,t2)] by first weak-head-normalizing it first. Then, it
+    continues with the remaining problems following the strategy list
+    [s]. *)
 and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
     : unif list =
   let t1 = whnf t1 and t2 = whnf t2 in
