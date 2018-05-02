@@ -1,0 +1,5 @@
+A : Type.
+
+def g : A -> A.
+
+[] g --> x => x.
