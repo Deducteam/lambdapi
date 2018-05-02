@@ -42,6 +42,22 @@ module List =
         | x::l -> cut (x::acc) l (k-1)
       in
       if k <= 0 then ([], l) else cut [] l k
+
+    (** [add_array a l] returns a list containing the elements of [l]
+        and [a]. *)
+    let add_array : 'a array -> 'a list -> 'a list = fun a l ->
+      let res = ref l in
+      Array.iter (fun x -> res := x::!res) a;
+      !res
+
+    (** [add_array a l] returns a list containing the elements of [l]
+        and [a]. *)
+    let add_array2 : 'a array -> 'b array -> ('a * 'b) list -> ('a * 'b) list =
+      fun a1 a2 l ->
+        let res = ref l in
+        Array.iter2 (fun x1 x2 -> res := (x1,x2)::!res) a1 a2;
+        !res
+
   end
 
 module Array =
