@@ -95,6 +95,13 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
       let (xs,v) = Bindlib.unmbind mkfree v in
       log "set_meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
+  begin
+    match m.meta_name with
+    | Defined(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
+                     all_metas := {!all_metas with str_map}
+    | Internal(i) -> let int_map = IntMap.remove i !all_metas.int_map in
+                     all_metas := {!all_metas with int_map}
+  end;
   m.meta_value := Some(v)
 
 (** Boolean saying whether user metavariables can be set or not. *)
@@ -355,10 +362,25 @@ let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
+  (*
+  Gc.compact ();
+  Printf.eprintf "==== BEFORE HAS_TYPE ====\n";
+  Gc.print_stat stderr;
+  Printf.eprintf "=========================\n%!";
+  let res =
+  *)
   if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> List.iter msg l; l = []
   | None   -> false
+  (*
+  in
+  Gc.compact ();
+  Printf.eprintf "==== AFTER HAS_TYPE =====\n";
+  Gc.print_stat stderr;
+  Printf.eprintf "=========================\n%!";
+  res
+  *)
 
 (** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
     [u] in context [c] and constraints [cs] without instantiating any
