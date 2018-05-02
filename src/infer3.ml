@@ -86,6 +86,15 @@ and pp_strats : strat list pp = fun oc strats -> List.pp pp_strat "" oc strats
 
 let default_strat = Repeat [Typ; Sort; Unif; Whnf; CheckEnd]
 
+(** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
+let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
+  if !debug_unif then
+    begin
+      let (xs,v) = Bindlib.unmbind mkfree v in
+      log "set_meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
+    end;
+  m.meta_value := Some(v)
+
 let can_instantiate : bool ref = ref true
 
 let recompute : bool ref = ref false
@@ -94,7 +103,7 @@ let instantiate (m:meta) (ts:term array) (v:term) : bool =
   (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
   Bindlib.is_closed bv &&
-    (Unif.set_meta m (Bindlib.unbox bv); recompute := true; true)
+    (set_meta m (Bindlib.unbox bv); recompute := true; true)
 
 exception Exit_solve
 
