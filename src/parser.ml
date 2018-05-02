@@ -113,7 +113,9 @@ let parser meta =
   (* User-defined meta-variable by name. *)
   | "?" - s:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(s)
 
-(** [expr p] is a parser for an expression at priority [p]. *)
+(** [expr p] is a parser for an expression at priority level [p]. The possible
+    priority levels are [`Func] (top level, including abstraction or product),
+    [`Appl] (application) and [`Atom] (smallest priority). *)
 let parser expr (p : [`Func | `Appl | `Atom]) =
   (* Variable *)
   | qid:qident

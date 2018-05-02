@@ -22,6 +22,7 @@ let pp_meta : meta pp = fun oc m ->
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : term pp = fun oc t ->
   let out oc fmt = Printf.fprintf oc fmt in
+  (* NOTE we apply the conventions used in [Parser.expr] for priorities. *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let pp_func = pp `Func in
     let pp_appl = pp `Appl in
