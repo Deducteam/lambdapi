@@ -8,8 +8,6 @@ open Pos
 open Sign
 open Extra
 open Files
-open Solve
-open Sr
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -22,7 +20,7 @@ let gen_obj : bool ref = ref false
 let handle_symdecl : bool -> strloc -> term -> unit =
   fun b n a ->
     fail_if_in_proof();
-    ignore (sort_type Ctxt.empty a);
+    ignore (Solve.sort_type Ctxt.empty a);
     let sign = current_sign() in
     ignore (Sign.new_symbol sign b n a)
 
@@ -33,12 +31,12 @@ let handle_symdecl : bool -> strloc -> term -> unit =
 let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
   match ao with
   | Some(a) ->
-      ignore (sort_type Ctxt.empty a);
-      if has_type Ctxt.empty t a then a else
+      ignore (Solve.sort_type Ctxt.empty a);
+      if Solve.has_type Ctxt.empty t a then a else
       fatal "Cannot type the definition of [%s] at [%a].\n"
         x.elt Pos.print x.pos;
   | None    ->
-      match infer Ctxt.empty t with
+      match Solve.infer Ctxt.empty t with
       | None    -> fatal "Unable to infer the type of [%a].\n" pp t
       | Some(a) -> a
 
@@ -46,9 +44,9 @@ let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
 let handle_rule : sym * rule -> unit = fun (s,r) ->
-  fail_if_in_proof();
-  check_rule (s, r);
-  Sign.add_rule (current_sign()) s r
+  fail_if_in_proof ();
+  Sr.check_rule (s,r);
+  Sign.add_rule (current_sign ()) s r
 
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)
@@ -65,25 +63,19 @@ let handle_defin : strloc -> term option -> term -> unit =
     let a = check_def_type x ao t in
     let sign = current_sign() in
     let s = Sign.new_symbol sign true x a in
-    let rule =
-      let rhs =
-        let t = Bindlib.box t in
-         Bindlib.mvbind te_mkfree [||] (fun _ -> t)
-      in
-      {arity = 0; lhs = []; rhs = Bindlib.unbox rhs}
-    in
-    Sign.add_rule sign s rule
+    let rhs = Bindlib.unbox (Bindlib.bind_mvar [||] (lift t)) in
+    Sign.add_rule sign s {arity = 0; lhs = []; rhs}
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
 let handle_infer : term -> Eval.config -> unit = fun t c ->
-  match infer Ctxt.empty t with
+  match Solve.infer Ctxt.empty t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "%a : unable to infer\n%!" pp t
 
 (** [handle_eval t] evaluates the term [t]. *)
 let handle_eval : term -> Eval.config -> unit = fun t c ->
-  match infer Ctxt.empty t with
+  match Solve.infer Ctxt.empty t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal "unable to infer the type of [%a]\n" pp t
 
@@ -103,8 +95,8 @@ let handle_test : test -> unit = fun test ->
   let result =
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
-    | HasType(t,a) -> ignore (sort_type Ctxt.empty a);
-                      try has_type Ctxt.empty t a with _ -> false
+    | HasType(t,a) -> ignore (Solve.sort_type Ctxt.empty a);
+                      try Solve.has_type Ctxt.empty t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
@@ -121,7 +113,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   let sign = current_sign() in
   if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
   (* We check that [a] is typable by a sort. *)
-  ignore (sort_type Ctxt.empty a);
+  ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
   let m = add_meta s.elt a 0 in
   let goal =
@@ -150,11 +142,10 @@ let handle_refine (t:term) : unit =
   (* Check that [t] has the correct type. *)
   let bt = lift t in
   let abst u (_,(x,a)) =
-    Bindlib.box_apply2 (fun a f -> Abst(a,f))
-      a
-      (Bindlib.bind_var x u) in
+    Bindlib.box_apply2 (fun a f -> Abst(a,f)) a (Bindlib.bind_var x u)
+  in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (has_type Ctxt.empty u m.meta_type) then
+  if not (Solve.has_type Ctxt.empty u m.meta_type) then
     fatal "invalid refinement\n";
   (* Instantiation. *)
   let vs = Array.of_list (List.map var_of_name g.g_hyps) in
