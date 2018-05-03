@@ -66,8 +66,7 @@ let handle_defin : strloc -> term option -> term -> unit =
     (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
     let sign = current_sign() in
     let s = Sign.new_symbol sign true x a in
-    let rhs = Bindlib.unbox (Bindlib.bind_mvar [||] (lift t)) in
-    Sign.add_rule sign s {arity = 0; lhs = []; rhs}
+    s.sym_def := Some(t)
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)

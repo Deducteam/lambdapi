@@ -41,6 +41,9 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* Try to rewrite. *)
   | (Symb(s)  , stk    ) ->
       begin
+        match !(s.sym_def) with
+        | Some(t) -> incr steps; whnf_stk t stk
+        | None    ->
         match find_rule s stk with
         | None        -> st
         | Some(t,stk) -> incr steps; whnf_stk t stk

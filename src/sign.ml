@@ -121,7 +121,8 @@ let link : t -> unit = fun sign ->
   in
   let fn _ s =
     s.sym_type  := link_term !(s.sym_type);
-    s.sym_rules := List.map link_rule !(s.sym_rules);
+    s.sym_def   := Option.map link_term !(s.sym_def);
+    s.sym_rules := List.map link_rule !(s.sym_rules)
   in
   StrMap.iter fn !(sign.symbols);
   let gn path ls =
@@ -170,6 +171,7 @@ let unlink : t -> unit = fun sign ->
   in
   let fn _ s =
     unlink_term !(s.sym_type);
+    Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
   in
   StrMap.iter fn !(sign.symbols);
@@ -184,13 +186,16 @@ let new_symbol : t -> bool -> strloc -> term -> sym =
   let { elt = sym_name; pos } = s in
   if StrMap.mem sym_name !(sign.symbols) then
     wrn "Redefinition of symbol %S at %a.\n" sym_name Pos.print pos;
-  let sym = { sym_name = sym_name
-            ; sym_type = ref sym_type
-            ; sym_path = sign.path
-            ; sym_rules = ref []
-            ; sym_const = not definable } in
+  let sym =
+    { sym_name = sym_name ; sym_type = ref sym_type ; sym_path = sign.path
+    ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = not definable }
+  in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
   out 3 "[symb] %s\n" sym_name; sym
+
+(** [is_const s] tells whether the symbol is constant. *)
+let is_const : sym -> bool = fun s ->
+  s.sym_const || (!(s.sym_rules) = [] && !(s.sym_def) = None)
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->

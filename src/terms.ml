@@ -70,6 +70,8 @@ type term =
   (** Type of the symbol. *)
   ; sym_path  : Files.module_path
   (** Module in which it is defined.  *)
+  ; sym_def   : term option ref
+  (** Definition of the symbol. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_const : bool

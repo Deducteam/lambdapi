@@ -231,11 +231,9 @@ and solve_typ c t a strats ((typs,sorts,unifs,whnfs,unsolved) as p) =
      (* The type of [Meta(m,ts)] is the same as [add_args f ts]
         where [f] is some fresh symbol with the same type as [m]. *)
      let s =
-       { sym_name = meta_name m
-       ; sym_type = ref m.meta_type
-       ; sym_path = []
-       ; sym_rules = ref []
-       ; sym_const = true } in
+       { sym_name = meta_name m ; sym_type = ref m.meta_type ; sym_path = []
+       ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = true }
+     in
      let t = add_args (Symb s) (Array.to_list ts) in
      solve_typ c t a strats p
 
@@ -281,10 +279,10 @@ and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
       | _, Meta(_,_) ->
          solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
 
-      | Symb(s), _ when !(s.sym_rules) <> [] ->
+      | Symb(s), _ when not (Sign.is_const s) ->
          solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
 
-      | _, Symb(s) when !(s.sym_rules) <> [] ->
+      | _, Symb(s) when not (Sign.is_const s) ->
          solve (Unif::strats) (typs,sorts,unifs,(c,t1,t2)::whnfs,unsolved)
 
       | Appl(_,_), _ | _, Appl(_,_) ->
@@ -323,7 +321,7 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
   | Symb(s1), Symb(s2) when s1 == s2 && n1 = 0 && n2 = 0 ->
      solve (Whnf::strats) p
 
-  | Symb(s1), Symb(s2) when !(s1.sym_rules) = [] && !(s2.sym_rules) = [] ->
+  | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
      if s1 == s2 && n1 = n2 then
        let unifs =
          List.fold_left2 (fun l t1 t2 -> (c,t1,t2)::l) unifs ts1 ts2 in
@@ -341,11 +339,11 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
   | _, Meta(_,_) ->
      solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
-  | Symb(s), _ when !(s.sym_rules) <> [] ->
+  | Symb(s), _ when not (Sign.is_const s) ->
      if eq_modulo t1 t2 then solve (Whnf::strats) p
      else solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
-  | _, Symb(s) when !(s.sym_rules) <> [] ->
+  | _, Symb(s) when not (Sign.is_const s) ->
      if eq_modulo t1 t2 then solve (Whnf::strats) p
      else solve (Whnf::strats) (typs,sorts,unifs,whnfs,(c,t1,t2)::unsolved)
 
