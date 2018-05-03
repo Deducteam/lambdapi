@@ -137,15 +137,9 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
-    | P_Type        -> fatal "[Type] in a LHS at [%a].\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "Product in a LHS at [%a].\n" Pos.print t.pos
-    | P_Abst(x,a,t) ->
-        let a =
-          match a with
-          | Some(a) -> fatal "Type in a LHS at [%a].\n" Pos.print a.pos
-          | None    -> scope env (Pos.none P_Wild)
-        in
-        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Type        -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | P_Abst(x,a,b) -> scope_binder env _Abst x.elt a b
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map tvar_of_name env in
@@ -161,6 +155,13 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         in
         let i = try Some(List.assoc s map) with Not_found -> None in
         _Patt i s e
+  and scope_domain : env -> p_term option -> tbox = fun env t ->
+    match t with
+    | Some(t) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | None    -> scope env ((*FIXME?*)Pos.none P_Wild)
+  and scope_binder = fun env f x a b ->
+    let a = scope_domain env a in
+    f a x (fun v -> scope (add_env x v a env) b)
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
@@ -188,22 +189,10 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
-    | P_Prod(x,a,b) ->
-        let a =
-          match a with
-          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
-          | Some(a) -> scope env a
-        in
-        _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
-    | P_Abst(x,a,t) ->
-        let a =
-          match a with
-          | Some(a) -> scope env a
-          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
-        in
-        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Prod(x,a,b) -> scope_binder env t.pos _Prod x.elt a b
+    | P_Abst(x,a,b) -> scope_binder env t.pos _Abst x.elt a b
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> fatal "wildcard in RHS %a" Pos.print t.pos
+    | P_Wild        -> fatal "invalid term %a" Pos.print t.pos
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
         let m =
@@ -211,8 +200,15 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
           | M_User(s) -> s
           | _         -> fatal "invalid term %a\n" Pos.print t.pos
         in
-        let i = try List.assoc m map with Not_found -> assert false in
-        _TEnv (Bindlib.box_of_var metas.(i)) e
+        try let i = List.assoc m map in _TEnv (Bindlib.box_of_var metas.(i)) e
+        with Not_found -> fatal "unknown identifier [%s]" m
+  and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
+    match t with
+    | Some(t) -> scope env t
+    | None    -> fatal "missing type annotation [%a]\n" Pos.print p
+  and scope_binder = fun env p f x a b ->
+    let a = scope_domain env p a in
+    f a x (fun v -> scope (add_env x v a env) b)
   in
   Bindlib.unbox (Bindlib.bind_mvar metas (scope [] t))
 
