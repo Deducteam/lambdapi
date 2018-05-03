@@ -12,6 +12,21 @@ module Int =
     let compare = (-)
   end
 
+module Option =
+  struct
+    type 'a t = 'a option
+
+    let map : ('a -> 'b) -> 'a t -> 'b t = fun f o ->
+      match o with
+      | None    -> None
+      | Some(e) -> Some(f e)
+
+    let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
+      match o with
+      | None    -> ()
+      | Some(e) -> f e
+  end
+
 module List =
   struct
     include List
