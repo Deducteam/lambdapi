@@ -70,10 +70,12 @@ let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
   Printf.fprintf oc "%a → %a" pp lhs pp rhs
 
-let pp_hyp oc (s,(_,t)) = Printf.fprintf oc "%s : %a" s pp (Bindlib.unbox t)
-
-let pp_hyps oc l = List.pp pp_hyp "\n" oc l
-
-let sep = "------------------------------------------------------------------\n"
-
-let pp_goal oc g = Printf.fprintf oc "%a%s%a\n" pp_hyps g.g_hyps sep pp g.g_type
+(** [pp_goal oc g] prints the goal [g]. *)
+let pp_goal : goal pp =
+  let sep = String.make 66 '-' in
+  let pp_hyp oc (s,(_,t)) =
+    let t = Bindlib.unbox t in
+    Printf.fprintf oc "%s : %a" s pp t
+  in
+  let pp_hyps = List.pp pp_hyp "\n" in
+  fun oc g -> Printf.fprintf oc "%a%s\n%a\n" pp_hyps g.g_hyps sep pp g.g_type

@@ -132,7 +132,8 @@ let handle_start_proof (s:strloc) (a:term) : unit =
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
-  let thm = current_theorem() in pp_goal stdout thm.t_focus
+  let thm = current_theorem () in
+  out 1 "%a" pp_goal thm.t_focus
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
 let handle_refine (t:term) : unit =
