@@ -46,40 +46,43 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     try _Symb (Sign.find sign s) with Not_found ->
     fatal "Unbound symbol [%a.%s] at [%a].\n" Files.pp_path mp s Pos.print pos
 
-(** [build_meta_name loc id] builds a meta-variable name from its parser-level
-    representation [id]. The position [loc] of [id] is used to build an  error
-    message in the case where [id] is invalid. *)
-let build_meta_name loc id =
+(** [scope_meta_name loc id] translates the p_term-level metavariable
+    name [id] into a term-level metavariable name. The position [loc] of
+    [id] is used to build an error message in the case where [id] is
+    invalid. *)
+let scope_meta_name loc id =
   match id with
   | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
   | M_Sys(k)  -> Internal(k)
   | M_User(s) -> Defined(s)
 
-(** Given a boxed context [x1:T1, .., xn:Tn] and a boxed term [t] with
+(** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
     .. -> xn:Tn -> t]. *)
-let build_prod : env -> tbox -> term = fun c t ->
+let prod_of_env : env -> tbox -> term = fun c t ->
   let fn b (_,(v,a)) =
     Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
   in Bindlib.unbox (List.fold_left fn t c)
 
-(** [build_type is_type env] builds the product of [env] over [a] where
-    [a] is [Type] if [is_type], and a new metavariable
-    otherwise. Returns the array of variables of [env] too. *)
-let build_meta_type : env -> bool -> term * tbox array =
+(** [prod_vars_of_env env is_type] builds the variables [vs] of [env]
+    and the product [a] of [env] over [Type]. Then, it returns [a] if
+    [is_type] is [true]. Otherwise, it returns [m[vs]] where [m] is a new
+    metavariable of arity the length of [env] and type [a]. Returns also
+    [vs] in both cases. *)
+let prod_vars_of_env : env -> bool -> term * tbox array =
   fun env is_type ->
-    let a = build_prod env _Type in
+    let a = prod_of_env env _Type in
     let vs = Array.of_list (List.rev_map tvar_of_name env) in
     if is_type then a, vs
-    else (* We create a new metavariable. *)
+    else (* We create a new metavariable of type [a]. *)
       let m = new_meta a (List.length env) in
-      build_prod env (_Meta m vs), vs
+      prod_of_env env (_Meta m vs), vs
 
-(** [build_meta_app is_type c] builds a new metavariable of type
-    [build_meta_type is_type c]. *)
-let build_meta_app : env -> bool -> tbox =
+(** [meta_of_env env is_type] builds a new metavariable of type
+    [prod_vars_of_env env is_type]. *)
+let meta_of_env : env -> bool -> tbox =
   fun env is_type ->
-    let t, vs = build_meta_type env is_type in
+    let t, vs = prod_vars_of_env env is_type in
     let m = new_meta t (List.length env) in
     _Meta m vs
 
@@ -92,31 +95,26 @@ let scope_term : p_term -> term = fun t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
-    | P_Prod(x,a,b) ->
-        let a =
-          match a with
-          | Some(a) -> scope env a
-          | None    -> build_meta_app env true
-        in
-        _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
-    | P_Abst(x,a,t) ->
-        let a =
-          match a with
-          | Some(a) -> scope env a
-          | None    -> build_meta_app env true
-        in
-        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Prod(x,a,b) -> scope_binder env _Prod x.elt a b
+    | P_Abst(x,a,b) -> scope_binder env _Abst x.elt a b
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> build_meta_app env false
+    | P_Wild        -> meta_of_env env false
     | P_Meta(id,ts) ->
-        let id = build_meta_name t.pos id in
+        let id = scope_meta_name t.pos id in
         let m =
           try find_meta id with Not_found ->
             let s = match id with Defined(s) -> s | _ -> assert false in
-            let (t,_) = build_meta_type env false in
+            let (t,_) = prod_vars_of_env env false in
             add_meta s t (List.length env)
         in
         _Meta m (Array.map (scope env) ts)
+  and scope_domain : env -> p_term option -> tbox = fun env t ->
+    match t with
+    | Some(t) -> scope env t
+    | None    -> meta_of_env env true
+  and scope_binder = fun env f x a b ->
+    let a = scope_domain env a in
+    f a x (fun v -> scope (add_env x v a env) b)
   in
   Bindlib.unbox (scope [] t)
 
@@ -139,15 +137,9 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
-    | P_Type        -> fatal "[Type] in a LHS at [%a].\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "Product in a LHS at [%a].\n" Pos.print t.pos
-    | P_Abst(x,a,t) ->
-        let a =
-          match a with
-          | Some(a) -> fatal "Type in a LHS at [%a].\n" Pos.print a.pos
-          | None    -> scope env (Pos.none P_Wild)
-        in
-        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Type        -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | P_Abst(x,a,b) -> scope_binder env _Abst x.elt a b
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map tvar_of_name env in
@@ -163,6 +155,13 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         in
         let i = try Some(List.assoc s map) with Not_found -> None in
         _Patt i s e
+  and scope_domain : env -> p_term option -> tbox = fun env t ->
+    match t with
+    | Some(t) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | None    -> scope env ((*FIXME?*)Pos.none P_Wild)
+  and scope_binder = fun env f x a b ->
+    let a = scope_domain env a in
+    f a x (fun v -> scope (add_env x v a env) b)
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
@@ -190,22 +189,10 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
     | P_Type        -> _Type
-    | P_Prod(x,a,b) ->
-        let a =
-          match a with
-          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
-          | Some(a) -> scope env a
-        in
-        _Prod a x.elt (fun v -> scope (add_env x.elt v a env) b)
-    | P_Abst(x,a,t) ->
-        let a =
-          match a with
-          | Some(a) -> scope env a
-          | None    -> fatal "missing type annotation [%a]\n" Pos.print t.pos
-        in
-        _Abst a x.elt (fun v -> scope (add_env x.elt v a env) t)
+    | P_Prod(x,a,b) -> scope_binder env t.pos _Prod x.elt a b
+    | P_Abst(x,a,b) -> scope_binder env t.pos _Abst x.elt a b
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> fatal "wildcard in RHS %a" Pos.print t.pos
+    | P_Wild        -> fatal "invalid term %a" Pos.print t.pos
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
         let m =
@@ -213,8 +200,15 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
           | M_User(s) -> s
           | _         -> fatal "invalid term %a\n" Pos.print t.pos
         in
-        let i = try List.assoc m map with Not_found -> assert false in
-        _TEnv (Bindlib.box_of_var metas.(i)) e
+        try let i = List.assoc m map in _TEnv (Bindlib.box_of_var metas.(i)) e
+        with Not_found -> fatal "unknown identifier [%s]" m
+  and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
+    match t with
+    | Some(t) -> scope env t
+    | None    -> fatal "missing type annotation [%a]\n" Pos.print p
+  and scope_binder = fun env p f x a b ->
+    let a = scope_domain env p a in
+    f a x (fun v -> scope (add_env x v a env) b)
   in
   Bindlib.unbox (Bindlib.bind_mvar metas (scope [] t))
 

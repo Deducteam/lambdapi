@@ -30,6 +30,8 @@ let filter_map
     let g key value new_map =
       match f key value with
       | Some new_value -> PathMap.add key new_value new_map
+         (*FIXME: with OCaml >= 4.06.0, use:
+           PathMap.update key (fun _ -> Some value) map *)
       | None -> new_map
     in
     PathMap.fold g map PathMap.empty

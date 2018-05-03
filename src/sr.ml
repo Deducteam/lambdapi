@@ -102,7 +102,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
     let m = match m with Some(m) -> m | None -> assert false in
     let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
     let xs = Bindlib.new_mvar mkfree xs in
-    let e = Array.map Bindlib.box_of_var xs in
+    let e = Array.map _Vari xs in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m e)))
   in
   let te_envs = Array.map fn metas in
