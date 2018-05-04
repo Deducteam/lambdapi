@@ -40,14 +40,15 @@ let debug      = ref false
 let debug_eval = ref false
 let debug_matc = ref false
 let debug_unif = ref false
-let debug_sr   = ref false
+let debug_subj = ref false
 let debug_type = ref false
 let debug_equa = ref false
+let debug_pars = ref false
 
 (** [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
-  !debug || !debug_eval || !debug_unif || !debug_sr || !debug_matc ||
-  !debug_type || !debug_equa
+  !debug || !debug_eval || !debug_unif || !debug_subj || !debug_matc ||
+  !debug_type || !debug_equa || !debug_pars
 
 (** [set_debug value str] sets the debugging flags corresponding to characters
     of [str] to [value]. *)
@@ -58,9 +59,10 @@ let set_debug : bool -> string -> unit = fun value ->
     | 'r' -> debug_eval := value
     | 'u' -> debug_unif := value
     | 'm' -> debug_matc := value
-    | 's' -> debug_sr   := value
+    | 's' -> debug_subj := value
     | 't' -> debug_type := value
     | 'e' -> debug_equa := value
+    | 'p' -> debug_pars := value
     | _   -> wrn "Unknown debug flag %C\n" c
   in
   String.iter enable

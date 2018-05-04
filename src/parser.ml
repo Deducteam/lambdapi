@@ -312,7 +312,11 @@ let blank buf pos =
     the error position is displayerd and the program fails. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
   let open Earley in
-  try parse_file cmd_list blank fname
+  if !debug_pars then log "pars" "parsing file [%s]..." fname;
+  try
+    let (d, res) = Extra.time (parse_file cmd_list blank) fname in
+    if !debug_pars then log "pars" "parsed  file [%s] in %fs." fname d;
+    res
   with Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal "Parse error at [%a].\n" Pos.print loc
