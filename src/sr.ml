@@ -67,11 +67,11 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
   let rec to_m : int -> term -> tbox = fun k t ->
-    let to_m_binder k b x = to_m k (Bindlib.subst b (mkfree x)) in
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
-    | Abst(a,t)   -> _Abst (to_m 0 a) (Bindlib.binder_name t) (to_m_binder 0 t)
+    | Abst(a,t)   -> let (x,t) = Bindlib.unbind mkfree t in
+                     _Abst (to_m 0 a) x (to_m 0 t)
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin

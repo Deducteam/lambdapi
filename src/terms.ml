@@ -216,27 +216,16 @@ let _Symb : sym -> tbox = fun s ->
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
-(** [_Prod a x f] lifts a dependent product node to the {!type:tbox} type. The
-    boxed term [a] is the domain of the product, the {!type:string} [x] is the
-    preferred name for the bound variable,  and [f] is a function for building
-    the codomain of the product. *)
-let _Prod : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
-  let b = Bindlib.vbind mkfree x f in
-  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a b
-
-(** [_Prod_bv a x b] is an alternative smart constructor for products. *)
-let _Prod_bv : tbox -> tvar -> tbox -> tbox = fun a x b ->
+(** [_Prod a x b] lifts a dependent product node to the {!type:tbox} type. The
+    boxed term [a] is the domain of the product, and the variable [x] is to be
+    bound in the boxed term [b] to build the codomain. *)
+let _Prod : tbox -> tvar -> tbox -> tbox = fun a x b ->
   Bindlib.box_apply2 (fun a b -> Prod(a,b)) a (Bindlib.bind_var x b)
 
-(** [_Abst a x f] lifts an abstraction node to the {!type:tbox} type given the
-    boxed term [a] (used as the type of the bound variable), the prefered name
-    [x] for the bound variable, and the function [f] to build the body. *)
-let _Abst : tbox -> string -> (tvar -> tbox) -> tbox = fun a x f ->
-  let t = Bindlib.vbind mkfree x f in
-  Bindlib.box_apply2 (fun a t -> Abst(a,t)) a t
-
-(** [_Abst_bv a x b] is an alternative smart constructor for abstractions. *)
-let _Abst_bv : tbox -> tvar -> tbox -> tbox = fun a x t ->
+(** [_Abst a x t] lifts an abstraction node to the {!type:tbox} type given the
+    boxed term [a] (used as the type of the bound variable), the variable [x],
+    and the term [t] in which it will be bound. *)
+let _Abst : tbox -> tvar -> tbox -> tbox = fun a x t ->
   Bindlib.box_apply2 (fun a t -> Abst(a,t)) a (Bindlib.bind_var x t)
 
 (** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
@@ -257,7 +246,6 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ar ->
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
 let rec lift : term -> tbox = fun t ->
-  let lift_binder b x = lift (Bindlib.subst b (mkfree x)) in
   let lift_term_env te =
     match te with
     | TE_Vari(x) -> Bindlib.box_of_var x
@@ -268,8 +256,10 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.binder_name b) (lift_binder b)
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.binder_name t) (lift_binder t)
+  | Prod(a,b)   -> let (x,b) = Bindlib.unbind mkfree b in
+                   _Prod (lift a) x (lift b)
+  | Abst(a,t)   -> let (x,t) = Bindlib.unbind mkfree t in
+                   _Abst (lift a) x (lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)

@@ -46,7 +46,7 @@ let to_prod : t -> term -> term = fun ctx t ->
   match ctx with
   | []      -> t
   | [(x,a)] -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
-  | _       -> let fn t (x,a) = _Prod_bv (lift a) x t in
+  | _       -> let fn t (x,a) = _Prod (lift a) x t in
                Bindlib.unbox (List.fold_left fn (lift t) ctx)
 
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
