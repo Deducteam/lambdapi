@@ -31,12 +31,12 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     try _Vari (fst (List.assoc s (Sign.focus_goal_hyps()))) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
-    fatal "Unbound variable or symbol [%s] at [%a].\n" s Pos.print pos
+    fatal "[%a] unbound variable or symbol [%s].\n" Pos.print pos s
   else
     let sign = Sign.current_sign() in
     if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
     (* Module path is not available (not loaded), fail. *)
-    fatal "No module [%a] loaded at [%a].\n" Files.pp_path mp Pos.print pos
+    fatal "[%a] no module [%a] loaded.\n" Pos.print pos Files.pp_path mp
   else
     (* Module path loaded, look for symbol. *)
     let sign =
@@ -44,7 +44,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
       with _ -> assert false (* cannot fail. *)
     in
     try _Symb (Sign.find sign s) with Not_found ->
-    fatal "Unbound symbol [%a.%s] at [%a].\n" Files.pp_path mp s Pos.print pos
+    fatal "[%a] unbound symbol [%a.%s].\n" Pos.print pos Files.pp_path mp s
 
 (** [scope_meta_name loc id] translates the p_term-level metavariable
     name [id] into a term-level metavariable name. The position [loc] of
@@ -140,8 +140,8 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
-    | P_Type        -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
-    | P_Prod(_,_,_) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | P_Type        -> fatal "[%a] invalid LHS.\n" Pos.print t.pos
+    | P_Prod(_,_,_) -> fatal "[%a] invalid LHS.\n" Pos.print t.pos
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
@@ -157,21 +157,21 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
           match m with
           | M_User(s) -> s
           | _         ->
-              fatal "System metavariable in a LHS at [%a].\n" Pos.print t.pos
+              fatal "[%a] system metavariable in a LHS.\n" Pos.print t.pos
         in
         let i = try Some(List.assoc s map) with Not_found -> None in
         _Patt i s e
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
-    | Some(t) -> fatal "invalid LHS term at [%a].\n" Pos.print t.pos
+    | Some(t) -> fatal "[%a] invalid LHS.\n" Pos.print t.pos
     | None    -> scope env ((*FIXME?*)Pos.none P_Wild)
   in
   match get_args (Bindlib.unbox (scope [] t)) with
   | (Symb(s), _ ) when s.sym_const ->
-      fatal "LHS with a static head symbol at [%a].\n" Pos.print t.pos
+      fatal "[%a] LHS with a static head symbol.\n" Pos.print t.pos
   | (Symb(s), ts) -> (s, ts)
   | (_      , _ ) ->
-      fatal "LHS with no head symbol at [%a].\n" Pos.print t.pos
+      fatal "[%a] LHS with no head symbol.\n" Pos.print t.pos
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
    error messages. The names are formed of a number prefixed by ['#']. *)
@@ -201,20 +201,21 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
         let a = scope_domain env t.pos a in
         _Abst a v (scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> fatal "invalid term %a" Pos.print t.pos
+    | P_Wild        -> fatal "[%a] invalid RHS.\n" Pos.print t.pos
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
         let m =
           match m with
           | M_User(s) -> s
-          | _         -> fatal "invalid term %a\n" Pos.print t.pos
+          | _         -> fatal "[%a] invalid RHS.\n" Pos.print t.pos
         in
         try let i = List.assoc m map in _TEnv (Bindlib.box_of_var metas.(i)) e
-        with Not_found -> fatal "unknown identifier [%s]" m
+        with Not_found ->
+          fatal "[%a] unknown identifier [%s].\n" Pos.print t.pos m
   and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
     match t with
     | Some(t) -> scope env t
-    | None    -> fatal "missing type annotation [%a]\n" Pos.print p
+    | None    -> fatal "[%a] missing type annotation.\n" Pos.print p
   in
   Bindlib.unbox (Bindlib.bind_mvar metas (scope [] t))
 
@@ -241,13 +242,13 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
         begin
           try
             if List.assoc m ar <> l then
-              fatal "%a: arity mismatch for metavariable %S\n"
+              fatal "[%a] arity mismatch for metavariable [%s].\n"
                 Pos.print t.pos m;
             if List.mem m nl then acc else (ar, m::nl)
           with Not_found -> ((m,l)::ar, nl)
         end
     | P_Meta(_,_)         ->
-        fatal "invalid rule member %a" Pos.print t.pos
+        fatal "[%a] invalid rule member.\n" Pos.print t.pos
   in meta_vars ([],[]) t
 
 (** [scope_rule r] scopes a parsing level reduction rule, producing every
@@ -262,11 +263,10 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   let check_in_lhs (m,i) =
     let j =
       try List.assoc m mvs_lhs with Not_found ->
-      fatal "unknown pattern variable %S...\n" m
+      fatal "[%a] unknown pattern variable [%s].\n" Pos.print p_rhs.pos m
     in
     if i <> j then
-      fatal "%a: arity mismatch for pattern variable %S\n"
-        Pos.print p_lhs.pos m;
+      fatal "[%a] arity mismatch for [%s].\n" Pos.print p_lhs.pos m
   in
   List.iter check_in_lhs mvs;
   let mvs = List.map fst mvs in
@@ -324,7 +324,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           let t2 = build env t2 in
           Pos.make t.pos (P_Appl(t1,t2))
        | P_Meta(_,_)   ->
-          fatal "%a: invalid legacy rule syntax\n" Pos.print t.pos
+          fatal "[%a] invalid legacy rule syntax.\n" Pos.print t.pos
   in
   let l = build [] lhs in
   let r = build [] rhs in

@@ -122,11 +122,9 @@ let instantiate (m:meta) (ts:term array) (v:term) : bool =
 
 (** Exception raised by the solving algorithm when an irrecuperable
     error is found. *)
-exception Exit_solve
 
 let not_convertible t1 t2 =
-  err "[%a] and [%a] are not convertible\n" pp t1 pp t2;
-  raise Exit_solve
+  fatal "[%a] and [%a] are not convertible" pp t1 pp t2
 
 (** [solve s p] tries to solve the problem [p] following the strategy
     list [s]. When it stops, it returns the list of unsolved
@@ -354,9 +352,10 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
 let solve b strats p : unif list option =
   can_instantiate := b;
   recompute := false;
-  try Some (solve strats p) with Exit_solve -> None
+  try Some (solve strats p) with Fatal(_) -> None
 
-let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+let msg (_,a,b) =
+  () (*err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b FIXME *) 
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
@@ -397,8 +396,8 @@ let infer_constr (c:ctxt) (t:term) : unif list * term =
   if !debug_type then log "infer_constr" "[%a]" pp t;
   let a = make_meta c (make_type()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
-  | Some l -> l, a
-  | None -> raise (Fatal "FIXME")
+  | Some(l) -> (l, a)
+  | None    -> fatal "FIXME"
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
@@ -411,11 +410,11 @@ let sort_type (c:ctxt) (t:term) : term =
   if !debug_type then log "sort_type" "[%a]" pp t;
   let a = make_meta c (make_type()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
-  | Some [] ->
+  | Some([]) ->
      begin
        match unfold a with
        | Type | Kind -> a
-       | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp a
+       | _    -> fatal "[%a] has type [%a] (not a sort)" pp t pp a
      end
-  | Some l -> List.iter msg l; raise (Fatal "FIXME")
-  | None -> raise (Fatal "FIXME")
+  | Some(l)  -> List.iter msg l; fatal "FIXME"
+  | None     -> fatal "FIXME"

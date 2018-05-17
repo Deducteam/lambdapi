@@ -28,8 +28,8 @@ exception Fatal of string
 (** [fatal fmt] is like [err fmt], but it raises [Fatal]. *)
 let fatal : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
   fun fmt ->
-    let cont _ = raise (Fatal(Buffer.contents Format.stdbuf)) in
-    Format.kfprintf cont Format.str_formatter (red fmt)
+    let cont _ = raise (Fatal(Format.flush_str_formatter ())) in
+    Format.kfprintf cont Format.str_formatter fmt
 
 (** [abort fmt] is similar to [fatal fmt], but it calls [exit 1], which cannot
     be catched in any way (the program just terminates with an error. *)

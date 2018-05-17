@@ -42,12 +42,12 @@ let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
   | Some(a) ->
       ignore (Solve.sort_type Ctxt.empty a);
       if Solve.has_type Ctxt.empty t a then a else
-      fatal "Cannot type the definition of [%s] at [%a].\n"
+      fatal "Cannot type the definition of [%s] at [%a]."
         x.elt Pos.print x.pos;
   | None    ->
       match Solve.infer Ctxt.empty t with
-      | None    -> fatal "Unable to infer the type of [%a].\n" pp t
       | Some(a) -> a
+      | None    -> fatal "Cannot infer the type of [%a]." pp t
 
 (** [handle_opaque x ao t] checks the definition of [x] and adds
     [x] in the current signature. *)
@@ -73,13 +73,13 @@ let handle_defin : strloc -> term option -> term -> unit =
 let handle_infer : term -> Eval.config -> unit = fun t c ->
   match Solve.infer Ctxt.empty t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
-  | None    -> fatal "%a : unable to infer\n%!" pp t
+  | None    -> fatal "Cannot infer the type of [%a]." pp t
 
 (** [handle_eval t] evaluates the term [t]. *)
 let handle_eval : term -> Eval.config -> unit = fun t c ->
   match Solve.infer Ctxt.empty t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
-  | None    -> fatal "unable to infer the type of [%a]\n" pp t
+  | None    -> fatal "Cannot infer the type of [%a]." pp t
 
 (** [handle_test test] runs the test [test]. When the test does not
     succeed, the program may fail gracefully or continue its exection
@@ -104,7 +104,7 @@ let handle_test : test -> unit = fun test ->
   match (success, test.is_assert) with
   | (true , true ) -> ()
   | (true , false) -> out 3 "(check) OK\n"
-  | (false, true ) -> fatal "Assertion failed: [%a]\n" pp_test test
+  | (false, true ) -> fatal "Assertion [%a] failed." pp_test test
   | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
 (** [handle_start_proof s a] starts a proof of [a] named [s]. *)
@@ -113,7 +113,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   fail_if_in_proof();
   (* We check that [s] is not already used. *)
   let sign = current_sign() in
-  if Sign.mem sign s.elt then fatal "[%s] already exists\n" s.elt;
+  if Sign.mem sign s.elt then fatal "[%s] already exists." s.elt;
   (* We check that [a] is typable by a sort. *)
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
@@ -141,7 +141,7 @@ let handle_refine (t:term) : unit =
   let g = thm.t_focus in
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
-  if occurs m t then fatal "invalid refinement\n";
+  if occurs m t then fatal "Invalid refinement.";
   (* Check that [t] has the correct type. *)
   let bt = lift t in
   let abst u (_,(x,a)) =
@@ -149,7 +149,7 @@ let handle_refine (t:term) : unit =
   in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.has_type Ctxt.empty u m.meta_type) then
-    fatal "invalid refinement\n";
+    fatal "Invalid refinement.";
   (* Instantiation. *)
   let vs = Array.of_list (List.map var_of_name g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
@@ -159,8 +159,8 @@ let handle_intro (s:strloc) : unit =
   let thm = current_theorem() in
   let g = thm.t_focus in
   (* We check that [s] is not already used. *)
-  if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used\n" s.elt;
-  fatal "not yet implemented\n"
+  if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used." s.elt;
+  fatal "Not yet implemented..."
 
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
@@ -193,9 +193,10 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
     | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                            c.elt Pos.print c.pos
   with
-  | Fatal(m) -> fatal "At [%a]: %s.\n" Pos.print cmd.pos m
-  | e        -> fatal "Uncaught exception on a command at %a\n%s\n%!"
-                  Pos.print cmd.pos (Printexc.to_string e)
+  | Fatal(m) -> fatal "[%a] error while handling a command.\n%s\n"
+                  Pos.print cmd.pos m
+  | e        -> let e = Printexc.to_string e in
+                fatal "[%a] uncaught exception [%s].\n" Pos.print cmd.pos e
 
 (** [handle_cmds cmds] interprets the commands of [cmds] in order. The
     program fails gracefully in case of error. *)
@@ -214,13 +215,13 @@ and compile : bool -> Files.module_path -> unit =
   let base = String.concat "/" path in
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
-  if not (Sys.file_exists src) then fatal "File [%s] not found.\n" src;
+  if not (Sys.file_exists src) then abort "File [%s] not found.\n" src;
   if List.mem path !loading then
     begin
       err "Circular dependencies detected in [%s].\n" src;
       err "Dependency stack for module [%a]:\n" Files.pp_path path;
       List.iter (err "  - [%a]\n" Files.pp_path) !loading;
-      fatal "Build aborted.\n"
+      abort "Build aborted.\n"
     end;
   if PathMap.mem path !loaded then
     out 2 "Already loaded [%s]\n%!" src
