@@ -8,22 +8,24 @@ open Eval
 
 type ctxt = Ctxt.t
 
-(** [equal_vari t u] checks that [t] and [u] are variables and are equal. *)
-let equal_vari : term -> term -> bool = fun t u ->
+(** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
+    the same. *)
+let eq_vari : term -> term -> bool = fun t u ->
   match (unfold t, unfold u) with
   | (Vari x, Vari y) -> Bindlib.eq_vars x y
   | (_     , _     ) -> false
 
-(** [make_type ()] generates a term [m[]] where [m] is a fresh metavariable of
-    arity [0] and type [Type]. *)
-let make_type () = Meta(new_meta Type 0, [||])
+(** [make_type ()] generates a fresh metavariable of arity [0], and which type
+    is [Type]. *)
+let make_type =
+  let empty = [||] in
+  fun () -> Meta(new_meta Type 0, empty)
 
-(** [make_meta c t] creates a term [m[x1,..,xn]] of type [t] where [m] is a
-    new metavariable and [x1,..,xn] are the variables of [c]. *)
-let make_meta : ctxt -> term -> term = fun c t ->
-  let typ_m = Ctxt.to_prod c t in
-  let m = new_meta typ_m (List.length c) in
-  let vs = List.rev_map (fun (v,_) -> Vari v) c in
+(** [make_meta ctx a] creates a metavariable of type [a],  whth an environment
+    containing the variables of context [ctx]. *)
+let make_meta : ctxt -> term -> term = fun ctx a ->
+  let m = new_meta (Ctxt.to_prod ctx a) (List.length ctx) in
+  let vs = List.rev_map (fun (v,_) -> Vari v) ctx in
   Meta(m, Array.of_list vs)
 
 (** [make_binder c no d] creates a binder obtained by binding v in the
@@ -267,7 +269,7 @@ and solve_unif c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
       | Symb(s1), Symb(s2) when s1 == s2 -> solve (Unif::strats) p
 
       | Meta(m1,a1), Meta(m2,a2)
-        when m1==m2 && Array.for_all2 equal_vari a1 a2 ->
+        when m1==m2 && Array.for_all2 eq_vari a1 a2 ->
          solve (Unif::strats) p
 
       | Meta(m,ts), v when instantiate m ts v -> solve (Unif::strats) p
@@ -327,7 +329,7 @@ and solve_whnf c t1 t2 strats ((typs,sorts,unifs,whnfs,unsolved) as p)
      else not_convertible t1 t2
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1 == m2 && n1 = 0 && n2 = 0 && Array.for_all2 equal_vari a1 a2 ->
+    when m1 == m2 && n1 = 0 && n2 = 0 && Array.for_all2 eq_vari a1 a2 ->
      solve (Whnf::strats) p
 
   | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 -> solve (Whnf::strats) p
@@ -355,7 +357,7 @@ let solve b strats p : unif list option =
   try Some (solve strats p) with Fatal(_) -> None
 
 let msg (_,a,b) =
-  () (*err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b FIXME *) 
+  if !debug_type then err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
