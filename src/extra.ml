@@ -1,7 +1,7 @@
 (** Standard library extension (mostly). *)
 
 (** Short name for the type of a pretty-printing function. *)
-type 'a pp = out_channel -> 'a -> unit
+type 'a pp = Format.formatter -> 'a -> unit
 
 (** Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
@@ -36,7 +36,7 @@ module List =
     let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
       match l with
       | []    -> ()
-      | e::es -> let fn e = Printf.fprintf oc "%s%a" sep pp_elt e in
+      | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
                  pp_elt oc e; iter fn es
 
     (** [map_find f l] applies [f] to the elements of list [l] (in order), and

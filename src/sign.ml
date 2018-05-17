@@ -77,16 +77,16 @@ let focus_goal_hyps () : env =
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : out_channel -> sym -> unit = fun oc s ->
+let pp_symbol : sym pp = fun oc s ->
   let (path, name) = (s.sym_path, s.sym_name) in
   let sign = current_sign() in
   let full =
     if path = sign.path then name
     else String.concat "." (path @ [name])
   in
-  output_string oc full
+  Format.pp_print_string oc full
 
-let _ = Print.pp_symbol := pp_symbol
+let _ = Print.pp_symbol_ref := pp_symbol
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->

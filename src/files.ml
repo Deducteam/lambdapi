@@ -1,5 +1,6 @@
 (** File utilities. *)
 
+open Extra
 open Console
 
 (** [src_extension] is the expected extension for source files. *)
@@ -37,8 +38,8 @@ let filter_map
     PathMap.fold g map PathMap.empty
 
 (** [pp oc mp] prints [mp] to channel [oc]. *)
-let pp_path (oc:out_channel) (mp:module_path) : unit =
-  output_string oc (String.concat "." mp)
+let pp_path : module_path pp = fun oc mp ->
+  Format.pp_print_string oc (String.concat "." mp)
 
 (** [module_path path] computes the [module_path] corresponding to a  relative
     file [path], which should not use [".."]. The returned list is formed with

@@ -50,9 +50,9 @@ let to_prod : t -> term -> term = fun ctx t ->
                Bindlib.unbox (List.fold_left fn (lift t) ctx)
 
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp : out_channel -> t -> unit = fun oc ctx ->
+let pp : t pp = fun oc ctx ->
   let pp_e oc (x,a) =
-    Printf.fprintf oc "%a : %a" Print.pp_tvar x Print.pp a
+    Format.fprintf oc "%a : %a" Print.pp_tvar x Print.pp a
   in
-  if ctx = [] then output_string oc "∅"
+  if ctx = [] then Format.pp_print_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)

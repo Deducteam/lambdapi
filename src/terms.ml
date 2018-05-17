@@ -394,13 +394,13 @@ let unset : meta -> bool = fun u -> !(u.meta_value) = None
 (** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
 let meta_name : meta -> string = fun m ->
   match m.meta_name with
-  | Defined(s) -> Printf.sprintf "?%s" s
-  | Internal(k) -> Printf.sprintf "?%i" k
+  | Defined(s)  -> "?" ^ s
+  | Internal(k) -> "?" ^ string_of_int k
 
 let internal (m:meta) : bool =
   match m.meta_name with
-  | Defined _  -> false
-  | Internal _ -> true
+  | Defined(_)  -> false
+  | Internal(_) -> true
 
 (** Representation of the existing meta-variables. *)
 type meta_map =

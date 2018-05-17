@@ -14,25 +14,28 @@ let r_or_g cond = if cond then gre else red
 
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
-let wrn : ('a, out_channel, unit) format -> 'a =
-  fun fmt -> Printf.eprintf (yel fmt)
+let wrn : ('a, Format.formatter, unit) format -> 'a =
+  fun fmt -> Format.eprintf (yel fmt)
 
 (** [err fmt] prints a red error message with [Printf] format [fmt]. Note that
     the output buffer is flushed by the function. *)
-let err : ('a, out_channel, unit) format -> 'a =
-  fun fmt -> Printf.eprintf (red fmt)
+let err : ('a, Format.formatter, unit) format -> 'a =
+  fun fmt -> Format.eprintf (red fmt)
 
 (** Exception raised in case of failure. *)
-exception Fatal
+exception Fatal of string
 
 (** [fatal fmt] is like [err fmt], but it raises [Fatal]. *)
-let fatal : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
-  fun fmt -> Printf.kfprintf (fun _ -> raise Fatal) stderr (red fmt)
+let fatal : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
+  fun fmt ->
+    let cont _ = raise (Fatal(Buffer.contents Format.stdbuf)) in
+    Format.kfprintf cont Format.str_formatter (red fmt)
 
 (** [abort fmt] is similar to [fatal fmt], but it calls [exit 1], which cannot
     be catched in any way (the program just terminates with an error. *)
-let abort : ('a, out_channel, unit, unit, unit, 'b) format6 -> 'a =
-  fun fmt -> Printf.kfprintf (fun _ -> exit 1) stderr (red fmt)
+let abort : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
+  fun fmt ->
+    Format.kfprintf (fun _ -> exit 1) Format.err_formatter (red fmt)
 
 (* Various debugging / message flags. *)
 let verbose    = ref 1
@@ -71,13 +74,14 @@ let set_debug : bool -> string -> unit = fun value ->
     The message is identified with the name (or flag) [name],  and coloured in
     cyan. Note that the output buffer is flushed by the  function,  and that a
     newline character ['\n'] is appended to the output. *)
-let log : string -> ('a, out_channel, unit) format -> 'a =
-  fun name fmt -> Printf.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+let log : string -> ('a, Format.formatter, unit) format -> 'a =
+  fun name fmt -> Format.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 (** [out lvl fmt] prints an output message with the [Printf] format [fmt] when
     [lvl] is strictly greater than the verbosity level.  The output channel is
     flushed by the function,  and the message is displayed in magenta (instead
     of the default terminal color) whenever a debugging mode is enabled. *)
-let out : int -> ('a, out_channel, unit) format -> 'a = fun lvl fmt ->
+let out : int -> ('a, Format.formatter, unit) format -> 'a = fun lvl fmt ->
   let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-  if lvl > !verbose then Printf.ifprintf stdout fmt else Printf.printf fmt
+  if lvl > !verbose then Format.ifprintf Format.std_formatter fmt
+  else Format.printf fmt

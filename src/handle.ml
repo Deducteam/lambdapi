@@ -85,14 +85,14 @@ let handle_eval : term -> Eval.config -> unit = fun t c ->
     succeed, the program may fail gracefully or continue its exection
     depending on the value of [test.is_assert]. *)
 let handle_test : test -> unit = fun test ->
-  let pp_test : out_channel -> test -> unit = fun oc test ->
-    if test.must_fail then output_string oc "¬(";
+  let pp_test : test pp = fun oc test ->
+    if test.must_fail then Format.pp_print_string oc "¬(";
     begin
       match test.test_type with
-      | Convert(t,u) -> Printf.fprintf oc "%a == %a" pp t pp u
-      | HasType(t,a) -> Printf.fprintf oc "%a :: %a" pp t pp a
+      | Convert(t,u) -> Format.fprintf oc "%a == %a" pp t pp u
+      | HasType(t,a) -> Format.fprintf oc "%a :: %a" pp t pp a
     end;
-    if test.must_fail then output_string oc ")"
+    if test.must_fail then Format.pp_print_string oc ")"
   in
   let result =
     match test.test_type with
@@ -193,14 +193,17 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
     | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                            c.elt Pos.print c.pos
   with
-  | Fatal -> fatal "Error at [%a].\n" Pos.print cmd.pos
-  | e     -> fatal "Uncaught exception on a command at %a\n%s\n%!"
-               Pos.print cmd.pos (Printexc.to_string e)
+  | Fatal(m) -> fatal "At [%a]: %s.\n" Pos.print cmd.pos m
+  | e        -> fatal "Uncaught exception on a command at %a\n%s\n%!"
+                  Pos.print cmd.pos (Printexc.to_string e)
 
 (** [handle_cmds cmds] interprets the commands of [cmds] in order. The
     program fails gracefully in case of error. *)
 and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
-  List.iter (fun cmd -> try handle_cmd cmd with Fatal -> exit 1) cmds
+  let handle_cmd cmd =
+    try handle_cmd cmd with Fatal(msg) -> abort "%s" msg
+  in
+  List.iter handle_cmd cmds
 
 (** [compile force path] compiles the file corresponding to [path],
     when it is necessary (the corresponding object file does not
@@ -228,7 +231,7 @@ and compile : bool -> Files.module_path -> unit =
       loading := path :: !loading;
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
-      handle_cmds (try Parser.parse_file src with Fatal -> exit 1);
+      handle_cmds (try Parser.parse_file src with Fatal(_) -> exit 1);
       if !gen_obj then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
@@ -273,5 +276,5 @@ module Pure :
 
     let handle_command : state -> command -> result = fun t cmd ->
       Time.rollback t;
-      try handle_cmd cmd; OK(Time.save ()) with Fatal -> Error ""
+      try handle_cmd cmd; OK(Time.save ()) with Fatal(m) -> Error(m)
   end

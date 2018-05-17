@@ -48,12 +48,12 @@ type typing = ctxt * term * term
 type unif = ctxt * term * term
 
 let pp_unif : unif pp = fun oc (_,t,u) ->
-  Printf.fprintf oc "%a = %a" pp t pp u
+  Format.fprintf oc "%a = %a" pp t pp u
 
 let pp_unifs : unif list pp = fun oc l ->
   match l with
   | [] -> ()
-  | _ -> Printf.fprintf oc " if %a" (List.pp pp_unif ", ") l
+  | _  -> Format.fprintf oc " if %a" (List.pp pp_unif ", ") l
 
 (** Representation of problems:
     1. a list of typing problems;
@@ -76,12 +76,12 @@ type strat =
 
 let rec pp_strat : strat pp = fun oc strat ->
   match strat with
-  | Typ -> output_string oc "T"
-  | Sort -> output_string oc "S"
-  | Unif -> output_string oc "U"
-  | Whnf -> output_string oc "W"
-  | CheckEnd -> output_string oc "E"
-  | Repeat strats -> Printf.fprintf oc "[%a]" pp_strats strats
+  | Typ       -> Format.pp_print_string oc "T"
+  | Sort      -> Format.pp_print_string oc "S"
+  | Unif      -> Format.pp_print_string oc "U"
+  | Whnf      -> Format.pp_print_string oc "W"
+  | CheckEnd  -> Format.pp_print_string oc "E"
+  | Repeat(l) -> Format.fprintf oc "[%a]" pp_strats l
 
 and pp_strats : strat list pp = fun oc strats -> List.pp pp_strat "" oc strats
 
@@ -398,7 +398,7 @@ let infer_constr (c:ctxt) (t:term) : unif list * term =
   let a = make_meta c (make_type()) in
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> l, a
-  | None -> raise Fatal
+  | None -> raise (Fatal "FIXME")
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
@@ -417,5 +417,5 @@ let sort_type (c:ctxt) (t:term) : term =
        | Type | Kind -> a
        | _    -> fatal "[%a] has type [%a] (not a sort)...\n" pp t pp a
      end
-  | Some l -> List.iter msg l; raise Fatal
-  | None -> raise Fatal
+  | Some l -> List.iter msg l; raise (Fatal "FIXME")
+  | None -> raise (Fatal "FIXME")
