@@ -361,25 +361,10 @@ let msg (_,a,b) =
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:ctxt) (t:term) (a:term) : bool =
-  (*
-  Gc.compact ();
-  Printf.eprintf "==== BEFORE HAS_TYPE ====\n";
-  Gc.print_stat stderr;
-  Printf.eprintf "=========================\n%!";
-  let res =
-  *)
   if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
   match solve true [default_strat] ([c,t,a],[],[],[],[]) with
   | Some l -> List.iter msg l; l = []
   | None   -> false
-  (*
-  in
-  Gc.compact ();
-  Printf.eprintf "==== AFTER HAS_TYPE =====\n";
-  Gc.print_stat stderr;
-  Printf.eprintf "=========================\n%!";
-  res
-  *)
 
 (** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
     [u] in context [c] and constraints [cs] without instantiating any
