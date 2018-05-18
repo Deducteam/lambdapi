@@ -17,15 +17,18 @@ type problems =
   ; whnf_problems : (Ctxt.t * term * term) list
   (** List of unification problems that must be put in WHNF first. *)
   ; unsolved      : (Ctxt.t * term * term) list
-  (** List of unsolved unification problems. *) }
+  (** List of unsolved unification problems. *)
+  ; recompute     : bool
+  (** Indicates whether unsolved problems should be rechecked. *) }
 
 (** Empty problem. *)
 let no_problems : problems =
   { type_problems = [] ; sort_problems = [] ; unif_problems = []
-  ; whnf_problems = [] ; unsolved = [] } 
+  ; whnf_problems = [] ; unsolved = [] ; recompute = false }
 
 let is_done : problems -> bool = fun p ->
-  {p with unsolved = []} = no_problems
+  p.type_problems = [] && p.sort_problems = [] &&
+  p.unif_problems = [] && p.whnf_problems = []
 
 (** Representation of solving strategies. *)
 type strategy = strategy_aux list
@@ -121,18 +124,13 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** Boolean saying whether unsolved unification problems need to be
-    rechecked. *)
-let recompute : bool ref = ref false
-
 (** [instantiate m ts v] check whether [m] can be instantiated to
     solve the unification problem [m[ts] = v]. Actually make the
     instantiation if it is possible. *)
 let instantiate (m:meta) (ts:term array) (v:term) : bool =
   (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
-  Bindlib.is_closed bv &&
-    (set_meta m (Bindlib.unbox bv); recompute := true; true)
+  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
 
 (** Exception raised by the solving algorithm when an irrecuperable
     error is found. *)
@@ -157,9 +155,8 @@ let rec solve : strategy -> problems -> unif list = fun strats p ->
   | S_Done    :: l ->
       if is_done p then
         if p.unsolved = [] then []
-        else if !recompute then
+        else if p.recompute then
           begin
-            recompute := false;
             let problems = {no_problems with unif_problems = p.unsolved} in
             solve (S_Unif::strats) problems
           end
@@ -285,8 +282,10 @@ and solve_unif c t1 t2 strats p : unif list =
         when m1==m2 && Array.for_all2 eq_vari a1 a2 ->
          solve (S_Unif::strats) p
 
-      | Meta(m,ts), v when instantiate m ts v -> solve (S_Unif::strats) p
-      | v, Meta(m,ts) when instantiate m ts v -> solve (S_Unif::strats) p
+      | Meta(m,ts), v when instantiate m ts v ->
+          solve (S_Unif::strats) {p with recompute = true}
+      | v, Meta(m,ts) when instantiate m ts v ->
+          solve (S_Unif::strats) {p with recompute = true}
 
       | Meta(_,_), _
       | _, Meta(_,_) ->
@@ -353,8 +352,10 @@ and solve_whnf c t1 t2 strats p : unif list =
     when m1 == m2 && n1 = 0 && n2 = 0 && Array.for_all2 eq_vari a1 a2 ->
      solve (S_Whnf::strats) p
 
-  | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 -> solve (S_Whnf::strats) p
-  | _, Meta(m,ts) when n2 = 0 && instantiate m ts t1 -> solve (S_Whnf::strats) p
+  | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 ->
+      solve (S_Whnf::strats) {p with recompute = true}
+  | _, Meta(m,ts) when n2 = 0 && instantiate m ts t1 ->
+      solve (S_Whnf::strats) {p with recompute = true}
 
   | Meta(_,_), _
   | _, Meta(_,_) ->
@@ -373,7 +374,7 @@ and solve_whnf c t1 t2 strats p : unif list =
 (** [solve b strats p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
-  can_instantiate := b; recompute := false;
+  can_instantiate := b;
   try Some (solve s p) with Fatal(_) -> None
 
 let msg (_,a,b) =
