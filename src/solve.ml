@@ -91,9 +91,6 @@ let make_binder : Ctxt.t -> string -> term -> tbinder = fun c n d ->
 let make_prod c =
   let d = make_meta c (make_type()) in d, make_binder c "x" d
 
-(** Representation of typing problems. *)
-type typing = Ctxt.t * term * term
-
 (** Representation of unification problems. *)
 type unif = Ctxt.t * term * term
 
