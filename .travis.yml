@@ -24,7 +24,7 @@ before_install:
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind
   - opam install earley earley-ocaml
-  - opam install bindlib
+  - opam install bindlib.4.0.5
   - make
 install:
   - make install
