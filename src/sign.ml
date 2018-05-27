@@ -92,7 +92,7 @@ let _ = Print.pp_symbol_ref := pp_symbol
 let link : t -> unit = fun sign ->
   let rec link_term t =
     let link_binder b =
-      let (x,t) = Bindlib.unbind mkfree b in
+      let (x,t) = Bindlib.unbind b in
       Bindlib.unbox (Bindlib.bind_var x (lift (link_term t)))
     in
     match unfold t with
@@ -108,7 +108,7 @@ let link : t -> unit = fun sign ->
     | TEnv(t,m)   -> TEnv(t, Array.map link_term m)
   and link_rule r =
     let lhs = List.map link_term r.lhs in
-    let (xs, rhs) = Bindlib.unmbind te_mkfree r.rhs in
+    let (xs, rhs) = Bindlib.unmbind r.rhs in
     let rhs = lift (link_term rhs) in
     let rhs = Bindlib.unbox (Bindlib.bind_mvar xs rhs) in
     {r with lhs ; rhs}
@@ -147,7 +147,7 @@ let link : t -> unit = fun sign ->
 let unlink : t -> unit = fun sign ->
   let unlink_sym s = s.sym_type := Kind; s.sym_rules := [] in
   let rec unlink_term t =
-    let unlink_binder b = unlink_term (snd (Bindlib.unbind mkfree b)) in
+    let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
     let unlink_term_env t =
       match t with
       | TE_Vari(_) -> ()
@@ -166,7 +166,7 @@ let unlink : t -> unit = fun sign ->
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
   and unlink_rule r =
     List.iter unlink_term r.lhs;
-    let (_, rhs) = Bindlib.unmbind te_mkfree r.rhs in
+    let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
   let fn _ s =

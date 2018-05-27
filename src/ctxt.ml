@@ -28,7 +28,7 @@ let mem : tvar -> t -> bool = fun x ctx ->
     is not extended. *)
 let unbind : t -> term -> tbinder -> t * term = fun ctx a b ->
   let occurs = Bindlib.binder_occur b in
-  let (x,b) = Bindlib.unbind mkfree b in
+  let (x,b) = Bindlib.unbind b in
   if occurs then (add x a ctx, b) else (ctx, b)
 
 (** [unbind2 ctx a b1 b2] is similar to [unbind], but it handle two binders at
@@ -36,7 +36,7 @@ let unbind : t -> term -> tbinder -> t * term = fun ctx a b ->
 let unbind2 : t -> term -> tbinder -> tbinder -> t * term * term =
   fun ctx a b1 b2 ->
     let occurs = Bindlib.binder_occur b1 || Bindlib.binder_occur b2 in
-    let (x,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
+    let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
     let c = if occurs then add x a ctx else ctx in
     (c, b1, b2)
 

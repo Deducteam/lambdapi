@@ -106,7 +106,7 @@ let pp_unifs : unif list pp = fun oc l ->
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
   if !debug_unif then
     begin
-      let (xs,v) = Bindlib.unmbind mkfree v in
+      let (xs,v) = Bindlib.unmbind v in
       log "set_meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
   begin

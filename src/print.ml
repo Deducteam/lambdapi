@@ -52,10 +52,10 @@ let pp_term : term pp = fun oc t ->
     | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t)  , `Func) ->
-        let (x,t) = Bindlib.unbind mkfree t in
+        let (x,t) = Bindlib.unbind t in
         out oc "%a:%a => %a" pp_tvar x pp_func a pp_func t
     | (Prod(a,b)  , `Func) ->
-        let (x,c) = Bindlib.unbind mkfree b in
+        let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
           out oc "!%a:%a, %a" pp_tvar x pp_appl a pp_func c
         else out oc "%a -> %a" pp_appl a pp_func c
@@ -70,7 +70,7 @@ let pp : term pp = pp_term
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
 let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   let lhs = add_args (Symb(sym)) rule.lhs in
-  let (_, rhs) = Bindlib.unmbind te_mkfree rule.rhs in
+  let (_, rhs) = Bindlib.unmbind rule.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
 (** [pp_goal oc g] prints the goal [g]. *)

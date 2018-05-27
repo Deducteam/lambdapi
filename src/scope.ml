@@ -209,7 +209,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
           | M_User(s) -> s
           | _         -> fatal "[%a] invalid RHS.\n" Pos.print t.pos
         in
-        try let i = List.assoc m map in _TEnv (Bindlib.box_of_var metas.(i)) e
+        try let i = List.assoc m map in _TEnv (Bindlib.box_var metas.(i)) e
         with Not_found ->
           fatal "[%a] unknown identifier [%s].\n" Pos.print t.pos m
   and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->

@@ -86,7 +86,8 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
     (* First handle patterns that do not need the evaluated term. *)
     match p with
     | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
-        ar.(i) <- TE_Some(Bindlib.mbinder_from_fun [||] (fun _ -> !t)); true
+        let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> !t) in
+        ar.(i) <- TE_Some(b); true
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
         let fn t = match t with Vari(x) -> x | _ -> assert false in
         let vars = Array.map fn e in
@@ -106,7 +107,7 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
         let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
         eq_modulo (Bindlib.msubst b e) t
     | (Abst(_,t1)       , Abst(_,t2)   ) ->
-        let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+        let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
         matching ar t1 (ref t2)
     | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
         matching ar t1 (ref t2) && matching ar u1 (ref u2)
@@ -160,7 +161,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
        | Symb(s1), Symb(s2) when s1 == s2 -> eq_modulo l
        | Prod(a1,b1), Prod(a2,b2)
        | Abst(a1,b1), Abst(a2,b2) ->
-          let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
+          let _,b1,b2  = Bindlib.unbind2 b1 b2 in
           eq_modulo ((a1,a2)::(b1,b2)::l)
        | Appl(t1,u1), Appl(t2,u2) ->
           eq_modulo ((u1,u2)::(t1,t2)::l)
@@ -186,12 +187,12 @@ let rec snf : term -> term = fun t ->
   | Kind        -> h
   | Symb(_)     -> h
   | Prod(a,b)   ->
-      let (x,b) = Bindlib.unbind mkfree b in
+      let (x,b) = Bindlib.unbind b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Prod(snf a, b)
   | Abst(a,b)   ->
-      let (x,b) = Bindlib.unbind mkfree b in
+      let (x,b) = Bindlib.unbind b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Abst(snf a, b)

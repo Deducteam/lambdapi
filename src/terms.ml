@@ -174,14 +174,14 @@ type tbinder = (term, term) Bindlib.binder
 (** A short name for the type of a free term variable. *)
 type tvar = term Bindlib.var
 
-(** A short name for the type of a term in a {!type:Bindlib.bindbox}. *)
-type tbox = term Bindlib.bindbox
+(** A short name for the type of a term in a {!type:Bindlib.box}. *)
+type tbox = term Bindlib.box
 
 (** A short name for the type of a free {!type:term_env} variable. *)
 type tevar = term_env Bindlib.var
 
 (** A short name for the type of a boxed {!type:term_env}. *)
-type tebox = term_env Bindlib.bindbox
+type tebox = term_env Bindlib.box
 
 (** [mkfree x] injects the [Bindlib] variable [x] in a term. *)
 let mkfree : tvar -> term = fun x -> Vari(x)
@@ -189,8 +189,8 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 (** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
 
-let unbind b = let (_,b) = Bindlib.unbind mkfree b in b
-let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in (b1,b2)
+let unbind b = let (_,b) = Bindlib.unbind b in b
+let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 b1 b2 in (b1,b2)
 
 (****************************************************************************)
 
@@ -198,7 +198,7 @@ let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in (b1,b2)
 
 (** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
     it may be available for binding. *)
-let _Vari : tvar -> tbox = Bindlib.box_of_var
+let _Vari : tvar -> tbox = Bindlib.box_var
 
 (** [_Type] injects the constructor [Type] into the {!type:tbox} type. *)
 let _Type : tbox = Bindlib.box Type
@@ -248,7 +248,7 @@ let _TEnv : tebox -> tbox array -> tbox = fun te ar ->
 let rec lift : term -> tbox = fun t ->
   let lift_term_env te =
     match te with
-    | TE_Vari(x) -> Bindlib.box_of_var x
+    | TE_Vari(x) -> Bindlib.box_var x
     | _          -> Bindlib.box te (* closed objects *)
   in
   match unfold t with
@@ -256,9 +256,9 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> let (x,b) = Bindlib.unbind mkfree b in
+  | Prod(a,b)   -> let (x,b) = Bindlib.unbind b in
                    _Prod (lift a) x (lift b)
-  | Abst(a,t)   -> let (x,t) = Bindlib.unbind mkfree t in
+  | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
                    _Abst (lift a) x (lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
