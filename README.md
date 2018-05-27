@@ -16,7 +16,7 @@ List of dependencies:
  - OCaml (at least 4.04.0),
  - ocamlbuild,
  - findlib,
- - bindlib (from opam or https://github.com/rlepigre/ocaml-bindlib),
+ - bindlib 4.0.5 (from opam or https://github.com/rlepigre/ocaml-bindlib),
  - earley (from opam or https://github.com/rlepigre/ocaml-earley),
  - earley-ocaml (from opam or https://github.com/rlepigre/ocaml-earley-ocaml).
 
@@ -24,7 +24,7 @@ Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install ocamlfind ocamlbuild bindlib earley earley-ocaml
+opam install ocamlfind ocamlbuild bindlib.4.0.5 earley earley-ocaml
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.
