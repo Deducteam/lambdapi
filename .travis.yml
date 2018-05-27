@@ -25,7 +25,7 @@ before_install:
   - opam update
   - opam install ocamlbuild ocamlfind
   - opam install earley earley-ocaml
-  - opam install bindlib
+  - opam install bindlib.5.0.0
   - make
 install:
   - make install
