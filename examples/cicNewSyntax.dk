@@ -66,6 +66,6 @@ def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -
 [s1 : Sort, s2 : Sort, s3 : Sort, a : Univ s1, b : Term s1 a -> Univ s2]
   prod _ s2 (lift s1 s3 a) b -->
   lift (rule s1 s2) (rule s3 s2) (prod s1 s2 a b).
-[s1 : Sort, s2 : Sort, s3 : Sort, a : Univ s1, b : Term s1 a -> Univ s2]
-  prod s1 _ a (x => lift s2 s3 (b x)) -->
-  lift (rule s1 s2) (rule s1 s3) (prod s1 s2 a (x : Term s1 a => b x)).
+
+  prod ?s1 _ ?a (x => lift ?s2 ?s3 ?b[x]) -->
+  lift (rule ?s1 ?s2) (rule ?s1 ?s3) (prod ?s1 ?s2 ?a (x : Term ?s1 ?a => ?b[x])).

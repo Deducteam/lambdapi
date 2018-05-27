@@ -22,8 +22,8 @@ m : numeral => n : numeral => A : type => f : (e A -> e A) => x : e A => m A (n 
 def power : numeral -> numeral -> numeral :=
 m : numeral => n : numeral => A : type => n (arr A A) (m A).
 
-def test : numeral := power two (plus one (times three four)).
-def test_ : numeral := power two (plus (times four four) one).
+def test0 : numeral := power two (plus one (times three four)).
+def test0_ : numeral := power two (plus (times four four) one).
 
 def test : numeral := power two (plus one (times two three)).
 def test_ : numeral := power two (plus (times three three) one).
@@ -32,6 +32,8 @@ P : numeral -> Type.
 P2: n:numeral -> P n -> Type.
 
 y : P test_.
+
+(; should fail since test and test_ are not equivalent ;)
 z: P2 test y.
 
 #EVAL zero.

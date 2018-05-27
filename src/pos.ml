@@ -72,11 +72,11 @@ let to_string : pos -> string = fun p ->
   else
     Printf.sprintf "%s%d:%d-%d" fname p.start_line p.start_col p.end_col
 
-(** [print_opt oc pos] prints the optional position [pos] to [oc]. *)
-let print : out_channel -> pos option -> unit = fun ch p ->
+(** [print oc pos] prints the optional position [pos] to [oc]. *)
+let print : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
-  | None   -> output_string ch "an unknown location"
-  | Some p -> output_string ch (to_string p)
+  | None   -> Format.pp_print_string ch "an unknown location"
+  | Some p -> Format.pp_print_string ch (to_string p)
 
 open Input
 

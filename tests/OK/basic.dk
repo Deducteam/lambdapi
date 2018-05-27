@@ -30,6 +30,6 @@ def add : Nat -> Nat -> Nat.
 #EVAL add (succ (succ zero)) (succ zero).
 
 def id : (Nat -> Nat) -> Nat -> Nat.
-[n] id (x:Nat => x) n --> n.
+[n] id (x => x) n --> n.
 
 #EVAL id (y:Nat => y) (succ (succ zero)).

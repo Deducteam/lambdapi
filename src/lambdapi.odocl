@@ -1,5 +1,6 @@
 Cmd
 Console
+Ctxt
 Eval
 Extra
 Files
@@ -9,7 +10,7 @@ Pos
 Print
 Scope
 Sign
+Solve
 Sr
 Terms
-Typing
-Unif
+Timed

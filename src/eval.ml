@@ -5,41 +5,6 @@ open Console
 open Terms
 open Print
 
-(** [eq_list l] tests the equality among the pairs of terms given in [l]. Note
-    during the comparison, metavariables are not instantiated. *)
-let rec eq_list : (term * term) list -> bool = fun l ->
-  match l with
-  | []                   -> true
-  | (a,b)::l when a == b -> eq_list l
-  | (a,b)::l             ->
-      match (unfold a, unfold b) with
-      | (a            , b            ) when a == b -> eq_list l
-      | (Vari(x1)     , Vari(x2)     ) -> Bindlib.eq_vars x1 x2 && eq_list l
-      | (Type         , Type         ) -> eq_list l
-      | (Kind         , Kind         ) -> eq_list l
-      | (Symb(Sym(s1)), Symb(Sym(s2))) -> s1 == s2 && eq_list l
-      | (Symb(Def(s1)), Symb(Def(s2))) -> s1 == s2 && eq_list l
-      | (Prod(a1,b1)  , Prod(a2,b2)  ) ->
-          let (_,b1,b2) = Bindlib.unbind2 mkfree b1 b2 in
-          eq_list ((a1,a2)::(b1,b2)::l)
-      | (Abst(a1,t1)  , Abst(a2,t2)  ) ->
-          let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
-          eq_list ((a1,a2)::(t1,t2)::l)
-      | (Appl(t1,u1)  , Appl(t2,u2)  ) -> eq_list ((t1,t2)::(u1,u2)::l)
-      | (Wild         , _            ) -> assert false
-      | (_            , Wild         ) -> assert false
-      | (ITag(_)      , _            ) -> assert false
-      | (_            , ITag(_)      ) -> assert false
-      | (Meta(m1,ar1)  , Meta(m2,ar2)) ->
-          m1 == m2 &&
-          let l = ref l in Array.iter2 (fun a b -> l := (a,b) :: !l) ar1 ar2;
-          eq_list !l
-      | (_            , _            ) -> false
-
-(** [eq t u] tests the equality of the two terms [t] and [u]. Note that during
-    the comparison, metavariables are not instantiated. *)
-let eq : term -> term -> bool = fun a b -> a == b || eq_list [(a,b)]
-
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = term ref list
 
@@ -54,89 +19,110 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,!u)) args
   in to_term t args
 
+(** Evaluation step counter. *)
+let steps : int ref = ref 0
+
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating %a" pp t;
+  if !debug_eval then log "eval" "evaluating [%a]" pp (unfold t);
   let (u, stk) = whnf_stk t [] in
-  let u = to_term u stk in
-  if !debug_eval then log "eval" "produced %a" pp u; u
+  to_term u stk
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
     sense of [whnf]. *)
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
-  match (unfold t, stk) with
+  let st = (unfold t, stk) in
+  match st with
   (* Push argument to the stack. *)
-  | (Appl(f,u)   , stk    )       -> whnf_stk f (ref u :: stk)
+  | (Appl(f,u), stk    ) -> whnf_stk f (ref u :: stk)
   (* Beta reduction. *)
-  | (Abst(_,f)   , u::stk )       -> whnf_stk (Bindlib.subst f !u) stk
+  | (Abst(_,f), u::stk ) -> incr steps; whnf_stk (Bindlib.subst f !u) stk
   (* Try to rewrite. *)
-  | (Symb(Def(s)), stk    ) as st ->
+  | (Symb(s)  , stk    ) ->
       begin
+        match !(s.sym_def) with
+        | Some(t) -> incr steps; whnf_stk t stk
+        | None    ->
         match find_rule s stk with
         | None        -> st
-        | Some(t,stk) -> whnf_stk t stk
+        | Some(t,stk) -> incr steps; whnf_stk t stk
       end
   (* In head normal form. *)
-  | (_           , _      ) as st -> st
+  | (_        , _      ) -> st
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
-and find_rule : def -> stack -> (term * stack) option = fun s stk ->
+and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
     if r.arity > stk_len then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let env = Array.init (Bindlib.mbinder_arity r.lhs) (fun i -> ITag(i)) in
-    let lhs = Bindlib.msubst r.lhs env in
-    if !debug_eval then log "eval" "RULE trying rule [%a]" pp_rule (s,r);
+    let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args ps ts =
       match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
+      | ([]   , _    ) ->
+         begin
+           if !debug_eval then log "eval" "%a" pp_rule (s,r);
+           Some(Bindlib.msubst r.rhs env, ts)
+         end
       | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
-    match_args lhs stk
+    match_args r.lhs stk
   in
-  List.map_find match_rule s.def_rules
+  List.map_find match_rule !(s.sym_rules)
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for
     pattern variables (using the [ITag] node) are stored in [ar], at the index
     they denote. In case several different values are found for a same pattern
     variable, equality modulo is computed to check compatibility. *)
-and matching : term array -> term -> term ref -> bool = fun ar p t ->
-  if !debug_eval then log "matc" "[%a] =~= [%a]" pp p pp !t;
+and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
+  if !debug_matc then log "matc" "[%a] =~= [%a]" pp p pp !t;
   let res =
     (* First handle patterns that do not need the evaluated term. *)
     match p with
-    | ITag(i) when ar.(i) = ITag(i) -> ar.(i) <- !t; true
-    | Wild                          -> true
-    | _                             ->
+    | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
+        let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> !t) in
+        ar.(i) <- TE_Some(b); true
+    | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
+        let fn t = match t with Vari(x) -> x | _ -> assert false in
+        let vars = Array.map fn e in
+        let b = Bindlib.bind_mvar vars (lift !t) in
+        ar.(i) <- TE_Some(Bindlib.unbox b); Bindlib.is_closed b
+    | Patt(None,_,[||]) -> true
+    | Patt(None,_,e   ) ->
+        let fn t = match t with Vari(x) -> x | _ -> assert false in
+        let vars = Array.map fn e in
+        let b = Bindlib.bind_mvar vars (lift !t) in
+        Bindlib.is_closed b
+    | _                                 ->
     (* Other cases need the term to be evaluated. *)
     t := whnf !t;
     match (p, !t) with
-    | (ITag(i)      , t        ) -> eq_modulo ar.(i) t (* t <> ITag(i) *)
-    | (Abst(_,t1) , Abst(_,t2) ) ->
-        let (_,t1,t2) = Bindlib.unbind2 mkfree t1 t2 in
+    | (Patt(Some(i),_,e), t            ) -> (* ar.(i) <> TE_None *)
+        let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
+        eq_modulo (Bindlib.msubst b e) t
+    | (Abst(_,t1)       , Abst(_,t2)   ) ->
+        let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
         matching ar t1 (ref t2)
-    | (Appl(t1,u1), Appl(t2,u2)) ->
+    | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
         matching ar t1 (ref t2) && matching ar u1 (ref u2)
-    | (Vari(x1)   , Vari(x2)   ) -> Bindlib.eq_vars x1 x2
-    | (Symb(s1)   , Symb(s2)   ) -> s1 == s2
-    | (_          , _          ) -> false
+    | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
+    | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
+    | (_                , _            ) -> false
   in
-  if !debug_eval then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
+  if !debug_matc then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
-and eq_modulo : term -> term -> bool = fun a b ->
+(*REMOVE:and eq_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "equa" "%a == %a" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []                   -> true
-    | (a,b)::l when eq a b -> eq_modulo l
     | (a,b)::l             ->
         let (a,sa) = whnf_stk a [] in
         let (b,sb) = whnf_stk b [] in
@@ -148,41 +134,72 @@ and eq_modulo : term -> term -> bool = fun a b ->
           | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
         in
         let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
-        match (a, b) with
-        | (a          , b          ) when eq a b -> eq_modulo l
-        | (Abst(aa,ba), Abst(ab,bb)) ->
-            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (Prod(aa,ba), Prod(ab,bb)) ->
-            let (_,ba,bb) = Bindlib.unbind2 mkfree ba bb in
-            eq_modulo ((aa,ab)::(ba,bb)::l)
-        | (_          , _          ) -> false
+        match a, b with
+        | Abst(a1,b1), Abst(a2,b2)
+        | Prod(a1,b1), Prod(a2,b2)  ->
+           let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
+           eq_modulo ((a1,a2)::(b1,b2)::l)
+        | _ -> eq a b && eq_modulo l
   in
   let res = eq_modulo [(a,b)] in
+  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res*)
+
+and eq_modulo : term -> term -> bool = fun a b ->
+  if !debug_equa then log "eq_modulo" "[%a] [%a]" pp a pp b;
+  let rec eq_modulo l =
+    match l with
+    | []                   -> ()
+    | (a,b)::l             ->
+       match whnf a, whnf b with
+       | Patt(_,_,_), _
+       | _, Patt(_,_,_)
+       | TEnv(_,_), _
+       | _, TEnv(_,_) -> assert false
+       | Type, Type
+       | Kind, Kind -> eq_modulo l
+       | Vari(x1), Vari(x2) when Bindlib.eq_vars x1 x2 -> eq_modulo l
+       | Symb(s1), Symb(s2) when s1 == s2 -> eq_modulo l
+       | Prod(a1,b1), Prod(a2,b2)
+       | Abst(a1,b1), Abst(a2,b2) ->
+          let _,b1,b2  = Bindlib.unbind2 b1 b2 in
+          eq_modulo ((a1,a2)::(b1,b2)::l)
+       | Appl(t1,u1), Appl(t2,u2) ->
+          eq_modulo ((u1,u2)::(t1,t2)::l)
+       | Meta(m1,a1), Meta(m2,a2) when m1 == m2 ->
+          eq_modulo (List.add_array2 a1 a2 l)
+       | _, _ -> raise Exit
+  in
+  let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
+
+let whnf : term -> term = fun t ->
+  let t = unfold t in
+  steps := 0;
+  let u = whnf t in
+  if !steps = 0 then t else u
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 let rec snf : term -> term = fun t ->
   let h = whnf t in
   match h with
-  | Vari(_)   -> h
-  | Type      -> h
-  | Kind      -> h
-  | Symb(_)   -> h
-  | Prod(a,b) ->
-      let (x,b) = Bindlib.unbind mkfree b in
+  | Vari(_)     -> h
+  | Type        -> h
+  | Kind        -> h
+  | Symb(_)     -> h
+  | Prod(a,b)   ->
+      let (x,b) = Bindlib.unbind b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Prod(snf a, b)
-  | Abst(a,b) ->
-      let (x,b) = Bindlib.unbind mkfree b in
+  | Abst(a,b)   ->
+      let (x,b) = Bindlib.unbind b in
       let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Abst(snf a, b)
-  | Appl(t,u) -> Appl(snf t, snf u)
-  | Meta(_,_) -> assert false
-  | ITag(_)   -> assert false
-  | Wild      -> assert false
+  | Appl(t,u)   -> Appl(snf t, snf u)
+  | Meta(m,ts)  -> Meta(m, Array.map snf ts)
+  | Patt(_,_,_) -> assert false
+  | TEnv(_,_)   -> assert false
 
 (** [hnf t] computes the head normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
@@ -207,5 +224,5 @@ let eval : config -> term -> term = fun c t ->
   | (HNF , None   ) -> hnf t
   (* TODO implement the rest. *)
   | (WHNF, Some(_)) -> wrn "number of steps not supported for WHNF...\n"; t
-  | (HNF , Some(_)) -> wrn "number of steps not supported for HNF...\n";  t
+  | (HNF , Some(_)) -> wrn "number of steps not supported for HNF...\n"; t
   | (SNF , Some(_)) -> wrn "number of steps not supported for SNF...\n";  t

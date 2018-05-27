@@ -5,64 +5,80 @@ open Terms
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : out_channel -> symbol -> unit = fun oc s ->
-  let (path, name) =
-    match s with
-    | Sym(sym) -> (sym.sym_path, sym.sym_name)
-    | Def(def) -> (def.def_path, def.def_name)
-  in
-  if path <> Sign.current_module_path () then
-    List.iter (Printf.fprintf oc "%s.") path;
-  output_string oc name
+let default_pp_symbol : sym pp = fun oc s ->
+  Format.pp_print_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
 
-let pp_tvar : out_channel -> tvar -> unit = fun oc x ->
-  output_string oc (Bindlib.name_of x)
-  (* Printf.fprintf oc "%s{%i}" (Bindlib.name_of x) (Bindlib.uid_of x) *)
+let pp_symbol_ref : sym pp ref = ref default_pp_symbol
+
+let pp_symbol : sym pp = fun oc s ->
+  !pp_symbol_ref oc s
+
+(** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
+let pp_tvar : tvar pp = fun oc x ->
+  Format.pp_print_string oc (Bindlib.name_of x)
+
+(** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
+let pp_meta : meta pp = fun oc m ->
+  if !(m.meta_value) <> None then assert false;
+  Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-let pp_term : out_channel -> term -> unit = fun oc t ->
-  let pstring = output_string oc in
-  let pformat fmt = Printf.fprintf oc fmt in
+let pp_term : term pp = fun oc t ->
+  let out oc fmt = Format.fprintf oc fmt in
+  (* NOTE we apply the conventions used in [Parser.expr] for priorities. *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    let t = unfold t in
-    match (t, p) with
+    let pp_func = pp `Func in
+    let pp_appl = pp `Appl in
+    let pp_atom = pp `Atom in
+    let pp_env oc ar =
+      if Array.length ar <> 0 then out oc "[%a]" (Array.pp pp_appl ",") ar
+    in
+    let pp_term_env oc te =
+      match te with
+      | TE_Vari(m) -> out oc "?%s" (Bindlib.name_of m)
+      | _          -> assert false
+    in
+    match (unfold t, p) with
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)  , _    ) -> pp_tvar oc x
-    | (Type     , _    ) -> pstring "Type"
-    | (Kind     , _    ) -> pstring "Kind"
-    | (Symb(s)  , _    ) -> pp_symbol oc s
-    | (Meta(m,e), _    ) -> pformat "?%i[%a]" m.meta_key
-                                (Array.pp (pp `Appl) ",") e
-    | (ITag(i)  , _    ) -> pformat "[%i]" i
-    | (Wild     , _    ) -> pstring "_"
+    | (Vari(x)    , _    ) -> pp_tvar oc x
+    | (Type       , _    ) -> out oc "Type"
+    | (Kind       , _    ) -> out oc "Kind"
+    | (Symb(s)    , _    ) -> pp_symbol oc s
+    | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
+    | (Patt(_,n,e), _    ) -> out oc "?%s%a" n pp_env e
+    | (TEnv(t,e)  , _    ) -> out oc "<%a>%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(t,u), `Appl)
-    | (Appl(t,u), `Func) -> pformat "%a %a" (pp `Appl) t (pp `Atom) u
+    | (Appl(t,u)  , `Appl)
+    | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(a,t), `Func) ->
-        let (x,t) = Bindlib.unbind mkfree t in
-        pformat "%a:%a => %a" pp_tvar x (pp `Func) a (pp `Func) t
-    | (Prod(a,b), `Func) ->
-        let (x,c) = Bindlib.unbind mkfree b in
-        if Bindlib.binder_occur b then pformat "%a:" pp_tvar x;
-        pformat "%a -> %a" (pp `Appl) a (pp `Func) c
+    | (Abst(a,t)  , `Func) ->
+        let (x,t) = Bindlib.unbind t in
+        out oc "%a:%a => %a" pp_tvar x pp_func a pp_func t
+    | (Prod(a,b)  , `Func) ->
+        let (x,c) = Bindlib.unbind b in
+        if Bindlib.binder_occur b then
+          out oc "!%a:%a, %a" pp_tvar x pp_appl a pp_func c
+        else out oc "%a -> %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
-    | (_        , _    ) -> pformat "(%a)" (pp `Func) t
+    | (_          , _    ) -> out oc "(%a)" pp_func t
   in
-  pp `Func oc (Bindlib.unbox (lift t))
+  pp `Func oc (cleanup t)
 
 (** [pp] is a short synonym of [pp_term]. *)
-let pp : out_channel -> term -> unit = pp_term
+let pp : term pp = pp_term
 
 (** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
-let pp_rule : out_channel -> def * rule -> unit = fun oc (def,rule) ->
-  let (xs,lhs) = Bindlib.unmbind mkfree rule.lhs in
-  let lhs = add_args (Symb(Def def)) lhs in
-  let rhs = Bindlib.msubst rule.rhs (Array.map mkfree xs) in
-  Printf.fprintf oc "%a → %a" pp lhs pp rhs
+let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
+  let lhs = add_args (Symb(sym)) rule.lhs in
+  let (_, rhs) = Bindlib.unmbind rule.rhs in
+  Format.fprintf oc "%a → %a" pp lhs pp rhs
 
-(** [pp_ctxt oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp_ctxt : out_channel -> ctxt -> unit = fun oc ctx ->
-  let pp_e oc (x,a) = Printf.fprintf oc "%a : %a" pp_tvar x pp a in
-  if ctx = [] then output_string oc "∅"
-  else List.pp pp_e ", " oc (List.rev ctx)
+(** [pp_goal oc g] prints the goal [g]. *)
+let pp_goal : goal pp =
+  let sep = String.make 66 '-' in
+  let pp_hyp oc (s,(_,t)) =
+    let t = Bindlib.unbox t in
+    Format.fprintf oc "%s : %a" s pp t
+  in
+  let pp_hyps = List.pp pp_hyp "\n" in
+  fun oc g -> Format.fprintf oc "%a%s\n%a\n" pp_hyps g.g_hyps sep pp g.g_type

@@ -5,11 +5,7 @@ open Files
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
-  let modpath =
-    try module_path fname with Invalid_argument _ ->
-    fatal "Invalid extension for %S (expected %S)...\n" fname src_extension
-  in
-  Sign.loaded := [];
+  let modpath = module_path fname in
   Handle.compile true modpath
 
 (* Main program. *)
@@ -17,11 +13,13 @@ let _ =
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ "a : general debug informations"
-      ; "e : extra debugging informations for evaluation"
+      ; "r : extra debugging informations for evaluation"
       ; "u : extra debugging informations for unification"
-      ; "p : extra debugging informations for patterns"
+      ; "m : extra debugging informations for matching"
+      ; "s : extra debugging informations for subject reduction"
       ; "t : extra debugging informations for typing"
-      ; "q : extra debugging informations for equality" ]
+      ; "e : extra debugging informations for equality"
+      ; "p : extra debugging informations for the parser" ]
     in "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
   in
   let verbose_doc =
@@ -43,7 +41,7 @@ let _ =
   let files = ref [] in
   let anon fn = files := fn :: !files in
   let summary =
-    " [--debug [a|e|u|p|t|q]] [--verbose N] [--gen-obj] [FILE] ..."
+    " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."
   in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
   List.iter compile (List.rev !files)

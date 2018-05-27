@@ -1,5 +1,8 @@
 (** File utilities. *)
 
+open Extra
+open Console
+
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".dk"
 
@@ -9,9 +12,34 @@ let obj_extension : string = ".dko"
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
 
-(** [pp_path oc path] prints the module path [path] to channel [oc]. *)
-let pp_path : out_channel -> module_path -> unit = fun oc path ->
-  output_string oc (String.concat "." path)
+(** [OrderedType] module for [module_path]. *)
+module Path = struct
+  type t = module_path
+  let compare : t -> t -> int = Pervasives.compare
+end
+
+(* Functional maps with [module_path] keys. *)
+module PathMap = Map.Make(Path)
+
+(** filter_map f tbl applies f to all bindings in table tbl
+    and update each binding depending on the result of f. If f returns
+    None, the binding is discarded. If it returns Some new_val, the
+    binding is update to associate the key to new_val. *)
+let filter_map
+    : (module_path -> 'b -> 'b option) -> 'b PathMap.t -> 'b PathMap.t
+  = fun f map ->
+    let g key value new_map =
+      match f key value with
+      | Some new_value -> PathMap.add key new_value new_map
+         (*FIXME: with OCaml >= 4.06.0, use:
+           PathMap.update key (fun _ -> Some value) map *)
+      | None -> new_map
+    in
+    PathMap.fold g map PathMap.empty
+
+(** [pp oc mp] prints [mp] to channel [oc]. *)
+let pp_path : module_path pp = fun oc mp ->
+  Format.pp_print_string oc (String.concat "." mp)
 
 (** [module_path path] computes the [module_path] corresponding to a  relative
     file [path], which should not use [".."]. The returned list is formed with
@@ -20,16 +48,20 @@ let pp_path : out_channel -> module_path -> unit = fun oc path ->
     on the file name, and it should correspond to [src_extension]. When [path]
     is invalid, [Invalid_argument "invalid module path"] is raised. *)
 let module_path : string -> module_path = fun fname ->
-  let check p = if not p then invalid_arg "invalid module path" in
-  check (Filename.check_suffix fname src_extension);
-  check (Filename.is_relative fname);
+  if not (Filename.check_suffix fname src_extension) then
+    fatal "invalid file extension for %s (expected %s)" fname src_extension;
+  if not (Filename.is_relative fname) then
+    fatal "invalid path for %s (expected relative path)" fname;
   let base = Filename.chop_extension (Filename.basename fname) in
   let dir = Filename.dirname fname in
-  check (dir <> Filename.parent_dir_name);
+  if dir = Filename.parent_dir_name then
+    fatal "invalid path for %s (%s not allowed)" fname Filename.parent_dir_name;
   let rec build_path acc dir =
     let dirbase = Filename.basename dir in
     let dirdir  = Filename.dirname  dir in
-    check (dirdir <> Filename.parent_dir_name);
+    if dirdir = Filename.parent_dir_name then
+      fatal "invalid path for %s (%s not allowed)"
+        fname Filename.parent_dir_name;
     if dirbase = Filename.current_dir_name then acc
     else build_path (dirbase::acc) dirdir
   in

@@ -17,16 +17,14 @@ type test =
 (** Representation of a toplevel command. *)
 type cmd = cmd_aux loc
  and cmd_aux =
-  (** Static symbol declaration. *)
-  | NewSym of strloc * term
-  (** Definable symbol declaration. *)
-  | NewDef of strloc * term
+  (** Symbol declaration (definable when the boolean is [true]). *)
+  | SymDecl of bool * strloc * term
   (** Rewriting rules declaration. *)
-  | Rules  of (ctxt * def * term * term * rule) list
-  (** Quick definition. *)
-  | SymDef of bool * strloc * term * term
-  (** Import an external signature. *)
-  | Import of module_path
+  | Rules  of (sym * rule) list
+  (** Symbol definition (opaque when the boolean is [true]). *)
+  | SymDef of bool * strloc * term option * term
+  (** Require an external signature. *)
+  | Require of module_path
   (** Set debugging flags. *)
   | Debug  of bool * string
   (** Set the verbosity level. *)
@@ -39,3 +37,9 @@ type cmd = cmd_aux loc
   | Test   of test
   (** Unimplemented command. *)
   | Other  of strloc
+  (** Start proof. *)
+  | StartProof of strloc * term
+  (** Print focused goal. *)
+  | PrintFocus
+  (** Refine the focused goal. *)
+  | Refine of term

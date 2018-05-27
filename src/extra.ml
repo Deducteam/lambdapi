@@ -1,7 +1,7 @@
 (** Standard library extension (mostly). *)
 
 (** Short name for the type of a pretty-printing function. *)
-type 'a pp = out_channel -> 'a -> unit
+type 'a pp = Format.formatter -> 'a -> unit
 
 (** Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
@@ -10,6 +10,21 @@ module Int =
   struct
     type t = int
     let compare = (-)
+  end
+
+module Option =
+  struct
+    type 'a t = 'a option
+
+    let map : ('a -> 'b) -> 'a t -> 'b t = fun f o ->
+      match o with
+      | None    -> None
+      | Some(e) -> Some(f e)
+
+    let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
+      match o with
+      | None    -> ()
+      | Some(e) -> f e
   end
 
 module List =
@@ -21,7 +36,7 @@ module List =
     let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
       match l with
       | []    -> ()
-      | e::es -> let fn e = Printf.fprintf oc "%s%a" sep pp_elt e in
+      | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
                  pp_elt oc e; iter fn es
 
     (** [map_find f l] applies [f] to the elements of list [l] (in order), and
@@ -31,6 +46,33 @@ module List =
       match l with
       | []    -> None
       | e::es -> match f e with None -> map_find f es | res -> res
+
+    (** [cut l k] returns a pair of lists [(l1,l2)] such that [l1] has length
+        [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
+    let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
+      let rec cut acc l k =
+        if k <= 0 then (List.rev acc, l) else
+        match l with
+        | []   -> (List.rev acc, l)
+        | x::l -> cut (x::acc) l (k-1)
+      in
+      if k <= 0 then ([], l) else cut [] l k
+
+    (** [add_array a l] returns a list containing the elements of [l]
+        and [a]. *)
+    let add_array : 'a array -> 'a list -> 'a list = fun a l ->
+      let res = ref l in
+      Array.iter (fun x -> res := x::!res) a;
+      !res
+
+    (** [add_array a l] returns a list containing the elements of [l]
+        and [a]. *)
+    let add_array2 : 'a array -> 'b array -> ('a * 'b) list -> ('a * 'b) list =
+      fun a1 a2 l ->
+        let res = ref l in
+        Array.iter2 (fun x1 x2 -> res := (x1,x2)::!res) a1 a2;
+        !res
+
   end
 
 module Array =
@@ -142,48 +184,4 @@ module Cofin =
       | c::s -> Printf.fprintf oc "<int> - (%a" pelt c;
                 List.iter (Printf.fprintf oc "∪%a" pelt) s;
                 Printf.fprintf oc ")"
-  end
-
-(** Imperative association lists. *)
-module Assoc :
-  sig
-    type ('a,'b) t
-    val create : unit -> ('a,'b) t
-    val add : ('a,'b) t -> 'a -> 'b -> unit
-    val find : ('a,'b) t -> 'a -> 'b
-    val mem : ('a,'b) t -> 'a -> bool
-    val iter : ('a -> 'b -> unit) -> ('a,'b) t -> unit
-    val update : ('a,'b) t -> 'a -> ('b -> 'b) -> unit
-    val map_inplace : ('a -> 'b -> 'b) -> ('a,'b) t -> unit
-  end =
-  struct
-    type ('a,'b) t = ('a * 'b) list ref
-
-    let create : unit -> ('a,'b) t =
-      fun () -> ref []
-
-    let add : ('a,'b) t -> 'a -> 'b -> unit =
-      fun m k v -> m := (k,v) :: !m
-
-    let find : ('a,'b) t -> 'a -> 'b =
-      fun m k -> List.assoc k !m
-
-    let mem : ('a,'b) t -> 'a -> bool =
-      fun m k -> List.mem_assoc k !m
-
-    let iter : ('a -> 'b -> unit) -> ('a,'b) t -> unit =
-      fun fn m -> List.iter (fun (k,v) -> fn k v) !m
-
-    let update : ('a,'b) t -> 'a -> ('b -> 'b) -> unit =
-      fun m k f ->
-        let rec aux acc l =
-          match l with
-          | []              -> raise Not_found
-          | ((h,v) as c)::l ->
-              if k = h then acc @ (h, f v) :: l else aux (c::acc) l
-        in
-        m := aux [] !m
-
-    let map_inplace : ('a -> 'b -> 'b) -> ('a,'b) t -> unit =
-      fun fn m -> m := List.map (fun (k,v) -> (k, fn k v)) !m
   end

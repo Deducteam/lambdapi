@@ -1,6 +1,6 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
 CFLAGS     = -cflags -w,A-4-50-9-44
-DFLAGS     = -docflags -hide-warnings
+DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
@@ -31,9 +31,9 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 
 #### Unit tests ##############################################################
 
-OK_TESTFILES = $(wildcard tests/OK/*.dk)
-KO_TESTFILES = $(wildcard tests/KO/*.dk)
-TESTFILES    = $(wildcard examples/*.dk)
+OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk))
+KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk))
+TESTFILES    = $(sort $(wildcard examples/*.dk))
 
 .PHONY: tests
 tests: lambdapi.native
@@ -41,22 +41,24 @@ tests: lambdapi.native
 	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
+		&& echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 	@echo "## KO tests ##"
 	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;31mOK\033[0m $$file"   \
-			|| echo -e "\033[0;32mKO\033[0m $$file" ; \
+		&& echo -e "\033[0;31mOK\033[0m $$file"   \
+		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
 	done
 	@echo "## Examples ##"
 	@rm -f $(TESTFILES:.dk=.dko)
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	    || echo -e "\033[0;31mKO\033[0m $$file" ; \
+	  && echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 
 #### Library tests ###########################################################

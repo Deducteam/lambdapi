@@ -1,5 +1,0 @@
-#REQUIRE tests.KO.selfref.
-
-A : Type.
-
-B : A.
