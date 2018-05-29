@@ -50,3 +50,14 @@ You can run tests with:
  - `make iprover`  (type-checks the iProverModulo library)
  - `make dklib`   (type-checks the dklib library)
  - `make zenon`   (type-checks the zenon library)
+
+Repository organization
+-----------------------
+
+The root directory of the repository contains several folders:
+ - `editors` holds the files related to editor support (Vim only for now),
+ - `examples` holds a bunch of examples (taken from Dedukti and new ones),
+ - `libraries` holds the scripts used for checking supported libraries,
+ - `src` contains the source code of Lambdapi,
+ - `tests` contains test files (mostly from Dedukti),
+ - `tools` contains miscellaneous utility scripts.
