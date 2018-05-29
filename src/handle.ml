@@ -13,60 +13,51 @@ open Files
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
 
-(** [handle_symdecl b n a] extends the current signature with a
-    symbol named [n] and type [a]. If [a] does not have sort [Type] or
-    [Kind], then the program fails gracefully. [b] indicates whether
-    this symbol can have rules. *)
+(** [handle_symdecl definable n a] extends the current signature with
+    [definable] a symbol named [n] and type [a]. If [a] does not have
+    sort [Type] or [Kind], then the program fails gracefully. *)
 let handle_symdecl : bool -> strloc -> term -> unit =
-  fun b n a ->
+  fun definable n a ->
     fail_if_in_proof();
     ignore (Solve.sort_type Ctxt.empty a);
     (*FIXME: check that [a] contains no un instantiated metavariables.*)
     let sign = current_sign() in
-    ignore (Sign.new_symbol sign b n a)
+    ignore (Sign.new_symbol sign definable n a)
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
 let handle_rule : sym * rule -> unit = fun (s,r) ->
   fail_if_in_proof();
+  if s.sym_const || !(s.sym_def) <> None then
+    fatal "%a cannot be (re)defined." pp_symbol s;
   Sr.check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
-(** [check_def_type x None t] infers the type of [t] and returns
-    it. [check_def_type x (Some a) t] checks that [a] is typable by a
-    sort and [t] has type [a], and returns [a]. In case of error
-    (typing or sorting), the program fails gracefully. *)
-let check_def_type : strloc -> term option -> term -> term = fun x ao t ->
-  match ao with
-  | Some(a) ->
-      ignore (Solve.sort_type Ctxt.empty a);
-      if Solve.has_type Ctxt.empty t a then a else
-      fatal "Cannot type the definition of [%s] at [%a]."
-        x.elt Pos.print x.pos;
-  | None    ->
-      match Solve.infer Ctxt.empty t with
-      | Some(a) -> a
-      | None    -> fatal "Cannot infer the type of [%a]." pp t
-
-(** [handle_opaque x ao t] checks the definition of [x] and adds
-    [x] in the current signature. *)
-let handle_opaque : strloc -> term option -> term -> unit =
-  fun x ao t ->
-    fail_if_in_proof();
-    let a = check_def_type x ao t in
-    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-    ignore (Sign.new_symbol (current_sign()) true x a)
-
-(** [handle_defin x ao t] does the same as [handle_opaque x ao t] and
-    add the rule [x --> t]. *)
-let handle_defin : strloc -> term option -> term -> unit =
-  fun x ao t ->
-    let a = check_def_type x ao t in
-    (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-    let sign = current_sign() in
-    let s = Sign.new_symbol sign true x a in
-    s.sym_def := Some(t)
+(** [handle_sym_def opaque x ao t] checks that [t] is of type [a] if
+    [ao = Some a]. Then, it does the same as [handle_sym_decl (not
+    definable) x ao]. Moreover, it adds the rule [x --> t] if [not
+    opaque]. In case of error, the program fails gracefully. *)
+let handle_symdef : bool -> strloc -> term option -> term -> unit
+  = fun opaque x ao t ->
+  fail_if_in_proof();
+  let a =
+    match ao with
+    | Some(a) ->
+       begin
+         ignore (Solve.sort_type Ctxt.empty a);
+         if Solve.has_type Ctxt.empty t a then a
+         else fatal "[%a] does not have type [%a]." pp t pp a
+       end
+    | None    ->
+       match Solve.infer Ctxt.empty t with
+       | Some(a) -> a
+       | None    -> fatal "Cannot infer the type of [%a]." pp t
+  in
+  (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
+  let sign = current_sign() in
+  let s = Sign.new_symbol sign Parser.definable x a in
+  if not opaque then s.sym_def := Some(t)
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
@@ -174,12 +165,11 @@ let rec handle_require : Files.module_path -> unit = fun path ->
     function may raise the [Fatal] exceptions. *)
 and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
   let cmd = Scope.scope_cmd cmd in
-  let handle_symdef o = if o then handle_opaque else handle_defin in
   try
     match cmd.elt with
     | SymDecl(b,n,a)  -> handle_symdecl b n a
     | Rules(rs)       -> List.iter handle_rule rs
-    | SymDef(o,n,a,t) -> handle_symdef o n a t
+    | SymDef(b,n,a,t) -> handle_symdef b n a t
     | Require(path)   -> handle_require path
     | Debug(v,s)      -> set_debug v s
     | Verb(n)         -> verbose := n
