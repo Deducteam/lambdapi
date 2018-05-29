@@ -118,32 +118,6 @@ and matching : term_env array -> term -> term ref -> bool = fun ar p t ->
   if !debug_matc then log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp !t; res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
-(*REMOVE:and eq_modulo : term -> term -> bool = fun a b ->
-  if !debug_equa then log "equa" "%a == %a" pp a pp b;
-  let rec eq_modulo l =
-    match l with
-    | []                   -> true
-    | (a,b)::l             ->
-        let (a,sa) = whnf_stk a [] in
-        let (b,sb) = whnf_stk b [] in
-        let rec sync acc la lb =
-          match (la, lb) with
-          | ([]   , []   ) -> (a, b, acc)
-          | (a::la, b::lb) -> sync ((!a,!b)::acc) la lb
-          | (la   , []   ) -> (to_term a (List.rev la), b, acc)
-          | ([]   , lb   ) -> (a, to_term b (List.rev lb), acc)
-        in
-        let (a,b,l) = sync l (List.rev sa) (List.rev sb) in
-        match a, b with
-        | Abst(a1,b1), Abst(a2,b2)
-        | Prod(a1,b1), Prod(a2,b2)  ->
-           let _,b1,b2  = Bindlib.unbind2 mkfree b1 b2 in
-           eq_modulo ((a1,a2)::(b1,b2)::l)
-        | _ -> eq a b && eq_modulo l
-  in
-  let res = eq_modulo [(a,b)] in
-  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res*)
-
 and eq_modulo : term -> term -> bool = fun a b ->
   if !debug_equa then log "eq_modulo" "[%a] [%a]" pp a pp b;
   let rec eq_modulo l =
