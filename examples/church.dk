@@ -1,5 +1,3 @@
-#NAME church.
-
 type : Type.
 arr : type -> type -> type.
 def e : type -> Type.
@@ -28,5 +26,4 @@ def power : numeral -> numeral -> numeral
 def four : numeral := plus two two.
 def five : numeral := plus two three.
 
-#CHECK (power two (times four five))
-    == (power two (times five four)).
+#ASSERT power two (times four five) == power two (times five four).

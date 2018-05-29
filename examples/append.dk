@@ -1,5 +1,3 @@
-#NAME append.
-
 A  : Type.
 Nat: Type.
 Z  : Nat.

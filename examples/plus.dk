@@ -1,5 +1,3 @@
-#NAME plus.
-
 nat : Type.
 Z : nat.
 S : nat -> nat.

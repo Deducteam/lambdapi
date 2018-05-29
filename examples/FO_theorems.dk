@@ -1,15 +1,14 @@
-#REQUIRE examples.firstOrder.
-#NAME FO_theorems.
+#REQUIRE examples.FO.
 
-(;  Imports from FO theory  ;)
-def Prop  := examples.firstOrder.Prop.
-def prf   := examples.firstOrder.prf.
-def or    := examples.firstOrder.or.
-def imp   := examples.firstOrder.imp.
-def not   := examples.firstOrder.not.
-def false := examples.firstOrder.false.
-def or_intro_1 := examples.firstOrder.or_intro_1.
-def or_intro_2 := examples.firstOrder.or_intro_2.
+(;  Imports from examples.FO theory  ;)
+def Prop  := examples.FO.Prop.
+def prf   := examples.FO.prf.
+def or    := examples.FO.or.
+def imp   := examples.FO.imp.
+def not   := examples.FO.not.
+def false := examples.FO.false.
+def or_intro_1 := examples.FO.or_intro_1.
+def or_intro_2 := examples.FO.or_intro_2.
 
 
 (;  Encoded proposition families corresponding to:

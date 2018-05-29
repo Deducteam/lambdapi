@@ -1,5 +1,3 @@
-#NAME sp.
-
 T:Type.
 Pairs:Type.
 def p1:Pairs->T.
