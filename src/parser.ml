@@ -160,6 +160,9 @@ let expr = expr `Func
 type old_p_rule = (strloc * p_term option) list * p_term * p_term
 type p_rule = p_term * p_term
 
+let opaque = true
+let definable = true
+
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Symbol declaration (definable when the boolean is [true]). *)
@@ -209,8 +212,8 @@ let parser arg =
   | "(" x:ident ":" a:expr ")" -> (x, Some(a))
   | x:ident                    -> (x, None   )
 
-(** [def_def] is a parser for one specifc syntax of symbol definition. *)
-let parser def_def = xs:arg* ao:{":" expr}? ":=" t:expr ->
+(** [definition] is a parser for one specifc syntax of symbol definition. *)
+let parser definition = xs:arg* ao:{":" expr}? ":=" t:expr ->
   let fn (x,a) t = Pos.none (P_Abst(x,a,t)) in
     let t = List.fold_right fn xs t in
     let ao =
@@ -249,10 +252,10 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr               -> P_SymDecl(false,x,a)
-  | _def_ x:ident ":" a:expr         -> P_SymDecl(true ,x,a)
-  | _def_ x:ident (ao,t):def_def     -> P_SymDef(false,x,ao,t)
-  | _thm_ x:ident (ao,t):def_def     -> P_SymDef(true ,x,ao,t)
+  | x:ident ":" a:expr               -> P_SymDecl(not definable,x,a)
+  | _def_ x:ident ":" a:expr         -> P_SymDecl(definable,x,a)
+  | _def_ x:ident (ao,t):definition  -> P_SymDef(not opaque,x,ao,t)
+  | _thm_ x:ident (ao,t):definition  -> P_SymDef(opaque,x,ao,t)
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
   | rs:old_rule+                     -> P_OldRules(rs)
   | _REQUIRE_ path:mod_path          -> P_Require(path)
