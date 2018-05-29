@@ -86,7 +86,7 @@ type term =
     The rewriting rules associated to a symbol are stored in the symbol itself
     (in the {!recfield:sym_rules}). Note that a symbol should not be given any
     reduction rule if it is marked as constant (i.e., if {!recfield:sym_const}
-    has value [true]). *)
+    has value [true]), or if it has a definition. *)
 
 (** Representation of a rewriting rule. *)
  and rule =
