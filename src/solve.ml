@@ -116,6 +116,7 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     | Internal(i) -> let int_map = IntMap.remove i !all_metas.int_map in
                      all_metas := {!all_metas with int_map}
   end;
+  m.meta_type := Kind;
   m.meta_value := Some(v)
 
 (** Boolean saying whether user metavariables can be set or not. *)
@@ -238,8 +239,9 @@ and solve_type c t a strats p =
      (* The type of [Meta(m,ts)] is the same as [add_args f ts]
         where [f] is some fresh symbol with the same type as [m]. *)
      let s =
-       { sym_name = meta_name m ; sym_type = ref m.meta_type ; sym_path = []
-       ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = true }
+       { sym_name = meta_name m ; sym_type = ref !(m.meta_type)
+       ; sym_path = [] ; sym_def  = ref None ; sym_rules = ref []
+       ; sym_const = true }
      in
      let t = add_args (Symb s) (Array.to_list ts) in
      solve_type c t a strats p

@@ -130,7 +130,7 @@ type term =
  and meta =
   { meta_name  : meta_name
   (** Unique name of the metavariable. *)
-  ; meta_type  : term
+  ; meta_type  : term ref
   (** Type of the metavariable. *)
   ; meta_arity : int
   (** Arity of the metavariable (environment size). *)
@@ -435,7 +435,7 @@ let exists_meta : meta_name -> bool = fun name ->
     at the same time. *)
 let add_meta : string -> term -> int -> meta = fun s a n ->
   let m = { meta_name  = Defined(s)
-          ; meta_type  = a
+          ; meta_type  = ref a
           ; meta_arity = n
           ; meta_value = ref None }
   in
@@ -447,7 +447,7 @@ let add_meta : string -> term -> int -> meta = fun s a n ->
 let new_meta : term -> int -> meta = fun a n ->
   let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
   let m = { meta_name  = Internal(k)
-          ; meta_type  = a
+          ; meta_type  = ref a
           ; meta_arity = n
           ; meta_value = ref None }
   in
