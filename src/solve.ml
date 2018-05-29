@@ -131,7 +131,6 @@ let instantiate (m:meta) (ts:term array) (v:term) : bool =
 
 (** Exception raised by the solving algorithm when an irrecuperable
     error is found. *)
-
 let not_convertible t1 t2 =
   fatal "[%a] and [%a] are not convertible" pp t1 pp t2
 
@@ -372,7 +371,7 @@ and solve_whnf c t1 t2 strats p : unif list =
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
-  try Some (solve s p) with Fatal(_) -> None
+  try Some (solve s p) with Fatal(m) -> err "%s\n" m; None
 
 let msg (_,a,b) =
   if !debug_type then err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
@@ -405,7 +404,7 @@ let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
   let problems = {no_problems with type_problems = [(c,t,a)]} in
   match solve true default_strategy problems with
   | Some(l) -> (l, a)
-  | None    -> fatal "FIXME"
+  | None    -> fatal "FIXME1"
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
@@ -425,5 +424,5 @@ let sort_type (c:Ctxt.t) (t:term) : term =
        | Type | Kind -> a
        | _    -> fatal "[%a] has type [%a] (not a sort)" pp t pp a
      end
-  | Some(l)  -> List.iter msg l; fatal "FIXME"
-  | None     -> fatal "FIXME"
+  | Some(l)  -> List.iter msg l; fatal "FIXME2"
+  | None     -> fatal "FIXME3"
