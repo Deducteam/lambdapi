@@ -1,9 +1,9 @@
 A : Type.
 B : Type.
 
-def S : (A -> B) -> A -> B.
+def f : (A -> B) -> A -> B.
 
-S (x => ?m[x]) ?n --> ?m[?n].
+f (x => ?m[x]) ?n --> ?m[?n].
 
 E : Type.
 e : E.
@@ -16,8 +16,6 @@ F (x => ?X[x]) (x => ?X[x]) --> e.
 #EVAL F (x => x) (x => (x => x) x).
 #EVAL F (x => x) (x => (y => x) x).
 
-
-A  : Type.
 Nat: Type.
 Z  : Nat.
 S  : Nat -> Nat.
