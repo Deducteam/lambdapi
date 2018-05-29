@@ -180,12 +180,13 @@ let unlink : t -> unit = fun sign ->
 
 (** [new_symbol sign definable name a] creates a new [definable]
     symbol named [name] of type [a] in the signature [sign]. The
-    created symbol is also returned. *)
+    created symbol is also returned. WARNING: [name] must NOT be
+    already defined. *)
 let new_symbol : t -> bool -> strloc -> term -> sym =
   fun sign definable s sym_type ->
   let { elt = sym_name } = s in
-  if StrMap.mem sym_name !(sign.symbols) then
-    fatal "%S is already defined." sym_name;
+  (*if StrMap.mem sym_name !(sign.symbols) then
+    fatal "%S is already defined." sym_name;*)
   let sym =
     { sym_name = sym_name ; sym_type = ref sym_type ; sym_path = sign.path
     ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = not definable }
