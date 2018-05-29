@@ -13,16 +13,19 @@ open Files
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
 
-(** [handle_symdecl definable n a] extends the current signature with
-    [definable] a symbol named [n] and type [a]. If [a] does not have
+(** [handle_symdecl definable x a] extends the current signature with
+    [definable] a symbol named [x] and type [a]. If [a] does not have
     sort [Type] or [Kind], then the program fails gracefully. *)
 let handle_symdecl : bool -> strloc -> term -> unit =
-  fun definable n a ->
+  fun definable x a ->
     fail_if_in_proof();
-    ignore (Solve.sort_type Ctxt.empty a);
-    (*FIXME: check that [a] contains no un instantiated metavariables.*)
+    (* We check that [s] is not already used. *)
     let sign = current_sign() in
-    ignore (Sign.new_symbol sign definable n a)
+    if Sign.mem sign x.elt then fatal "%S already exists." x.elt;
+    (* We check that [a] is typable by a sort. *)
+    ignore (Solve.sort_type Ctxt.empty a);
+    (*FIXME: check that [a] contains no uninstantiated metavariables.*)
+    ignore (Sign.new_symbol sign definable x a)
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
@@ -41,6 +44,11 @@ let handle_rule : sym * rule -> unit = fun (s,r) ->
 let handle_symdef : bool -> strloc -> term option -> term -> unit
   = fun opaque x ao t ->
   fail_if_in_proof();
+  (* We check that [s] is not already used. *)
+  let sign = current_sign() in
+  if Sign.mem sign x.elt then fatal "%S already exists." x.elt;
+  (* We check that [t] has type [a] if [ao = Some a], and that [t] has
+     some type [a] otherwise. *)
   let a =
     match ao with
     | Some(a) ->
@@ -55,7 +63,6 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
        | None    -> fatal "Cannot infer the type of [%a]." pp t
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-  let sign = current_sign() in
   let s = Sign.new_symbol sign Parser.definable x a in
   if not opaque then s.sym_def := Some(t)
 
