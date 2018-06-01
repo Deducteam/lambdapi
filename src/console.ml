@@ -12,15 +12,22 @@ let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
     in red otherwise. *)
 let r_or_g cond = if cond then gre else red
 
+(** [out_fmt] main output formatter. Used by the IDE server. *)
+let out_fmt = ref Format.std_formatter
+
+(** [err_fmt] formatter where to output warnings and errors. Used by
+    the IDE server to redirect the output. *)
+let err_fmt = ref Format.err_formatter
+
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
 let wrn : ('a, Format.formatter, unit) format -> 'a =
-  fun fmt -> Format.eprintf (yel fmt)
+  fun fmt -> Format.fprintf !err_fmt (yel fmt)
 
 (** [err fmt] prints a red error message with [Printf] format [fmt]. Note that
     the output buffer is flushed by the function. *)
 let err : ('a, Format.formatter, unit) format -> 'a =
-  fun fmt -> Format.eprintf (red fmt)
+  fun fmt -> Format.fprintf !err_fmt (red fmt)
 
 (** Exception raised in case of failure. *)
 exception Fatal of string
@@ -75,7 +82,7 @@ let set_debug : bool -> string -> unit = fun value ->
     cyan. Note that the output buffer is flushed by the  function,  and that a
     newline character ['\n'] is appended to the output. *)
 let log : string -> ('a, Format.formatter, unit) format -> 'a =
-  fun name fmt -> Format.eprintf ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+  fun name fmt -> Format.fprintf !err_fmt ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 (** [out lvl fmt] prints an output message with the [Printf] format [fmt] when
     [lvl] is strictly greater than the verbosity level.  The output channel is
@@ -83,5 +90,5 @@ let log : string -> ('a, Format.formatter, unit) format -> 'a =
     of the default terminal color) whenever a debugging mode is enabled. *)
 let out : int -> ('a, Format.formatter, unit) format -> 'a = fun lvl fmt ->
   let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-  if lvl > !verbose then Format.ifprintf Format.std_formatter fmt
-  else Format.printf fmt
+  if lvl > !verbose then Format.ifprintf !out_fmt fmt
+  else Format.fprintf !out_fmt fmt
