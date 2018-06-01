@@ -1,21 +1,22 @@
-opam-version: "1.2.1"
+opam-version: "1.2"
 available: [ ocaml-version >= "4.04.0" ]
-maintainer: "dedukti-dev@inria.fr"
-bug-reports: "https://github.com/rlepigre/lambdapi/issues"
 authors: [
   "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
   "Frédéric Blanqui <frederic.blanqui@inria.fr>" ]
 homepage: "https://github.com/rlepigre/lambdapi"
-license: "CeCILL"
+maintainer: "dedukti-dev@inria.fr"
+bug-reports: "https://github.com/rlepigre/lambdapi/issues"
 dev-repo: "https://github.com/rlepigre/lambdapi.git"
-build: [make]
-install: [make "install"]
-remove: [make "uninstall"]
+doc: "https://rleprigre.github.io/lambdapi/doc"
+license: "CeCILL"
+
 depends: [
-  "ocamlfind" {build}
-  "ocamlbuild" {build}
+  "dune"         { build }
   "menhir"
-  "earley" {>= "1.0.2"}
-  "earley-ocaml" {>= "1.0.2"}
-  "bindlib" {>= "5.0.0"}
-  "timed" {>= "1.0"} ]
+  "bindlib"      { >= "5.0.0" }
+  "earley"       { >= "1.0.2" }
+  "earley-ocaml" { >= "1.0.2" }
+  "timed"        { >= "1.0"   }
+]
+
+build: [ [ "jbuilder" "build" "-p" name "-j" jobs ] ]

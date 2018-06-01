@@ -1,0 +1,22 @@
+(library
+ (name core)
+ (public_name lambdapi.core)
+ (synopsis "LambdaPi interactive theorem prover [core]")
+ (wrapped false)
+ (modules :standard \ lambdapi)
+ (flags -w -9)
+ (preprocess (per_module
+               ((action (run pa_ocaml %{input-file})) parser)))
+ (libraries unix timed bindlib earley.str))
+
+(executable
+ (name lambdapi)
+ (public_name lambdapi)
+ (package lambdapi)
+ (modules lambdapi)
+ (libraries lambdapi.core))
+
+(ocamllex legacy_lexer)
+(menhir
+ (flags (--external-tokens Legacy_lexer))
+ (modules menhir_parser))
