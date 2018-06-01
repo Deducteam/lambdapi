@@ -3,7 +3,6 @@
 open Extra
 open Console
 open Files
-open Legacy_parser
 
 (** [timeout] holds a possible timeout for compilation (in seconds). *)
 let timeout : int option Pervasives.ref = Pervasives.ref None

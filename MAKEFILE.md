@@ -1,6 +1,6 @@
 targets:
 - all (default): compile Lambdapi
-- doc: generate in lambdapi.docdir/ HTML files describing the types and functions exported by Lambdapi
+- doc: generate in _build/default/_doc/ HTML files describing the types and functions exported by Lambdapi
 - install: install Lambdapi
 - install_vim: install Vim mode for Lambdapi
 - uninstall: uninstall Lambdapi
