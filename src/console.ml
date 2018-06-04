@@ -39,7 +39,7 @@ let fatal : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
     Format.kfprintf cont Format.str_formatter fmt
 
 (** [abort fmt] is similar to [fatal fmt], but it calls [exit 1], which cannot
-    be catched in any way (the program just terminates with an error. *)
+    be catched in any way (the program just terminates with an error). *)
 let abort : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
   fun fmt ->
     Format.kfprintf (fun _ -> exit 1) Format.err_formatter (red fmt)
