@@ -25,7 +25,7 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     (* We check that [a] is typable by a sort. *)
     ignore (Solve.sort_type Ctxt.empty a);
     (*FIXME: check that [a] contains no uninstantiated metavariables.*)
-    ignore (Sign.new_symbol sign definable x a)
+    ignore (Sign.add_symbol sign definable x a)
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
@@ -63,7 +63,7 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
        | None    -> fatal "Cannot infer the type of [%a]." pp t
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-  let s = Sign.new_symbol sign Parser.definable x a in
+  let s = Sign.add_symbol sign Parser.definable x a in
   if not opaque then s.sym_def := Some(t)
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
