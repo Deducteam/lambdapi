@@ -229,7 +229,7 @@ and compile : bool -> Files.module_path -> unit =
       loading := path :: !loading;
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
-      handle_cmds (try Parser.parse_file src with Fatal(_) -> exit 1);
+      handle_cmds (try Parser.parse_file src with Fatal(s) -> abort "%s" s);
       if !gen_obj then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
