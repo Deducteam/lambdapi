@@ -5,7 +5,6 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
-open Console
 
 (****************************************************************************)
 
@@ -407,20 +406,28 @@ let internal (m:meta) : bool =
 type meta_map =
   { str_map   : meta StrMap.t
   ; int_map   : meta IntMap.t
-  ; free_keys : Cofin.t
-  ; nb_user : int
-  ; nb_internal : int }
+  ; free_keys : Cofin.t }
 
 (** [empty_meta_map] is an emptu meta-variable map. *)
 let empty_meta_map : meta_map =
   { str_map   = StrMap.empty
   ; int_map   = IntMap.empty
-  ; free_keys = Cofin.full
-  ; nb_user = 0
-  ; nb_internal = 0 }
+  ; free_keys = Cofin.full }
 
 (** [all_metas] is the reference in which the meta-variables are stored. *)
 let all_metas : meta_map ref = ref empty_meta_map
+
+(** [meta_stats ()] returns a couple [(nbi,nbs)] where [nbi] (resp. [nbs])  is
+    the number of internal (resp. user-defined) metavariables that are defined
+    in the system at the time of the call. *)
+let meta_stats : unit -> int * int = fun () ->
+  (IntMap.cardinal !all_metas.int_map, StrMap.cardinal !all_metas.str_map)
+
+(** [print_meta_stats fmt] prints statistics about the metavariables that  are
+    currently defined on the [fmt] channel. *)
+let print_meta_stats : Format.formatter -> unit -> unit = fun fmt () ->
+  let (nbi, nbs) = meta_stats () in
+  Format.fprintf fmt "%i(+%i) meta-variables defined" nbi nbs
 
 (** [find_meta name] returns the meta-variable mapped to [name] in [all_metas]
     or raises [Not_found] if the name is not mapped. *)
@@ -445,11 +452,7 @@ let add_meta : string -> term -> int -> meta = fun s a n ->
           ; meta_value = ref None }
   in
   let str_map = StrMap.add s m !all_metas.str_map in
-  let nb_user = !all_metas.nb_user + 1 in
-  all_metas := {!all_metas with str_map; nb_user};
-  if !debug then
-    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal;
-  m
+  all_metas := {!all_metas with str_map}; m
 
 (** [new_meta a n] creates a new internal meta-variable of type [a] and arity
     [n]. Note that [all_metas] is updated automatically at the same time. *)
@@ -461,11 +464,7 @@ let new_meta : term -> int -> meta = fun a n ->
           ; meta_value = ref None }
   in
   let int_map = IntMap.add k m !all_metas.int_map in
-  let nb_internal = !all_metas.nb_internal + 1 in
-  all_metas := {!all_metas with int_map; free_keys; nb_internal};
-  if !debug then
-    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal;
-  m
+  all_metas := {!all_metas with int_map; free_keys}; m
 
 (****************************************************************************)
 (* Representation of goals and proofs. *)

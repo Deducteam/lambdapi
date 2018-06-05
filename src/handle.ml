@@ -173,22 +173,25 @@ let rec handle_require : Files.module_path -> unit = fun path ->
 and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
   let cmd = Scope.scope_cmd cmd in
   try
-    match cmd.elt with
-    | SymDecl(b,n,a)  -> handle_symdecl b n a
-    | Rules(rs)       -> List.iter handle_rule rs
-    | SymDef(b,n,a,t) -> handle_symdef b n a t
-    | Require(path)   -> handle_require path
-    | Debug(v,s)      -> set_debug v s
-    | Verb(n)         -> verbose := n
-    | Infer(t,c)      -> handle_infer t c
-    | Eval(t,c)       -> handle_eval t c
-    | Test(test)      -> handle_test test
-    | StartProof(s,a) -> handle_start_proof s a
-    | PrintFocus      -> handle_print_focus()
-    | Refine(t)       -> handle_refine t
-    (* Legacy commands. *)
-    | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
-                           c.elt Pos.print c.pos
+    begin
+      match cmd.elt with
+      | SymDecl(b,n,a)  -> handle_symdecl b n a
+      | Rules(rs)       -> List.iter handle_rule rs
+      | SymDef(b,n,a,t) -> handle_symdef b n a t
+      | Require(path)   -> handle_require path
+      | Debug(v,s)      -> set_debug v s
+      | Verb(n)         -> verbose := n
+      | Infer(t,c)      -> handle_infer t c
+      | Eval(t,c)       -> handle_eval t c
+      | Test(test)      -> handle_test test
+      | StartProof(s,a) -> handle_start_proof s a
+      | PrintFocus      -> handle_print_focus()
+      | Refine(t)       -> handle_refine t
+      (* Legacy commands. *)
+      | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
+                             c.elt Pos.print c.pos
+    end;
+    if !debug_unif then log "unif" "after the command: %a" print_meta_stats ()
   with
   | Fatal(m) -> fatal "[%a] error while handling a command.\n%s\n"
                   Pos.print cmd.pos m

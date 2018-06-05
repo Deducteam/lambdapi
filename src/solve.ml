@@ -107,21 +107,17 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
   if !debug_unif then
     begin
       let (xs,v) = Bindlib.unmbind v in
-      log "set_meta" "%a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
+      log "unif" "setting %a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
     end;
   begin
     match m.meta_name with
     | Defined(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
-                     let nb_user = !all_metas.nb_user - 1 in
-                     all_metas := {!all_metas with str_map; nb_user}
+                     all_metas := {!all_metas with str_map}
     | Internal(i) -> let int_map = IntMap.remove i !all_metas.int_map in
-                     let nb_internal = !all_metas.nb_internal - 1 in
-                     all_metas := {!all_metas with int_map; nb_internal}
+                     all_metas := {!all_metas with int_map}
   end;
-  m.meta_type := Kind;
-  m.meta_value := Some(v);
-  if !debug then
-    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal
+  m.meta_type  := Kind;
+  m.meta_value := Some(v)
 
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
@@ -266,7 +262,7 @@ and solve_unif c t1 t2 strats p : unif list =
   if t1 == t2 then solve_unifs strats p
   else
     begin
-      if !debug_unif then log "solve_unif" "[%a] [%a]" pp t1 pp t2;
+      if !debug_unif then log "unif" "solving [%a] ~ [%a]" pp t1 pp t2;
       match unfold t1, unfold t2 with
       | Type, Type
       | Kind, Kind -> solve (S_Unif::strats) p
