@@ -190,7 +190,7 @@ let add_symbol : t -> bool -> strloc -> term -> sym =
     ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = not definable }
   in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
-  out 3 "[symb] %s\n" sym_name; sym
+  out 3 "(symb) %s\n" sym_name; sym
 
 (** [is_const s] tells whether the symbol is constant. *)
 let is_const : sym -> bool = fun s ->
@@ -228,7 +228,7 @@ let read : string -> t = fun fname ->
     also stored in the dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  out 3 "[rule] %a\n" Print.pp_rule (sym, r);
+  out 3 "(rule) %a\n" Print.pp_rule (sym, r);
   if sym.sym_path <> sign.path then
     let m =
       try PathMap.find sym.sym_path !(sign.deps)
