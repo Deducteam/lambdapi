@@ -112,12 +112,16 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
   begin
     match m.meta_name with
     | Defined(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
-                     all_metas := {!all_metas with str_map}
+                     let nb_user = !all_metas.nb_user - 1 in
+                     all_metas := {!all_metas with str_map; nb_user}
     | Internal(i) -> let int_map = IntMap.remove i !all_metas.int_map in
-                     all_metas := {!all_metas with int_map}
+                     let nb_internal = !all_metas.nb_internal - 1 in
+                     all_metas := {!all_metas with int_map; nb_internal}
   end;
   m.meta_type := Kind;
-  m.meta_value := Some(v)
+  m.meta_value := Some(v);
+  if !debug then
+    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal
 
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true

@@ -5,6 +5,7 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
+open Console
 
 (****************************************************************************)
 
@@ -406,13 +407,17 @@ let internal (m:meta) : bool =
 type meta_map =
   { str_map   : meta StrMap.t
   ; int_map   : meta IntMap.t
-  ; free_keys : Cofin.t }
+  ; free_keys : Cofin.t
+  ; nb_user : int
+  ; nb_internal : int }
 
 (** [empty_meta_map] is an emptu meta-variable map. *)
 let empty_meta_map : meta_map =
   { str_map   = StrMap.empty
   ; int_map   = IntMap.empty
-  ; free_keys = Cofin.full }
+  ; free_keys = Cofin.full
+  ; nb_user = 0
+  ; nb_internal = 0 }
 
 (** [all_metas] is the reference in which the meta-variables are stored. *)
 let all_metas : meta_map ref = ref empty_meta_map
@@ -440,7 +445,11 @@ let add_meta : string -> term -> int -> meta = fun s a n ->
           ; meta_value = ref None }
   in
   let str_map = StrMap.add s m !all_metas.str_map in
-  all_metas := {!all_metas with str_map}; m
+  let nb_user = !all_metas.nb_user + 1 in
+  all_metas := {!all_metas with str_map; nb_user};
+  if !debug then
+    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal;
+  m
 
 (** [new_meta a n] creates a new internal meta-variable of type [a] and arity
     [n]. Note that [all_metas] is updated automatically at the same time. *)
@@ -452,7 +461,11 @@ let new_meta : term -> int -> meta = fun a n ->
           ; meta_value = ref None }
   in
   let int_map = IntMap.add k m !all_metas.int_map in
-  all_metas := {!all_metas with int_map; free_keys}; m
+  let nb_internal = !all_metas.nb_internal + 1 in
+  all_metas := {!all_metas with int_map; free_keys; nb_internal};
+  if !debug then
+    log "meta" "%d user %d internal" !all_metas.nb_user !all_metas.nb_internal;
+  m
 
 (****************************************************************************)
 (* Representation of goals and proofs. *)
