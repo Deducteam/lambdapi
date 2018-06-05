@@ -10,7 +10,7 @@ module Time =
     let rollback : t -> unit = fun t ->
       let rec fn = function
         | None   -> ()
-        | Some t -> t.undo (); fn t.next; t.next <- None
+        | Some t -> fn t.next; t.undo (); t.next <- None
       in fn t.next; t.next <- None; current := t
   end
 
