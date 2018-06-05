@@ -37,8 +37,8 @@ let handle_rule : sym * rule -> unit = fun (s,r) ->
   Sr.check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
-(** [handle_sym_def opaque x ao t] checks that [t] is of type [a] if
-    [ao = Some a]. Then, it does the same as [handle_sym_decl (not
+(** [handle_symdef opaque x ao t] checks that [t] is of type [a] if
+    [ao = Some a]. Then, it does the same as [handle_symdecl (not
     definable) x ao]. Moreover, it adds the rule [x --> t] if [not
     opaque]. In case of error, the program fails gracefully. *)
 let handle_symdef : bool -> strloc -> term option -> term -> unit
