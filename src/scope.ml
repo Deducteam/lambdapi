@@ -53,8 +53,8 @@ let find_ident : env -> qident -> tbox = fun env qid ->
 let scope_meta_name loc id =
   match id with
   | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
-  | M_Sys(k)  -> Internal(k)
-  | M_User(s) -> Defined(s)
+  | M_Sys(k)  -> Sys(k)
+  | M_User(s) -> User(s)
 
 (** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
@@ -75,7 +75,7 @@ let prod_vars_of_env : env -> bool -> term * tbox array =
     let vs = Array.of_list (List.rev_map tvar_of_name env) in
     if is_type then a, vs
     else (* We create a new metavariable of type [a]. *)
-      let m = new_meta a (List.length env) in
+      let m = add_sys_meta a (List.length env) in
       prod_of_env env (_Meta m vs), vs
 
 (** [meta_of_env env is_type] builds a new metavariable of type
@@ -83,7 +83,7 @@ let prod_vars_of_env : env -> bool -> term * tbox array =
 let meta_of_env : env -> bool -> tbox =
   fun env is_type ->
     let t, vs = prod_vars_of_env env is_type in
-    let m = new_meta t (List.length env) in
+    let m = add_sys_meta t (List.length env) in
     _Meta m vs
 
 (** [scope_term t] transforms a parser-level term [t] into an actual term
@@ -109,9 +109,9 @@ let scope_term : p_term -> term = fun t ->
         let id = scope_meta_name t.pos id in
         let m =
           try find_meta id with Not_found ->
-            let s = match id with Defined(s) -> s | _ -> assert false in
+            let s = match id with User(s) -> s | _ -> assert false in
             let (t,_) = prod_vars_of_env env false in
-            add_meta s t (List.length env)
+            add_user_meta s t (List.length env)
         in
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->

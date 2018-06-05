@@ -25,7 +25,7 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     (* We check that [a] is typable by a sort. *)
     ignore (Solve.sort_type Ctxt.empty a);
     (*FIXME: check that [a] contains no uninstantiated metavariables.*)
-    ignore (Sign.new_symbol sign definable x a)
+    ignore (Sign.add_symbol sign definable x a)
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
@@ -37,8 +37,8 @@ let handle_rule : sym * rule -> unit = fun (s,r) ->
   Sr.check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
-(** [handle_sym_def opaque x ao t] checks that [t] is of type [a] if
-    [ao = Some a]. Then, it does the same as [handle_sym_decl (not
+(** [handle_symdef opaque x ao t] checks that [t] is of type [a] if
+    [ao = Some a]. Then, it does the same as [handle_symdecl (not
     definable) x ao]. Moreover, it adds the rule [x --> t] if [not
     opaque]. In case of error, the program fails gracefully. *)
 let handle_symdef : bool -> strloc -> term option -> term -> unit
@@ -63,7 +63,7 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
        | None    -> fatal "Cannot infer the type of [%a]." pp t
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-  let s = Sign.new_symbol sign Parser.definable x a in
+  let s = Sign.add_symbol sign Parser.definable x a in
   if not opaque then s.sym_def := Some(t)
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
@@ -115,7 +115,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that [a] is typable by a sort. *)
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
-  let m = add_meta s.elt a 0 in
+  let m = add_user_meta s.elt a 0 in
   let g =
     { g_meta = m
     ; g_hyps = []

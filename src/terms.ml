@@ -139,9 +139,9 @@ type term =
 
 (** Representation of the name of a metavariable. *)
  and meta_name =
-  | Defined  of string
+  | User  of string
   (** User-defined metavariable name. *)
-  | Internal of int
+  | Sys of int
   (** Generated metavariable identifier. *)
 
 (** A metavariable is represented using a multiple binder, and it can hence be
@@ -366,8 +366,8 @@ let has_uninst_metas : term -> bool = fun t ->
   let exception Has_uninst_metas in
   let check_meta m =
     match m.meta_name with
-    | Defined _ -> ()
-    | Internal _ -> raise Has_uninst_metas
+    | User _ -> ()
+    | Sys _ -> raise Has_uninst_metas
   in
   let rec hum : term list -> unit = fun l ->
     match l with
@@ -394,13 +394,13 @@ let unset : meta -> bool = fun u -> !(u.meta_value) = None
 (** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
 let meta_name : meta -> string = fun m ->
   match m.meta_name with
-  | Defined(s)  -> "?" ^ s
-  | Internal(k) -> "?" ^ string_of_int k
+  | User(s)  -> "?" ^ s
+  | Sys(k) -> "?" ^ string_of_int k
 
 let internal (m:meta) : bool =
   match m.meta_name with
-  | Defined(_)  -> false
-  | Internal(_) -> true
+  | User(_)  -> false
+  | Sys(_) -> true
 
 (** Representation of the existing meta-variables. *)
 type meta_map =
@@ -433,20 +433,20 @@ let print_meta_stats : Format.formatter -> unit -> unit = fun fmt () ->
     or raises [Not_found] if the name is not mapped. *)
 let find_meta : meta_name -> meta = fun name ->
   match name with
-  | Defined(s) -> StrMap.find s !all_metas.str_map
-  | Internal(k) -> IntMap.find k  !all_metas.int_map
+  | User(s) -> StrMap.find s !all_metas.str_map
+  | Sys(k) -> IntMap.find k  !all_metas.int_map
 
 (** [exists_meta name] tells whether [name] is mapped in [all_metas]. *)
 let exists_meta : meta_name -> bool = fun name ->
   match name with
-  | Defined(s) -> StrMap.mem s !all_metas.str_map
-  | Internal(k) -> IntMap.mem k  !all_metas.int_map
+  | User(s) -> StrMap.mem s !all_metas.str_map
+  | Sys(k) -> IntMap.mem k  !all_metas.int_map
 
-(** [add_meta s a n] creates a new user-defined meta-variable named [s], of
-    type [a] and arity [n]. Note that [all_metas] is updated automatically
-    at the same time. *)
-let add_meta : string -> term -> int -> meta = fun s a n ->
-  let m = { meta_name  = Defined(s)
+(** [add_user_meta s a n] creates a new user-defined meta-variable
+    named [s], of type [a] and arity [n]. Note that [all_metas] is
+    updated automatically at the same time. *)
+let add_user_meta : string -> term -> int -> meta = fun s a n ->
+  let m = { meta_name  = User(s)
           ; meta_type  = ref a
           ; meta_arity = n
           ; meta_value = ref None }
@@ -454,11 +454,12 @@ let add_meta : string -> term -> int -> meta = fun s a n ->
   let str_map = StrMap.add s m !all_metas.str_map in
   all_metas := {!all_metas with str_map}; m
 
-(** [new_meta a n] creates a new internal meta-variable of type [a] and arity
-    [n]. Note that [all_metas] is updated automatically at the same time. *)
-let new_meta : term -> int -> meta = fun a n ->
+(** [add_sys_meta a n] creates a new internal meta-variable of type
+    [a] and arity [n]. Note that [all_metas] is updated automatically
+    at the same time. *)
+let add_sys_meta : term -> int -> meta = fun a n ->
   let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
-  let m = { meta_name  = Internal(k)
+  let m = { meta_name  = Sys(k)
           ; meta_type  = ref a
           ; meta_arity = n
           ; meta_value = ref None }
