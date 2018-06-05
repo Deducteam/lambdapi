@@ -427,7 +427,7 @@ let meta_stats : unit -> int * int = fun () ->
     currently defined on the [fmt] channel. *)
 let print_meta_stats : Format.formatter -> unit -> unit = fun fmt () ->
   let (nbi, nbs) = meta_stats () in
-  Format.fprintf fmt "%i(+%i) meta-variables defined" nbi nbs
+  Format.fprintf fmt "%i system meta-variables, %i user meta-variables" nbi nbs
 
 (** [find_meta name] returns the meta-variable mapped to [name] in [all_metas]
     or raises [Not_found] if the name is not mapped. *)
