@@ -111,10 +111,10 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     end;
   begin
     match m.meta_name with
-    | Defined(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
-                     all_metas := {!all_metas with str_map}
-    | Internal(i) -> let int_map = IntMap.remove i !all_metas.int_map in
-                     all_metas := {!all_metas with int_map}
+    | User(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
+                  all_metas := {!all_metas with str_map}
+    | Sys(i) -> let int_map = IntMap.remove i !all_metas.int_map in
+                all_metas := {!all_metas with int_map}
   end;
   m.meta_type  := Kind;
   m.meta_value := Some(v)

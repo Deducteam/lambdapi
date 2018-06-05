@@ -53,8 +53,8 @@ let find_ident : env -> qident -> tbox = fun env qid ->
 let scope_meta_name loc id =
   match id with
   | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
-  | M_Sys(k)  -> Internal(k)
-  | M_User(s) -> Defined(s)
+  | M_Sys(k)  -> Sys(k)
+  | M_User(s) -> User(s)
 
 (** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
@@ -109,7 +109,7 @@ let scope_term : p_term -> term = fun t ->
         let id = scope_meta_name t.pos id in
         let m =
           try find_meta id with Not_found ->
-            let s = match id with Defined(s) -> s | _ -> assert false in
+            let s = match id with User(s) -> s | _ -> assert false in
             let (t,_) = prod_vars_of_env env false in
             add_meta s t (List.length env)
         in
