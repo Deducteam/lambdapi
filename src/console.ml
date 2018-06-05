@@ -77,17 +77,18 @@ let set_debug : bool -> string -> unit = fun value ->
   in
   String.iter enable
 
-(** [log name fmt] prints a message in the log with the [Printf] format [fmt].
-    The message is identified with the name (or flag) [name],  and coloured in
-    cyan. Note that the output buffer is flushed by the  function,  and that a
-    newline character ['\n'] is appended to the output. *)
+(** [log tag fmt] logs a message using the format [fmt]. Note that the message
+    is identified by a [tag], which should (ideally) be a 4-character [string]
+    for better formatting. Note that the output buffer is flushed,  and that a
+    newline character ['\n'] is also automatically appended to the output. *)
 let log : string -> ('a, Format.formatter, unit) format -> 'a =
   fun name fmt -> Format.fprintf !err_fmt ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
-(** [out lvl fmt] prints an output message with the [Printf] format [fmt] when
-    [lvl] is strictly greater than the verbosity level.  The output channel is
-    flushed by the function,  and the message is displayed in magenta (instead
-    of the default terminal color) whenever a debugging mode is enabled. *)
+(** [out lvl fmt] prints an output message using the format [fmt], but only if
+    [lvl] is strictly greater than the current verbosity level.  Note that the
+    output channel is automatically flushed,  and the message is displayed in
+    magenta instead of the default terminal color whenever a debugging mode is
+    enabled. *)
 let out : int -> ('a, Format.formatter, unit) format -> 'a = fun lvl fmt ->
   let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
   if lvl > !verbose then Format.ifprintf !out_fmt fmt
