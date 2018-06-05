@@ -198,14 +198,6 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
   | e        -> let e = Printexc.to_string e in
                 fatal "[%a] uncaught exception [%s].\n" Pos.print cmd.pos e
 
-(** [handle_cmds cmds] interprets the commands of [cmds] in order. The
-    program fails gracefully in case of error. *)
-and handle_cmds : Parser.p_cmd loc list -> unit = fun cmds ->
-  let handle_cmd cmd =
-    try handle_cmd cmd with Fatal(msg) -> abort "%s" msg
-  in
-  List.iter handle_cmd cmds
-
 (** [compile force path] compiles the file corresponding to [path],
     when it is necessary (the corresponding object file does not
     exist, must be updated, or [force] is [true]).  In that case, the
@@ -215,13 +207,13 @@ and compile : bool -> Files.module_path -> unit =
   let base = String.concat "/" path in
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
-  if not (Sys.file_exists src) then abort "File [%s] not found.\n" src;
+  if not (Sys.file_exists src) then fatal "File [%s] not found.\n" src;
   if List.mem path !loading then
     begin
       err "Circular dependencies detected in [%s].\n" src;
       err "Dependency stack for module [%a]:\n" Files.pp_path path;
       List.iter (err "  - [%a]\n" Files.pp_path) !loading;
-      abort "Build aborted.\n"
+      fatal "Build aborted.\n"
     end;
   if PathMap.mem path !loaded then
     out 2 "Already loaded [%s]\n%!" src
@@ -232,7 +224,7 @@ and compile : bool -> Files.module_path -> unit =
       loading := path :: !loading;
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
-      handle_cmds (try Parser.parse_file src with Fatal(s) -> abort "%s" s);
+      List.iter handle_cmd (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
