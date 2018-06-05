@@ -442,10 +442,10 @@ let exists_meta : meta_name -> bool = fun name ->
   | User(s) -> StrMap.mem s !all_metas.str_map
   | Sys(k) -> IntMap.mem k  !all_metas.int_map
 
-(** [add_meta s a n] creates a new user-defined meta-variable named [s], of
-    type [a] and arity [n]. Note that [all_metas] is updated automatically
-    at the same time. *)
-let add_meta : string -> term -> int -> meta = fun s a n ->
+(** [add_user_meta s a n] creates a new user-defined meta-variable
+    named [s], of type [a] and arity [n]. Note that [all_metas] is
+    updated automatically at the same time. *)
+let add_user_meta : string -> term -> int -> meta = fun s a n ->
   let m = { meta_name  = User(s)
           ; meta_type  = ref a
           ; meta_arity = n
@@ -454,9 +454,10 @@ let add_meta : string -> term -> int -> meta = fun s a n ->
   let str_map = StrMap.add s m !all_metas.str_map in
   all_metas := {!all_metas with str_map}; m
 
-(** [new_meta a n] creates a new internal meta-variable of type [a] and arity
-    [n]. Note that [all_metas] is updated automatically at the same time. *)
-let new_meta : term -> int -> meta = fun a n ->
+(** [add_sys_meta a n] creates a new internal meta-variable of type
+    [a] and arity [n]. Note that [all_metas] is updated automatically
+    at the same time. *)
+let add_sys_meta : term -> int -> meta = fun a n ->
   let (k, free_keys) = Cofin.take_smallest !all_metas.free_keys in
   let m = { meta_name  = Sys(k)
           ; meta_type  = ref a

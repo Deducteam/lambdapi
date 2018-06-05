@@ -68,12 +68,12 @@ let eq_vari : term -> term -> bool = fun t u ->
     is [Type]. *)
 let make_type =
   let empty = [||] in
-  fun () -> Meta(new_meta Type 0, empty)
+  fun () -> Meta(add_sys_meta Type 0, empty)
 
 (** [make_meta ctx a] creates a metavariable of type [a],  whth an environment
     containing the variables of context [ctx]. *)
 let make_meta : Ctxt.t -> term -> term = fun ctx a ->
-  let m = new_meta (Ctxt.to_prod ctx a) (List.length ctx) in
+  let m = add_sys_meta (Ctxt.to_prod ctx a) (List.length ctx) in
   let vs = List.rev_map (fun (v,_) -> Vari v) ctx in
   Meta(m, Array.of_list vs)
 

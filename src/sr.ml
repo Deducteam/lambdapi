@@ -48,14 +48,14 @@ let build_meta_type : int -> term = fun k ->
     else
       let k = k-1 in
       let mk_typ = Bindlib.unbox (build_prod k _Type) in
-      let mk = new_meta mk_typ k in
+      let mk = add_sys_meta mk_typ k in
       let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
       let b = Bindlib.bind_var vs.(k) p in
       let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
       build_prod k p
   in
   let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
-  let mk = new_meta mk_typ k in
+  let mk = add_sys_meta mk_typ k in
   let tk = _Meta mk (Array.map _Vari vs) in
   Bindlib.unbox (build_prod k tk)
 
@@ -79,13 +79,13 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
           let l = Array.length a in
           match i with
           | None    ->
-             let m = add_meta n (build_meta_type (l+k)) l in
+             let m = add_user_meta n (build_meta_type (l+k)) l in
              _Meta m a
           | Some(i) ->
               match metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                 let m = add_meta n (build_meta_type (l+k)) l in
+                 let m = add_user_meta n (build_meta_type (l+k)) l in
                  metas.(i) <- Some(m);
                  _Meta m a
         end

@@ -115,7 +115,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that [a] is typable by a sort. *)
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
-  let m = add_meta s.elt a 0 in
+  let m = add_user_meta s.elt a 0 in
   let g =
     { g_meta = m
     ; g_hyps = []
