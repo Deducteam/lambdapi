@@ -12,14 +12,17 @@ let compile : string -> unit = fun fname ->
 let _ =
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
-      [ "a : general debug informations"
-      ; "r : extra debugging informations for evaluation"
-      ; "u : extra debugging informations for unification"
+      [ (* in alphabetical order *)
+        "a : general debug informations"
+      ; "c : extra debugging informations for metavariables"
+      ; "e : extra debugging informations for equality"
       ; "m : extra debugging informations for matching"
+      ; "p : extra debugging informations for the parser"
+      ; "r : extra debugging informations for evaluation"
       ; "s : extra debugging informations for subject reduction"
       ; "t : extra debugging informations for typing"
-      ; "e : extra debugging informations for equality"
-      ; "p : extra debugging informations for the parser" ]
+      ; "u : extra debugging informations for unification"
+      ]
     in "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
   in
   let verbose_doc =
