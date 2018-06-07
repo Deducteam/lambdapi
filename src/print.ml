@@ -18,9 +18,7 @@ let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let pp_meta : meta pp = fun oc m ->
-  if !(m.meta_value) <> None then assert false;
-  Format.pp_print_string oc (meta_name m)
+let pp_meta : meta pp = fun oc m -> Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : term pp = fun oc t ->
@@ -78,7 +76,7 @@ let pp_goal : goal pp =
   let sep = String.make 66 '-' in
   let pp_hyp oc (s,(_,t)) =
     let t = Bindlib.unbox t in
-    Format.fprintf oc "%s : %a" s pp t
+    Format.fprintf oc "%s : %a\n" s pp t
   in
-  let pp_hyps = List.pp pp_hyp "\n" in
+  let pp_hyps = List.pp pp_hyp "" in
   fun oc g -> Format.fprintf oc "%a%s\n%a\n" pp_hyps g.g_hyps sep pp g.g_type
