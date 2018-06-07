@@ -134,7 +134,7 @@ let handle_print_focus() : unit =
   out 1 "%a" pp_goal thm.t_focus
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
-let handle_refine (t:term) : unit =
+let handle_refine (_new_metas:meta list) (t:term) : unit =
   let thm = current_theorem() in
   let g = thm.t_focus in
   let m = g.g_meta in
@@ -173,7 +173,7 @@ let rec handle_require : Files.module_path -> unit = fun path ->
 (** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
     function may raise the [Fatal] exceptions. *)
 and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
-  let cmd = Scope.scope_cmd cmd in
+  let cmd, new_metas = Scope.scope_cmd cmd in
   try
     begin
       match cmd.elt with
@@ -188,7 +188,7 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
       | Test(test)      -> handle_test test
       | StartProof(s,a) -> handle_start_proof s a
       | PrintFocus      -> handle_print_focus()
-      | Refine(t)       -> handle_refine t
+      | Refine(t)       -> handle_refine new_metas t
       (* Legacy commands. *)
       | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                              c.elt Pos.print c.pos

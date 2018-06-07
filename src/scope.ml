@@ -60,37 +60,38 @@ let scope_meta_name loc id =
     free variables in [x1, .., xn], build the product type [x1:T1 ->
     .. -> xn:Tn -> t]. *)
 let prod_of_env : env -> tbox -> term = fun c t ->
-  let fn b (_,(v,a)) =
-    Bindlib.box_apply2 (fun a f -> Prod(a,f)) a (Bindlib.bind_var v b)
-  in Bindlib.unbox (List.fold_left fn t c)
+  let prod b (_,(v,a)) = _Prod a v b in
+  Bindlib.unbox (List.fold_left prod t c)
 
-(** [prod_vars_of_env env is_type] builds the variables [vs] of [env]
-    and the product [a] of [env] over [Type]. Then, it returns [a] if
-    [is_type] is [true]. Otherwise, it returns [m[vs]] where [m] is a new
-    metavariable of arity the length of [env] and type [a]. Returns also
-    [vs] in both cases. *)
-let prod_vars_of_env : env -> bool -> term * tbox array =
-  fun env is_type ->
+(** [prod_vars_of_env metas env is_type] builds the variables [vs] of
+    [env] and the product [a] of [env] over [Type]. Then, it returns
+    [a] if [is_type] is [true]. Otherwise, it adds [m] into [metas]
+    and returns [m[vs]] where [m] is a new metavariable of arity the
+    length of [env] and type [a]. Returns also [vs] in both cases. *)
+let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
+  fun metas env is_type ->
     let a = prod_of_env env _Type in
     let vs = Array.of_list (List.rev_map tvar_of_name env) in
-    if is_type then a, vs
+    if is_type then (a, vs)
     else (* We create a new metavariable of type [a]. *)
       let m = add_sys_meta a (List.length env) in
-      prod_of_env env (_Meta m vs), vs
+      metas := m::!metas; (prod_of_env env (_Meta m vs), vs)
 
-(** [meta_of_env env is_type] builds a new metavariable of type
-    [prod_vars_of_env env is_type]. *)
-let meta_of_env : env -> bool -> tbox =
-  fun env is_type ->
-    let t, vs = prod_vars_of_env env is_type in
+(** [meta_of_env metas env is_type] builds a new metavariable of type
+    [prod_vars_of_env env is_type]. It adds new metavariables in
+    [metas] too. *)
+let meta_of_env : meta list ref -> env -> bool -> tbox =
+  fun metas env is_type ->
+    let t, vs = prod_vars_of_env metas env is_type in
     let m = add_sys_meta t (List.length env) in
-    _Meta m vs
+    metas := m::!metas; _Meta m vs
 
-(** [scope_term t] transforms a parser-level term [t] into an actual term
-    (using Bindlib). Note that wildcards [P_Wild] are
-    transformed into fresh meta-variables.  The same goes for the type carried
-    by abstractions when it is not given. *)
-let scope_term : p_term -> term = fun t ->
+(** [scope_term metas t] transforms a parser-level term [t] into an actual
+    term and the list of the new metavariables that it contains. Note
+    that wildcards [P_Wild] are transformed into fresh meta-variables.
+    The same goes for the type carried by abstractions when it is not
+    given. It adds new metavariables in [metas] too. *)
+let scope_term : meta list ref -> p_term -> term = fun metas t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -104,20 +105,21 @@ let scope_term : p_term -> term = fun t ->
         let a = scope_domain env a in
         _Abst a v (scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> meta_of_env env false
+    | P_Wild        -> meta_of_env metas env false
     | P_Meta(id,ts) ->
         let id = scope_meta_name t.pos id in
         let m =
           try find_meta id with Not_found ->
             let s = match id with User(s) -> s | _ -> assert false in
-            let (t,_) = prod_vars_of_env env false in
-            add_user_meta s t (List.length env)
+            let (t,_) = prod_vars_of_env metas env false in
+            let m = add_user_meta s t (List.length env) in
+            metas := m :: !metas; m
         in
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
     | Some(t) -> scope env t
-    | None    -> meta_of_env env true
+    | None    -> meta_of_env metas env true
   in
   Bindlib.unbox (scope [] t)
 
@@ -333,15 +335,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd].
     In case of error, the program gracefully fails. *)
-let scope_cmd_aux : p_cmd -> cmd_aux = fun cmd ->
+let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
   match cmd with
-  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term a)
+  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term metas a)
   | P_SymDef(b,x,ao,t) ->
-      let t = scope_term t in
+      let t = scope_term metas t in
       let ao =
         match ao with
         | None    -> None
-        | Some(a) -> Some(scope_term a)
+        | Some(a) -> Some(scope_term metas a)
       in
       SymDef(b,x,ao,t)
   | P_Rules(rs)         -> Rules(List.map scope_rule rs)
@@ -351,21 +353,22 @@ let scope_cmd_aux : p_cmd -> cmd_aux = fun cmd ->
   | P_Require(path)     -> Require(path)
   | P_Debug(b,s)        -> Debug(b,s)
   | P_Verb(n)           -> Verb(n)
-  | P_Infer(t,c)        -> Infer(scope_term t, c)
-  | P_Eval(t,c)         -> Eval(scope_term t, c)
+  | P_Infer(t,c)        -> Infer(scope_term metas t, c)
+  | P_Eval(t,c)         -> Eval(scope_term metas t, c)
   | P_TestType(ia,mf,t,a) ->
-      let test_type = HasType(scope_term t, scope_term a) in
+      let test_type = HasType(scope_term metas t, scope_term metas a) in
       Test({is_assert = ia; must_fail = mf; test_type})
   | P_TestConv(ia,mf,t,u) ->
-      let test_type = Convert(scope_term t, scope_term u) in
+      let test_type = Convert(scope_term metas t, scope_term metas u) in
       Test({is_assert = ia; must_fail = mf; test_type})
   | P_Other(c)          -> Other(c)
-  | P_StartProof(s,a)   -> StartProof(s, scope_term a)
+  | P_StartProof(s,a)   -> StartProof(s, scope_term metas a)
   | P_PrintFocus        -> PrintFocus
-  | P_Refine(t)         -> Refine (scope_term t)
+  | P_Refine(t)         -> Refine (scope_term metas t)
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd],
     and forwards the source code position of the command. In
     case of error, the program gracefully fails. *)
-let scope_cmd : p_cmd loc -> cmd = fun cmd ->
-  {elt = scope_cmd_aux cmd.elt; pos = cmd.pos}
+let scope_cmd : p_cmd loc -> cmd * meta list = fun cmd ->
+  let metas = ref [] in
+  {elt = scope_cmd_aux metas cmd.elt; pos = cmd.pos}, !metas
