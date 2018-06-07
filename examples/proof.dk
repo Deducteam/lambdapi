@@ -92,3 +92,5 @@ refl : !i, !a, !x, T _ (eq i a x x).
 
 #PROOF add0r : !n : T 1 nat, P (eq 1 nat (add n 0) n).
 #PRINT.
+#REFINE n => _.
+#PRINT.
