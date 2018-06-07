@@ -488,3 +488,11 @@ type theorem =
   { t_proof : meta
   ; t_goals : goal list
   ; t_focus : goal }
+
+(** [remove_goal g gs] removes goal [g] from the list of goals [gs]. *)
+let remove_goal (g:goal) (gs:goal list) : goal list =
+  let rec aux gs =
+    match gs with
+    | [] -> []
+    | g'::gs -> if g' == g then gs else g'::aux gs
+  in aux gs
