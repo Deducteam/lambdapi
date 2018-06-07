@@ -371,4 +371,5 @@ let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
     case of error, the program gracefully fails. *)
 let scope_cmd : p_cmd loc -> cmd * meta list = fun cmd ->
   let metas = ref [] in
-  {elt = scope_cmd_aux metas cmd.elt; pos = cmd.pos}, !metas
+  let cmd_aux = scope_cmd_aux metas cmd.elt in
+  {elt = cmd_aux; pos = cmd.pos}, !metas
