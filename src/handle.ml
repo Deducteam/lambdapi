@@ -142,15 +142,17 @@ let handle_refine (t:term) : unit =
   if occurs m t then fatal "Invalid refinement.";
   (* Check that [t] has the correct type. *)
   let bt = lift t in
-  let abst u (_,(x,a)) =
-    Bindlib.box_apply2 (fun a f -> Abst(a,f)) a (Bindlib.bind_var x u)
-  in
+  let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.has_type Ctxt.empty u !(m.meta_type)) then
     fatal "Invalid refinement.";
   (* Instantiation. *)
   let vs = Array.of_list (List.map var_of_name g.g_hyps) in
-  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt))
+  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
+  (* New subgoals and new focus? *)
+  let goals = remove_goal g thm.t_goals (*FIXME*) in
+  let focus = thm.t_focus (*FIXME*) in
+  theorem := Some { thm with t_goals = goals; t_focus = focus }
 
 (** [handle_intro s] applies the [intro] tactic. *)
 let handle_intro (s:strloc) : unit =
