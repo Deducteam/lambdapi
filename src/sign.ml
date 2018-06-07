@@ -43,6 +43,7 @@ let loaded : t PathMap.t ref = ref PathMap.empty
     appears twice in the stack, then there is a circular dependency. *)
 let loading : module_path list ref = ref []
 
+(** [theorem] contains the theorem the user is trying to prove. *)
 let theorem : theorem option ref = ref None
 
 (** [current_sign ()] returns the current signature. *)
