@@ -116,16 +116,8 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
   let m = add_user_meta s.elt a 0 in
-  let g =
-    { g_meta = m
-    ; g_hyps = []
-    ; g_type = a }
-  in
-  let t =
-    { t_proof = m
-    ; t_goals = [g]
-    ; t_focus = g }
-  in
+  let g = { g_meta = m; g_hyps = []; g_type = a } in
+  let t = { t_proof = m; t_goals = [g]; t_focus = g } in
   theorem := Some t
 
 (** [handle_print_focus()] prints the focused goal. *)
@@ -133,8 +125,26 @@ let handle_print_focus() : unit =
   let thm = current_theorem () in
   out 1 "%a" pp_goal thm.t_focus
 
+(** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
+    returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
+let env_of_prod (n:int) (t:term) : env * term =
+  let rec aux n t acc =
+    if !debug_tac then log "env_of_prod" "%i %a" n pp t;
+    match n, t with
+    | 0, _ -> List.rev acc, t
+    | _, Prod(a,b) ->
+       let (v,b) = Bindlib.unbind b in
+       aux (n-1) b ((Bindlib.name_of v,(v,lift a))::acc)
+    | _, _ -> assert false
+  in assert(n>=0); aux n t []
+
+let goal_of_meta (m:meta) : goal =
+  if !debug_tac then log "goal_of_prod" "%a" pp_meta m;
+  let env, typ = env_of_prod m.meta_arity !(m.meta_type) in
+  { g_meta = m; g_hyps = env; g_type = typ }
+
 (** [handle_refine t] instantiates the focus goal by [t]. *)
-let handle_refine (_new_metas:meta list) (t:term) : unit =
+let handle_refine (new_metas:meta list) (t:term) : unit =
   let thm = current_theorem() in
   let g = thm.t_focus in
   let m = g.g_meta in
@@ -146,13 +156,20 @@ let handle_refine (_new_metas:meta list) (t:term) : unit =
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.has_type Ctxt.empty u !(m.meta_type)) then
     fatal "Invalid refinement.";
+  (* We update the list of new metavariables because some
+     metavariables may haven been instantiated by type checking. *)
+  let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
+  if !debug_tac then log "refine" "[%a]" pp u;
   let vs = Array.of_list (List.map var_of_name g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
-  (* New subgoals and new focus? *)
-  let goals = remove_goal g thm.t_goals (*FIXME*) in
-  let focus = thm.t_focus (*FIXME*) in
-  theorem := Some { thm with t_goals = goals; t_focus = focus }
+  (* New subgoals and new focus *)
+  let fn goals m = goal_of_meta m :: goals in
+  let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
+  theorem :=
+    match goals with
+    | [] -> out 3 "Proof finished!\n"; None
+    | g::_ -> Some { thm with t_goals = goals; t_focus = g }
 
 (** [handle_intro s] applies the [intro] tactic. *)
 let handle_intro (s:strloc) : unit =
