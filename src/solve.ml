@@ -140,8 +140,6 @@ let not_convertible t1 t2 =
     unification problems. *)
 let rec solve : strategy -> problems -> unif list = fun strats p ->
   (*if !debug then log "solve" "%a" pp_strats strats;*)
-
-  (*((typs,sorts,unifs,whnfs,unsolved) as p) : unif list =*)
   match strats with
   | []          -> assert false
   | S_Type    :: l -> solve_types l p
