@@ -14,6 +14,14 @@ let empty : t = []
 let add : tvar -> term -> t -> t =
   fun x a ctx -> (x,a)::ctx
 
+(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
+let pp : t pp = fun oc ctx ->
+  let pp_e oc (x,a) =
+    Format.fprintf oc "%a : %a" Print.pp_tvar x Print.pp a
+  in
+  if ctx = [] then Format.pp_print_string oc "∅"
+  else List.pp pp_e ", " oc (List.rev ctx)
+
 (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,
     and raises [Not_found] otherwise. *)
 let find : tvar -> t -> term = fun x ctx ->
@@ -48,11 +56,3 @@ let to_prod : t -> term -> term = fun ctx t ->
   | [(x,a)] -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
   | _       -> let fn t (x,a) = _Prod (lift a) x t in
                Bindlib.unbox (List.fold_left fn (lift t) ctx)
-
-(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp : t pp = fun oc ctx ->
-  let pp_e oc (x,a) =
-    Format.fprintf oc "%a : %a" Print.pp_tvar x Print.pp a
-  in
-  if ctx = [] then Format.pp_print_string oc "∅"
-  else List.pp pp_e ", " oc (List.rev ctx)
