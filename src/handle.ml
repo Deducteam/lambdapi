@@ -155,7 +155,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.has_type Ctxt.empty u !(m.meta_type)) then
-    fatal "Invalid refinement.";
+    fatal "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
   let new_metas = List.filter unset new_metas in
