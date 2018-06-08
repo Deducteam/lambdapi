@@ -496,3 +496,11 @@ let remove_goal (g:goal) (gs:goal list) : goal list =
     | [] -> []
     | g'::gs -> if g' == g then gs else g'::aux gs
   in aux gs
+
+(** [replace_goal g1 g2 gs] replaces [g] by [g'] in [gs]. *)
+let replace_goal (g1:goal) (g2:goal) (gs:goal list) : goal list =
+  let rec aux gs =
+    match gs with
+    | [] -> []
+    | g::gs -> if g == g1 then g2::gs else g::aux gs
+  in aux gs
