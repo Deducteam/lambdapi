@@ -373,8 +373,7 @@ let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
   try Some (solve s p) with Fatal(m) -> err "%s\n" m; None
 
-let msg (_,a,b) =
-  if !debug_type then err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:Ctxt.t) (t:term) (a:term) : bool =
