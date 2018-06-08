@@ -43,3 +43,5 @@ type cmd = cmd_aux loc
   | PrintFocus
   (** Refine the focused goal. *)
   | Refine of term
+  (** Normalize the focused goal. *)
+  | Simpl

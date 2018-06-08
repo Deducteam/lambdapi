@@ -93,6 +93,7 @@ let _NAME_      = cmd "NAME"
 let _PROOF_     = cmd "PROOF"
 let _PRINT_     = cmd "PRINT"
 let _REFINE_    = cmd "REFINE"
+let _SIMPL_     = cmd "SIMPL"
 
 (** [keyword name] is an atomic parser for the keywork [name]. *)
 let parser keyword name = s:''[_'a-zA-Z0-9]*'' ->
@@ -194,6 +195,8 @@ type p_cmd =
   | P_PrintFocus
   (** Refine the focused goal. *)
   | P_Refine of p_term
+  (** Normalize the focused goal. *)
+  | P_Simpl
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -269,6 +272,7 @@ let parser cmd_aux =
   | _PROOF_ x:ident ":" a:expr       -> P_StartProof(x,a)
   | _PRINT_                          -> P_PrintFocus
   | _REFINE_ t:expr                  -> P_Refine(t)
+  | _SIMPL_                          -> P_Simpl
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c

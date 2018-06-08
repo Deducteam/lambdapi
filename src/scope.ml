@@ -365,6 +365,7 @@ let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
   | P_StartProof(s,a)   -> StartProof(s, scope_term metas a)
   | P_PrintFocus        -> PrintFocus
   | P_Refine(t)         -> Refine (scope_term metas t)
+  | P_Simpl             -> Simpl
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd],
     and forwards the source code position of the command. In

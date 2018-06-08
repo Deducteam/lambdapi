@@ -123,7 +123,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
   let thm = current_theorem () in
-  out 1 "%a" pp_goal thm.t_focus
+  out 2 "%a" pp_goal thm.t_focus
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
@@ -179,6 +179,16 @@ let handle_intro (s:strloc) : unit =
   if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used." s.elt;
   fatal "Not yet implemented..."
 
+(** [handle_simpl] normalize the focused goal. *)
+let handle_simpl () : unit =
+  let thm = current_theorem() in
+  let g = thm.t_focus in
+  let g' = {g with g_type = Eval.snf g.g_type} in
+  theorem :=
+    Some {thm with
+      t_goals = replace_goal g g' thm.t_goals;
+      t_focus = g'}
+
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Files.module_path -> unit = fun path ->
@@ -206,6 +216,7 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
       | StartProof(s,a) -> handle_start_proof s a
       | PrintFocus      -> handle_print_focus()
       | Refine(t)       -> handle_refine new_metas t
+      | Simpl           -> handle_simpl()
       (* Legacy commands. *)
       | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                              c.elt Pos.print c.pos
