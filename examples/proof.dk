@@ -1,11 +1,11 @@
-(; Type of booleans. ;)
+(; Data type of booleans. ;)
 
 B : Type.
 
 true : B.
 false : B.
 
-(; Type of natural numbers. ;)
+(; Data type of natural numbers. ;)
 
 N : Type.
 
@@ -23,48 +23,33 @@ add (s ?x) ?y --> s (add ?x ?y).
 
 #EVAL (add (s 1) (s 1)).
 
-(; Type code universes. ;)
+(; Type of data type codes and their interpretation as types. ;)
 
-U : N -> Type.
+U : Type.
 
-(; Decoding function. ;)
+def T : U -> Type.
 
-def T : !i, U i -> Type.
+bool : U.
 
-(; Prop is an abbreviation for the universe 0; ;)
+T bool --> B.
 
-def Prop := U 0.
+nat : U.
 
-def P := T 0.
+T nat --> N.
 
-(; Code for the type of booleans in the universe 1. ;)
+pi : !a : U, (T a -> U) -> U.
 
-bool : U 1.
+T (pi ?a ?f) --> !x:T ?a, T (?f x).
 
-[] T _ bool --> B.
+(; Type of propositions and their interpretation as types. ;)
 
-(; Code for the type of natural numbers in the universe 1. ;)
+Prop : Type.
 
-nat : U 1.
+def P : Prop -> Type.
 
-[] T _ nat --> N.
+all : !a:U, (T a -> Prop) -> Prop.
 
-(; Cumulativity: [lift i] maps [U i] to [U (s i)]. ;)
-
-lift : !i, U i -> U (s i).
-
-(; Code for the product type in universe i. ;)
-
-pi : !i, !a : U i, (T _ a -> U i) -> U i.
-
-T _ (pi ?i ?a ?f) --> x : T ?i ?a -> T ?i (?f x).
-
-(; Code for the type of vectors in universe i. ;)
-
-vec : !i, U i -> N -> U i.
-
-nil : !i, !a, T _ (vec i a 0).
-cons : !i, !a, T i a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
+P (all ?a ?f) --> !x:T ?a, P (?f x).
 
 (; Induction principle on N. ;)
 
@@ -84,13 +69,17 @@ beq (s _) 0 --> false.
 
 (; Leibniz equality. ;)
 
-eq : !i, !a:U i, T _ a -> T _ a -> Prop.
+eq : !a:U, T a -> T a -> Prop.
 
-refl : !i, !a, !x, T _ (eq i a x x).
+refl : !a, !x, P (eq a x x).
 
 (; 0 is right neutral for add. ;)
 
-#PROOF add0r : !n : T 1 nat, P (eq 1 nat (add n 0) n).
+#PROOF add0r : !n, P (eq nat (add n 0) n).
+  (; FIXME: try to infer nat. ;)
 #PRINT.
-#REFINE n => _.
+(;#REFINE n => _.;)
+#INFER nat_ind.
+#REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
+  (; FIXME: try to infer predicate. ;)
 #PRINT.
