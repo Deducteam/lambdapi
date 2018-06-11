@@ -119,8 +119,17 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We start the proof mode. *)
   let m = add_user_meta s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
-  let t = { t_proof = m; t_goals = [g]; t_focus = g } in
+  let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
   theorem := Some t
+
+(** [handle_end_proof()] adds the proved theorem in the signature and
+    ends proof mode. *)
+let handle_end_proof () : unit =
+  out 3 "Proof finished!\n";
+  let thm = current_theorem() in
+  let s = current_sign() in
+  ignore (Sign.add_symbol s false thm.t_name !(thm.t_proof.meta_type));
+  theorem := None
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
@@ -168,10 +177,9 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   (* New subgoals and new focus *)
   let fn goals m = goal_of_meta m :: goals in
   let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
-  theorem :=
-    match goals with
-    | [] -> out 3 "Proof finished!\n"; None
-    | g::_ -> Some { thm with t_goals = goals; t_focus = g }
+  match goals with
+  | [] -> handle_end_proof()
+  | g::_ -> theorem := Some { thm with t_goals = goals; t_focus = g }
 
 (** [handle_intro s] applies the [intro] tactic. *)
 let handle_intro (s:strloc) : unit =
