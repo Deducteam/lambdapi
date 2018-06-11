@@ -56,3 +56,6 @@ let to_prod : t -> term -> term = fun ctx t ->
   | [(x,a)] -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
   | _       -> let fn t (x,a) = _Prod (lift a) x t in
                Bindlib.unbox (List.fold_left fn (lift t) ctx)
+
+(** [of_env] builds a context from an environment. **)
+let of_env : env -> t = List.map (fun (_,(v,bt)) -> v,Bindlib.unbox bt)
