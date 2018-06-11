@@ -69,13 +69,13 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
 let handle_infer : term -> Eval.config -> unit = fun t c ->
-  match Solve.infer Ctxt.empty t with
+  match Solve.infer (Ctxt.of_env (focus_goal_hyps())) t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
   | None    -> fatal "Cannot infer the type of [%a]." pp t
 
 (** [handle_eval t] evaluates the term [t]. *)
 let handle_eval : term -> Eval.config -> unit = fun t c ->
-  match Solve.infer Ctxt.empty t with
+  match Solve.infer (Ctxt.of_env (focus_goal_hyps())) t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal "Cannot infer the type of [%a]." pp t
 
@@ -95,8 +95,10 @@ let handle_test : test -> unit = fun test ->
   let result =
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
-    | HasType(t,a) -> ignore (Solve.sort_type Ctxt.empty a);
-                      try Solve.has_type Ctxt.empty t a with _ -> false
+    | HasType(t,a) ->
+       let ctx = Ctxt.of_env (focus_goal_hyps()) in
+       ignore (Solve.sort_type ctx a);
+       try Solve.has_type ctx t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
@@ -131,7 +133,7 @@ let env_of_prod (n:int) (t:term) : env * term =
   let rec aux n t acc =
     if !debug_tac then log "env_of_prod" "%i %a" n pp t;
     match n, t with
-    | 0, _ -> List.rev acc, t
+    | 0, _ -> acc, t
     | _, Prod(a,b) ->
        let (v,b) = Bindlib.unbind b in
        aux (n-1) b ((Bindlib.name_of v,(v,lift a))::acc)
@@ -154,7 +156,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let bt = lift t in
   let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Solve.has_type Ctxt.empty u !(m.meta_type)) then
+  if not (Solve.has_type (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
     fatal "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
