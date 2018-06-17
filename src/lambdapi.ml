@@ -34,12 +34,10 @@ let _ =
     in "<int> Set the verbosity level:\n" ^ String.concat "\n" flags
   in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
-  let wrn_no_ta_doc = " Warn the user when abstractions are not annotated" in
   let spec =
     [ ("--debug"        , Arg.String (set_debug true), debug_doc    )
     ; ("--verbose"      , Arg.Int ((:=) verbose)     , verbose_doc  )
-    ; ("--gen-obj"      , Arg.Set Handle.gen_obj     , gen_obj_doc  )
-    ; ("--warn-no-annot", Arg.Set Scope.wrn_no_type  , wrn_no_ta_doc) ]
+    ; ("--gen-obj"      , Arg.Set Handle.gen_obj     , gen_obj_doc  ) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in

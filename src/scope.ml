@@ -10,10 +10,6 @@ open Extra
 open Proofs
 open Metas
 
-(** Flag to enable a warning if an abstraction is not annotated (with the type
-    of its domain). *)
-let wrn_no_type : bool ref = ref false
-
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
