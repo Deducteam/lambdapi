@@ -105,16 +105,16 @@ let link : t -> unit = fun sign ->
   let gn path ls =
     let sign =
       try PathMap.find path !loaded
-      with Not_found -> assert false in
+      with Not_found -> assert false
+    in
     let h (n, r) =
       let r = link_rule r in
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ [r];
-      (n, r)
+      s.sym_rules := !(s.sym_rules) @ [r]
     in
-    Some(List.map h ls)
+    List.iter h ls
   in
-  sign.deps := filter_map gn !(sign.deps)
+  PathMap.iter gn !(sign.deps)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our

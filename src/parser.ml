@@ -29,17 +29,17 @@ type p_term = p_term_aux loc
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
    pattern ['_']. *)
 
-(** [get_args t] decomposes the {!type:p_term} [t] into a pair [(h,args)], where
-    [h] is the head p_term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an {!constr:P_Appl} node. *)
+(** [get_args t] decomposes the {!type:p_term} [t] into a head term and a list
+    of arguments. Note that in the returned pair [(h,args)],  [h] can never be
+    a {!constr:P_Appl} node. *)
 let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
   let rec get_args acc t =
     match t.elt with
     | P_Appl(u,v) -> get_args ((t.pos,v)::acc) u
-    | _         -> (t, acc)
+    | _           -> (t, acc)
   in get_args [] t
 
-(** [add_args t args] builds the application of the {!type:p_term} [t] to a list
+(** [add_args t args] builds the application of the {!type:p_term} [t] to  the
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
 let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
@@ -51,8 +51,8 @@ let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
 
 (** [build_prod xs a] build a product by abstracting away the arguments of the
     list [xs] on the body [a]. *)
-let build_prod : (strloc * p_term option) list -> p_term -> p_term = fun xs a ->
-   List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b))) xs a
+let build_prod : (strloc * p_term option) list -> p_term -> p_term =
+  List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b)))
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
     It accepts (and returns as semantic value) any non-empty strings formed of
