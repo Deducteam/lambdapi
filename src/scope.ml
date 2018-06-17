@@ -7,6 +7,7 @@ open Terms
 open Cmd
 open Pos
 open Extra
+open Proofs
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
@@ -28,7 +29,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     (* No module path, search the local environment first. *)
     try _Vari (fst (List.assoc s env)) with Not_found ->
     (* Then, search in hypotheses. *)
-    try _Vari (fst (List.assoc s (Sign.focus_goal_hyps()))) with Not_found ->
+    try _Vari (fst (List.assoc s (focus_goal_hyps()))) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
     fatal "[%a] unbound variable or symbol [%s].\n" Pos.print pos s

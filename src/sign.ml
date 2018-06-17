@@ -43,9 +43,6 @@ let loaded : t PathMap.t ref = ref PathMap.empty
     appears twice in the stack, then there is a circular dependency. *)
 let loading : module_path list ref = ref []
 
-(** [theorem] contains the theorem the user is trying to prove. *)
-let theorem : theorem option ref = ref None
-
 (** [current_sign ()] returns the current signature. *)
 let current_sign () =
   let mp =
@@ -54,27 +51,6 @@ let current_sign () =
     | []      -> assert false
   in
   PathMap.find mp !loaded
-
-(** [current_theorem ()] returns the current theorem if we are in a
-    proof. It fails otherwise. *)
-let current_theorem () : theorem =
-  (* We check that we are in a proof. *)
-  match !theorem with
-  | None     -> fatal "not in a proof"
-  | Some thm -> thm
-
-(** [fail_if_in_proof()] fails we are in a proof. Does nothing otherwise. *)
-let fail_if_in_proof() : unit =
-  match !theorem with
-  | None     -> ()
-  | Some _ -> fatal "in a proof"
-
-(** [focus_goal_hyps ()] returns the hypotheses of the currently
-    focused goal if we are in a proof, or the empty list otherwise. *)
-let focus_goal_hyps () : env =
-  match !theorem with
-  | None     -> []
-  | Some thm -> thm.t_focus.g_hyps
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
