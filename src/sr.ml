@@ -4,6 +4,7 @@ open Console
 open Terms
 open Print
 open Solve
+open Metas
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays

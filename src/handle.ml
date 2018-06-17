@@ -9,6 +9,7 @@ open Sign
 open Extra
 open Files
 open Proofs
+open Metas
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)

@@ -13,7 +13,6 @@ type qident = (module_path * string) loc
 type p_meta =
   | M_User of string (** With given name. *)
   | M_Sys  of int    (** With given key.  *)
-  | M_Bad  of int    (** Undefined key.   *)
 
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
@@ -108,9 +107,7 @@ let _thm_  = keyword "thm"
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta =
   (* Internal meta-variable by key. *)
-  | "?" - s:''[1-9][0-9]*''             ->
-      let k = int_of_string s in
-      if Terms.(exists_meta (Sys(k))) then M_Sys(k) else M_Bad(k)
+  | "?" - s:''[1-9][0-9]*''            -> M_Sys(int_of_string s)
   (* User-defined meta-variable by name. *)
   | "?" - s:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(s)
 

@@ -5,6 +5,7 @@ open Print
 open Extra
 open Console
 open Eval
+open Metas
 
 (** Representation of a set of problems. *)
 type problems =

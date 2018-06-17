@@ -8,6 +8,7 @@ open Cmd
 open Pos
 open Extra
 open Proofs
+open Metas
 
 (** Flag to enable a warning if an abstraction is not annotated (with the type
     of its domain). *)
@@ -53,9 +54,10 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     invalid. *)
 let scope_meta_name loc id =
   match id with
-  | M_Bad(k)  -> fatal "Unknown metavariable [?%i] %a" k Pos.print loc
-  | M_Sys(k)  -> Sys(k)
-  | M_User(s) -> User(s)
+  | M_User(s)                           -> User(s)
+  | M_Sys(k)  when exists_meta (Sys(k)) -> Sys(k)
+  | M_Sys(k)                            ->
+      fatal "Unknown metavariable [?%i] %a" k Pos.print loc
 
 (** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
     free variables in [x1, .., xn], build the product type [x1:T1 ->
