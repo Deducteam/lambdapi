@@ -18,23 +18,25 @@ let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
     in red otherwise. *)
 let r_or_g cond = if cond then gre else red
 
-(** [out_fmt] main output formatter. Used by the IDE server. *)
+(** [out_fmt] main output formatter. *)
 let out_fmt = ref Format.std_formatter
 
-(** [err_fmt] formatter where to output warnings and errors. Used by
-    the IDE server to redirect the output. *)
+(** [err_fmt] warning/error output formatter. *)
 let err_fmt = ref Format.err_formatter
 
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
 let wrn : 'a outfmt -> 'a = fun fmt -> Format.fprintf !err_fmt (yel fmt)
 
-(** [err fmt] prints a red error message with [Printf] format [fmt]. Note that
-    the output buffer is flushed by the function. *)
-let err : 'a outfmt -> 'a = fun fmt -> Format.fprintf !err_fmt (red fmt)
-
 (** Exception raised in case of failure. *)
 exception Fatal of Pos.popt option * string
+
+(** [fatal_str fmt] may be called an arbitrary number of times to build up the
+    error message of the [fatal] or [fatal_no_pos] functions prior to  calling
+    them. Note that the messages are stored in a buffer that is flushed by the
+    [fatal] or [fatal_no_pos] function. Hence, they must be called. *)
+let fatal_msg : 'a outfmt -> 'a =
+  fun fmt -> Format.fprintf Format.str_formatter fmt
 
 (** [fatal popt fmt] raises the [Fatal(popt,msg)] exception, in which [msg] is
     built from the format [fmt] (provided the necessary arguments. *)

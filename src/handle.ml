@@ -239,15 +239,16 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
     if !debug_unif then
       log "unif" "after the command: %a" Metas.print_meta_stats ()
   with
-  | Fatal(Some(_),_) as e -> raise e
-  | Fatal(None   ,m)      -> fatal cmd.pos "error on command.\n%s" m
-  | e                     -> let e = Printexc.to_string e in
-                             fatal cmd.pos "uncaught exception [%s]." e
+  | Fatal(Some(Some(_)),_) as e -> raise e
+  | Fatal(None         ,_) as e -> raise e
+  | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | e                           -> let e = Printexc.to_string e in
+                                   fatal cmd.pos "Uncaught exception [%s]." e
 
-(** [compile force path] compiles the file corresponding to [path],
-    when it is necessary (the corresponding object file does not
-    exist, must be updated, or [force] is [true]).  In that case, the
-    produced signature is stored in the corresponding object file. *)
+(** [compile force path] compiles the file corresponding to [path], when it is
+    necessary (the corresponding object file does not exist,  must be updated,
+    or [force] is [true]).  In that case,  the produced signature is stored in
+    the corresponding object file. *)
 and compile : bool -> Files.module_path -> unit =
   fun force path ->
   let base = String.concat "/" path in
@@ -256,9 +257,9 @@ and compile : bool -> Files.module_path -> unit =
   if not (Sys.file_exists src) then fatal_no_pos "File [%s] not found." src;
   if List.mem path !loading then
     begin
-      err "Circular dependencies detected in [%s].\n" src;
-      err "Dependency stack for module [%a]:\n" Files.pp_path path;
-      List.iter (err "  - [%a]\n" Files.pp_path) !loading;
+      fatal_msg "Circular dependencies detected in [%s].\n" src;
+      fatal_msg "Dependency stack for module [%a]:\n" Files.pp_path path;
+      List.iter (fatal_msg "  - [%a]\n" Files.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
   if PathMap.mem path !loaded then

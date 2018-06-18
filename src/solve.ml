@@ -372,9 +372,12 @@ and solve_whnf c t1 t2 strats p : unif list =
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
-  try Some (solve s p) with Fatal(_,m) -> err "%s\n" m; None
+  try Some (solve s p) with Fatal(_,m) ->
+    if !debug_type then log "cnst" "Solve: %s\n" m; None
 
-let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+let msg (_,a,b) =
+  if !debug_type then
+    log "cnst" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:Ctxt.t) (t:term) (a:term) : bool =
