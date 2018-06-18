@@ -176,7 +176,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let new_metas = List.filter Metas.unset new_metas in
   (* Instantiation. *)
   if !debug_tac then log "refine" "[%a]" pp u;
-  let vs = Array.of_list (List.map var_of_name g.g_hyps) in
+  let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
   (* New subgoals and new focus *)
   let fn goals m = goal_of_meta m :: goals in

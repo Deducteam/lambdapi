@@ -387,3 +387,7 @@ let has_uninst_metas : term -> bool = fun t ->
        | Patt(_,_,_) -> assert false
        | TEnv(_,_)  -> assert false
   in try hum [t]; false with Has_uninst_metas -> true
+
+(** Representation of an environment for variables. *)
+type env = (string * (tvar * tbox)) list
+

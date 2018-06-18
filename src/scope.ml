@@ -7,13 +7,12 @@ open Terms
 open Cmd
 open Pos
 open Extra
-open Proofs
 
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
-(** [find_ident env qid] returns a bindbox corresponding to a variable of
+(** [find_ident env qid] returns a boxed term corresponding to a  variable  of
     the environment [env], or to a symbol, which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
@@ -25,7 +24,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     (* No module path, search the local environment first. *)
     try _Vari (fst (List.assoc s env)) with Not_found ->
     (* Then, search in hypotheses. *)
-    try _Vari (fst (List.assoc s (focus_goal_hyps()))) with Not_found ->
+    try _Vari (fst (List.assoc s (Proofs.focus_goal_hyps()))) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
     fatal pos "Unbound variable or symbol [%s]." s
@@ -69,7 +68,7 @@ let prod_of_env : env -> tbox -> term = fun c t ->
 let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
   fun metas env is_type ->
     let a = prod_of_env env _Type in
-    let vs = Array.of_list (List.rev_map tvar_of_name env) in
+    let vs = Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env) in
     if is_type then (a, vs)
     else (* We create a new metavariable of type [a]. *)
       let m = Metas.add_sys_meta a (List.length env) in
@@ -148,7 +147,7 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         _Abst a v (scope (add_env x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
-        let e = List.map tvar_of_name env in
+        let e = List.map (fun (_,(x,_)) -> _Vari x) env in
         let m = fresh () in
         _Patt None m (Array.of_list e)
     | P_Meta(m,ts)  ->
