@@ -332,8 +332,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
     In case of error, the program gracefully fails. *)
 let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
   match cmd with
-  | P_SymDecl(b,x,a)  -> SymDecl(b, x, scope_term metas a)
-  | P_SymDef(b,x,ao,t) ->
+  | P_SymDecl(b,x,a)      -> SymDecl(b, x, scope_term metas a)
+  | P_SymDef(b,x,ao,t)    ->
       let t = scope_term metas t in
       let ao =
         match ao with
@@ -341,26 +341,26 @@ let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
         | Some(a) -> Some(scope_term metas a)
       in
       SymDef(b,x,ao,t)
-  | P_Rules(rs)         -> Rules(List.map scope_rule rs)
-  | P_OldRules(rs)      ->
+  | P_Rules(rs)           -> Rules(List.map scope_rule rs)
+  | P_OldRules(rs)        ->
       let rs = List.map translate_old_rule rs in
       Rules(List.map scope_rule rs)
-  | P_Require(path)     -> Require(path)
-  | P_Debug(b,s)        -> Debug(b,s)
-  | P_Verb(n)           -> Verb(n)
-  | P_Infer(t,c)        -> Infer(scope_term metas t, c)
-  | P_Eval(t,c)         -> Eval(scope_term metas t, c)
+  | P_Require(path)       -> Require(path)
+  | P_Debug(b,s)          -> Debug(b,s)
+  | P_Verb(n)             -> Verb(n)
+  | P_Infer(t,c)          -> Infer(scope_term metas t, c)
+  | P_Eval(t,c)           -> Eval(scope_term metas t, c)
   | P_TestType(ia,mf,t,a) ->
       let test_type = HasType(scope_term metas t, scope_term metas a) in
       Test({is_assert = ia; must_fail = mf; test_type})
   | P_TestConv(ia,mf,t,u) ->
       let test_type = Convert(scope_term metas t, scope_term metas u) in
       Test({is_assert = ia; must_fail = mf; test_type})
-  | P_Other(c)          -> Other(c)
-  | P_StartProof(s,a)   -> StartProof(s, scope_term metas a)
-  | P_PrintFocus        -> PrintFocus
-  | P_Refine(t)         -> Refine (scope_term metas t)
-  | P_Simpl             -> Simpl
+  | P_Other(c)            -> Other(c)
+  | P_StartProof(s,a)     -> StartProof(s, scope_term metas a)
+  | P_PrintFocus          -> PrintFocus
+  | P_Refine(t)           -> Refine (scope_term metas t)
+  | P_Simpl               -> Simpl
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd],
     and forwards the source code position of the command. In
