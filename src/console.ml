@@ -38,12 +38,6 @@ let fatal : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
     let cont _ = raise (Fatal(Format.flush_str_formatter ())) in
     Format.kfprintf cont Format.str_formatter fmt
 
-(** [abort fmt] is similar to [fatal fmt], but it calls [exit 1], which cannot
-    be catched in any way (the program just terminates with an error). *)
-let abort : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
-  fun fmt ->
-    Format.kfprintf (fun _ -> exit 1) Format.err_formatter (red fmt)
-
 (* Various debugging / message flags. *)
 let verbose    = ref 1
 let debug      = ref false

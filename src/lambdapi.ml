@@ -6,7 +6,8 @@ open Files
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let modpath = module_path fname in
-  try Handle.compile true modpath with Fatal(msg) -> abort "%s" msg
+  try Handle.compile true modpath with Fatal(msg) ->
+    Format.eprintf "%s" msg; exit 1
 
 (* Main program. *)
 let _ =
