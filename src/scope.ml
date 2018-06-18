@@ -346,8 +346,6 @@ let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
       let rs = List.map translate_old_rule rs in
       Rules(List.map scope_rule rs)
   | P_Require(path)       -> Require(path)
-  | P_Debug(b,s)          -> Debug(b,s)
-  | P_Verb(n)             -> Verb(n)
   | P_Infer(t,c)          -> Infer(scope_term metas t, c)
   | P_Eval(t,c)           -> Eval(scope_term metas t, c)
   | P_TestType(ia,mf,t,a) ->

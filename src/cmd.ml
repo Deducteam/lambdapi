@@ -25,10 +25,6 @@ type cmd = cmd_aux loc
   | SymDef of bool * strloc * term option * term
   (** Require an external signature. *)
   | Require of module_path
-  (** Set debugging flags. *)
-  | Debug  of bool * string
-  (** Set the verbosity level. *)
-  | Verb   of int
   (** Type inference command. *)
   | Infer  of term * Eval.config
   (** Normalisation command. *)

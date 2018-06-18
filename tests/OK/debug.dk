@@ -1,9 +1,0 @@
-#DEBUG +ap.
-#VERBOSE 42.
-
-#DEBUG -ap.
-#VERBOSE -73.
-
-
-A : Type.
-B : Type.

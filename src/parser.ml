@@ -86,8 +86,6 @@ let _ASSERTNOT_ = cmd "ASSERTNOT"
 let _REQUIRE_   = cmd "REQUIRE"
 let _INFER_     = cmd "INFER"
 let _EVAL_      = cmd "EVAL"
-let _VERBOSE_   = cmd "VERBOSE"
-let _DEBUG_     = cmd "DEBUG"
 let _NAME_      = cmd "NAME"
 let _PROOF_     = cmd "PROOF"
 let _PRINT_     = cmd "PRINT"
@@ -172,10 +170,6 @@ type p_cmd =
   | P_OldRules of old_p_rule list
   (** Require an external signature. *)
   | P_Require   of module_path
-  (** Set debugging flags. *)
-  | P_Debug    of bool * string
-  (** Set the verbosity level. *)
-  | P_Verb     of int
   (** Type inference command. *)
   | P_Infer    of p_term * Eval.config
   (** Normalisation command. *)
@@ -259,8 +253,6 @@ let parser cmd_aux =
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
   | rs:old_rule+                     -> P_OldRules(rs)
   | _REQUIRE_ path:mod_path          -> P_Require(path)
-  | _DEBUG_ f:''[+-]'' s:''[a-z]+''  -> P_Debug(f = "+", s)
-  | _VERBOSE_ n:''[-+]?[0-9]+''      -> P_Verb(int_of_string n)
   | (ia,mf):check t:expr "::" a:expr -> P_TestType(ia,mf,t,a)
   | (ia,mf):check t:expr "==" u:expr -> P_TestConv(ia,mf,t,u)
   | _INFER_ c:eval_config t:expr     -> P_Infer(t,c)

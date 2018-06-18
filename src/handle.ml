@@ -223,8 +223,6 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
       | Rules(rs)       -> List.iter handle_rule rs
       | SymDef(b,n,a,t) -> handle_symdef b n a t
       | Require(path)   -> handle_require path
-      | Debug(v,s)      -> set_debug v s
-      | Verb(n)         -> verbose := n
       | Infer(t,c)      -> handle_infer t c
       | Eval(t,c)       -> handle_eval t c
       | Test(test)      -> handle_test test
