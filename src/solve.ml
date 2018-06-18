@@ -112,13 +112,13 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
     end;
   begin
     match m.meta_name with
-    | User(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
-                  all_metas := {!all_metas with str_map}
-    | Sys(i) -> let int_map = IntMap.remove i !all_metas.int_map in
-                all_metas := {!all_metas with int_map}
+    | User(s) -> let str_map = StrMap.remove s !all_metas.str_map in
+                 Timed.(all_metas := {!all_metas with str_map})
+    | Sys(i)  -> let int_map = IntMap.remove i !all_metas.int_map in
+                 Timed.(all_metas := {!all_metas with int_map})
   end;
-  m.meta_type  := Kind;
-  m.meta_value := Some(v)
+  Timed.(m.meta_type  := Kind);
+  Timed.(m.meta_value := Some(v))
 
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
@@ -371,7 +371,7 @@ and solve_whnf c t1 t2 strats p : unif list =
 (** [solve b strats p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
-  can_instantiate := b;
+  Timed.(can_instantiate := b);
   try Some (solve s p) with Fatal(_,m) ->
     if !debug_type then log "cnst" "Solve: %s\n" m; None
 

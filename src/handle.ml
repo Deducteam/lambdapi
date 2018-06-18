@@ -67,7 +67,7 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
   let s = Sign.add_symbol sign false x a in
-  if not opaque then s.sym_def := Some(t)
+  if not opaque then Timed.(s.sym_def := Some(t))
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
     of error, the program fails gracefully. *)
@@ -124,7 +124,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   let m = Metas.add_user_meta s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
   let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
-  theorem := Some t
+  Timed.(theorem := Some t)
 
 (** [handle_end_proof()] adds the proved theorem in the signature and
     ends proof mode. *)
@@ -133,7 +133,7 @@ let handle_end_proof () : unit =
   let thm = current_theorem() in
   let s = current_sign() in
   ignore (Sign.add_symbol s true thm.t_name !(thm.t_proof.meta_type));
-  theorem := None
+  Timed.(theorem := None)
 
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus() : unit =
@@ -177,13 +177,13 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   (* Instantiation. *)
   if !debug_tac then log "refine" "[%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
-  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
+  Timed.(m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt)));
   (* New subgoals and new focus *)
   let fn goals m = goal_of_meta m :: goals in
   let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
   match goals with
-  | [] -> handle_end_proof()
-  | g::_ -> theorem := Some { thm with t_goals = goals; t_focus = g }
+  | []   -> handle_end_proof()
+  | g::_ -> Timed.(theorem := Some {thm with t_goals = goals; t_focus = g})
 
 (** [handle_intro s] applies the [intro] tactic. *)
 let handle_intro (s:strloc) : unit =
@@ -199,17 +199,17 @@ let handle_simpl () : unit =
   let thm = current_theorem() in
   let g = thm.t_focus in
   let g' = {g with g_type = Eval.snf g.g_type} in
-  theorem :=
-    Some {thm with
-      t_goals = replace_goal g g' thm.t_goals;
-      t_focus = g'}
+  let thm =
+    {thm with t_goals = replace_goal g g' thm.t_goals; t_focus = g'}
+  in
+  Timed.(theorem := Some thm)
 
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Files.module_path -> unit = fun path ->
   let sign = current_sign() in
   if not (PathMap.mem path !(sign.deps)) then
-    sign.deps := PathMap.add path [] !(sign.deps);
+    Timed.(sign.deps := PathMap.add path [] !(sign.deps));
   compile false path
 
 (** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
@@ -266,12 +266,12 @@ and compile : bool -> Files.module_path -> unit =
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
-      loading := path :: !loading;
+      Timed.(loading := path :: !loading);
       let sign = Sign.create path in
-      loaded := PathMap.add path sign !loaded;
+      Timed.(loaded := PathMap.add path sign !loaded);
       List.iter handle_cmd (Parser.parse_file src);
       if !gen_obj then Sign.write sign obj;
-      loading := List.tl !loading;
+      Timed.(loading := List.tl !loading);
       out 1 "Checked [%s]\n%!" src;
     end
   else
@@ -279,7 +279,7 @@ and compile : bool -> Files.module_path -> unit =
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
       PathMap.iter (fun mp _ -> compile false mp) !(sign.deps);
-      loaded := PathMap.add path sign !loaded;
+      Timed.(loaded := PathMap.add path sign !loaded);
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end

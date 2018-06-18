@@ -61,7 +61,7 @@ let add_user_meta : string -> term -> int -> meta = fun s a n ->
           ; meta_value = ref None }
   in
   let str_map = StrMap.add s m !all_metas.str_map in
-  all_metas := {!all_metas with str_map}; m
+  Timed.(all_metas := {!all_metas with str_map}); m
 
 (** [add_sys_meta a n] creates a new internal meta-variable of type
     [a] and arity [n]. Note that [all_metas] is updated automatically
@@ -74,4 +74,4 @@ let add_sys_meta : term -> int -> meta = fun a n ->
           ; meta_value = ref None }
   in
   let int_map = IntMap.add k m !all_metas.int_map in
-  all_metas := {!all_metas with int_map; free_keys}; m
+  Timed.(all_metas := {!all_metas with int_map; free_keys}); m
