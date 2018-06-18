@@ -212,7 +212,7 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
           let i = List.assoc m map in
           _TEnv (Bindlib.box_var metas.(i)) e
         with Not_found ->
-          fatal t.pos "Unknown identifier [%s]." m
+          fatal t.pos "Unbound pattern variable [%s]." m
   and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
     match t with
     | Some(t) -> scope env t
