@@ -27,7 +27,7 @@ type p_term = p_term_aux loc
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
-   pattern ['_']. *)
+   pattern or to a fresh metavariable. *)
 
 (** [get_args t] decomposes the {!type:p_term} [t] into a head term and a list
     of arguments. Note that in the returned pair [(h,args)],  [h] can never be
@@ -159,11 +159,11 @@ type old_p_rule = (strloc * p_term option) list * p_term * p_term
 type p_rule = p_term * p_term
 
 let opaque = true
-let definable = true
+let const  = true
 
 (** Representation of a toplevel command. *)
 type p_cmd =
-  (** Symbol declaration (definable when the boolean is [true]). *)
+  (** Symbol declaration (constant when the boolean is [true]). *)
   | P_SymDecl  of bool * strloc * p_term
   (** Quick definition (opaque when the boolean is [true]). *)
   | P_SymDef   of bool * strloc * p_term option * p_term
@@ -252,8 +252,8 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr               -> P_SymDecl(not definable,x,a)
-  | _def_ x:ident ":" a:expr         -> P_SymDecl(definable,x,a)
+  | x:ident ":" a:expr               -> P_SymDecl(const,x,a)
+  | _def_ x:ident ":" a:expr         -> P_SymDecl(not const,x,a)
   | _def_ x:ident (ao,t):definition  -> P_SymDef(not opaque,x,ao,t)
   | _thm_ x:ident (ao,t):definition  -> P_SymDef(opaque,x,ao,t)
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)

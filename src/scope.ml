@@ -8,7 +8,6 @@ open Cmd
 open Pos
 open Extra
 open Proofs
-open Metas
 
 (** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
 let add_env : string -> tvar -> tbox -> env -> env =
@@ -50,9 +49,9 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     invalid. *)
 let scope_meta_name loc id =
   match id with
-  | M_User(s)                           -> User(s)
-  | M_Sys(k)  when exists_meta (Sys(k)) -> Sys(k)
-  | M_Sys(k)                            ->
+  | M_User(s)                                 -> User(s)
+  | M_Sys(k)  when Metas.exists_meta (Sys(k)) -> Sys(k)
+  | M_Sys(k)                                  ->
       fatal "Unknown metavariable [?%i] %a" k Pos.print loc
 
 (** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
@@ -73,7 +72,7 @@ let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
     let vs = Array.of_list (List.rev_map tvar_of_name env) in
     if is_type then (a, vs)
     else (* We create a new metavariable of type [a]. *)
-      let m = add_sys_meta a (List.length env) in
+      let m = Metas.add_sys_meta a (List.length env) in
       metas := m::!metas; (prod_of_env env (_Meta m vs), vs)
 
 (** [meta_of_env metas env is_type] builds a new metavariable of type
@@ -82,7 +81,7 @@ let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
 let meta_of_env : meta list ref -> env -> bool -> tbox =
   fun metas env is_type ->
     let t, vs = prod_vars_of_env metas env is_type in
-    let m = add_sys_meta t (List.length env) in
+    let m = Metas.add_sys_meta t (List.length env) in
     metas := m::!metas; _Meta m vs
 
 (** [scope_term metas t] transforms a parser-level term [t] into an actual
@@ -108,10 +107,10 @@ let scope_term : meta list ref -> p_term -> term = fun metas t ->
     | P_Meta(id,ts) ->
         let id = scope_meta_name t.pos id in
         let m =
-          try find_meta id with Not_found ->
+          try Metas.find_meta id with Not_found ->
             let s = match id with User(s) -> s | _ -> assert false in
             let (t,_) = prod_vars_of_env metas env false in
-            let m = add_user_meta s t (List.length env) in
+            let m = Metas.add_user_meta s t (List.length env) in
             metas := m :: !metas; m
         in
         _Meta m (Array.map (scope env) ts)

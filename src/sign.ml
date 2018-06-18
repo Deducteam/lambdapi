@@ -155,16 +155,14 @@ let unlink : t -> unit = fun sign ->
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.deps)
 
-(** [add_symbol sign definable name a] creates a new [definable]
-    symbol named [name] of type [a] in the signature [sign]. The
-    created symbol is also returned. WARNING: [name] must NOT be
-    already defined. *)
-let add_symbol : t -> bool -> strloc -> term -> sym =
-  fun sign definable s sym_type ->
-  let { elt = sym_name } = s in
+(** [add_symbol sign const name a] creates a fresh symbol with the name [name]
+    (which should not already be used in [sign]) and with the type [a], in the
+    signature [sign]. The created symbol is also returned. *)
+let add_symbol : t -> bool -> strloc -> term -> sym = fun sign const name a ->
+  let sym_name = name.elt in
   let sym =
-    { sym_name = sym_name ; sym_type = ref sym_type ; sym_path = sign.path
-    ; sym_def  = ref None ; sym_rules = ref [] ; sym_const = not definable }
+    { sym_name ; sym_type = ref a ; sym_path = sign.path ; sym_def = ref None
+    ; sym_rules = ref [] ; sym_const = const }
   in
   sign.symbols := StrMap.add sym_name sym !(sign.symbols);
   out 3 "(symb) %s\n" sym_name; sym
