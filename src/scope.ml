@@ -8,7 +8,7 @@ open Cmd
 open Pos
 open Extra
 
-(** Extend an [env] with the mapping [(s,(v,a))] if s <> "_". *)
+(** Extend an [env] with the mapping [(s,(v,a))] if [s] is not ["_"]. *)
 let add_env : string -> tvar -> tbox -> env -> env =
   fun s v a env -> if s = "_" then env else (s,(v,a))::env
 

@@ -72,12 +72,13 @@ let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
 (** [pp_goal oc g] prints the goal [g]. *)
-let pp_goal : Proofs.goal pp =
+let pp_goal : Proofs.goal pp = fun oc g ->
   let open Proofs in
-  let sep = String.make 66 '-' in
-  let pp_hyp oc (s,(_,t)) =
-    let t = Bindlib.unbox t in
-    Format.fprintf oc "%s : %a\n" s pp t
+  Format.fprintf oc "== Current goal ==========================\n";
+  let print_hyp (s,(_,t)) =
+    Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
   in
-  let pp_hyps = List.pp pp_hyp "" in
-  fun oc g -> Format.fprintf oc "%a%s\n%a\n" pp_hyps g.g_hyps sep pp g.g_type
+  List.iter print_hyp g.g_hyps;
+  Format.fprintf oc " ----------------------------------------\n";
+  Format.fprintf oc "  %a\n" pp g.g_type;
+  Format.fprintf oc "==========================================\n"
