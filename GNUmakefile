@@ -5,7 +5,7 @@ BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
 
 .PHONY: all
-all: bin
+all: bin lib
 
 #### Compilation #############################################################
 
@@ -17,6 +17,21 @@ lambdapi.native: _build/src/lambdapi.native
 _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
+
+.PHONY: lib
+lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
+
+_build/src/lambdapi.cma: $(wildcard src/*.ml)
+	@echo "[BYT] lambdapi.cma"
+	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cma
+
+_build/src/lambdapi.cmxa: $(wildcard src/*.ml)
+	@echo "[OPT] lambdapi.cmxa"
+	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxa
+
+_build/src/lambdapi.cmxs: $(wildcard src/*.ml)
+	@echo "[DYN] lambdapi.cmxs"
+	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxs
 
 #### Documentation ###########################################################
 

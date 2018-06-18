@@ -280,36 +280,3 @@ and compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
-
-(** Interface to PLOF. *)
-
-module Pure :
-  sig
-    type command = Parser.p_cmd loc
-    type state
-
-    type result =
-      | OK    of state
-      | Error of string
-
-    val initial_state : state
-
-    val handle_command : state -> command -> result
-  end =
-  struct
-    open Timed
-
-    type command = Parser.p_cmd loc
-
-    type state = Time.t
-
-    type result =
-      | OK    of state
-      | Error of string
-
-    let initial_state : state = Time.save ()
-
-    let handle_command : state -> command -> result = fun t cmd ->
-      Time.rollback t;
-      try handle_cmd cmd; OK(Time.save ()) with Fatal(m) -> Error(m)
-  end
