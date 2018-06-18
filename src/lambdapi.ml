@@ -40,9 +40,9 @@ let _ =
   in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
   let spec =
-    [ ("--debug"        , Arg.String (set_debug true), debug_doc    )
-    ; ("--verbose"      , Arg.Int ((:=) verbose)     , verbose_doc  )
-    ; ("--gen-obj"      , Arg.Set Handle.gen_obj     , gen_obj_doc  ) ]
+    [ ("--debug"  , Arg.String (set_debug true), debug_doc  )
+    ; ("--verbose", Arg.Int ((:=) verbose)     , verbose_doc)
+    ; ("--gen-obj", Arg.Set Handle.gen_obj     , gen_obj_doc) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
