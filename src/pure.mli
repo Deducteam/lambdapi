@@ -7,6 +7,6 @@ type result =
   | OK    of state
   | Error of Pos.popt option * string
 
-val initial_state : state
+val initial_state : Files.module_path -> state
 
 val handle_command : state -> command -> result

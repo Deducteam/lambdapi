@@ -14,7 +14,13 @@ type result =
   | OK    of state
   | Error of Pos.popt option * string
 
-let initial_state : state = Time.save ()
+let t0 = Time.save ()
+
+let initial_state : Files.module_path -> state = fun path ->
+  Time.rollback t0;
+  Sign.loading := [path];
+  Sign.loaded  := Files.PathMap.add path (Sign.create path) !Sign.loaded;
+  Time.save ()
 
 let handle_command : state -> command -> result = fun t cmd ->
   Time.rollback t;
