@@ -5,9 +5,13 @@ open Files
 
 (* [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
-  let modpath = module_path fname in
-  try Handle.compile true modpath with Fatal(msg) ->
-    Format.eprintf "%s" msg; exit 1
+  try Handle.compile true (module_path fname) with Fatal(popt,msg) ->
+    begin
+      match popt with
+      | None    -> Format.eprintf (red "%s\n") msg
+      | Some(p) -> Format.eprintf (red "[%a] %s\n") Pos.print p msg
+    end;
+    exit 1
 
 (* Main program. *)
 let _ =

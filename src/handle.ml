@@ -22,7 +22,8 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     fail_if_in_proof();
     (* We check that [s] is not already used. *)
     let sign = current_sign() in
-    if Sign.mem sign x.elt then fatal "%S already exists." x.elt;
+    if Sign.mem sign x.elt then
+      fatal x.pos "Symbol [%s] already exists." x.elt;
     (* We check that [a] is typable by a sort. *)
     ignore (Solve.sort_type Ctxt.empty a);
     (*FIXME: check that [a] contains no uninstantiated metavariables.*)
@@ -34,7 +35,7 @@ let handle_symdecl : bool -> strloc -> term -> unit =
 let handle_rule : sym * rule -> unit = fun (s,r) ->
   fail_if_in_proof();
   if s.sym_const || !(s.sym_def) <> None then
-    fatal "%a cannot be (re)defined." pp_symbol s;
+    fatal_no_pos "Symbol [%a] cannot be (re)defined." pp_symbol s;
   Sr.check_rule (s, r);
   Sign.add_rule (current_sign()) s r
 
@@ -47,7 +48,8 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
   fail_if_in_proof();
   (* We check that [s] is not already used. *)
   let sign = current_sign() in
-  if Sign.mem sign x.elt then fatal "%S already exists." x.elt;
+  if Sign.mem sign x.elt then
+    fatal x.pos "Symbol [%s] already exists." x.elt;
   (* We check that [t] has type [a] if [ao = Some a], and that [t] has
      some type [a] otherwise. *)
   let a =
@@ -56,12 +58,12 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
        begin
          ignore (Solve.sort_type Ctxt.empty a);
          if Solve.has_type Ctxt.empty t a then a
-         else fatal "[%a] does not have type [%a]." pp t pp a
+         else fatal_no_pos "[%a] does not have type [%a]." pp t pp a
        end
     | None    ->
        match Solve.infer Ctxt.empty t with
        | Some(a) -> a
-       | None    -> fatal "Cannot infer the type of [%a]." pp t
+       | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
   let s = Sign.add_symbol sign false x a in
@@ -72,13 +74,13 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
 let handle_infer : term -> Eval.config -> unit = fun t c ->
   match Solve.infer (Ctxt.of_env (focus_goal_hyps())) t with
   | Some(a) -> out 3 "(infr) %a : %a\n" pp t pp (Eval.eval c a)
-  | None    -> fatal "Cannot infer the type of [%a]." pp t
+  | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
 
 (** [handle_eval t] evaluates the term [t]. *)
 let handle_eval : term -> Eval.config -> unit = fun t c ->
   match Solve.infer (Ctxt.of_env (focus_goal_hyps())) t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
-  | None    -> fatal "Cannot infer the type of [%a]." pp t
+  | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
 
 (** [handle_test test] runs the test [test]. When the test does not
     succeed, the program may fail gracefully or continue its exection
@@ -105,7 +107,7 @@ let handle_test : test -> unit = fun test ->
   match (success, test.is_assert) with
   | (true , true ) -> ()
   | (true , false) -> out 3 "(check) OK\n"
-  | (false, true ) -> fatal "Assertion [%a] failed." pp_test test
+  | (false, true ) -> fatal_no_pos "Assertion [%a] failed." pp_test test
   | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
 
 (** [handle_start_proof s a] starts a proof of [a] named [s]. *)
@@ -114,7 +116,8 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   fail_if_in_proof();
   (* We check that [s] is not already used. *)
   let sign = current_sign() in
-  if Sign.mem sign s.elt then fatal "[%s] already exists." s.elt;
+  if Sign.mem sign s.elt then
+    fatal s.pos "Symbol [%s] already exists." s.elt;
   (* We check that [a] is typable by a sort. *)
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
@@ -161,13 +164,13 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let g = thm.t_focus in
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
-  if occurs m t then fatal "Invalid refinement.";
+  if occurs m t then fatal_no_pos "Invalid refinement.";
   (* Check that [t] has the correct type. *)
   let bt = lift t in
   let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.has_type (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
-    fatal "Typing error.";
+    fatal_no_pos "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
   let new_metas = List.filter Metas.unset new_metas in
@@ -187,8 +190,9 @@ let handle_intro (s:strloc) : unit =
   let thm = current_theorem() in
   let g = thm.t_focus in
   (* We check that [s] is not already used. *)
-  if List.mem_assoc s.elt g.g_hyps then fatal "[%s] already used." s.elt;
-  fatal "Not yet implemented..."
+  if List.mem_assoc s.elt g.g_hyps then
+    fatal_no_pos "[%s] already used." s.elt;
+  fatal_no_pos "Not yet implemented..."
 
 (** [handle_simpl] normalize the focused goal. *)
 let handle_simpl () : unit =
@@ -235,10 +239,10 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
     if !debug_unif then
       log "unif" "after the command: %a" Metas.print_meta_stats ()
   with
-  | Fatal(m) -> fatal "[%a] error while handling a command.\n%s\n"
-                  Pos.print cmd.pos m
-  | e        -> let e = Printexc.to_string e in
-                fatal "[%a] uncaught exception [%s].\n" Pos.print cmd.pos e
+  | Fatal(Some(_),_) as e -> raise e
+  | Fatal(None   ,m)      -> fatal cmd.pos "error on command.\n%s" m
+  | e                     -> let e = Printexc.to_string e in
+                             fatal cmd.pos "uncaught exception [%s]." e
 
 (** [compile force path] compiles the file corresponding to [path],
     when it is necessary (the corresponding object file does not
@@ -249,13 +253,13 @@ and compile : bool -> Files.module_path -> unit =
   let base = String.concat "/" path in
   let src = base ^ Files.src_extension in
   let obj = base ^ Files.obj_extension in
-  if not (Sys.file_exists src) then fatal "File [%s] not found.\n" src;
+  if not (Sys.file_exists src) then fatal_no_pos "File [%s] not found." src;
   if List.mem path !loading then
     begin
       err "Circular dependencies detected in [%s].\n" src;
       err "Dependency stack for module [%a]:\n" Files.pp_path path;
       List.iter (err "  - [%a]\n" Files.pp_path) !loading;
-      fatal "Build aborted.\n"
+      fatal_no_pos "Build aborted."
     end;
   if PathMap.mem path !loaded then
     out 2 "Already loaded [%s]\n%!" src

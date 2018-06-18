@@ -5,7 +5,7 @@ type state
 
 type result =
   | OK    of state
-  | Error of string
+  | Error of Pos.popt option * string
 
 val initial_state : state
 

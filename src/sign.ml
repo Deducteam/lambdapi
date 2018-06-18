@@ -193,7 +193,7 @@ let read : string -> t = fun fname ->
     close_in ic; sign
   with Failure _ ->
     close_in ic;
-    fatal "File [%s] is incompatible with the current binary...\n" fname
+    fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
 
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)

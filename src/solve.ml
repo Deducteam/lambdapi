@@ -134,7 +134,7 @@ let instantiate (m:meta) (ts:term array) (v:term) : bool =
 (** Exception raised by the solving algorithm when an irrecuperable
     error is found. *)
 let not_convertible t1 t2 =
-  fatal "[%a] and [%a] are not convertible" pp t1 pp t2
+  fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
 (** [solve s p] tries to solve the problem [p] following the strategy
     list [s]. When it stops, it returns the list of unsolved
@@ -252,7 +252,7 @@ and solve_sort a strats p : unif list =
   if !debug_type then log "solve_sort" "[%a]" pp a;
   match unfold a with
   | Type | Kind -> solve_sorts strats p
-  | _           -> fatal "[%a] is not a sort\n" pp a
+  | _           -> fatal_no_pos "[%a] is not a sort." pp a
 
 (** [solve_unif c t1 t2 s p] tries to solve the unificaton problem
     [(c,t1,t2)]. Then, it continues with the remaining problems
@@ -372,7 +372,7 @@ and solve_whnf c t1 t2 strats p : unif list =
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
-  try Some (solve s p) with Fatal(m) -> err "%s\n" m; None
+  try Some (solve s p) with Fatal(_,m) -> err "%s\n" m; None
 
 let msg (_,a,b) = err "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
@@ -404,7 +404,7 @@ let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
   let problems = {no_problems with type_problems = [(c,t,a)]} in
   match solve true default_strategy problems with
   | Some(l) -> (l, a)
-  | None    -> fatal "FIXME1"
+  | None    -> fatal_no_pos "FIXME1."
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
@@ -422,7 +422,7 @@ let sort_type (c:Ctxt.t) (t:term) : term =
      begin
        match unfold a with
        | Type | Kind -> a
-       | _    -> fatal "[%a] has type [%a] (not a sort)" pp t pp a
+       | _    -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
      end
-  | Some(l)  -> List.iter msg l; fatal "FIXME2"
-  | None     -> fatal "FIXME3"
+  | Some(l)  -> List.iter msg l; fatal_no_pos "FIXME2."
+  | None     -> fatal_no_pos "FIXME3."

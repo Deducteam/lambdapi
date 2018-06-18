@@ -1,6 +1,12 @@
 (** Output and debugging utilities. *)
 
-(* Format transformers (colors). *)
+(** Short name for a standard formatter. *)
+type 'a outfmt = ('a, Format.formatter, unit) format
+
+(** Short name for a standard formatter with continuation. *)
+type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
+
+(** Format transformers (colors). *)
 let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
 let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
 let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
@@ -21,22 +27,23 @@ let err_fmt = ref Format.err_formatter
 
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
-let wrn : ('a, Format.formatter, unit) format -> 'a =
-  fun fmt -> Format.fprintf !err_fmt (yel fmt)
+let wrn : 'a outfmt -> 'a = fun fmt -> Format.fprintf !err_fmt (yel fmt)
 
 (** [err fmt] prints a red error message with [Printf] format [fmt]. Note that
     the output buffer is flushed by the function. *)
-let err : ('a, Format.formatter, unit) format -> 'a =
-  fun fmt -> Format.fprintf !err_fmt (red fmt)
+let err : 'a outfmt -> 'a = fun fmt -> Format.fprintf !err_fmt (red fmt)
 
 (** Exception raised in case of failure. *)
-exception Fatal of string
+exception Fatal of Pos.popt option * string
 
-(** [fatal fmt] is like [err fmt], but it raises [Fatal]. *)
-let fatal : ('a, Format.formatter, unit, unit, unit, 'b) format6 -> 'a =
-  fun fmt ->
-    let cont _ = raise (Fatal(Format.flush_str_formatter ())) in
-    Format.kfprintf cont Format.str_formatter fmt
+(** [fatal popt fmt] raises the [Fatal(popt,msg)] exception, in which [msg] is
+    built from the format [fmt] (provided the necessary arguments. *)
+let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
+  let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter ())) in
+  Format.kfprintf cont Format.str_formatter fmt
+
+(** [fatal_no_pos fmt] is equivalent to [fatal None fmt]. *)
+let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt -> fatal None fmt
 
 (* Various debugging / message flags. *)
 let verbose    = ref 1
@@ -79,15 +86,15 @@ let set_debug : bool -> string -> unit = fun value ->
     is identified by a [tag], which should (ideally) be a 4-character [string]
     for better formatting. Note that the output buffer is flushed,  and that a
     newline character ['\n'] is also automatically appended to the output. *)
-let log : string -> ('a, Format.formatter, unit) format -> 'a =
-  fun name fmt -> Format.fprintf !err_fmt ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+let log : string -> 'a outfmt -> 'a = fun name fmt ->
+  Format.fprintf !err_fmt ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 (** [out lvl fmt] prints an output message using the format [fmt], but only if
     [lvl] is strictly greater than the current verbosity level.  Note that the
     output channel is automatically flushed,  and the message is displayed in
     magenta instead of the default terminal color whenever a debugging mode is
     enabled. *)
-let out : int -> ('a, Format.formatter, unit) format -> 'a = fun lvl fmt ->
+let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
   if lvl > !verbose then Format.ifprintf !out_fmt fmt
   else Format.fprintf !out_fmt fmt

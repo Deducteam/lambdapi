@@ -33,18 +33,20 @@ let pp_path : module_path pp = fun oc mp ->
     is invalid, [Invalid_argument "invalid module path"] is raised. *)
 let module_path : string -> module_path = fun fname ->
   if not (Filename.check_suffix fname src_extension) then
-    fatal "invalid file extension for %s (expected %s)" fname src_extension;
+    fatal_no_pos "Invalid file extension for [%s] (expected [%s])."
+      fname src_extension;
   if not (Filename.is_relative fname) then
-    fatal "invalid path for %s (expected relative path)" fname;
+    fatal_no_pos "Invalid path for [%s] (expected relative path)." fname;
   let base = Filename.chop_extension (Filename.basename fname) in
   let dir = Filename.dirname fname in
   if dir = Filename.parent_dir_name then
-    fatal "invalid path for %s (%s not allowed)" fname Filename.parent_dir_name;
+    fatal_no_pos "Invalid path for [%s] ([%s] not allowed)."
+      fname Filename.parent_dir_name;
   let rec build_path acc dir =
     let dirbase = Filename.basename dir in
     let dirdir  = Filename.dirname  dir in
     if dirdir = Filename.parent_dir_name then
-      fatal "invalid path for %s (%s not allowed)"
+      fatal_no_pos "Invalid path for [%s] ([%s] not allowed)."
         fname Filename.parent_dir_name;
     if dirbase = Filename.current_dir_name then acc
     else build_path (dirbase::acc) dirdir

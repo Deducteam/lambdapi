@@ -12,10 +12,10 @@ type state = Time.t
 
 type result =
   | OK    of state
-  | Error of string
+  | Error of Pos.popt option * string
 
 let initial_state : state = Time.save ()
 
 let handle_command : state -> command -> result = fun t cmd ->
   Time.rollback t;
-  try handle_cmd cmd; OK(Time.save ()) with Fatal(m) -> Error(m)
+  try handle_cmd cmd; OK(Time.save ()) with Fatal(p,m) -> Error(p,m)

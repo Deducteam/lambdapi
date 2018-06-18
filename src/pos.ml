@@ -75,7 +75,7 @@ let to_string : pos -> string = fun p ->
 (** [print oc pos] prints the optional position [pos] to [oc]. *)
 let print : Format.formatter -> pos option -> unit = fun ch p ->
   match p with
-  | None   -> Format.pp_print_string ch "an unknown location"
+  | None   -> Format.pp_print_string ch "unknown location"
   | Some p -> Format.pp_print_string ch (to_string p)
 
 open Input

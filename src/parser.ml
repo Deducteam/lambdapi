@@ -299,7 +299,7 @@ let blank buf pos =
     | (`Ini, _::_, ';'   ) -> fn `Cls stack curr next
     | (`Cls, _::s, ')'   ) -> fn `Ini s curr next
     (* Error on end of file if in a comment. *)
-    | (_   , p::_, '\255') -> fatal "Unclosed comment at [%a].\n" Pos.print p
+    | (_   , p::_, '\255') -> fatal p "Parse error (unclosed comment).\n"
     (* Ignoring any character inside comments. *)
     | (`Cls, []  , _     ) -> assert false (* impossible *)
     | (`Cls, _::_, _     )
@@ -323,7 +323,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
     res
   with Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
-    fatal "Parse error at [%a].\n" Pos.print loc
+    fatal loc  "Parse error.\n"
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
@@ -336,4 +336,4 @@ let parse_string : string -> string -> p_cmd loc list = fun fname str ->
   try parse_string ~filename:fname cmd_list blank str
   with Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
-    fatal "Parse error at [%a].\n" Pos.print loc
+    fatal loc "Parse error.\n"
