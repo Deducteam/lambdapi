@@ -3,6 +3,8 @@
 open Terms
 open Extra
 
+type map = meta StrMap.t
+
 (** [unset u] returns [true] if [u] is not instanciated. *)
 let unset : meta -> bool = fun u -> !(u.meta_value) = None
 

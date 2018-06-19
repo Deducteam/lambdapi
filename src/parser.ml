@@ -9,11 +9,6 @@ open Pos
 (** Parser-level representation of a qualified identifier. *)
 type qident = (module_path * string) loc
 
-(** Parser-level representation of a metavariable identifier. *)
-type p_meta =
-  | M_User of string (** With given name. *)
-  | M_Sys  of int    (** With given key.  *)
-
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
  and p_term_aux =
@@ -23,7 +18,7 @@ type p_term = p_term_aux loc
   | P_Abst of strloc * p_term option * p_term
   | P_Appl of p_term * p_term
   | P_Wild
-  | P_Meta of p_meta * p_term array
+  | P_Meta of strloc * p_term array
 
 (* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
    path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
@@ -103,11 +98,7 @@ let _def_  = keyword "def"
 let _thm_  = keyword "thm"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
-let parser meta =
-  (* Internal meta-variable by key. *)
-  | "?" - s:''[1-9][0-9]*''            -> M_Sys(int_of_string s)
-  (* User-defined meta-variable by name. *)
-  | "?" - s:''[a-zA-Z][_'a-zA-Z0-9]*'' -> M_User(s)
+let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
 
 (** [expr p] is a parser for an expression at priority level [p]. The possible
     priority levels are [`Func] (top level, including abstraction or product),

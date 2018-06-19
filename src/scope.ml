@@ -42,30 +42,19 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     [a] if [is_type] is [true]. Otherwise, it adds [m] into [metas]
     and returns [m[vs]] where [m] is a new metavariable of arity the
     length of [env] and type [a]. Returns also [vs] in both cases. *)
-let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
-  fun metas env is_type ->
-    let a = prod_of_env env _Type in
-    let vs = Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env) in
-    if is_type then (a, vs)
-    else (* We create a new metavariable of type [a]. *)
-      let m = Metas.add_sys_meta a (List.length env) in
-      metas := m::!metas; (prod_of_env env (_Meta m vs), vs)
-
-(** [meta_of_env metas env is_type] builds a new metavariable of type
-    [prod_vars_of_env env is_type]. It adds new metavariables in
-    [metas] too. *)
-let meta_of_env : meta list ref -> env -> bool -> tbox =
-  fun metas env is_type ->
-    let t, vs = prod_vars_of_env metas env is_type in
-    let m = Metas.add_sys_meta t (List.length env) in
-    metas := m::!metas; _Meta m vs
+let prod_vars_of_env : env -> term * tbox array = fun env ->
+  let a = prod_of_env env _Type in
+  let vs = Env.vars_of_env env in
+  (* We create a new metavariable of type [a]. *)
+  let m = Metas.add_sys_meta a (Array.length vs) in
+  (prod_of_env env (_Meta m vs), vs)
 
 (** [scope_term metas t] transforms a parser-level term [t] into an actual
     term and the list of the new metavariables that it contains. Note
     that wildcards [P_Wild] are transformed into fresh meta-variables.
     The same goes for the type carried by abstractions when it is not
     given. It adds new metavariables in [metas] too. *)
-let scope_term : meta list ref -> env -> p_term -> term = fun metas env t ->
+let scope_term : Metas.map -> env -> p_term -> term = fun mmap env t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -79,28 +68,28 @@ let scope_term : meta list ref -> env -> p_term -> term = fun metas env t ->
         let a = scope_domain env a in
         _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> meta_of_env metas env false
-    | P_Meta(id,ts) ->
-        let id = match id with M_Sys(k) -> Sys(k) | M_User(s) -> User(s) in
+    | P_Wild        ->
+        let (t, vs) = prod_vars_of_env env in
+        _Meta (Metas.add_sys_meta t (List.length env)) vs
+    | P_Meta(m,ts)  ->
         let m =
-          try Metas.find_meta id with Not_found ->
-          match id with
-          | Sys(k)  -> fatal t.pos "Unknown metavariable [?%i]" k
-          | User(s) ->
-              let (t,_) = prod_vars_of_env metas env false in
-              let m = Metas.add_user_meta s t (List.length env) in
-              metas := m :: !metas; m
+          try StrMap.find m.elt mmap with Not_found ->
+          let (t,_) = prod_vars_of_env env in
+          Metas.add_user_meta m.elt t (List.length env)
         in
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
     | Some(t) -> scope env t
-    | None    -> meta_of_env metas env true
+    | None    ->
+        let a = prod_of_env env _Type in
+        let vs = Env.vars_of_env env in
+        _Meta (Metas.add_sys_meta a (Array.length vs)) vs
   in
   Bindlib.unbox (scope env t)
 
 (** Association list giving an environment index to “pattern variable”. *)
-type meta_map = (string * int) list
+type pattern_map = (string * int) list
 
 (** Representation of a rule LHS (or pattern). It contains the head symbol and
     the list of arguments. *)
@@ -110,7 +99,7 @@ type full_lhs = sym * term list
     association list [map] gives the index that is reserved in the environment
     for “pattern variables”.  Only the variables that are bound in the RHS (or
     appear non-linearly in the LHS) have an associated index in [map]. *)
-let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
+let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   let fresh =
     let c = ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
@@ -129,15 +118,10 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
         let e = List.map (fun (_,(x,_)) -> _Vari x) env in
         let m = fresh () in
         _Patt None m (Array.of_list e)
-    | P_Meta(m,ts)  ->
+    | P_Meta(id,ts) ->
         let e = Array.map (scope env) ts in
-        let s =
-          match m with
-          | M_User(s) -> s
-          | _         -> fatal t.pos "Invalid LHS (system metavariable)."
-        in
-        let i = try Some(List.assoc s map) with Not_found -> None in
-        _Patt i s e
+        let i = try Some(List.assoc id.elt map) with Not_found -> None in
+        _Patt i id.elt e
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
     | Some(t) -> fatal t.pos "Invalid LHS (type annotation)."
@@ -159,7 +143,7 @@ type rhs = (term_env, term) Bindlib.mbinder
 (** [scope_rhs map t] computes a rule RHS from the parser-level term [t].
     The association list [map] gives the position of
     every “pattern variable” in the constructed multiple binder. *)
-let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
+let scope_rhs : pattern_map -> p_term -> rhs = fun map t ->
   let names =
     let sorted_map = List.sort (fun (_,i) (_,j) -> i - j) map in
     Array.of_list (List.map fst sorted_map)
@@ -181,16 +165,11 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     | P_Wild        -> fatal t.pos "Invalid RHS (wildcard).\n"
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
-        let m =
-          match m with
-          | M_User(s) -> s
-          | _         -> fatal t.pos "Invalid RHS (system metavariable)."
+        let i =
+          try List.assoc m.elt map with Not_found ->
+            fatal m.pos "Unbound pattern variable [%s]." m.elt
         in
-        try
-          let i = List.assoc m map in
-          _TEnv (Bindlib.box_var metas.(i)) e
-        with Not_found ->
-          fatal t.pos "Unbound pattern variable [%s]." m
+        _TEnv (Bindlib.box_var metas.(i)) e
   and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
     match t with
     | Some(t) -> scope env t
@@ -214,18 +193,16 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
     | P_Prod(_,Some(a),b)
     | P_Abst(_,Some(a),b)
     | P_Appl(a,b)         -> meta_vars (meta_vars acc a) b
-    | P_Meta(M_User(m),e) ->
+    | P_Meta(m,e)         ->
         let ((ar,nl) as acc) = Array.fold_left meta_vars acc e in
-        if m = "_" then acc else
         let l = Array.length e in
         begin
           try
-            if List.assoc m ar <> l then
-              fatal t.pos "Arity mismatch for metavariable [%s]." m;
-            if List.mem m nl then acc else (ar, m::nl)
-          with Not_found -> ((m,l)::ar, nl)
+            if List.assoc m.elt ar <> l then
+              fatal m.pos "Arity mismatch for metavariable [%s]." m.elt;
+            if List.mem m.elt nl then acc else (ar, m.elt::nl)
+          with Not_found -> ((m.elt,l)::ar, nl)
         end
-    | P_Meta(_,_)         -> fatal t.pos "Invalid rule member."
   in meta_vars ([],[]) t
 
 (** [scope_rule r] scopes a parsing level reduction rule, producing every
@@ -274,12 +251,12 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
            let n = Hashtbl.find arity x in
            let lts1, lts2 = List.cut lts n in
            let ts1 = List.map snd lts1 in
-           let h = Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts1)) in
+           let h = Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts1)) in
            Parser.add_args h lts2
          with Not_found ->
            Hashtbl.add arity x (List.length lts);
            let ts = List.map snd lts in
-           Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts))
+           Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts))
        end
     | _ ->
        match t.elt with
@@ -312,6 +289,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
 let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
   let scope_term =
     let env = Proofs.focus_goal_hyps () in
+    let metas = Metas.(!all_metas.str_map) in
     scope_term metas env
   in
   match cmd with
