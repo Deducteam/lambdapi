@@ -46,15 +46,17 @@ let prod_vars_of_env : env -> term * tbox array = fun env ->
   let a = prod_of_env env _Type in
   let vs = Env.vars_of_env env in
   (* We create a new metavariable of type [a]. *)
-  let m = Metas.add_sys_meta a (Array.length vs) in
+  let m = fresh_meta a (Array.length vs) in
   (prod_of_env env (_Meta m vs), vs)
+
+(* NOTE wildcards and metavars are assumed to be terms (not types). *)
 
 (** [scope_term metas t] transforms a parser-level term [t] into an actual
     term and the list of the new metavariables that it contains. Note
     that wildcards [P_Wild] are transformed into fresh meta-variables.
     The same goes for the type carried by abstractions when it is not
     given. It adds new metavariables in [metas] too. *)
-let scope_term : Metas.map -> env -> p_term -> term = fun mmap env t ->
+let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -70,12 +72,12 @@ let scope_term : Metas.map -> env -> p_term -> term = fun mmap env t ->
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let (t, vs) = prod_vars_of_env env in
-        _Meta (Metas.add_sys_meta t (List.length env)) vs
+        _Meta (fresh_meta t (List.length env)) vs
     | P_Meta(m,ts)  ->
         let m =
           try StrMap.find m.elt mmap with Not_found ->
           let (t,_) = prod_vars_of_env env in
-          Metas.add_user_meta m.elt t (List.length env)
+          fresh_meta ~name:m.elt t (List.length env)
         in
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
@@ -84,7 +86,7 @@ let scope_term : Metas.map -> env -> p_term -> term = fun mmap env t ->
     | None    ->
         let a = prod_of_env env _Type in
         let vs = Env.vars_of_env env in
-        _Meta (Metas.add_sys_meta a (Array.length vs)) vs
+        _Meta (fresh_meta a (Array.length vs)) vs
   in
   Bindlib.unbox (scope env t)
 
@@ -286,10 +288,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd].
     In case of error, the program gracefully fails. *)
-let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
+let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun _ cmd ->
   let scope_term =
     let env = Proofs.focus_goal_hyps () in
-    let metas = Metas.(!all_metas.str_map) in
+    let metas = StrMap.empty in
     scope_term metas env
   in
   match cmd with

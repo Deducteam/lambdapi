@@ -5,7 +5,6 @@ open Print
 open Extra
 open Console
 open Eval
-open Metas
 
 (** Representation of a set of problems. *)
 type problems =
@@ -69,12 +68,12 @@ let eq_vari : term -> term -> bool = fun t u ->
     is [Type]. *)
 let make_type =
   let empty = [||] in
-  fun () -> Meta(add_sys_meta Type 0, empty)
+  fun () -> Meta(fresh_meta Type 0, empty)
 
 (** [make_meta ctx a] creates a metavariable of type [a],  whth an environment
     containing the variables of context [ctx]. *)
 let make_meta : Ctxt.t -> term -> term = fun ctx a ->
-  let m = add_sys_meta (Ctxt.to_prod ctx a) (List.length ctx) in
+  let m = fresh_meta (Ctxt.to_prod ctx a) (List.length ctx) in
   let vs = List.rev_map (fun (v,_) -> Vari v) ctx in
   Meta(m, Array.of_list vs)
 
@@ -102,23 +101,6 @@ let pp_unifs : unif list pp = fun oc l ->
   match l with
   | [] -> ()
   | _  -> Format.fprintf oc " if %a" (List.pp pp_unif ", ") l
-
-(** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
-let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  if !debug_unif then
-    begin
-      let (xs,v) = Bindlib.unmbind v in
-      log "unif" "setting %a[%a] ← %a" pp_meta m (Array.pp pp_tvar ",") xs pp v
-    end;
-  begin
-    match m.meta_name with
-    | User(s)  -> let str_map = StrMap.remove s !all_metas.str_map in
-                  all_metas := {!all_metas with str_map}
-    | Sys(i) -> let int_map = IntMap.remove i !all_metas.int_map in
-                all_metas := {!all_metas with int_map}
-  end;
-  m.meta_type  := Kind;
-  m.meta_value := Some(v)
 
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
@@ -238,7 +220,8 @@ and solve_type c t a strats p =
      (* The type of [Meta(m,ts)] is the same as [add_args f ts]
         where [f] is some fresh symbol with the same type as [m]. *)
      let s =
-       { sym_name = meta_name m ; sym_type = ref !(m.meta_type)
+       let sym_name = Printf.sprintf "[?%i]" m.meta_key in
+       { sym_name ; sym_type = ref !(m.meta_type)
        ; sym_path = [] ; sym_def  = ref None ; sym_rules = ref []
        ; sym_const = true }
      in

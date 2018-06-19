@@ -121,7 +121,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We check that [a] is typable by a sort. *)
   ignore (Solve.sort_type Ctxt.empty a);
   (* We start the proof mode. *)
-  let m = Metas.add_user_meta s.elt a 0 in
+  let m = fresh_meta ~name:s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
   let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
   theorem := Some t
@@ -173,7 +173,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
     fatal_no_pos "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
-  let new_metas = List.filter Metas.unset new_metas in
+  let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
   if !debug_tac then log "refine" "[%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
@@ -233,9 +233,7 @@ and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
       (* Legacy commands. *)
       | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
                              c.elt Pos.print c.pos
-    end;
-    if !debug_unif then
-      log "unif" "after the command: %a" Metas.print_meta_stats ()
+    end
   with
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
