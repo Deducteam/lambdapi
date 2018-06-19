@@ -23,8 +23,6 @@ let find_ident : env -> qident -> tbox = fun env qid ->
   if mp = [] then
     (* No module path, search the local environment first. *)
     try _Vari (fst (List.assoc s env)) with Not_found ->
-    (* Then, search in hypotheses. *)
-    try _Vari (fst (List.assoc s (Proofs.focus_goal_hyps()))) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
     fatal pos "Unbound variable or symbol [%s]." s
@@ -88,7 +86,7 @@ let meta_of_env : meta list ref -> env -> bool -> tbox =
     that wildcards [P_Wild] are transformed into fresh meta-variables.
     The same goes for the type carried by abstractions when it is not
     given. It adds new metavariables in [metas] too. *)
-let scope_term : meta list ref -> p_term -> term = fun metas t ->
+let scope_term : meta list ref -> env -> p_term -> term = fun metas env t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -118,7 +116,7 @@ let scope_term : meta list ref -> p_term -> term = fun metas t ->
     | Some(t) -> scope env t
     | None    -> meta_of_env metas env true
   in
-  Bindlib.unbox (scope [] t)
+  Bindlib.unbox (scope env t)
 
 (** Association list giving an environment index to “pattern variable”. *)
 type meta_map = (string * int) list
@@ -331,14 +329,18 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd].
     In case of error, the program gracefully fails. *)
 let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
+  let scope_term =
+    let env = Proofs.focus_goal_hyps () in
+    scope_term metas env
+  in
   match cmd with
-  | P_SymDecl(b,x,a)      -> SymDecl(b, x, scope_term metas a)
+  | P_SymDecl(b,x,a)      -> SymDecl(b, x, scope_term a)
   | P_SymDef(b,x,ao,t)    ->
-      let t = scope_term metas t in
+      let t = scope_term t in
       let ao =
         match ao with
         | None    -> None
-        | Some(a) -> Some(scope_term metas a)
+        | Some(a) -> Some(scope_term a)
       in
       SymDef(b,x,ao,t)
   | P_Rules(rs)           -> Rules(List.map scope_rule rs)
@@ -346,18 +348,18 @@ let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
       let rs = List.map translate_old_rule rs in
       Rules(List.map scope_rule rs)
   | P_Require(path)       -> Require(path)
-  | P_Infer(t,c)          -> Infer(scope_term metas t, c)
-  | P_Eval(t,c)           -> Eval(scope_term metas t, c)
+  | P_Infer(t,c)          -> Infer(scope_term t, c)
+  | P_Eval(t,c)           -> Eval(scope_term t, c)
   | P_TestType(ia,mf,t,a) ->
-      let test_type = HasType(scope_term metas t, scope_term metas a) in
+      let test_type = HasType(scope_term t, scope_term a) in
       Test({is_assert = ia; must_fail = mf; test_type})
   | P_TestConv(ia,mf,t,u) ->
-      let test_type = Convert(scope_term metas t, scope_term metas u) in
+      let test_type = Convert(scope_term t, scope_term u) in
       Test({is_assert = ia; must_fail = mf; test_type})
   | P_Other(c)            -> Other(c)
-  | P_StartProof(s,a)     -> StartProof(s, scope_term metas a)
+  | P_StartProof(s,a)     -> StartProof(s, scope_term a)
   | P_PrintFocus          -> PrintFocus
-  | P_Refine(t)           -> Refine (scope_term metas t)
+  | P_Refine(t)           -> Refine (scope_term t)
   | P_Simpl               -> Simpl
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd],
