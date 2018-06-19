@@ -166,10 +166,10 @@ let rec unfold : term -> term = fun t ->
 (** [unset m] returns [true] if [m] is not instanciated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [get_key ()] returns a fresh key, and [reset ()] resets the counter. *)
-let (get_key, reset) : (unit -> int) * (unit -> unit) =
+(** [get_key ()] returns a fresh metavariable key. *)
+let get_key : unit -> int =
   let counter = ref (-1) in
-  ((fun () -> incr counter; !counter), (fun () -> counter := -1))
+  (fun () -> incr counter; !counter)
 
 (** [fresh_meta a n] returns a new metavariable of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
@@ -347,34 +347,42 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [iter_meta f t] applies the function [f] to every metavariable in the term
+    [t]. As for {!val:eq},  the behaviour of this function is unspecified when
+    [t] uses the {!const:Patt} or {!const:TEnv} constructor. *)
+let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
+  match unfold t with
+  | Patt(_,_,_)
+  | TEnv(_,_)   -> assert false
+  | Vari(_)
+  | Type
+  | Kind
+  | Symb(_)     -> ()
+  | Prod(a,b)
+  | Abst(a,b)   -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
+  | Appl(t,u)   -> iter_meta f t; iter_meta f u
+  | Meta(v,ts)  -> f v; Array.iter (iter_meta f) ts
+
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
     the {!const:Patt} or {!const:TEnv} constructor. *)
 let occurs : meta -> term -> bool = fun m t ->
-  let exception Occurs in
-  let rec occurs l =
-    match l with
-    | []   -> ()
-    | a::l ->
-    match unfold a with
-    | Patt(_,_,_) | TEnv(_,_)         -> assert false
-    | Vari(_) | Type | Kind | Symb(_) -> occurs l
-    | Prod(a,b) | Abst(a,b)           -> occurs (a::(unbind b)::l)
-    | Appl(t,u)                       -> occurs (t::u::l)
-    | Meta(v,_) when m == v           -> raise Occurs
-    | Meta(_,ts)                      -> occurs (List.add_array ts l)
-  in
-  try occurs [t]; false with Occurs -> true
+  let fn p = if m == p then raise Exit in
+  try iter_meta fn t; false with Exit -> true
+
+(** [get_metas t] returns the list of all the metavariables in [t]. *)
+let get_metas : term -> meta list = fun t ->
+  let l = ref [] in
+  iter_meta (fun m -> l := m :: !l) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
-let distinct_vars (a:term array) : bool =
-  let acc = ref [] in
-  let fn t =
-    match t with
-    | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
-       else acc := v::!acc
-    | _ -> raise Exit
+let distinct_vars : term array -> bool = fun ar ->
+  let rec distinct_vars vars i =
+    if i < 0 then true else
+    match unfold ar.(i) with
+    | Vari(x) when List.exists (Bindlib.eq_vars x) vars -> false
+    | Vari(x) -> distinct_vars (x::vars) (i-1)
+    | _       -> false
   in
-  let res = try Array.iter fn a; true with Exit -> false in
-  acc := []; res
+  distinct_vars [] (Array.length ar - 1)
