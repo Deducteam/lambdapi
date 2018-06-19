@@ -97,8 +97,7 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
 (** Association list giving an environment index to “pattern variable”. *)
 type pattern_map = (string * int) list
 
-(** Representation of a rule LHS (or pattern). It contains the head symbol and
-    the list of arguments. *)
+(** Representation of a LHS (pattern) as a head symbol and its arguments. *)
 type full_lhs = sym * term list
 
 (** [scope_lhs map t] computes a rule LHS from the parser-level term [t].  The
@@ -117,7 +116,11 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
     | P_Prod(_,_,_) -> fatal t.pos "Invalid LHS (product type)."
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
-        let a = scope_domain env a in
+        let a =
+          match a with
+          | Some(a) -> fatal a.pos "Invalid LHS (type annotation)."
+          | None    -> scope env (Pos.none P_Wild)
+        in
         _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
@@ -128,17 +131,12 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
         let e = Array.map (scope env) ts in
         let i = try Some(List.assoc id.elt map) with Not_found -> None in
         _Patt i id.elt e
-  and scope_domain : env -> p_term option -> tbox = fun env t ->
-    match t with
-    | Some(t) -> fatal t.pos "Invalid LHS (type annotation)."
-    | None    -> scope env (Pos.none P_Wild)
   in
-  match get_args (Bindlib.unbox (scope [] t)) with
-  | (Symb(s), _ ) when s.sym_const ->
-      fatal t.pos "LHS with a static head symbol."
-  | (Symb(s), ts) -> (s, ts)
-  | (_      , _ ) ->
-      fatal t.pos "LHS with no head symbol." Pos.print t.pos
+  let (h, args) = get_args (Bindlib.unbox (scope [] t)) in
+  match h with
+  | Symb(s) when s.sym_const -> fatal t.pos "LHS with a static head symbol."
+  | Symb(s)                  -> (s, args)
+  | _                        -> fatal t.pos "LHS with no head symbol."
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
    error messages. The names are formed of a number prefixed by ['#']. *)
@@ -146,9 +144,9 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
 (** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** [scope_rhs map t] computes a rule RHS from the parser-level term [t].
-    The association list [map] gives the position of
-    every “pattern variable” in the constructed multiple binder. *)
+(** [scope_rhs map t] computes a rule RHS from the parser-level term [t].  The
+    association list [map] gives the position of every  “pattern variable”  in
+    the constructed multiple binder. *)
 let scope_rhs : pattern_map -> p_term -> rhs = fun map t ->
   let names =
     let sorted_map = List.sort (fun (_,i) (_,j) -> i - j) map in
@@ -211,14 +209,13 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
         end
   in meta_vars ([],[]) t
 
-(** [scope_rule r] scopes a parsing level reduction rule, producing every
-    element that is necessary to check its type and print error messages. This
-    includes the context the symbol, the LHS / RHS as terms and the rule. *)
+(** [scope_rule r] turns the parser-level rewriting rule [r] into a  rewriting
+    rule (and the associated head symbol). *)
 let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
-  (* NOTE: to reject non-left-linear rules, we can check [nl = []] here. *)
+  (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
   (* Check that the meta-variables of the RHS exist in the LHS. *)
   let check_in_lhs (m,i) =
     let j =
@@ -232,8 +229,8 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
   let nl = List.filter (fun m -> not (List.mem m mvs)) nl in
   let mvs = List.mapi (fun i m -> (m,i)) (mvs @ nl) in
-  (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
-  (* NOTE: meta-variables not in [mvs] can be considered as wildcards. *)
+  (* NOTE [mvs] maps meta-variables to their position in the environment. *)
+  (* NOTE meta-variables not in [mvs] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
   let (sym, lhs) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
@@ -285,10 +282,11 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
        | P_Meta(_,_)   ->
           fatal t.pos "Invalid legacy rule syntax."
   in
-  let l = build [] lhs in
-  let r = build [] rhs in
-  (* the order is important for setting arities properly *)
-  (l,r)
+  (* NOTE the computation order is important for setting arities properly. *)
+  let lhs = build [] lhs in
+  let rhs = build [] rhs in
+  (lhs, rhs)
+
 
 (** [scope_cmd_aux cmd] scopes the parser level command [cmd].
     In case of error, the program gracefully fails. *)
