@@ -58,5 +58,5 @@ let to_prod : t -> term -> term = fun ctx t ->
                Bindlib.unbox (List.fold_left fn (lift t) ctx)
 
 (** [of_env] builds a context from an environment. **)
-let of_env : env -> t =
+let of_env : Env.t -> t =
   List.map (fun (_,(v,bt)) -> v,Bindlib.unbox bt)

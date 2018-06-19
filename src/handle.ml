@@ -142,7 +142,7 @@ let handle_print_focus() : unit =
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
-let env_of_prod (n:int) (t:term) : env * term =
+let env_of_prod (n:int) (t:term) : Env.t * term =
   let rec aux n t acc =
     if !debug_tac then log "env_of_prod" "%i %a" n pp t;
     match n, t with

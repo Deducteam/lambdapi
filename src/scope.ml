@@ -1,28 +1,25 @@
 (** Scoping. *)
 
 open Console
+open Extra
 open Files
+open Pos
 open Parser
 open Terms
+open Env
 open Cmd
-open Pos
-open Extra
-
-(** Extend an [env] with the mapping [(s,(v,a))] if [s] is not ["_"]. *)
-let add_env : string -> tvar -> tbox -> env -> env =
-  fun s v a env -> if s = "_" then env else (s,(v,a))::env
 
 (** [find_ident env qid] returns a boxed term corresponding to a  variable  of
-    the environment [env], or to a symbol, which name corresponds to [qid]. In
+    the environment [env] (or to a symbol) which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
-    search in the current signature. If the name does not correspond to
-    anything, the program fails gracefully. *)
+    search in the current signature. The exception [Fatal] is raised on errors
+    (i.e., when the name cannot be found, or the module path is invalid). *)
 let find_ident : env -> qident -> tbox = fun env qid ->
   let {elt = (mp, s); pos} = qid in
   if mp = [] then
     (* No module path, search the local environment first. *)
-    try _Vari (fst (List.assoc s env)) with Not_found ->
+    try _Vari (Env.find s env) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
     fatal pos "Unbound variable or symbol [%s]." s
@@ -50,13 +47,6 @@ let scope_meta_name loc id =
   | M_Sys(k)  when Metas.exists_meta (Sys(k)) -> Sys(k)
   | M_Sys(k)                                  ->
       fatal loc "Unknown metavariable [?%i]" k
-
-(** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
-    free variables in [x1, .., xn], build the product type [x1:T1 ->
-    .. -> xn:Tn -> t]. *)
-let prod_of_env : env -> tbox -> term = fun c t ->
-  let prod b (_,(v,a)) = _Prod a v b in
-  Bindlib.unbox (List.fold_left prod t c)
 
 (** [prod_vars_of_env metas env is_type] builds the variables [vs] of
     [env] and the product [a] of [env] over [Type]. Then, it returns
@@ -94,11 +84,11 @@ let scope_term : meta list ref -> env -> p_term -> term = fun metas env t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Prod a v (scope (add_env x.elt v a env) b)
+        _Prod a v (scope (Env.add x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> meta_of_env metas env false
     | P_Meta(id,ts) ->
@@ -142,7 +132,7 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> _Vari x) env in
@@ -191,11 +181,11 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Prod a v (scope (add_env x.elt v a env) b)
+        _Prod a v (scope (Env.add x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> fatal t.pos "Invalid RHS (wildcard).\n"
     | P_Meta(m,e)   ->
