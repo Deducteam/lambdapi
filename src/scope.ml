@@ -37,17 +37,6 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     try _Symb (Sign.find sign s) with Not_found ->
     fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
 
-(** [scope_meta_name loc id] translates the p_term-level metavariable
-    name [id] into a term-level metavariable name. The position [loc] of
-    [id] is used to build an error message in the case where [id] is
-    invalid. *)
-let scope_meta_name loc id =
-  match id with
-  | M_User(s)                                 -> User(s)
-  | M_Sys(k)  when Metas.exists_meta (Sys(k)) -> Sys(k)
-  | M_Sys(k)                                  ->
-      fatal loc "Unknown metavariable [?%i]" k
-
 (** [prod_vars_of_env metas env is_type] builds the variables [vs] of
     [env] and the product [a] of [env] over [Type]. Then, it returns
     [a] if [is_type] is [true]. Otherwise, it adds [m] into [metas]
@@ -92,13 +81,15 @@ let scope_term : meta list ref -> env -> p_term -> term = fun metas env t ->
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> meta_of_env metas env false
     | P_Meta(id,ts) ->
-        let id = scope_meta_name t.pos id in
+        let id = match id with M_Sys(k) -> Sys(k) | M_User(s) -> User(s) in
         let m =
           try Metas.find_meta id with Not_found ->
-            let s = match id with User(s) -> s | _ -> assert false in
-            let (t,_) = prod_vars_of_env metas env false in
-            let m = Metas.add_user_meta s t (List.length env) in
-            metas := m :: !metas; m
+          match id with
+          | Sys(k)  -> fatal t.pos "Unknown metavariable [?%i]" k
+          | User(s) ->
+              let (t,_) = prod_vars_of_env metas env false in
+              let m = Metas.add_user_meta s t (List.length env) in
+              metas := m :: !metas; m
         in
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
