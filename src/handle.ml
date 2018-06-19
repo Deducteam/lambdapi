@@ -252,13 +252,12 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     | P_TestConv(ia,mf,t,u) ->
         let test_type = Convert(scope_basic t, scope_basic u) in
         handle_test {is_assert = ia; must_fail = mf; test_type}
-    | P_Other(c)            ->
-        if !debug then
-          wrn "[%a] ignored command %S.\n" Pos.print c.pos c.elt
     | P_StartProof(s,a)     -> handle_start_proof s (scope_basic a)
     | P_PrintFocus          -> handle_print_focus ()
     | P_Refine(t)           -> handle_refine [] (scope_basic t) (* FIXME *)
     | P_Simpl               -> handle_simpl ()
+    | P_Other(c)            ->
+        if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos
   with
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
