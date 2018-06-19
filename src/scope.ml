@@ -37,26 +37,16 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     try _Symb (Sign.find sign s) with Not_found ->
     fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
 
-(** [prod_vars_of_env metas env is_type] builds the variables [vs] of
-    [env] and the product [a] of [env] over [Type]. Then, it returns
-    [a] if [is_type] is [true]. Otherwise, it adds [m] into [metas]
-    and returns [m[vs]] where [m] is a new metavariable of arity the
-    length of [env] and type [a]. Returns also [vs] in both cases. *)
-let prod_vars_of_env : env -> term * tbox array = fun env ->
-  let a = prod_of_env env _Type in
-  let vs = Env.vars_of_env env in
-  (* We create a new metavariable of type [a]. *)
-  let m = fresh_meta a (Array.length vs) in
-  (prod_of_env env (_Meta m vs), vs)
-
-(* NOTE wildcards and metavars are assumed to be terms (not types). *)
-
-(** [scope_term metas t] transforms a parser-level term [t] into an actual
-    term and the list of the new metavariables that it contains. Note
-    that wildcards [P_Wild] are transformed into fresh meta-variables.
-    The same goes for the type carried by abstractions when it is not
-    given. It adds new metavariables in [metas] too. *)
+(** [scope_term mmap env t] turns a parser-level term [t] into an actual term.
+    Note that this term may use the variables of the environment [env] as well
+    as metavariables mapped in [mmap]. Note that wildcards (i.e., terms of the
+    form [P_Wild]) are transformed into fresh metavariables.  When not type is
+    given for the domains of an abstraction or a product a fresh metavariables
+    is also introduced. Mtavariable names are looked up in [mmap] first, and a
+    fresh term metavariable is created if the name is not mapped. Note that if
+    such fresh name is used twice, the same metavariable is referenced. *)
 let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
+  let mmap = ref mmap in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -71,19 +61,33 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
         _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
-        let (t, vs) = prod_vars_of_env env in
-        _Meta (fresh_meta t (List.length env)) vs
-    | P_Meta(m,ts)  ->
-        let m =
-          try StrMap.find m.elt mmap with Not_found ->
-          let (t,_) = prod_vars_of_env env in
-          fresh_meta ~name:m.elt t (List.length env)
+        (* We build a metavariable that may use the variables of [env]. *)
+        let vs = Env.vars_of_env env in
+        let a =
+          let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+          prod_of_env env (_Meta m vs)
         in
+        _Meta (fresh_meta a (List.length env)) vs
+    | P_Meta(id,ts) ->
+        let m =
+          (* We first check if the metavariable is in the map. *)
+          try StrMap.find id.elt !mmap with Not_found ->
+          (* Otherwise we create a new metavariable. *)
+          let a =
+            let vs = Env.vars_of_env env in
+            let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+            prod_of_env env (_Meta m vs)
+          in
+          let m = fresh_meta ~name:id.elt a (List.length env) in
+          mmap := StrMap.add id.elt m !mmap; m
+        in
+        (* The environment of the metavariable is build from [ts]. *)
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
     | Some(t) -> scope env t
     | None    ->
+        (* We build a metavariable that may use the variables of [env]. *)
         let a = prod_of_env env _Type in
         let vs = Env.vars_of_env env in
         _Meta (fresh_meta a (Array.length vs)) vs
