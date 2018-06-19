@@ -101,4 +101,6 @@ Typing error.;)
 (; Case S ;)
 #REFINE n => hn => _. #PRINT.
 #SIMPL. #PRINT.
+(;
 #REFINE s_eq _ _ hn. #PRINT.
+;)
