@@ -7,7 +7,6 @@ open Pos
 open Parser
 open Terms
 open Env
-open Cmd
 
 (** [find_ident env qid] returns a boxed term corresponding to a  variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In
@@ -286,49 +285,3 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   let lhs = build [] lhs in
   let rhs = build [] rhs in
   (lhs, rhs)
-
-
-(** [scope_cmd_aux cmd] scopes the parser level command [cmd].
-    In case of error, the program gracefully fails. *)
-let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun _ cmd ->
-  let scope_term =
-    let env = Proofs.focus_goal_hyps () in
-    let metas = StrMap.empty in
-    scope_term metas env
-  in
-  match cmd with
-  | P_SymDecl(b,x,a)      -> SymDecl(b, x, scope_term a)
-  | P_SymDef(b,x,ao,t)    ->
-      let t = scope_term t in
-      let ao =
-        match ao with
-        | None    -> None
-        | Some(a) -> Some(scope_term a)
-      in
-      SymDef(b,x,ao,t)
-  | P_Rules(rs)           -> Rules(List.map scope_rule rs)
-  | P_OldRules(rs)        ->
-      let rs = List.map translate_old_rule rs in
-      Rules(List.map scope_rule rs)
-  | P_Require(path)       -> Require(path)
-  | P_Infer(t,c)          -> Infer(scope_term t, c)
-  | P_Eval(t,c)           -> Eval(scope_term t, c)
-  | P_TestType(ia,mf,t,a) ->
-      let test_type = HasType(scope_term t, scope_term a) in
-      Test({is_assert = ia; must_fail = mf; test_type})
-  | P_TestConv(ia,mf,t,u) ->
-      let test_type = Convert(scope_term t, scope_term u) in
-      Test({is_assert = ia; must_fail = mf; test_type})
-  | P_Other(c)            -> Other(c)
-  | P_StartProof(s,a)     -> StartProof(s, scope_term a)
-  | P_PrintFocus          -> PrintFocus
-  | P_Refine(t)           -> Refine (scope_term t)
-  | P_Simpl               -> Simpl
-
-(** [scope_cmd_aux cmd] scopes the parser level command [cmd],
-    and forwards the source code position of the command. In
-    case of error, the program gracefully fails. *)
-let scope_cmd : p_cmd loc -> cmd * meta list = fun cmd ->
-  let metas = ref [] in
-  let cmd_aux = scope_cmd_aux metas cmd.elt in
-  {elt = cmd_aux; pos = cmd.pos}, !metas

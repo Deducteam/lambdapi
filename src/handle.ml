@@ -1,9 +1,9 @@
 (** Toplevel commands. *)
 
 open Console
+open Parser
 open Terms
 open Print
-open Cmd
 open Pos
 open Sign
 open Extra
@@ -81,6 +81,16 @@ let handle_eval : term -> Eval.config -> unit = fun t c ->
   match Solve.infer (Ctxt.of_env (focus_goal_hyps())) t with
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
+
+(** Type of the tests that can be made in a file. *)
+type test_type =
+  | Convert of term * term (** Convertibility test. *)
+  | HasType of term * term (** Type-checking. *)
+
+type test =
+  { is_assert : bool (** Should the program fail if the test fails? *)
+  ; must_fail : bool (** Is this test supposed to fail? *)
+  ; test_type : test_type  (** The test itself. *) }
 
 (** [handle_test test] runs the test [test]. When the test does not
     succeed, the program may fail gracefully or continue its exection
@@ -214,26 +224,41 @@ let rec handle_require : Files.module_path -> unit = fun path ->
 
 (** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
     function may raise the [Fatal] exceptions. *)
-and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
-  let cmd, new_metas = Scope.scope_cmd cmd in
+and handle_cmd : p_cmd loc -> unit = fun cmd ->
+  let scope_basic = Scope.scope_term StrMap.empty [] in
   try
-    begin
-      match cmd.elt with
-      | SymDecl(b,n,a)  -> handle_symdecl b n a
-      | Rules(rs)       -> List.iter handle_rule rs
-      | SymDef(b,n,a,t) -> handle_symdef b n a t
-      | Require(path)   -> handle_require path
-      | Infer(t,c)      -> handle_infer t c
-      | Eval(t,c)       -> handle_eval t c
-      | Test(test)      -> handle_test test
-      | StartProof(s,a) -> handle_start_proof s a
-      | PrintFocus      -> handle_print_focus()
-      | Refine(t)       -> handle_refine new_metas t
-      | Simpl           -> handle_simpl()
-      (* Legacy commands. *)
-      | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
-                             c.elt Pos.print c.pos
-    end
+    match cmd.elt with
+    | P_Require(path)       -> handle_require path
+    | P_SymDecl(b,x,a)      -> handle_symdecl b x (scope_basic a)
+    | P_SymDef(b,x,ao,t)    ->
+        let t = scope_basic t in
+        let ao =
+          match ao with
+          | None    -> None
+          | Some(a) -> Some(scope_basic a)
+        in
+        handle_symdef b x ao t
+    | P_Rules(rs)           ->
+        let rs = List.map Scope.scope_rule rs in
+        List.iter handle_rule rs
+    | P_OldRules(rs)        ->
+        let rs = List.map Scope.translate_old_rule rs in
+        handle_cmd {cmd with elt = P_Rules rs}
+    | P_Infer(t,cfg)        -> handle_infer (scope_basic t) cfg
+    | P_Eval(t,cfg)         -> handle_eval  (scope_basic t) cfg
+    | P_TestType(ia,mf,t,a) ->
+        let test_type = HasType(scope_basic t, scope_basic a) in
+        handle_test {is_assert = ia; must_fail = mf; test_type}
+    | P_TestConv(ia,mf,t,u) ->
+        let test_type = Convert(scope_basic t, scope_basic u) in
+        handle_test {is_assert = ia; must_fail = mf; test_type}
+    | P_Other(c)            ->
+        if !debug then
+          wrn "[%a] ignored command %S.\n" Pos.print c.pos c.elt
+    | P_StartProof(s,a)     -> handle_start_proof s (scope_basic a)
+    | P_PrintFocus          -> handle_print_focus ()
+    | P_Refine(t)           -> handle_refine [] (scope_basic t) (* FIXME *)
+    | P_Simpl               -> handle_simpl ()
   with
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
@@ -267,7 +292,7 @@ and compile : bool -> Files.module_path -> unit =
       loading := path :: !loading;
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
-      List.iter handle_cmd (Parser.parse_file src);
+      List.iter handle_cmd (parse_file src);
       if !gen_obj then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
