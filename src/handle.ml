@@ -254,7 +254,11 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         handle_test {is_assert = ia; must_fail = mf; test_type}
     | P_StartProof(s,a)     -> handle_start_proof s (scope_basic a)
     | P_PrintFocus          -> handle_print_focus ()
-    | P_Refine(t)           -> handle_refine [] (scope_basic t) (* FIXME *)
+    | P_Refine(t)           ->
+        let env = Proofs.focus_goal_hyps () in
+        let t = Scope.scope_term StrMap.empty env t in
+        let metas = get_metas t in
+        handle_refine metas t
     | P_Simpl               -> handle_simpl ()
     | P_Other(c)            ->
         if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos

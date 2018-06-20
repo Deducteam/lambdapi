@@ -353,15 +353,15 @@ let eq : term -> term -> bool = fun a b -> a == b ||
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
-  | TEnv(_,_)   -> assert false
+  | TEnv(_,_)  -> assert false
   | Vari(_)
   | Type
   | Kind
-  | Symb(_)     -> ()
+  | Symb(_)    -> ()
   | Prod(a,b)
-  | Abst(a,b)   -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
-  | Appl(t,u)   -> iter_meta f t; iter_meta f u
-  | Meta(v,ts)  -> f v; Array.iter (iter_meta f) ts
+  | Abst(a,b)  -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
+  | Appl(t,u)  -> iter_meta f t; iter_meta f u
+  | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
