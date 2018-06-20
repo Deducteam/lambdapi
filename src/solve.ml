@@ -220,7 +220,11 @@ and solve_type c t a strats p =
      (* The type of [Meta(m,ts)] is the same as [add_args f ts]
         where [f] is some fresh symbol with the same type as [m]. *)
      let s =
-       let sym_name = Printf.sprintf "[?%i]" m.meta_key in
+       let sym_name =
+         match m.meta_name with
+         | Some(n) -> Printf.sprintf "?%s" n
+         | None    -> Printf.sprintf "?%i" m.meta_key
+       in
        { sym_name ; sym_type = ref !(m.meta_type)
        ; sym_path = [] ; sym_def  = ref None ; sym_rules = ref []
        ; sym_const = true }
