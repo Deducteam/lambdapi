@@ -25,16 +25,16 @@ let find_ident : env -> qident -> tbox = fun env qid ->
   else
     let sign = Sign.current_sign() in
     if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
-    (* Module path is not available (not loaded), fail. *)
-    fatal pos "No module [%a] loaded." Files.pp_path mp
-  else
-    (* Module path loaded, look for symbol. *)
-    let sign =
-      try PathMap.find mp !Sign.loaded
-      with _ -> assert false (* cannot fail. *)
-    in
-    try _Symb (Sign.find sign s) with Not_found ->
-    fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+      (* Module path is not available (not loaded), fail. *)
+      fatal pos "No module [%a] loaded." Files.pp_path mp
+    else
+      (* Module path loaded, look for symbol. *)
+      let sign =
+        try PathMap.find mp !Sign.loaded
+        with _ -> assert false (* cannot fail. *)
+      in
+      try _Symb (Sign.find sign s) with Not_found ->
+      fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
 
 (** [scope_term mmap env t] turns a parser-level term [t] into an actual term.
     Note that this term may use the variables of the environment [env] as well
