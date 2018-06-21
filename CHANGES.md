@@ -1,3 +1,7 @@
+0.0.7.1
+-----
+- Send hypothesis name and type separately.
+
 0.0.7
 -----
 - Send structured goals in diagnostics.

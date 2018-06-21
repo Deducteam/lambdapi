@@ -28,41 +28,26 @@ type doc = {
 }
 
 let mk_error file version pos msg =
-  LSP.mk_diagnostics file version [pos, 1, msg, `Null]
+  LSP.mk_diagnostics file version [pos, 1, msg, None]
 
 let parse_text contents =
   let open Earley in
   parse_string Parser.cmd_list Parser.blank contents
 
 (* XXX: Imperative problem *)
-let json_of_goal (g : Proofs.goal list) =
-  let open Proofs in
-  let pr_hyp (s,(_,t)) =
-    `String (Format.asprintf "%s : %a" s Print.pp_term (Bindlib.unbox t)) in
-  let j_env = List.map pr_hyp g.Proofs.g_hyps in
-  `Assoc ["hyps", `List j_env;
-          "type", `String (Format.asprintf "%a" Print.pp_term g.Proofs.g_type)]
-
-let json_of_goal () =
-  let open Timed in
-  match !Proofs.theorem with
-  | None ->
-    `Null
-  | Some thm ->
-    json_of_goal thm.t_goals
-
 let process_cmd _file (st,dg) node =
   let open Pos  in
   let open Pure in
+  let open Timed in
   (* XXX: Capture output *)
   (* Console.out_fmt := lp_fmt;
    * Console.err_fmt := lp_fmt; *)
   match handle_command st node with
   | OK st ->
-    let ok_diag = node.pos, 4, "OK", json_of_goal () in
+    let ok_diag = node.pos, 4, "OK", !Proofs.theorem in
     st, ok_diag :: dg
   | Error (_loc, msg) ->
-    st, (node.pos, 1, msg, `Null) :: dg
+    st, (node.pos, 1, msg, None) :: dg
 
 let new_doc modname = Pure.initial_state modname
 
