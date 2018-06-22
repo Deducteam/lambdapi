@@ -4,7 +4,6 @@ open Terms
 open Print
 open Extra
 open Console
-open Eval
 
 (** Representation of a set of problems. *)
 type problems =
@@ -284,7 +283,7 @@ and solve_unif c t1 t2 strats p : unif list =
     continues with the remaining problems following the strategy list
     [s]. *)
 and solve_whnf c t1 t2 strats p : unif list =
-  let t1 = whnf t1 and t2 = whnf t2 in
+  let t1 = Eval.whnf t1 and t2 = Eval.whnf t2 in
   if !debug_unif then log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
   let n1 = List.length ts1 and n2 = List.length ts2 in
@@ -334,11 +333,11 @@ and solve_whnf c t1 t2 strats p : unif list =
       solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
 
   | Symb(s), _ when not (Sign.is_const s) ->
-     if eq_modulo t1 t2 then solve (S_Whnf::strats) p
+     if Eval.eq_modulo t1 t2 then solve (S_Whnf::strats) p
      else solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
 
   | _, Symb(s) when not (Sign.is_const s) ->
-     if eq_modulo t1 t2 then solve (S_Whnf::strats) p
+     if Eval.eq_modulo t1 t2 then solve (S_Whnf::strats) p
      else solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
 
   | _, _ -> not_convertible t1 t2
