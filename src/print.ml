@@ -19,9 +19,7 @@ let pp_tvar : tvar pp = fun oc x ->
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
 let pp_meta : meta pp = fun oc m ->
-  match m.meta_name with
-  | Some(n) -> Format.fprintf oc "?%s" n
-  | None    -> Format.fprintf oc "?%i" m.meta_key
+  Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : term pp = fun oc t ->

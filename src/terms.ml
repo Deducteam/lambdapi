@@ -183,6 +183,12 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
 (** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
 let internal : meta -> bool = fun m -> m.meta_name = None
 
+(** [meta_name m] returns a string representation of [m]. *)
+let meta_name : meta -> string = fun m ->
+  match m.meta_name with
+  | Some(n) -> "?" ^ n
+  | None    -> "?" ^ string_of_int m.meta_key
+
 (****************************************************************************)
 
 (** {6 Type synonyms and basic functions (related to {!module:Bindlib})} *)
