@@ -189,6 +189,25 @@ let meta_name : meta -> string = fun m ->
   | Some(n) -> "?" ^ n
   | None    -> "?" ^ string_of_int m.meta_key
 
+(** [term_of_meta m e] returns a term representing the application of a  fresh
+    symbol (named and typed after [m]) to the terms of [e].  The preduced term
+    has thus the same type as [Meta(m,e)], and it can be used for checking its
+    type instead of that of [Meta(m,e)] directly. *)
+let term_of_meta : meta -> term array -> term = fun m e ->
+  let s =
+    { sym_name  = Printf.sprintf "[%s]" (meta_name m)
+    ; sym_type  = ref !(m.meta_type)
+    ; sym_path  = []
+    ; sym_def   = ref None
+    ; sym_rules = ref []
+    ; sym_const = true }
+  in
+  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s)) e
+
+(* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
+   as otherwise we would need to polute the typing context with variables that
+   created metavariables should not be allowed to use. *)
+
 (****************************************************************************)
 
 (** {6 Type synonyms and basic functions (related to {!module:Bindlib})} *)

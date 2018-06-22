@@ -217,20 +217,8 @@ and solve_type c t a strats p =
      solve (S_Type::S_Unif::strats) {p with type_problems; unif_problems}
 
   | Meta(m, ts) ->
-     (* The type of [Meta(m,ts)] is the same as [add_args f ts]
-        where [f] is some fresh symbol with the same type as [m]. *)
-     let s =
-       let sym_name =
-         match m.meta_name with
-         | Some(n) -> Printf.sprintf "?%s" n
-         | None    -> Printf.sprintf "?%i" m.meta_key
-       in
-       { sym_name ; sym_type = ref !(m.meta_type)
-       ; sym_path = [] ; sym_def  = ref None ; sym_rules = ref []
-       ; sym_const = true }
-     in
-     let t = add_args (Symb s) (Array.to_list ts) in
-     solve_type c t a strats p
+     (* We check the type of another term, with the same type. *)
+     solve_type c (term_of_meta m ts) a (S_Type::strats) p
 
 (** [solve_sort a s p] tries to solve the sorting problem [a]. Then,
     it continues with the remaining problems following the strategy
