@@ -12,13 +12,13 @@ open Solve
 let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
   let rec build_sub acc cs =
     match cs with
-    | []          -> acc
-    | (c,a,b)::cs ->
+    | []        -> acc
+    | (a,b)::cs ->
        let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
        let na = List.length argsa and nb = List.length argsb in
         match (unfold ha, unfold hb) with
         | (Symb(sa), Symb(sb)) when sa == sb && na = nb && Sign.is_const sa ->
-            let fn l t1 t2 = (c,t1,t2) :: l in
+            let fn l t1 t2 = (t1,t2) :: l in
             build_sub acc (List.fold_left2 fn cs argsa argsb)
         | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
         | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs

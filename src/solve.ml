@@ -1,9 +1,9 @@
 (** Type-checking and inference. *)
 
+open Console
+open Extra
 open Terms
 open Print
-open Extra
-open Console
 
 (** Representation of a set of problems. *)
 type problems =
@@ -11,11 +11,11 @@ type problems =
   (** List of typing problems. *)
   ; sort_problems : term list
   (** List of sorting problems (terms whose types must be sorts). *)
-  ; unif_problems : (Ctxt.t * term * term) list
+  ; unif_problems : (term * term) list
   (** List of unification problems. *)
-  ; whnf_problems : (Ctxt.t * term * term) list
+  ; whnf_problems : (term * term) list
   (** List of unification problems that must be put in WHNF first. *)
-  ; unsolved      : (Ctxt.t * term * term) list
+  ; unsolved      : (term * term) list
   (** List of unsolved unification problems. *)
   ; recompute     : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
@@ -91,9 +91,9 @@ let make_prod c =
   let d = make_meta c (make_type()) in d, make_binder c "x" d
 
 (** Representation of unification problems. *)
-type unif = Ctxt.t * term * term
+type unif = term * term
 
-let pp_unif : unif pp = fun oc (_,t,u) ->
+let pp_unif : unif pp = fun oc (t,u) ->
   Format.fprintf oc "%a = %a" pp t pp u
 
 let pp_unifs : unif list pp = fun oc l ->
@@ -161,16 +161,16 @@ and solve_sorts : strategy -> problems -> unif list = fun strat p ->
     strategy list [s]. *)
 and solve_unifs : strategy -> problems -> unif list = fun strat p ->
   match p.unif_problems with
-  | []         -> solve strat p
-  | (c,t,u)::l -> solve_unif c t u strat {p with unif_problems = l}
+  | []       -> solve strat p
+  | (t,u)::l -> solve_unif t u strat {p with unif_problems = l}
 
 (** [solve_whnfs s p] tries to solve the unification problems of [p]
     that msut be weak-head-normalized first. Then, it continues with
     the remaining problems following the strategy list [s]. *)
 and solve_whnfs : strategy -> problems -> unif list = fun strat p ->
   match p.whnf_problems with
-  | []         -> solve strat p
-  | (c,t,u)::l -> solve_whnf c t u strat {p with whnf_problems = l}
+  | []       -> solve strat p
+  | (t,u)::l -> solve_whnf t u strat {p with whnf_problems = l}
 
 (** [solve_type c t a s p] tries to solve the typing problem
     [(c,t,a)]. Then, it continues with the remaining problems
@@ -181,16 +181,16 @@ and solve_type c t a strats p =
   | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
 
   | Type ->
-      let unif_problems = (c,Kind,a) :: p.unif_problems in
+      let unif_problems = (Kind,a) :: p.unif_problems in
       solve (S_Unif::S_Type::strats) {p with unif_problems}
 
   | Vari(x) ->
       let typ_x = try Ctxt.find x c with Not_found -> assert false in
-      let unif_problems = (c,typ_x,a) :: p.unif_problems in
+      let unif_problems = (typ_x,a) :: p.unif_problems in
       solve (S_Unif::S_Type::strats) {p with unif_problems}
 
   | Symb(s) ->
-      let unif_problems = (c,!(s.sym_type),a) :: p.unif_problems in
+      let unif_problems = (!(s.sym_type),a) :: p.unif_problems in
       solve (S_Unif::S_Type::strats) {p with unif_problems}
 
   | Prod(t,u_binder) ->
@@ -204,7 +204,7 @@ and solve_type c t a strats p =
      let pr = Prod(t,u_binder) in
      let c',b,u = Ctxt.unbind2 c t b_binder u_binder in
      let type_problems = (c,t,Type) :: (c',b,u) :: p.type_problems in
-     let unif_problems = (c,pr,a) :: p.unif_problems in
+     let unif_problems = (pr,a) :: p.unif_problems in
      solve (S_Type::S_Unif::strats) {p with type_problems; unif_problems}
 
   | Appl(t,u) ->
@@ -212,7 +212,7 @@ and solve_type c t a strats p =
      let pr = Prod(v, w_binder) in
      let a' = Bindlib.subst w_binder u in
      let type_problems = (c,t,pr) :: (c,u,v) :: p.type_problems in
-     let unif_problems = (c,a',a) :: p.unif_problems in
+     let unif_problems = (a',a) :: p.unif_problems in
      solve (S_Type::S_Unif::strats) {p with type_problems; unif_problems}
 
   | Meta(m, ts) ->
@@ -228,10 +228,10 @@ and solve_sort a strats p : unif list =
   | Type | Kind -> solve_sorts strats p
   | _           -> fatal_no_pos "[%a] is not a sort." pp a
 
-(** [solve_unif c t1 t2 s p] tries to solve the unificaton problem
-    [(c,t1,t2)]. Then, it continues with the remaining problems
+(** [solve_unif t1 t2 s p] tries to solve the unificaton problem
+    [(t1,t2)]. Then, it continues with the remaining problems
     following the strategy list [s]. *)
-and solve_unif c t1 t2 strats p : unif list =
+and solve_unif t1 t2 strats p : unif list =
   if t1 == t2 then solve_unifs strats p
   else
     begin
@@ -243,8 +243,8 @@ and solve_unif c t1 t2 strats p : unif list =
       | Vari x, Vari y when Bindlib.eq_vars x y -> solve (S_Unif::strats) p
 
       | Prod(a,f), Prod(b,g) | Abst(a,f), Abst(b,g) ->
-         let c',u,v = Ctxt.unbind2 c a f g in
-         let unif_problems = (c,a,b) :: (c',u,v) :: p.unif_problems in
+         let (_,u,v) = Bindlib.unbind2 f g in
+         let unif_problems = (a,b) :: (u,v) :: p.unif_problems in
          solve (S_Unif::strats) {p with unif_problems}
 
       | Symb(s1), Symb(s2) when s1 == s2 -> solve (S_Unif::strats) p
@@ -260,29 +260,29 @@ and solve_unif c t1 t2 strats p : unif list =
 
       | Meta(_,_), _
       | _, Meta(_,_) ->
-          let whnf_problems = (c,t1,t2) :: p.whnf_problems in
+          let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
       | Symb(s), _ when not (Sign.is_const s) ->
-          let whnf_problems = (c,t1,t2) :: p.whnf_problems in
+          let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
       | _, Symb(s) when not (Sign.is_const s) ->
-          let whnf_problems = (c,t1,t2) :: p.whnf_problems in
+          let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
       | Appl(_,_), _ | _, Appl(_,_) ->
-          let whnf_problems = (c,t1,t2) :: p.whnf_problems in
+          let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
       | _, _ -> not_convertible t1 t2
     end
 
-(** [solve_whnf c t1 t2 s p] tries to solve the unificaton problem
-    [(c,t1,t2)] by first weak-head-normalizing it first. Then, it
+(** [solve_whnf t1 t2 s p] tries to solve the unificaton problem
+    [(t1,t2)] by first weak-head-normalizing it first. Then, it
     continues with the remaining problems following the strategy list
     [s]. *)
-and solve_whnf c t1 t2 strats p : unif list =
+and solve_whnf t1 t2 strats p : unif list =
   let t1 = Eval.whnf t1 and t2 = Eval.whnf t2 in
   if !debug_unif then log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
   let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
@@ -294,7 +294,7 @@ and solve_whnf c t1 t2 strats p : unif list =
 
   | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
       let unif_problems =
-        let fn l t1 t2 = (c,t1,t2)::l in
+        let fn l t1 t2 = (t1,t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
       in
       solve (S_Whnf::strats) {p with unif_problems}
@@ -303,8 +303,8 @@ and solve_whnf c t1 t2 strats p : unif list =
   (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
   | Abst(a,f), Abst(b,g) ->
   (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
-     let c',u,v = Ctxt.unbind2 c a f g in
-     let unif_problems = (c,a,b) :: (c',u,v) :: p.unif_problems in
+     let (_,u,v) = Bindlib.unbind2 f g in
+     let unif_problems = (a,b) :: (u,v) :: p.unif_problems in
      solve (S_Unif::S_Whnf::strats) {p with unif_problems}
 
   | Symb(s1), Symb(s2) when s1 == s2 && n1 = 0 && n2 = 0 ->
@@ -313,7 +313,7 @@ and solve_whnf c t1 t2 strats p : unif list =
   | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
      if s1 == s2 && n1 = n2 then
        let unif_problems =
-        let fn l t1 t2 = (c,t1,t2)::l in
+        let fn l t1 t2 = (t1,t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
        in
        solve (S_Unif::S_Whnf::strats) {p with unif_problems}
@@ -330,15 +330,15 @@ and solve_whnf c t1 t2 strats p : unif list =
 
   | Meta(_,_), _
   | _, Meta(_,_) ->
-      solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
+      solve (S_Whnf::strats) {p with unsolved = (t1,t2) :: p.unsolved}
 
   | Symb(s), _ when not (Sign.is_const s) ->
      if Eval.eq_modulo t1 t2 then solve (S_Whnf::strats) p
-     else solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
+     else solve (S_Whnf::strats) {p with unsolved = (t1,t2) :: p.unsolved}
 
   | _, Symb(s) when not (Sign.is_const s) ->
      if Eval.eq_modulo t1 t2 then solve (S_Whnf::strats) p
-     else solve (S_Whnf::strats) {p with unsolved = (c,t1,t2) :: p.unsolved}
+     else solve (S_Whnf::strats) {p with unsolved = (t1,t2) :: p.unsolved}
 
   | _, _ -> not_convertible t1 t2
 
@@ -349,7 +349,7 @@ let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   try Some (solve s p) with Fatal(_,m) ->
     if !debug_type then log "cnst" "Solve: %s\n" m; None
 
-let msg (_,a,b) =
+let msg (a,b) =
   if !debug_type then
     log "cnst" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
