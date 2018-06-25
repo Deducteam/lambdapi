@@ -23,19 +23,19 @@ let rec infer : config -> Ctxt.t -> term -> term = fun cfg ctx t ->
       Kind
   | Vari(x)     ->
       (* ---------------------------------
-          ctx ⊢ Vari(x) : Ctxt.find x ctx  *)
+          ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
       begin
         try Ctxt.find x ctx with Not_found -> assert false
         (* Every free variable must be in the context. *)
       end
   | Symb(s)     ->
       (* -------------------------------
-          ctx ⊢ Symb(s) : !(s.sym_type)  *)
+          ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
       !(s.sym_type)
   | Prod(a,b)   ->
       (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
          -----------------------------------------
-                    ctx ⊢ Prod(a,b) : s            *)
+                    ctx ⊢ Prod(a,b) ⇒ s            *)
       begin
         (* We ensure that [a] is well-sorted. *)
         check cfg ctx a Type;
@@ -64,7 +64,7 @@ let rec infer : config -> Ctxt.t -> term -> term = fun cfg ctx t ->
   | Appl(t,u)   ->
       (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
          ------------------------------------
-             ctx ⊢ Appl(t,u) : subst b u      *)
+             ctx ⊢ Appl(t,u) ⇒ subst b u      *)
       begin
         (* We first infer a product type for [t]. *)
         let (a,b) =
@@ -95,16 +95,16 @@ and check : config -> Ctxt.t -> term -> term -> unit = fun cfg ctx t c ->
   | Kind        -> assert false (* Forbidden case. *)
   | Type        ->
       (* -------------------
-          ctx ⊢ Type : Kind  *)
+          ctx ⊢ Type ⇐ Kind  *)
       begin
         match unfold c with
         | Kind -> ()
         | _    -> fatal_no_pos "[Kind] expected, [%a] given." pp c
       end
   | Abst(a,t)   ->
-      (*  c → Prod(a',b)    a ~ a'    ctx, x : A ⊢ t<x> : b<x>
+      (*  c → Prod(a',b)    a ~ a'    ctx, x : A ⊢ t<x> ⇐ b<x>
          ------------------------------------------------------
-                          ctx ⊢ Abst(a,t) : c                   *)
+                          ctx ⊢ Abst(a,t) ⇐ c                   *)
       begin
         (* We (hopefully) evaluate [c] to a product. *)
         let (a',b) =
@@ -125,3 +125,42 @@ and check : config -> Ctxt.t -> term -> term -> unit = fun cfg ctx t c ->
           ctx ⊢ t ⇐ a  *)
       let a = infer cfg ctx t in
       cfg.conv_fun a c
+
+(* NOTE the following functions are wrapper for the above. They write debuging
+   data to the log. *)
+
+(** [infer cfg ctx t] returns a type for the term [t] in the context [ctx]. In
+    the process, the [cfg.conv_fun] function is used as a convertibility test.
+    Note that we require [ctx] to be well-formed (with well-sorted types), and
+    that the returned type is always well-sorted.  This function writes to the
+    debuging log. *)
+let infer : config -> Ctxt.t -> term -> term = fun cfg ctx t ->
+  if !debug_type then
+    begin
+      log "type" "infer [%a]" pp t;
+      try
+        let a = infer cfg ctx t in
+        log "type" (gre "infer [%a] : [%a]") pp t pp a; a
+      with e ->
+        log "type" (red "infer [%a] failed.") pp t;
+        raise e
+    end
+  else infer cfg ctx t
+ 
+(** [check cfg ctx t c] checks that the term [t] has type [c] (which should be
+    well-sorted) in context [ctx]. In the process, the [cfg.conv_fun] function
+    is used as a convertibility test. Note that [ctx] must be well-formed.  In
+    particuler, it should contain only well-sorted types. This function writes
+    to the debuging log. *)
+let check : config -> Ctxt.t -> term -> term -> unit = fun cfg ctx t c ->
+  if !debug_type then
+    begin
+      log "type" "check [%a] : [%a]" pp t pp c;
+      try
+        check cfg ctx t c;
+        log "type" (gre "check [%a] : [%a]") pp t pp c;
+      with e ->
+        log "type" (red "check [%a] : [%a]") pp t pp c;
+        raise e
+    end
+  else check cfg ctx t c
