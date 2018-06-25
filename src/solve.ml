@@ -7,11 +7,7 @@ open Print
 
 (** Representation of a set of problems. *)
 type problems =
-  { type_problems : (Ctxt.t * term * term) list
-  (** List of typing problems. *)
-  ; sort_problems : term list
-  (** List of sorting problems (terms whose types must be sorts). *)
-  ; unif_problems : (term * term) list
+  { unif_problems : (term * term) list
   (** List of unification problems. *)
   ; whnf_problems : (term * term) list
   (** List of unification problems that must be put in WHNF first. *)
@@ -22,18 +18,17 @@ type problems =
 
 (** Empty problem. *)
 let no_problems : problems =
-  { type_problems = [] ; sort_problems = [] ; unif_problems = []
-  ; whnf_problems = [] ; unsolved = [] ; recompute = false }
+  { unif_problems = []
+  ; whnf_problems = []
+  ; unsolved      = []
+  ; recompute     = false }
 
 let is_done : problems -> bool = fun p ->
-  p.type_problems = [] && p.sort_problems = [] &&
   p.unif_problems = [] && p.whnf_problems = []
 
 (** Representation of solving strategies. *)
 type strategy = strategy_aux list
  and strategy_aux =
-  | S_Type             (** Deal with typing problems.           *)
-  | S_Sort             (** Deal with sorting problems.          *)
   | S_Unif             (** Deal with unification problems.      *)
   | S_Whnf             (** Deal with WHNF unification problems. *)
   | S_Done             (** Check if there is something to do.   *)
@@ -43,8 +38,6 @@ type strategy = strategy_aux list
 let pp_strategy : strategy pp =
   let rec pp_aux oc s =
     match s with
-    | S_Type    -> Format.fprintf oc "T"
-    | S_Sort    -> Format.fprintf oc "S"
     | S_Unif    -> Format.fprintf oc "U"
     | S_Whnf    -> Format.fprintf oc "W"
     | S_Done    -> Format.fprintf oc "E"
@@ -54,7 +47,7 @@ let pp_strategy : strategy pp =
 
 (** Default strategy. *)
 let default_strategy : strategy =
-  [S_Loop [S_Type; S_Sort; S_Unif; S_Whnf; S_Done]]
+  [S_Loop [S_Unif; S_Whnf; S_Done]]
 
 (** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
     the same. *)
@@ -121,11 +114,8 @@ let not_convertible t1 t2 =
     list [s]. When it stops, it returns the list of unsolved
     unification problems. *)
 let rec solve : strategy -> problems -> unif list = fun strats p ->
-  (*if !debug then log "solve" "%a" pp_strats strats;*)
   match strats with
-  | []          -> assert false
-  | S_Type    :: l -> solve_types l p
-  | S_Sort    :: l -> solve_sorts l p
+  | []             -> assert false
   | S_Unif    :: l -> solve_unifs l p
   | S_Whnf    :: l -> solve_whnfs l p
   | S_Loop(l) :: _ -> solve (l @ strats) p
@@ -139,22 +129,6 @@ let rec solve : strategy -> problems -> unif list = fun strats p ->
           end
         else p.unsolved
       else solve l p
-
-(** [solve_types s p] tries to solve the typing problems of [p]. Then,
-    it continues with the remaining problems following the strategy
-    list [s]. *)
-and solve_types : strategy -> problems -> unif list = fun strat p ->
-  match p.type_problems with
-  | []         -> solve strat p
-  | (c,t,a)::l -> solve_type c t a strat {p with type_problems = l}
-
-(** [solve_sorts s p] tries to solve the sorting problems of [p]. Then,
-    it continues with the remaining problems following the strategy
-    list [s]. *)
-and solve_sorts : strategy -> problems -> unif list = fun strat p ->
-  match p.sort_problems with
-  | []   -> solve strat p
-  | a::l -> solve_sort a strat {p with sort_problems = l}
 
 (** [solve_unifs s p] tries to solve the unification problems of
     [p]. Then, it continues with the remaining problems following the
@@ -171,62 +145,6 @@ and solve_whnfs : strategy -> problems -> unif list = fun strat p ->
   match p.whnf_problems with
   | []       -> solve strat p
   | (t,u)::l -> solve_whnf t u strat {p with whnf_problems = l}
-
-(** [solve_type c t a s p] tries to solve the typing problem
-    [(c,t,a)]. Then, it continues with the remaining problems
-    following the strategy list [s]. *)
-and solve_type c t a strats p =
-  if !debug_type then log "solve_type" "[%a] [%a]" pp t pp a;
-  match unfold t with
-  | Patt(_,_,_) | TEnv(_,_) | Kind -> assert false
-
-  | Type ->
-      let unif_problems = (Kind,a) :: p.unif_problems in
-      solve (S_Unif::S_Type::strats) {p with unif_problems}
-
-  | Vari(x) ->
-      let typ_x = try Ctxt.find x c with Not_found -> assert false in
-      let unif_problems = (typ_x,a) :: p.unif_problems in
-      solve (S_Unif::S_Type::strats) {p with unif_problems}
-
-  | Symb(s) ->
-      let unif_problems = (!(s.sym_type),a) :: p.unif_problems in
-      solve (S_Unif::S_Type::strats) {p with unif_problems}
-
-  | Prod(t,u_binder) ->
-      let c',u = Ctxt.unbind c t u_binder in
-      let type_problems = (c,t,Type) :: (c',u,a) :: p.type_problems in
-      let sort_problems = a :: p.sort_problems in
-      solve (S_Type::S_Sort::strats) {p with type_problems; sort_problems}
-
-  | Abst(t,b_binder) ->
-     let u_binder = make_binder c (Bindlib.binder_name b_binder) t in
-     let pr = Prod(t,u_binder) in
-     let c',b,u = Ctxt.unbind2 c t b_binder u_binder in
-     let type_problems = (c,t,Type) :: (c',b,u) :: p.type_problems in
-     let unif_problems = (pr,a) :: p.unif_problems in
-     solve (S_Type::S_Unif::strats) {p with type_problems; unif_problems}
-
-  | Appl(t,u) ->
-     let v, w_binder = make_prod c in
-     let pr = Prod(v, w_binder) in
-     let a' = Bindlib.subst w_binder u in
-     let type_problems = (c,t,pr) :: (c,u,v) :: p.type_problems in
-     let unif_problems = (a',a) :: p.unif_problems in
-     solve (S_Type::S_Unif::strats) {p with type_problems; unif_problems}
-
-  | Meta(m, ts) ->
-     (* We check the type of another term, with the same type. *)
-     solve_type c (term_of_meta m ts) a (S_Type::strats) p
-
-(** [solve_sort a s p] tries to solve the sorting problem [a]. Then,
-    it continues with the remaining problems following the strategy
-    list [s]. *)
-and solve_sort a strats p : unif list =
-  if !debug_type then log "solve_sort" "[%a]" pp a;
-  match unfold a with
-  | Type | Kind -> solve_sorts strats p
-  | _           -> fatal_no_pos "[%a] is not a sort." pp a
 
 (** [solve_unif t1 t2 s p] tries to solve the unificaton problem
     [(t1,t2)]. Then, it continues with the remaining problems
@@ -347,16 +265,19 @@ and solve_whnf t1 t2 strats p : unif list =
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
   try Some (solve s p) with Fatal(_,m) ->
-    if !debug_type then log "cnst" "Solve: %s\n" m; None
+    if !debug_type then log "type" (red "solve: %s.\n") m; None
 
 let msg (a,b) =
   if !debug_type then
-    log "cnst" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+    log "type" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let has_type (c:Ctxt.t) (t:term) (a:term) : bool =
-  if !debug_type then log "has_type" "[%a] [%a]" pp t pp a;
-  let problems = {no_problems with type_problems = [(c,t,a)]} in
+  if !debug_type then log "type" "check [%a] [%a]" pp t pp a;
+  let unif_problems = ref [] in
+  let conv_fun a b = unif_problems := (a,b) :: !unif_problems in
+  Typing.(check {conv_fun} c t a);
+  let problems = {no_problems with unif_problems = !unif_problems} in
   match solve true default_strategy problems with
   | Some l -> List.iter msg l; l = []
   | None   -> false
@@ -365,20 +286,24 @@ let has_type (c:Ctxt.t) (t:term) (a:term) : bool =
     [u] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
 let has_type_with_constr (cs:unif list) (c:Ctxt.t) (t:term) (a:term) : bool =
-  if !debug_type then log "has_type_with_constrs" "[%a] [%a]" pp t pp a;
-  let problems = {no_problems with type_problems = [(c,t,a)]} in
+  if !debug_type then log "type" "check_with_constr [%a] [%a]" pp t pp a;
+  let unif_problems = ref [] in
+  let conv_fun a b = unif_problems := (a,b) :: !unif_problems in
+  Typing.(check {conv_fun} c t a);
+  let problems = {no_problems with unif_problems = !unif_problems} in
   match solve false default_strategy problems with
-  | Some l ->
-     let l = List.filter (fun x -> not (List.mem x cs)) l in
-     List.iter msg l; l = []
-  | None -> false
+  | Some l -> let l = List.filter (fun x -> not (List.mem x cs)) l in
+              List.iter msg l; l = []
+  | None   -> false
 
 (** [infer_constr c t] returns a pair [a,l] where [l] is a list
     of unification problems for [a] to be the type of [t] in context [c]. *)
 let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
-  if !debug_type then log "infer_constr" "[%a]" pp t;
-  let a = make_meta c (make_type()) in
-  let problems = {no_problems with type_problems = [(c,t,a)]} in
+  if !debug_type then log "type" "infer_constr [%a]" pp t;
+  let unif_problems = ref [] in
+  let conv_fun a b = unif_problems := (a,b) :: !unif_problems in
+  let a = Typing.(infer {conv_fun} c t) in
+  let problems = {no_problems with unif_problems = !unif_problems} in
   match solve true default_strategy problems with
   | Some(l) -> (l, a)
   | None    -> fatal_no_pos "FIXME1."
@@ -391,15 +316,13 @@ let infer (c:Ctxt.t) (t:term) : term option =
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:Ctxt.t) (t:term) : term =
-  if !debug_type then log "sort_type" "[%a]" pp t;
-  let a = make_meta c (make_type()) in
-  let problems = {no_problems with type_problems = [(c,t,a)]} in
-  match solve true default_strategy problems with
-  | Some([]) ->
-     begin
-       match unfold a with
-       | Type | Kind -> a
-       | _    -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
-     end
-  | Some(l)  -> List.iter msg l; fatal_no_pos "FIXME2."
-  | None     -> fatal_no_pos "FIXME3."
+  if !debug_type then log "type" "sort_type [%a]" pp t;
+  match infer c t with
+  | Some(a) ->
+      begin
+        match unfold a with
+        | Type
+        | Kind -> a
+        | a    -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
+      end
+  | None    -> fatal_no_pos "Unable to infer a sort for [%a]." pp t
