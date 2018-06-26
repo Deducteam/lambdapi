@@ -148,11 +148,6 @@ let pp_unifs : unif list pp = fun oc l ->
   | [] -> ()
   | _  -> Format.fprintf oc " if %a" (List.pp pp_unif ", ") l
 
-(** Exception raised by the solving algorithm when an irrecuperable
-    error is found. *)
-let not_convertible t1 t2 =
-  fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
-
 (** [solve s p] tries to solve the problem [p] following the strategy
     list [s]. When it stops, it returns the list of unsolved
     unification problems. *)
@@ -219,24 +214,23 @@ and solve_unif t1 t2 strats p : unif list =
       | v, Meta(m,ts) when instantiate m ts v ->
           solve (S_Unif::strats) {p with recompute = true}
 
-      | Meta(_,_), _
-      | _, Meta(_,_) ->
+      | (Symb(s)  , _        ) when not (Sign.is_const s) ->
           let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
-      | Symb(s), _ when not (Sign.is_const s) ->
+      | (_        , Symb(s)  ) when not (Sign.is_const s) ->
           let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
-      | _, Symb(s) when not (Sign.is_const s) ->
+      | (Meta(_,_), _        )
+      | (_        , Meta(_,_))
+      | (Appl(_,_), _        )
+      | (_        , Appl(_,_)) ->
           let whnf_problems = (t1,t2) :: p.whnf_problems in
           solve (S_Unif::strats) {p with whnf_problems}
 
-      | Appl(_,_), _ | _, Appl(_,_) ->
-          let whnf_problems = (t1,t2) :: p.whnf_problems in
-          solve (S_Unif::strats) {p with whnf_problems}
-
-      | _, _ -> not_convertible t1 t2
+      | (_        , _        ) ->
+          fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
     end
 
 (** [solve_whnf t1 t2 s p] tries to solve the unificaton problem
@@ -282,7 +276,7 @@ and solve_whnf t1 t2 strats p : unif list =
         List.fold_left2 fn p.unif_problems ts1 ts2
        in
        solve (S_Unif::S_Whnf::strats) {p with unif_problems}
-     else not_convertible t1 t2
+     else fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
   | Meta(m1,a1), Meta(m2,a2)
     when m1 == m2 && ts1 = [] && ts2 = [] && Array.for_all2 eq_vari a1 a2 ->
@@ -305,7 +299,8 @@ and solve_whnf t1 t2 strats p : unif list =
      if Eval.eq_modulo t1 t2 then solve (S_Whnf::strats) p
      else solve (S_Whnf::strats) {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | _, _ -> not_convertible t1 t2
+  | (_        , _        ) ->
+     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
 (** [solve b strats p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
