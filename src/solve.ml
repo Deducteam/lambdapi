@@ -5,6 +5,67 @@ open Extra
 open Terms
 open Print
 
+let rec same_length : 'a list -> 'b list -> bool = fun l1 l2 ->
+  match (l1, l2) with
+  | ([]   , []   ) -> true
+  | (_::l1, _::l2) -> same_length l1 l2
+  | (_    , _    ) -> false
+
+(** Boolean saying whether user metavariables can be set or not. *)
+let can_instantiate : bool ref = ref true
+
+(** [instantiate m ts v] check whether [m] can be instantiated to
+    solve the unification problem [m[ts] = v]. Actually make the
+    instantiation if it is possible. *)
+let instantiate (m:meta) (ts:term array) (v:term) : bool =
+  (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
+  let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
+  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
+
+(** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
+    pariwise equal. *)
+let eq_vari : term -> term -> bool = fun t u ->
+  match (unfold t, unfold u) with
+  | (Vari(x), Vari(y)) -> Bindlib.eq_vars x y
+  | (_      , _      ) -> false
+
+(*
+let solve_unif : (term * term) list -> (term * term) list =
+  let eq_vars = Array.for_all2 eq_vari in
+  let rec solve acc l =
+    match l with
+    | []                       -> acc
+    | (t1,t2)::l when t1 == t2 -> solve acc l
+    | (t1,t2)::l               ->
+    match (unfold t1, unfold t2) with
+    (* Leaves. *)
+    | (Type       , Type       )
+    | (Kind       , Kind       )                          -> solve acc l
+    | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> solve acc l
+    | (Symb(s)    , Symb(r)    ) when s == r              -> solve acc l
+    (* Binders (abstractions and products). *)
+    | (Prod(a1,b1), Prod(a2,b2))
+    | (Abst(a1,b1), Abst(a2,b2)) -> solve acc ((a1,a2)::(unbind2 b1 b2)::l)
+    (* Metavariables (reflexivity). *)
+    | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 && eq_vars a1 a2 -> solve acc l
+    | (Meta(m,ar) , v          ) when instantiate m ar v -> solve acc l (* FIXME recompute. *)
+    | (v          , Meta(m,ar) ) when instantiate m ar v -> solve acc l (* FIXME recompute. *)
+    (* May need normalization. *)
+    | (Symb(s)    , _          ) when not (Sign.is_const s) -> solve ((t1,t2)::acc) l
+    | (_          , Symb(s)    ) when not (Sign.is_const s) -> solve ((t1,t2)::acc) l
+    | (Meta(_,_)  , _          )
+    | (_          , Meta(_,_)  )
+    | (Appl(_,_)  , _          )
+    | (_          , Appl(_,_)  ) -> solve ((t1,t2)::acc) l
+    (* Definitely not convertible. *)
+    | (_          , _          ) ->
+        fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  in
+  solve []
+  *)
+
+
+
 (** Representation of a set of problems. *)
 type problems =
   { unif_problems : (term * term) list
@@ -49,13 +110,6 @@ let pp_strategy : strategy pp =
 let default_strategy : strategy =
   [S_Loop [S_Unif; S_Whnf; S_Done]]
 
-(** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
-    the same. *)
-let eq_vari : term -> term -> bool = fun t u ->
-  match (unfold t, unfold u) with
-  | (Vari x, Vari y) -> Bindlib.eq_vars x y
-  | (_     , _     ) -> false
-
 (** [make_type ()] generates a fresh metavariable of arity [0], and which type
     is [Type]. *)
 let make_type =
@@ -93,17 +147,6 @@ let pp_unifs : unif list pp = fun oc l ->
   match l with
   | [] -> ()
   | _  -> Format.fprintf oc " if %a" (List.pp pp_unif ", ") l
-
-(** Boolean saying whether user metavariables can be set or not. *)
-let can_instantiate : bool ref = ref true
-
-(** [instantiate m ts v] check whether [m] can be instantiated to
-    solve the unification problem [m[ts] = v]. Actually make the
-    instantiation if it is possible. *)
-let instantiate (m:meta) (ts:term array) (v:term) : bool =
-  (!can_instantiate || internal m) && distinct_vars ts && not (occurs m v) &&
-  let bv = Bindlib.bind_mvar (to_tvars ts) (lift v) in
-  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
 
 (** Exception raised by the solving algorithm when an irrecuperable
     error is found. *)
@@ -201,18 +244,22 @@ and solve_unif t1 t2 strats p : unif list =
     continues with the remaining problems following the strategy list
     [s]. *)
 and solve_whnf t1 t2 strats p : unif list =
-  let t1 = Eval.whnf t1 and t2 = Eval.whnf t2 in
-  if !debug_unif then log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
-  let h1, ts1 = get_args t1 and h2, ts2 = get_args t2 in
-  let n1 = List.length ts1 and n2 = List.length ts2 in
+  let (h1, ts1) = Eval.whnf_stk t1 [] in
+  let (h2, ts2) = Eval.whnf_stk t2 [] in
+  if !debug_unif then
+    begin
+      let t1 = Eval.to_term h1 ts1 in
+      let t2 = Eval.to_term h2 ts2 in
+      log "solve_whnf" "[%a] [%a]" pp t1 pp t2;
+    end;
   match h1, h2 with
   | Type, Type
   | Kind, Kind -> solve (S_Whnf::strats) p
   (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
 
-  | Vari x, Vari y when Bindlib.eq_vars x y && n1 = n2 ->
+  | Vari x, Vari y when Bindlib.eq_vars x y && same_length ts1 ts2 ->
       let unif_problems =
-        let fn l t1 t2 = (t1,t2)::l in
+        let fn l t1 t2 = (!t1,!t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
       in
       solve (S_Whnf::strats) {p with unif_problems}
@@ -225,25 +272,25 @@ and solve_whnf t1 t2 strats p : unif list =
      let unif_problems = (a,b) :: (u,v) :: p.unif_problems in
      solve (S_Unif::S_Whnf::strats) {p with unif_problems}
 
-  | Symb(s1), Symb(s2) when s1 == s2 && n1 = 0 && n2 = 0 ->
+  | Symb(s1), Symb(s2) when s1 == s2 && ts1 = [] && ts2 = [] ->
      solve (S_Whnf::strats) p
 
   | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
-     if s1 == s2 && n1 = n2 then
+     if s1 == s2 && same_length ts1 ts2 then
        let unif_problems =
-        let fn l t1 t2 = (t1,t2)::l in
+        let fn l t1 t2 = (!t1,!t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
        in
        solve (S_Unif::S_Whnf::strats) {p with unif_problems}
      else not_convertible t1 t2
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1 == m2 && n1 = 0 && n2 = 0 && Array.for_all2 eq_vari a1 a2 ->
+    when m1 == m2 && ts1 = [] && ts2 = [] && Array.for_all2 eq_vari a1 a2 ->
      solve (S_Whnf::strats) p
 
-  | Meta(m,ts), _ when n1 = 0 && instantiate m ts t2 ->
+  | Meta(m,ts), _ when ts1 = [] && instantiate m ts t2 ->
       solve (S_Whnf::strats) {p with recompute = true}
-  | _, Meta(m,ts) when n2 = 0 && instantiate m ts t1 ->
+  | _, Meta(m,ts) when ts2 = [] && instantiate m ts t1 ->
       solve (S_Whnf::strats) {p with recompute = true}
 
   | Meta(_,_), _
