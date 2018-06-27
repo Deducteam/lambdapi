@@ -50,4 +50,6 @@ let _ =
     " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."
   in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
-  List.iter compile (List.rev !files)
+  List.iter compile (List.rev !files);
+  if !debug_pars then
+    wrn "Total time spent in parsing: %f seconds.\n" !Parser.total_time

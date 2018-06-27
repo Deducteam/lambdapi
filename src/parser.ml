@@ -294,17 +294,18 @@ let blank buf pos =
   in
   fn `Ini [] (buf, pos) (buf, pos)
 
+(** Accumulates parsing time for files (useful for profiling). *)
+let total_time : float ref = ref 0.0
+
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
-  let open Earley in
-  if !debug_pars then log "pars" "parsing file [%s]..." fname;
   try
-    let (d, res) = Extra.time (parse_file cmd_list blank) fname in
-    if !debug_pars then log "pars" "parsed  file [%s] in %fs." fname d;
-    res
-  with Parse_error(buf,pos) ->
+    let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
+    if !debug_pars then log "pars" "parsed [%s] in %f seconds." fname d;
+    total_time := !total_time +. d; res
+  with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc  "Parse error."
 
@@ -314,9 +315,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> p_cmd loc list = fun fname str ->
-  let open Earley in
-  if !debug_pars then log "pars" "parsing file [%s] (as string)..." fname;
-  try parse_string ~filename:fname cmd_list blank str
-  with Parse_error(buf,pos) ->
+  try Earley.parse_string ~filename:fname cmd_list blank str
+  with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc "Parse error."
