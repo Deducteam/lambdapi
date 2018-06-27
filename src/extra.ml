@@ -73,6 +73,13 @@ module List =
         Array.iter2 (fun x1 x2 -> res := (x1,x2)::!res) a1 a2;
         !res
 
+    (** [same_length l1 l2] returns [true] whenever [l1] and [l2] are lists of
+        the same length. The function stops as soon as possible. *)
+    let rec same_length : 'a list -> 'b list -> bool = fun l1 l2 ->
+      match (l1, l2) with
+      | ([]   , []   ) -> true
+      | (_::l1, _::l2) -> same_length l1 l2
+      | (_    , _    ) -> false
   end
 
 module Array =

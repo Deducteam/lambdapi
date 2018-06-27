@@ -5,12 +5,6 @@ open Extra
 open Terms
 open Print
 
-let rec same_length : 'a list -> 'b list -> bool = fun l1 l2 ->
-  match (l1, l2) with
-  | ([]   , []   ) -> true
-  | (_::l1, _::l2) -> same_length l1 l2
-  | (_    , _    ) -> false
-
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
@@ -62,8 +56,51 @@ let solve_unif : (term * term) list -> (term * term) list =
         fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
   in
   solve []
-  *)
 
+let solve_whnf : (term * term) list -> (term * term) list =
+  let rec solve acc l =
+    match l with
+    | []                       -> acc
+    | (t1,t2)::l when t1 == t2 -> solve acc l
+    | (t1,t2)::l               ->
+    let (h1, ts1) = Eval.whnf_stk t1 [] in
+    let (h2, ts2) = Eval.whnf_stk t2 [] in
+    match (h1, h2) with
+    (* Cases where [ts1] and [ts2] due to typing / WHNF. *)
+    | (Type       , Type       )
+    | (Kind       , Kind       ) -> solve acc l
+    | (Prod(a1,b1), Prod(a2,b2))
+    | (Abst(a1,b1), Abst(a2,b2)) ->
+        solve acc ((solve_unif [(a1,a2); unbind2 b1 b2]) @ acc)
+    | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y && List.same_length ts1 ts2 ->
+        let u = List.fold_left2 (fun l t1 t2 -> (!t1,!t2)::l) [] ts1 ts2 in
+        solve acc (solve_unif u @ l)
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 && ts1 = [] && ts2 = [] ->
+        solve acc l
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 && Sign.is_const s1 && List.same_length ts1 ts2 ->
+        let u = List.fold_left2 (fun l t1 t2 -> (!t1,!t2)::l) [] ts1 ts2 in
+        solve acc (solve_unif u @ l)
+    | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 && ts1 = [] && ts2 = [] && Array.for_all2 eq_vari a1 a2 ->
+        solve acc l
+    | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
+        solve acc l (* FIXME recompute *)
+    | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
+        solve acc l (* FIXME recompute *)
+
+    | (Meta(_,_)  , _          )
+    | (_          , Meta(_,_)  ) -> solve ((t1,t2)::acc) l
+    | (Symb(s)    , _          ) when not (Sign.is_const s) ->
+        if Eval.eq_modulo t1 t2 then solve acc l
+        else solve ((t1,t2)::acc) l
+    | (_          , Symb(s)    ) when not (Sign.is_const s) ->
+        if Eval.eq_modulo t1 t2 then solve acc l
+        else solve ((t1,t2)::acc) l
+    (* Definitely not convertible. *)
+    | (_          , _          ) ->
+        fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  in
+  solve []
+*)
 
 
 (** Representation of a set of problems. *)
@@ -251,7 +288,7 @@ and solve_whnf t1 t2 strats p : unif list =
   | Kind, Kind -> solve (S_Whnf::strats) p
   (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
 
-  | Vari x, Vari y when Bindlib.eq_vars x y && same_length ts1 ts2 ->
+  | Vari x, Vari y when Bindlib.eq_vars x y && List.same_length ts1 ts2 ->
       let unif_problems =
         let fn l t1 t2 = (!t1,!t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
@@ -270,7 +307,7 @@ and solve_whnf t1 t2 strats p : unif list =
      solve (S_Whnf::strats) p
 
   | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
-     if s1 == s2 && same_length ts1 ts2 then
+     if s1 == s2 && List.same_length ts1 ts2 then
        let unif_problems =
         let fn l t1 t2 = (!t1,!t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
