@@ -124,7 +124,7 @@ and check : config -> Ctxt.t -> term -> term -> unit = fun cfg ctx t c ->
          -------------
           ctx ⊢ t ⇐ a  *)
       let a = infer cfg ctx t in
-      cfg.conv_fun a c
+      if not (Terms.eq a c) then cfg.conv_fun a c
 
 (* NOTE the following functions are wrapper for the above. They write debuging
    data to the log. *)
