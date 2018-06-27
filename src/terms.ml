@@ -363,7 +363,8 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
-    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 -> assert(e1 == e2); eq l
+    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
+        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
