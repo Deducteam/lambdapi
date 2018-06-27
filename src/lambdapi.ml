@@ -39,10 +39,12 @@ let _ =
     in "<int> Set the verbosity level:\n" ^ String.concat "\n" flags
   in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
+  let too_long_doc = "<flt> Duration considered too long for a command" in
   let spec =
-    [ ("--debug"  , Arg.String (set_debug true), debug_doc  )
-    ; ("--verbose", Arg.Int ((:=) verbose)     , verbose_doc)
-    ; ("--gen-obj", Arg.Set Handle.gen_obj     , gen_obj_doc) ]
+    [ ("--gen-obj", Arg.Set Handle.gen_obj          , gen_obj_doc )
+    ; ("--toolong", Arg.Float ((:=) Handle.too_long), too_long_doc)
+    ; ("--verbose", Arg.Int ((:=) verbose)          , verbose_doc )
+    ; ("--debug"  , Arg.String (set_debug true)     , debug_doc   ) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in

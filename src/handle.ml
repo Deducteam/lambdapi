@@ -14,6 +14,10 @@ open Proofs
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
 
+(** [too_long] indicates the duration after which a warning should be given to
+    indicate commands that take too long to execute. *)
+let too_long : float ref = ref infinity
+
 (** [handle_symdecl definable x a] extends the current signature with
     [definable] a symbol named [x] and type [a]. If [a] does not have
     sort [Type] or [Kind], then the program fails gracefully. *)
@@ -226,7 +230,7 @@ let rec handle_require : Files.module_path -> unit = fun path ->
     function may raise the [Fatal] exceptions. *)
 and handle_cmd : p_cmd loc -> unit = fun cmd ->
   let scope_basic = Scope.scope_term StrMap.empty [] in
-  try
+  let handle () =
     match cmd.elt with
     | P_Require(path)       -> handle_require path
     | P_SymDecl(b,x,a)      -> handle_symdecl b x (scope_basic a)
@@ -262,6 +266,11 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     | P_Simpl               -> handle_simpl ()
     | P_Other(c)            ->
         if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos
+  in
+  try
+    let (tm, ()) = time handle () in
+    if tm >= !too_long then
+      wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
   with
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
