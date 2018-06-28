@@ -10,7 +10,12 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+(* Whether to send extended lsp messages *)
+let std_protocol = ref true
+
 module J = Yojson.Basic
+
+let mk_extra l = if !std_protocol then [] else l
 
 (* Ad-hoc parsing for file:///foo... *)
 let parse_uri str =
@@ -47,13 +52,15 @@ let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (thm : Proofs.the
     `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
             "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
   in
-  `Assoc ["range", range;
-          "severity", `Int lvl;
-          "message",  `String msg;
-          "goal_fg", goal]
+  `Assoc (mk_extra ["goal_fg", goal] @
+          ["range", range;
+           "severity", `Int lvl;
+           "message",  `String msg;
+          ])
 
 let mk_diagnostics file version ld : J.json =
-  mk_event "textDocument/publishDiagnostics"
+  let extra = mk_extra ["version", `Int version] in
+  mk_event "textDocument/publishDiagnostics" @@
+    extra @
     ["uri", `String ("file://"^file);
-     "version", `Int version;
      "diagnostics", `List List.(map mk_diagnostic ld)]

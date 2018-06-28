@@ -13,7 +13,17 @@ dune build
 
 The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
-## TODO
+## Using with Emacs
+
+`lp-lsp` will work out of the box with emacs and eglot, to do so,
+install [eglot](https://github.com/joaotavora/eglot) [using `M-x
+package-install eglot RET` should work], then do `M-x eglot` and
+specify as a server `lp-lsp --std`.
+
+`eglot` doesn't support the extended protocol information sent by
+`lp-lsp` yet.
+
+## Development TODO
 
 ### Phase 1: Basic document checking.
 

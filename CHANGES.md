@@ -1,3 +1,7 @@
+0.0.7.2
+-----
+- Support for emacs' [eglot](https://github.com/joaotavora/eglot).
+
 0.0.7.1
 -----
 - Send hypothesis name and type separately.
