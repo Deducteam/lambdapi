@@ -110,7 +110,11 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) = infer_constr Ctxt.empty lhs in
   if !debug_subj then
-    log "subj" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
+    begin
+      log "subj" "%a : %a" pp lhs pp ty_lhs;
+      let fn (t,u) = log "subj" "  if [%a] = [%a]" pp t pp u in
+      List.iter fn lhs_constrs
+    end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in

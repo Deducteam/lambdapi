@@ -5,6 +5,9 @@ open Extra
 open Terms
 open Print
 
+(** Representation of unification problems. *)
+type unif = term * term
+
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
@@ -177,17 +180,6 @@ let make_binder : Ctxt.t -> string -> term -> tbinder = fun c n d ->
     new variable of name [no]. *)
 let make_prod c =
   let d = make_meta c (make_type()) in d, make_binder c "x" d
-
-(** Representation of unification problems. *)
-type unif = term * term
-
-let pp_unif : unif pp = fun oc (t,u) ->
-  Format.fprintf oc "%a = %a" pp t pp u
-
-let pp_unifs : unif list pp = fun oc l ->
-  match l with
-  | [] -> ()
-  | _  -> Format.fprintf oc " if %a" (List.pp pp_unif ", ") l
 
 (** [solve s p] tries to solve the problem [p] following the strategy
     list [s]. When it stops, it returns the list of unsolved
