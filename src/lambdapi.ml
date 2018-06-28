@@ -54,4 +54,4 @@ let _ =
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
   List.iter compile (List.rev !files);
   if !debug_pars then
-    wrn "Total time spent in parsing: %f seconds.\n" !Parser.total_time
+    wrn "Total time spent in parsing: %.2f seconds.\n" !Parser.total_time

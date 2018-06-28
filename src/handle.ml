@@ -113,9 +113,8 @@ let handle_test : test -> unit = fun test ->
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
     | HasType(t,a) ->
-       let ctx = Ctxt.of_env (focus_goal_hyps()) in
-       ignore (Solve.sort_type ctx a);
-       try Solve.has_type ctx t a with _ -> false
+        ignore (Solve.sort_type Ctxt.empty a);
+        try Solve.has_type Ctxt.empty t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
