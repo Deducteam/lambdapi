@@ -111,7 +111,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let (lhs_constrs, ty_lhs) = infer_constr Ctxt.empty lhs in
   if !debug_subj then
     begin
-      log "subj" "%a : %a" pp lhs pp ty_lhs;
+      log "subj" "[%a] : [%a]" pp lhs pp ty_lhs;
       let fn (t,u) = log "subj" "  if [%a] = [%a]" pp t pp u in
       List.iter fn lhs_constrs
     end;
