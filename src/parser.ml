@@ -88,7 +88,7 @@ let _REFINE_    = cmd "REFINE"
 let _SIMPL_     = cmd "SIMPL"
 
 (** [keyword name] is an atomic parser for the keywork [name]. *)
-let parser keyword name = s:''[_'a-zA-Z0-9]*'' ->
+let parser keyword name = s:''[_'a-zA-Z0-9]+'' ->
   if s <> name then Earley.give_up ()
 
 (* Defined keywords. *)
@@ -100,48 +100,46 @@ let _thm_  = keyword "thm"
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
 
+(** Priority level for an expression. *)
+type prio = PFunc | PAppl | PAtom
+
 (** [expr p] is a parser for an expression at priority level [p]. The possible
-    priority levels are [`Func] (top level, including abstraction or product),
-    [`Appl] (application) and [`Atom] (smallest priority). *)
-let parser expr (p : [`Func | `Appl | `Atom]) =
+    priority levels are [PFunc] (top level, including abstraction or product),
+    [PAppl] (application) and [PAtom] (smallest priority). *)
+let parser expr @(p : prio) =
   (* Variable *)
   | qid:qident
-      when p = `Atom -> in_pos _loc (P_Vari(qid))
+      when p <= PAtom -> in_pos _loc (P_Vari(qid))
   (* Type constant *)
   | _Type_
-      when p = `Atom -> in_pos _loc P_Type
+      when p <= PAtom -> in_pos _loc P_Type
   (* Product *)
-  | x:{ident ":"}?[Pos.none "_"] a:(expr `Appl) "->" b:(expr `Func)
-      when p = `Func -> in_pos _loc (P_Prod(x,Some(a),b))
-  | "!" x:ident a:{":" (expr `Func)}? "," b:(expr `Func)
-      when p = `Func -> in_pos _loc (P_Prod(x,a,b))
+  | x:{ident ":"}?[Pos.none "_"] a:(expr PAppl) "->" b:(expr PFunc)
+      when p <= PFunc -> in_pos _loc (P_Prod(x,Some(a),b))
+  | "!" x:ident a:{":" (expr PFunc)}? "," b:(expr PFunc)
+      when p <= PFunc -> in_pos _loc (P_Prod(x,a,b))
   (* Wildcard *)
   | _wild_
-      when p = `Atom -> in_pos _loc P_Wild
+      when p <= PAtom -> in_pos _loc P_Wild
   (* Abstraction *)
-  | x:ident a:{":" (expr `Func)}? "=>" t:(expr `Func)
-      when p = `Func -> in_pos _loc (P_Abst(x,a,t))
+  | x:ident a:{":" (expr PFunc)}? "=>" t:(expr PFunc)
+      when p <= PFunc -> in_pos _loc (P_Abst(x,a,t))
   (* Application *)
-  | t:(expr `Appl) u:(expr `Atom)
-      when p = `Appl -> in_pos _loc (P_Appl(t,u))
+  | t:(expr PAppl) u:(expr PAtom)
+      when p <= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
   | m:meta e:env?[[]]
-      when p = `Atom -> in_pos _loc (P_Meta(m, Array.of_list e))
+      when p <= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
   (* Parentheses *)
-  | "(" t:(expr `Func) ")"
-      when p = `Atom
-  (* Coercions *)
-  | t:(expr `Appl)
-      when p = `Func
-  | t:(expr `Atom)
-      when p = `Appl
+  | "(" t:(expr PFunc) ")"
+      when p <= PAtom
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(expr `Appl) ts:{"," (expr `Appl)}* "]" -> t::ts
+and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
 
 (** [expr] is the entry point of the parser for expressions, which include all
     terms, types and patterns. *)
-let expr = expr `Func
+let expr = expr PFunc
 
 (** Representation of a reduction rule, with its context. *)
 type old_p_rule = (strloc * p_term option) list * p_term * p_term
