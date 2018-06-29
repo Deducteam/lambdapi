@@ -224,7 +224,7 @@ and solve_unif t1 t2 strats p : unif list =
   if t1 == t2 then solve_unifs strats p
   else
     begin
-      if !debug_unif then log "unif" "solving [%a] ~ [%a]" pp t1 pp t2;
+      if !debug_solv then log "unif" "solving [%a] ~ [%a]" pp t1 pp t2;
       match unfold t1, unfold t2 with
       | Type, Type
       | Kind, Kind -> solve (S_Unif::strats) p
@@ -273,7 +273,7 @@ and solve_unif t1 t2 strats p : unif list =
 and solve_whnf t1 t2 strats p : unif list =
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
-  if !debug_unif then
+  if !debug_solv then
     begin
       let t1 = Eval.to_term h1 ts1 in
       let t2 = Eval.to_term h2 ts2 in
@@ -340,27 +340,17 @@ and solve_whnf t1 t2 strats p : unif list =
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
   try Some (solve s p) with Fatal(_,m) ->
-    if !debug_type then log "type" (red "solve: %s.\n") m; None
+    if !debug_solv then log "solv" (red "solve: %s.\n") m; None
 
 let msg (a,b) =
-  if !debug_type then
-    log "type" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+  if !debug_solv then
+    log "solv" "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
-let has_type : Ctxt.t -> term -> term -> bool = fun c t a ->
-  if !debug_type then log "type" "check [%a] [%a]" pp t pp a;
-  let unif_problems = ref [] in
-  let conv_fun a b =
-    if not (Eval.eq_modulo a b) then
-      begin
-        if !debug_type then log "type" "  requires [%a] ~ [%a]" pp a pp b;
-        unif_problems := (a,b) :: !unif_problems;
-        wrn "Hello!\n"
-      end
-    else if !debug_type then log "type" "  immediate"
-  in
-  Typing.(check {conv_fun} c t a);
-  let problems = {no_problems with unif_problems = !unif_problems} in
+let check : Ctxt.t -> term -> term -> bool = fun c t a ->
+  if !debug_solv then log "solv" "check [%a] [%a]" pp t pp a;
+  let unif_problems = Typing.check c t a in
+  let problems = {no_problems with unif_problems} in
   match solve true default_strategy problems with
   | Some l -> List.iter msg l; l = []
   | None   -> false
@@ -368,25 +358,22 @@ let has_type : Ctxt.t -> term -> term -> bool = fun c t a ->
 (** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
     [u] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
-let has_type_with_constr (cs:unif list) (c:Ctxt.t) (t:term) (a:term) : bool =
-  if !debug_type then log "type" "check_with_constr [%a] [%a]" pp t pp a;
-  let unif_problems = ref [] in
-  let conv_fun a b = unif_problems := (a,b) :: !unif_problems in
-  Typing.(check {conv_fun} c t a);
-  let problems = {no_problems with unif_problems = !unif_problems} in
+let check_with_constr (cs:unif list) (t:term) (a:term) : unit =
+  if !debug_solv then log "solv" "check_with_constr [%a] [%a]" pp t pp a;
+  let unif_problems = Typing.check Ctxt.empty t a in
+  let problems = {no_problems with unif_problems} in
   match solve false default_strategy problems with
   | Some l -> let l = List.filter (fun x -> not (List.mem x cs)) l in
-              List.iter msg l; l = []
-  | None   -> false
+              List.iter msg l;
+              if not (l = []) then fatal_no_pos "Unsatisfied constraints."
+  | None   -> fatal_no_pos "Unsatisfiable constraints."
 
 (** [infer_constr c t] returns a pair [a,l] where [l] is a list
     of unification problems for [a] to be the type of [t] in context [c]. *)
 let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
-  if !debug_type then log "type" "infer_constr [%a]" pp t;
-  let unif_problems = ref [] in
-  let conv_fun a b = unif_problems := (a,b) :: !unif_problems in
-  let a = Typing.(infer {conv_fun} c t) in
-  let problems = {no_problems with unif_problems = !unif_problems} in
+  if !debug_solv then log "solv" "infer_constr [%a]" pp t;
+  let (a, unif_problems) = Typing.infer c t in
+  let problems = {no_problems with unif_problems} in
   match solve true default_strategy problems with
   | Some(l) -> (l, a)
   | None    -> fatal_no_pos "FIXME1."
@@ -398,14 +385,14 @@ let infer (c:Ctxt.t) (t:term) : term option =
   if l = [] then Some a else (List.iter msg l; None)
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
-let sort_type (c:Ctxt.t) (t:term) : term =
-  if !debug_type then log "type" "sort_type [%a]" pp t;
+let sort_type (c:Ctxt.t) (t:term) : unit =
+  if !debug_solv then log "solv" "sort_type [%a]" pp t;
   match infer c t with
   | Some(a) ->
       begin
         match unfold a with
         | Type
-        | Kind -> a
+        | Kind -> ()
         | a    -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
       end
   | None    -> fatal_no_pos "Unable to infer a sort for [%a]." pp t

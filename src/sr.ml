@@ -3,13 +3,12 @@
 open Console
 open Terms
 open Print
-open Solve
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
+let subst_from_constrs : (term * term) list -> tvar array * term array =
   let rec build_sub acc cs =
     match cs with
     | []        -> acc
@@ -24,8 +23,9 @@ let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
         | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs
         | (_,_) -> build_sub acc cs
   in
-  let (vs,ts) = List.split (build_sub [] cs) in
-  (Array.of_list vs, Array.of_list ts)
+  fun cs ->
+    let (vs,ts) = List.split (build_sub [] cs) in
+    (Array.of_list vs, Array.of_list ts)
 
 (* Does not work in examples/cic.dk
 
@@ -108,7 +108,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) = infer_constr Ctxt.empty lhs in
+  let (lhs_constrs, ty_lhs) = Solve.infer_constr Ctxt.empty lhs in
   if !debug_subj then
     begin
       log "subj" "[%a] : [%a]" pp lhs pp ty_lhs;
@@ -121,5 +121,5 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  if not (has_type_with_constr lhs_constrs Ctxt.empty rhs ty_lhs) then
+  try Solve.check_with_constr lhs_constrs rhs ty_lhs with Fatal(_,_) ->
     fatal_no_pos "Rule [%a] does not preserve typing." pp_rule (s,rule)

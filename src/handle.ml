@@ -29,7 +29,7 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     if Sign.mem sign x.elt then
       fatal x.pos "Symbol [%s] already exists." x.elt;
     (* We check that [a] is typable by a sort. *)
-    ignore (Solve.sort_type Ctxt.empty a);
+    Solve.sort_type Ctxt.empty a;
     (*FIXME: check that [a] contains no uninstantiated metavariables.*)
     ignore (Sign.add_symbol sign const x a)
 
@@ -60,8 +60,8 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
     match ao with
     | Some(a) ->
        begin
-         ignore (Solve.sort_type Ctxt.empty a);
-         if Solve.has_type Ctxt.empty t a then a
+         Solve.sort_type Ctxt.empty a;
+         if Solve.check Ctxt.empty t a then a
          else fatal_no_pos "[%a] does not have type [%a]." pp t pp a
        end
     | None    ->
@@ -113,8 +113,8 @@ let handle_test : test -> unit = fun test ->
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
     | HasType(t,a) ->
-        ignore (Solve.sort_type Ctxt.empty a);
-        try Solve.has_type Ctxt.empty t a with _ -> false
+        Solve.sort_type Ctxt.empty a;
+        try Solve.check Ctxt.empty t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
@@ -132,7 +132,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   if Sign.mem sign s.elt then
     fatal s.pos "Symbol [%s] already exists." s.elt;
   (* We check that [a] is typable by a sort. *)
-  ignore (Solve.sort_type Ctxt.empty a);
+  Solve.sort_type Ctxt.empty a;
   (* We start the proof mode. *)
   let m = fresh_meta ~name:s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
@@ -182,7 +182,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let bt = lift t in
   let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Solve.has_type (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
+  if not (Solve.check (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
     fatal_no_pos "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
