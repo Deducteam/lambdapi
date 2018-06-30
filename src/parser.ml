@@ -101,7 +101,7 @@ let _thm_  = keyword "thm"
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
 
 (** Priority level for an expression. *)
-type prio = PFunc | PAppl | PAtom
+type prio = PAtom | PAppl | PFunc
 
 (** [expr p] is a parser for an expression at priority level [p]. The possible
     priority levels are [PFunc] (top level, including abstraction or product),
@@ -109,30 +109,30 @@ type prio = PFunc | PAppl | PAtom
 let parser expr @(p : prio) =
   (* Variable *)
   | qid:qident
-      when p <= PAtom -> in_pos _loc (P_Vari(qid))
+      when p >= PAtom -> in_pos _loc (P_Vari(qid))
   (* Type constant *)
   | _Type_
-      when p <= PAtom -> in_pos _loc P_Type
+      when p >= PAtom -> in_pos _loc P_Type
   (* Product *)
   | x:{ident ":"}?[Pos.none "_"] a:(expr PAppl) "->" b:(expr PFunc)
-      when p <= PFunc -> in_pos _loc (P_Prod(x,Some(a),b))
+      when p >= PFunc -> in_pos _loc (P_Prod(x,Some(a),b))
   | "!" x:ident a:{":" (expr PFunc)}? "," b:(expr PFunc)
-      when p <= PFunc -> in_pos _loc (P_Prod(x,a,b))
+      when p >= PFunc -> in_pos _loc (P_Prod(x,a,b))
   (* Wildcard *)
   | _wild_
-      when p <= PAtom -> in_pos _loc P_Wild
+      when p >= PAtom -> in_pos _loc P_Wild
   (* Abstraction *)
   | x:ident a:{":" (expr PFunc)}? "=>" t:(expr PFunc)
-      when p <= PFunc -> in_pos _loc (P_Abst(x,a,t))
+      when p >= PFunc -> in_pos _loc (P_Abst(x,a,t))
   (* Application *)
   | t:(expr PAppl) u:(expr PAtom)
-      when p <= PAppl -> in_pos _loc (P_Appl(t,u))
+      when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
   | m:meta e:env?[[]]
-      when p <= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
+      when p >= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
   (* Parentheses *)
   | "(" t:(expr PFunc) ")"
-      when p <= PAtom
+      when p >= PAtom
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
