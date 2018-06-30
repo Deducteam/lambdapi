@@ -37,26 +37,6 @@ let in_pos : pos -> 'a -> 'a loc =
 let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
-(** [union pos1 pos2] computes the union of two position, which is defined  as
-    the smallest position including [pos1] and [pos2]. *)
-let union : popt -> popt -> popt = fun p1 p2 ->
-  let merge p1 p2 =
-    match compare p1.start_line p2.start_line with
-    | n when n < 0 ->
-        {p1 with end_line = p2.end_line ; end_col = p2.end_col}
-    | n when n > 0 ->
-        {p2 with end_line = p1.end_line ; end_col = p1.end_col}
-    | _ (* n=0 *)  ->
-        let start_col = min p1.start_col p2.start_col in
-        let end_col   = max p1.start_col p2.start_col in
-        {p1 with start_col ; end_col}
-  in
-  match (p1, p2) with
-  | (None   , None   ) -> None
-  | (Some _ , None   ) -> p1
-  | (None   , Some _ ) -> p2
-  | (Some p1, Some p2) -> Some (merge p1 p2)
-
 (** [to_string pos] transforms [pos] into a readable string. *)
 let to_string : pos -> string = fun p ->
   let fname =
