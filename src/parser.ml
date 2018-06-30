@@ -69,33 +69,44 @@ let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
    for efficiency reasons. Indeed, there is an ambiguity in the parser (due to
    the final dot), and this is one way to resolve it by being “greedy”. *)
 
-(** [cmd name] is an atomic parser for the command ["#" ^ name]. *)
-let parser cmd name = s:''#[_'a-zA-Z0-9]+'' ->
-  if s <> "#" ^ name then Earley.give_up ()
+(** [keyword name] is an atomic parser for the keywork [name], not followed by
+    any identifier character. *)
+let keyword : string -> unit Earley.grammar = fun name ->
+  let len = String.length name in
+  if len < 1 then invalid_arg "Parser.keyword";
+  let rec fn i buf pos =
+    if i = len then
+      match Input.get buf pos with
+      | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> Earley.give_up ()
+      | _                                           -> ((), buf, pos)
+    else
+      let (c, buf, pos) = Input.read buf pos in
+      if c <> name.[i] then Earley.give_up ();
+      fn (i+1) buf pos
+  in
+  let cs = Charset.singleton name.[0] in
+  Earley.black_box (fn 0) cs false ("_" ^ name ^ "_")
 
-(* Defined commands. *)
-let _CHECK_     = cmd "CHECK"
-let _CHECKNOT_  = cmd "CHECKNOT"
-let _ASSERT_    = cmd "ASSERT"
-let _ASSERTNOT_ = cmd "ASSERTNOT"
-let _REQUIRE_   = cmd "REQUIRE"
-let _INFER_     = cmd "INFER"
-let _EVAL_      = cmd "EVAL"
-let _NAME_      = cmd "NAME"
-let _PROOF_     = cmd "PROOF"
-let _PRINT_     = cmd "PRINT"
-let _REFINE_    = cmd "REFINE"
-let _SIMPL_     = cmd "SIMPL"
+(** [command name] is an atomic parser for the command ["#" ^ name]. *)
+let command : string -> unit Earley.grammar = fun name -> keyword ("#" ^ name)
 
-(** [keyword name] is an atomic parser for the keywork [name]. *)
-let parser keyword name = s:''[_'a-zA-Z0-9]+'' ->
-  if s <> name then Earley.give_up ()
-
-(* Defined keywords. *)
-let _wild_ = keyword "_"
-let _Type_ = keyword "Type"
-let _def_  = keyword "def"
-let _thm_  = keyword "thm"
+(* Defined keywords and commands. *)
+let _wild_      = keyword "_"
+let _Type_      = keyword "Type"
+let _def_       = keyword "def"
+let _thm_       = keyword "thm"
+let _CHECK_     = command "CHECK"
+let _CHECKNOT_  = command "CHECKNOT"
+let _ASSERT_    = command "ASSERT"
+let _ASSERTNOT_ = command "ASSERTNOT"
+let _REQUIRE_   = command "REQUIRE"
+let _INFER_     = command "INFER"
+let _EVAL_      = command "EVAL"
+let _NAME_      = command "NAME"
+let _PROOF_     = command "PROOF"
+let _PRINT_     = command "PRINT"
+let _REFINE_    = command "REFINE"
+let _SIMPL_     = command "SIMPL"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
