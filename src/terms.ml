@@ -178,7 +178,7 @@ let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  m.meta_type := Kind; m.meta_value := Some(v)
+  Timed.(m.meta_type := Kind); Timed.(m.meta_value := Some(v))
 
 (** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
 let internal : meta -> bool = fun m -> m.meta_name = None
