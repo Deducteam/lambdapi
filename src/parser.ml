@@ -9,6 +9,17 @@ open Pos
 (** Parser-level representation of a qualified identifier. *)
 type qident = (module_path * string) loc
 
+(** Hashtbl for the memoization of the parsing of qualified identifiers. It is
+    a good idea to reset this table before parsing. *)
+let qid_map : (string, module_path * string) Hashtbl.t = Hashtbl.create 31
+
+(** [to_qident loc str] builds a qualified identifier from [str]. *)
+let to_qid : string -> module_path * string = fun str ->
+  try Hashtbl.find qid_map str with Not_found ->
+  let fs = List.rev (String.split_on_char '.' str) in
+  let qid = (List.rev (List.tl fs), List.hd fs) in
+  Hashtbl.add qid_map str qid; qid
+
 (** Parser-level representation of terms (and patterns). *)
 type p_term = p_term_aux loc
  and p_term_aux =
@@ -61,9 +72,9 @@ let parser ident = id:''[_'a-zA-Z0-9]+'' ->
     formed of the same characters as [ident], and are separated with the ['.']
     character. *)
 let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
-  let fs = List.rev (String.split_on_char '.' id) in
-  let (fs,x) = (List.rev (List.tl fs), List.hd fs) in
-  if List.mem id ["Type"; "_"] then Earley.give_up (); in_pos _loc (fs,x)
+  let (_,id) as qid = to_qid id in
+  if List.mem id ["Type"; "_"] then Earley.give_up ();
+  in_pos _loc qid
 
 (* NOTE we use an [Earley] regular expression to parse “qualified identifiers”
    for efficiency reasons. Indeed, there is an ambiguity in the parser (due to
@@ -310,6 +321,7 @@ let total_time : float ref = ref 0.0
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
+  Hashtbl.reset qid_map;
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
     if !debug_pars then log "pars" "parsed [%s] in %.2f seconds." fname d;
@@ -324,6 +336,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> p_cmd loc list = fun fname str ->
+  Hashtbl.reset qid_map;
   try Earley.parse_string ~filename:fname cmd_list blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
