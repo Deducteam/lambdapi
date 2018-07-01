@@ -1,3 +1,27 @@
+0.0.8.5
+-------
+- [improv] Try to refine symbol type.
+
+0.0.8.4
+-------
+- [fix] Send correct `documentSymbol` `Location` object in response.
+
+0.0.8.3
+-----
+- [fix] Get `documentSymbol`s at the completed document state.
+
+0.0.8.2
+-----
+- Fix location info for new LP API.
+
+0.0.8.1
+-----
+- Rebase against new `pureinterface` branch.
+
+0.0.8
+-----
+- Preliminary support for `documentSymbol` request.
+
 0.0.7.2
 -----
 - Support for emacs' [eglot](https://github.com/joaotavora/eglot).
