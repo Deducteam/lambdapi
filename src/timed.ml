@@ -1,24 +1,32 @@
 module Time =
   struct
-    type t = { mutable next : t option ; undo : unit -> unit }
+    type t = T : {mutable p : t option; r : 'a ref; mutable v : 'a} -> t
 
     let current : t ref =
-      ref { next = None ; undo = (fun () -> ()) }
+      ref (T {p = None; r = ref 0; v = 0})
 
     let save : unit -> t = fun () -> !current
 
-    let rollback : t -> unit = fun t ->
-      let rec fn = function
-        | None   -> ()
-        | Some t -> fn t.next; t.undo (); t.next <- None
-      in fn t.next; t.next <- None; current := t
+    let rollback : t -> unit =
+      let rec fn acc time =
+        match time with
+        | T {p = Some t} -> fn (time::acc) t
+        | _              -> gn acc time
+      and gn acc (T r as t0) =
+        let v = r.v in
+        r.v <- !(r.r);
+        r.r := v;
+        match acc with
+        | []     -> r.p <- None; current := t0
+        | t::acc -> r.p <- Some t; gn acc t
+      in
+      fn []
   end
 
 let (:=) : 'a ref -> 'a -> unit = fun r v ->
   let open Time in
-  let v0 = !r in
-  let t = { next = None; undo = (fun () -> r := v0) } in
-  !current.next <- Some t; current := t; r := v
+  let node = T {p = None; r; v = !r} in
+  match !current with T n -> n.p <- Some node; current := node; r := v
 
 let incr : int ref -> unit = fun r -> r := !r + 1
 let decr : int ref -> unit = fun r -> r := !r - 1
