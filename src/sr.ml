@@ -3,30 +3,29 @@
 open Console
 open Terms
 open Print
-open Solve
-open Metas
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : unif list -> tvar array * term array = fun cs ->
+let subst_from_constrs : (term * term) list -> tvar array * term array =
   let rec build_sub acc cs =
     match cs with
-    | []          -> acc
-    | (c,a,b)::cs ->
+    | []        -> acc
+    | (a,b)::cs ->
        let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
        let na = List.length argsa and nb = List.length argsb in
         match (unfold ha, unfold hb) with
         | (Symb(sa), Symb(sb)) when sa == sb && na = nb && Sign.is_const sa ->
-            let fn l t1 t2 = (c,t1,t2) :: l in
+            let fn l t1 t2 = (t1,t2) :: l in
             build_sub acc (List.fold_left2 fn cs argsa argsb)
         | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
         | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs
         | (_,_) -> build_sub acc cs
   in
-  let (vs,ts) = List.split (build_sub [] cs) in
-  (Array.of_list vs, Array.of_list ts)
+  fun cs ->
+    let (vs,ts) = List.split (build_sub [] cs) in
+    (Array.of_list vs, Array.of_list ts)
 
 (* Does not work in examples/cic.dk
 
@@ -49,14 +48,14 @@ let build_meta_type : int -> term = fun k ->
     else
       let k = k-1 in
       let mk_typ = Bindlib.unbox (build_prod k _Type) in
-      let mk = add_sys_meta mk_typ k in
+      let mk = fresh_meta mk_typ k in
       let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
       let b = Bindlib.bind_var vs.(k) p in
       let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
       build_prod k p
   in
   let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
-  let mk = add_sys_meta mk_typ k in
+  let mk = fresh_meta mk_typ k in
   let tk = _Meta mk (Array.map _Vari vs) in
   Bindlib.unbox (build_prod k tk)
 
@@ -80,13 +79,13 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
           let l = Array.length a in
           match i with
           | None    ->
-             let m = add_user_meta n (build_meta_type (l+k)) l in
+             let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
              _Meta m a
           | Some(i) ->
               match metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                 let m = add_user_meta n (build_meta_type (l+k)) l in
+                 let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
                  metas.(i) <- Some(m);
                  _Meta m a
         end
@@ -109,14 +108,18 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) = infer_constr Ctxt.empty lhs in
+  let (lhs_constrs, ty_lhs) = Solve.infer_constr Ctxt.empty lhs in
   if !debug_subj then
-    log "subj" "%a : %a%a" pp lhs pp ty_lhs pp_unifs lhs_constrs;
+    begin
+      log "subj" "[%a] : [%a]" pp lhs pp ty_lhs;
+      let fn (t,u) = log "subj" "  if [%a] = [%a]" pp t pp u in
+      List.iter fn lhs_constrs
+    end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  if not (has_type_with_constr lhs_constrs Ctxt.empty rhs ty_lhs) then
+  try Solve.check_with_constr lhs_constrs rhs ty_lhs with Fatal(_,_) ->
     fatal_no_pos "Rule [%a] does not preserve typing." pp_rule (s,rule)

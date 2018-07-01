@@ -3,7 +3,7 @@
 open Console
 open Files
 
-(* [compile fname] compiles the source file [fname]. *)
+(** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   try Handle.compile true (module_path fname) with Fatal(popt,msg) ->
     begin
@@ -15,6 +15,7 @@ let compile : string -> unit = fun fname ->
 
 (* Main program. *)
 let _ =
+  let justparse = ref false in
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ (* in alphabetical order *)
@@ -39,10 +40,16 @@ let _ =
     in "<int> Set the verbosity level:\n" ^ String.concat "\n" flags
   in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
+  let too_long_doc = "<flt> Duration considered too long for a command" in
+  let onlyparse_doc = " Only parse the input files (no type-checking)" in
+  let earleylvl_doc = "<int> Sets the internal debugging level of Earley" in
   let spec =
-    [ ("--debug"  , Arg.String (set_debug true), debug_doc  )
-    ; ("--verbose", Arg.Int ((:=) verbose)     , verbose_doc)
-    ; ("--gen-obj", Arg.Set Handle.gen_obj     , gen_obj_doc) ]
+    [ ("--gen-obj"  , Arg.Set Handle.gen_obj          , gen_obj_doc  )
+    ; ("--toolong"  , Arg.Float ((:=) Handle.too_long), too_long_doc )
+    ; ("--verbose"  , Arg.Int ((:=) verbose)          , verbose_doc  )
+    ; ("--justparse", Arg.Set justparse               , onlyparse_doc)
+    ; ("--earleylvl", Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
+    ; ("--debug"    , Arg.String (set_debug true)     , debug_doc    ) ]
   in
   let files = ref [] in
   let anon fn = files := fn :: !files in
@@ -50,4 +57,9 @@ let _ =
     " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."
   in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
-  List.iter compile (List.rev !files)
+  if !justparse then
+    List.iter (fun f -> ignore (Parser.parse_file f)) !files
+  else
+    List.iter compile (List.rev !files);
+  if !debug_pars then
+    wrn "Total time spent in parsing: %.2f seconds.\n" !Parser.total_time

@@ -1,94 +1,51 @@
 (** Scoping. *)
 
 open Console
+open Extra
 open Files
+open Pos
 open Parser
 open Terms
-open Cmd
-open Pos
-open Extra
-
-(** Extend an [env] with the mapping [(s,(v,a))] if [s] is not ["_"]. *)
-let add_env : string -> tvar -> tbox -> env -> env =
-  fun s v a env -> if s = "_" then env else (s,(v,a))::env
+open Env
 
 (** [find_ident env qid] returns a boxed term corresponding to a  variable  of
-    the environment [env], or to a symbol, which name corresponds to [qid]. In
+    the environment [env] (or to a symbol) which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
     the name [snd qid.elt] in the environment, and if it is not mapped we also
-    search in the current signature. If the name does not correspond to
-    anything, the program fails gracefully. *)
+    search in the current signature. The exception [Fatal] is raised on errors
+    (i.e., when the name cannot be found, or the module path is invalid). *)
 let find_ident : env -> qident -> tbox = fun env qid ->
   let {elt = (mp, s); pos} = qid in
   if mp = [] then
     (* No module path, search the local environment first. *)
-    try _Vari (fst (List.assoc s env)) with Not_found ->
-    (* Then, search in hypotheses. *)
-    try _Vari (fst (List.assoc s (Proofs.focus_goal_hyps()))) with Not_found ->
+    try _Vari (Env.find s env) with Not_found ->
     (* Then, search in the global environment. *)
     try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
     fatal pos "Unbound variable or symbol [%s]." s
   else
     let sign = Sign.current_sign() in
     if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
-    (* Module path is not available (not loaded), fail. *)
-    fatal pos "No module [%a] loaded." Files.pp_path mp
-  else
-    (* Module path loaded, look for symbol. *)
-    let sign =
-      try PathMap.find mp !Sign.loaded
-      with _ -> assert false (* cannot fail. *)
-    in
-    try _Symb (Sign.find sign s) with Not_found ->
-    fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+      (* Module path is not available (not loaded), fail. *)
+      fatal pos "No module [%a] loaded." Files.pp_path mp
+    else
+      (* Module path loaded, look for symbol. *)
+      let sign =
+        try PathMap.find mp !Sign.loaded
+        with _ -> assert false (* cannot fail. *)
+      in
+      try _Symb (Sign.find sign s) with Not_found ->
+      fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
 
-(** [scope_meta_name loc id] translates the p_term-level metavariable
-    name [id] into a term-level metavariable name. The position [loc] of
-    [id] is used to build an error message in the case where [id] is
-    invalid. *)
-let scope_meta_name loc id =
-  match id with
-  | M_User(s)                                 -> User(s)
-  | M_Sys(k)  when Metas.exists_meta (Sys(k)) -> Sys(k)
-  | M_Sys(k)                                  ->
-      fatal loc "Unknown metavariable [?%i]" k
-
-(** Given an environment [x1:T1, .., xn:Tn] and a boxed term [t] with
-    free variables in [x1, .., xn], build the product type [x1:T1 ->
-    .. -> xn:Tn -> t]. *)
-let prod_of_env : env -> tbox -> term = fun c t ->
-  let prod b (_,(v,a)) = _Prod a v b in
-  Bindlib.unbox (List.fold_left prod t c)
-
-(** [prod_vars_of_env metas env is_type] builds the variables [vs] of
-    [env] and the product [a] of [env] over [Type]. Then, it returns
-    [a] if [is_type] is [true]. Otherwise, it adds [m] into [metas]
-    and returns [m[vs]] where [m] is a new metavariable of arity the
-    length of [env] and type [a]. Returns also [vs] in both cases. *)
-let prod_vars_of_env : meta list ref -> env -> bool -> term * tbox array =
-  fun metas env is_type ->
-    let a = prod_of_env env _Type in
-    let vs = Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env) in
-    if is_type then (a, vs)
-    else (* We create a new metavariable of type [a]. *)
-      let m = Metas.add_sys_meta a (List.length env) in
-      metas := m::!metas; (prod_of_env env (_Meta m vs), vs)
-
-(** [meta_of_env metas env is_type] builds a new metavariable of type
-    [prod_vars_of_env env is_type]. It adds new metavariables in
-    [metas] too. *)
-let meta_of_env : meta list ref -> env -> bool -> tbox =
-  fun metas env is_type ->
-    let t, vs = prod_vars_of_env metas env is_type in
-    let m = Metas.add_sys_meta t (List.length env) in
-    metas := m::!metas; _Meta m vs
-
-(** [scope_term metas t] transforms a parser-level term [t] into an actual
-    term and the list of the new metavariables that it contains. Note
-    that wildcards [P_Wild] are transformed into fresh meta-variables.
-    The same goes for the type carried by abstractions when it is not
-    given. It adds new metavariables in [metas] too. *)
-let scope_term : meta list ref -> p_term -> term = fun metas t ->
+(** [scope_term mmap env t] turns a parser-level term [t] into an actual term.
+    Note that this term may use the variables of the environment [env] as well
+    as metavariables mapped in [mmap]. Note that wildcards (i.e., terms of the
+    form [P_Wild]) are transformed into fresh metavariables.  When not type is
+    given for the domains of an abstraction or a product a fresh metavariables
+    is also introduced. Mtavariable names are looked up in [mmap] first, and a
+    fresh term metavariable is created if the name is not mapped. Note that if
+    such fresh name is used twice, the same metavariable is referenced. *)
+let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
+  let mmap = ref mmap in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -96,42 +53,57 @@ let scope_term : meta list ref -> p_term -> term = fun metas t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Prod a v (scope (add_env x.elt v a env) b)
+        _Prod a v (scope (Env.add x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
-    | P_Wild        -> meta_of_env metas env false
-    | P_Meta(id,ts) ->
-        let id = scope_meta_name t.pos id in
-        let m =
-          try Metas.find_meta id with Not_found ->
-            let s = match id with User(s) -> s | _ -> assert false in
-            let (t,_) = prod_vars_of_env metas env false in
-            let m = Metas.add_user_meta s t (List.length env) in
-            metas := m :: !metas; m
+    | P_Wild        ->
+        (* We build a metavariable that may use the variables of [env]. *)
+        let vs = Env.vars_of_env env in
+        let a =
+          let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+          prod_of_env env (_Meta m vs)
         in
+        _Meta (fresh_meta a (List.length env)) vs
+    | P_Meta(id,ts) ->
+        let m =
+          (* We first check if the metavariable is in the map. *)
+          try StrMap.find id.elt !mmap with Not_found ->
+          (* Otherwise we create a new metavariable. *)
+          let a =
+            let vs = Env.vars_of_env env in
+            let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+            prod_of_env env (_Meta m vs)
+          in
+          let m = fresh_meta ~name:id.elt a (List.length env) in
+          mmap := StrMap.add id.elt m !mmap; m
+        in
+        (* The environment of the metavariable is build from [ts]. *)
         _Meta m (Array.map (scope env) ts)
   and scope_domain : env -> p_term option -> tbox = fun env t ->
     match t with
     | Some(t) -> scope env t
-    | None    -> meta_of_env metas env true
+    | None    ->
+        (* We build a metavariable that may use the variables of [env]. *)
+        let a = prod_of_env env _Type in
+        let vs = Env.vars_of_env env in
+        _Meta (fresh_meta a (Array.length vs)) vs
   in
-  Bindlib.unbox (scope [] t)
+  Bindlib.unbox (scope env t)
 
 (** Association list giving an environment index to “pattern variable”. *)
-type meta_map = (string * int) list
+type pattern_map = (string * int) list
 
-(** Representation of a rule LHS (or pattern). It contains the head symbol and
-    the list of arguments. *)
+(** Representation of a LHS (pattern) as a head symbol and its arguments. *)
 type full_lhs = sym * term list
 
 (** [scope_lhs map t] computes a rule LHS from the parser-level term [t].  The
     association list [map] gives the index that is reserved in the environment
     for “pattern variables”.  Only the variables that are bound in the RHS (or
     appear non-linearly in the LHS) have an associated index in [map]. *)
-let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
+let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   let fresh =
     let c = ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
@@ -143,33 +115,27 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
     | P_Prod(_,_,_) -> fatal t.pos "Invalid LHS (product type)."
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
-        let a = scope_domain env a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        let a =
+          match a with
+          | Some(a) -> fatal a.pos "Invalid LHS (type annotation)."
+          | None    -> scope env (Pos.none P_Wild)
+        in
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> _Vari x) env in
         let m = fresh () in
         _Patt None m (Array.of_list e)
-    | P_Meta(m,ts)  ->
+    | P_Meta(id,ts) ->
         let e = Array.map (scope env) ts in
-        let s =
-          match m with
-          | M_User(s) -> s
-          | _         -> fatal t.pos "Invalid LHS (system metavariable)."
-        in
-        let i = try Some(List.assoc s map) with Not_found -> None in
-        _Patt i s e
-  and scope_domain : env -> p_term option -> tbox = fun env t ->
-    match t with
-    | Some(t) -> fatal t.pos "Invalid LHS (type annotation)."
-    | None    -> scope env (Pos.none P_Wild)
+        let i = try Some(List.assoc id.elt map) with Not_found -> None in
+        _Patt i id.elt e
   in
-  match get_args (Bindlib.unbox (scope [] t)) with
-  | (Symb(s), _ ) when s.sym_const ->
-      fatal t.pos "LHS with a static head symbol."
-  | (Symb(s), ts) -> (s, ts)
-  | (_      , _ ) ->
-      fatal t.pos "LHS with no head symbol." Pos.print t.pos
+  let (h, args) = get_args (Bindlib.unbox (scope [] t)) in
+  match h with
+  | Symb(s) when s.sym_const -> fatal t.pos "LHS with a static head symbol."
+  | Symb(s)                  -> (s, args)
+  | _                        -> fatal t.pos "LHS with no head symbol."
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
    error messages. The names are formed of a number prefixed by ['#']. *)
@@ -177,10 +143,10 @@ let scope_lhs : meta_map -> p_term -> full_lhs = fun map t ->
 (** Representation of the RHS of a rule. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** [scope_rhs map t] computes a rule RHS from the parser-level term [t].
-    The association list [map] gives the position of
-    every “pattern variable” in the constructed multiple binder. *)
-let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
+(** [scope_rhs map t] computes a rule RHS from the parser-level term [t].  The
+    association list [map] gives the position of every  “pattern variable”  in
+    the constructed multiple binder. *)
+let scope_rhs : pattern_map -> p_term -> rhs = fun map t ->
   let names =
     let sorted_map = List.sort (fun (_,i) (_,j) -> i - j) map in
     Array.of_list (List.map fst sorted_map)
@@ -193,25 +159,20 @@ let scope_rhs : meta_map -> p_term -> rhs = fun map t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Prod a v (scope (add_env x.elt v a env) b)
+        _Prod a v (scope (Env.add x.elt v a env) b)
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Abst a v (scope (add_env x.elt v a env) t)
+        _Abst a v (scope (Env.add x.elt v a env) t)
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> fatal t.pos "Invalid RHS (wildcard).\n"
     | P_Meta(m,e)   ->
         let e = Array.map (scope env) e in
-        let m =
-          match m with
-          | M_User(s) -> s
-          | _         -> fatal t.pos "Invalid RHS (system metavariable)."
+        let i =
+          try List.assoc m.elt map with Not_found ->
+            fatal m.pos "Unbound pattern variable [%s]." m.elt
         in
-        try
-          let i = List.assoc m map in
-          _TEnv (Bindlib.box_var metas.(i)) e
-        with Not_found ->
-          fatal t.pos "Unbound pattern variable [%s]." m
+        _TEnv (Bindlib.box_var metas.(i)) e
   and scope_domain : env -> popt -> p_term option -> tbox = fun env p t ->
     match t with
     | Some(t) -> scope env t
@@ -235,28 +196,25 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
     | P_Prod(_,Some(a),b)
     | P_Abst(_,Some(a),b)
     | P_Appl(a,b)         -> meta_vars (meta_vars acc a) b
-    | P_Meta(M_User(m),e) ->
+    | P_Meta(m,e)         ->
         let ((ar,nl) as acc) = Array.fold_left meta_vars acc e in
-        if m = "_" then acc else
         let l = Array.length e in
         begin
           try
-            if List.assoc m ar <> l then
-              fatal t.pos "Arity mismatch for metavariable [%s]." m;
-            if List.mem m nl then acc else (ar, m::nl)
-          with Not_found -> ((m,l)::ar, nl)
+            if List.assoc m.elt ar <> l then
+              fatal m.pos "Arity mismatch for metavariable [%s]." m.elt;
+            if List.mem m.elt nl then acc else (ar, m.elt::nl)
+          with Not_found -> ((m.elt,l)::ar, nl)
         end
-    | P_Meta(_,_)         -> fatal t.pos "Invalid rule member."
   in meta_vars ([],[]) t
 
-(** [scope_rule r] scopes a parsing level reduction rule, producing every
-    element that is necessary to check its type and print error messages. This
-    includes the context the symbol, the LHS / RHS as terms and the rule. *)
+(** [scope_rule r] turns the parser-level rewriting rule [r] into a  rewriting
+    rule (and the associated head symbol). *)
 let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
-  (* NOTE: to reject non-left-linear rules, we can check [nl = []] here. *)
+  (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
   (* Check that the meta-variables of the RHS exist in the LHS. *)
   let check_in_lhs (m,i) =
     let j =
@@ -270,8 +228,8 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
   let nl = List.filter (fun m -> not (List.mem m mvs)) nl in
   let mvs = List.mapi (fun i m -> (m,i)) (mvs @ nl) in
-  (* NOTE: [mvs] maps meta-variables to their position in the environment. *)
-  (* NOTE: meta-variables not in [mvs] can be considered as wildcards. *)
+  (* NOTE [mvs] maps meta-variables to their position in the environment. *)
+  (* NOTE meta-variables not in [mvs] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
   let (sym, lhs) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
@@ -295,12 +253,12 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
            let n = Hashtbl.find arity x in
            let lts1, lts2 = List.cut lts n in
            let ts1 = List.map snd lts1 in
-           let h = Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts1)) in
+           let h = Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts1)) in
            Parser.add_args h lts2
          with Not_found ->
            Hashtbl.add arity x (List.length lts);
            let ts = List.map snd lts in
-           Pos.make t.pos (P_Meta(M_User(x),Array.of_list ts))
+           Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts))
        end
     | _ ->
        match t.elt with
@@ -323,47 +281,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
        | P_Meta(_,_)   ->
           fatal t.pos "Invalid legacy rule syntax."
   in
-  let l = build [] lhs in
-  let r = build [] rhs in
-  (* the order is important for setting arities properly *)
-  (l,r)
-
-(** [scope_cmd_aux cmd] scopes the parser level command [cmd].
-    In case of error, the program gracefully fails. *)
-let scope_cmd_aux : meta list ref -> p_cmd -> cmd_aux = fun metas cmd ->
-  match cmd with
-  | P_SymDecl(b,x,a)      -> SymDecl(b, x, scope_term metas a)
-  | P_SymDef(b,x,ao,t)    ->
-      let t = scope_term metas t in
-      let ao =
-        match ao with
-        | None    -> None
-        | Some(a) -> Some(scope_term metas a)
-      in
-      SymDef(b,x,ao,t)
-  | P_Rules(rs)           -> Rules(List.map scope_rule rs)
-  | P_OldRules(rs)        ->
-      let rs = List.map translate_old_rule rs in
-      Rules(List.map scope_rule rs)
-  | P_Require(path)       -> Require(path)
-  | P_Infer(t,c)          -> Infer(scope_term metas t, c)
-  | P_Eval(t,c)           -> Eval(scope_term metas t, c)
-  | P_TestType(ia,mf,t,a) ->
-      let test_type = HasType(scope_term metas t, scope_term metas a) in
-      Test({is_assert = ia; must_fail = mf; test_type})
-  | P_TestConv(ia,mf,t,u) ->
-      let test_type = Convert(scope_term metas t, scope_term metas u) in
-      Test({is_assert = ia; must_fail = mf; test_type})
-  | P_Other(c)            -> Other(c)
-  | P_StartProof(s,a)     -> StartProof(s, scope_term metas a)
-  | P_PrintFocus          -> PrintFocus
-  | P_Refine(t)           -> Refine (scope_term metas t)
-  | P_Simpl               -> Simpl
-
-(** [scope_cmd_aux cmd] scopes the parser level command [cmd],
-    and forwards the source code position of the command. In
-    case of error, the program gracefully fails. *)
-let scope_cmd : p_cmd loc -> cmd * meta list = fun cmd ->
-  let metas = ref [] in
-  let cmd_aux = scope_cmd_aux metas cmd.elt in
-  {elt = cmd_aux; pos = cmd.pos}, !metas
+  (* NOTE the computation order is important for setting arities properly. *)
+  let lhs = build [] lhs in
+  let rhs = build [] rhs in
+  (lhs, rhs)

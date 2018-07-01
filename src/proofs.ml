@@ -6,7 +6,7 @@ open Console
 (** Representation of a goal. *)
 type goal =
   { g_meta : meta
-  ; g_hyps : env
+  ; g_hyps : Env.t
   ; g_type : term }
 (* NOTE: [g_hyps] and [g_type] are a decomposition of the type of [g_meta]. *)
 
@@ -52,9 +52,9 @@ let fail_if_in_proof() : unit =
 
 (** [focus_goal_hyps ()] returns the hypotheses of the currently
     focused goal if we are in a proof, or the empty list otherwise. *)
-let focus_goal_hyps () : env =
+let focus_goal_hyps () : Env.t =
   match !theorem with
-  | None     -> []
+  | None     -> Env.empty
   | Some thm -> thm.t_focus.g_hyps
 
 

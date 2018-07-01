@@ -128,8 +128,10 @@ type term =
 
 (** Representation of a metavariable for unification. *)
  and meta =
-  { meta_name  : meta_name
-  (** Unique name of the metavariable. *)
+  { meta_key   : int
+  (** Unique key of the metavariable. *)
+  ; meta_name  : string option
+  (** Optional name. *)
   ; meta_type  : term ref
   (** Type of the metavariable. *)
   ; meta_arity : int
@@ -137,18 +139,15 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** Representation of the name of a metavariable. *)
- and meta_name =
-  | User of string
-  (** User-defined metavariable name. *)
-  | Sys  of int
-  (** Generated metavariable identifier. *)
-
 (** A metavariable is represented using a multiple binder, and it can hence be
     instantiated with an open term, provided that its free variables appear in
     the attached environment [ar] in terms of the form {!const:Meta(m,ar}. The
     environment [ar] should only contain (distinct) free variables, as for the
     {!const:Patt(i,s,ar)} constructor. *)
+
+(****************************************************************************)
+
+(** {6 Functions related to the handling of metavariables} *)
 
 (** [unfold t] repeatedly unfolds the definition of the top level metavariable
     of [t] until a significant {!type:term} constructor is found. Note that it
@@ -164,11 +163,50 @@ let rec unfold : term -> term = fun t ->
 (** Note that the {!val:unfold} function should (almost always) be used before
     matching over a value of type {!type:term}. *)
 
-(** [meta_name m] returns a parsable identifier for the meta-variable [m]. *)
+(** [unset m] returns [true] if [m] is not instanciated. *)
+let unset : meta -> bool = fun m -> !(m.meta_value) = None
+
+(** [get_key ()] returns a fresh metavariable key. *)
+let get_key : unit -> int =
+  let counter = ref (-1) in
+  (fun () -> incr counter; !counter)
+
+(** [fresh_meta a n] returns a new metavariable of type [a] and arity [n]. *)
+let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
+  { meta_key = get_key () ; meta_name = name ; meta_type = ref a
+  ; meta_arity = n ; meta_value = ref None}
+
+(** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
+let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
+  m.meta_type := Kind; m.meta_value := Some(v)
+
+(** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
+let internal : meta -> bool = fun m -> m.meta_name = None
+
+(** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->
   match m.meta_name with
-  | User(s) -> "?" ^ s
-  | Sys(k)  -> "?" ^ string_of_int k
+  | Some(n) -> "?" ^ n
+  | None    -> "?" ^ string_of_int m.meta_key
+
+(** [term_of_meta m e] returns a term representing the application of a  fresh
+    symbol (named and typed after [m]) to the terms of [e].  The preduced term
+    has thus the same type as [Meta(m,e)], and it can be used for checking its
+    type instead of that of [Meta(m,e)] directly. *)
+let term_of_meta : meta -> term array -> term = fun m e ->
+  let s =
+    { sym_name  = Printf.sprintf "[%s]" (meta_name m)
+    ; sym_type  = ref !(m.meta_type)
+    ; sym_path  = []
+    ; sym_def   = ref None
+    ; sym_rules = ref []
+    ; sym_const = true }
+  in
+  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s)) e
+
+(* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
+   as otherwise we would need to polute the typing context with variables that
+   created metavariables should not be allowed to use. *)
 
 (****************************************************************************)
 
@@ -325,7 +363,8 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
-    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 -> assert(e1 == e2); eq l
+    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
+        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -334,60 +373,42 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [iter_meta f t] applies the function [f] to every metavariable in the term
+    [t]. As for {!val:eq},  the behaviour of this function is unspecified when
+    [t] uses the {!const:Patt} or {!const:TEnv} constructor. *)
+let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
+  match unfold t with
+  | Patt(_,_,_)
+  | TEnv(_,_)  -> assert false
+  | Vari(_)
+  | Type
+  | Kind
+  | Symb(_)    -> ()
+  | Prod(a,b)
+  | Abst(a,b)  -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
+  | Appl(t,u)  -> iter_meta f t; iter_meta f u
+  | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
+
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
     the {!const:Patt} or {!const:TEnv} constructor. *)
 let occurs : meta -> term -> bool = fun m t ->
-  let exception Occurs in
-  let rec occurs l =
-    match l with
-    | []   -> ()
-    | a::l ->
-    match unfold a with
-    | Patt(_,_,_) | TEnv(_,_)         -> assert false
-    | Vari(_) | Type | Kind | Symb(_) -> occurs l
-    | Prod(a,b) | Abst(a,b)           -> occurs (a::(unbind b)::l)
-    | Appl(t,u)                       -> occurs (t::u::l)
-    | Meta(v,_) when m == v           -> raise Occurs
-    | Meta(_,ts)                      -> occurs (List.add_array ts l)
-  in
-  try occurs [t]; false with Occurs -> true
+  let fn p = if m == p then raise Exit in
+  try iter_meta fn t; false with Exit -> true
+
+(** [get_metas t] returns the list of all the metavariables in [t]. *)
+let get_metas : term -> meta list = fun t ->
+  let l = ref [] in
+  iter_meta (fun m -> l := m :: !l) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
-let distinct_vars (a:term array) : bool =
-  let acc = ref [] in
-  let fn t =
-    match t with
-    | Vari v ->
-       if List.exists (Bindlib.eq_vars v) !acc then raise Exit
-       else acc := v::!acc
-    | _ -> raise Exit
+let distinct_vars : term array -> bool = fun ar ->
+  let rec distinct_vars vars i =
+    if i < 0 then true else
+    match unfold ar.(i) with
+    | Vari(x) when List.exists (Bindlib.eq_vars x) vars -> false
+    | Vari(x) -> distinct_vars (x::vars) (i-1)
+    | _       -> false
   in
-  let res = try Array.iter fn a; true with Exit -> false in
-  acc := []; res
-
-(** [has_uninst_metas t] says whether [t] contains uninstantiated
-    metavariables. *)
-let has_uninst_metas : term -> bool = fun t ->
-  let exception Has_uninst_metas in
-  let check_meta m =
-    match m.meta_name with
-    | User _ -> ()
-    | Sys _ -> raise Has_uninst_metas
-  in
-  let rec hum : term list -> unit = fun l ->
-    match l with
-    | [] -> ()
-    | t :: l ->
-       match unfold t with
-       | Meta(m,ts)  -> check_meta m; hum (List.add_array ts l)
-       | Vari(_) | Type | Kind | Symb(_) -> hum l
-       | Prod(a,b) | Abst(a,b) -> hum (a :: unbind b :: l)
-       | Appl(t,u)   -> hum (t :: u :: l)
-       | Patt(_,_,_) -> assert false
-       | TEnv(_,_)  -> assert false
-  in try hum [t]; false with Has_uninst_metas -> true
-
-(** Representation of an environment for variables. *)
-type env = (string * (tvar * tbox)) list
-
+  distinct_vars [] (Array.length ar - 1)

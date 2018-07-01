@@ -1,9 +1,9 @@
 (** Toplevel commands. *)
 
 open Console
+open Parser
 open Terms
 open Print
-open Cmd
 open Pos
 open Sign
 open Extra
@@ -13,6 +13,10 @@ open Proofs
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
 let gen_obj : bool ref = ref false
+
+(** [too_long] indicates the duration after which a warning should be given to
+    indicate commands that take too long to execute. *)
+let too_long : float ref = ref infinity
 
 (** [handle_symdecl definable x a] extends the current signature with
     [definable] a symbol named [x] and type [a]. If [a] does not have
@@ -25,7 +29,7 @@ let handle_symdecl : bool -> strloc -> term -> unit =
     if Sign.mem sign x.elt then
       fatal x.pos "Symbol [%s] already exists." x.elt;
     (* We check that [a] is typable by a sort. *)
-    ignore (Solve.sort_type Ctxt.empty a);
+    Solve.sort_type Ctxt.empty a;
     (*FIXME: check that [a] contains no uninstantiated metavariables.*)
     ignore (Sign.add_symbol sign const x a)
 
@@ -56,8 +60,8 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
     match ao with
     | Some(a) ->
        begin
-         ignore (Solve.sort_type Ctxt.empty a);
-         if Solve.has_type Ctxt.empty t a then a
+         Solve.sort_type Ctxt.empty a;
+         if Solve.check Ctxt.empty t a then a
          else fatal_no_pos "[%a] does not have type [%a]." pp t pp a
        end
     | None    ->
@@ -82,6 +86,16 @@ let handle_eval : term -> Eval.config -> unit = fun t c ->
   | Some(_) -> out 3 "(eval) %a\n" pp (Eval.eval c t)
   | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
 
+(** Type of the tests that can be made in a file. *)
+type test_type =
+  | Convert of term * term (** Convertibility test. *)
+  | HasType of term * term (** Type-checking. *)
+
+type test =
+  { is_assert : bool (** Should the program fail if the test fails? *)
+  ; must_fail : bool (** Is this test supposed to fail? *)
+  ; test_type : test_type  (** The test itself. *) }
+
 (** [handle_test test] runs the test [test]. When the test does not
     succeed, the program may fail gracefully or continue its exection
     depending on the value of [test.is_assert]. *)
@@ -99,9 +113,8 @@ let handle_test : test -> unit = fun test ->
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
     | HasType(t,a) ->
-       let ctx = Ctxt.of_env (focus_goal_hyps()) in
-       ignore (Solve.sort_type ctx a);
-       try Solve.has_type ctx t a with _ -> false
+        Solve.sort_type Ctxt.empty a;
+        try Solve.check Ctxt.empty t a with _ -> false
   in
   let success = result = not test.must_fail in
   match (success, test.is_assert) with
@@ -119,9 +132,9 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   if Sign.mem sign s.elt then
     fatal s.pos "Symbol [%s] already exists." s.elt;
   (* We check that [a] is typable by a sort. *)
-  ignore (Solve.sort_type Ctxt.empty a);
+  Solve.sort_type Ctxt.empty a;
   (* We start the proof mode. *)
-  let m = Metas.add_user_meta s.elt a 0 in
+  let m = fresh_meta ~name:s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
   let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
   Timed.(theorem := Some t)
@@ -142,7 +155,7 @@ let handle_print_focus() : unit =
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
-let env_of_prod (n:int) (t:term) : env * term =
+let env_of_prod (n:int) (t:term) : Env.t * term =
   let rec aux n t acc =
     if !debug_tac then log "env_of_prod" "%i %a" n pp t;
     match n, t with
@@ -169,11 +182,11 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let bt = lift t in
   let abst u (_,(x,a)) = _Abst a x u in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Solve.has_type (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
+  if not (Solve.check (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
     fatal_no_pos "Typing error.";
   (* We update the list of new metavariables because some
      metavariables may haven been instantiated by type checking. *)
-  let new_metas = List.filter Metas.unset new_metas in
+  let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
   if !debug_tac then log "refine" "[%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
@@ -214,28 +227,49 @@ let rec handle_require : Files.module_path -> unit = fun path ->
 
 (** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
     function may raise the [Fatal] exceptions. *)
-and handle_cmd : Parser.p_cmd loc -> unit = fun cmd ->
-  let cmd, new_metas = Scope.scope_cmd cmd in
+and handle_cmd : p_cmd loc -> unit = fun cmd ->
+  let scope_basic = Scope.scope_term StrMap.empty [] in
+  let handle () =
+    match cmd.elt with
+    | P_Require(path)       -> handle_require path
+    | P_SymDecl(b,x,a)      -> handle_symdecl b x (scope_basic a)
+    | P_SymDef(b,x,ao,t)    ->
+        let t = scope_basic t in
+        let ao =
+          match ao with
+          | None    -> None
+          | Some(a) -> Some(scope_basic a)
+        in
+        handle_symdef b x ao t
+    | P_Rules(rs)           ->
+        let rs = List.map Scope.scope_rule rs in
+        List.iter handle_rule rs
+    | P_OldRules(rs)        ->
+        let rs = List.map Scope.translate_old_rule rs in
+        handle_cmd {cmd with elt = P_Rules rs}
+    | P_Infer(t,cfg)        -> handle_infer (scope_basic t) cfg
+    | P_Eval(t,cfg)         -> handle_eval  (scope_basic t) cfg
+    | P_TestType(ia,mf,t,a) ->
+        let test_type = HasType(scope_basic t, scope_basic a) in
+        handle_test {is_assert = ia; must_fail = mf; test_type}
+    | P_TestConv(ia,mf,t,u) ->
+        let test_type = Convert(scope_basic t, scope_basic u) in
+        handle_test {is_assert = ia; must_fail = mf; test_type}
+    | P_StartProof(s,a)     -> handle_start_proof s (scope_basic a)
+    | P_PrintFocus          -> handle_print_focus ()
+    | P_Refine(t)           ->
+        let env = Proofs.focus_goal_hyps () in
+        let t = Scope.scope_term StrMap.empty env t in
+        let metas = get_metas t in
+        handle_refine metas t
+    | P_Simpl               -> handle_simpl ()
+    | P_Other(c)            ->
+        if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos
+  in
   try
-    begin
-      match cmd.elt with
-      | SymDecl(b,n,a)  -> handle_symdecl b n a
-      | Rules(rs)       -> List.iter handle_rule rs
-      | SymDef(b,n,a,t) -> handle_symdef b n a t
-      | Require(path)   -> handle_require path
-      | Infer(t,c)      -> handle_infer t c
-      | Eval(t,c)       -> handle_eval t c
-      | Test(test)      -> handle_test test
-      | StartProof(s,a) -> handle_start_proof s a
-      | PrintFocus      -> handle_print_focus()
-      | Refine(t)       -> handle_refine new_metas t
-      | Simpl           -> handle_simpl()
-      (* Legacy commands. *)
-      | Other(c)        -> if !debug then wrn "Unknown command %S at %a.\n"
-                             c.elt Pos.print c.pos
-    end;
-    if !debug_unif then
-      log "unif" "after the command: %a" Metas.print_meta_stats ()
+    let (tm, ()) = time handle () in
+    if tm >= !too_long then
+      wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
   with
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
@@ -269,7 +303,7 @@ and compile : bool -> Files.module_path -> unit =
       Timed.(loading := path :: !loading);
       let sign = Sign.create path in
       Timed.(loaded := PathMap.add path sign !loaded);
-      List.iter handle_cmd (Parser.parse_file src);
+      List.iter handle_cmd (parse_file src);
       if !gen_obj then Sign.write sign obj;
       Timed.(loading := List.tl !loading);
       out 1 "Checked [%s]\n%!" src;
