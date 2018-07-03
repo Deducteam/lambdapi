@@ -1,32 +1,43 @@
 module Time =
   struct
-    type t = T : {mutable p : t option; r : 'a ref; mutable v : 'a} -> t
+    type edge = E : {mutable d : node; r : 'a ref; mutable v : 'a} -> edge
+    and  node = {mutable e : edge option}
 
-    let current : t ref =
-      ref (T {p = None; r = ref 0; v = 0})
+    let reverse : node -> unit = fun ({e} as s) ->
+      match e with
+      | None                         -> assert false
+      | Some(E ({d;r;v} as rc) as e) ->
+          (* Undo the reference. *)
+          rc.v <- !r; r := v;
+          (* Reverse the pointers. *)
+          d.e <- Some e; rc.d <- s
 
-    let save : unit -> t = fun () -> !current
+    type t = node
 
-    let rollback : t -> unit =
-      let rec fn acc time =
-        match time with
-        | T {p = Some t} -> fn (time::acc) t
-        | _              -> gn acc time
-      and gn acc (T r as t0) =
-        let v = r.v in
-        r.v <- !(r.r);
-        r.r := v;
+    let current : t ref = ref {e = None}
+
+    let save : unit -> t =
+      fun () -> !current
+
+    let restore : t -> unit =
+      let rec gn acc t0 =
         match acc with
-        | []     -> r.p <- None; current := t0
-        | t::acc -> r.p <- Some t; gn acc t
+        | []     -> current := t0; t0.e <- None
+        | t::acc -> reverse t; gn acc t
+      in
+      let rec fn acc ({e} as time) =
+        match e with
+        | None        -> gn acc time
+        | Some(E {d}) -> fn (time::acc) d
       in
       fn []
   end
 
 let (:=) : 'a ref -> 'a -> unit = fun r v ->
   let open Time in
-  let node = T {p = None; r; v = !r} in
-  match !current with T n -> n.p <- Some node; current := node; r := v
+  let n = {e = None} in
+  let e = E {d = n; r; v = !r} in
+  !current.e <- Some e; current := n; r := v
 
 let incr : int ref -> unit = fun r -> r := !r + 1
 let decr : int ref -> unit = fun r -> r := !r - 1
@@ -34,9 +45,9 @@ let decr : int ref -> unit = fun r -> r := !r - 1
 let pure_apply : ('a -> 'b) -> 'a -> 'b = fun f v ->
   let t = Time.save () in
   let r = f v in
-  Time.rollback t; r
+  Time.restore t; r
 
 let pure_test : ('a -> bool) -> 'a -> bool = fun f v ->
   let t = Time.save () in
   let r = f v in
-  if not r then Time.rollback t; r
+  if not r then Time.restore t; r
