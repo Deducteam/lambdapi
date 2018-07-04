@@ -1,4 +1,3 @@
-Cmd
 Console
 Ctxt
 Eval
@@ -6,11 +5,11 @@ Extra
 Files
 Handle
 Lambdapi
-Metas
 Pos
 Pure
 Print
 Proofs
+Rewrite
 Scope
 Sign
 Solve

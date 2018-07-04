@@ -1,5 +1,6 @@
 *.dko
 *~
+*.swp
 _build
 lambdapi.native
 lambdapi.docdir
