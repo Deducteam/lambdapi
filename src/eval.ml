@@ -25,8 +25,10 @@ let steps : int ref = ref 0
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !debug_eval then log "eval" "evaluating [%a]" pp (unfold t);
+  let s = !steps in
+  let t = unfold t in
   let (u, stk) = whnf_stk t [] in
-  to_term u stk
+  if !steps <> s then to_term u stk else t
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -124,6 +126,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
     match l with
     | []       -> ()
     | (a,b)::l ->
+     let a = unfold a and b = unfold b in
+     if a == b then () else
     match (whnf a, whnf b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
