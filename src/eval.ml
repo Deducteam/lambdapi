@@ -126,6 +126,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
     match l with
     | []       -> ()
     | (a,b)::l ->
+    (* let a = unfold a and b = unfold b in this line breaks make tests *)
+    if a == b then () else
     match (whnf a, whnf b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
