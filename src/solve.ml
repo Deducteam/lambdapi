@@ -286,7 +286,7 @@ and solve_whnf t1 t2 strats p : unif list =
 
   | Vari x, Vari y when Bindlib.eq_vars x y && List.same_length ts1 ts2 ->
       let unif_problems =
-        let fn l t1 t2 = (!t1,!t2)::l in
+        let fn l t1 t2 = (snd !t1,snd !t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
       in
       solve (S_Whnf::strats) {p with unif_problems}
@@ -305,7 +305,7 @@ and solve_whnf t1 t2 strats p : unif list =
   | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
      if s1 == s2 && List.same_length ts1 ts2 then
        let unif_problems =
-        let fn l t1 t2 = (!t1,!t2)::l in
+        let fn l t1 t2 = (snd !t1,snd !t2)::l in
         List.fold_left2 fn p.unif_problems ts1 ts2
        in
        solve (S_Unif::S_Whnf::strats) {p with unif_problems}
@@ -338,7 +338,7 @@ and solve_whnf t1 t2 strats p : unif list =
 (** [solve b strats p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
-  can_instantiate := b;
+  Timed.(can_instantiate := b);
   try Some (solve s p) with Fatal(_,m) ->
     if !debug_solv then log "solv" (red "solve: %s.\n") m; None
 
