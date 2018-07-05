@@ -29,9 +29,12 @@ let json_of_goal g =
   let pr_hyp (s,(_,t)) =
     `Assoc ["hname", `String s;
             "htype", `String (Format.asprintf "%a" Print.pp_term (Bindlib.unbox t))] in
-  let j_env = List.map pr_hyp g.Proofs.g_hyps in
-  `Assoc ["hyps", `List j_env;
-          "type", `String (Format.asprintf "%a" Print.pp_term g.Proofs.g_type)]
+  let open Proofs in
+  let j_env = List.map pr_hyp g.g_hyps in
+  `Assoc [
+    "gid", `Int g.g_meta.meta_key
+  ; "hyps", `List j_env
+  ; "type", `String (Format.asprintf "%a" Print.pp_term g.g_type)]
 
 let json_of_thm thm =
   let open Proofs in
@@ -39,7 +42,10 @@ let json_of_thm thm =
   | None ->
     `Null
   | Some thm ->
-    json_of_goal thm.t_focus
+    `Assoc [
+      "focus", `Int thm.t_focus.g_meta.meta_key
+    ; "goals", `List List.(map json_of_goal thm.t_goals)
+    ]
 
 let mk_range (p : Pos.pos) : J.json =
   let open Pos in
@@ -53,7 +59,7 @@ let mk_range (p : Pos.pos) : J.json =
 let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (thm : Proofs.theorem option)) : J.json =
   let goal = json_of_thm thm in
   let range = mk_range p in
-  `Assoc (mk_extra ["goal_fg", goal] @
+  `Assoc (mk_extra ["goal_info", goal] @
           ["range", range;
            "severity", `Int lvl;
            "message",  `String msg;

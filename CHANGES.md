@@ -1,3 +1,7 @@
+0.0.8.6
+-------
+- [goals] Better information for display of goals in focus.
+
 0.0.8.5
 -------
 - [improv] Try to refine symbol type.
