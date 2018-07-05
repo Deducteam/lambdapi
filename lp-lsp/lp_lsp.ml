@@ -37,6 +37,7 @@ let do_initialize ofmt ~id _params =
        `Assoc [
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
+        ; "hoverProvider", `Bool true
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -125,6 +126,19 @@ let do_symbols ofmt ~id params =
   let msg = LSP.mk_reply ~id ~result:(`List sym) in
   LIO.send_json ofmt msg
 
+let get_docTextPosition params =
+  let document = dict_field "textDocument" params in
+  let file = LSP.parse_uri @@ string_field "uri" document in
+  let pos = dict_field "position" params in
+  let line, character = int_field "line" pos, int_field "character" pos in
+  file, line, character
+
+let do_hover ofmt ~id params =
+  let _ = get_docTextPosition params in
+  let result = `Assoc [ "contents", `String "hover XXX"] in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
+
 (* XXX: We could split requests and notifications but with the OCaml
    theading model there is not a lot of difference yet; something to
    think for the future. *)
@@ -141,6 +155,9 @@ let dispatch_message ofmt dict =
   (* Symbols in the document *)
   | "textDocument/documentSymbol" ->
     do_symbols ofmt ~id params
+
+  | "textDocument/hover" ->
+    do_hover ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->

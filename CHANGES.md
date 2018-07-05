@@ -1,3 +1,7 @@
+0.0.8.7
+-------
+- [hover] Add basic hover protocol support.
+
 0.0.8.6
 -------
 - [goals] Better information for display of goals in focus.
