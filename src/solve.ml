@@ -338,7 +338,7 @@ and solve_whnf t1 t2 strats p : unif list =
 (** [solve b strats p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve strats p] returns [l], and [None] otherwise. *)
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
-  Timed.(can_instantiate := b);
+  Timed_compat.(can_instantiate := b);
   try Some (solve s p) with Fatal(_,m) ->
     if !debug_solv then log "solv" (red "solve: %s.\n") m; None
 

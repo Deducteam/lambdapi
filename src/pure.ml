@@ -4,7 +4,7 @@ open Handle
 open Console
 open Parser
 open Pos
-open Timed
+open Timed_compat
 
 type command = p_cmd loc
 
@@ -18,8 +18,8 @@ let t0 = Time.save ()
 
 let initial_state : Files.module_path -> state = fun path ->
   Time.restore t0;
-  Timed.(Sign.loading := [path]);
-  Timed.(Sign.loaded  := Files.PathMap.add path (Sign.create path) !Sign.loaded);
+  Sign.loading := [path];
+  Sign.loaded  := Files.PathMap.add path (Sign.create path) !Sign.loaded;
   Time.save ()
 
 let handle_command : state -> command -> result = fun t cmd ->
