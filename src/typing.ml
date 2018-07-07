@@ -135,8 +135,8 @@ type conv_constrs = (term * term) list
     context [ctx],  supposed well-formed).  The exception [Fatal] is raised in
     case of error (e.g., when [t] cannot be assigned a type). *)
 let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
@@ -163,8 +163,8 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
     well-fomed, and the type [c] well-sorted. The exception [Fatal] is raised
     in case of error (e.g., when [t] definitely does not have type [c]). *)
 let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs

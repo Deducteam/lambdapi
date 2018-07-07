@@ -19,10 +19,10 @@ let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
 let r_or_g cond = if cond then gre else red
 
 (** [out_fmt] main output formatter. *)
-let out_fmt = ref Format.std_formatter
+let out_fmt = Pervasives.ref Format.std_formatter
 
 (** [err_fmt] warning/error output formatter. *)
-let err_fmt = ref Format.err_formatter
+let err_fmt = Pervasives.ref Format.err_formatter
 
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
@@ -48,17 +48,17 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt -> fatal None fmt
 
 (* Various debugging / message flags. *)
-let verbose    = ref 1
-let debug      = ref false
-let debug_eval = ref false
-let debug_matc = ref false
-let debug_solv = ref false
-let debug_subj = ref false
-let debug_type = ref false
-let debug_equa = ref false
-let debug_pars = ref false
-let debug_meta = ref false
-let debug_tac  = ref false
+let verbose    = Pervasives.ref 1
+let debug      = Pervasives.ref false
+let debug_eval = Pervasives.ref false
+let debug_matc = Pervasives.ref false
+let debug_solv = Pervasives.ref false
+let debug_subj = Pervasives.ref false
+let debug_type = Pervasives.ref false
+let debug_equa = Pervasives.ref false
+let debug_pars = Pervasives.ref false
+let debug_meta = Pervasives.ref false
+let debug_tac  = Pervasives.ref false
 
 (** [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->

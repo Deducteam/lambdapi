@@ -6,7 +6,7 @@ open Terms
 open Print
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
-type stack = (bool * term) ref list
+type stack = (bool * term) Pervasives.ref list
 
 (* NOTE the stack contain references so that the computation of arguments when
    matching reduction rules may be shared. *)
@@ -20,7 +20,7 @@ let to_term : term -> stack -> term = fun t args ->
   in to_term t args
 
 (** Evaluation step counter. *)
-let steps : int ref = ref 0
+let steps : int Pervasives.ref = Pervasives.ref 0
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
@@ -35,7 +35,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
-  | (Appl(f,u), stk    ) -> whnf_stk f (ref (false, u) :: stk)
+  | (Appl(f,u), stk    ) -> whnf_stk f (Pervasives.ref (false, u) :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) -> incr steps; whnf_stk (Bindlib.subst f (snd !u)) stk
   (* Try to rewrite. *)
@@ -108,9 +108,10 @@ and matching : term_env array -> term -> (bool * term) ref -> bool = fun ar p t 
         eq_modulo (Bindlib.msubst b e) t
     | (Abst(_,t1)       , Abst(_,t2)   ) ->
         let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
-        matching ar t1 (ref (false, t2))
+        matching ar t1 (Pervasives.ref (false, t2))
     | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
-        matching ar t1 (ref (fst !t, t2)) && matching ar u1 (ref (false, u2))
+        matching ar t1 (Pervasives.ref (fst !t, t2))
+        && matching ar u1 (Pervasives.ref (false, u2))
     | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
     | (_                , _            ) -> false

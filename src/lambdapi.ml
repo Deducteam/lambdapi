@@ -15,7 +15,7 @@ let compile : string -> unit = fun fname ->
 
 (* Main program. *)
 let _ =
-  let justparse = ref false in
+  let justparse = Pervasives.ref false in
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
       [ (* in alphabetical order *)
@@ -51,7 +51,7 @@ let _ =
     ; ("--earleylvl", Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
     ; ("--debug"    , Arg.String (set_debug true)     , debug_doc    ) ]
   in
-  let files = ref [] in
+  let files = Pervasives.ref [] in
   let anon fn = files := fn :: !files in
   let summary =
     " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."

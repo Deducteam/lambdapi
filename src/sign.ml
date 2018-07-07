@@ -63,7 +63,7 @@ let pp_symbol : sym pp = fun oc s ->
   in
   Format.pp_print_string oc full
 
-let _ = Print.pp_symbol_ref := pp_symbol
+let _ = Pervasives.(Print.pp_symbol_ref := pp_symbol)
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->

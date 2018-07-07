@@ -8,10 +8,10 @@ open Terms
 let default_pp_symbol : sym pp = fun oc s ->
   Format.pp_print_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
 
-let pp_symbol_ref : sym pp ref = ref default_pp_symbol
+let pp_symbol_ref : sym pp Pervasives.ref = Pervasives.ref default_pp_symbol
 
 let pp_symbol : sym pp = fun oc s ->
-  !pp_symbol_ref oc s
+  Pervasives.(!pp_symbol_ref oc s)
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->

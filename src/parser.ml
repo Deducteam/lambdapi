@@ -315,7 +315,7 @@ let blank buf pos =
   fn `Ini [] (buf, pos) (buf, pos)
 
 (** Accumulates parsing time for files (useful for profiling). *)
-let total_time : float ref = ref 0.0
+let total_time = Pervasives.ref 0.0
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing

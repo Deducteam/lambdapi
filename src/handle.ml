@@ -12,11 +12,11 @@ open Proofs
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
-let gen_obj : bool ref = ref false
+let gen_obj = Pervasives.ref false
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
-let too_long : float ref = ref infinity
+let too_long = Pervasives.ref infinity
 
 (** [handle_symdecl definable x a] extends the current signature with
     [definable] a symbol named [x] and type [a]. If [a] does not have
