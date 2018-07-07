@@ -1,5 +1,6 @@
 (** Type-checking and inference. *)
 
+open Timed
 open Console
 open Terms
 open Print

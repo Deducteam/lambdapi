@@ -4,7 +4,7 @@ open Handle
 open Console
 open Parser
 open Pos
-open Timed_compat
+open Timed
 
 type command = p_cmd loc
 

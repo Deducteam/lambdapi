@@ -1,5 +1,7 @@
 (** Output and debugging utilities. *)
 
+open Timed
+
 (** Short name for a standard formatter. *)
 type 'a outfmt = ('a, Format.formatter, unit) format
 
@@ -26,7 +28,8 @@ let err_fmt = Pervasives.ref Format.err_formatter
 
 (** [wrn fmt] prints a yellow warning message with [Printf] format [fmt]. Note
     that the output buffer is flushed by the function. *)
-let wrn : 'a outfmt -> 'a = fun fmt -> Format.fprintf !err_fmt (yel fmt)
+let wrn : 'a outfmt -> 'a = fun fmt ->
+  Format.fprintf Pervasives.(!err_fmt) (yel fmt)
 
 (** Exception raised in case of failure. *)
 exception Fatal of Pos.popt option * string
@@ -48,17 +51,17 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
 let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt -> fatal None fmt
 
 (* Various debugging / message flags. *)
-let verbose    = Pervasives.ref 1
-let debug      = Pervasives.ref false
-let debug_eval = Pervasives.ref false
-let debug_matc = Pervasives.ref false
-let debug_solv = Pervasives.ref false
-let debug_subj = Pervasives.ref false
-let debug_type = Pervasives.ref false
-let debug_equa = Pervasives.ref false
-let debug_pars = Pervasives.ref false
-let debug_meta = Pervasives.ref false
-let debug_tac  = Pervasives.ref false
+let verbose    = ref 1
+let debug      = ref false
+let debug_eval = ref false
+let debug_matc = ref false
+let debug_solv = ref false
+let debug_subj = ref false
+let debug_type = ref false
+let debug_equa = ref false
+let debug_pars = ref false
+let debug_meta = ref false
+let debug_tac  = ref false
 
 (** [debug_enabled ()] indicates whether any debugging flag is enabled. *)
 let debug_enabled : unit -> bool = fun () ->
@@ -89,7 +92,7 @@ let set_debug : bool -> string -> unit = fun value ->
     for better formatting. Note that the output buffer is flushed,  and that a
     newline character ['\n'] is also automatically appended to the output. *)
 let log : string -> 'a outfmt -> 'a = fun name fmt ->
-  Format.fprintf !err_fmt ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+  Format.fprintf Pervasives.(!err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
 
 (** [out lvl fmt] prints an output message using the format [fmt], but only if
     [lvl] is strictly greater than the current verbosity level.  Note that the
@@ -98,5 +101,5 @@ let log : string -> 'a outfmt -> 'a = fun name fmt ->
     enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   let fmt = if debug_enabled () then mag fmt else fmt ^^ "%!" in
-  if lvl > !verbose then Format.ifprintf !out_fmt fmt
-  else Format.fprintf !out_fmt fmt
+  if lvl > !verbose then Format.ifprintf Pervasives.(!out_fmt) fmt
+  else Format.fprintf Pervasives.(!out_fmt) fmt

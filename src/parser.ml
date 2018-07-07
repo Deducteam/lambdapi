@@ -1,5 +1,6 @@
 (** Parsing functions. *)
 
+open Timed
 open Console
 open Files
 open Pos
@@ -325,7 +326,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
     if !debug_pars then log "pars" "parsed [%s] in %.2f seconds." fname d;
-    total_time := !total_time +. d; res
+    Pervasives.(total_time := !total_time +. d); res
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc  "Parse error."

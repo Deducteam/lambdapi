@@ -1,5 +1,6 @@
 (** Proofs and tactics. *)
 
+open Timed
 open Terms
 open Console
 

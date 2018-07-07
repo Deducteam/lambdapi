@@ -18,8 +18,8 @@ let _ =
   let justparse = Pervasives.ref false in
   let debug_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
-      [ (* in alphabetical order *)
-        "a : general debug informations"
+      (* in alphabetical order *)
+      [ "a : general debug informations"
       ; "c : extra debugging informations for metavariables"
       ; "e : extra debugging informations for equality"
       ; "m : extra debugging informations for matching"
@@ -27,8 +27,7 @@ let _ =
       ; "r : extra debugging informations for evaluation"
       ; "s : extra debugging informations for subject reduction"
       ; "t : extra debugging informations for typing"
-      ; "u : extra debugging informations for unification"
-      ]
+      ; "u : extra debugging informations for unification" ]
     in "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
   in
   let verbose_doc =
@@ -46,13 +45,13 @@ let _ =
   let spec =
     [ ("--gen-obj"  , Arg.Set Handle.gen_obj          , gen_obj_doc  )
     ; ("--toolong"  , Arg.Float ((:=) Handle.too_long), too_long_doc )
-    ; ("--verbose"  , Arg.Int ((:=) verbose)          , verbose_doc  )
+    ; ("--verbose"  , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
     ; ("--justparse", Arg.Set justparse               , onlyparse_doc)
     ; ("--earleylvl", Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
     ; ("--debug"    , Arg.String (set_debug true)     , debug_doc    ) ]
   in
   let files = Pervasives.ref [] in
-  let anon fn = files := fn :: !files in
+  let anon fn = Pervasives.(files := fn :: !files) in
   let summary =
     " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."
   in
@@ -61,5 +60,5 @@ let _ =
     List.iter (fun f -> ignore (Parser.parse_file f)) !files
   else
     List.iter compile (List.rev !files);
-  if !debug_pars then
+  if Timed.(!debug_pars) then
     wrn "Total time spent in parsing: %.2f seconds.\n" !Parser.total_time

@@ -24,13 +24,13 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     fatal pos "Unbound variable or symbol [%s]." s
   else
     let sign = Sign.current_sign() in
-    if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
+    if not Sign.(mp = sign.path || PathMap.mem mp Timed.(!(sign.deps))) then
       (* Module path is not available (not loaded), fail. *)
       fatal pos "No module [%a] loaded." Files.pp_path mp
     else
       (* Module path loaded, look for symbol. *)
       let sign =
-        try PathMap.find mp !Sign.loaded
+        try PathMap.find mp Timed.(!Sign.loaded)
         with _ -> assert false (* cannot fail. *)
       in
       try _Symb (Sign.find sign s) with Not_found ->

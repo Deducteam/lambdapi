@@ -5,6 +5,7 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
+open Timed
 
 (****************************************************************************)
 
@@ -156,7 +157,12 @@ type term =
     unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta({meta_value = {contents = Some(b)}}, ar)
+  | Meta(m, ar) ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (Bindlib.msubst b ar)
+      end
   | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
   | _                    -> t
 
@@ -178,7 +184,7 @@ let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  Timed_compat.(m.meta_type := Kind; m.meta_value := Some(v))
+  m.meta_type := Kind; m.meta_value := Some(v)
 
 (** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
 let internal : meta -> bool = fun m -> m.meta_name = None
