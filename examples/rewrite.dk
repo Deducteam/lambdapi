@@ -79,11 +79,13 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 (; Rewrite test ;)
 def add_comm : !x, ! y, P (eq nat (add x y ) (add y x)).
 
-def add_s_right : !x, ! y, P (eq nat (add x (s y)) (s (add x y))).
+def add_s_right : !x, !y, P (eq nat (add x (s y)) (s (add x y))).
+def add_easy : !x, !y, P (eq nat (x) (y)).
 
 #PROOF test : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
 #REFINE x => y => z => _.
 #PRINT.
+#REWRITE add_easy x y.
 #REWRITE add_s_right x y.
 #PRINT.
 
