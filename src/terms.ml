@@ -5,6 +5,7 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
+open Timed
 
 (****************************************************************************)
 
@@ -156,7 +157,12 @@ type term =
     unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta({meta_value = {contents = Some(b)}}, ar)
+  | Meta(m, ar) ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (Bindlib.msubst b ar)
+      end
   | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
   | _                    -> t
 
@@ -168,8 +174,8 @@ let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
 (** [get_key ()] returns a fresh metavariable key. *)
 let get_key : unit -> int =
-  let counter = ref (-1) in
-  (fun () -> incr counter; !counter)
+  let counter = Pervasives.ref (-1) in
+  (fun () -> Pervasives.(incr counter; !counter))
 
 (** [fresh_meta a n] returns a new metavariable of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
@@ -398,9 +404,9 @@ let occurs : meta -> term -> bool = fun m t ->
 
 (** [get_metas t] returns the list of all the metavariables in [t]. *)
 let get_metas : term -> meta list = fun t ->
-  let l = ref [] in
-  iter_meta (fun m -> l := m :: !l) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
+  let l = Pervasives.ref [] in
+  iter_meta (fun m -> Pervasives.(l := m :: !l)) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) Pervasives.(!l)
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
 let distinct_vars : term array -> bool = fun ar ->

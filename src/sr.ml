@@ -1,8 +1,14 @@
 (** Type-checking and inference. *)
 
+open Timed
 open Console
 open Terms
 open Print
+
+(** Logging function for typing. *)
+let log_subj = new_logger 'j' "subj" "debugging information for SR"
+let log_subj = log_subj.logger
+
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
@@ -62,7 +68,7 @@ let build_meta_type : int -> term = fun k ->
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * rule -> unit = fun (s,rule) ->
-  if !debug_subj then log "subj" "%a" pp_rule (s, rule);
+  (*log_subj "%a" pp_rule (s, rule);*)
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -109,12 +115,11 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   let (lhs_constrs, ty_lhs) = Solve.infer_constr Ctxt.empty lhs in
-  if !debug_subj then
-    begin
-      log "subj" "[%a] : [%a]" pp lhs pp ty_lhs;
-      let fn (t,u) = log "subj" "  if [%a] = [%a]" pp t pp u in
-      List.iter fn lhs_constrs
-    end;
+  (*
+  log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
+  let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
+  List.iter fn lhs_constrs;
+  *)
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in

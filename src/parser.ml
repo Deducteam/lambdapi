@@ -1,8 +1,13 @@
 (** Parsing functions. *)
 
+open Timed
 open Console
 open Files
 open Pos
+
+(** Logging function for the parser. *)
+let log_pars = new_logger 'p' "pars" "debugging information for the parser"
+let log_pars = log_pars.logger
 
 #define LOCATE locate
 
@@ -315,7 +320,7 @@ let blank buf pos =
   fn `Ini [] (buf, pos) (buf, pos)
 
 (** Accumulates parsing time for files (useful for profiling). *)
-let total_time : float ref = ref 0.0
+let total_time = Pervasives.ref 0.0
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
@@ -324,8 +329,8 @@ let parse_file : string -> p_cmd loc list = fun fname ->
   Hashtbl.reset qid_map;
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
-    if !debug_pars then log "pars" "parsed [%s] in %.2f seconds." fname d;
-    total_time := !total_time +. d; res
+    log_pars "parsed [%s] in %.2f seconds." fname d;
+    Pervasives.(total_time := !total_time +. d); res
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc  "Parse error."

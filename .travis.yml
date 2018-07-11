@@ -6,25 +6,19 @@ env:
   - OCAML_VERSION=4.05.0
   - OCAML_VERSION=4.06.0
   - OCAML_VERSION=4.06.1
-addons:
-  apt:
-    update : true
-    sources:
-      - avsm
-    packages:
-      - opam
-      - time
-cache:
-  directories:
-    - $HOME/.opam
 before_install:
+  # Obtain and install opam locally.
+  - mkdir -p ${HOME}/bin
+  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0-beta6/opam-2.0.0-beta6-x86_64-linux
+  - chmod +x ${HOME}/bin/opam
+  - export PATH=$PATH:${HOME}/bin
   - export OPAMYES=1
   - export OPAMVERBOSE=1
-  - opam init
-  - opam switch ${OCAML_VERSION}
+  # Initialize the switch.
+  - opam init --compiler=${OCAML_VERSION}
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind
-  - opam install earley.1.0.2 earley-ocaml.1.0.2 bindlib.5.0.0
+  - opam install earley.1.0.2 earley-ocaml.1.0.2 bindlib.5.0.0 timed.1.0
   - make
 install:
   - make install

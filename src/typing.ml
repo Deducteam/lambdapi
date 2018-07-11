@@ -1,8 +1,13 @@
 (** Type-checking and inference *)
 
+open Timed
 open Console
 open Terms
 open Print
+
+(** Logging function for typing. *)
+let log_type = new_logger 't' "type" "debugging information for typing"
+let log_type = log_type.logger
 
 (** Type of a function to be called to check convertibility. *)
 type conv_f = term -> term -> unit
@@ -31,7 +36,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
   | Symb(s)     ->
       (* -------------------------------
           ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-      !(s.sym_type)
+      Timed.(!(s.sym_type))
   | Prod(a,b)   ->
       (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
          -----------------------------------------
@@ -135,27 +140,28 @@ type conv_constrs = (term * term) list
     context [ctx],  supposed well-formed).  The exception [Fatal] is raised in
     case of error (e.g., when [t] cannot be assigned a type). *)
 let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
+    let open Pervasives in
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try
     let a = infer_aux conv ctx t in
-    if !debug_type then
+    let constrs = Pervasives.(!constrs) in
+    if !log_enabled then
       begin
-        log "type" (gre "infer [%a] yields [%a]") pp t pp a;
-        let fn (a,b) =
-          log "type" (gre "  assuming [%a] ~ [%a]") pp a pp b
-        in
-        List.iter fn !constrs;
-        if !trivial > 0 then
-          log "type" (gre "  with %i trivial constraints") !trivial
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "infer [%a] yields [%a]") pp t pp a;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
       end;
-    (a, !constrs)
+    (a, constrs)
   with e ->
-    if !debug_type then log "type" (red "infer [%a] failed.") pp t;
+    if !log_enabled then log_type (red "infer [%a] failed.") pp t;
     raise e
 
 (** [check ctx t c] checks that the term [t] has type [c] in the context [ctx]
@@ -163,25 +169,26 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
     well-fomed, and the type [c] well-sorted. The exception [Fatal] is raised
     in case of error (e.g., when [t] definitely does not have type [c]). *)
 let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
+    let open Pervasives in
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try
     check_aux conv ctx t c;
-    if !debug_type then
+    let constrs = Pervasives.(!constrs) in
+    if !log_enabled then
       begin
-        log "type" (gre "check [%a] [%a] (succeeded)") pp t pp c;
-        let fn (a,b) =
-          log "type" (gre "  assuming [%a] ~ [%a]") pp a pp b
-        in
-        List.iter fn !constrs;
-        if !trivial > 0 then
-          log "type" (gre "  with %i trivial constraints") !trivial
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "check [%a] [%a] (succeeded)") pp t pp c;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
       end;
-    !constrs
+    constrs
   with e ->
-    if !debug_type then log "type" (red "check [%a] [%a] (failed)") pp t pp c;
+    if !log_enabled then log_type (red "check [%a] [%a] (failed)") pp t pp c;
     raise e

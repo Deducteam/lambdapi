@@ -19,13 +19,14 @@ List of dependencies:
  - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
  - earley 1.0.2 (https://github.com/rlepigre/ocaml-earley),
  - earley-ocaml 1.0.2 (https://github.com/rlepigre/ocaml-earley-ocaml).
+ - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
 opam install ocamlfind ocamlbuild
-opam install bindlib.5.0.0 earley.1.0.2 earley-ocaml.1.0.2
+opam install bindlib.5.0.0 earley.1.0.2 earley-ocaml.1.0.2 timed.1.0
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.
