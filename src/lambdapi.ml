@@ -17,18 +17,9 @@ let compile : string -> unit = fun fname ->
 let _ =
   let justparse = Pervasives.ref false in
   let debug_doc =
-    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
-      (* in alphabetical order *)
-      [ "a : general debug informations"
-      ; "c : extra debugging informations for metavariables"
-      ; "e : extra debugging informations for equality"
-      ; "m : extra debugging informations for matching"
-      ; "p : extra debugging informations for the parser"
-      ; "r : extra debugging informations for evaluation"
-      ; "s : extra debugging informations for subject reduction"
-      ; "t : extra debugging informations for typing"
-      ; "u : extra debugging informations for unification" ]
-    in "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
+    let flags = Console.log_summary () in
+    let flags = List.map (fun s -> String.make 20 ' ' ^ s) flags in
+    "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
   in
   let verbose_doc =
     let flags = List.map (fun s -> String.make 20 ' ' ^ s)
@@ -60,5 +51,4 @@ let _ =
     List.iter (fun f -> ignore (Parser.parse_file f)) !files
   else
     List.iter compile (List.rev !files);
-  if Timed.(!debug_pars) then
-    wrn "Total time spent in parsing: %.2f seconds.\n" !Parser.total_time
+  Parser.log_pars "Total time in parsing: %.2f seconds.\n" !Parser.total_time

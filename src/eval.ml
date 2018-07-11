@@ -6,6 +6,14 @@ open Console
 open Terms
 open Print
 
+(** Logging function for evaluation. *)
+let log_eval =
+  (new_logger 'r' "eval" "debugging information for evaluation").logger
+
+(** Logging function for equality modulo rewriting. *)
+let log_eqmd =
+  (new_logger 'e' "eqmd" "debugging information for equality").logger
+
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = (bool * term) Pervasives.ref list
 
@@ -28,7 +36,7 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
-  if !debug_eval then log "eval" "evaluating [%a]" pp (unfold t);
+  log_eval "evaluating [%a]" pp (unfold t);
   let (u, stk) = whnf_stk t [] in
   to_term u stk
 
@@ -73,7 +81,7 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
       match (ps, ts) with
       | ([]   , _    ) ->
          begin
-           if !debug_eval then log "eval" "%a" pp_rule (s,r);
+           (*log_eval "%a" pp_rule (s,r);*)
            Some(Bindlib.msubst r.rhs env, ts)
          end
       | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
@@ -88,8 +96,7 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     they denote. In case several different values are found for a same pattern
     variable, equality modulo is computed to check compatibility. *)
 and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
-  if !debug_matc then
-    log "matc" "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));
+  (*log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));*)
   let res =
     (* First handle patterns that do not need the evaluated term. *)
     match p with
@@ -125,13 +132,12 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
     | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
     | (_                , _            ) -> false
   in
-  if !debug_matc then
-    log "matc" (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));
+  (*log_eval (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));*)
   res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
-  if !debug_equa then log "eq_modulo" "[%a] [%a]" pp a pp b;
+  log_eqmd "[%a] == [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -154,7 +160,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !debug_equa then log "equa" (r_or_g res "%a == %a") pp a pp b; res
+  log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 let whnf : term -> term = fun t ->
   let t = unfold t in

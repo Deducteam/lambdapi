@@ -11,6 +11,10 @@ open Sign
 open Files
 open Proofs
 
+(** Logging function for tactics. *)
+let log_tact = new_logger 'i' "tact" "debugging information for tactics"
+let log_tact = log_tact.logger
+
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
 let gen_obj = Pervasives.ref false
@@ -158,7 +162,7 @@ let handle_print_focus() : unit =
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
 let env_of_prod (n:int) (t:term) : Env.t * term =
   let rec aux n t acc =
-    if !debug_tac then log "env_of_prod" "%i %a" n pp t;
+    log_tact "env_of_prod %i [%a]" n pp t;
     match n, t with
     | 0, _ -> acc, t
     | _, Prod(a,b) ->
@@ -168,7 +172,7 @@ let env_of_prod (n:int) (t:term) : Env.t * term =
   in assert(n>=0); aux n t []
 
 let goal_of_meta (m:meta) : goal =
-  if !debug_tac then log "goal_of_prod" "%a" pp_meta m;
+  log_tact "goal_of_prod [%a]" pp_meta m;
   let env, typ = env_of_prod m.meta_arity !(m.meta_type) in
   { g_meta = m; g_hyps = env; g_type = typ }
 
@@ -189,7 +193,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
      metavariables may haven been instantiated by type checking. *)
   let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
-  if !debug_tac then log "refine" "[%a]" pp u;
+  log_tact "refine [%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
   (* New subgoals and new focus *)
@@ -265,7 +269,8 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
     | P_Other(c)            ->
-        if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos
+        if log_enabled () then
+          wrn "[%a] ignored command.\n" Pos.print c.pos
   in
   try
     let (tm, ()) = time handle () in
