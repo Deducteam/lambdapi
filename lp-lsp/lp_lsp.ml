@@ -46,40 +46,44 @@ let do_shutdown ofmt ~id =
   let msg = LSP.mk_reply ~id ~result:`Null in
   LIO.send_json ofmt msg
 
-let doc_table : (string, Pure.state) Hashtbl.t = Hashtbl.create 39
+let doc_table : (string, _) Hashtbl.t = Hashtbl.create 39
 let completed_table : (string, Pure.state) Hashtbl.t = Hashtbl.create 39
 
 (* Notificatio handling; reply is optional / asynchronous *)
-let do_check_text ofmt ~doc file version text =
-  let final_st, diags = Lp_doc.check_text ~doc file version text in
-  Hashtbl.replace completed_table file final_st;
+let do_check_text ofmt ~doc =
+  let final_st, diags = Lp_doc.check_text ~doc in
+  Hashtbl.replace completed_table doc.uri final_st;
   LIO.send_json ofmt @@ diags
 
-let do_change ofmt ~doc file version change =
-  LIO.log_error "checking file" (file ^ " / version: " ^ (string_of_int version));
-  let text = string_field "text" change in
-  do_check_text ofmt ~doc file version text
+let do_change ofmt ~doc change =
+  let open Lp_doc in
+  LIO.log_error "checking file" (doc.uri ^ " / version: " ^ (string_of_int doc.version));
+  let doc = { doc with text = string_field "text" change; } in
+  do_check_text ofmt ~doc
 
 let do_open ofmt params =
   let document = dict_field "textDocument" params in
-  let doc_file, doc_ver, doc_text =
-    LSP.parse_uri @@ string_field "uri" document,
+  let uri, version, text =
+    string_field "uri" document,
     int_field "version" document,
     string_field "text" document in
-  let doc = Lp_doc.new_doc [doc_file] in
-  begin match Hashtbl.find_opt doc_table doc_file with
+  let doc = Lp_doc.new_doc ~uri ~text ~version in
+  begin match Hashtbl.find_opt doc_table uri with
     | None -> ()
-    | Some _ -> LIO.log_error "do_open" ("file " ^ doc_file ^ " not properly closed by client")
+    | Some _ -> LIO.log_error "do_open" ("file " ^ uri ^ " not properly closed by client")
   end;
-  Hashtbl.add doc_table doc_file doc;
-  do_check_text ofmt ~doc doc_file doc_ver doc_text
+  Hashtbl.add doc_table uri doc;
+  do_check_text ofmt ~doc
 
 let do_change ofmt params =
   let document = dict_field "textDocument" params in
-  let doc_file, doc_ver  = LSP.parse_uri @@ string_field "uri" document, int_field "version" document in
+  let uri, version  =
+    string_field "uri" document,
+    int_field "version" document in
   let changes = List.map U.to_assoc @@ list_field "contentChanges" params in
-  let doc = Hashtbl.find doc_table doc_file in
-  List.iter (do_change ofmt ~doc doc_file doc_ver) changes
+  let doc = Hashtbl.find doc_table uri in
+  let doc = { doc with Lp_doc.version; } in
+  List.iter (do_change ofmt ~doc) changes
 
 let do_close _ofmt params =
   let document = dict_field "textDocument" params in

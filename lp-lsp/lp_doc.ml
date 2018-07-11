@@ -24,11 +24,15 @@ type doc_node = {
    document is the empty list.
 *)
 type doc = {
+  uri : string;
+  version: int;
+  text : string;
+  root : Pure.state;
   nodes : doc_node list;
 }
 
-let mk_error file version pos msg =
-  LSP.mk_diagnostics file version [pos, 1, msg, None]
+let mk_error ~doc pos msg =
+  LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
 let parse_text contents =
   let open Earley in
@@ -49,16 +53,23 @@ let process_cmd _file (st,dg) node =
   | Error (_loc, msg) ->
     st, (node.pos, 1, msg, None) :: dg
 
-let new_doc modname = Pure.initial_state modname
+let new_doc ~uri ~version ~text =
+  { uri;
+    text;
+    version;
+    root = Pure.initial_state [LSP.parse_uri uri];
+    nodes = [];
+  }
 
 (* XXX: Save on close. *)
 let close_doc _modname = ()
 
-let check_text ~doc file version contents =
+let check_text ~doc =
+  let uri, version = doc.uri, doc.version in
   try
-    let doc_spans = parse_text contents in
-    let st, diag = List.fold_left (process_cmd file) (doc,[]) doc_spans in
-    st, LSP.mk_diagnostics file version @@ List.fold_left (fun acc (pos,lvl,msg,goal) ->
+    let doc_spans = parse_text doc.text in
+    let st, diag = List.fold_left (process_cmd uri) (doc.root,[]) doc_spans in
+    st, LSP.mk_diagnostics ~uri ~version @@ List.fold_left (fun acc (pos,lvl,msg,goal) ->
         match pos with
         | None     -> acc
         | Some pos -> (pos,lvl,msg,goal) :: acc
@@ -66,4 +77,4 @@ let check_text ~doc file version contents =
   with
   | Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in
-    doc, mk_error file version loc "Parse error."
+    doc.root, mk_error ~doc loc "Parse error."

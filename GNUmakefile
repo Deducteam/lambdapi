@@ -232,9 +232,9 @@ OPAM_LP_VER=$(shell dune-release log -t)
 opam_release:
 	rm -rf _build
 	dune-release distrib
-	dune-release publish distrib
-	dune-release opam pkg -n lambdapi
-	dune-release opam pkg -n lambdapi-lsp
-	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
+#	dune-release publish distrib
+#	dune-release opam pkg -p lambdapi
+	dune-release opam pkg -p lambdapi-lsp
+	# cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
 	cp -a _build/lambdapi-lsp.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi-lsp/
-	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi] new version $(OPAM_LP_VER)"
+	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi-lsp] new version $(OPAM_LP_VER)"

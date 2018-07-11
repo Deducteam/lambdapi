@@ -43,8 +43,7 @@ let json_of_thm thm =
     `Null
   | Some thm ->
     `Assoc [
-      "focus", `Int thm.t_focus.g_meta.meta_key
-    ; "goals", `List List.(map json_of_goal thm.t_goals)
+      "goals", `List List.(map json_of_goal thm.t_goals)
     ]
 
 let mk_range (p : Pos.pos) : J.json =
@@ -65,9 +64,9 @@ let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (thm : Proofs.the
            "message",  `String msg;
           ])
 
-let mk_diagnostics file version ld : J.json =
+let mk_diagnostics ~uri ~version ld : J.json =
   let extra = mk_extra ["version", `Int version] in
   mk_event "textDocument/publishDiagnostics" @@
     extra @
-    ["uri", `String ("file://"^file);
+    ["uri", `String uri;
      "diagnostics", `List List.(map mk_diagnostic ld)]

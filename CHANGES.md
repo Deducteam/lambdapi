@@ -1,5 +1,13 @@
+0.0.8.9
+-------
+
+- First standalone release; code is the same, but we don't build a
+  lambdapi package anymore.
+
 0.0.8.7
 -------
+- [lambdapi] Rebase against 98fbf803959579dcb1e41989a33797aef10fac9b
+- [core] Preliminary document type.
 - [hover] Add basic hover protocol support.
 
 0.0.8.6
