@@ -16,18 +16,22 @@ let compile : string -> unit = fun fname ->
 (* Main program. *)
 let _ =
   let justparse = Pervasives.ref false in
+  let padding = String.make 8 ' ' in
   let debug_doc =
     let flags = Console.log_summary () in
-    let flags = List.map (fun s -> String.make 20 ' ' ^ s) flags in
-    "<str> Enable debugging modes:\n" ^ String.concat "\n" flags
+    let flags = List.map (fun s -> padding ^ s) flags in
+    "<str> Sets the given debugging flags.\n      Available flags:\n"
+    ^ String.concat "\n" flags
   in
   let verbose_doc =
-    let flags = List.map (fun s -> String.make 20 ' ' ^ s)
+    let flags = List.map (fun s -> padding ^ s)
       [ "0 (or less) : no output at all"
       ; "1 : only file loading information (default)"
       ; "2 : more file loading information"
       ; "3 (or more) : show the results of commands" ]
-    in "<int> Set the verbosity level:\n" ^ String.concat "\n" flags
+    in
+    "<int> Set the verbosity level.\n      Available values:\n"
+    ^ String.concat "\n" flags
   in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
   let too_long_doc = "<flt> Duration considered too long for a command" in
@@ -43,10 +47,7 @@ let _ =
   in
   let files = Pervasives.ref [] in
   let anon fn = Pervasives.(files := fn :: !files) in
-  let summary =
-    " [--debug [a|r|u|m|s|t|e|p]] [--verbose N] [--gen-obj] [FILE] ..."
-  in
-  Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ summary);
+  Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ " [OPTIONS] [FILES]");
   if !justparse then
     List.iter (fun f -> ignore (Parser.parse_file f)) !files
   else

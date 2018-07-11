@@ -269,8 +269,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
     | P_Other(c)            ->
-        if log_enabled () then
-          wrn "[%a] ignored command.\n" Pos.print c.pos
+        if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos
   in
   try
     let (tm, ()) = time handle () in

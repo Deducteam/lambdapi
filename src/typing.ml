@@ -150,15 +150,18 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
   try
     let a = infer_aux conv ctx t in
     let constrs = Pervasives.(!constrs) in
-    let trivial = Pervasives.(!trivial) in
-    log_type (gre "infer [%a] yields [%a]") pp t pp a;
-    let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
-    List.iter fn constrs;
-    if trivial > 0 then
-      log_type (gre "  with %i trivial constraints") trivial;
+    if !log_enabled then
+      begin
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "infer [%a] yields [%a]") pp t pp a;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
+      end;
     (a, constrs)
   with e ->
-    log_type (red "infer [%a] failed.") pp t;
+    if !log_enabled then log_type (red "infer [%a] failed.") pp t;
     raise e
 
 (** [check ctx t c] checks that the term [t] has type [c] in the context [ctx]
@@ -176,13 +179,16 @@ let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
   try
     check_aux conv ctx t c;
     let constrs = Pervasives.(!constrs) in
-    let trivial = Pervasives.(!trivial) in
-    log_type (gre "check [%a] [%a] (succeeded)") pp t pp c;
-    let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
-    List.iter fn constrs;
-    if trivial > 0 then
-      log_type (gre "  with %i trivial constraints") trivial;
+    if !log_enabled then
+      begin
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "check [%a] [%a] (succeeded)") pp t pp c;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
+      end;
     constrs
   with e ->
-    log_type (red "check [%a] [%a] (failed)") pp t pp c;
+    if !log_enabled then log_type (red "check [%a] [%a] (failed)") pp t pp c;
     raise e

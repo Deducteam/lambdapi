@@ -60,12 +60,11 @@ type logger_data =
   ; logger_desc    : string   (** Description of the log displayed in help. *)
   ; logger_enabled : bool ref (** Is the log enabled? *) }
 
+(** [log_enabled] is set to true when logging functions may print messages. *)
+let log_enabled : bool ref = ref false
+
 (** [loggers] constains the registered logging functions. *)
 let loggers : logger_data list Pervasives.ref = Pervasives.ref []
-
-(** [log_enabled ()] indicates whether logging is enabled. *)
-let log_enabled : unit -> bool = fun () ->
-  List.exists (fun data -> !(data.logger_enabled)) Pervasives.(!loggers)
 
 (** [log_summary ()] returns descriptions for logging options. *)
 let log_summary : unit -> string list = fun () ->
@@ -78,7 +77,9 @@ let set_debug : bool -> string -> unit = fun value str ->
   let fn {logger_key; logger_enabled} =
     if String.contains str logger_key then logger_enabled := value
   in
-  List.iter fn Pervasives.(!loggers)
+  List.iter fn Pervasives.(!loggers);
+  let is_enabled data = !(data.logger_enabled) in
+  log_enabled := List.exists is_enabled Pervasives.(!loggers)
 
 (** [new_logger key name desc] returns (and registers) a new logger. *)
 let new_logger : char -> string -> string -> logger = fun key name desc ->
@@ -115,6 +116,6 @@ let verbose    = ref 1
     output channel is automatically flushed,  and  the message is displayed in
     magenta (and not default terminal color) if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
-  let fmt = if log_enabled () then mag fmt else fmt ^^ "%!" in
+  let fmt = if !log_enabled then mag fmt else fmt ^^ "%!" in
   if lvl > !verbose then Format.ifprintf Pervasives.(!out_fmt) fmt
   else Format.fprintf Pervasives.(!out_fmt) fmt

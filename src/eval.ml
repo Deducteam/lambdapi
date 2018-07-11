@@ -36,7 +36,7 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
-  log_eval "evaluating [%a]" pp t;
+  if !log_enabled then log_eval "evaluating [%a]" pp t;
   let (u, stk) = whnf_stk t [] in
   to_term u stk
 
@@ -81,7 +81,7 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
       match (ps, ts) with
       | ([]   , _    ) ->
          begin
-           (*log_eval "%a" pp_rule (s,r);*)
+           if !log_enabled then log_eval "%a" pp_rule (s,r);
            Some(Bindlib.msubst r.rhs env, ts)
          end
       | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
@@ -96,7 +96,8 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     they denote. In case several different values are found for a same pattern
     variable, equality modulo is computed to check compatibility. *)
 and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
-  (*log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));*)
+  if !log_enabled then
+    log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));
   let res =
     (* First handle patterns that do not need the evaluated term. *)
     match p with
@@ -132,12 +133,13 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
     | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
     | (_                , _            ) -> false
   in
-  (*log_eval (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));*)
+  if !log_enabled then
+    log_eval (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));
   res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
-  log_eqmd "[%a] == [%a]" pp a pp b;
+  if !log_enabled then log_eqmd "[%a] == [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -160,7 +162,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  log_eqmd (r_or_g res "%a == %a") pp a pp b; res
+  if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 let whnf : term -> term = fun t ->
   let t = unfold t in

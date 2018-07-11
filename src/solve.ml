@@ -229,7 +229,7 @@ and solve_unif t1 t2 strats p : unif list =
   if t1 == t2 then solve_unifs strats p
   else
     begin
-      log_solv "solving [%a] ~ [%a]" pp t1 pp t2;
+      if !log_enabled then log_solv "solving [%a] ~ [%a]" pp t1 pp t2;
       match unfold t1, unfold t2 with
       | Type, Type
       | Kind, Kind -> solve (S_Unif::strats) p
@@ -278,11 +278,12 @@ and solve_unif t1 t2 strats p : unif list =
 and solve_whnf t1 t2 strats p : unif list =
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
-  (*
-  let t1 = Eval.to_term h1 ts1 in
-  let t2 = Eval.to_term h2 ts2 in
-  log_solv "solve_whnf [%a] [%a]" pp t1 pp t2;
-  *)
+  if !log_enabled then
+    begin
+      let t1 = Eval.to_term h1 ts1 in
+      let t2 = Eval.to_term h2 ts2 in
+      log_solv "solve_whnf [%a] [%a]" pp t1 pp t2;
+    end;
   match h1, h2 with
   | Type, Type
   | Kind, Kind -> solve (S_Whnf::strats) p
@@ -344,13 +345,14 @@ and solve_whnf t1 t2 strats p : unif list =
 let solve : bool -> strategy -> problems -> unif list option = fun b s p ->
   can_instantiate := b;
   try Some (solve s p) with Fatal(_,m) ->
-    log_solv (red "solve: %s.\n") m; None
+    if !log_enabled then log_solv (red "solve: %s.\n") m; None
 
-let msg (a,b) = log_solv "Cannot solve constraint [%a] ~ [%a]\n" pp a pp b
+let msg (a,b) =
+  if !log_enabled then log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b
 
 (** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
 let check : Ctxt.t -> term -> term -> bool = fun c t a ->
-  log_solv "check [%a] [%a]" pp t pp a;
+  if !log_enabled then log_solv "check [%a] [%a]" pp t pp a;
   let unif_problems = Typing.check c t a in
   let problems = {no_problems with unif_problems} in
   match solve true default_strategy problems with
@@ -361,7 +363,7 @@ let check : Ctxt.t -> term -> term -> bool = fun c t a ->
     [u] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
 let check_with_constr (cs:unif list) (t:term) (a:term) : unit =
-  log_solv "check_with_constr [%a] [%a]" pp t pp a;
+  if !log_enabled then log_solv "check_with_constr [%a] [%a]" pp t pp a;
   let unif_problems = Typing.check Ctxt.empty t a in
   let problems = {no_problems with unif_problems} in
   match solve false default_strategy problems with
@@ -373,7 +375,7 @@ let check_with_constr (cs:unif list) (t:term) (a:term) : unit =
 (** [infer_constr c t] returns a pair [a,l] where [l] is a list
     of unification problems for [a] to be the type of [t] in context [c]. *)
 let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
-  log_solv "infer_constr [%a]" pp t;
+  if !log_enabled then log_solv "infer_constr [%a]" pp t;
   let (a, unif_problems) = Typing.infer c t in
   let problems = {no_problems with unif_problems} in
   match solve true default_strategy problems with
@@ -388,7 +390,7 @@ let infer (c:Ctxt.t) (t:term) : term option =
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:Ctxt.t) (t:term) : unit =
-  log_solv "sort_type [%a]" pp t;
+  if !log_enabled then log_solv "sort_type [%a]" pp t;
   match infer c t with
   | Some(a) ->
       begin
