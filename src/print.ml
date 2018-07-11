@@ -3,13 +3,11 @@
 open Extra
 open Terms
 
+(** [pp_symbol_ref] is used to avoid module circularity (with [Sign]). *)
+let pp_symbol_ref = Pervasives.ref (fun _ _ -> assert false)
+
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let default_pp_symbol : sym pp = fun oc s ->
-  Format.pp_print_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
-
-let pp_symbol_ref : sym pp Pervasives.ref = Pervasives.ref default_pp_symbol
-
 let pp_symbol : sym pp = fun oc s ->
   Pervasives.(!pp_symbol_ref oc s)
 
