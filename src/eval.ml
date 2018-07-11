@@ -7,12 +7,12 @@ open Terms
 open Print
 
 (** Logging function for evaluation. *)
-let log_eval =
-  (new_logger 'r' "eval" "debugging information for evaluation").logger
+let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
+let log_eval = log_eval.logger
 
 (** Logging function for equality modulo rewriting. *)
-let log_eqmd =
-  (new_logger 'e' "eqmd" "debugging information for equality").logger
+let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
+let log_eqmd = log_eqmd.logger
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = (bool * term) Pervasives.ref list
@@ -36,7 +36,7 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
-  log_eval "evaluating [%a]" pp (unfold t);
+  log_eval "evaluating [%a]" pp t;
   let (u, stk) = whnf_stk t [] in
   to_term u stk
 
