@@ -23,6 +23,7 @@ let rec find_term = fun t ->
   | Meta _           -> print_string "Meta "
   | _                -> print_string "Suuuuure"
 
+(****************************************************************************)
 
 (* Error function. *)
 let fail_to_match = fun n ->
@@ -36,13 +37,16 @@ let get : 'a option -> 'a = fun t ->
   | Some x -> x
   | None   -> fail_to_match 0
 
+(****************************************************************************)
+
 (** [get_lr] is given the type of the term passed as an argument to
     #REWRITE and checks that it is an equality type. That is, it checks that
     t matches with:
                           "P" ("eq" 'a l r)
     That is:
       Appl((Symb "P") , (Appl(Appl(Appl((Symb "eq") , (Symb 'a )) , l) , r ))
-    If it does then it returns (l, r) otherwise it throws a fatal error. *)
+    If the argument does match a term of the shape l = r then it returns (l, r)
+    otherwise it throws a fatal error. *)
 let get_lr : term -> term * term = fun t ->
   let check_symb : term -> string -> term option = fun t name ->
     match t with
@@ -59,11 +63,41 @@ let get_lr : term -> term * term = fun t ->
   let (t3, l) = get (subterm t2        ) in
   let _       = get (check_symb t3 "eq") in (l,r)
 
+(** [term_match] is given two terms (for now) and determines if they match.
+    at this stage this is just done by using the syntactic equality function
+    from Terms, but it will change. *)
+let rec term_match : term -> term -> bool = fun t1 t2 -> eq t1 t2
+
+(** [instances] is a helper function that given two terms t and s returns
+    all occurrences of s in t.
+    It will not be in the final code, as for now it tests syntactic equality
+    as we expect that the term l (in l = r) is ground. This is just to see if
+    things work. *)
+let instances : term -> term -> term list = fun t s ->
+  let rec instances_aux : term -> term list -> term list = fun cur acc ->
+      match cur with
+      | Vari x       -> if term_match cur s then cur::acc else acc
+      | Type | Kind  -> acc
+      | Symb sym     -> if term_match cur s then cur::acc else acc
+      | Prod(t1, _) | Abst(t1, _)
+                     -> instances_aux t1 acc
+      | Appl(t1, t2) ->
+        let rest = instances_aux t2 (instances_aux t1 acc) in
+        if term_match cur s then cur :: rest else rest
+      | Meta _       ->  if term_match cur s then cur::acc else acc
+      | _            -> acc
+    in instances_aux t []
+
+
 (****************************************************************************)
 (* TODO:
  *  -Execute the rewrite tactic
- *  -Look at handle_refine:
- *    -Get current theorm + Goal (same 2 lines). *)
+ *  -Look at handle_refine
+ *
+ *
+ *
+ *
+ *)
 (****************************************************************************)
 
 (** [handle_rewrite] is given a term which must be of the form l = r (for now
@@ -78,11 +112,19 @@ let handle_rewrite : term -> unit = fun t ->
    * type, i.e. represents an equaltiy. *)
   let t_type =
     match Solve.infer (Ctxt.of_env g.g_hyps) t with
-    | None -> fatal_no_pos "Cannot find type."
     | Some a -> a
+    | None   -> fatal_no_pos "Cannot find type."
   in
   let (l, r) = get_lr t_type in
-  wrn "Not implemented REWRITE tactic [%a]\n" pp t
+  let sub = instances !(m.meta_type) l in
+  begin
+    find_term !(m.meta_type);
+    print_int (List.length sub);
+    wrn "Goal : [%a]\n" pp g.g_type ;
+    wrn "Lemma: [%a]\n" pp t        ;
+    wrn "Left : [%a]\n" pp l        ;
+    wrn "Right: [%a]\n" pp r
+  end
 (* So we check that the thing given to rewrite is of the right form, i.e.
  * an equality. Then what?
  * *)
