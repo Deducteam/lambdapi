@@ -200,7 +200,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   let fn goals m = goal_of_meta m :: goals in
   let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
   match goals with
-  | []   -> handle_end_proof()
+  | []   -> ()
   | g::_ -> theorem := Some {thm with t_goals = goals; t_focus = g}
 
 (** [handle_intro s] applies the [intro] tactic. *)
@@ -268,6 +268,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         let metas = get_metas t in
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
+    | P_EndProof            -> handle_end_proof ()
     | P_Other(c)            ->
         if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos
   in
