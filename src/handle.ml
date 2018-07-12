@@ -141,7 +141,7 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We start the proof mode. *)
   let m = fresh_meta ~name:s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
-  let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
+  let t = { t_name = s; t_proof = m; t_goals = [g] } in
   theorem := Some(t)
 
 (** [handle_end_proof()] adds the proved theorem in the signature and
@@ -178,8 +178,12 @@ let goal_of_meta (m:meta) : goal =
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
 let handle_refine (new_metas:meta list) (t:term) : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
+  let thm = current_theorem () in
+  let g =
+    match thm.t_goals with
+    | g::_ -> g
+    | []   -> fatal_no_pos "No focused goal, refine impossible."
+  in
   let m = g.g_meta in
   (* We check that [m] does not occur in [t]. *)
   if occurs m t then fatal_no_pos "Invalid refinement.";
@@ -198,29 +202,33 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
   (* New subgoals and new focus *)
   let fn goals m = goal_of_meta m :: goals in
-  let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
-  match goals with
-  | []   -> ()
-  | g::_ -> theorem := Some {thm with t_goals = goals; t_focus = g}
+  let t_goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
+  theorem := Some({thm with t_goals})
 
 (** [handle_intro s] applies the [intro] tactic. *)
-let handle_intro (s:strloc) : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
+let handle_intro : strloc -> unit = fun s ->
+  let thm = current_theorem () in
+  let g =
+    match thm.t_goals with
+    | g::_ -> g
+    | []   -> fatal_no_pos "No focused goal, intro impossible."
+  in
   (* We check that [s] is not already used. *)
   if List.mem_assoc s.elt g.g_hyps then
     fatal_no_pos "[%s] already used." s.elt;
   fatal_no_pos "Not yet implemented..."
 
 (** [handle_simpl] normalize the focused goal. *)
-let handle_simpl () : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
-  let g' = {g with g_type = Eval.snf g.g_type} in
-  let thm =
-    {thm with t_goals = replace_goal g g' thm.t_goals; t_focus = g'}
+let handle_simpl : unit -> unit = fun _ ->
+  let thm = current_theorem () in
+  let g =
+    match thm.t_goals with
+    | g::_ -> g
+    | []   -> fatal_no_pos "No focused goal, simpl impossible."
   in
-  theorem := Some thm
+  let g' = {g with g_type = Eval.snf g.g_type} in
+  let thm = {thm with t_goals = replace_goal g g' thm.t_goals} in
+  theorem := Some(thm)
 
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
