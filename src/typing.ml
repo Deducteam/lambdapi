@@ -42,7 +42,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
          -----------------------------------------
                     ctx ⊢ Prod(a,b) ⇒ s            *)
       begin
-        (* We ensure that [a] is well-sorted. *)
+        (* We ensure that [a] is of type [Type]. *)
         check_aux conv ctx a Type;
         (* We infer the type of the body, first extending the context. *)
         let (x,b) = Bindlib.unbind b in
@@ -58,7 +58,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
          --------------------------------------------
                  ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
       begin
-        (* We ensure that [a] is well-sorted. *)
+        (* We ensure that [a] is of type [Type]. *)
         check_aux conv ctx a Type;
         (* We infer the type of the body, first extending the context. *)
         let (x,t) = Bindlib.unbind t in
@@ -80,7 +80,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
         in
         (* We then check the type of [u] against the domain type. *)
         check_aux conv ctx u a;
-        (* We produce the redurned type. *)
+        (* We produce the returned type. *)
         Bindlib.subst b u
       end
   | Meta(m,e)   ->
