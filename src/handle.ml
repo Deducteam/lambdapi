@@ -154,9 +154,9 @@ let handle_end_proof () : unit =
   theorem := None
 
 (** [handle_print_focus()] prints the focused goal. *)
-let handle_print_focus() : unit =
+let handle_print_focus () : unit =
   let thm = current_theorem () in
-  out 2 "%a" pp_goal thm.t_focus
+  out 2 "%a" pp_theorem thm
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
