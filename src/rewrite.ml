@@ -49,12 +49,12 @@ let get : 'a option -> 'a = fun t ->
     otherwise it throws a fatal error. *)
 let get_lr : term -> term * term = fun t ->
   let check_symb : term -> string -> term option = fun t name ->
-    match t with
+    match unfold t with
     | Appl(Symb x, t1) -> if x.sym_name = name then Some t1 else None
     | _                -> None
   in
   let subterm : term -> (term * term) option = fun t ->
-    match t with
+    match unfold t with
     | Appl(t1, sub) -> Some (t1, sub)
     | _             -> None
   in
@@ -75,12 +75,13 @@ let rec term_match : term -> term -> bool = fun t1 t2 -> eq t1 t2
     things work. *)
 let instances : term -> term -> term list = fun t s ->
   let rec instances_aux : term -> term list -> term list = fun cur acc ->
-      match cur with
+      match unfold cur with
       | Vari x       -> if term_match cur s then cur::acc else acc
       | Type | Kind  -> acc
       | Symb sym     -> if term_match cur s then cur::acc else acc
       | Prod(t1, _) | Abst(t1, _)
-                     -> instances_aux t1 acc
+                     -> instances_aux t1 acc (* Not sure how to use the
+                                              * function Terms.get_args. *)
       | Appl(t1, t2) ->
         let rest = instances_aux t2 (instances_aux t1 acc) in
         if term_match cur s then cur :: rest else rest
@@ -116,10 +117,8 @@ let handle_rewrite : term -> unit = fun t ->
     | None   -> fatal_no_pos "Cannot find type."
   in
   let (l, r) = get_lr t_type in
-  let sub = instances !(m.meta_type) l in
+  let sub = instances g.g_type l in
   begin
-    find_term !(m.meta_type);
-    print_int (List.length sub);
     wrn "Goal : [%a]\n" pp g.g_type ;
     wrn "Lemma: [%a]\n" pp t        ;
     wrn "Left : [%a]\n" pp l        ;
@@ -129,18 +128,21 @@ let handle_rewrite : term -> unit = fun t ->
  * an equality. Then what?
  * *)
 
-(* ------------ 1 ----------
+(* ------------ TODO 1 ----------
  * Around here we need to find the occurrences of the first instance of l in m
  * or somewhere, this is still unclear to me.
  * - Note that there is a syntactic equality checker somewhere (it's a hack)
+ * TODO - Try more tests, when people come around.
+ *      - Add the function to a "substitutor"
  *)
 
-(* ------------ 2 ----------
+(* ------------ TODO 2 ----------
  * Next these occurrences need to be substituted by r.
+ * - Initially just syntactically on the type of g' (i.e. the new goal).
  *)
 
-(* ------------ 3 ----------
- * Then using the definition of eq the type of the new goal
+(* ------------ TODO 3 ----------
+ * * Then using the definition of eq the type of the new goal
  *              - what new goal rn? -
  * needs to be mapped to the old goal, right? *)
 
