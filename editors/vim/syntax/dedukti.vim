@@ -32,6 +32,12 @@ syntax match Include "#CHECKNOT"
 syntax match Include "#ASSERT"
 syntax match Include "#ASSERTNOT"
 syntax match Include "#REQUIRE"
+syntax match Include "#PROOF"
+syntax match Include "#REFINE"
+syntax match Include "#QED"
+syntax match Include "#FOCUS"
+syntax match Include "#SIMPL"
+syntax match Include "#PRINT"
 
 " Comments
 syn keyword Todo contained TODO FIXME NOTE
