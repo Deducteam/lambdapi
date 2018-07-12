@@ -113,3 +113,8 @@ Typing error.;)
 #REFINE s_eq (add n 0) n hn.
 
 #QED.
+
+
+#PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
+#REFINE n => m => _.
+(;#REFINE (nat_ind (n => eq nat (add n m) (add m n)) ?case0 ?caseS n).;)
