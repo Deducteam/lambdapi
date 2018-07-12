@@ -165,7 +165,7 @@ let make_type =
   let empty = [||] in
   fun () -> Meta(fresh_meta Type 0, empty)
 
-(** [make_meta ctx a] creates a metavariable of type [a],  whth an environment
+(** [make_meta ctx a] creates a metavariable of type [a],  with an environment
     containing the variables of context [ctx]. *)
 let make_meta : Ctxt.t -> term -> term = fun ctx a ->
   let m = fresh_meta (Ctxt.to_prod ctx a) (List.length ctx) in
@@ -194,7 +194,7 @@ let rec solve : strategy -> problems -> unif list = fun strats p ->
   | []             -> assert false
   | S_Unif    :: l -> solve_unifs l p
   | S_Whnf    :: l -> solve_whnfs l p
-  | S_Loop(l) :: _ -> solve (l @ strats) p
+  | (S_Loop(l) as s) :: _ -> solve (l @ [s]) p
   | S_Done    :: l ->
       if is_done p then
         if p.unsolved = [] then []
