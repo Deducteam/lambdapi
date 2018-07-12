@@ -241,6 +241,13 @@ let handle_simpl : unit -> unit = fun _ ->
   let thm = {thm with t_goals = replace_goal g g' thm.t_goals} in
   theorem := Some(thm)
 
+(** [check_end_proof ()] displays the current goal if a proof is in progress
+    (and a warning), and does nothing otherwise. *)
+let check_end_proof : unit -> unit = fun _ ->
+  match !theorem with
+  | None      -> ()
+  | Some(thm) -> wrn "The following proof is open:\n%a" pp_theorem thm
+
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Files.module_path -> unit = fun path ->
@@ -330,6 +337,7 @@ and compile : bool -> Files.module_path -> unit =
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
       List.iter handle_cmd (parse_file src);
+      check_end_proof ();
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
