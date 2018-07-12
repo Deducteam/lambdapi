@@ -99,6 +99,10 @@ Typing error.;)
 #INFER nat_ind.
 #REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
   (;FIXME: try to infer predicate. ;) #PRINT.
+
+#FOCUS 1. #PRINT.
+#FOCUS 1. #PRINT.
+
 (; Case 0 ;)
 #SIMPL. #PRINT.
 #REFINE (refl nat 0). #PRINT.

@@ -153,6 +153,17 @@ let handle_end_proof () : unit =
   ignore (Sign.add_symbol s true thm.t_name !(thm.t_proof.meta_type));
   theorem := None
 
+(** [handle_focus i] focuses on the [i]-th goal. *)
+let handle_focus : int -> unit = fun i ->
+  let thm = current_theorem () in
+  let rec swap i acc gs =
+    match (i, gs) with
+    | (0, g::gs) -> g :: List.rev_append acc gs
+    | (i, g::gs) -> swap (i-1) (g::acc) gs
+    | (_, _    ) -> fatal_no_pos "Invalid goal index."
+  in
+  theorem := Some({thm with t_goals = swap i [] thm.t_goals})
+
 (** [handle_print_focus()] prints the focused goal. *)
 let handle_print_focus () : unit =
   let thm = current_theorem () in
@@ -276,6 +287,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         let metas = get_metas t in
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
+    | P_Focus(i)            -> handle_focus i
     | P_EndProof            -> handle_end_proof ()
     | P_Other(c)            ->
         if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos

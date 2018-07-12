@@ -124,6 +124,7 @@ let _PRINT_     = command "PRINT"
 let _REFINE_    = command "REFINE"
 let _SIMPL_     = command "SIMPL"
 let _QED_       = command "QED"
+let _FOCUS_     = command "FOCUS"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
@@ -205,6 +206,8 @@ type p_cmd =
   | P_Refine of p_term
   (** Normalize the focused goal. *)
   | P_Simpl
+  (** Focus on a goal. *)
+  | P_Focus of int
   (** End the proof. *)
   | P_EndProof
 
@@ -281,6 +284,7 @@ let parser cmd_aux =
   | _PRINT_                          -> P_PrintFocus
   | _REFINE_ t:expr                  -> P_Refine(t)
   | _SIMPL_                          -> P_Simpl
+  | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
   | _QED_                            -> P_EndProof
 
 (** [cmd] parses a single toplevel command with its position. *)
