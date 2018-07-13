@@ -12,6 +12,19 @@ let log_type = log_type.logger
 (** Type of a function to be called to check convertibility. *)
 type conv_f = term -> term -> unit
 
+(** [make_prod_domain ctx] builds a metavariable intended as a domain type for
+    a product. It has access to the variables of the context [ctx]. *)
+let make_prod_domain : Ctxt.t -> term = fun ctx ->
+  Ctxt.make_meta ctx (Meta(fresh_meta Type 0, [||]))
+
+(** [make_prod_codomain ctx a] builds a metavariable intended as the  codomain
+    type for a product of domain type [a].  It has access to the variables  of
+    the context [ctx] and a fresh variables corresponding to the argument. *)
+let make_prod_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
+  let x = Bindlib.new_var mkfree "x" in
+  let b = Ctxt.make_meta ((x,a)::ctx) (Meta(fresh_meta Type 0, [||])) in
+  Bindlib.unbox (Bindlib.bind_var x (lift b))
+
 (** [infer_aux conv ctx t] infers a type for the term [t] in context [ctx]. In
     the process, the [conv] function is used as a convertibility test. In case
     of failure, the exception [Fatal] is raised. Note that we require [ctx] to
@@ -73,10 +86,15 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
       begin
         (* We first infer a product type for [t]. *)
         let (a,b) =
-          match Eval.whnf (infer_aux conv ctx t) with
+          let c = Eval.whnf (infer_aux conv ctx t) in
+          match c with
           | Prod(a,b) -> (a,b)
-          | a         -> fatal_no_pos "Product expected, [%a] infered." pp a
-          (* FIXME is [Meta(_,_)] possible? *)
+          | Meta(_,_) ->
+              let a = make_prod_domain ctx in
+              let b = make_prod_codomain ctx a in
+              conv c (Prod(a,b)); (a,b)
+          | a         ->
+              fatal_no_pos "Product expected, [%a] infered." pp a
         in
         (* We then check the type of [u] against the domain type. *)
         check_aux conv ctx u a;
@@ -113,10 +131,14 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
       begin
         (* We (hopefully) evaluate [c] to a product. *)
         let (a',b) =
-          match Eval.whnf c with
+          let c = Eval.whnf c in
+          match c with
           | Prod(d,b) -> (d,b)
-          | _         -> fatal_no_pos "Product expected, [%a] given." pp c
-          (* FIXME is [Meta(_,_)] possible? *)
+          | Meta(_,_) ->
+              let b = make_prod_codomain ctx a in
+              conv c (Prod(a,b)); (a,b)
+          | _         ->
+              fatal_no_pos "Product expected, [%a] given." pp c
         in
         (* We check domain type compatibility. *)
         conv a a';

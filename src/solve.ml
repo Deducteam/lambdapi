@@ -130,33 +130,6 @@ let no_problems : problems =
   ; unsolved  = []
   ; recompute = false }
 
-(** [make_type ()] generates a fresh metavariable of arity [0], and which type
-    is [Type]. *)
-let make_type =
-  let empty = [||] in
-  fun () -> Meta(fresh_meta Type 0, empty)
-
-(** [make_meta ctx a] creates a metavariable of type [a],  with an environment
-    containing the variables of context [ctx]. *)
-let make_meta : Ctxt.t -> term -> term = fun ctx a ->
-  let m = fresh_meta (Ctxt.to_prod ctx a) (List.length ctx) in
-  let vs = List.rev_map (fun (v,_) -> Vari v) ctx in
-  Meta(m, Array.of_list vs)
-
-(** [make_binder c n d] creates a binder obtained by binding v in the
-    term [m[x1,..,xn,v]] of type a sort where [x1,..,xn] are the
-    variables of [c] and [v] is a new variable of name [n]. *)
-let make_binder : Ctxt.t -> string -> term -> tbinder = fun c n d ->
-  let v = Bindlib.new_var mkfree n in
-  let u = make_meta ((v,d)::c) (make_type()) in
-  Bindlib.unbox (Bindlib.bind_var v (lift u))
-
-(** [make_prod c] creates a term [x:m1[x1,..,xn]->m2[x1,..,xn,x]] of
-    type a sort where [x1,..,xn] are the variables of [c] and [x] is a
-    new variable of name [no]. *)
-let make_prod c =
-  let d = make_meta c (make_type()) in d, make_binder c "x" d
-
 (** [solve p] tries to solve the unification problems of [p]. *)
 let rec solve : problems -> unif list = fun p ->
   match p.to_solve with
