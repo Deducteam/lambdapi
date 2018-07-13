@@ -130,8 +130,8 @@ distclean: clean
 	@cd libraries && ./plein_de_dks.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
-	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./verine.sh clean
+	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries/zenon && ./zenon.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
@@ -139,12 +139,12 @@ distclean: clean
 
 .PHONY: fullclean
 fullclean: distclean
-	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./matita.sh fullclean
+	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./focalide.sh fullclean
 	@cd libraries && ./holide.sh fullclean
-	@cd libraries && ./iprover.sh fullclean
 	@cd libraries && ./verine.sh fullclean
+	@cd libraries && ./iprover.sh fullclean
 	@cd libraries && ./dklib.sh fullclean
 	@cd libraries/zenon && ./zenon.sh fullclean
 
