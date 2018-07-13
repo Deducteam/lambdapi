@@ -126,6 +126,7 @@ clean:
 
 .PHONY: distclean
 distclean: clean
+	@cd libraries && ./matita.sh clean
 	@cd libraries && ./plein_de_dks.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
