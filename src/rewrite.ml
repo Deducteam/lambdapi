@@ -175,7 +175,22 @@ let handle_rewrite : term -> unit = fun t ->
  *)
 
 (* ------------ TODO 3 ----------
- * * Then using the definition of eq the type of the new goal
+ * Then using the definition of eq the type of the new goal
  *              - what new goal rn? -
  * needs to be mapped to the old goal, right? *)
 
+
+(* --------------- TODO (From the meetings on 16/07/2018) ------------------ *)
+(*****************************************************************************
+ *  1) Take G build G[x].
+ *               --> Started doing that in match_subst.
+ *  2) Make a new variable X
+ *  3) Compute G[X], this is simply the application of match_subst with X as
+ *     the term to substitute in.
+ *  4) Build Prod(X, G[X]) using bindlib.
+ *****************************************************************************
+ * Once the above is done we will be close to finishing the simple rewrite
+ * tactic, by using:
+ *      eqind T l r (lemma) (Pi X. G[X]) G'
+ * or something along these lines, but we will see.
+ *)
