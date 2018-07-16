@@ -47,11 +47,16 @@ let get : 'a option -> 'a = fun t ->
       Appl((Symb "P") , (Appl(Appl(Appl((Symb "eq") , (Symb 'a )) , l) , r ))
     If the argument does match a term of the shape l = r then it returns (l, r)
     otherwise it throws a fatal error. *)
+
+(* TODO: Use Terms.get_args. *)
 let get_lr : term -> term * term = fun t ->
   let check_symb : term -> string -> term option = fun t name ->
     match unfold t with
-    | Appl(Symb x, t1) -> if x.sym_name = name then Some t1 else None
-    | _                -> None
+    | Appl(x, t1) ->
+      begin match unfold x with
+      | Symb x -> if x.sym_name = name then Some t1 else None
+      | _      -> None end
+    | _           -> None
   in
   let subterm : term -> (term * term) option = fun t ->
     match unfold t with
@@ -80,8 +85,7 @@ let instances : term -> term -> term list = fun t s ->
       | Type | Kind  -> acc
       | Symb sym     -> if term_match cur s then cur::acc else acc
       | Prod(t1, _) | Abst(t1, _)
-                     -> instances_aux t1 acc (* Not sure how to use the
-                                              * function Terms.get_args. *)
+                     -> instances_aux t1 acc
       | Appl(t1, t2) ->
         let rest = instances_aux t2 (instances_aux t1 acc) in
         if term_match cur s then cur :: rest else rest
@@ -89,15 +93,11 @@ let instances : term -> term -> term list = fun t s ->
       | _            -> acc
     in instances_aux t []
 
-
 (****************************************************************************)
 (* TODO:
- *  -Execute the rewrite tactic
- *  -Look at handle_refine
- *
- *
- *
- *
+ *  -Execute the rewrite tactic.
+ *  -Look at handle_refine.
+ *  -End of document...
  *)
 (****************************************************************************)
 
