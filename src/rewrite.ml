@@ -20,11 +20,11 @@ let rec find_term = fun t ->
                         print_string " "
   | Prod _           -> print_string "Prod "
   | Abst _           -> print_string "Abst "
-  | Appl (t1, t2)    -> print_string "Appl of [" ; find_term t1  ;
-                        print_string "] to ["     ; find_term t2 ;
+  | Appl (t1, t2)    -> print_string "Appl of [" ; find_term t1 ;
+                        print_string "] to ["    ; find_term t2 ;
                         print_string "]"
   | Meta _           -> print_string "Meta "
-  | _                -> print_string "Suuuuure"
+  | _                -> print_string "Something went wrong!"
 
 (****************************************************************************)
 
@@ -34,6 +34,8 @@ let fail_to_match = fun n ->
   | 0 -> fatal_no_pos "Can only use rewrite with equalities."
   | 1 -> fatal_no_pos "Cannot rewrite under products."
   | 2 -> fatal_no_pos "Cannot rewrite under abstractions."
+  | 3 -> fatal_no_pos "Cannot rewrite  meta variables."
+  | 4 -> fatal_no_pos "Should not get here, match_subst."
   | _ -> fatal_no_pos "Incorrect error code."
 
 (* Minimal unwrapper. *)
@@ -105,26 +107,15 @@ let instances : term -> term -> term list = fun t s ->
     using the bindlib lilfting functions. *)
 let match_subst : term -> term -> term -> term = fun g_type l t ->
   let rec matching_aux : term -> term = fun cur ->
-    if term_match cur p then s else match cur with
-    | Vari x       -> if term_match cur s then cur::acc else acc
-    | Type | Kind  -> acc
-    | Symb sym     -> if term_match cur s then cur::acc else acc
-    | Prod(t1, _)  -> fail_to_match 1  (* For now we do not "mess" with any *)
-    | Abst(t1, _)  -> fail_to_match 2  (* terms conaining Prod or Abst.     *)
+    if term_match (unfold cur) l then t else match unfold cur with
+    | Vari _ | Type | Kind | Symb _ -> cur
     | Appl(t1, t2) ->
-      let rest = instances_aux t2 (instances_aux t1 acc) in
-      if term_match cur s then cur :: rest else rest
-    | Meta _       ->  if term_match cur s then cur::acc else acc
-    | _            -> acc
-  in matching_aux l
-    (********OLD STUFF*********)
-    | BinOp (t1, op, t2) ->
-        let t1' = matching_aux t1 and t2' = matching_aux t2 in
-      BinOp(t1', op, t2')
-    | Var x -> if p = Var x || p = Any then s else cur
-    | Lit i -> if p = Any then s else cur
-    | _ -> cur
-in matching_aux t
+        let t1' = matching_aux t1 and t2' = matching_aux t2 in Appl(t1', t2')
+    | Prod _  -> fail_to_match 1     (* For now we do not "mess" with any  *)
+    | Abst _  -> fail_to_match 2     (* terms conaining Prodi, Abst, Meta. *)
+    | Meta _  -> fail_to_match 3
+    | _       -> fail_to_match 4
+  in matching_aux g_type
 
 (****************************************************************************)
 (* TODO:
@@ -150,12 +141,13 @@ let handle_rewrite : term -> unit = fun t ->
     | None   -> fatal_no_pos "Cannot find type."
   in
   let (l, r) = get_lr t_type in
-  let sub = instances g.g_type l in
+  let g_new = match_subst g.g_type l r in
   begin
     wrn "Goal : [%a]\n" pp g.g_type ;
     wrn "Lemma: [%a]\n" pp t        ;
     wrn "Left : [%a]\n" pp l        ;
-    wrn "Right: [%a]\n" pp r
+    wrn "Right: [%a]\n" pp r        ;
+    wrn "New:   [%a]\n" pp g_new
   end
 (* So we check that the thing given to rewrite is of the right form, i.e.
  * an equality. Then what?
