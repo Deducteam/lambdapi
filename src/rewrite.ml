@@ -163,6 +163,9 @@ let handle_rewrite : term -> unit = fun t ->
   let bind_p = Bindlib.unbox (Bindlib.bind_var x pred) in
   let prod = Prod (a, bind_p) in
   let g_type = Bindlib.subst bind_p r in
+  let new_meta = Meta((fresh_meta g_type (m.meta_arity)), Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps))  in
+  let eq_ind = Symb(Sign.find (Sign.current_sign()) "eqind") in
+  let g_m = add_args eq_ind [a ; l ; r ; t ; prod ; new_meta] in
   begin
     wrn "Goal : [%a]\n" pp g.g_type ;
     wrn "Lemma: [%a]\n" pp t        ;
@@ -170,6 +173,7 @@ let handle_rewrite : term -> unit = fun t ->
     wrn "Right: [%a]\n" pp r        ;
     wrn "New:   [%a]\n" pp prod     ;
     wrn "New:   [%a]\n" pp g_type   ;
+    wrn "New:   [%a]\n" pp g_m      ;
   end
 (* So we check that the thing given to rewrite is of the right form, i.e.
  * an equality. Then what?
