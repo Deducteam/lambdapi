@@ -75,6 +75,23 @@ let get_lr : term -> term * term = fun t ->
   let (t3, l) = get (subterm t2        ) in
   let _       = get (check_symb t3 "eq") in (l,r)
 
+
+let break_eq : term -> term * term * term = fun t ->
+  let check_symb : term -> string -> unit = fun t n ->
+    match unfold t with
+    | Symb s when s.sym_name = n -> ()
+    | _ -> fail_to_match 0
+  in
+  match get_args t with
+  | (p, [eq]) ->
+      begin
+        check_symb p "P" ;
+        match get_args eq with
+        | (e, [a ; t ; u]) -> check_symb e "eq" ; (a, t, u)
+        | _ -> fail_to_match 0
+      end
+  | _ -> fail_to_match 0
+
 (** [term_match] is given two terms (for now) and determines if they match.
     at this stage this is just done by using the syntactic equality function
     from Terms, but it will change. *)
@@ -140,14 +157,19 @@ let handle_rewrite : term -> unit = fun t ->
     | Some a -> a
     | None   -> fatal_no_pos "Cannot find type."
   in
-  let (l, r) = get_lr t_type in
-  let g_new = match_subst g.g_type l r in
+  let (a, l, r) = break_eq t_type in
+  let x = Bindlib.new_var mkfree "X" in
+  let pred = lift (match_subst g.g_type l (Vari x))  in
+  let bind_p = Bindlib.unbox (Bindlib.bind_var x pred) in
+  let prod = Prod (a, bind_p) in
+  let g_type = Bindlib.subst bind_p r in
   begin
     wrn "Goal : [%a]\n" pp g.g_type ;
     wrn "Lemma: [%a]\n" pp t        ;
     wrn "Left : [%a]\n" pp l        ;
     wrn "Right: [%a]\n" pp r        ;
-    wrn "New:   [%a]\n" pp g_new
+    wrn "New:   [%a]\n" pp prod     ;
+    wrn "New:   [%a]\n" pp g_type   ;
   end
 (* So we check that the thing given to rewrite is of the right form, i.e.
  * an equality. Then what?
