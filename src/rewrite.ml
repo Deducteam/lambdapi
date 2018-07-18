@@ -51,7 +51,7 @@ let break_eq : term -> term * term * term = fun t ->
 (** [term_match] is given two terms (for now) and determines if they match.
     at this stage this is just done by using the syntactic equality function
     from Terms, but it will change. *)
-let rec term_match : term -> term -> bool = fun t1 t2 -> eq t1 t2
+let term_match : term -> term -> bool = fun t1 t2 -> eq t1 t2
 
 (** [match_subst] is given the type of the current goal, the left hand side of
     the lemma rewrite was called on and some term it returns the type of the
