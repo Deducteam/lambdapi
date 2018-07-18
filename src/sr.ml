@@ -77,7 +77,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
-                     _Abst (to_m 0 a) x (to_m 0 t)
+                     _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin

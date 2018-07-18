@@ -200,7 +200,7 @@ let handle_refine (new_metas:meta list) (t:term) : unit =
   if occurs m t then fatal_no_pos "Invalid refinement.";
   (* Check that [t] has the correct type. *)
   let bt = lift t in
-  let abst u (_,(x,a)) = _Abst a x u in
+  let abst u (_,(x,a)) = _Abst a (Bindlib.bind_var x u) in
   let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
   if not (Solve.check (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
     fatal_no_pos "Typing error.";

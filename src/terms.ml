@@ -266,17 +266,16 @@ let _Symb : sym -> tbox = fun s ->
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
-(** [_Prod a x b] lifts a dependent product node to the {!type:tbox} type. The
-    boxed term [a] is the domain of the product, and the variable [x] is to be
-    bound in the boxed term [b] to build the codomain. *)
-let _Prod : tbox -> tvar -> tbox -> tbox = fun a x b ->
-  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a (Bindlib.bind_var x b)
+(** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
+    a boxed term [a] for the domain of the product, and a boxed binder [b] for
+    its codomain. *)
+let _Prod : tbox -> tbinder Bindlib.box -> tbox =
+  Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
-(** [_Abst a x t] lifts an abstraction node to the {!type:tbox} type given the
-    boxed term [a] (used as the type of the bound variable), the variable [x],
-    and the term [t] in which it will be bound. *)
-let _Abst : tbox -> tvar -> tbox -> tbox = fun a x t ->
-  Bindlib.box_apply2 (fun a t -> Abst(a,t)) a (Bindlib.bind_var x t)
+(** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
+    boxed term [a] for the domain type, and a boxed binder [t]. *)
+let _Abst : tbox -> tbinder Bindlib.box -> tbox =
+  Bindlib.box_apply2 (fun a t -> Abst(a,t))
 
 (** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
     environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
@@ -306,10 +305,8 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> let (x,b) = Bindlib.unbind b in
-                   _Prod (lift a) x (lift b)
-  | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
-                   _Abst (lift a) x (lift t)
+  | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
+  | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)

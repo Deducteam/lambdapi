@@ -53,11 +53,11 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Prod a v (scope (Env.add x.elt v a env) b)
+        _Prod a (Bindlib.bind_var v (scope (Env.add x.elt v a env) b))
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         (* We build a metavariable that may use the variables of [env]. *)
@@ -120,7 +120,7 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
           | Some(a) -> fatal a.pos "Invalid LHS (type annotation)."
           | None    -> scope env (Pos.none P_Wild)
         in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> _Vari x) env in
@@ -159,11 +159,11 @@ let scope_rhs : pattern_map -> p_term -> rhs = fun map t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Prod a v (scope (Env.add x.elt v a env) b)
+        _Prod a (Bindlib.bind_var v (scope (Env.add x.elt v a env) b))
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> fatal t.pos "Invalid RHS (wildcard).\n"
     | P_Meta(m,e)   ->
