@@ -122,7 +122,7 @@ let handle_rewrite : term -> unit = fun t ->
    * if not (Solve.check (Ctxt.of_env g.g_hyps) g_m !(m.meta_type)) then
    * fatal_no_pos "Typing error.";
   *)
- m.meta_value := Some b ;
+  m.meta_value := Some b ;
   let thm = {thm with t_goals = {g with g_meta = new_m ; g_type = new_type }::gs} in
   theorem := Some thm ;
   begin

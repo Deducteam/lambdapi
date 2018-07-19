@@ -117,4 +117,4 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 (; Case S ;)
 #SIMPL.
 #REFINE n0 => ih => _.
-(; TODO needs lemma. *)
+(; TODO needs lemma. ;)
