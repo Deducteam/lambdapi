@@ -25,7 +25,8 @@ let find : string -> env -> tvar = fun n env ->
     variables of the environment [env] (from left to right), and which body is
     the term [t]. *)
 let prod_of_env : env -> tbox -> term = fun env t ->
-  Bindlib.unbox (List.fold_left (fun t (_,(x,a)) -> _Prod a x t) t env)
+  let fn t (_,(x,a)) = _Prod a (Bindlib.bind_var x t) in
+  Bindlib.unbox (List.fold_left fn t env)
 
 (** [vars_of_env env] extracts the array of the Bindlib variables in [env] and
     injects them into the [tbox] type. Note that the order is reversed. *)

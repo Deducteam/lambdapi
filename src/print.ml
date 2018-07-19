@@ -3,15 +3,13 @@
 open Extra
 open Terms
 
+(** [pp_symbol_ref] is used to avoid module circularity (with [Sign]). *)
+let pp_symbol_ref = Pervasives.ref (fun _ _ -> assert false)
+
 (** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
     name is qualified when the symbol is not defined in the current module. *)
-let default_pp_symbol : sym pp = fun oc s ->
-  Format.pp_print_string oc (String.concat "." (s.sym_path @ [s.sym_name]))
-
-let pp_symbol_ref : sym pp ref = ref default_pp_symbol
-
 let pp_symbol : sym pp = fun oc s ->
-  !pp_symbol_ref oc s
+  Pervasives.(!pp_symbol_ref oc s)
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
@@ -72,14 +70,29 @@ let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   let (_, rhs) = Bindlib.unmbind rule.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
-(** [pp_goal oc g] prints the goal [g]. *)
-let pp_goal : Proofs.goal pp = fun oc g ->
+(** [pp_theorem oc thm] prints the theorem [thm] to channel [oc]. *)
+let pp_theorem : Proofs.theorem pp = fun oc thm ->
   let open Proofs in
-  Format.fprintf oc "== Current goal ==========================\n";
-  let print_hyp (s,(_,t)) =
-    Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
-  in
-  List.iter print_hyp g.g_hyps;
-  Format.fprintf oc " ----------------------------------------\n";
-  Format.fprintf oc "  %a\n" pp g.g_type;
+  Format.fprintf oc "== Current theorem ======================\n";
+  begin
+    match thm.t_goals with
+    | []    -> Format.fprintf oc " No more goals...\n"
+    | g::gs ->
+        let print_hyp (s,(_,t)) =
+          Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
+        in
+        List.iter print_hyp g.g_hyps;
+        Format.fprintf oc " ----------------------------------------\n";
+        Format.fprintf oc "  %a\n" pp g.g_type;
+        if gs <> [] then
+          begin
+            Format.fprintf oc "\n";
+            Format.fprintf oc " >0< %a : %a\n" pp_meta g.g_meta pp g.g_type;
+            let print_goal i g =
+              Format.fprintf oc " (%i) %a : %a\n" (i+1)
+                pp_meta g.g_meta pp g.g_type
+            in
+            List.iteri print_goal gs
+          end
+  end;
   Format.fprintf oc "==========================================\n"

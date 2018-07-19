@@ -1,10 +1,11 @@
 (** Signature for symbols. *)
 
+open Extra
+open Timed
 open Console
 open Files
 open Terms
 open Pos
-open Extra
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
@@ -63,7 +64,7 @@ let pp_symbol : sym pp = fun oc s ->
   in
   Format.pp_print_string oc full
 
-let _ = Print.pp_symbol_ref := pp_symbol
+let _ = Pervasives.(Print.pp_symbol_ref := pp_symbol)
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -209,4 +210,4 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
       try PathMap.find sym.sym_path !(sign.deps)
       with Not_found -> assert false
     in
-    sign.deps := PathMap.add sym.sym_path ((sym.sym_name,r) :: m) !(sign.deps)
+    sign.deps := PathMap.add sym.sym_path ((sym.sym_name,r)::m) !(sign.deps)

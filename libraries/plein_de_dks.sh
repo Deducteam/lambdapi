@@ -26,7 +26,7 @@ if [[ ! -d ${DIR} ]]; then
   echo "Preparing the library:"
 
   # Download the library if necessary.
-  if [[ ! -f dklib.zip ]]; then
+  if [[ ! -f ${DIR}.tar.gz ]]; then
     echo -n "  - downloading...      "
     wget -q ${SRC} -O ${DIR}.tar.gz
     echo "OK"
@@ -47,18 +47,26 @@ if [[ ! -d ${DIR} ]]; then
   rm -r ${DIR}/Miscellaneous
   # Black list (to fix)
   rm ${DIR}/andPoly.dk
+  rm ${DIR}/associativity.dk
+  rm ${DIR}/badlyTypedLhs.dk
   rm ${DIR}/cic.dk
   rm ${DIR}/bugRaphael.dk
+  rm ${DIR}/examplesBJO.dk
   rm ${DIR}/explFrc.dk
-  rm ${DIR}/intBinaire.dk
-  rm ${DIR}/tuto.dk
   rm ${DIR}/fixpoint.dk
+  rm ${DIR}/identiteListe_pbArite.dk
+  rm ${DIR}/intBinaire.dk
+  rm ${DIR}/McCarthy.dk
   rm ${DIR}/miller.dk
   rm ${DIR}/monad.dk
   rm ${DIR}/nat_prop.dk
   rm ${DIR}/numberBases.dk
+  rm ${DIR}/pureLambdaCalculus.dk
   rm ${DIR}/simplyTypedLambdaCalculus.dk
+  rm ${DIR}/syracuse.dk
+  rm ${DIR}/tuto.dk
   rm ${DIR}/vectDependant_InjectivityIsCrucial.dk
+  rm ${DIR}/wahlstedt.dk
   echo "OK"
 
   # All done.

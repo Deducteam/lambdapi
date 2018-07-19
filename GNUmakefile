@@ -1,5 +1,5 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
-CFLAGS     = -cflags -w,A-4-50-9-44
+CFLAGS     = -cflags -w,A-4-50-9-44-33
 DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
@@ -113,10 +113,10 @@ dklib: lambdapi.native
 	@echo "## Compiling the dklib library ##"
 	@cd libraries && ./dklib.sh
 
-.PHONY: zenon
-zenon: lambdapi.native
+.PHONY: zenon_modulo
+zenon_modulo: lambdapi.native
 	@echo "## Compiling the zenon library ##"
-	@cd libraries/zenon && ./zenon.sh
+	@cd libraries && ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
 
@@ -126,26 +126,27 @@ clean:
 
 .PHONY: distclean
 distclean: clean
+	@cd libraries && ./matita.sh clean
 	@cd libraries && ./plein_de_dks.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
-	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./verine.sh clean
+	@cd libraries && ./iprover.sh clean
 	@cd libraries && ./dklib.sh clean
-	@cd libraries/zenon && ./zenon.sh clean
+	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
 
 .PHONY: fullclean
 fullclean: distclean
-	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./matita.sh fullclean
+	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./focalide.sh fullclean
 	@cd libraries && ./holide.sh fullclean
-	@cd libraries && ./iprover.sh fullclean
 	@cd libraries && ./verine.sh fullclean
+	@cd libraries && ./iprover.sh fullclean
 	@cd libraries && ./dklib.sh fullclean
-	@cd libraries/zenon && ./zenon.sh fullclean
+	@cd libraries && ./zenon_modulo.sh fullclean
 
 #### Installation targets ####################################################
 

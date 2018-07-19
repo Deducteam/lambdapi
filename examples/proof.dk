@@ -89,6 +89,7 @@ Cannot solve constraint [?529] ~ [P (eq nat (s x) (s x))]
 Typing error.;)
 #REFINE eqind nat x y xy (z => eq nat (s x) (s z)) (refl nat (s x)).
   (;FIXME: try to infer subterms: nat, x, y, s x, and predicate.;)
+#QED.
 
 (; 0 is right neutral for add. ;)
 
@@ -98,6 +99,10 @@ Typing error.;)
 #INFER nat_ind.
 #REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
   (;FIXME: try to infer predicate. ;) #PRINT.
+
+#FOCUS 1. #PRINT.
+#FOCUS 1. #PRINT.
+
 (; Case 0 ;)
 #SIMPL. #PRINT.
 #REFINE (refl nat 0). #PRINT.
@@ -106,3 +111,10 @@ Typing error.;)
 #REFINE n => hn => _. #PRINT.
 #SIMPL. #PRINT.
 #REFINE s_eq (add n 0) n hn.
+
+#QED.
+
+
+#PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
+#REFINE n => m => _.
+(;#REFINE (nat_ind (n => eq nat (add n m) (add m n)) ?case0 ?caseS n).;)

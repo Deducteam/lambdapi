@@ -72,7 +72,11 @@ let get_lr : term -> term * term = fun t ->
 let handle_rewrite : term -> unit = fun t ->
   (* Get current theorem, focus goal and the metavariable representing it. *)
   let thm = current_theorem() in
-  let g = thm.t_focus in
+  let g =
+    match thm.t_goals with
+    | []   -> fatal_no_pos "No remaining goals..."
+    | g::_ -> g
+  in
   let m = g.g_meta in
   (* Check that the term passed as an argument to rewrite has the correct
    * type, i.e. represents an equaltiy. *)

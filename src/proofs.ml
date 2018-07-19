@@ -1,5 +1,6 @@
 (** Proofs and tactics. *)
 
+open Timed
 open Terms
 open Console
 
@@ -14,8 +15,7 @@ type goal =
 type theorem =
   { t_name : Pos.strloc
   ; t_proof : meta
-  ; t_goals : goal list
-  ; t_focus : goal }
+  ; t_goals : goal list (* focused goal at the head. *) }
 
 (** [remove_goal g gs] removes goal [g] from the list of goals [gs]. *)
 let remove_goal (g:goal) (gs:goal list) : goal list =
@@ -54,8 +54,5 @@ let fail_if_in_proof() : unit =
     focused goal if we are in a proof, or the empty list otherwise. *)
 let focus_goal_hyps () : Env.t =
   match !theorem with
-  | None     -> Env.empty
-  | Some thm -> thm.t_focus.g_hyps
-
-
-
+  | Some{t_goals = g::_} -> g.g_hyps
+  | _                    -> Env.empty
