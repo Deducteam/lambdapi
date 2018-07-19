@@ -1,5 +1,6 @@
 (** Implementation of the REWRITE tactic. *)
 
+open Timed
 open Terms
 open Print
 open Console
@@ -78,10 +79,10 @@ let match_subst : term -> term -> term -> term = fun g_type l t ->
 let handle_rewrite : term -> unit = fun t ->
   (* Get current theorem, focus goal and the metavariable representing it. *)
   let thm = current_theorem() in
-  let g =
+  let (g, gs) =
     match thm.t_goals with
-    | []   -> fatal_no_pos "No remaining goals..."
-    | g::_ -> g
+    | []    -> fatal_no_pos "No remaining goals..."
+    | g::gs -> (g, gs)
   in
   let m = g.g_meta in
   let t_type =
@@ -105,7 +106,8 @@ let handle_rewrite : term -> unit = fun t ->
    * type constructed above. *)
   let new_type  = Bindlib.subst bind_p r   in
   let meta_env  = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)   in
-  let new_meta  = Meta((fresh_meta new_type (m.meta_arity)), meta_env) in
+  let new_m     = fresh_meta new_type (m.meta_arity) in
+  let new_meta  = Meta(new_m, meta_env) in
   (* Get the inductive assumption of Leibniz equality to transform a proof of
    * the new goal to a proof of the previous goal. *)
   (* FIXME: When a Logic module with a notion of equality is defined get this
@@ -113,6 +115,16 @@ let handle_rewrite : term -> unit = fun t ->
   let eq_ind    = Symb(Sign.find (Sign.current_sign()) "eqind")        in
   (* Build the term tht will be used in the instantiation of the new meta. *)
   let g_m       = add_args eq_ind [a ; l ; r ; t ; prod ; new_meta]    in
+  let b = Bindlib.bind_mvar (to_tvars meta_env) (lift g_m) in
+  let b = Bindlib.unbox b in
+  (*
+   * FIXME: Type check the term used to instantiate the old meta.
+   * if not (Solve.check (Ctxt.of_env g.g_hyps) g_m !(m.meta_type)) then
+   * fatal_no_pos "Typing error.";
+  *)
+ m.meta_value := Some b ;
+  let thm = {thm with t_goals = {g with g_meta = new_m ; g_type = new_type }::gs} in
+  theorem := Some thm ;
   begin
     wrn "Goal : [%a]\n" pp g.g_type ;
     wrn "Lemma: [%a]\n" pp t        ;
