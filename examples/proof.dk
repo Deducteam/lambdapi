@@ -110,4 +110,11 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
 #REFINE n => m => _.
 #REFINE (nat_ind (n:N => eq nat (add n m) (add m n)) ?case0[m,n] ?caseS[m,n] n).
+(; Case 0 ;)
 #SIMPL.
+#REWRITE add0r n.
+#REFINE refl nat n.
+(; Case S ;)
+#SIMPL.
+#REFINE n0 => ih => _.
+(; TODO needs lemma. *)
