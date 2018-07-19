@@ -74,31 +74,23 @@ eq : !a, T a -> T a -> Prop.
 refl : !a, !x, P (eq a x x).
 
 eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
-  (;FIXME: try to infer the type of p.;)
+(; FIXME: try to infer the type of p. ;)
 
 (; s is compatible with Leibniz equality ;)
 
-#PROOF s_eq : !x, !y, P (eq nat x y) -> P (eq nat (s x) (s y)). #PRINT.
-
-#REFINE x => y => xy => _. #PRINT.
-(;FIXME:
-#REFINE eqind nat x y xy (z => eq nat (s x) (s z)) _. #PRINT.
-does not work:
-Cannot solve constraint [?529] ~ [P (eq nat (s x) (s x))]
-[proof.dk, 87:0-52] error while handling a command.
-Typing error.;)
+#PROOF s_eq : !x, !y, P (eq nat x y) -> P (eq nat (s x) (s y)).
+#REFINE x => y => xy => _.
 #REFINE eqind nat x y xy (z => eq nat (s x) (s z)) (refl nat (s x)).
-  (;FIXME: try to infer subterms: nat, x, y, s x, and predicate.;)
 #QED.
 
 (; 0 is right neutral for add. ;)
 
-#PROOF add0r : !n, P (eq nat (add n 0) n). #PRINT.
-  (;FIXME: try to infer nat. ;)
+#PROOF add0r : !n, P (eq nat (add n 0) n).
+(;FIXME: try to infer nat. ;)
 
 #INFER nat_ind.
 #REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
-  (;FIXME: try to infer predicate. ;) #PRINT.
+(;FIXME: try to infer predicate. ;) #PRINT.
 
 #FOCUS 1. #PRINT.
 #FOCUS 1. #PRINT.
@@ -117,4 +109,5 @@ Typing error.;)
 
 #PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
 #REFINE n => m => _.
-(;#REFINE (nat_ind (n => eq nat (add n m) (add m n)) ?case0 ?caseS n).;)
+#REFINE (nat_ind (n:N => eq nat (add n m) (add m n)) ?case0[m,n] ?caseS[m,n] n).
+#SIMPL.

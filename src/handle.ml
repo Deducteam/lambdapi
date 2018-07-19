@@ -188,33 +188,29 @@ let goal_of_meta (m:meta) : goal =
   { g_meta = m; g_hyps = env; g_type = typ }
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
-let handle_refine (new_metas:meta list) (t:term) : unit =
+let handle_refine : meta list -> term -> unit = fun metas t ->
   let thm = current_theorem () in
-  let g =
+  let (g,gs) =
     match thm.t_goals with
-    | g::_ -> g
-    | []   -> fatal_no_pos "No focused goal, refine impossible."
+    | g::gs -> (g,gs)
+    | []    -> fatal_no_pos "No focused goal, refine impossible."
   in
   let m = g.g_meta in
+  log_tact "refining [%a] with term [%a]" pp_meta m pp t;
   (* We check that [m] does not occur in [t]. *)
   if occurs m t then fatal_no_pos "Invalid refinement.";
   (* Check that [t] has the correct type. *)
-  let bt = lift t in
-  let abst u (_,(x,a)) = _Abst a (Bindlib.bind_var x u) in
-  let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Solve.check (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
+  let ctx = Ctxt.of_env g.g_hyps in
+  log_tact "Proving [%a ⊢ %a : %a]." Ctxt.pp ctx pp t pp g.g_type;
+  if not (Solve.check ctx t g.g_type) then
     fatal_no_pos "Typing error.";
-  (* We update the list of new metavariables because some
-     metavariables may haven been instantiated by type checking. *)
-  let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
-  log_tact "refine [%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
-  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
+  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
   (* New subgoals and new focus *)
-  let fn goals m = goal_of_meta m :: goals in
-  let t_goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
-  theorem := Some({thm with t_goals})
+  let metas = List.filter unset metas in
+  let fn gs m = goal_of_meta m :: gs in
+  theorem := Some({thm with t_goals = List.fold_left fn gs metas})
 
 (** [handle_intro s] applies the [intro] tactic. *)
 let handle_intro : strloc -> unit = fun s ->
