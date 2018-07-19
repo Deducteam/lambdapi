@@ -86,9 +86,5 @@ def add_easy : !x, !y, P (eq nat (x) (y)).
 #REFINE x => y => z => _.
 #PRINT.
 #REWRITE add_s_right x y.
-(;
 #REFINE refl nat (add (s (add x y)) z).
 #QED.
-;)
-#PRINT.
-
