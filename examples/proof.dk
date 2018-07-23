@@ -132,3 +132,12 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #REWRITE ih.
 #REFINE eq_sym nat (add m (s n0)) (s (add m n0)) (add_succ_r m n0).
 #QED.
+
+(; At the moment, we can unfortunately use rewrite to prove anything
+  because QED and the rewrite tactic does not check the whole term obtained.
+  Once this is fixed, the following term won't typecheck anymore, which will
+  be much beter ;)
+#PROOF fixme : !a, !x, !y, P (eq a x y) -> (!goal, P goal).
+#REFINE a => x => y => H => goal => _.
+#REWRITE H.
+#QED.
