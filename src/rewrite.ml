@@ -34,7 +34,7 @@ let get : 'a option -> 'a = fun t ->
 let break_prod : term -> Env.t * term = fun t ->
    let rec aux t acc =
      match t with
-          | Prod(a,b) ->
+     | Prod(a,b) ->
         let (v,b) = Bindlib.unbind b in
         aux b ((Bindlib.name_of v,(v,lift a))::acc)
      | _ -> acc, t
