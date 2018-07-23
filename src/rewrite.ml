@@ -25,6 +25,21 @@ let get : 'a option -> 'a = fun t ->
 
 (****************************************************************************)
 
+(** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
+    type of the term passed to #REWRITE which is assumed to be of the form
+                    !x1 : A1 ... ! xn : An U
+    and it returns an environment [x1 : A1, ... xn : An] and U. *)
+(* TODO: Replace this by Handle.env_of_prod if it is possible to get the
+ * number of products in a term. *)
+let break_prod : term -> Env.t * term = fun t ->
+   let rec aux t acc =
+     match t with
+          | Prod(a,b) ->
+        let (v,b) = Bindlib.unbind b in
+        aux b ((Bindlib.name_of v,(v,lift a))::acc)
+     | _ -> acc, t
+   in aux t []
+
 (** [break_eq] is given the type of the term passed as an argument to #REWRITE
     and checks that it is an equality type. That is, it checks that t matches
     with:
@@ -93,7 +108,8 @@ let handle_rewrite : term -> unit = fun t ->
   (* Check that the term passed as an argument to rewrite has the correct
    * type, i.e. represents an equaltiy and get the subterms l,r from l = r
    * as well as their type a. *)
-  let (a, l, r) = break_eq t_type               in
+  let (env, t_type)  = break_prod t_type        in
+  let (a, l, r)      = break_eq t_type          in
   (* Make a new free variable X and pass it in match_subst. Using bindlib and
    * pred make a new term prod, which is Pi X. G[X], where G is the type of the
    * current goal and G[X] is the result of match_subst l. *)
@@ -111,19 +127,19 @@ let handle_rewrite : term -> unit = fun t ->
   (* Get the inductive assumption of Leibniz equality to transform a proof of
    * the new goal to a proof of the previous goal. *)
   (* FIXME: When a Logic module with a notion of equality is defined get this
-   * from that module. *)
+  from that module. *)
   let eq_ind    = Symb(Sign.find (Sign.current_sign()) "eqind")        in
   (* Build the term tht will be used in the instantiation of the new meta. *)
   let g_m       = add_args eq_ind [a ; l ; r ; t ; prod ; new_meta]    in
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift g_m) in
   let b = Bindlib.unbox b in
-  (*
-   * FIXME: Type check the term used to instantiate the old meta.
+  (* FIXME: Type check the term used to instantiate the old meta.
    * if not (Solve.check (Ctxt.of_env g.g_hyps) g_m !(m.meta_type)) then
    * fatal_no_pos "Typing error.";
-  *)
+   *)
   m.meta_value := Some b ;
-  let thm = {thm with t_goals = {g with g_meta = new_m ; g_type = new_type }::gs} in
+  let thm =
+    {thm with t_goals = {g with g_meta = new_m ; g_type = new_type }::gs} in
   theorem := Some thm ;
   begin
     wrn "Goal : [%a]\n" pp g.g_type ;
@@ -134,6 +150,7 @@ let handle_rewrite : term -> unit = fun t ->
     wrn "New T: [%a]\n" pp new_type ;
     wrn "New:   [%a]\n" pp g_m      ;
   end
+
 
 (* --------------- TODO (From the meetings on 16/07/2018) ------------------ *)
 
