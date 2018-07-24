@@ -10,13 +10,19 @@ all: bin lib
 #### Compilation #############################################################
 
 .PHONY: bin
-bin: lambdapi.native
+bin: lambdapi.native test.native
 
 lambdapi.native: _build/src/lambdapi.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
+
+test.native: _build/menhir_parser/test.native
+
+_build/menhir_parser/test.native: $(wildcard menhir_parser/*)
+	@echo "[OPT] test.native"
+	@$(OCAMLBUILD) $(CFLAGS) menhir_parser/test.native
 
 .PHONY: lib
 lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs

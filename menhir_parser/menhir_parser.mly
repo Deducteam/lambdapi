@@ -7,10 +7,10 @@ let build_prod : (string * p_term) list -> p_term -> p_term =
 let build_abst : (string * p_term) list -> p_term -> p_term =
   List.fold_right (fun (x,a) b -> P_Abst(x, Some(a), b))
 
-let build_config1 : string -> Eval.config = fun s ->
+let build_config1 : string -> Eval.config = fun _ ->
   assert false (* TODO *)
 
-let build_config2 : string -> string -> Eval.config = fun s1 s2 ->
+let build_config2 : string -> string -> Eval.config = fun _ _ ->
   assert false (* TODO *)
 %}
 

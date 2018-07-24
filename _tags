@@ -5,3 +5,6 @@ true           : package(bindlib)
 true           : package(earley)
 true           : package(earley.str)
 true           : package(timed)
+"menhir_parser": include
+true           : use_menhir
+true           : external_tokens(Lexer)
