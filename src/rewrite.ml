@@ -94,35 +94,64 @@ let match_subst : term -> term -> term -> term = fun g_type l t ->
 let handle_rewrite : term -> unit = fun t ->
   (* Get current theorem, focus goal and the metavariable representing it. *)
   let thm = current_theorem() in
-  let (g, gs) =
+  let (currentGoal, otherGoals) =
     match thm.t_goals with
     | []    -> fatal_no_pos "No remaining goals..."
     | g::gs -> (g, gs)
   in
-  let m = g.g_meta in
+  let metaCurrentGoal = currentGoal.g_meta in
   let t_type =
-    match Solve.infer (Ctxt.of_env g.g_hyps) t with
+    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) t with
     | Some a -> a
-    | None   -> fatal_no_pos "Cannot find type."
+    | None   -> fatal_no_pos "Cannot infer type of argument passed to rewrite."
   in
   (* Check that the term passed as an argument to rewrite has the correct
    * type, i.e. represents an equaltiy and get the subterms l,r from l = r
    * as well as their type a. *)
-  let (env, t_type)  = break_prod t_type        in
+  (* let (env, t_type)  = break_prod t_type        in *)
   let (a, l, r)      = break_eq t_type          in
-  (* Make a new free variable X and pass it in match_subst. Using bindlib and
-   * pred make a new term prod, which is Pi X. G[X], where G is the type of the
-   * current goal and G[X] is the result of match_subst l. *)
+
+  (* Make a new free variable X and pass it in match_subst using bindlib *)
   let x         = Bindlib.new_var mkfree "X"    in
-  let pred      = lift (match_subst g.g_type l (Vari x))  in
-  let bind_p    = Bindlib.unbox (Bindlib.bind_var x pred) in
-  let prod      = Prod (a, bind_p)         in
-  (* Construct the type of the new goal, which is G[r] and build the meta
-   * of the new goal by using the information from the old meta and the new
-   * type constructed above. *)
-  let new_type  = Bindlib.subst bind_p r   in
-  let meta_env  = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)   in
-  let new_m     = fresh_meta new_type (m.meta_arity) in
+  let t' = (match_subst currentGoal.g_type l (Vari x)) in
+  let (_, ar::rest) = get_args t' in
+  let t'' = add_args ar rest in
+
+  (* We build the predicate Pred := Lambda y. (match_subst ...)
+     and the product Prod := Forall X. Pred X
+     by computing immediately the product Prod := Forall X. (match_subst...)  *)
+  let pred_0    = lift t'' in
+  let pred_1    = Bindlib.unbox (Bindlib.bind_var x pred_0) in
+  let pred    = Abst (a, pred_1) in
+
+  let all_symb  = Symb (Sign.find (Sign.current_sign()) "all") in
+  let formulae_0  = Appl (all_symb, a) in
+  let formulae_1 = Appl (formulae_0, pred) in
+
+  let p_symb    = Symb (Sign.find (Sign.current_sign()) "P") in
+
+  (* Here we build P (all a pred) *)
+  let formulae  = Appl (p_symb, formulae_1) in
+  (* see at the end of proof.dk for the explanation *)
+
+  (*
+  let prod_type =
+    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) prod with
+    | Some a -> a
+    | None   -> fatal_no_pos "Cannot infer type of the product built."
+     in
+  *)
+
+  (* Construct the type of the new goal, which is obtained by performing the
+     the subsitution by r, and adding the P symbol on top *)
+  let new_type_0  = Bindlib.subst pred_1 r   in
+  let new_type    = Appl (p_symb, new_type_0) in
+
+  (* let (new_type_type, _) = Typing.infer (Ctxt.of_env currentGoal.g_hyps) new_type in
+     wrn "The type of new_type is [%a]\n" pp new_type_type; *)
+
+  let meta_env  = Array.map Bindlib.unbox (Env.vars_of_env currentGoal.g_hyps)   in
+  let new_m     = fresh_meta new_type (metaCurrentGoal.meta_arity) in
   let new_meta  = Meta(new_m, meta_env) in
   (* Get the inductive assumption of Leibniz equality to transform a proof of
    * the new goal to a proof of the previous goal. *)
@@ -130,25 +159,28 @@ let handle_rewrite : term -> unit = fun t ->
   from that module. *)
   let eq_ind    = Symb(Sign.find (Sign.current_sign()) "eqind")        in
   (* Build the term tht will be used in the instantiation of the new meta. *)
-  let g_m       = add_args eq_ind [a ; l ; r ; t ; prod ; new_meta]    in
+  let g_m       = add_args eq_ind [a ; l ; r ; t_type ; pred ; new_meta]    in
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift g_m) in
   let b = Bindlib.unbox b in
-  (* FIXME: Type check the term used to instantiate the old meta.
-   * if not (Solve.check (Ctxt.of_env g.g_hyps) g_m !(m.meta_type)) then
-   * fatal_no_pos "Typing error.";
-   *)
-  m.meta_value := Some b ;
+  (* FIXME: Type check the term used to instantiate the old meta. *)
+  (* if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) g_m !(metaCurrentGoal.meta_type)) then
+     fatal_no_pos "Typing error."; *)
+
+  metaCurrentGoal.meta_value := Some b ;
   let thm =
-    {thm with t_goals = {g with g_meta = new_m ; g_type = new_type }::gs} in
+    {thm with t_goals = {currentGoal with g_meta = new_m ; g_type = new_type }::otherGoals} in
   theorem := Some thm ;
   begin
-    wrn "Goal : [%a]\n" pp g.g_type ;
-    wrn "Lemma: [%a]\n" pp t        ;
-    wrn "Left : [%a]\n" pp l        ;
-    wrn "Right: [%a]\n" pp r        ;
-    wrn "Prod:  [%a]\n" pp prod     ;
-    wrn "New T: [%a]\n" pp new_type ;
-    wrn "New:   [%a]\n" pp g_m      ;
+    wrn "Goal : [%a]\n" pp currentGoal.g_type ;
+    wrn "Tactic rewrite used on the term: [%a]\n" pp t        ;
+    wrn "LHS of the rewrite hypothesis: [%a]\n" pp l        ;
+    wrn "RHS of the rewrite hypothesis: [%a]\n" pp r        ;
+    wrn "t' [%a]\n" pp t';
+    wrn "t'' [%a]\n" pp t'';
+    (* wrn "Type of pred:  [%a]\n" pp pred_type     ; *)
+    wrn "Pred:  [%a]\n" pp pred ;
+    wrn "New type to prove obtained by subst [%a]\n" pp new_type ;
+    wrn "Term produced by the tactic:   [%a]\n" pp g_m      ;
   end
 
 
