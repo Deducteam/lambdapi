@@ -117,6 +117,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #REFINE pn => ih => _.
 #REWRITE ih.
 #SIMPL.
+#REFINE refl nat (s (s (add pn m))).
 #QED.
 
 (; Commutativity of the addition ;)
