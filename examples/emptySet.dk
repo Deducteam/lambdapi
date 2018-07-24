@@ -5,9 +5,9 @@ def prf:Prop->Type.
 
 forall:(Set->Prop)->Prop.
 imp:Prop->Prop->Prop.
-[f:Set->Prop] prf (forall f) --> x:Set -> prf (f x)
+[f] prf (forall f) --> x:Set -> prf (f x)
 
-[A:Prop,B:Prop] prf (imp A B) --> prf A -> prf B.
+[A,B] prf (imp A B) --> prf A -> prf B.
 
 False:Prop.
 def not (A:Prop) := imp A False.
@@ -32,7 +32,6 @@ min_ax2 : prf (
 	)) ).
 
 def stmt := forall (x => not (min x empty)).
-
 
 def theorem: prf stmt := (x => p => (empty_ax x) (min_ax2 empty x p)).
 
