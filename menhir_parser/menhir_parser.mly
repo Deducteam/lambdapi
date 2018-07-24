@@ -1,4 +1,5 @@
 %{
+open Console
 open Parser
 
 let build_prod : (string * p_term) list -> p_term -> p_term =
@@ -7,11 +8,30 @@ let build_prod : (string * p_term) list -> p_term -> p_term =
 let build_abst : (string * p_term) list -> p_term -> p_term =
   List.fold_right (fun (x,a) b -> Pos.none (P_Abst(Pos.none x, Some(a), b)))
 
-let build_config1 : string -> Eval.config = fun _ ->
-  assert false (* TODO *)
-
-let build_config2 : string -> string -> Eval.config = fun _ _ ->
-  assert false (* TODO *)
+let build_config : string -> string option -> Eval.config = fun s1 s2o ->
+  try
+    let open Eval in
+    let config steps strategy =
+      let steps =
+        match steps with
+        | None     -> None
+        | Some(nb) -> Some(int_of_string nb)
+      in
+      {strategy; steps}
+    in
+    match (s1, s2o) with
+    | ("SNF" , None       ) -> config None     SNF
+    | ("HNF" , None       ) -> config None     HNF
+    | ("WHNF", None       ) -> config None     WHNF
+    | ("SNF" , Some i     ) -> config (Some(i)) SNF
+    | ("HNF" , Some i     ) -> config (Some(i)) HNF
+    | ("WHNF", Some i     ) -> config (Some(i)) WHNF
+    | (i     , Some "SNF" ) -> config (Some(i)) SNF
+    | (i     , Some "HNF" ) -> config (Some(i)) HNF
+    | (i     , Some "WHNF") -> config (Some(i)) WHNF
+    | (i     , None       ) -> config (Some(i)) SNF
+    | (_     , _          ) -> raise Exit (* captured bellow *)
+  with _ -> fatal_no_pos "Invalid command configuration."
 %}
 
 %token EOF
@@ -100,8 +120,8 @@ line:
   | EOF              { raise End_of_file }
 
 eval_config:
-  | LEFTSQU s=ID RIGHTSQU              { build_config1 s }
-  | LEFTSQU s1=ID COMMA s2=ID RIGHTSQU { build_config2 s1 s2 }
+  | LEFTSQU s=ID RIGHTSQU              { build_config s None }
+  | LEFTSQU s1=ID COMMA s2=ID RIGHTSQU { build_config s1 (Some s2) }
 
 param:
   | LEFTPAR id=ID COLON te=term RIGHTPAR { (id, te) }

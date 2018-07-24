@@ -52,7 +52,11 @@ let _ =
   let anon fn = Pervasives.(files := fn :: !files) in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ " [OPTIONS] [FILES]");
   if !justparse then
-    List.iter (fun f -> ignore (Parser.parse_file f)) !files
+    let parse_file fname =
+      if !Handle.use_legacy_parser then Legacy_parser.parse_file fname
+      else Parser.parse_file fname
+    in
+    List.iter (fun f -> ignore (parse_file f)) !files
   else
     List.iter compile (List.rev !files);
   Parser.log_pars "Total time in parsing: %.2f seconds.\n" !Parser.total_time
