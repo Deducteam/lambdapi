@@ -1,4 +1,4 @@
-let parse_channel ic =
+let parse_channel : in_channel -> Parser.p_cmd Pos.loc list = fun ic ->
   let lines = ref [] in
   let lexbuf = Lexing.from_channel ic in
   try
@@ -14,17 +14,10 @@ let parse_channel ic =
       Printf.printf "ERROR: unexpected token '%s'...\n%!" lex;
       assert false
 
-let _ =
-  let files = List.tl (Array.to_list Sys.argv) in
-  let run_file fn =
-    let ic = open_in fn in
-    try
-      let res = parse_channel ic in
-      close_in ic;
-      Printf.printf "\027[32mOK\027[0m on file %s (%i items).\n%!"
-        fn (List.length res)
-    with _ ->
-      Printf.printf "\027[31mKO\027[0m on file %s\n%!" fn;
-      close_in ic
-  in
-  List.iter run_file files
+let parse_file : string -> Parser.p_cmd Pos.loc list = fun fname ->
+  let ic = open_in fname in
+  try
+    let l = parse_channel ic in
+    close_in ic; l
+  with e ->
+    close_in ic; raise e

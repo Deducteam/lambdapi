@@ -2,6 +2,7 @@
 
 open Console
 open Files
+open Legacy_parser
 
 (** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
@@ -37,13 +38,15 @@ let _ =
   let too_long_doc = "<flt> Duration considered too long for a command" in
   let onlyparse_doc = " Only parse the input files (no type-checking)" in
   let earleylvl_doc = "<int> Sets the internal debugging level of Earley" in
+  let legacy_doc = " Use the legacy parser (faster, but old syntax only)" in
   let spec =
-    [ ("--gen-obj"  , Arg.Set Handle.gen_obj          , gen_obj_doc  )
-    ; ("--toolong"  , Arg.Float ((:=) Handle.too_long), too_long_doc )
-    ; ("--verbose"  , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
-    ; ("--justparse", Arg.Set justparse               , onlyparse_doc)
-    ; ("--earleylvl", Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
-    ; ("--debug"    , Arg.String (set_debug true)     , debug_doc    ) ]
+    [ ("--gen-obj"      , Arg.Set Handle.gen_obj          , gen_obj_doc  )
+    ; ("--toolong"      , Arg.Float ((:=) Handle.too_long), too_long_doc )
+    ; ("--verbose"      , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
+    ; ("--justparse"    , Arg.Set justparse               , onlyparse_doc)
+    ; ("--earleylvl"    , Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
+    ; ("--legacy-parser", Arg.Set Handle.use_legacy_parser, legacy_doc   )
+    ; ("--debug"        , Arg.String (set_debug true)     , debug_doc    ) ]
   in
   let files = Pervasives.ref [] in
   let anon fn = Pervasives.(files := fn :: !files) in

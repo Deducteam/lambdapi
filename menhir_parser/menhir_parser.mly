@@ -1,11 +1,11 @@
 %{
-open Raw
+open Parser
 
 let build_prod : (string * p_term) list -> p_term -> p_term =
-  List.fold_right (fun (x,a) b -> P_Prod(x, Some(a), b))
+  List.fold_right (fun (x,a) b -> Pos.none (P_Prod(Pos.none x, Some(a), b)))
 
 let build_abst : (string * p_term) list -> p_term -> p_term =
-  List.fold_right (fun (x,a) b -> P_Abst(x, Some(a), b))
+  List.fold_right (fun (x,a) b -> Pos.none (P_Abst(Pos.none x, Some(a), b)))
 
 let build_config1 : string -> Eval.config = fun _ ->
   assert false (* TODO *)
@@ -43,13 +43,7 @@ let build_config2 : string -> string -> Eval.config = fun _ _ ->
 %token <string*string> QID
 
 %start line
-%type <Raw.p_cmd> line
-%type <Raw.old_p_rule> rule
-%type <string * Raw.p_term> param
-%type <(string * Raw.p_term option) list> context
-%type <Raw.p_term> sterm
-%type <Raw.p_term> term
-%type <Eval.config> eval_config
+%type <Parser.p_cmd Pos.loc> line
 
 %right ARROW FATARROW
 
@@ -57,52 +51,52 @@ let build_config2 : string -> string -> Eval.config = fun _ _ ->
 
 line:
   | s=ID ps=param* COLON a=term DOT
-      { P_SymDecl(true, s, build_prod ps a) }
+      { Pos.none (P_SymDecl(true, Pos.none s, build_prod ps a)) }
   | KW_DEF s=ID COLON a=term DOT
-      { P_SymDecl(false, s, a) }
+      { Pos.none (P_SymDecl(false, Pos.none s, a)) }
   | KW_DEF s=ID COLON a=term DEF t=term DOT
-      { P_SymDef(false, s, Some(a), t) }
+      { Pos.none (P_SymDef(false, Pos.none s, Some(a), t)) }
   | KW_DEF s=ID DEF t=term DOT
-      { P_SymDef(false, s,  None, t) }
+      { Pos.none (P_SymDef(false, Pos.none s,  None, t)) }
   | KW_DEF s=ID ps=param+ COLON a=term DEF t=term DOT
-      { P_SymDef(false, s, Some(build_prod ps a), build_abst ps t) }
+      { Pos.none (P_SymDef(false, Pos.none s, Some(build_prod ps a), build_abst ps t)) }
   | KW_DEF s=ID ps=param+ DEF t=term DOT
-      { P_SymDef(false, s, None, build_abst ps t) }
+      { Pos.none (P_SymDef(false, Pos.none s, None, build_abst ps t)) }
   | KW_THM s=ID COLON a=term DEF t=term DOT
-      { P_SymDef(true, s, Some(a), t) }
+      { Pos.none (P_SymDef(true, Pos.none s, Some(a), t)) }
   | KW_THM s=ID ps=param+ COLON a=term DEF t=term DOT
-      { P_SymDef(true, s, Some(build_prod ps a), build_abst ps t) }
+      { Pos.none (P_SymDef(true, Pos.none s, Some(build_prod ps a), build_abst ps t)) }
   | rs=rule+ DOT
-      { P_OldRules(rs) }
+      { Pos.none (P_OldRules(rs)) }
 
   | EVAL t=term DOT
-      { P_Eval(t, Eval.{strategy = SNF; steps = None}) }
+      { Pos.none (P_Eval(t, Eval.{strategy = SNF; steps = None})) }
   | EVAL c=eval_config t=term DOT
-      { P_Eval(t, c) }
+      { Pos.none (P_Eval(t, c)) }
   | INFER t=term DOT
-      { P_Infer(t, Eval.{strategy = SNF; steps = None}) }
+      { Pos.none (P_Infer(t, Eval.{strategy = SNF; steps = None})) }
   | INFER c=eval_config t=term DOT
-      { P_Infer(t, c) }
+      { Pos.none (P_Infer(t, c)) }
   | CHECK     t=aterm COLON a=term DOT
-      { P_TestType(false, false, t, a) }
+      { Pos.none (P_TestType(false, false, t, a)) }
   | CHECKNOT  t=aterm COLON a=term DOT
-      { P_TestType(false, true , t, a) }
+      { Pos.none (P_TestType(false, true , t, a)) }
   | ASSERT    t=aterm COLON a=term DOT
-      { P_TestType(true , false, t, a) }
+      { Pos.none (P_TestType(true , false, t, a)) }
   | ASSERTNOT t=aterm COLON a=term DOT
-      { P_TestType(true , true , t, a) }
+      { Pos.none (P_TestType(true , true , t, a)) }
 
   | CHECK     t=aterm EQUAL u=term DOT
-      { P_TestConv(false, false, t, u) }
+      { Pos.none (P_TestConv(false, false, t, u)) }
   | CHECKNOT  t=aterm EQUAL u=term DOT
-      { P_TestConv(false, true , t, u) }
+      { Pos.none (P_TestConv(false, true , t, u)) }
   | ASSERT    t=aterm EQUAL u=term DOT
-      { P_TestConv(true , false, t, u) }
+      { Pos.none (P_TestConv(true , false, t, u)) }
   | ASSERTNOT t=aterm EQUAL u=term DOT
-      { P_TestConv(true , true , t, u) }
+      { Pos.none (P_TestConv(true , true , t, u)) }
 
-  | NAME         DOT { P_Other("NAME") }
-  | r=REQUIRE    DOT { P_Require([r]) }
+  | NAME         DOT { Pos.none (P_Other(Pos.none "NAME")) }
+  | r=REQUIRE    DOT { Pos.none (P_Require([r])) }
   | EOF              { raise End_of_file }
 
 eval_config:
@@ -116,7 +110,7 @@ rule:
   | LEFTSQU c=context RIGHTSQU lhs=term LONGARROW rhs=term { (c, lhs, rhs ) }
 
 context:
-  | l=separated_list(COMMA, ID) { List.map (fun x -> (x, None)) l }
+  | l=separated_list(COMMA, ID) { List.map (fun x -> (Pos.none x, None)) l }
 
 %inline pid:
   | UNDERSCORE { "_" }
@@ -124,29 +118,29 @@ context:
 
 sterm:
   | QID
-      { let (m,id)=$1 in P_Vari([m],id) }
+      { let (m,id)=$1 in Pos.none (P_Vari(Pos.none([m], id))) }
   | id=pid
-      { P_Vari([], id) }
+      { Pos.none (P_Vari(Pos.none([], id))) }
   | LEFTPAR t=term RIGHTPAR
       { t }
   | TYPE
-      { P_Type }
+      { Pos.none P_Type }
 
 aterm:
   | t=sterm ts=sterm*
-      { List.fold_left (fun t u -> P_Appl(t,u)) t ts }
+      { List.fold_left (fun t u -> Pos.none (P_Appl(t,u))) t ts }
 
 term:
   | t=aterm
       { t }
   | x=pid COLON a=aterm ARROW b=term
-      { P_Prod(x, Some(a), b) }
+      { Pos.none (P_Prod(Pos.none x, Some(a), b)) }
   | LEFTPAR x=ID COLON a=aterm RIGHTPAR ARROW b=term
-      { P_Prod(x, Some(a), b) }
+      { Pos.none (P_Prod(Pos.none x, Some(a), b)) }
   | a=term ARROW b=term
-      { P_Prod("_", Some(a), b) }
+      { Pos.none (P_Prod(Pos.none "_", Some(a), b)) }
   | x=pid FATARROW t=term
-      { P_Abst(x, None, t) }
+      { Pos.none (P_Abst(Pos.none x, None, t)) }
   | x=pid COLON a=aterm FATARROW t=term
-      { P_Abst(x, Some(a), t) }
+      { Pos.none (P_Abst(Pos.none x, Some(a), t)) }
 %%
