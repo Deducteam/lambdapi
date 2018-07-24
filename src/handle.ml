@@ -333,7 +333,7 @@ and compile : bool -> Files.module_path -> unit =
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
       List.iter handle_cmd (parse_file src);
-      check_end_proof ();
+      check_end_proof (); theorem := None;
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
