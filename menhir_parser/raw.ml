@@ -8,16 +8,6 @@ type p_term =
   | P_Wild
   | P_Meta of string * p_term array
 
-module Eval = struct
-  (** Type representing the different evaluation strategies. *)
-  type strategy = WHNF | HNF | SNF
-
-  (** Configuration for evaluation. *)
-  type config =
-    { strategy : strategy   (** Evaluation strategy.          *)
-    ; steps    : int option (** Max number of steps if given. *) }
-end
-
 type old_p_rule = (string * p_term option) list * p_term * p_term
 
 (** Representation of a toplevel command. *)

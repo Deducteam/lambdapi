@@ -49,7 +49,7 @@ let build_config2 : string -> string -> Eval.config = fun _ _ ->
 %type <(string * Raw.p_term option) list> context
 %type <Raw.p_term> sterm
 %type <Raw.p_term> term
-%type <Raw.Eval.config> eval_config
+%type <Eval.config> eval_config
 
 %right ARROW FATARROW
 

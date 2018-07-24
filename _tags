@@ -1,4 +1,4 @@
-"src"          : traverse
+"src"          : include
 "src/parser.ml": pp(pa_ocaml)
 true           : package(unix)
 true           : package(bindlib)
