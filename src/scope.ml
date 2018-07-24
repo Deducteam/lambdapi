@@ -240,7 +240,12 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
-  let ctx = List.map (fun (x,_) -> x.elt) ctx in
+  let get_var ({elt},ao) =
+    match ao with
+    | None    -> elt
+    | Some(a) -> wrn "Ignored type annotation at [%a].\n" Pos.print a.pos; elt
+  in
+  let ctx = List.map get_var ctx in
   let is_pat_var env x = not (List.mem x env) && List.mem x ctx in
   let arity = Hashtbl.create 7 in
   let rec build env t =
