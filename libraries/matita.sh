@@ -62,4 +62,5 @@ fi
 
 # Checking the files.
 cd ${DIR}
-\time -f "Finished in %E at %P with %MKb of RAM" ${LAMBDAPI} matita.dk
+\time -f "Finished in %E at %P with %MKb of RAM" \
+  ${LAMBDAPI} --legacy-parser matita.dk
