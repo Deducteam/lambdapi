@@ -175,8 +175,8 @@ uninstall:
 install: lambdapi.native META uninstall lib
 	@ocamlfind install lambdapi META  _build/src/lambdapi.cmxa \
 		_build/src/lambdapi.a _build/src/lambdapi.cma _build/src/lambdapi.cmxs \
-		$(wildcard _build/src/*.mli) $(wildcard _build/src/*.cmi) \
-		$(wildcard _build/src/*.cmx) $(wildcard _build/src/*.o)
+		$(wildcard _build/src/*.cmi) $(wildcard _build/src/*.cmx) \
+		$(wildcard _build/src/*.o) $(wildcard _build/src/*.ml)
 	@install -m 755 $< $(BINDIR)/lambdapi
 
 # Install for the vim mode (in the user's directory).
