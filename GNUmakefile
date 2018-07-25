@@ -3,6 +3,7 @@ CFLAGS     = -cflags -w,A-4-50-9-44-33
 DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
+VERSION    = dev
 
 .PHONY: all
 all: bin lib
@@ -18,9 +19,8 @@ _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
 
-LIBS := _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
 .PHONY: lib
-lib: $(LIBS)
+lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
 
 _build/src/lambdapi.cma: $(wildcard src/*.ml)
 	@echo "[BYT] lambdapi.cma"
@@ -137,6 +137,7 @@ distclean: clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
+	@rm META
 
 .PHONY: fullclean
 fullclean: distclean
@@ -151,14 +152,32 @@ fullclean: distclean
 
 #### Installation targets ####################################################
 
+# META generation.
+META: GNUmakefile
+	@echo "[GEN] $@ (version $(VERSION))"
+	@echo "name            = \"lambdapi\""                          > $@
+	@echo "version         = \"$(VERSION)\""                       >> $@
+	@echo "requires        = \"earley,earley.str,bindlib,timed\""  >> $@
+	@echo "description     = \"The Lambdapi prover as a library\"" >> $@
+	@echo "archive(byte)   = \"lambdapi.cma\""                     >> $@
+	@echo "plugin(byte)    = \"lambdapi.cma\""                     >> $@
+	@echo "archive(native) = \"lambdapi.cmxa\""                    >> $@
+	@echo "plugin(native)  = \"lambdapi.cmxs\""                    >> $@
+
+# Uninstalling everything.
+.PHONY: uninstall
+uninstall:
+	@ocamlfind remove lambdapi
+	@rm -f $(BINDIR)/lambdapi
+
 # Install the main program.
 .PHONY: install
-install: lambdapi.native $(LIBS)
-	@ocamlfind install lambdapi META \
+install: lambdapi.native META uninstall lib
+	@ocamlfind install lambdapi META  _build/src/lambdapi.cmxa \
+		_build/src/lambdapi.a _build/src/lambdapi.cma _build/src/lambdapi.cmxs \
 		$(wildcard _build/src/*.mli) $(wildcard _build/src/*.cmi) \
-		$(wildcard _build/src/*.cmx) $(wildcard _build/src/*.o) \
-		$(LIBS) _build/src/lambdapi.a
-	install -m 755 -p lambdapi.native $(BINDIR)/lambdapi
+		$(wildcard _build/src/*.cmx) $(wildcard _build/src/*.o)
+	@install -m 755 $< $(BINDIR)/lambdapi
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
