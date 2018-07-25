@@ -154,7 +154,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #QED.
 
 
-(; At the moment, we catn unfortunately prove anything in the proof mode
+(; At the moment, we can unfortunately prove anything in the proof mode
   because QED does not check the whole term obtained.
   Once this is fixed, the following term won't typecheck anymore, which will
   be much beter ;)
