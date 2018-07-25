@@ -1,0 +1,5 @@
+name = "lambdapi"
+version = "dev"
+description = "Lambdapi library"
+archive(byte) = "lambdapi.cma"
+archive(native) = "lambdapi.cmxa"

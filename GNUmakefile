@@ -18,8 +18,9 @@ _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
 
+LIBS := _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
 .PHONY: lib
-lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
+lib: $(LIBS)
 
 _build/src/lambdapi.cma: $(wildcard src/*.ml)
 	@echo "[BYT] lambdapi.cma"
@@ -152,8 +153,12 @@ fullclean: distclean
 
 # Install the main program.
 .PHONY: install
-install: lambdapi.native
-	install -m 755 $^ $(BINDIR)
+install: lambdapi.native $(LIBS)
+	@ocamlfind install lambdapi META \
+		$(wildcard _build/src/*.mli) $(wildcard _build/src/*.cmi) \
+		$(wildcard _build/src/*.cmx) $(wildcard _build/src/*.o) \
+		$(LIBS) _build/src/lambdapi.a
+	install -m 755 -p lambdapi.native $(BINDIR)/lambdapi
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
