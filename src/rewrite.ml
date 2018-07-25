@@ -76,7 +76,8 @@ let term_match : term -> term -> bool = fun t1 t2 -> eq t1 t2
     using the bindlib lilfting functions. *)
 let match_subst : term -> term -> term -> term = fun g_type l t ->
   let rec matching_aux : term -> term = fun cur ->
-    if term_match (unfold cur) l then t else match unfold cur with
+    let cur = unfold cur in
+    if term_match cur l then t else match cur with
     | Vari _ | Type | Kind | Symb _ -> cur
     | Appl(t1, t2) ->
         let t1' = matching_aux t1 and t2' = matching_aux t2 in Appl(t1', t2')
