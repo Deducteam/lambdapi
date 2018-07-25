@@ -73,20 +73,36 @@ eq : !a, T a -> T a -> Prop.
 
 refl : !a, !x, P (eq a x x).
 
-eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
+eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 (; FIXME: try to infer the type of p. ;)
 
 (; Symmetry of the equality ;)
 #PROOF eq_sym : !a, !x, !y, P (eq a x y) -> P (eq a y x).
 #REFINE a => x => y => H => _.
-#REFINE eqind a x y H (z => eq a z x) (refl a x).
+(; First option, doing the proof via rewrite ;)
+#REWRITE H.
+#REFINE (refl a y).
 #QED.
+(; Second option, by hand, and full ;)
+(;
+#REFINE eqind a x y H (z => eq a y z) (refl a y).
+#QED.
+;)
+(; Third option, by hand, with a wildcard ;)
+(;
+#REFINE eqind a x y H (z => eq a y z) _.
+#SIMPL.
+#REFINE refl a y.
+#QED.
+;)
+
 
 (; s is compatible with Leibniz equality ;)
 #PROOF s_eq : !x, !y, P (eq nat x y) -> P (eq nat (s x) (s y)).
 #REFINE x => y => xy => _.
-#REFINE eqind nat x y xy (z => eq nat (s x) (s z)) (refl nat (s x)).
+#REFINE eqind nat x y xy (z => eq nat (s z) (s y)) (refl nat (s y)).
 #QED.
+
 
 (; 0 is right neutral for add. ;)
 #PROOF add0r : !n, P (eq nat (add n 0) n).
@@ -105,6 +121,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #REFINE s_eq (add n 0) n hn.
 #QED.
 
+
 (; forall n m, n + S m = S (n+m) ;)
 #PROOF add_succ_r : !n, !m, P (eq nat (add n (s m)) (s (add n m))).
 #REFINE n => m => _.
@@ -119,6 +136,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #SIMPL.
 #REFINE refl nat (s (s (add pn m))).
 #QED.
+
 
 (; Commutativity of the addition ;)
 #PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
@@ -136,7 +154,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 #QED.
 
 
-(; At the moment, we can unfortunately prove anything in the proof mode
+(; At the moment, we catn unfortunately prove anything in the proof mode
   because QED does not check the whole term obtained.
   Once this is fixed, the following term won't typecheck anymore, which will
   be much beter ;)
@@ -159,7 +177,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 (; canNotTcheckEither : nat -> Prop. ;)
 
 (; canNotTcheckEither2 : !x, eq nat x x. ;)
-(; Because this thing would have type nat -> Prop, which,
+(; Because this thing would have type [forall nat, Prop], which,
   as shown above, is not acceptable either in this type theory ;)
 
 (; so of course the following won't typecheck either : ;)
@@ -170,7 +188,3 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
 (; --------------------------------- ;)
 
 (; canTcheck : !x, P (eq nat x x). ;)
-(; And if we want to have the forall abstraction expressed inside the P,
-we need to use all ;)
-(; canTcheckAlso : P (all nat (x => eq nat x x)). ;)
-(; So we need to build a term like that in the rewrite tactic ! ;)
