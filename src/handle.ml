@@ -309,6 +309,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     if Pervasives.(tm >= !too_long) then
       wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
   with
+  | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m

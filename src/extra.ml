@@ -111,14 +111,33 @@ module Stack =
       try iter test s; false with Exit -> true
   end
 
+(* Functional maps with [int] keys. *)
+module IntMap = Map.Make(Int)
+
+(* Functional maps with [string] keys. *)
+module StrMap = Map.Make(String)
+
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
   let t = Sys.time () in
   let r = f x in (Sys.time () -. t, r)
 
-(* Functional maps with [int] keys. *)
-module IntMap = Map.Make(Int)
+(** Exception raised by the [with_timeout] function on a timeout. *)
+exception Timeout
 
-(* Functional maps with [string] keys. *)
-module StrMap = Map.Make(String)
+(** [with_timeout nbs f x] computes [f x] with a timeout of [nbs] seconds. The
+    exception [Timeout] is raised if the computation takes too long, otherwise
+    everything goes the usual way. *)
+let with_timeout : int -> ('a -> 'b) -> 'a -> 'b = fun nbs f x ->
+  let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) in
+  let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
+  let reset_sigalrm () =
+    let _ = Unix.alarm 0 in
+    Sys.set_signal Sys.sigalrm old_behavior
+  in
+  try
+    let _ = Unix.alarm nbs in
+    let res = f x in
+    reset_sigalrm (); res
+  with e -> reset_sigalrm (); raise e
