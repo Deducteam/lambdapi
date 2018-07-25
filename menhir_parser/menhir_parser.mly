@@ -135,17 +135,15 @@ context_item:
 context:
   | l=separated_list(COMMA, context_item) { l }
 
-%inline pid:
-  | UNDERSCORE { "_" }
-  | id=ID      { id }
-
 sterm:
-  | QID
-      { let (m,id)=$1 in Pos.none (P_Vari(Pos.none([m], id))) }
-  | id=pid
+  | qid=QID
+      { let (m,id)=qid in Pos.none (P_Vari(Pos.none([m], id))) }
+  | id=ID
       { Pos.none (P_Vari(Pos.none([], id))) }
   | LEFTPAR t=term RIGHTPAR
       { t }
+  | UNDERSCORE
+      { Pos.none P_Wild }
   | TYPE
       { Pos.none P_Type }
 
@@ -156,14 +154,14 @@ aterm:
 term:
   | t=aterm
       { t }
-  | x=pid COLON a=aterm ARROW b=term
+  | x=ID COLON a=aterm ARROW b=term
       { Pos.none (P_Prod(Pos.none x, Some(a), b)) }
   | LEFTPAR x=ID COLON a=aterm RIGHTPAR ARROW b=term
       { Pos.none (P_Prod(Pos.none x, Some(a), b)) }
   | a=term ARROW b=term
       { Pos.none (P_Prod(Pos.none "_", Some(a), b)) }
-  | x=pid FATARROW t=term
+  | x=ID FATARROW t=term
       { Pos.none (P_Abst(Pos.none x, None, t)) }
-  | x=pid COLON a=aterm FATARROW t=term
+  | x=ID COLON a=aterm FATARROW t=term
       { Pos.none (P_Abst(Pos.none x, Some(a), t)) }
 %%
