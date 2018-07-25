@@ -20,12 +20,13 @@ List of dependencies:
  - earley 1.0.2 (https://github.com/rlepigre/ocaml-earley),
  - earley-ocaml 1.0.2 (https://github.com/rlepigre/ocaml-earley-ocaml).
  - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
+ - menhir
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install ocamlfind ocamlbuild
+opam install ocamlfind ocamlbuild menhir
 opam install bindlib.5.0.0 earley.1.0.2 earley-ocaml.1.0.2 timed.1.0
 ```
 
