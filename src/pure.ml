@@ -25,3 +25,5 @@ let initial_state : Files.module_path -> state = fun path ->
 let handle_command : state -> command -> result = fun t cmd ->
   Time.restore t;
   try handle_cmd cmd; OK(Time.save ()) with Fatal(p,m) -> Error(p,m)
+
+let in_state st f x = Time.restore st; f x

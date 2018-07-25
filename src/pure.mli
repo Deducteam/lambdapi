@@ -10,3 +10,5 @@ type result =
 val initial_state : Files.module_path -> state
 
 val handle_command : state -> command -> result
+
+val in_state : state -> ('a -> 'b) -> 'a -> 'b
