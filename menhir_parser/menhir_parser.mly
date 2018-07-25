@@ -129,8 +129,11 @@ param:
 rule:
   | LEFTSQU c=context RIGHTSQU lhs=term LONGARROW rhs=term { (c, lhs, rhs ) }
 
+context_item:
+  | x=ID ao=option(COLON a=term { a }) { (Pos.none x, ao) }
+
 context:
-  | l=separated_list(COMMA, ID) { List.map (fun x -> (Pos.none x, None)) l }
+  | l=separated_list(COMMA, context_item) { l }
 
 %inline pid:
   | UNDERSCORE { "_" }
