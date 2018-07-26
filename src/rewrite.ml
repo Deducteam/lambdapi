@@ -95,108 +95,141 @@ let match_subst : term -> term -> term -> term = fun g_type l t ->
 let handle_rewrite : term -> unit = fun t ->
   (* Get current theorem, focus goal and the metavariable representing it. *)
   let thm = current_theorem() in
-  let (currentGoal, otherGoals) =
+  let (g, gs) =
     match thm.t_goals with
     | []    -> fatal_no_pos "No remaining goals..."
     | g::gs -> (g, gs)
   in
-  let metaCurrentGoal = currentGoal.g_meta in
+  let g_meta = g.g_meta in
+  let g_ctxt = Ctxt.of_env g.g_hyps in
   let t_type =
-    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) t with
+    match Solve.infer g_ctxt t with
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of argument passed to rewrite."
   in
   (* Check that the term passed as an argument to rewrite has the correct
    * type, i.e. represents an equaltiy and get the subterms l,r from l = r
    * as well as their type a. *)
-  (* let (env, t_type)  = break_prod t_type        in *)
-  let (a, l, r)      = break_eq t_type          in
+  (*************************************************************************)
+  (* TODO: Basic patterns. This should start with something like:
+   *       let (env, t_type)  = break_prod t_type in
+   * and keep track of substitutions in the first instance of l in g. *)
+  (*************************************************************************)
+  let (a, l, r) = break_eq t_type     in
+  (*************************************************************************)
+  (* TODO: Remove this. We keep it for now to print types, for debugging. *)
   let l_type =
-    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) l with
+    match Solve.infer g_ctxt l with
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of LHS."
   in
+  (*************************************************************************)
+  (* Make a new free variable X and pass it in match_subst to take the place of
+   * the RHS of the equality proof. *)
+  let x = Bindlib.new_var mkfree "X"  in
+  (* g_subst is the term obtained by replacing the occurrences of l in g with
+   * the new free variable X. *)
+  let g_subst = (match_subst g.g_type l (Vari x)) in
+  (* We know that g_subst is of the form App("P", T ), and we want to build a
+   * term of the form App("P", Prod(X, T)) so we break it up and then build it
+   * again, correctly. *)
+  let (p_symb, t1, ts)  =
+    match  get_args g_subst with
+    |(_, [])     -> fatal_no_pos "Should not get here."
+    |(p, t1::ts) -> (p, t1, ts)
+  in
+  let g_subst   = add_args t1 ts     in
+  (* We build the predicate
+   *                \X : T a. g_subst[X]
+   * this is later passed as an argument to eq_ind. *)
+  let pred_bind   = lift g_subst     in
+  let pred_bind   = Bindlib.unbox (Bindlib.bind_var x pred_bind)    in
+  (* FIXME: Get encodings from some standard signature, when it is defined. *)
+  let t_symb  = Symb(Sign.find (Sign.current_sign()) "T")           in
+  let t_a     = Appl(t_symb, a)      in
+  let pred    = Abst(t_a, pred_bind) in
 
-  (* Make a new free variable X and pass it in match_subst using bindlib *)
-  let x             = Bindlib.new_var mkfree "X"    in
-  let t'            = (match_subst currentGoal.g_type l (Vari x)) in
-  let (_, ar::rest) = get_args t' in
-  let t''           = add_args ar rest in
-
-  (* We build the predicate Pred := Lambda x. (match_subst ...) *)
-  let pred_0    = lift t'' in
-  let pred_1    = Bindlib.unbox (Bindlib.bind_var x pred_0) in
-  let t_symb    = Symb (Sign.find (Sign.current_sign()) "T") in
-  let ta        = Appl (t_symb, a) in
-  let pred      = Abst (ta, pred_1) in
+  (*************************************************************************)
+  (* TODO: Remove this. We keep it for now to print types, for debugging. *)
   let pred_type =
-    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) pred with
+    match Solve.infer g_ctxt pred with
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of pred."
   in
+  (*************************************************************************)
 
-  let p_symb    = Symb (Sign.find (Sign.current_sign()) "P") in
-
+  (* let p_symb    = Symb (Sign.find (Sign.current_sign()) "P") in *)
   (* Construct the type of the new goal, which is obtained by performing the
-     subsitution by r, and adding the P symbol on top *)
-  let new_type_0  = Bindlib.subst pred_1 r   in
-  let new_type = Appl(p_symb, new_type_0) in
+   *  subsitution by r, and adding the P symbol on top *)
+  (* FIXME: There is some duplication here, that could be avoided, by perhaps
+   * using Eval.snf or some other standard function. *)
+  let new_type = Bindlib.subst pred_bind r   in
+  let new_type = Appl(p_symb, new_type)      in
+
+  (*************************************************************************)
+  (* TODO: Remove this. We keep it for now to print types, for debugging. *)
   let new_type_type =
-    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) new_type with
+    match Solve.infer g_ctxt new_type with
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of the new type."
   in
-  let meta_env = Array.map Bindlib.unbox (Env.vars_of_env currentGoal.g_hyps)   in
-  let new_meta = Ctxt.make_meta (Ctxt.of_env currentGoal.g_hyps) new_type  in
+  (*************************************************************************)
+
+  (* Build the new meta variable. As a term it will be used in eq_ind, later on
+   * and as a meta it will be used to update the goal, once the rewrite tactic
+   * has finished. *)
+  let new_meta = Ctxt.make_meta g_ctxt new_type  in
   let new_m = match new_meta with
     | Meta(x ,_) -> x
-    | _ -> fatal_no_pos "Should not get here."
+    | _          -> fatal_no_pos "Should not get here."
   in
-  let new_meta_type = !(new_m.meta_type) in
   (* Get the inductive principle associated with Leibniz equality to transform
-     a proof of the new goal to a proof of the previous goal. *)
+   * a proof of the new goal to a proof of the previous goal. *)
+
   (* FIXME: When a Logic module with a notion of equality is defined get this
   from that module. *)
-  let eq_ind    = Symb(Sign.find (Sign.current_sign()) "eqind")        in
+  let eq_ind        = Symb(Sign.find (Sign.current_sign()) "eqind")     in
   (* Build the final lambda term that the tactic has produced. *)
-  let termProduced       = add_args eq_ind [a ; l ; r ; t ; pred ; new_meta]    in
-  let termProduced_type =
-    match Solve.infer (Ctxt.of_env currentGoal.g_hyps) termProduced with
+  let term_produced = add_args eq_ind [a ; l ; r ; t ; pred ; new_meta]  in
+
+  (*************************************************************************)
+  (* TODO: Remove this. We keep it for now to print types, for debugging. *)
+  let term_produced_type =
+    match Solve.infer g_ctxt term_produced with
     | Some a -> Eval.snf a
     | None   -> fatal_no_pos "Cannot infer type of the term produced."
   in
-  let b = Bindlib.bind_mvar (to_tvars meta_env) (lift termProduced) in
-  let b = Bindlib.unbox b in
-  (* FIXME: Type check the term used to instantiate the old meta. *)
-    wrn " ---- Type of the term produced by the tactic: [%a]\n" pp termProduced_type ;
-    wrn " ---- Goal: [%a]\n" pp currentGoal.g_type ;
-  if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) termProduced currentGoal.g_type) then
-    fatal_no_pos "The term we've produced doesn't have the expected type.";
+  (*************************************************************************)
 
-  metaCurrentGoal.meta_value := Some b ;
+  (* Type check the term used to instantiate the old meta. *)
+  if not (Solve.check g_ctxt term_produced g.g_type) then
+    fatal_no_pos "The term we've produced doesn't have the expected type.";
+  (* Update the value of the meta of the current goal. *)
+  let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
+  let b = Bindlib.bind_mvar (to_tvars meta_env) (lift term_produced) in
+  let b = Bindlib.unbox b in
+  g_meta.meta_value := Some b ;
+  (* "Instantiation". We don't really instantiate the new meta of the goal,
+   * since #REWRITE does not change g_hyps etc. we just update the necessary
+   * parameters. *)
   let thm =
-    {thm with t_goals = {currentGoal with g_meta = new_m ; g_type = new_type}::otherGoals} in
+    {thm with t_goals = {g with g_meta = new_m ; g_type = new_type}::gs} in
   theorem := Some thm ;
 
   begin
-    print_endline " ------------------------- " ;
-    wrn "The meta type: [%a]\n" pp !(metaCurrentGoal.meta_type) ;
-    wrn "Goal: [%a]\n" pp currentGoal.g_type ;
-    wrn "Equality proof used: [%a]\n" pp t ;
-    wrn "Type of the equality proof: [%a]\n" pp t_type ;
+    print_endline " ------------------- Information ----------------------- " ;
+    wrn "Goal:                          [%a]\n" pp g.g_type ;
+    wrn "Equality proof used:           [%a]\n" pp t ;
+    wrn "Type of equality proof:        [%a]\n" pp t_type ;
     wrn "LHS of the rewrite hypothesis: [%a]\n" pp l ;
-    wrn "Type of the LHS: [%a]\n" pp l_type ;
+    wrn "Type of the LHS:               [%a]\n" pp l_type ;
     wrn "RHS of the rewrite hypothesis: [%a]\n" pp r ;
-    wrn "Type of a: [%a]\n" pp a ;
-    wrn "t': [%a]\n" pp t' ;
-    wrn "t'': [%a]\n" pp t'' ;
-    wrn "Pred: [%a]\n" pp pred ;
-    wrn "Type of pred: [%a]\n" pp pred_type ;
-    wrn "New type to prove obtained by subst: [%a]\n" pp new_type ;
-    wrn "Type of the new type to prove: [%a]\n" pp new_type_type ;
-    wrn "Type of the new meta: [%a]\n" pp new_meta_type ;
-    wrn "Term produced by the tactic: [%a]\n" pp termProduced ;
-    wrn "Type of the term produced by the tactic: [%a]\n" pp termProduced_type ;
+    wrn "Pred:                          [%a]\n" pp pred ;
+    wrn "Type of pred:                  [%a]\n" pp pred_type ;
+    wrn "New type to prove:             [%a]\n" pp new_type ;
+    wrn "Type of new type to prove:     [%a]\n" pp new_type_type ;
+    wrn "Term produced:                 [%a]\n" pp term_produced ;
+    wrn "Type of the term produced:     [%a]\n" pp term_produced_type ;
   end
 
 
