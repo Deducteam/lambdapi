@@ -137,7 +137,7 @@ distclean: clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
-	@rm META
+	@rm -f META
 
 .PHONY: fullclean
 fullclean: distclean

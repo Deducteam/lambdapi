@@ -1,8 +1,0 @@
-name            = "lambdapi"
-version         = "dev"
-requires        = "earley,earley.str,bindlib,timed"
-description     = "The Lambdapi prover as a library"
-archive(byte)   = "lambdapi.cma"
-plugin(byte)    = "lambdapi.cma"
-archive(native) = "lambdapi.cmxa"
-plugin(native)  = "lambdapi.cmxs"
