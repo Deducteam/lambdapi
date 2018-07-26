@@ -116,6 +116,7 @@ let handle_rewrite : term -> unit = fun t ->
    * and keep track of substitutions in the first instance of l in g. *)
   (*************************************************************************)
   let (a, l, r) = break_eq t_type     in
+
   (*************************************************************************)
   (* TODO: Remove this. We keep it for now to print types, for debugging. *)
   let l_type =
@@ -124,6 +125,7 @@ let handle_rewrite : term -> unit = fun t ->
     | None   -> fatal_no_pos "Cannot infer type of LHS."
   in
   (*************************************************************************)
+
   (* Make a new free variable X and pass it in match_subst to take the place of
    * the RHS of the equality proof. *)
   let x = Bindlib.new_var mkfree "X"  in
@@ -131,7 +133,7 @@ let handle_rewrite : term -> unit = fun t ->
    * the new free variable X. *)
   let g_subst = (match_subst g.g_type l (Vari x)) in
   (* We know that g_subst is of the form App("P", T ), and we want to build a
-   * term of the form App("P", Prod(X, T)) so we break it up and then build it
+   * term of the form App("P", Abst(X, T)) so we break it up and then build it
    * again, correctly. *)
   let (p_symb, t1, ts)  =
     match  get_args g_subst with
@@ -140,7 +142,7 @@ let handle_rewrite : term -> unit = fun t ->
   in
   let g_subst   = add_args t1 ts     in
   (* We build the predicate
-   *                \X : T a. g_subst[X]
+   *              X : T a => g_subst[X]
    * this is later passed as an argument to eq_ind. *)
   let pred_bind   = lift g_subst     in
   let pred_bind   = Bindlib.unbox (Bindlib.bind_var x pred_bind)    in
@@ -158,7 +160,6 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (*************************************************************************)
 
-  (* let p_symb    = Symb (Sign.find (Sign.current_sign()) "P") in *)
   (* Construct the type of the new goal, which is obtained by performing the
    *  subsitution by r, and adding the P symbol on top *)
   (* FIXME: There is some duplication here, that could be avoided, by perhaps
@@ -175,7 +176,7 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (*************************************************************************)
 
-  (* Build the new meta variable. As a term it will be used in eq_ind, later on
+  (* Build the new meta variable. As a term it will be used in eq_ind later on
    * and as a meta it will be used to update the goal, once the rewrite tactic
    * has finished. *)
   let new_meta = Ctxt.make_meta g_ctxt new_type  in
@@ -203,7 +204,7 @@ let handle_rewrite : term -> unit = fun t ->
 
   (* Type check the term used to instantiate the old meta. *)
   if not (Solve.check g_ctxt term_produced g.g_type) then
-    fatal_no_pos "The term we've produced doesn't have the expected type.";
+    fatal_no_pos "Fatal error : The term the rewrite tactic has produced doesn't have the expected type.";
   (* Update the value of the meta of the current goal. *)
   let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift term_produced) in
