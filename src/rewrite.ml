@@ -146,13 +146,13 @@ let handle_rewrite : term -> unit = fun t ->
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of the new type."
   in
-  let meta_env  = Array.map Bindlib.unbox (Env.vars_of_env currentGoal.g_hyps)   in
-  let new_m     = fresh_meta new_type (metaCurrentGoal.meta_arity) in
-  let new_meta  = Meta(new_m, meta_env) in
+  let meta_env = Array.map Bindlib.unbox (Env.vars_of_env currentGoal.g_hyps)   in
   let new_meta = Ctxt.make_meta (Ctxt.of_env currentGoal.g_hyps) new_type  in
-  let new_meta_type = match new_meta with
-    |Meta(x,_) -> !(x.meta_type)
+  let new_m = match new_meta with
+    | Meta(x ,_) -> x
+    | _ -> fatal_no_pos "Should not get here."
   in
+  let new_meta_type = !(new_m.meta_type) in
   (* Get the inductive principle associated with Leibniz equality to transform
      a proof of the new goal to a proof of the previous goal. *)
   (* FIXME: When a Logic module with a notion of equality is defined get this
@@ -162,11 +162,9 @@ let handle_rewrite : term -> unit = fun t ->
   let termProduced       = add_args eq_ind [a ; l ; r ; t ; pred ; new_meta]    in
   let termProduced_type =
     match Solve.infer (Ctxt.of_env currentGoal.g_hyps) termProduced with
-    | Some a -> unfold  a
+    | Some a -> Eval.snf a
     | None   -> fatal_no_pos "Cannot infer type of the term produced."
   in
-
-
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift termProduced) in
   let b = Bindlib.unbox b in
   (* FIXME: Type check the term used to instantiate the old meta. *)
