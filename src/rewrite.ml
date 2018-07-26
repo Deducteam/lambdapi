@@ -145,11 +145,11 @@ let handle_rewrite : term -> unit = fun t ->
     match Solve.infer (Ctxt.of_env currentGoal.g_hyps) new_type with
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of the new type."
-     in
-
+  in
   let meta_env  = Array.map Bindlib.unbox (Env.vars_of_env currentGoal.g_hyps)   in
   let new_m     = fresh_meta new_type (metaCurrentGoal.meta_arity) in
   let new_meta  = Meta(new_m, meta_env) in
+  let new_meta = Ctxt.make_meta (Ctxt.of_env currentGoal.g_hyps) new_type  in
   let new_meta_type = match new_meta with
     |Meta(x,_) -> !(x.meta_type)
   in
@@ -160,27 +160,27 @@ let handle_rewrite : term -> unit = fun t ->
   let eq_ind    = Symb(Sign.find (Sign.current_sign()) "eqind")        in
   (* Build the final lambda term that the tactic has produced. *)
   let termProduced       = add_args eq_ind [a ; l ; r ; t ; pred ; new_meta]    in
-  (*
   let termProduced_type =
     match Solve.infer (Ctxt.of_env currentGoal.g_hyps) termProduced with
-    | Some a -> a
+    | Some a -> unfold  a
     | None   -> fatal_no_pos "Cannot infer type of the term produced."
   in
-  *)
+
 
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift termProduced) in
   let b = Bindlib.unbox b in
   (* FIXME: Type check the term used to instantiate the old meta. *)
-  (* if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) termProduced !(metaCurrentGoal.meta_type)) then
-     fatal_no_pos "The term we've produced doesn't have the expected type."; *)
+   (* if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) termProduced !(metaCurrentGoal.meta_type)) then *)
+     (* fatal_no_pos "The term we've produced doesn't have the expected type."; *)
 
   metaCurrentGoal.meta_value := Some b ;
   let thm =
-    {thm with t_goals = {currentGoal with g_meta = new_m ; g_type = new_type }::otherGoals} in
+    {thm with t_goals = {currentGoal with g_meta = new_m ; g_type = new_type}::otherGoals} in
   theorem := Some thm ;
 
   begin
     print_endline " ------------------------- " ;
+    wrn "The meta type: [%a]\n" pp !(metaCurrentGoal.meta_type) ;
     wrn "Goal: [%a]\n" pp currentGoal.g_type ;
     wrn "Equality proof used: [%a]\n" pp t ;
     wrn "Type of the equality proof: [%a]\n" pp t_type ;
@@ -196,7 +196,7 @@ let handle_rewrite : term -> unit = fun t ->
     wrn "Type of the new type to prove: [%a]\n" pp new_type_type ;
     wrn "Type of the new meta: [%a]\n" pp new_meta_type ;
     wrn "Term produced by the tactic: [%a]\n" pp termProduced ;
-    (* wrn "Type of the term produced by the tactic: [%a]\n" pp termProduced_type ; *)
+    wrn "Type of the term produced by the tactic: [%a]\n" pp termProduced_type ;
   end
 
 
