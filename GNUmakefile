@@ -168,7 +168,7 @@ META: GNUmakefile
 .PHONY: uninstall
 uninstall:
 	@ocamlfind remove lambdapi
-	@rm -rf $(BINDIR)/lambdapi
+	@rm -f $(BINDIR)/lambdapi
 
 # Install the main program.
 .PHONY: install
