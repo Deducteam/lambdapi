@@ -218,7 +218,7 @@ let handle_rewrite : term -> unit = fun t ->
   theorem := Some thm ;
 
   begin
-    print_endline " ------------------- Information ----------------------- " ;
+    print_endline " -------------- Rewrite's information -------------- " ;
     wrn "Goal:                          [%a]\n" pp g.g_type ;
     wrn "Equality proof used:           [%a]\n" pp t ;
     wrn "Type of equality proof:        [%a]\n" pp t_type ;
