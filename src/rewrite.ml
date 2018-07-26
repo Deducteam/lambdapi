@@ -168,8 +168,10 @@ let handle_rewrite : term -> unit = fun t ->
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift termProduced) in
   let b = Bindlib.unbox b in
   (* FIXME: Type check the term used to instantiate the old meta. *)
-   (* if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) termProduced !(metaCurrentGoal.meta_type)) then *)
-     (* fatal_no_pos "The term we've produced doesn't have the expected type."; *)
+    wrn " ---- Type of the term produced by the tactic: [%a]\n" pp termProduced_type ;
+    wrn " ---- Goal: [%a]\n" pp currentGoal.g_type ;
+  if not (Solve.check (Ctxt.of_env currentGoal.g_hyps) termProduced currentGoal.g_type) then
+    fatal_no_pos "The term we've produced doesn't have the expected type.";
 
   metaCurrentGoal.meta_value := Some b ;
   let thm =
