@@ -155,14 +155,14 @@ fullclean: distclean
 # META generation.
 META: GNUmakefile
 	@echo "[GEN] $@ (version $(VERSION))"
-	@echo "name            = \"lambdapi\""                          > $@
-	@echo "version         = \"$(VERSION)\""                       >> $@
-	@echo "requires        = \"earley,earley.str,bindlib,timed\""  >> $@
-	@echo "description     = \"The Lambdapi prover as a library\"" >> $@
-	@echo "archive(byte)   = \"lambdapi.cma\""                     >> $@
-	@echo "plugin(byte)    = \"lambdapi.cma\""                     >> $@
-	@echo "archive(native) = \"lambdapi.cmxa\""                    >> $@
-	@echo "plugin(native)  = \"lambdapi.cmxs\""                    >> $@
+	@echo "name            = \"lambdapi\""                              > $@
+	@echo "version         = \"$(VERSION)\""                           >> $@
+	@echo "requires        = \"unix,earley,earley.str,bindlib,timed\"" >> $@
+	@echo "description     = \"The Lambdapi prover as a library\""     >> $@
+	@echo "archive(byte)   = \"lambdapi.cma\""                         >> $@
+	@echo "plugin(byte)    = \"lambdapi.cma\""                         >> $@
+	@echo "archive(native) = \"lambdapi.cmxa\""                        >> $@
+	@echo "plugin(native)  = \"lambdapi.cmxs\""                        >> $@
 
 # Uninstalling everything.
 .PHONY: uninstall

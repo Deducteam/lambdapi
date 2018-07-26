@@ -14,6 +14,7 @@ remove: [make "uninstall"]
 depends:
   [ "ocamlfind" {build}
     "ocamlbuild" {build}
+    "unix"
     "earley" {>= "1.0.2"}
     "earley-ocaml" {>= "1.0.2"}
     "bindlib" {>= "5.0.0"}
