@@ -155,7 +155,8 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 
 
 (; At the moment, we can unfortunately prove anything in the proof mode
-  because QED does not check the whole term obtained.
+  because QED does not check the whole term obtained and because it doesn't
+  even check that all subgoals have been proven.
   Once this is fixed, the following term won't typecheck anymore, which will
   be much beter ;)
 #PROOF fixme : (!goal, P goal).
