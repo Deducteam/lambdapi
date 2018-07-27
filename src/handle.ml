@@ -144,14 +144,19 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   let t = { t_name = s; t_proof = m; t_goals = [g] } in
   theorem := Some(t)
 
-(** [handle_end_proof()] adds the proved theorem in the signature and
-    ends proof mode. *)
-let handle_end_proof () : unit =
-  out 3 "Proof finished!\n";
-  let thm = current_theorem() in
-  let s = current_sign() in
+(** [handle_qed ()] checks that no goal remain for the current theorem, and it
+    is then added to the signature, and the proof mode is exited. *)
+let handle_qed : unit -> unit = fun () ->
+  let thm = current_theorem () in
+  match thm.t_goals with
+  | _::_ -> fatal_no_pos "Current proof is not finished."
+  | []   ->
+  (* Adding the symbol. *)
+  let s = current_sign () in
   ignore (Sign.add_symbol s true thm.t_name !(thm.t_proof.meta_type));
-  theorem := None
+  (* Resetting theorem state. *)
+  theorem := None;
+  out 3 "[%s] is proved.\n" thm.t_name.elt
 
 (** [handle_focus i] focuses on the [i]-th goal. *)
 let handle_focus : int -> unit = fun i ->
@@ -291,7 +296,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
     | P_Focus(i)            -> handle_focus i
-    | P_EndProof            -> handle_end_proof ()
+    | P_QED                 -> handle_qed ()
     | P_Other(c)            ->
         if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos
   in
