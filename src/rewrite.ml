@@ -90,8 +90,7 @@ let match_subst : term -> term -> term -> term = fun g_type l t ->
 (****************************************************************************)
 
 (** [handle_rewrite] is given a term which must be of the form l = r (for now
-    with no quantifiers) and replaces the first instance of l in g with the
-    corresponding instance of r. *)
+    with no quantifiers) and replaces the all instances of l in g with r.  *)
 let handle_rewrite : term -> unit = fun t ->
   (* Get current theorem, focus goal and the metavariable representing it. *)
   let thm = current_theorem() in
