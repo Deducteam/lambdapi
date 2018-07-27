@@ -155,36 +155,10 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 
 
 (; At the moment, we can unfortunately prove anything in the proof mode
-  because QED does not check the whole term obtained.
-  Once this is fixed, the following term won't typecheck anymore, which will
+  because QED does not check the whole term obtained and because it doesn't
+  even check that all subgoals have been proven.
+  Once this is fixed, the following won't be accepted anymore, which will
   be much beter ;)
 #PROOF fixme : (!goal, P goal).
 #REFINE goal => _.
 #QED.
-
-
-(; --------------------------------------------------------------- ;)
-(; SOME EXPLANATIONS ABOUT WHAT'S CURRENTLY DONE IN HANDLE_REWRITE ;)
-(; --------------------------------------------------------------- ;)
-
-(; CAREFUL, THESE TERMS DON'T TYPECHECK : ;)
-(; -------------------------------------- ;)
-
-(; canNotTcheck : nat -> Type. ;)
-(; because we do NOT have the same type hierarchy in the logical framework as Coq ;)
-
-(; And we have the same for the following : ;)
-(; canNotTcheckEither : nat -> Prop. ;)
-
-(; canNotTcheckEither2 : !x, eq nat x x. ;)
-(; Because this thing would have type [forall nat, Prop], which,
-  as shown above, is not acceptable either in this type theory ;)
-
-(; so of course the following won't typecheck either : ;)
-(; canNotTcheckEither3 : P (!x, eq nat x x). ;)
-
-
-(; HOWEVER, THESE TERMS DO TYPECHECK ;)
-(; --------------------------------- ;)
-
-(; canTcheck : !x, P (eq nat x x). ;)
