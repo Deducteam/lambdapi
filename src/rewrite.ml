@@ -107,14 +107,16 @@ let handle_rewrite : term -> unit = fun t ->
     | Some a -> a
     | None   -> fatal_no_pos "Cannot infer type of argument passed to rewrite."
   in
-  (* Check that the term passed as an argument to rewrite has the correct
-   * type, i.e. represents an equaltiy and get the subterms l,r from l = r
-   * as well as their type a. *)
+
   (*************************************************************************)
   (* TODO: Basic patterns. This should start with something like:
    *       let (env, t_type)  = break_prod t_type in
    * and keep track of substitutions in the first instance of l in g. *)
   (*************************************************************************)
+
+  (* Check that the term passed as an argument to rewrite has the correct
+   * type, i.e. represents an equaltiy and get the subterms l,r from l = r
+   * as well as their type a. *)
   let (a, l, r) = break_eq t_type     in
 
   (*************************************************************************)
@@ -179,9 +181,9 @@ let handle_rewrite : term -> unit = fun t ->
   (* Build the new meta variable. As a term it will be used in eq_ind later on
    * and as a meta it will be used to update the goal, once the rewrite tactic
    * has finished. *)
-  let new_meta = Ctxt.make_meta g_ctxt new_type  in
-  let new_m = match new_meta with
-    | Meta(x ,_) -> x
+  let new_m_term = Ctxt.make_meta g_ctxt new_type  in
+  let new_m = match new_m_term with
+    | Meta(x, _) -> x
     | _          -> fatal_no_pos "Should not get here."
   in
   (* Get the inductive principle associated with Leibniz equality to transform
@@ -191,7 +193,7 @@ let handle_rewrite : term -> unit = fun t ->
   from that module. *)
   let eq_ind        = Symb(Sign.find (Sign.current_sign()) "eqind")     in
   (* Build the final lambda term that the tactic has produced. *)
-  let term_produced = add_args eq_ind [a ; l ; r ; t ; pred ; new_meta]  in
+  let term_produced = add_args eq_ind [a ; l ; r ; t ; pred ; new_m_term]  in
 
   (*************************************************************************)
   (* TODO: Remove this. We keep it for now to print types, for debugging. *)
@@ -204,21 +206,20 @@ let handle_rewrite : term -> unit = fun t ->
 
   (* Type check the term used to instantiate the old meta. *)
   if not (Solve.check g_ctxt term_produced g.g_type) then
-    fatal_no_pos "Fatal error : The term the rewrite tactic has produced doesn't have the expected type.";
+    fatal_no_pos "Fatal error: Wrong type.";
   (* Update the value of the meta of the current goal. *)
   let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
   let b = Bindlib.bind_mvar (to_tvars meta_env) (lift term_produced) in
   let b = Bindlib.unbox b in
   g_meta.meta_value := Some b ;
-  (* "Instantiation". We don't really instantiate the new meta of the goal,
-   * since #REWRITE does not change g_hyps etc. we just update the necessary
-   * parameters. *)
+  (*Since #REWRITE does not change g_hyps etc. we just update the necessary
+   * parameters in the original goal. *)
   let thm =
     {thm with t_goals = {g with g_meta = new_m ; g_type = new_type}::gs} in
   theorem := Some thm ;
 
   begin
-    print_endline " -------------- Rewrite's information -------------- " ;
+    print_endline " -------------- #REWRITE information -------------- " ;
     wrn "Goal:                          [%a]\n" pp g.g_type ;
     wrn "Equality proof used:           [%a]\n" pp t ;
     wrn "Type of equality proof:        [%a]\n" pp t_type ;
@@ -249,3 +250,30 @@ let handle_rewrite : term -> unit = fun t ->
  *      eqind T l r (lemma) (Pi X. G[X]) G'
  * or something along these lines, but we will see.
  *)
+
+
+(* --------------- TODO (From the meetings on 26/07/2018) ------------------ *)
+
+(*****************************************************************************
+ * 1) Clean up the code.
+ * 2) Do more proofs. (Any time.) *
+ *    For example we are missing a proof of associativity.
+ * 3) Rewrite in hypotheses. (Sept.) *** - 2 weeks?
+ *    This would be the implementation of a similar tactic called #REWRITE_IN
+ *    which given a hypothesis an an equality proof rewrites in the hypothesis.
+ *    The core mechanism should be the same, but what is updated in the end
+ *    woud change. Difficulties
+ *      a) Change the parser to handle the new command.
+ *      b) Find out what happens when a hypothesis is rewritten.
+ * 4) Basic patterns. (Jul. - Sept.) ****
+ *    The lemma passed to rewrite is allowed to have quantifiers, so it is of
+ *    the form:
+ *        !x1:T1 ... !xn:Tn.  l(x1, ..., xn) = r(x1, ..., xn).
+ *    Then we need to find the first instance of l in g_type, keep the substi-
+ *    tution and rewrite all such instances with the corresponding instances of
+ *    r.
+ * 5) Full SSReflect patterns. (Spet.) ****
+ *    This would mainly involve nesting the machinery from 4 but it is not that
+ *    simple.
+ *)
+
