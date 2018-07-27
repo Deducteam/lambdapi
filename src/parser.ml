@@ -212,7 +212,7 @@ type p_cmd =
   (** Focus on a goal. *)
   | P_Focus of int
   (** End the proof. *)
-  | P_EndProof
+  | P_QED
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -289,7 +289,7 @@ let parser cmd_aux =
   | _SIMPL_                          -> P_Simpl
   | _REWRITE_ t:expr                 -> P_Rewrite(t)
   | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
-  | _QED_                            -> P_EndProof
+  | _QED_                            -> P_QED
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
