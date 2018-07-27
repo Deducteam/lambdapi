@@ -1,10 +1,10 @@
 Console
 Ctxt
+Env
 Eval
 Extra
 Files
 Handle
-Metas
 Parser
 Pos
 Print
@@ -16,3 +16,4 @@ Sign
 Solve
 Sr
 Terms
+Typing
