@@ -223,3 +223,41 @@ let handle_rewrite : term -> unit = fun t ->
     wrn "Type of the term produced:     [%a]\n" pp term_produced_type ;
   end
 
+(*--------------- TODO (From the meetings on 16/07/2018) ------------------ *)
+(*****************************************************************************
+ *  1) Take G build G[x].
+ *               --> Started doing that in match_subst.
+ *  2) Make a new variable X
+ *  3) Compute G[X], this is simply the application of match_subst with X as
+ *     the term to substitute in.
+ *  4) Build Prod(X, G[X]) using bindlib.
+ *****************************************************************************
+ * Once the above is done we will be close to finishing the simple rewrite
+ * tactic, by using:
+ *      eqind T l r (lemma) (Pi X. G[X]) G'
+ * or something along these lines, but we will see.
+ *)
+
+(* --------------- TODO (From the meetings on 26/07/2018) ------------------ *)
+(*****************************************************************************
+ * 1) Clean up the code.
+ * 2) Do more proofs. (Any time.) *
+ *    For example we are missing a proof of associativity.
+ * 3) Rewrite in hypotheses. (Sept.) *** - 2 weeks?
+ *    This would be the implementation of a similar tactic called #REWRITE_IN
+ *    which given a hypothesis an an equality proof rewrites in the hypothesis.
+ *    The core mechanism should be the same, but what is updated in the end
+ *    woud change. Difficulties
+ *      a) Change the parser to handle the new command.
+ *      b) Find out what happens when a hypothesis is rewritten.
+ * 4) Basic patterns. (Jul. - Sept.) ****
+ *    The lemma passed to rewrite is allowed to have quantifiers, so it is of
+ *    the form:
+ *        !x1:T1 ... !xn:Tn.  l(x1, ..., xn) = r(x1, ..., xn).
+ *    Then we need to find the first instance of l in g_type, keep the substi-
+ *    tution and rewrite all such instances with the corresponding instances of
+ *    r.
+ * 5) Full SSReflect patterns. (Spet.) ****
+ *    This would mainly involve nesting the machinery from 4 but it is not that
+ *    simple.
+ *)
