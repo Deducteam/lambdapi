@@ -1,0 +1,87 @@
+(; Data type of booleans. ;)
+
+B : Type.
+
+true : B.
+false : B.
+
+(; Data type of natural numbers. ;)
+
+N : Type.
+
+0 : N.
+s : N -> N.
+
+def 1 := s 0.
+
+(; Addition on natural numbers. ;)
+
+def add : N -> N -> N.
+
+add 0 ?x --> ?x.
+add (s ?x) ?y --> s (add ?x ?y).
+
+#EVAL (add (s 1) (s 1)).
+
+(; Type of data type codes and their interpretation as types. ;)
+
+U : Type.
+
+def T : U -> Type.
+
+bool : U.
+
+T bool --> B.
+
+nat : U.
+
+T nat --> N.
+
+pi : !a : U, (T a -> U) -> U.
+
+T (pi ?a ?f) --> !x:T ?a, T (?f x).
+
+(; Type of propositions and their interpretation as types. ;)
+
+Prop : Type.
+
+def P : Prop -> Type.
+
+all : !a:U, (T a -> Prop) -> Prop.
+
+P (all ?a ?f) --> !x:T ?a, P (?f x).
+
+(; Induction principle on N. ;)
+
+def nat_ind : !p:N -> Prop, P (p 0) -> (!n, P (p n) -> P (p (s n))) -> !n, P (p n).
+
+nat_ind _  ?u _  0      --> ?u.
+nat_ind ?p ?u ?v (s ?n) --> ?v ?n (nat_ind ?p ?u ?v ?n).
+
+(; Boolean equality on N. ;)
+
+def beq : N->N->B.
+
+beq 0 0 --> true.
+beq (s ?x) (s ?y) --> beq ?x ?y.
+beq 0 (s _) --> false.
+beq (s _) 0 --> false.
+
+(; Leibniz equality. ;)
+
+eq : !a, T a -> T a -> Prop.
+
+refl : !a, !x, P (eq a x x).
+
+eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
+  (;FIXME: try to infer the type of p.;)
+
+(; Rewrite test ;)
+def add_s_right : !x, !y, P (eq nat (add x (s y)) (s (add x y))).
+
+#PROOF test : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
+#REFINE x => y => z => _.
+#PRINT.
+#REWRITE add_s_right x y.
+#REFINE refl nat (add (s (add x y)) z).
+#QED.
