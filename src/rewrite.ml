@@ -7,21 +7,11 @@ open Console
 open Proofs
 
 (****************************************************************************)
-(* Error function. *)
-let fail_to_match = fun n ->
-  match n with
-  | 0 -> fatal_no_pos "Can only use rewrite with equalities."
-  | 1 -> fatal_no_pos "Cannot rewrite under products."
-  | 2 -> fatal_no_pos "Cannot rewrite under abstractions."
-  | 3 -> fatal_no_pos "Cannot rewrite  meta variables."
-  | 4 -> fatal_no_pos "Should not get here, match_subst."
-  | _ -> fatal_no_pos "Incorrect error code."
-
 (* Minimal unwrapper. *)
 let get : 'a option -> 'a = fun t ->
   match t with
   | Some x -> x
-  | None   -> fail_to_match 0
+  | None   -> fatal_no_pos "Can only use rewrite with equalities."
 
 (****************************************************************************)
 
@@ -52,7 +42,7 @@ let break_eq : term -> term * term * term = fun t ->
   let check_symb : term -> string -> unit = fun t n ->
     match unfold t with
     | Symb s when s.sym_name = n -> ()
-    | _ -> fail_to_match 0
+    | _ ->  fatal_no_pos "Can only use rewrite with equalities."
   in
   match get_args t with
   | (p, [eq]) ->
@@ -60,9 +50,9 @@ let break_eq : term -> term * term * term = fun t ->
         check_symb p "P" ;
         match get_args eq with
         | (e, [a ; l ; r]) -> check_symb e "eq" ; (a, l, r)
-        | _                -> fail_to_match 0
+        | _ -> fatal_no_pos "Can only use rewrite with equalities."
       end
-  | _ -> fail_to_match 0
+  | _ -> fatal_no_pos "Can only use rewrite with equalities."
 
 (** [term_match] is given two terms (for now) and determines if they match.
     at this stage this is just done by using the syntactic equality function
@@ -79,12 +69,12 @@ let match_subst : term -> term -> term -> term = fun g_type l t ->
     let cur = unfold cur in
     if term_match cur l then t else match cur with
     | Vari _ | Type | Kind | Symb _ -> cur
-    | Appl(t1, t2) ->
-        let t1' = matching_aux t1 and t2' = matching_aux t2 in Appl(t1', t2')
-    | Prod _  -> fail_to_match 1     (* For now we do not "mess" with any  *)
-    | Abst _  -> fail_to_match 2     (* terms conaining Prodi, Abst, Meta. *)
-    | Meta _  -> fail_to_match 3
-    | _       -> fail_to_match 4
+    | Appl(t1, t2) -> Appl(matching_aux t1, matching_aux t2)
+    (* For now we do not "mess" with terms containing Prod, Abst, Meta. *)
+    | Prod _  -> fatal_no_pos "Cannot rewrite under products."
+    | Abst _  -> fatal_no_pos "Cannot rewrite under abstractions."
+    | Meta _  -> fatal_no_pos "Cannot rewrite  meta variables."
+    | _       -> fatal_no_pos "Should not get here, match_subst."
   in matching_aux g_type
 
 (****************************************************************************)
@@ -218,18 +208,18 @@ let handle_rewrite : term -> unit = fun t ->
   theorem := Some thm ;
 
   begin
-    print_endline " -------------- #REWRITE information -------------- " ;
-    wrn "Goal:                          [%a]\n" pp g.g_type ;
-    wrn "Equality proof used:           [%a]\n" pp t ;
-    wrn "Type of equality proof:        [%a]\n" pp t_type ;
-    wrn "LHS of the rewrite hypothesis: [%a]\n" pp l ;
-    wrn "Type of the LHS:               [%a]\n" pp l_type ;
-    wrn "RHS of the rewrite hypothesis: [%a]\n" pp r ;
-    wrn "Pred:                          [%a]\n" pp pred ;
-    wrn "Type of pred:                  [%a]\n" pp pred_type ;
-    wrn "New type to prove:             [%a]\n" pp new_type ;
-    wrn "Type of new type to prove:     [%a]\n" pp new_type_type ;
-    wrn "Term produced:                 [%a]\n" pp term_produced ;
+    wrn " -------------- #REWRITE information -------------- \n"      ;
+    wrn "Goal:                          [%a]\n" pp g.g_type           ;
+    wrn "Equality proof used:           [%a]\n" pp t                  ;
+    wrn "Type of equality proof:        [%a]\n" pp t_type             ;
+    wrn "LHS of the rewrite hypothesis: [%a]\n" pp l                  ;
+    wrn "Type of the LHS:               [%a]\n" pp l_type             ;
+    wrn "RHS of the rewrite hypothesis: [%a]\n" pp r                  ;
+    wrn "Pred:                          [%a]\n" pp pred               ;
+    wrn "Type of pred:                  [%a]\n" pp pred_type          ;
+    wrn "New type to prove:             [%a]\n" pp new_type           ;
+    wrn "Type of new type to prove:     [%a]\n" pp new_type_type      ;
+    wrn "Term produced:                 [%a]\n" pp term_produced      ;
     wrn "Type of the term produced:     [%a]\n" pp term_produced_type ;
   end
 
