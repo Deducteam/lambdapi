@@ -24,7 +24,7 @@ install:
   - make install
   - make install_vim
 script:
-  - make tests
+  - make real_tests
 os:
   - linux
 notifications:
