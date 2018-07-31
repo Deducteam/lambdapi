@@ -73,20 +73,15 @@ eq : !a, T a -> T a -> Prop.
 
 refl : !a, !x, P (eq a x x).
 
-eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p x) -> P (p y).
+eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
   (;FIXME: try to infer the type of p.;)
 
 (; Rewrite test ;)
-def add_comm : !x, ! y, P (eq nat (add x y ) (add y x)).
-
 def add_s_right : !x, !y, P (eq nat (add x (s y)) (s (add x y))).
-def add_easy : !x, !y, P (eq nat (x) (y)).
 
 #PROOF test : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
 #REFINE x => y => z => _.
 #PRINT.
-#REWRITE add_s_right.
-(;
+#REWRITE add_s_right x y.
 #REFINE refl nat (add (s (add x y)) z).
 #QED.
-;)
