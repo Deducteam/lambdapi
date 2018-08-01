@@ -10,22 +10,61 @@ open Proofs
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** For now, a pattern is just a term. *)
-type pattern = term
+(****************************************************************************)
+(* Obtain the required symbols from the current signature. *)
+(* FIXME use a parametric noton of equality. *)
 
-(** [term_match p t] is given a (pattern) term [p] and a term [t], and returns
-    [true] if and only if [t] “matches” [p]. Note that, for the moment, we use
-    syntactic equality. *)
-let term_match : pattern -> term -> bool = Terms.eq
 
-(** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
-    Note that [t] should not contain products, abstractions, metavariables, or
+let find_sym : string -> Sign.t -> sym = fun name sign ->
+    try Sign.find sign name with Not_found ->
+    fatal_no_pos "Current signature does not define symbol [%s]." name
+
+let is_symb : sym -> term -> bool = fun s t ->
+  match unfold t with
+  | Symb(r) -> r == s
+  | _       -> false
+(****************************************************************************)
+
+
+(** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
+    type of the term passed to #REWRITE which is assumed to be of the form
+                    !x1 : A1 ... ! xn : An U
+    and it returns an environment [x1 : A1, ... xn : An] and U. *)
+let break_prod : term -> Ctxt.t * term = fun t ->
+   let rec aux t acc =
+     match t with
+     | Prod(a,b) ->
+        let (v,b) = Bindlib.unbind b in
+        aux b ((Bindlib.name_of v,(v,lift a))::acc)
+     | _ -> (Ctxt.of_env acc, t)
+   in aux t []
+
+(** [break_eq] is given the type of the term passed as an argument to #REWRITE
+    and checks that it is an equality proof. That is, it checks that t matches
+    with:
+                          "P" ("eq" a l r)
+    If the argument does match a term of the shape l = r then it returns the
+    triple (a, l, r) otherwise it throws a fatal error. *)
+let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
+    match get_args t with
+    | (p,[eq]) when is_symb (find_sym "P" sign) p ->
+        begin
+          match get_args eq with
+          | (e,[a;l;r]) when is_symb (find_sym "eq" sign) e -> (a, l, r)
+          | _                                  ->
+              fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+        end
+    | _                              ->
+        fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+
+(** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
+    Note that [t2] should not contain products, abstractions, metavariables, or
     other awkward terms. *)
-let bind_match : pattern -> term -> (term, term) Bindlib.binder = fun p t ->
+let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   let x = Bindlib.new_var mkfree "X" in
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
-    if term_match p t then _Vari x else
+    if Terms.eq t1 t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type
@@ -40,27 +79,17 @@ let bind_match : pattern -> term -> (term, term) Bindlib.binder = fun p t ->
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
   in
-  Bindlib.unbox (Bindlib.bind_var x (lift_subst t))
+  Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
     the RHS in the obtained goal. *)
 let handle_rewrite : term -> unit = fun t ->
-  (* Obtain the required symbols from the current signature. *)
-  (* FIXME use a parametric noton of equality. *)
-  let find_sym : string -> sym =
-    let find_symb sign name =
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    find_symb (Sign.current_sign ())
-  in
-  let sign_P = find_sym "P" in
-  let sign_T = find_sym "T" in
-  let sign_eq = find_sym "eq" in
-  let sign_eqind = find_sym "eqind" in
-
+  let sign = Sign.current_sign () in
+  let sign_P = find_sym "P" sign in
+  let sign_T = find_sym "T" sign  in
+  let sign_eqind = find_sym "eqind" sign in
   (* Get the focused goal, and related data. *)
   let thm = current_theorem () in
   let (g, gs) =
@@ -77,27 +106,12 @@ let handle_rewrite : term -> unit = fun t ->
     | None    ->
         fatal_no_pos "Cannot infer the type of [%a] (given to rewrite)." pp t
   in
+  (***************************************************************************)
 
-  (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
-  (* TODO allow for quantifiers. *)
-  let is_symb : sym -> term -> bool = fun s t ->
-    match unfold t with
-    | Symb(r) -> r == s
-    | _       -> false
-  in
-  let (a, l, r) =
-    match get_args t_type with
-    | (p,[eq]) when is_symb sign_P p ->
-        begin
-          match get_args eq with
-          | (e,[a;l;r]) when is_symb sign_eq e -> (a, l, r)
-          | _                                  ->
-              fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
-        end
-    | _                              ->
-        fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
-  in
-
+  (***************************************************************************)
+  (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
+   * parameters. *)
+  let (a, l, r) =  break_eq sign t_type in
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -118,7 +132,7 @@ let handle_rewrite : term -> unit = fun t ->
   let new_goal =
     match goal_term with
     | Meta(m,_) -> m
-    | _          -> assert false (* Cannot happen. *)
+    | _         -> assert false (* Cannot happen. *)
   in
 
   (* Build the final term produced by the tactic, and check its type. *)
