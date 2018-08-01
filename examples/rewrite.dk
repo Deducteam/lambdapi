@@ -82,6 +82,6 @@ def add_s_right : !x, !y, P (eq nat (add x (s y)) (s (add x y))).
 #PROOF test : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
 #REFINE x => y => z => _.
 #PRINT.
-#REWRITE add_s_right x y.
+#REWRITE add_s_right _ _.
 #REFINE refl nat (add (s (add x y)) z).
 #QED.

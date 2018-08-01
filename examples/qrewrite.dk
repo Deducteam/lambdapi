@@ -82,7 +82,7 @@ def add_comm : !x, !y, P (eq nat (add x y) (add y x)).
 #PROOF stupid : !a, !b, P (eq nat (add a b) (add b a)).
 #REFINE a => b => _.
 #PRINT.
-#REWRITE add_comm _ _.
-(;#REFINE refl nat (add b a).
+#REWRITE add_comm a b.
+#REFINE refl nat (add b a).
 #QED.
-;)
+

@@ -5,6 +5,7 @@ open Terms
 open Print
 open Console
 open Proofs
+open Solve
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
@@ -13,8 +14,6 @@ let log_rewr = log_rewr.logger
 (****************************************************************************)
 (* Obtain the required symbols from the current signature. *)
 (* FIXME use a parametric noton of equality. *)
-
-
 let find_sym : string -> Sign.t -> sym = fun name sign ->
     try Sign.find sign name with Not_found ->
     fatal_no_pos "Current signature does not define symbol [%s]." name
@@ -24,8 +23,6 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 (****************************************************************************)
-
-
 (** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
     type of the term passed to #REWRITE which is assumed to be of the form
                     !x1 : A1 ... ! xn : An U
@@ -56,6 +53,68 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
         end
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+
+let apply_sub : term -> (term * term) list -> term = fun t sub ->
+  let rec apply_sub_aux : term -> term = fun t ->
+    let t = unfold t in
+    match t with
+    | Meta(_)     -> let p = List.assoc_opt t sub in
+      begin
+         match p with
+          | Some p -> p
+          | None   -> t
+      end
+    | Appl(t1,t2) -> Appl(apply_sub_aux t1, apply_sub_aux t2)
+    | _           -> t
+  in
+  apply_sub_aux t
+
+let build_sub : term * term -> (term * term) list option = fun (g,l) ->
+  let rec build_sub_aux :
+    term * term -> (term * term) list -> (term * term) list option = fun (g,l) acc ->
+    match (g,l) with
+    | (Type, Type) -> Some acc
+    | (Kind, Kind) -> Some acc
+    | (Symb(x), Symb(y)) -> if x==y then Some acc else None
+    | (Appl(x,y), Appl(u,v)) ->
+        begin
+          match build_sub_aux (x,u) acc with
+          | Some subst -> build_sub_aux (y,v) subst
+          | None       -> None
+        end
+    | (t, Meta(_)) ->
+        begin
+          let  p = List.assoc_opt t acc in
+          match p with
+          | Some _ -> Some acc
+          | None   -> Some ((l,t)::acc)
+        end
+    | (_, _) -> None
+  in build_sub_aux (g,l) []
+
+let substitution : term -> term * term -> term * term *(term * term) list = fun g (l,r) ->
+  let rec find_sub : term -> (term * term) list option = fun g ->
+    match build_sub (g,l) with
+    | Some sub -> Some sub
+    | None ->
+      begin
+          match g with
+          | Appl(x,y) ->
+             begin
+              match find_sub x with
+              | Some sub -> Some sub
+              | None -> find_sub y
+             end
+          | _ -> None
+      end
+  in
+  let sigma = find_sub g in
+  let sigma =
+  match sigma with
+  | Some sub -> sub
+  | None -> []
+  in
+  (apply_sub l sigma, apply_sub r sigma, sigma)
 
 (** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
     Note that [t2] should not contain products, abstractions, metavariables, or
@@ -106,12 +165,12 @@ let handle_rewrite : term -> unit = fun t ->
     | None    ->
         fatal_no_pos "Cannot infer the type of [%a] (given to rewrite)." pp t
   in
-  (***************************************************************************)
-
-  (***************************************************************************)
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
   let (a, l, r) =  break_eq sign t_type in
+  (***************************************************************************)
+  (*TODO Code for qrewrite.*)
+  (***************************************************************************)
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -121,6 +180,8 @@ let handle_rewrite : term -> unit = fun t ->
           pp g.g_type
   in
 
+  let (l,r, sigma) = substitution g_term (l,r) in
+  let t = apply_sub t sigma in
   (* Build the predicate by matching [l] in [g_term]. *)
   (* TODO keep track of substitutions in the first instance of l in g. *)
   let pred_bind = bind_match l g_term in
