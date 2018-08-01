@@ -152,3 +152,4 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  pred           = [%a]" pp pred;
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
+
