@@ -11,6 +11,8 @@ open Solve
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+type substitution = (term * term) list
+
 (****************************************************************************)
 (* Obtain the required symbols from the current signature. *)
 (* FIXME use a parametric noton of equality. *)
@@ -23,6 +25,7 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 (****************************************************************************)
+
 (** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
     type of the term passed to #REWRITE which is assumed to be of the form
                     !x1 : A1 ... ! xn : An U
@@ -54,7 +57,9 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
-let apply_sub : term -> (term * term) list -> term = fun t sub ->
+(****************************************************************************)
+
+let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
     match t with
@@ -69,52 +74,49 @@ let apply_sub : term -> (term * term) list -> term = fun t sub ->
   in
   apply_sub_aux t
 
-let build_sub : term * term -> (term * term) list option = fun (g,l) ->
+let build_sub : term * term -> substitution option = fun (g,l) ->
   let rec build_sub_aux :
-    term * term -> (term * term) list -> (term * term) list option = fun (g,l) acc ->
+    term * term -> substitution -> substitution option = fun (g,l) acc ->
     match (g,l) with
-    | (Type, Type) -> Some acc
-    | (Kind, Kind) -> Some acc
-    | (Symb(x), Symb(y)) -> if x==y then Some acc else None
+    | (Type, Type)           -> Some acc
+    | (Kind, Kind)           -> Some acc
+    | (Symb(x), Symb(y))     -> if x==y then Some acc else None
     | (Appl(x,y), Appl(u,v)) ->
         begin
           match build_sub_aux (x,u) acc with
           | Some subst -> build_sub_aux (y,v) subst
           | None       -> None
         end
-    | (t, Meta(_)) ->
+    | (t, Meta(_))           ->
         begin
           let  p = List.assoc_opt t acc in
           match p with
           | Some _ -> Some acc
           | None   -> Some ((l,t)::acc)
         end
-    | (_, _) -> None
+    | (_, _)                 -> None
   in build_sub_aux (g,l) []
 
-let substitution : term -> term * term -> term * term *(term * term) list = fun g (l,r) ->
-  let rec find_sub : term -> (term * term) list option = fun g ->
+let find_sub : term -> term -> substitution = fun g l ->
+  let rec find_sub_aux : term -> substitution option = fun g ->
     match build_sub (g,l) with
     | Some sub -> Some sub
-    | None ->
+    | None     ->
       begin
           match g with
           | Appl(x,y) ->
              begin
-              match find_sub x with
+              match find_sub_aux x with
               | Some sub -> Some sub
-              | None -> find_sub y
+              | None     -> find_sub_aux y
              end
           | _ -> None
       end
   in
-  let sigma = find_sub g in
-  let sigma =
-  match sigma with
+  match find_sub_aux g with
   | Some sub -> sub
   | None -> []
-  in
-  (apply_sub l sigma, apply_sub r sigma, sigma)
+
 
 (** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
     Note that [t2] should not contain products, abstractions, metavariables, or
@@ -168,9 +170,6 @@ let handle_rewrite : term -> unit = fun t ->
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
   let (a, l, r) =  break_eq sign t_type in
-  (***************************************************************************)
-  (*TODO Code for qrewrite.*)
-  (***************************************************************************)
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -179,8 +178,9 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
           pp g.g_type
   in
-
-  let (l,r, sigma) = substitution g_term (l,r) in
+  (***************************************************************************)
+  let sigma = find_sub g_term l in
+  let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
   let t = apply_sub t sigma in
   (* Build the predicate by matching [l] in [g_term]. *)
   (* TODO keep track of substitutions in the first instance of l in g. *)
