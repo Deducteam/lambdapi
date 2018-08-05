@@ -24,20 +24,18 @@ let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
   | Symb(r) -> r == s
   | _       -> false
-(****************************************************************************)
-
-(** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
-    type of the term passed to #REWRITE which is assumed to be of the form
+(*****************************************************************************)
+(** [break_prod] is given the type of the term passed to #REWRITE which is
+    assumed to be of the form
                     !x1 : A1 ... ! xn : An U
-    and it returns an environment [x1 : A1, ... xn : An] and U. *)
-let break_prod : term -> Ctxt.t * term = fun t ->
-   let rec aux t acc =
+    and it returns (n, U). *)
+(* TODO integrate this with the rest of the code. *)
+let break_prod : term -> int * term = fun t ->
+   let rec break_prod_aux t acc =
      match t with
-     | Prod(a,b) ->
-        let (v,b) = Bindlib.unbind b in
-        aux b ((Bindlib.name_of v,(v,lift a))::acc)
-     | _ -> (Ctxt.of_env acc, t)
-   in aux t []
+     | Prod(a,b) -> let (v,b) = Bindlib.unbind b in break_prod_aux b (1+acc)
+     | _ -> (acc, t)
+   in break_prod_aux t 0
 
 (** [break_eq] is given the type of the term passed as an argument to #REWRITE
     and checks that it is an equality proof. That is, it checks that t matches
@@ -57,8 +55,10 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
-(****************************************************************************)
+(*****************************************************************************)
 
+(** [apply_sub] is given a term and a substitution and returns the  result  of
+    applying the substitution to the term. *)
 let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
@@ -73,18 +73,19 @@ let apply_sub : term -> substitution -> term = fun t sub ->
     | _           -> t
   in
   apply_sub_aux t
-
-let build_sub : term * term -> substitution option = fun (g,l) ->
+(** [build_sub] is given a two terms and finds the substitution  that  unifies
+    them, if one exist. *)
+let build_sub : term -> term -> substitution option = fun g l ->
   let rec build_sub_aux :
-    term * term -> substitution -> substitution option = fun (g,l) acc ->
+    term -> term -> substitution -> substitution option = fun g l acc ->
     match (g,l) with
     | (Type, Type)           -> Some acc
     | (Kind, Kind)           -> Some acc
     | (Symb(x), Symb(y))     -> if x==y then Some acc else None
-    | (Appl(x,y), Appl(u,v)) ->
+    | (Appl(x1,y1), Appl(x2,y2)) ->
         begin
-          match build_sub_aux (x,u) acc with
-          | Some subst -> build_sub_aux (y,v) subst
+          match build_sub_aux x1 x2 acc with
+          | Some subst -> build_sub_aux y1 y2 subst
           | None       -> None
         end
     | (t, Meta(_))           ->
@@ -95,11 +96,14 @@ let build_sub : term * term -> substitution option = fun (g,l) ->
           | None   -> Some ((l,t)::acc)
         end
     | (_, _)                 -> None
-  in build_sub_aux (g,l) []
+  in build_sub_aux g l []
 
+(** [apply_sub] is given a two terms, finds the first instance of  the  second
+    term in the first, if one exists and returns the substitution giving  rise
+    to this instance or None otherwise. *)
 let find_sub : term -> term -> substitution = fun g l ->
   let rec find_sub_aux : term -> substitution option = fun g ->
-    match build_sub (g,l) with
+    match build_sub g l with
     | Some sub -> Some sub
     | None     ->
       begin
@@ -116,7 +120,6 @@ let find_sub : term -> term -> substitution = fun g l ->
   match find_sub_aux g with
   | Some sub -> sub
   | None -> []
-
 
 (** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
     Note that [t2] should not contain products, abstractions, metavariables, or
@@ -169,7 +172,8 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
-  let (a, l, r) =  break_eq sign t_type in
+  let (n, t_type) = break_prod t_type in
+  let (a, l, r)   =  break_eq sign t_type in
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -182,6 +186,7 @@ let handle_rewrite : term -> unit = fun t ->
   let sigma = find_sub g_term l in
   let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
   let t = apply_sub t sigma in
+  (***************************************************************************)
   (* Build the predicate by matching [l] in [g_term]. *)
   (* TODO keep track of substitutions in the first instance of l in g. *)
   let pred_bind = bind_match l g_term in
