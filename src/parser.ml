@@ -123,6 +123,7 @@ let _PROOF_     = command "PROOF"
 let _PRINT_     = command "PRINT"
 let _REFINE_    = command "REFINE"
 let _SIMPL_     = command "SIMPL"
+let _REWRITE_   = command "REWRITE"
 let _QED_       = command "QED"
 let _FOCUS_     = command "FOCUS"
 
@@ -206,10 +207,12 @@ type p_cmd =
   | P_Refine of p_term
   (** Normalize the focused goal. *)
   | P_Simpl
+  (** Rewrite command. *)
+  | P_Rewrite of p_term
   (** Focus on a goal. *)
   | P_Focus of int
   (** End the proof. *)
-  | P_EndProof
+  | P_QED
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -284,8 +287,9 @@ let parser cmd_aux =
   | _PRINT_                          -> P_PrintFocus
   | _REFINE_ t:expr                  -> P_Refine(t)
   | _SIMPL_                          -> P_Simpl
+  | _REWRITE_ t:expr                 -> P_Rewrite(t)
   | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
-  | _QED_                            -> P_EndProof
+  | _QED_                            -> P_QED
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c

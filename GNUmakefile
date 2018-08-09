@@ -3,6 +3,7 @@ CFLAGS     = -cflags -w,A-4-50-9-44-33
 DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
+VERSION    = dev
 
 .PHONY: all
 all: bin lib
@@ -76,6 +77,32 @@ tests: lambdapi.native
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 
+.PHONY: real_tests
+real_tests: lambdapi.native
+	@echo "## OK tests ##"
+	@rm -f $(OK_TESTFILES:.dk=.dko)
+	@for file in $(OK_TESTFILES) ; do \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		&& echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+	done
+	@echo "## KO tests ##"
+	@rm -f $(KO_TESTFILES:.dk=.dko)
+	@for file in $(KO_TESTFILES) ; do \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		&& { echo -e "\033[0;31mOK\033[0m $$file" ; exit 1 ; } \
+		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
+	done
+	@echo "## Examples ##"
+	@rm -f $(TESTFILES:.dk=.dko)
+	@for file in $(TESTFILES) ; do \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+	  && echo -e "\033[0;32mOK\033[0m $$file"   \
+	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+	done
+
 #### Library tests ###########################################################
 
 .PHONY: matita
@@ -136,6 +163,7 @@ distclean: clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
+	@rm -f META
 
 .PHONY: fullclean
 fullclean: distclean
@@ -150,10 +178,32 @@ fullclean: distclean
 
 #### Installation targets ####################################################
 
+# META generation.
+META: GNUmakefile
+	@echo "[GEN] $@ (version $(VERSION))"
+	@echo "name            = \"lambdapi\""                              > $@
+	@echo "version         = \"$(VERSION)\""                           >> $@
+	@echo "requires        = \"unix,earley,earley.str,bindlib,timed\"" >> $@
+	@echo "description     = \"The Lambdapi prover as a library\""     >> $@
+	@echo "archive(byte)   = \"lambdapi.cma\""                         >> $@
+	@echo "plugin(byte)    = \"lambdapi.cma\""                         >> $@
+	@echo "archive(native) = \"lambdapi.cmxa\""                        >> $@
+	@echo "plugin(native)  = \"lambdapi.cmxs\""                        >> $@
+
+# Uninstalling everything.
+.PHONY: uninstall
+uninstall:
+	@ocamlfind remove lambdapi
+	@rm -f $(BINDIR)/lambdapi
+
 # Install the main program.
 .PHONY: install
-install: lambdapi.native
-	install -m 755 $^ $(BINDIR)
+install: lambdapi.native META uninstall lib
+	@ocamlfind install lambdapi META  _build/src/lambdapi.cmxa \
+		_build/src/lambdapi.a _build/src/lambdapi.cma _build/src/lambdapi.cmxs \
+		$(wildcard _build/src/*.cmi) $(wildcard _build/src/*.cmx) \
+		$(wildcard _build/src/*.o) $(wildcard _build/src/*.ml)
+	@install -m 755 $< $(BINDIR)/lambdapi
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
