@@ -57,6 +57,17 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
+let rec add_metas : int -> term -> Env.t -> term = fun n t env ->
+  match n with
+  | 0 -> t
+  | _ ->
+      let vs = Env.vars_of_env env in
+      let a =
+        let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
+        Env.prod_of_env env (_Meta m vs)
+      in
+      let m = Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs) in
+      add_metas (n-1) (Appl(t,m)) env
 (****************************************************************************)
 
 let apply_sub : term -> substitution -> term = fun t sub ->
@@ -169,14 +180,9 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
-  let (n,t_type) = break_prod t_type in
-  let rec add_metas : int -> term -> term = fun n t ->
-    match n with
-    | 0 -> t
-    | _ -> add_metas (n-1) (Appl t (Meta fresh_meta _ []))
-  in
-  let t_type = add_metas n t_type in
-  let (a, l, r)  =  break_eq sign t_type in
+  let (n, _) = break_prod t_type in
+  let t_type = Eval.whnf (add_metas n t_type g.g_hyps) in
+  let (a, l, r)  = break_eq sign t_type in
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
