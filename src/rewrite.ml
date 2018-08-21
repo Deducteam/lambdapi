@@ -30,14 +30,14 @@ let is_symb : sym -> term -> bool = fun s t ->
     type of the term passed to #REWRITE which is assumed to be of the form
                     !x1 : A1 ... ! xn : An U
     and it returns an environment [x1 : A1, ... xn : An] and U. *)
-let break_prod : term -> Ctxt.t * term = fun t ->
-   let rec aux t acc =
+let break_prod : term -> int * term = fun t ->
+   let rec aux t n =
      match t with
      | Prod(a,b) ->
         let (v,b) = Bindlib.unbind b in
-        aux b ((Bindlib.name_of v,(v,lift a))::acc)
-     | _ -> (Ctxt.of_env acc, t)
-   in aux t []
+        aux b (n+1)
+     | _ -> (n, t)
+   in aux t 0
 
 (** [break_eq] is given the type of the term passed as an argument to #REWRITE
     and checks that it is an equality proof. That is, it checks that t matches
@@ -169,7 +169,14 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
-  let (a, l, r) =  break_eq sign t_type in
+  let (n,t_type) = break_prod t_type in
+  let rec add_metas : int -> term -> term = fun n t ->
+    match n with
+    | 0 -> t
+    | _ -> add_metas (n-1) (Appl t (Meta fresh_meta _ []))
+  in
+  let t_type = add_metas n t_type in
+  let (a, l, r)  =  break_eq sign t_type in
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
