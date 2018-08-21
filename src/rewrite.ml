@@ -54,7 +54,6 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
         end
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
-
 (*****************************************************************************)
 
 (** [apply_sub] is given a term and a substitution and returns the  result  of
@@ -73,6 +72,7 @@ let apply_sub : term -> substitution -> term = fun t sub ->
     | _           -> t
   in
   apply_sub_aux t
+
 (** [build_sub] is given a two terms and finds the substitution  that  unifies
     them, if one exist. *)
 let build_sub : term -> term -> substitution option = fun g l ->
