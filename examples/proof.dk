@@ -149,7 +149,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #SIMPL.
 #REFINE n => ih => _.
 #REWRITE ih.
-#REWRITE add_succ_r m n0.
+#REWRITE add_succ_r.
 #REFINE refl nat (s (add m n0)).
 #QED.
 
