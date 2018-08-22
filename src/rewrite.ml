@@ -73,8 +73,8 @@ let apply_sub : term -> substitution -> term = fun t sub ->
     | _           -> t
   in
   apply_sub_aux t
-(** [build_sub] is given a two terms and finds the substitution  that  unifies
-    them, if one exist. *)
+(** [build_sub] is given two terms, with the second one potentially containing
+    metavariables, and finds the substitution that unifies them, if one exist. *)
 let build_sub : term -> term -> substitution option = fun g l ->
   let rec build_sub_aux :
     term -> term -> substitution -> substitution option = fun g l acc ->
@@ -90,7 +90,7 @@ let build_sub : term -> term -> substitution option = fun g l ->
         end
     | (t, Meta(_))           ->
         begin
-          let  p = List.assoc_opt t acc in
+          let  p = List.assoc_opt l acc in
           match p with
           | Some _ -> Some acc
           | None   -> Some ((l,t)::acc)
@@ -98,9 +98,9 @@ let build_sub : term -> term -> substitution option = fun g l ->
     | (_, _)                 -> None
   in build_sub_aux g l []
 
-(** [apply_sub] is given a two terms, finds the first instance of  the  second
-    term in the first, if one exists and returns the substitution giving  rise
-    to this instance or None otherwise. *)
+(** [find_sub] is given two terms and finds the first instance of the second
+    term in the first, if one exists, and returns the substitution giving rise
+    to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> substitution = fun g l ->
   let rec find_sub_aux : term -> substitution option = fun g ->
     match build_sub g l with
@@ -185,6 +185,7 @@ let handle_rewrite : term -> unit = fun t ->
   (***************************************************************************)
   let sigma = find_sub g_term l in
   let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
+  (* print_string ("Number of elements in the substitution built : " ^ (string_of_int (List.length sigma))); *)
   let t = apply_sub t sigma in
   (***************************************************************************)
   (* Build the predicate by matching [l] in [g_term]. *)
