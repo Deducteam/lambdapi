@@ -25,19 +25,28 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 (****************************************************************************)
+let make_meta : Env.t -> term = fun env ->
+  let vs = Env.vars_of_env env in
+  let a =
+    let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
+    Env.prod_of_env env (_Meta m vs)
+  in
+  Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs)
 
 (** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
     type of the term passed to #REWRITE which is assumed to be of the form
                     !x1 : A1 ... ! xn : An U
     and it returns an environment [x1 : A1, ... xn : An] and U. *)
-let break_prod : term -> int * term = fun t ->
-   let rec aux t n =
-     match t with
-     | Prod(a,b) ->
-        let (v,b) = Bindlib.unbind b in
-        aux b (n+1)
-     | _ -> (n, t)
-   in aux t 0
+let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
+  let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
+    match t_type with
+    | Prod(a,b) ->
+        let m = make_meta env in
+        let b = Bindlib.subst b m in
+        break_prod_aux (Appl(t,m)) b
+    | _ -> (t, t_type)
+  in
+  break_prod_aux t t_type
 
 (** [break_eq] is given the type of the term passed as an argument to #REWRITE
     and checks that it is an equality proof. That is, it checks that t matches
@@ -57,19 +66,7 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
-let rec add_metas : int -> term -> Env.t -> term = fun n t env ->
-  match n with
-  | 0 -> t
-  | _ ->
-      let vs = Env.vars_of_env env in
-      let a =
-        let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
-        Env.prod_of_env env (_Meta m vs)
-      in
-      let m = Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs) in
-      add_metas (n-1) (Appl(t,m)) env
 (****************************************************************************)
-
 let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
@@ -180,9 +177,8 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
-  let (n, _) = break_prod t_type in
-  let t_type = Eval.whnf (add_metas n t_type g.g_hyps) in
-  let (a, l, r)  = break_eq sign t_type in
+  let (t, t_type) = break_prod t t_type g.g_hyps in
+  let (a, l, r)  = break_eq sign t_type   in
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
