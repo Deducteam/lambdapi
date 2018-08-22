@@ -40,7 +40,7 @@ let make_meta : Env.t -> term = fun env ->
 let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
   let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
     match t_type with
-    | Prod(a,b) ->
+    | Prod(_,b) ->
         let m = make_meta env in
         let b = Bindlib.subst b m in
         break_prod_aux (Appl(t,m)) b
