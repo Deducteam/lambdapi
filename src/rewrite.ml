@@ -97,7 +97,7 @@ let build_sub : term * term -> substitution option = fun (g,l) ->
         end
     | (t, Meta(_))           ->
         begin
-          let  p = List.assoc_opt t acc in
+          let  p = List.assoc_opt l acc in
           match p with
           | Some _ -> Some acc
           | None   -> Some ((l,t)::acc)
