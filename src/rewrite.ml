@@ -14,7 +14,6 @@ let log_rewr = log_rewr.logger
 (** A substitution is a mapping from metavariables to terms. *)
 type substitution = (term * term) list
 
-(****************************************************************************)
 (* Obtain the required symbols from the current signature. *)
 (* FIXME use a parametric noton of equality. *)
 let find_sym : string -> Sign.t -> sym = fun name sign ->
@@ -25,7 +24,7 @@ let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
   | Symb(r) -> r == s
   | _       -> false
-(****************************************************************************)
+
 (** [make_meta] is given an envinronment t and returns a new metavariable,
     corresponding exactly to a user writing "_" in the given environment. *)
 let make_meta : Env.t -> term = fun env ->
