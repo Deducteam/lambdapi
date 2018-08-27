@@ -76,7 +76,8 @@ let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
     match t with
-    | Meta(_)     -> let p = List.assoc_opt t sub in
+    | Meta(_)     ->
+        let p = try Some (List.assoc t sub) with Not_found -> None in
       begin
          match p with
           | Some p -> p
@@ -104,7 +105,7 @@ let build_sub : term -> term -> substitution option = fun g l ->
         end
     | (t, Meta(_))           ->
         begin
-          let  p = List.assoc_opt l acc in
+          let  p = try Some (List.assoc l acc) with Not_found -> None in
           match p with
           | Some _ -> Some acc
           | None   -> Some ((l,t)::acc)
