@@ -85,10 +85,10 @@ function test_gz() {
 
   ${LAMBDAPI} --legacy-parser --verbose 0 ${FILE_DK}
   if [ $? -ne 0 ]; then
-    echo -e "\033[0;31mKO\033[0m ${MODNAME}"
+    echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
     echo "FAILED ${FILE_GZ}" >> error.log
   else
-    echo -e "\033[0;32mOK\033[0m ${MODNAME}"
+    echo -e "\033[0;32mOK\033[0m ${FILE_GZ}"
   fi
   rm -f ${FILE_dk}
 }
