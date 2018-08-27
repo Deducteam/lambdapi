@@ -248,6 +248,31 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   let ctx = List.map get_var ctx in
   let is_pat_var env x = not (List.mem x env) && List.mem x ctx in
   let arity = Hashtbl.create 7 in
+
+  (** Find the minimum number of arguments a variable is applied to. *)
+  let rec compute_arities env t =
+    let h, lts = Parser.get_args t in
+    match h.elt with
+    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
+       begin
+         let m = List.length lts in
+         try
+           let n = Hashtbl.find arity x in
+           if m < n then Hashtbl.replace arity x m
+         with Not_found ->
+           Hashtbl.add arity x m
+       end
+    | _ ->
+       match t.elt with
+       | P_Vari(_)
+       | P_Wild
+       | P_Type
+       | P_Prod(_,_,_)
+       | P_Meta(_,_)   -> ()
+       | P_Abst(x,_,u) -> compute_arities (x.elt::env) u
+       | P_Appl(t1,t2) -> compute_arities env t1; compute_arities env t2
+  in
+
   let rec build env t =
     let h, lts = Parser.get_args t in
     match h.elt with
@@ -261,9 +286,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
            let h = Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts1)) in
            Parser.add_args h lts2
          with Not_found ->
-           Hashtbl.add arity x (List.length lts);
-           let ts = List.map snd lts in
-           Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts))
+           assert false
        end
     | _ ->
        match t.elt with
@@ -287,6 +310,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           fatal t.pos "Invalid legacy rule syntax."
   in
   (* NOTE the computation order is important for setting arities properly. *)
+  compute_arities [] lhs;
   let lhs = build [] lhs in
   let rhs = build [] rhs in
   (lhs, rhs)
