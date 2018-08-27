@@ -133,7 +133,7 @@ let solve : bool -> problems -> unif list option = fun b p ->
 let msg (a,b) =
   if !log_enabled then log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b
 
-(** [has_type c t u] returns [true] iff [t] has type [u] in context [c]. *)
+(** [check c t a] returns [true] iff [t] has type [a] in context [c]. *)
 let check : Ctxt.t -> term -> term -> bool = fun c t a ->
   if !log_enabled then log_solv "check [%a] [%a]" pp t pp a;
   let to_solve = Typing.check c t a in
@@ -142,34 +142,36 @@ let check : Ctxt.t -> term -> term -> bool = fun c t a ->
   | Some l -> List.iter msg l; l = []
   | None   -> false
 
-(** [has_type_with_constrs cs c t u] returns [true] iff [t] has type
-    [u] in context [c] and constraints [cs] without instantiating any
+(** [check_with_constrs cs t a] returns [true] iff [t] has type
+    [a] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
-let check_with_constr (cs:unif list) (t:term) (a:term) : unit =
+let check_with_constr (cs:unif list) (t:term) (a:term) : bool =
   if !log_enabled then log_solv "check_with_constr [%a] [%a]" pp t pp a;
   let to_solve = Typing.check Ctxt.empty t a in
   let problems = {no_problems with to_solve} in
   match solve false problems with
   | Some l -> let l = List.filter (fun x -> not (List.mem x cs)) l in
-              List.iter msg l;
-              if not (l = []) then fatal_no_pos "Unsatisfied constraints."
-  | None   -> fatal_no_pos "Unsatisfiable constraints."
+              List.iter msg l; l = []
+  | None   -> false
 
-(** [infer_constr c t] returns a pair [a,l] where [l] is a list
-    of unification problems for [a] to be the type of [t] in context [c]. *)
-let infer_constr (c:Ctxt.t) (t:term) : unif list * term =
+(** [infer_constr c t] returns [Some (a,l)] where [l] is a list of
+   unification problems for [a] to be the type of [t] in context [c],
+   or [None]. *)
+let infer_constr (c:Ctxt.t) (t:term) : (unif list * term) option =
   if !log_enabled then log_solv "infer_constr [%a]" pp t;
   let (a, to_solve) = Typing.infer c t in
   let problems = {no_problems with to_solve} in
   match solve true problems with
-  | Some(l) -> (l, a)
-  | None    -> fatal_no_pos "FIXME1."
+  | Some(l) -> Some (l, a)
+  | None    -> None
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
 let infer (c:Ctxt.t) (t:term) : term option =
-  let l, a = infer_constr c t in
-  if l = [] then Some a else (List.iter msg l; None)
+  match infer_constr c t with
+  | Some ([], a) -> Some a
+  | Some (l, _) -> List.iter msg l; None
+  | None -> None
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:Ctxt.t) (t:term) : unit =

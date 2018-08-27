@@ -114,7 +114,9 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) = Solve.infer_constr Ctxt.empty lhs in
+  match Solve.infer_constr Ctxt.empty lhs with
+  | None -> wrn "untypable LHS\n" (*FIXME: give position*)
+  | Some (lhs_constrs, ty_lhs) ->
   (*
   log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
   let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
@@ -126,5 +128,5 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  try Solve.check_with_constr lhs_constrs rhs ty_lhs with Fatal(_,_) ->
+  if not (Solve.check_with_constr lhs_constrs rhs ty_lhs) then
     fatal_no_pos "Rule [%a] does not preserve typing." pp_rule (s,rule)
