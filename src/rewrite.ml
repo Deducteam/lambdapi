@@ -11,6 +11,7 @@ open Solve
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+(** A substitution is a mapping from metavariables to terms. *)
 type substitution = (term * term) list
 
 (****************************************************************************)
@@ -25,6 +26,8 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 (****************************************************************************)
+(** [make_meta] is given an envinronment t and returns a new metavariable,
+    corresponding exactly to a user writing "_" in the given environment. *)
 let make_meta : Env.t -> term = fun env ->
   let vs = Env.vars_of_env env in
   let a =
@@ -33,10 +36,10 @@ let make_meta : Env.t -> term = fun env ->
   in
   Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs)
 
-(** [break_prod] is a less safe version of Handle.env_of_prod. It is given the
-    type of the term passed to #REWRITE which is assumed to be of the form
-                    !x1 : A1 ... ! xn : An U
-    and it returns an environment [x1 : A1, ... xn : An] and U. *)
+(** [break_prod] is given the equality proof and its type and it replaces
+    with fresh metas from make_meta all the quantified variables in t_type.
+    At the same time it applies the new metavariables tot the equality proof,
+    so that afterwards they are substituted with the right terms. *)
 let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
   let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
     match t_type with
@@ -67,6 +70,10 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
 (****************************************************************************)
+(** [apply_sub] is given a term and a substitution retutns the result of the
+    application, by iterating through the term and replacing the metas of the
+    term with their correct value. If a meta is not mapped to any value it is
+    left unchanged. *)
 let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
@@ -82,6 +89,9 @@ let apply_sub : term -> substitution -> term = fun t sub ->
   in
   apply_sub_aux t
 
+(** [build_sub] is given a pair of terms and tries sto unify some subterm of
+    g with l. If it succeeds it returns the first substitution that makes this
+    possible. Otherwise it returns None. *)
 let build_sub : term * term -> substitution option = fun (g,l) ->
   let rec build_sub_aux :
     term * term -> substitution -> substitution option = fun (g,l) acc ->
@@ -105,6 +115,9 @@ let build_sub : term * term -> substitution option = fun (g,l) ->
     | (_, _)                 -> None
   in build_sub_aux (g,l) []
 
+(** [find_sub] is given two terms and finds the first instance of the second
+    term in the first, if one exists, and returns the substitution giving rise
+    to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> substitution = fun g l ->
   let rec find_sub_aux : term -> substitution option = fun g ->
     match build_sub (g,l) with
@@ -124,7 +137,6 @@ let find_sub : term -> term -> substitution = fun g l ->
   match find_sub_aux g with
   | Some sub -> sub
   | None -> []
-
 
 (** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
     Note that [t2] should not contain products, abstractions, metavariables, or
@@ -191,8 +203,6 @@ let handle_rewrite : term -> unit = fun t ->
   let sigma = find_sub g_term l in
   let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
   let t = apply_sub t sigma in
-  (* Build the predicate by matching [l] in [g_term]. *)
-  (* TODO keep track of substitutions in the first instance of l in g. *)
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
