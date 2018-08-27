@@ -5,13 +5,11 @@ open Timed
 open Console
 open Terms
 open Print
+open Typing
 
 (** Logging function for unification. *)
 let log_solv = new_logger 's' "solv" "debugging information for unification"
 let log_solv = log_solv.logger
-
-(** Representation of unification problems. *)
-type unif = term * term
 
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
@@ -33,9 +31,9 @@ let eq_vari : term -> term -> bool = fun t u ->
 
 (** Representation of a set of problems. *)
 type problems =
-  { to_solve  : unif list
+  { to_solve  : conv_constrs
   (** List of unification problems that must be put in WHNF first. *)
-  ; unsolved  : unif list
+  ; unsolved  : conv_constrs
   (** List of unsolved unification problems. *)
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
@@ -47,7 +45,7 @@ let no_problems : problems =
   ; recompute = false }
 
 (** [solve p] tries to solve the unification problems of [p]. *)
-let rec solve : problems -> unif list = fun p ->
+let rec solve : problems -> conv_constrs = fun p ->
   match p.to_solve with
   | []       ->
      if p.unsolved = [] then []
@@ -58,7 +56,7 @@ let rec solve : problems -> unif list = fun p ->
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem
     [(t1,t2)]. Then, it continues with the remaining problems. *)
-and solve_aux t1 t2 p : unif list =
+and solve_aux t1 t2 p : conv_constrs =
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
@@ -125,7 +123,7 @@ and solve_aux t1 t2 p : unif list =
 
 (** [solve b p] sets [can_instantiate] to [b] and returns
     [Some(l)] if [solve p] returns [l], and [None] otherwise. *)
-let solve : bool -> problems -> unif list option = fun b p ->
+let solve : bool -> problems -> conv_constrs option = fun b p ->
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s.\n") m; None
@@ -145,7 +143,7 @@ let check : Ctxt.t -> term -> term -> bool = fun c t a ->
 (** [check_with_constrs cs t a] returns [true] iff [t] has type
     [a] in context [c] and constraints [cs] without instantiating any
     user-defined metavariable. *)
-let check_with_constr (cs:unif list) (t:term) (a:term) : bool =
+let check_with_constr (cs:conv_constrs) (t:term) (a:term) : bool =
   if !log_enabled then log_solv "check_with_constr [%a] [%a]" pp t pp a;
   let to_solve = Typing.check Ctxt.empty t a in
   let problems = {no_problems with to_solve} in
@@ -157,7 +155,7 @@ let check_with_constr (cs:unif list) (t:term) (a:term) : bool =
 (** [infer_constr c t] returns [Some (a,l)] where [l] is a list of
    unification problems for [a] to be the type of [t] in context [c],
    or [None]. *)
-let infer_constr (c:Ctxt.t) (t:term) : (unif list * term) option =
+let infer_constr (c:Ctxt.t) (t:term) : (conv_constrs * term) option =
   if !log_enabled then log_solv "infer_constr [%a]" pp t;
   let (a, to_solve) = Typing.infer c t in
   let problems = {no_problems with to_solve} in
