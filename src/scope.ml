@@ -241,9 +241,11 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   let get_var ({elt},ao) =
-    match ao with
-    | None    -> elt
-    | Some(a) -> wrn "Ignored type annotation at [%a].\n" Pos.print a.pos; elt
+    let fn a =
+      if Timed.(!verbose) > 1 then
+        wrn "Ignored type annotation at [%a].\n" Pos.print a.pos
+    in
+    Option.iter fn ao; elt
   in
   let ctx = List.map get_var ctx in
   let is_pat_var env x = not (List.mem x env) && List.mem x ctx in

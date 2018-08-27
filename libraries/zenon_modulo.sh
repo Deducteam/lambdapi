@@ -83,7 +83,7 @@ function test_gz() {
   cat ${FILE_DK} >> ${MODNAME}.aux
   mv ${MODNAME}.aux ${FILE_DK}
 
-  ${LAMBDAPI} --verbose 0 ${FILE_DK}
+  ${LAMBDAPI} --legacy-parser --verbose 0 ${FILE_DK}
   if [ $? -ne 0 ]; then
     echo -e "\033[0;31mKO\033[0m ${MODNAME}"
     echo "FAILED ${FILE_GZ}" >> error.log
