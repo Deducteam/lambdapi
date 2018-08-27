@@ -69,7 +69,6 @@ let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
-(****************************************************************************)
 (** [apply_sub] is given a term and a substitution retutns the result of the
     application, by iterating through the term and replacing the metas of the
     term with their correct value. If a meta is not mapped to any value it is
@@ -89,20 +88,19 @@ let apply_sub : term -> substitution -> term = fun t sub ->
   in
   apply_sub_aux t
 
-(** [build_sub] is given a pair of terms and tries sto unify some subterm of
-    g with l. If it succeeds it returns the first substitution that makes this
-    possible. Otherwise it returns None. *)
-let build_sub : term * term -> substitution option = fun (g,l) ->
+(** [build_sub] is given two terms, with the second one potentially containing
+    metavariables, and finds the substitution that unifies them, if one exist. *)
+let build_sub : term -> term -> substitution option = fun g l ->
   let rec build_sub_aux :
-    term * term -> substitution -> substitution option = fun (g,l) acc ->
+    term -> term -> substitution -> substitution option = fun g l acc ->
     match (g,l) with
     | (Type, Type)           -> Some acc
     | (Kind, Kind)           -> Some acc
     | (Symb(x), Symb(y))     -> if x==y then Some acc else None
-    | (Appl(x,y), Appl(u,v)) ->
+    | (Appl(x1,y1), Appl(x2,y2)) ->
         begin
-          match build_sub_aux (x,u) acc with
-          | Some subst -> build_sub_aux (y,v) subst
+          match build_sub_aux x1 x2 acc with
+          | Some subst -> build_sub_aux y1 y2 subst
           | None       -> None
         end
     | (t, Meta(_))           ->
@@ -113,14 +111,14 @@ let build_sub : term * term -> substitution option = fun (g,l) ->
           | None   -> Some ((l,t)::acc)
         end
     | (_, _)                 -> None
-  in build_sub_aux (g,l) []
+  in build_sub_aux g l []
 
 (** [find_sub] is given two terms and finds the first instance of the second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> substitution = fun g l ->
   let rec find_sub_aux : term -> substitution option = fun g ->
-    match build_sub (g,l) with
+    match build_sub g l with
     | Some sub -> Some sub
     | None     ->
       begin
