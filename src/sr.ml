@@ -68,7 +68,7 @@ let build_meta_type : int -> term = fun k ->
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * rule -> unit = fun (s,rule) ->
-  (*log_subj "%a" pp_rule (s, rule);*)
+  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -115,13 +115,14 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   match Solve.infer_constr Ctxt.empty lhs with
-  | None -> wrn "untypable LHS\n" (*FIXME: give position*)
-  | Some (lhs_constrs, ty_lhs) ->
-  (*
-  log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
-  let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
-  List.iter fn lhs_constrs;
-  *)
+  | None                      -> wrn "untypable LHS\n" (* FIXME position *)
+  | Some(lhs_constrs, ty_lhs) ->
+  if !log_enabled then
+    begin
+      log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
+      let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
+      List.iter fn lhs_constrs
+    end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
