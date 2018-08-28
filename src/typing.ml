@@ -89,12 +89,10 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
           let c = Eval.whnf (infer_aux conv ctx t) in
           match c with
           | Prod(a,b) -> (a,b)
-          | Meta(_,_) ->
+          | _         ->
               let a = make_prod_domain ctx in
               let b = make_prod_codomain ctx a in
               conv c (Prod(a,b)); (a,b)
-          | a         ->
-              fatal_no_pos "Product expected, [%a] infered." pp a
         in
         (* We then check the type of [u] against the domain type. *)
         check_aux conv ctx u a;
@@ -134,11 +132,9 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
           let c = Eval.whnf c in
           match c with
           | Prod(d,b) -> (d,b)
-          | Meta(_,_) ->
+          | _         ->
               let b = make_prod_codomain ctx a in
               conv c (Prod(a,b)); (a,b)
-          | _         ->
-              fatal_no_pos "Product expected, [%a] given." pp c
         in
         (* We check domain type compatibility. *)
         conv a a';
