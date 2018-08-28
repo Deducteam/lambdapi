@@ -5,6 +5,7 @@ _build
 lambdapi.native
 lambdapi.docdir
 libraries/*.tar.gz
+libraries/*.tar
 libraries/*.zip
 libraries/plein_de_dks
 libraries/dklib
@@ -13,6 +14,5 @@ libraries/holide
 libraries/iprover
 libraries/matita
 libraries/verine
-libraries/zenon/zenon.tar
 ignored
 META
