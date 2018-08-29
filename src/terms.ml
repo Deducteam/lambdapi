@@ -376,6 +376,12 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [is_symb] tests if [t] is of the form Symb(s). *)
+let is_symb : sym -> term -> bool = fun s t ->
+  match unfold t with
+  | Symb(r) -> r == s
+  | _       -> false
+
 (** [iter_meta f t] applies the function [f] to every metavariable in the term
     [t]. As for {!val:eq},  the behaviour of this function is unspecified when
     [t] uses the {!const:Patt} or {!const:TEnv} constructor. *)
