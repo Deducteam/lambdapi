@@ -14,17 +14,6 @@ let log_rewr = log_rewr.logger
 (** A substitution is a mapping from metavariables to terms. *)
 type substitution = (term * term) list
 
-(* Obtain the required symbols from the current signature. *)
-(* FIXME use a parametric noton of equality. *)
-let find_sym : string -> Sign.t -> sym = fun name sign ->
-    try Sign.find sign name with Not_found ->
-    fatal_no_pos "Current signature does not define symbol [%s]." name
-
-let is_symb : sym -> term -> bool = fun s t ->
-  match unfold t with
-  | Symb(r) -> r == s
-  | _       -> false
-
 (** [make_meta] is given an envinronment t and returns a new metavariable,
     corresponding exactly to a user writing "_" in the given environment. *)
 let make_meta : Env.t -> term = fun env ->
@@ -49,24 +38,6 @@ let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
     | _ -> (t, t_type)
   in
   break_prod_aux t t_type
-
-(** [break_eq] is given the type of the term passed as an argument to #REWRITE
-    and checks that it is an equality proof. That is, it checks that t matches
-    with:
-                          "P" ("eq" a l r)
-    If the argument does match a term of the shape l = r then it returns the
-    triple (a, l, r) otherwise it throws a fatal error. *)
-let break_eq : Sign.t ->term -> term * term * term = fun sign t ->
-    match get_args t with
-    | (p,[eq]) when is_symb (find_sym "P" sign) p ->
-        begin
-          match get_args eq with
-          | (e,[a;l;r]) when is_symb (find_sym "eq" sign) e -> (a, l, r)
-          | _                                  ->
-              fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
-        end
-    | _                              ->
-        fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
 
 (** [apply_sub] is given a term and a substitution retutns the result of the
     application, by iterating through the term and replacing the metas of the
@@ -165,10 +136,19 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
     (without any quantifier for now). All instances of the LHS are replaced by
     the RHS in the obtained goal. *)
 let handle_rewrite : term -> unit = fun t ->
-  let sign = Sign.current_sign () in
-  let sign_P = find_sym "P" sign in
-  let sign_T = find_sym "T" sign  in
-  let sign_eqind = find_sym "eqind" sign in
+  (* Obtain the required symbols from the current signature. *)
+  (* FIXME use a parametric noton of equality. *)
+  let find_sym : string -> sym =
+    let find_symb sign name =
+      try Sign.find sign name with Not_found ->
+      fatal_no_pos "Current signature does not define symbol [%s]." name
+    in
+    find_symb (Sign.current_sign ())
+  in
+  let sign_P  = find_sym "P"  in
+  let sign_T  = find_sym "T"  in
+  let sign_eq = find_sym "eq" in
+  let sign_eqind = find_sym "eqind" in
   (* Get the focused goal, and related data. *)
   let thm = current_theorem () in
   let (g, gs) =
@@ -188,7 +168,19 @@ let handle_rewrite : term -> unit = fun t ->
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
   let (t, t_type) = break_prod t t_type g.g_hyps in
-  let (a, l, r)  = break_eq sign t_type   in
+  let (a, l, r)  =
+    match get_args t_type with
+    | (p,[eq]) when is_symb sign_P p ->
+        begin
+          match get_args eq with
+          | (e,[a;l;r]) when is_symb sign_eq e -> (a, l, r)
+          | _                                  ->
+              fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+        end
+    | _                              ->
+        fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+  in
+
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -197,7 +189,7 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
           pp g.g_type
   in
-  (***************************************************************************)
+
   let sigma = find_sub g_term l in
   let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
   let t = apply_sub t sigma in
@@ -245,23 +237,3 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
 
-(* --------------- TODO (From the meetings on 26/07/2018) ------------------ *)
-(*****************************************************************************
- * 1) Rewrite in hypotheses. (Sept.) *** - 2 weeks?
- *    This would be the implementation of a similar tactic called #REWRITE_IN
- *    which given a hypothesis an an equality proof rewrites in the hypothesis.
- *    The core mechanism should be the same, but what is updated in the end
- *    woud change. Difficulties
- *      a) Change the parser to handle the new command.
- *      b) Find out what happens when a hypothesis is rewritten.
- * 2) Basic patterns. (Jul. - Sept.) ****
- *    The lemma passed to rewrite is allowed to have quantifiers, so it is of
- *    the form:
- *        !x1:T1 ... !xn:Tn.  l(x1, ..., xn) = r(x1, ..., xn).
- *    Then we need to find the first instance of l in g_type, keep the substi-
- *    tution and rewrite all such instances with the corresponding instances of
- *    r.
- * 3) Full SSReflect patterns. (Spet.) ****
- *    This would mainly involve nesting the machinery from 4 but it is not that
- *    simple.
- *)
