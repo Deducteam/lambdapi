@@ -14,8 +14,10 @@ let log_rewr = log_rewr.logger
 (** A substitution is a mapping from metavariables to terms. *)
 type substitution = (term * term) list
 
-(** [make_meta] is given an envinronment t and returns a new metavariable,
-    corresponding exactly to a user writing "_" in the given environment. *)
+(** [make_meta env] builds a fresh metavariable given the environment [env]. A
+    call to this function does exactly corresponds to the scoping of wildcards
+    when every variable of [env] is in scope (see [Scope.scope_term], [P_Wild]
+    case. *)
 let make_meta : Env.t -> term = fun env ->
   let vs = Env.vars_of_env env in
   let a =
@@ -39,10 +41,9 @@ let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
   in
   break_prod_aux t t_type
 
-(** [apply_sub] is given a term and a substitution retutns the result of the
-    application, by iterating through the term and replacing the metas of the
-    term with their correct value. If a meta is not mapped to any value it is
-    left unchanged. *)
+(** [apply_sub t sub] applies the substitution [sub] to the term [t].  It goes
+    through the term [t],  replacing the metavariables of the term with values
+    provided in the substitution (if any). *)
 let apply_sub : term -> substitution -> term = fun t sub ->
   let rec apply_sub_aux : term -> term = fun t ->
     let t = unfold t in
@@ -60,7 +61,7 @@ let apply_sub : term -> substitution -> term = fun t sub ->
   apply_sub_aux t
 
 (** [build_sub] is given two terms, with the second one potentially containing
-    metavariables, and finds the substitution that unifies them, if one exist. *)
+    metavariables, and tries to finds the substitution unifying them. *)
 let build_sub : term -> term -> substitution option = fun g l ->
   let rec build_sub_aux :
     term -> term -> substitution -> substitution option = fun g l acc ->
@@ -84,7 +85,7 @@ let build_sub : term -> term -> substitution option = fun g l ->
     | (_, _)                 -> None
   in build_sub_aux g l []
 
-(** [find_sub] is given two terms and finds the first instance of the second
+(** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> substitution = fun g l ->
@@ -107,9 +108,9 @@ let find_sub : term -> term -> substitution = fun g l ->
   | Some sub -> sub
   | None -> []
 
-(** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
-    Note that [t2] should not contain products, abstractions, metavariables, or
-    other awkward terms. *)
+(** [bind_match t1 t2] produces a binder that abstracts away all the occurence
+    of the term [t1] in the term [t2].  We require that [t2] does not  contain
+    products, abstraction, metavariables, or other awkward terms. *)
 let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   let x = Bindlib.new_var mkfree "X" in
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
@@ -138,17 +139,16 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
 let handle_rewrite : term -> unit = fun t ->
   (* Obtain the required symbols from the current signature. *)
   (* FIXME use a parametric noton of equality. *)
-  let find_sym : string -> sym =
-    let find_symb sign name =
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    find_symb (Sign.current_sign ())
+  let sign = Sign.current_sign () in
+  let find_sym : string -> sym = fun name ->
+    try Sign.find sign name with Not_found ->
+    fatal_no_pos "Current signature does not define symbol [%s]." name
   in
   let sign_P  = find_sym "P"  in
   let sign_T  = find_sym "T"  in
   let sign_eq = find_sym "eq" in
   let sign_eqind = find_sym "eqind" in
+
   (* Get the focused goal, and related data. *)
   let thm = current_theorem () in
   let (g, gs) =
@@ -165,8 +165,8 @@ let handle_rewrite : term -> unit = fun t ->
     | None    ->
         fatal_no_pos "Cannot infer the type of [%a] (given to rewrite)." pp t
   in
-  (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
-   * parameters. *)
+
+  (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
   let (t, t_type) = break_prod t t_type g.g_hyps in
   let (a, l, r)  =
     match get_args t_type with
