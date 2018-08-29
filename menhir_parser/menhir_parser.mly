@@ -20,12 +20,9 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
       {strategy; steps}
     in
     match (s1, s2o) with
-    | ("SNF" , None       ) -> config None     SNF
-    | ("HNF" , None       ) -> config None     HNF
-    | ("WHNF", None       ) -> config None     WHNF
-    | ("SNF" , Some i     ) -> config (Some(i)) SNF
-    | ("HNF" , Some i     ) -> config (Some(i)) HNF
-    | ("WHNF", Some i     ) -> config (Some(i)) WHNF
+    | ("SNF" , io         ) -> config io        SNF
+    | ("HNF" , io         ) -> config io        HNF
+    | ("WHNF", io         ) -> config io        WHNF
     | (i     , Some "SNF" ) -> config (Some(i)) SNF
     | (i     , Some "HNF" ) -> config (Some(i)) HNF
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
