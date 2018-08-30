@@ -62,9 +62,9 @@ fi
 # Checking function.
 function check_iprover() {
   rm -f FOL.dko
-  ${LAMBDAPI} --gen-obj FOL.dk
+  ${LAMBDAPI} --legacy-parser --gen-obj FOL.dk
   for PRF in `ls *_prf.dk`; do
-    ${LAMBDAPI} ${PRF}
+    ${LAMBDAPI} --legacy-parser --timeout 2 ${PRF}
   done
 }
 
