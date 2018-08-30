@@ -5,27 +5,117 @@ open Terms
 open Print
 open Console
 open Proofs
+open Solve
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** For now, a pattern is just a term. *)
-type pattern = term
+(** A substitution is a mapping from metavariables to terms. *)
+type substitution = (term * term) list
 
-(** [term_match p t] is given a (pattern) term [p] and a term [t], and returns
-    [true] if and only if [t] “matches” [p]. Note that, for the moment, we use
-    syntactic equality. *)
-let term_match : pattern -> term -> bool = Terms.eq
+(** [make_meta env] builds a fresh metavariable given the environment [env]. A
+    call to this function does exactly corresponds to the scoping of wildcards
+    when every variable of [env] is in scope (see [Scope.scope_term], [P_Wild]
+    case. *)
+let make_meta : Env.t -> term = fun env ->
+  let vs = Env.vars_of_env env in
+  let a =
+    let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
+    Env.prod_of_env env (_Meta m vs)
+  in
+  Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs)
 
-(** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
-    Note that [t] should not contain products, abstractions, metavariables, or
-    other awkward terms. *)
-let bind_match : pattern -> term -> (term, term) Bindlib.binder = fun p t ->
+(** [break_prod] is given the equality proof and its type and it replaces
+    with fresh metas from make_meta all the quantified variables in t_type.
+    At the same time it applies the new metavariables tot the equality proof,
+    so that afterwards they are substituted with the right terms. *)
+let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
+  let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
+    match t_type with
+    | Prod(_,b) ->
+        let m = make_meta env in
+        let b = Bindlib.subst b m in
+        break_prod_aux (Appl(t,m)) b
+    | _ -> (t, t_type)
+  in
+  break_prod_aux t t_type
+
+(** [apply_sub t sub] applies the substitution [sub] to the term [t].  It goes
+    through the term [t],  replacing the metavariables of the term with values
+    provided in the substitution (if any). *)
+let apply_sub : term -> substitution -> term = fun t sub ->
+  let rec apply_sub_aux : term -> term = fun t ->
+    let t = unfold t in
+    match t with
+    | Meta(_)     ->
+        let p = try Some (List.assoc t sub) with Not_found -> None in
+      begin
+         match p with
+          | Some p -> p
+          | None   -> t
+      end
+    | Appl(t1,t2) -> Appl(apply_sub_aux t1, apply_sub_aux t2)
+    | _           -> t
+  in
+  apply_sub_aux t
+
+(** [build_sub] is given two terms, with the second one potentially containing
+    metavariables, and tries to finds the substitution unifying them. *)
+let build_sub : term -> term -> substitution option = fun g l ->
+  let rec build_sub_aux :
+    term -> term -> substitution -> substitution option = fun g l acc ->
+    match (g,l) with
+    | (Type, Type)           -> Some acc
+    | (Kind, Kind)           -> Some acc
+    | (Symb(x), Symb(y))     -> if x==y then Some acc else None
+    | (Appl(x1,y1), Appl(x2,y2)) ->
+        begin
+          match build_sub_aux x1 x2 acc with
+          | Some subst -> build_sub_aux y1 y2 subst
+          | None       -> None
+        end
+    | (t, Meta(_))           ->
+        begin
+          let p = try Some (List.assoc l acc) with Not_found -> None in
+          match p with
+          | Some _ -> Some acc
+          | None   -> Some ((l,t)::acc)
+        end
+    | (_, _)                 -> None
+  in build_sub_aux g l []
+
+(** [find_sub] is given two terms and finds the first instance of  the  second
+    term in the first, if one exists, and returns the substitution giving rise
+    to this instance or an empty substitution otherwise. *)
+let find_sub : term -> term -> substitution = fun g l ->
+  let rec find_sub_aux : term -> substitution option = fun g ->
+    match build_sub g l with
+    | Some sub -> Some sub
+    | None     ->
+      begin
+          match g with
+          | Appl(x,y) ->
+             begin
+              match find_sub_aux x with
+              | Some sub -> Some sub
+              | None     -> find_sub_aux y
+             end
+          | _ -> None
+      end
+  in
+  match find_sub_aux g with
+  | Some sub -> sub
+  | None -> []
+
+(** [bind_match t1 t2] produces a binder that abstracts away all the occurence
+    of the term [t1] in the term [t2].  We require that [t2] does not  contain
+    products, abstraction, metavariables, or other awkward terms. *)
+let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   let x = Bindlib.new_var mkfree "X" in
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
-    if term_match p t then _Vari x else
+    if Terms.eq t1 t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type
@@ -40,7 +130,7 @@ let bind_match : pattern -> term -> (term, term) Bindlib.binder = fun p t ->
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
   in
-  Bindlib.unbox (Bindlib.bind_var x (lift_subst t))
+  Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
@@ -48,16 +138,14 @@ let bind_match : pattern -> term -> (term, term) Bindlib.binder = fun p t ->
     the RHS in the obtained goal. *)
 let handle_rewrite : term -> unit = fun t ->
   (* Obtain the required symbols from the current signature. *)
-  (* FIXME use a parametric noton of equality. *)
-  let find_sym : string -> sym =
-    let find_symb sign name =
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    find_symb (Sign.current_sign ())
+  (* FIXME use a parametric notion of equality. *)
+  let sign = Sign.current_sign () in
+  let find_sym : string -> sym = fun name ->
+    try Sign.find sign name with Not_found ->
+    fatal_no_pos "Current signature does not define symbol [%s]." name
   in
-  let sign_P = find_sym "P" in
-  let sign_T = find_sym "T" in
+  let sign_P  = find_sym "P"  in
+  let sign_T  = find_sym "T"  in
   let sign_eq = find_sym "eq" in
   let sign_eqind = find_sym "eqind" in
 
@@ -79,13 +167,8 @@ let handle_rewrite : term -> unit = fun t ->
   in
 
   (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
-  (* TODO allow for quantifiers. *)
-  let is_symb : sym -> term -> bool = fun s t ->
-    match unfold t with
-    | Symb(r) -> r == s
-    | _       -> false
-  in
-  let (a, l, r) =
+  let (t, t_type) = break_prod t t_type g.g_hyps in
+  let (a, l, r)  =
     match get_args t_type with
     | (p,[eq]) when is_symb sign_P p ->
         begin
@@ -107,18 +190,19 @@ let handle_rewrite : term -> unit = fun t ->
           pp g.g_type
   in
 
-  (* Build the predicate by matching [l] in [g_term]. *)
-  (* TODO keep track of substitutions in the first instance of l in g. *)
+  let sigma = find_sub g_term l in
+  let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
+  let t = apply_sub t sigma in
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
-  (* Construct new goal and it type. *)
+  (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb(sign_P), Bindlib.subst pred_bind r) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
   let new_goal =
     match goal_term with
     | Meta(m,_) -> m
-    | _          -> assert false (* Cannot happen. *)
+    | _         -> assert false (* Cannot happen. *)
   in
 
   (* Build the final term produced by the tactic, and check its type. *)

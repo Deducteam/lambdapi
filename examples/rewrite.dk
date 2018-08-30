@@ -76,12 +76,26 @@ refl : !a, !x, P (eq a x x).
 eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
   (;FIXME: try to infer the type of p.;)
 
-(; Rewrite test ;)
-def add_s_right : !x, !y, P (eq nat (add x (s y)) (s (add x y))).
 
-#PROOF test : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
+(; forall n m, n + S m = S (n+m) ;)
+#PROOF add_succ_r : !n, !m, P (eq nat (add n (s m)) (s (add n m))).
+#REFINE n => m => _.
+#REFINE (nat_ind (n:N => eq nat (add n (s m)) (s (add n m))) ?case0[n,m] ?caseS[n,m] n).
+(; Case 0 ;)
+#SIMPL.
+#REFINE refl nat (s m). (; TO DO : ADD a #REFL tactic ;)
+(; Case S ;)
+#SIMPL.
+#REFINE pn => ih => _.
+#REWRITE ih.
+#SIMPL.
+#REFINE refl nat (s (s (add pn m))).
+#QED.
+
+
+#PROOF rewriteTest0 : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
 #REFINE x => y => z => _.
 #PRINT.
-#REWRITE add_s_right x y.
+#REWRITE add_succ_r.
 #REFINE refl nat (add (s (add x y)) z).
 #QED.
