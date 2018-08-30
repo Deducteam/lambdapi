@@ -77,7 +77,7 @@ let build_sub : term -> term -> substitution option = fun g l ->
         end
     | (t, Meta(_))           ->
         begin
-          let  p = try Some (List.assoc l acc) with Not_found -> None in
+          let p = try Some (List.assoc l acc) with Not_found -> None in
           match p with
           | Some _ -> Some acc
           | None   -> Some ((l,t)::acc)
@@ -138,7 +138,7 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
     the RHS in the obtained goal. *)
 let handle_rewrite : term -> unit = fun t ->
   (* Obtain the required symbols from the current signature. *)
-  (* FIXME use a parametric noton of equality. *)
+  (* FIXME use a parametric notion of equality. *)
   let sign = Sign.current_sign () in
   let find_sym : string -> sym = fun name ->
     try Sign.find sign name with Not_found ->
@@ -196,7 +196,7 @@ let handle_rewrite : term -> unit = fun t ->
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
-  (* Construct new goal and it type. *)
+  (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb(sign_P), Bindlib.subst pred_bind r) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
   let new_goal =
@@ -236,4 +236,3 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  pred           = [%a]" pp pred;
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
-
