@@ -13,27 +13,19 @@ let log_rewr = log_rewr.logger
 
 (** The type of a term with holes to be substituted in later. *)
 type to_subst = (term, term) Bindlib.mbinder
+type var_list = term Bindlib.var list
+type subst = (term Bindlib.var * term option) list
+
 
 (** A substitution is a mapping from metavariables to terms. *)
 (* type substitution = (term, term) array *)
-
-(* (** [make_meta] is given an envinronment t and returns a new metavariable, *)
-    (* corresponding exactly to a user writing "_" in the given environment. *) *)
-(* let make_meta : Env.t -> term = fun env -> *)
-  (* let vs = Env.vars_of_env env in *)
-  (* let a = *)
-    (* let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in *)
-    (* Env.prod_of_env env (_Meta m vs) *)
-  (* in *)
-  (* Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs) *)
 
 (** [break_prod] is given the equality proof and its type and it replaces
     with fresh metas from make_meta all the quantified variables in t_type.
     At the same time it applies the new metavariables tot the equality proof,
     so that afterwards they are substituted with the right terms. *)
-let break_prod : term -> term * term Bindlib.var list = fun t_type ->
-  let rec aux :
-    term -> term Bindlib.var list -> term * term Bindlib.var list = fun t_type vars ->
+let break_prod : term -> term * var_list = fun t_type ->
+  let rec aux : term -> var_list -> term * var_list = fun t_type vars ->
     match t_type with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vars)
     | _         -> (t_type, List.rev vars)
@@ -111,6 +103,9 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   in
   Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
+let mbind : term -> var_list -> (term, term) Bindlib.mbinder = fun t vars ->
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t))
+
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
@@ -161,11 +156,9 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
 
-  let t_type_bind =
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t_type)) in
-  let t = add_args t (List.map mkfree vars) in
-  let t_bind =
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t)) in
+  let t_type_bind = mbind t vars in
+  let t_bind = mbind (add_args t (List.map mkfree vars)) vars in
+  let (l_bind, r_bind) = (mbind l vars, mbind r vars) in
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
