@@ -31,41 +31,13 @@ type to_subst = (term, term) Bindlib.mbinder
     with fresh metas from make_meta all the quantified variables in t_type.
     At the same time it applies the new metavariables tot the equality proof,
     so that afterwards they are substituted with the right terms. *)
-let break_prod :
-  term -> term -> to_subst * to_subst = fun t t_type ->
+let break_prod : term -> term * term Bindlib.var list = fun t_type ->
   let rec aux :
     term -> term Bindlib.var list -> term * term Bindlib.var list = fun t_type vars ->
     match t_type with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vars)
     | _         -> (t_type, List.rev vars)
-  in
-  let (t_type, vars) = aux t_type [] in
-  let t_type_bind =
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t_type)) in
-  let t = add_args t (List.map mkfree vars) in
-  let t_bind =
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t)) in
-  (t_bind, t_type_bind)
-
-(** [apply_sub] is given a term and a substitution retutns the result of the
-    application, by iterating through the term and replacing the metas of the
-    term with their correct value. If a meta is not mapped to any value it is
-    left unchanged. *)
-let apply_sub : term -> substitution -> term = fun t sub ->
-  let rec apply_sub_aux : term -> term = fun t ->
-    let t = unfold t in
-    match t with
-    | Meta(_)     ->
-        let p = try Some (List.assoc t sub) with Not_found -> None in
-      begin
-         match p with
-          | Some p -> p
-          | None   -> t
-      end
-    | Appl(t1,t2) -> Appl(apply_sub_aux t1, apply_sub_aux t2)
-    | _           -> t
-  in
-  apply_sub_aux t
+  in aux t_type []
 
 (** [build_sub] is given two terms, with the second one potentially containing
     metavariables, and finds the substitution that unifies them, if one exist. *)
@@ -175,7 +147,7 @@ let handle_rewrite : term -> unit = fun t ->
   in
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
-  let (t, t_type) = break_prod t t_type g.g_hyps in
+  let (t_type, vars) = break_prod t_type in
   let (a, l, r)  =
     match get_args t_type with
     | (p,[eq]) when is_symb sign_P p ->
@@ -188,6 +160,12 @@ let handle_rewrite : term -> unit = fun t ->
     | _                              ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
+
+  let t_type_bind =
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t_type)) in
+  let t = add_args t (List.map mkfree vars) in
+  let t_bind =
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t)) in
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
