@@ -11,33 +11,41 @@ open Solve
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** A substitution is a mapping from metavariables to terms. *)
-type substitution = (term * term) list
+(** The type of a term with holes to be substituted in later. *)
+type to_subst = (term, term) Bindlib.mbinder
 
-(** [make_meta] is given an envinronment t and returns a new metavariable,
-    corresponding exactly to a user writing "_" in the given environment. *)
-let make_meta : Env.t -> term = fun env ->
-  let vs = Env.vars_of_env env in
-  let a =
-    let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
-    Env.prod_of_env env (_Meta m vs)
-  in
-  Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs)
+(** A substitution is a mapping from metavariables to terms. *)
+(* type substitution = (term, term) array *)
+
+(* (** [make_meta] is given an envinronment t and returns a new metavariable, *)
+    (* corresponding exactly to a user writing "_" in the given environment. *) *)
+(* let make_meta : Env.t -> term = fun env -> *)
+  (* let vs = Env.vars_of_env env in *)
+  (* let a = *)
+    (* let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in *)
+    (* Env.prod_of_env env (_Meta m vs) *)
+  (* in *)
+  (* Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs) *)
 
 (** [break_prod] is given the equality proof and its type and it replaces
     with fresh metas from make_meta all the quantified variables in t_type.
     At the same time it applies the new metavariables tot the equality proof,
     so that afterwards they are substituted with the right terms. *)
-let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
-  let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
+let break_prod :
+  term -> term -> to_subst * to_subst = fun t t_type ->
+  let rec aux :
+    term -> term Bindlib.var list -> term * term Bindlib.var list = fun t_type vars ->
     match t_type with
-    | Prod(_,b) ->
-        let m = make_meta env in
-        let b = Bindlib.subst b m in
-        break_prod_aux (Appl(t,m)) b
-    | _ -> (t, t_type)
+    | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vars)
+    | _         -> (t_type, List.rev vars)
   in
-  break_prod_aux t t_type
+  let (t_type, vars) = aux t_type [] in
+  let t_type_bind =
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t_type)) in
+  let t = add_args t (List.map mkfree vars) in
+  let t_bind =
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t)) in
+  (t_bind, t_type_bind)
 
 (** [apply_sub] is given a term and a substitution retutns the result of the
     application, by iterating through the term and replacing the metas of the
