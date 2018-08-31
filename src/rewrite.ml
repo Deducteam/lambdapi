@@ -14,8 +14,8 @@ let log_rewr = log_rewr.logger
 (** The type of a term with holes to be substituted in later. *)
 type to_subst = (term, term) Bindlib.mbinder
 type var_list = term Bindlib.var list
-type subst = (term Bindlib.var * term option) list
-
+type subst_build  = (term Bindlib.var * term option) list
+type substitution = term array
 
 (** A substitution is a mapping from metavariables to terms. *)
 (* type substitution = (term, term) array *)
@@ -30,6 +30,13 @@ let break_prod : term -> term * var_list = fun t_type ->
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vars)
     | _         -> (t_type, List.rev vars)
   in aux t_type []
+
+let  empty_subst : var_list -> subst_build = fun vars ->
+  let rec aux : var_list -> subst_build -> subst_build = fun vars acc ->
+    match vars with
+    | [] -> acc
+    | v :: vs -> aux vs ((v, None)::acc)
+  in aux vars []
 
 (** [build_sub] is given two terms, with the second one potentially containing
     metavariables, and finds the substitution that unifies them, if one exist. *)
@@ -156,7 +163,6 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
 
-  let t_type_bind = mbind t vars in
   let t_bind = mbind (add_args t (List.map mkfree vars)) vars in
   let (l_bind, r_bind) = (mbind l vars, mbind r vars) in
 
@@ -170,8 +176,8 @@ let handle_rewrite : term -> unit = fun t ->
   in
 
   let sigma = find_sub g_term l in
-  let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
-  let t = apply_sub t sigma in
+  let (l,r) = (Bindlib.msubst l_bind sigma, Bindlib.msubst r_bind sigma) in
+  let t = Bindlib.msubst t_bind sigma in
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
