@@ -86,7 +86,7 @@ let build_sub : term -> term -> var_list -> substitution option = fun g l vs ->
       in
       Some (Array.of_list (List.rev (List.map unwrap_snd subst)))
 
-(** [find_sub] is given two terms and finds the first instance of the second
+(** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> var_list -> substitution = fun g l vars ->
@@ -109,9 +109,9 @@ let find_sub : term -> term -> var_list -> substitution = fun g l vars ->
   | Some sub -> sub
   | None -> Array.of_list (List.map Terms.mkfree vars)
 
-(** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
-    Note that [t2] should not contain products, abstractions, metavariables, or
-    other awkward terms. *)
+(** [bind_match t1 t2] produces a binder that abstracts away all the occurence
+    of the term [t1] in the term [t2].  We require that [t2] does not  contain
+    products, abstraction, metavariables, or other awkward terms. *)
 let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   let x = Bindlib.new_var mkfree "X" in
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
@@ -142,18 +142,17 @@ let mbind : term -> var_list -> (term, term) Bindlib.mbinder = fun t vars ->
     the RHS in the obtained goal. *)
 let handle_rewrite : term -> unit = fun t ->
   (* Obtain the required symbols from the current signature. *)
-  (* FIXME use a parametric noton of equality. *)
-  let find_sym : string -> sym =
-    let find_symb sign name =
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    find_symb (Sign.current_sign ())
+  (* FIXME use a parametric notion of equality. *)
+  let sign = Sign.current_sign () in
+  let find_sym : string -> sym = fun name ->
+    try Sign.find sign name with Not_found ->
+    fatal_no_pos "Current signature does not define symbol [%s]." name
   in
   let sign_P  = find_sym "P"  in
   let sign_T  = find_sym "T"  in
   let sign_eq = find_sym "eq" in
   let sign_eqind = find_sym "eqind" in
+
   (* Get the focused goal, and related data. *)
   let thm = current_theorem () in
   let (g, gs) =
@@ -204,7 +203,7 @@ let handle_rewrite : term -> unit = fun t ->
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
-  (* Construct new goal and it type. *)
+  (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb(sign_P), Bindlib.subst pred_bind r) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
   let new_goal =

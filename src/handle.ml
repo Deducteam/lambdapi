@@ -3,8 +3,8 @@
 open Extra
 open Timed
 open Console
-open Parser
 open Terms
+open Parser
 open Print
 open Pos
 open Sign
@@ -22,6 +22,15 @@ let gen_obj = Pervasives.ref false
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
 let too_long = Pervasives.ref infinity
+
+(** [use_legacy_parser] indicates whether the legacy (Menhir) parser should be
+    used. It is faster, but only supports the legacy syntax. *)
+let use_legacy_parser = Pervasives.ref false
+
+(** [parse_file fname] parses file [fname] using the right parser. *)
+let parse_file : string -> p_cmd Pos.loc list = fun fname ->
+  if Pervasives.(!use_legacy_parser) then Legacy_parser.parse_file fname
+  else parse_file fname
 
 (** [handle_symdecl definable x a] extends the current signature with
     [definable] a symbol named [x] and type [a]. If [a] does not have
@@ -309,6 +318,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     if Pervasives.(tm >= !too_long) then
       wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
   with
+  | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m

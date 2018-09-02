@@ -59,10 +59,10 @@ fi
 # Checking function.
 function check_holide() {
   rm -f hol.dko
-  ${LAMBDAPI} --gen-obj hol.dk
+  ${LAMBDAPI} --legacy-parser --gen-obj hol.dk
   for FILE in `ls *.dk`; do
     if [ ${FILE} != "hol.dk" ]; then
-      ${LAMBDAPI} ${FILE}
+      ${LAMBDAPI} --legacy-parser ${FILE}
     fi
   done
 }

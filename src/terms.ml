@@ -376,7 +376,7 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
-(** [is_symb] tests if [t] is of the form Symb(s). *)
+(** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
   | Symb(r) -> r == s
