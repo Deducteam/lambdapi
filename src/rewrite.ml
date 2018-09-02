@@ -28,28 +28,35 @@ let break_prod : term -> term * var_list = fun t_type ->
     | _         -> (t_type, List.rev vars)
   in aux t_type []
 
-let  empty_subst : var_list -> subst_build = fun vars ->
-  let rec aux : var_list -> subst_build -> subst_build = fun vars acc ->
-    match vars with
-    | [] -> acc
-    | v :: vs -> aux vs ((v, None)::acc)
-  in aux vars []
-
 (** [build_sub] is given two terms, with the second one potentially containing
     metavariables, and finds the substitution that unifies them, if one exist. *)
 let build_sub : term -> term -> var_list -> substitution option = fun g l vs ->
+  let  empty_subst_build : var_list -> subst_build = fun vars ->
+    let rec aux : var_list -> subst_build -> subst_build = fun vars acc ->
+      match vars with
+      | [] -> acc
+      | v :: vs -> aux vs ((v, None)::acc)
+    in aux vars []
+  in
   let rec update_subst :
     subst_build -> term Bindlib.var -> term -> subst_build = fun subst x t ->
       match subst with
       | [] -> []
       | (v, a) :: rest ->
           if Bindlib.eq_vars v x then (v, Some t) :: rest
-          else (v,a) :: update_subst rest x t
+          else (v,a) :: (update_subst rest x t)
   in
   let rec build_sub_aux :
     term -> term -> subst_build -> subst_build option = fun g l acc ->
     match (g,l) with
-    | (Vari(x), Vari(y))     -> if x==y then Some acc else None
+    | (Vari(y), Vari(x))     ->
+        begin
+          let p = try Some (List.assoc x acc) with Not_found -> None in
+          match p with
+          | Some (Some p) -> if eq p g then Some acc else None
+          | Some None     -> Some (update_subst acc x g)
+          | None -> if x==y then Some acc else None
+        end
     | (Type, Type)           -> Some acc
     | (Kind, Kind)           -> Some acc
     | (Symb(x), Symb(y))     -> if x==y then Some acc else None
@@ -61,22 +68,23 @@ let build_sub : term -> term -> var_list -> substitution option = fun g l vs ->
         end
     | (t, Vari(x))           ->
         begin
-          let p = List.assoc x acc in
+          let p = try Some (List.assoc x acc) with Not_found -> None in
           match p with
-          | Some _ -> Some acc
-          | None   -> Some (update_subst acc x t)
+          | Some (Some p) -> if eq t p then Some acc else None
+          | Some None     -> Some (update_subst acc x t)
+          | None -> None
         end
     | (_, _)                 -> None
   in
-  match build_sub_aux g l (empty_subst vs) with
+  match build_sub_aux g l (empty_subst_build vs) with
   | None -> None
   | Some subst ->
-      let unwrap_snd (x,y) =
+      let unwrap_snd (_, y) =
         match y with
-        | Some a -> a
+        | Some a ->  a
         | None   -> assert false
       in
-      Some (Array.of_list (List.map unwrap_snd subst))
+      Some (Array.of_list (List.rev (List.map unwrap_snd subst)))
 
 (** [find_sub] is given two terms and finds the first instance of the second
     term in the first, if one exists, and returns the substitution giving rise
@@ -99,7 +107,7 @@ let find_sub : term -> term -> var_list -> substitution = fun g l vars ->
   in
   match find_sub_aux g with
   | Some sub -> sub
-  | None -> Array.of_list []
+  | None -> Array.of_list (List.map Terms.mkfree vars)
 
 (** [bind_match t1 t2] binds every occurence of the term [t1] in the term [t2].
     Note that [t2] should not contain products, abstractions, metavariables, or
@@ -126,7 +134,7 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
 let mbind : term -> var_list -> (term, term) Bindlib.mbinder = fun t vars ->
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (Bindlib.box t))
+    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (lift t))
 
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality

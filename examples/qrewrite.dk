@@ -167,7 +167,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #PROOF add_same_times_two : !x, P (eq nat (add x x) (mult 2 x)).
 #REFINE x => _.
 #SIMPL.
-#REWRITE add0r _.
+#REWRITE add0r.
 #REFINE refl nat (add x x).
 #QED.
 
@@ -179,7 +179,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #PROOF rewriteTest1 : !a, !b, P (eq nat (add a b) (add b a)).
 #REFINE a => b => _.
 #PRINT.
-#REWRITE addcomm _ _.
+#REWRITE addcomm.
 #REFINE refl nat (add b a).
 #QED.
 
