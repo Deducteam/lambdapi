@@ -316,3 +316,31 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   let lhs = build [] lhs in
   let rhs = build [] rhs in
   (lhs, rhs)
+
+(** [scope_rw_spec mmap env t] turns a parser-level rewrite specification  [s]
+    into an actual rewrite specification. It may use the variables of [env] as
+    well as metavariables mapped in [mmap]. *)
+let scope_rw_patt : meta StrMap.t -> env -> p_rw_patt loc
+                    -> Rewrite.rw_patt = fun m env s ->
+  let open Rewrite in
+  match s.elt with
+  | P_Term(t)               -> RW_Term(scope_term m env t)
+  | P_InTerm(t)             -> RW_InTerm(scope_term m env t)
+  | P_InIdInTerm(x,t)       ->
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_IdInTerm(x,t)         ->
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_TermInIdInTerm(u,x,t) ->
+      let u = scope_term m env u in
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_TermAsIdInTerm(u,x,t) ->
+      let u = scope_term m env u in
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

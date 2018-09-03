@@ -16,6 +16,15 @@ type to_subst = (term, term) Bindlib.mbinder
 type subst_build  = (term Bindlib.var * term option) list
 type substitution = term array
 
+(** Rewrite pattern. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+
 (** [break_prod] is given the equality proof and its type and it replaces
     with fresh metas from make_meta all the quantified variables in t_type.
     At the same time it applies the new metavariables tot the equality proof,
@@ -247,3 +256,13 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
 
+(** [handle_rewrite s] rewrites according to the specification [s]. *)
+let handle_rewrite : rw_patt option -> term -> unit = fun s t ->
+  match s with
+  | None                         -> handle_rewrite t
+  | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
