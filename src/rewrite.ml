@@ -16,7 +16,7 @@ type to_subst = (term, term) Bindlib.mbinder
 
 (** Type of a partial substitution. It is an association list of variables and
     the potential terms by which they will be replaced. *)
-type subst_build  = (term Bindlib.var * term option) list
+type subst_build  = (tvar * term option) list
 
 (** Type of a substitution passed to Bindlib.msubst. *)
 type substitution = term array
@@ -34,9 +34,8 @@ type rw_patt =
     and it unbinds all the the quantified variables. It returns the  term with
     the free variables and the list of variables that  were  unbound, so  that
     they can be bound to the term and substituted with the right terms. *)
-let break_prod : term -> term * term Bindlib.var list = fun t ->
-  let rec aux :
-    term -> term Bindlib.var list -> term * term Bindlib.var list = fun t vs ->
+let break_prod : term -> term * tvar list = fun t ->
+  let rec aux : term -> tvar list -> term * tvar list = fun t vs ->
     match t with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
     | _         -> (t, List.rev vs)
@@ -45,13 +44,11 @@ let break_prod : term -> term * term Bindlib.var list = fun t ->
 (** [build_sub] is given two terms [g] and [l], and a list of variables that
     are free in [l] and should be unified with some subterms of [g]. It returns
     the substitution that unifies [l] with [g], if it exists. *)
-let build_sub :
-  term -> term -> term Bindlib.var list -> substitution option = fun g l vs ->
+let build_sub : term -> term -> tvar list -> substitution option = fun g l vs ->
     (* An empty substitution is associates each variable in [vars] with the
        optional constructor None. *)
-  let  empty_subst_build : term Bindlib.var list -> subst_build = fun vars ->
-    let rec aux :
-      term Bindlib.var list -> subst_build -> subst_build = fun vars acc ->
+  let  empty_subst_build : tvar list -> subst_build = fun vars ->
+    let rec aux : tvar list -> subst_build -> subst_build = fun vars acc ->
       match vars with
       | [] -> acc
       | v :: vs -> aux vs ((v, None)::acc)
@@ -60,7 +57,7 @@ let build_sub :
   (* [update_subst] is given a new association and places it in the current
     subst_build. *)
   let rec update_subst :
-    subst_build -> term Bindlib.var * term -> subst_build = fun subst (x,t) ->
+    subst_build -> tvar * term -> subst_build = fun subst (x,t) ->
       match subst with
       | [] -> []
       | (v, a) :: rest ->
@@ -110,8 +107,7 @@ let build_sub :
 (** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
-let find_sub :
-  term -> term -> term Bindlib.var list -> substitution = fun g l vars ->
+let find_sub : term -> term -> tvar list -> substitution = fun g l vars ->
   let rec find_sub_aux : term -> substitution option = fun g ->
     match build_sub g l vars with
     | Some sub -> Some sub
