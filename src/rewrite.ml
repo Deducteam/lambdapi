@@ -151,9 +151,6 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   in
   Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
-let mbind : 'a Bindlib.box -> 'b Bindlib.var list -> ('b, 'a) Bindlib.mbinder =
-    fun t vs -> Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vs) t)
-
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
@@ -203,8 +200,9 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
 
-  let t_bind = mbind (lift (add_args t (List.map mkfree vars))) vars in
-  let l_r_bind = mbind (Bindlib.box_pair (lift l) (lift r)) vars in
+  let t_args = add_args t (List.map mkfree vars) in
+  let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
+  let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
@@ -216,8 +214,7 @@ let handle_rewrite : term -> unit = fun t ->
   in
 
   let sigma = find_sub g_term l vars in
-  let (l,r) = Bindlib.msubst l_r_bind sigma in
-  let t = Bindlib.msubst t_bind sigma in
+  let (t,l,r) = Bindlib.msubst bound sigma in
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
