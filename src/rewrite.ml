@@ -11,6 +11,16 @@ open Solve
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+(** The type of a term with holes to be substituted in later. *)
+type to_subst = (term, term) Bindlib.mbinder
+
+(** Type of a partial substitution. It is an association list of variables and
+    the potential terms by which they will be replaced. *)
+type subst_build  = (tvar * term option) list
+
+(** Type of a substitution passed to Bindlib.msubst. *)
+type substitution = term array
+
 (** Rewrite pattern. *)
 type rw_patt =
   | RW_Term           of term
@@ -20,61 +30,51 @@ type rw_patt =
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
-(** A substitution is a mapping from metavariables to terms. *)
-type substitution = (term * term) list
-
-(** [make_meta env] builds a fresh metavariable given the environment [env]. A
-    call to this function does exactly corresponds to the scoping of wildcards
-    when every variable of [env] is in scope (see [Scope.scope_term], [P_Wild]
-    case. *)
-let make_meta : Env.t -> term = fun env ->
-  let vs = Env.vars_of_env env in
-  let a =
-    let m = fresh_meta (Env.prod_of_env env _Type) (Array.length vs) in
-    Env.prod_of_env env (_Meta m vs)
-  in
-  Bindlib.unbox (_Meta (fresh_meta a (List.length env)) vs)
-
-(** [break_prod] is given the equality proof and its type and it replaces
-    with fresh metas from make_meta all the quantified variables in t_type.
-    At the same time it applies the new metavariables tot the equality proof,
-    so that afterwards they are substituted with the right terms. *)
-let break_prod : term -> term -> Env.t -> term * term = fun t t_type env ->
-  let rec break_prod_aux : term -> term -> term * term = fun t t_type ->
-    match t_type with
-    | Prod(_,b) ->
-        let m = make_meta env in
-        let b = Bindlib.subst b m in
-        break_prod_aux (Appl(t,m)) b
-    | _ -> (t, t_type)
-  in
-  break_prod_aux t t_type
-
-(** [apply_sub t sub] applies the substitution [sub] to the term [t].  It goes
-    through the term [t],  replacing the metavariables of the term with values
-    provided in the substitution (if any). *)
-let apply_sub : term -> substitution -> term = fun t sub ->
-  let rec apply_sub_aux : term -> term = fun t ->
-    let t = unfold t in
+(** [break_prod] is given a nested product term (potentially with no products)
+    and it unbinds all the the quantified variables. It returns the  term with
+    the free variables and the list of variables that  were  unbound, so  that
+    they can be bound to the term and substituted with the right terms. *)
+let break_prod : term -> term * tvar list = fun t ->
+  let rec aux : term -> tvar list -> term * tvar list = fun t vs ->
     match t with
-    | Meta(_)     ->
-        let p = try Some (List.assoc t sub) with Not_found -> None in
-      begin
-         match p with
-          | Some p -> p
-          | None   -> t
-      end
-    | Appl(t1,t2) -> Appl(apply_sub_aux t1, apply_sub_aux t2)
-    | _           -> t
-  in
-  apply_sub_aux t
+    | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
+    | _         -> (t, List.rev vs)
+  in aux t []
 
-(** [build_sub] is given two terms, with the second one potentially containing
-    metavariables, and tries to finds the substitution unifying them. *)
-let build_sub : term -> term -> substitution option = fun g l ->
+(** [build_sub] is given two terms [g] and [l], and a list of variables that
+    are free in [l] and should be unified with some subterms of [g]. It returns
+    the substitution that unifies [l] with [g], if it exists. *)
+let build_sub : term -> term -> tvar list -> substitution option = fun g l vs ->
+    (* An empty substitution is associates each variable in [vars] with the
+       optional constructor None. *)
+  let  empty_subst_build : tvar list -> subst_build = fun vars ->
+    let rec aux : tvar list -> subst_build -> subst_build = fun vars acc ->
+      match vars with
+      | [] -> acc
+      | v :: vs -> aux vs ((v, None)::acc)
+    in aux vars []
+  in
+  (* [update_subst] is given a new association and places it in the current
+    subst_build. *)
+  let rec update_subst :
+    subst_build -> tvar * term -> subst_build = fun subst (x,t) ->
+      match subst with
+      | [] -> []
+      | (v, a) :: rest ->
+          if Bindlib.eq_vars v x then (v, Some t) :: rest
+          else (v,a) :: (update_subst rest (x,t))
+  in
   let rec build_sub_aux :
-    term -> term -> substitution -> substitution option = fun g l acc ->
+    term -> term -> subst_build -> subst_build option = fun g l acc ->
     match (g,l) with
+    | (Vari(y), Vari(x))     ->
+        begin
+          let p = try Some (List.assoc x acc) with Not_found -> None in
+          match p with
+          | Some (Some p) -> if eq p g then Some acc else None
+          | Some None     -> Some (update_subst acc (x,g))
+          | None -> if x==y then Some acc else None
+        end
     | (Type, Type)           -> Some acc
     | (Kind, Kind)           -> Some acc
     | (Symb(x), Symb(y))     -> if x==y then Some acc else None
@@ -84,22 +84,32 @@ let build_sub : term -> term -> substitution option = fun g l ->
           | Some subst -> build_sub_aux y1 y2 subst
           | None       -> None
         end
-    | (t, Meta(_))           ->
+    | (t, Vari(x))           ->
         begin
-          let p = try Some (List.assoc l acc) with Not_found -> None in
+          let p = try Some (List.assoc x acc) with Not_found -> None in
           match p with
-          | Some _ -> Some acc
-          | None   -> Some ((l,t)::acc)
+          | Some (Some p) -> if eq t p then Some acc else None
+          | Some None     -> Some (update_subst acc (x,t))
+          | None -> None
         end
     | (_, _)                 -> None
-  in build_sub_aux g l []
+  in
+  match build_sub_aux g l (empty_subst_build vs) with
+  | None -> None
+  | Some subst ->
+      let unwrap_snd (_, y) =
+        match y with
+        | Some a ->  a
+        | None   -> assert false
+      in
+      Some (Array.of_list (List.rev (List.map unwrap_snd subst)))
 
 (** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
-let find_sub : term -> term -> substitution = fun g l ->
+let find_sub : term -> term -> tvar list -> substitution = fun g l vars ->
   let rec find_sub_aux : term -> substitution option = fun g ->
-    match build_sub g l with
+    match build_sub g l vars with
     | Some sub -> Some sub
     | None     ->
       begin
@@ -115,7 +125,7 @@ let find_sub : term -> term -> substitution = fun g l ->
   in
   match find_sub_aux g with
   | Some sub -> sub
-  | None -> []
+  | None -> Array.of_list (List.map Terms.mkfree vars)
 
 (** [bind_match t1 t2] produces a binder that abstracts away all the occurence
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
@@ -174,9 +184,9 @@ let handle_rewrite : term -> unit = fun t ->
     | None    ->
         fatal_no_pos "Cannot infer the type of [%a] (given to rewrite)." pp t
   in
-
-  (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
-  let (t, t_type) = break_prod t t_type g.g_hyps in
+  (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
+   * parameters. *)
+  let (t_type, vars) = break_prod t_type in
   let (a, l, r)  =
     match get_args t_type with
     | (p,[eq]) when is_symb sign_P p ->
@@ -190,6 +200,10 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
 
+  let t_args = add_args t (List.map mkfree vars) in
+  let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
+  let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
+
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -199,9 +213,8 @@ let handle_rewrite : term -> unit = fun t ->
           pp g.g_type
   in
 
-  let sigma = find_sub g_term l in
-  let (l,r) = (apply_sub l sigma, apply_sub r sigma) in
-  let t = apply_sub t sigma in
+  let sigma = find_sub g_term l vars in
+  let (t,l,r) = Bindlib.msubst bound sigma in
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
