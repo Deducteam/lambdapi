@@ -25,10 +25,10 @@ type rw_patt =
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
-(** [break_prod] is given the equality proof and its type and it replaces
-    with fresh metas from make_meta all the quantified variables in t_type.
-    At the same time it applies the new metavariables tot the equality proof,
-    so that afterwards they are substituted with the right terms. *)
+(** [break_prod] is given a nested product term (potentially with no products)
+    and it unbinds all the the quantified variables. It returns the  term with
+    the free variables and the list of variables that  were  unbound, so  that
+    they can be bound to the term and substituted with the right terms. *)
 let break_prod : term -> term * term Bindlib.var list = fun t ->
   let rec aux :
     term -> term Bindlib.var list -> term * term Bindlib.var list = fun t vs ->
