@@ -13,7 +13,12 @@ let log_rewr = log_rewr.logger
 
 (** The type of a term with holes to be substituted in later. *)
 type to_subst = (term, term) Bindlib.mbinder
+
+(** Type of a partial substitution. It is an association list of variables and
+    the potential terms by which they will be replaced. *)
 type subst_build  = (term Bindlib.var * term option) list
+
+(** Type of a substitution passed to Bindlib.msubst. *)
 type substitution = term array
 
 (** Rewrite pattern. *)
