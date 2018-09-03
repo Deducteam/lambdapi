@@ -13,7 +13,6 @@ let log_rewr = log_rewr.logger
 
 (** The type of a term with holes to be substituted in later. *)
 type to_subst = (term, term) Bindlib.mbinder
-type var_list = term Bindlib.var list
 type subst_build  = (term Bindlib.var * term option) list
 type substitution = term array
 
@@ -21,18 +20,21 @@ type substitution = term array
     with fresh metas from make_meta all the quantified variables in t_type.
     At the same time it applies the new metavariables tot the equality proof,
     so that afterwards they are substituted with the right terms. *)
-let break_prod : term -> term * var_list = fun t_type ->
-  let rec aux : term -> var_list -> term * var_list = fun t_type vars ->
-    match t_type with
-    | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vars)
-    | _         -> (t_type, List.rev vars)
-  in aux t_type []
+let break_prod : term -> term * term Bindlib.var list = fun t ->
+  let rec aux :
+    term -> term Bindlib.var list -> term * term Bindlib.var list = fun t vs ->
+    match t with
+    | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
+    | _         -> (t, List.rev vs)
+  in aux t []
 
 (** [build_sub] is given two terms, with the second one potentially containing
     metavariables, and finds the substitution that unifies them, if one exist. *)
-let build_sub : term -> term -> var_list -> substitution option = fun g l vs ->
-  let  empty_subst_build : var_list -> subst_build = fun vars ->
-    let rec aux : var_list -> subst_build -> subst_build = fun vars acc ->
+let build_sub :
+  term -> term -> term Bindlib.var list -> substitution option = fun g l vs ->
+  let  empty_subst_build : term Bindlib.var list -> subst_build = fun vars ->
+    let rec aux :
+      term Bindlib.var list -> subst_build -> subst_build = fun vars acc ->
       match vars with
       | [] -> acc
       | v :: vs -> aux vs ((v, None)::acc)
@@ -89,7 +91,8 @@ let build_sub : term -> term -> var_list -> substitution option = fun g l vs ->
 (** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
-let find_sub : term -> term -> var_list -> substitution = fun g l vars ->
+let find_sub :
+  term -> term -> term Bindlib.var list -> substitution = fun g l vars ->
   let rec find_sub_aux : term -> substitution option = fun g ->
     match build_sub g l vars with
     | Some sub -> Some sub
@@ -133,8 +136,8 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
   in
   Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
 
-let mbind : term -> var_list -> (term, term) Bindlib.mbinder = fun t vars ->
-    Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) (lift t))
+let mbind : 'a Bindlib.box -> 'b Bindlib.var list -> ('b, 'a) Bindlib.mbinder =
+    fun t vs -> Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vs) t)
 
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
@@ -185,8 +188,8 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
   in
 
-  let t_bind = mbind (add_args t (List.map mkfree vars)) vars in
-  let (l_bind, r_bind) = (mbind l vars, mbind r vars) in
+  let t_bind = mbind (lift (add_args t (List.map mkfree vars))) vars in
+  let l_r_bind = mbind (Bindlib.box_pair (lift l) (lift r)) vars in
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
@@ -198,7 +201,7 @@ let handle_rewrite : term -> unit = fun t ->
   in
 
   let sigma = find_sub g_term l vars in
-  let (l,r) = (Bindlib.msubst l_bind sigma, Bindlib.msubst r_bind sigma) in
+  let (l,r) = Bindlib.msubst l_r_bind sigma in
   let t = Bindlib.msubst t_bind sigma in
   let pred_bind = bind_match l g_term in
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
