@@ -37,10 +37,13 @@ let break_prod : term -> term * term Bindlib.var list = fun t ->
     | _         -> (t, List.rev vs)
   in aux t []
 
-(** [build_sub] is given two terms, with the second one potentially containing
-    metavariables, and finds the substitution that unifies them, if one exist. *)
+(** [build_sub] is given two terms [g] and [l], and a list of variables that
+    are free in [l] and should be unified with some subterms of [g]. It returns
+    the substitution that unifies [l] with [g], if it exists. *)
 let build_sub :
   term -> term -> term Bindlib.var list -> substitution option = fun g l vs ->
+    (* An empty substitution is associates each variable in [vars] with the
+       optional constructor None. *)
   let  empty_subst_build : term Bindlib.var list -> subst_build = fun vars ->
     let rec aux :
       term Bindlib.var list -> subst_build -> subst_build = fun vars acc ->
@@ -49,13 +52,15 @@ let build_sub :
       | v :: vs -> aux vs ((v, None)::acc)
     in aux vars []
   in
+  (* [update_subst] is given a new association and places it in the current
+    subst_build. *)
   let rec update_subst :
-    subst_build -> term Bindlib.var -> term -> subst_build = fun subst x t ->
+    subst_build -> term Bindlib.var * term -> subst_build = fun subst (x,t) ->
       match subst with
       | [] -> []
       | (v, a) :: rest ->
           if Bindlib.eq_vars v x then (v, Some t) :: rest
-          else (v,a) :: (update_subst rest x t)
+          else (v,a) :: (update_subst rest (x,t))
   in
   let rec build_sub_aux :
     term -> term -> subst_build -> subst_build option = fun g l acc ->
@@ -65,7 +70,7 @@ let build_sub :
           let p = try Some (List.assoc x acc) with Not_found -> None in
           match p with
           | Some (Some p) -> if eq p g then Some acc else None
-          | Some None     -> Some (update_subst acc x g)
+          | Some None     -> Some (update_subst acc (x,g))
           | None -> if x==y then Some acc else None
         end
     | (Type, Type)           -> Some acc
@@ -82,7 +87,7 @@ let build_sub :
           let p = try Some (List.assoc x acc) with Not_found -> None in
           match p with
           | Some (Some p) -> if eq t p then Some acc else None
-          | Some None     -> Some (update_subst acc x t)
+          | Some None     -> Some (update_subst acc (x,t))
           | None -> None
         end
     | (_, _)                 -> None
