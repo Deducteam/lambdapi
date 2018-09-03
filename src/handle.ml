@@ -304,10 +304,15 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         let metas = get_metas t in
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
-    | P_Rewrite(t)          ->
+    | P_Rewrite(s,t)        ->
         let env = Proofs.focus_goal_hyps () in
+        let s =
+          match s with
+          | None    -> None
+          | Some(s) -> Some(Scope.scope_rw_patt StrMap.empty env s)
+        in
         let t = Scope.scope_term StrMap.empty env t in
-        Rewrite.handle_rewrite t
+        Rewrite.handle_rewrite s t
     | P_Focus(i)            -> handle_focus i
     | P_QED                 -> handle_qed ()
     | P_Other(c)            ->

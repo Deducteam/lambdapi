@@ -111,6 +111,8 @@ let _wild_      = keyword "_"
 let _Type_      = keyword "Type"
 let _def_       = keyword "def"
 let _thm_       = keyword "thm"
+let _in_        = keyword "in"
+let _as_        = keyword "as"
 let _CHECK_     = command "CHECK"
 let _CHECKNOT_  = command "CHECKNOT"
 let _ASSERT_    = command "ASSERT"
@@ -178,39 +180,48 @@ type p_rule = p_term * p_term
 let opaque = true
 let const  = true
 
+(** Rewrite specification (for the rewrite tactic). *)
+type p_rw_patt =
+  | P_Term           of p_term
+  | P_InTerm         of p_term
+  | P_InIdInTerm     of strloc * p_term
+  | P_IdInTerm       of strloc * p_term
+  | P_TermInIdInTerm of p_term * strloc * p_term
+  | P_TermAsIdInTerm of p_term * strloc * p_term
+
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Symbol declaration (constant when the boolean is [true]). *)
-  | P_SymDecl  of bool * strloc * p_term
+  | P_SymDecl    of bool * strloc * p_term
   (** Quick definition (opaque when the boolean is [true]). *)
-  | P_SymDef   of bool * strloc * p_term option * p_term
+  | P_SymDef     of bool * strloc * p_term option * p_term
   (** Rewriting rules declaration. *)
-  | P_Rules    of p_rule list
-  | P_OldRules of old_p_rule list
+  | P_Rules      of p_rule list
+  | P_OldRules   of old_p_rule list
   (** Require an external signature. *)
-  | P_Require   of module_path
+  | P_Require    of module_path
   (** Type inference command. *)
-  | P_Infer    of p_term * Eval.config
+  | P_Infer      of p_term * Eval.config
   (** Normalisation command. *)
-  | P_Eval     of p_term * Eval.config
+  | P_Eval       of p_term * Eval.config
   (** Type-checking command. *)
-  | P_TestType of bool * bool * p_term * p_term
+  | P_TestType   of bool * bool * p_term * p_term
   (** Convertibility command. *)
-  | P_TestConv of bool * bool * p_term * p_term
+  | P_TestConv   of bool * bool * p_term * p_term
   (** Unimplemented command. *)
-  | P_Other    of strloc
+  | P_Other      of strloc
   (** Start a proof. *)
   | P_StartProof of strloc * p_term
   (** Print focused goal. *)
   | P_PrintFocus
   (** Refine the focused goal. *)
-  | P_Refine of p_term
+  | P_Refine     of p_term
   (** Normalize the focused goal. *)
   | P_Simpl
   (** Rewrite command. *)
-  | P_Rewrite of p_term
+  | P_Rewrite    of p_rw_patt loc option * p_term
   (** Focus on a goal. *)
-  | P_Focus of int
+  | P_Focus      of int
   (** End the proof. *)
   | P_QED
 
@@ -263,11 +274,24 @@ let parser eval_config =
       let strategy = match s with None -> Eval.SNF | Some(s) -> s in
       Eval.{strategy; steps = Some(n)}
 
+(** [check] parses an assertion configuration (depending on command). *)
 let parser check =
   | _CHECKNOT_  -> (false, true )
   | _CHECK_     -> (false, false)
   | _ASSERTNOT_ -> (true , true )
   | _ASSERT_    -> (true , false)
+
+(** [rw_pattern] is a parser for a rewrite pattern. *)
+let parser rw_pattern =
+  | t:expr                          -> P_Term(t)
+  | _in_ t:expr                     -> P_InTerm(t)
+  | _in_ x:ident _in_ t:expr        -> P_InIdInTerm(x,t)
+  | x:ident _in_ t:expr             -> P_IdInTerm(x,t)
+  | u:expr _in_ x:ident _in_ t:expr -> P_TermInIdInTerm(u,x,t)
+  | u:expr _as_ x:ident _in_ t:expr -> P_TermAsIdInTerm(u,x,t)
+
+(** [rw_patt] is a parser of a rewrite configuration. *)
+let parser rw_patt = {"[" s:rw_pattern "]" -> in_pos _loc_s s}?
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
@@ -287,7 +311,7 @@ let parser cmd_aux =
   | _PRINT_                          -> P_PrintFocus
   | _REFINE_ t:expr                  -> P_Refine(t)
   | _SIMPL_                          -> P_Simpl
-  | _REWRITE_ t:expr                 -> P_Rewrite(t)
+  | _REWRITE_ s:rw_patt t:expr       -> P_Rewrite(s,t)
   | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
   | _QED_                            -> P_QED
 

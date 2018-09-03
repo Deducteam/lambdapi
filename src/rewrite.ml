@@ -11,6 +11,15 @@ open Solve
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+(** Rewrite pattern. *)
+type rw_patt =
+  | RW_Term           of term
+  | RW_InTerm         of term
+  | RW_InIdInTerm     of (term, term) Bindlib.binder
+  | RW_IdInTerm       of (term, term) Bindlib.binder
+  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
+  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+
 (** A substitution is a mapping from metavariables to terms. *)
 type substitution = (term * term) list
 
@@ -236,3 +245,14 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  pred           = [%a]" pp pred;
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
+
+(** [handle_rewrite s] rewrites according to the specification [s]. *)
+let handle_rewrite : rw_patt option -> term -> unit = fun s t ->
+  match s with
+  | None                         -> handle_rewrite t
+  | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
+  | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
