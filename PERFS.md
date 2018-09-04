@@ -1,8 +1,8 @@
 | Library        | Lambdapi time | Lambdapi RAM | Dedukti time | Dedukti RAM |
 | -------------- | ------------- | ------------ | ------------ | ----------- |
-| focalide       |         00:05 |        234Mb |        00:08 |        44Mb |
-| holide         |         07:11 |       1379Mb |        01:52 |       527Mb |
+| focalide       |         00:05 |        236Mb |        00:08 |        44Mb |
+| holide         |         02:18 |       1347Mb |        01:52 |       527Mb |
 | iprover        |             - |            - |        02:38 |        82Mb |
-| matita         |         16:10 |        538Mb |        13:08 |       160Mb |
-| verine         |         00:31 |        756Mb |        00:49 |       659Mb |
+| matita         |         15:57 |        403Mb |        13:08 |       160Mb |
+| verine         |         00:31 |        738Mb |        00:49 |       659Mb |
 | zenon_modulo   |             - |            - |            - |           - |
