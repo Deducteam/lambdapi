@@ -14,6 +14,8 @@ s : N -> N.
 
 def 1 := s 0.
 
+def 2 := s 1.
+
 (; Addition on natural numbers. ;)
 
 def add : N -> N -> N.
@@ -22,6 +24,13 @@ add 0 ?x --> ?x.
 add (s ?x) ?y --> s (add ?x ?y).
 
 #EVAL (add (s 1) (s 1)).
+
+(; Multiplication on natural numbers. ;)
+
+def mult : N -> N -> N.
+
+mult 0 ?x --> 0.
+mult (s ?x) ?y --> add ?y (mult ?x ?y).
 
 (; Type of data type codes and their interpretation as types. ;)
 
@@ -74,7 +83,7 @@ eq : !a, T a -> T a -> Prop.
 refl : !a, !x, P (eq a x x).
 
 eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
-(; FIXME: try to infer the type of p. ;)
+  (;FIXME: try to infer the type of p.;)
 
 (; Symmetry of the equality ;)
 #PROOF eq_sym : !a, !x, !y, P (eq a x y) -> P (eq a y x).
@@ -149,7 +158,42 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #SIMPL.
 #REFINE n => ih => _.
 #REWRITE ih.
-#REWRITE add_succ_r.
+#REWRITE add_succ_r m n0.
 #REFINE refl nat (s (add m n0)).
 #QED.
 
+
+(; Adding the same value is the same as multiplying by 2 ;)
+#PROOF add_same_times_two : !x, P (eq nat (add x x) (mult 2 x)).
+#REFINE x => _.
+#SIMPL.
+#REWRITE add0r.
+#REFINE refl nat (add x x).
+#QED.
+
+
+(; Rewrite tests with quantified variables in the hypothesis ;)
+(; --------------------------------------------------------- ;)
+
+(; This stupid test directly uses the addcomm lemma ;)
+#PROOF rewriteTest1 : !a, !b, P (eq nat (add a b) (add b a)).
+#REFINE a => b => _.
+#PRINT.
+#REWRITE addcomm.
+#REFINE refl nat (add b a).
+#QED.
+
+
+(; Underneath is an example where a metavariable appears multiple time
+(here the one corresponding to the universally quantified variable x
+in the lemma add_same_times_two).
+This is to check that we effectively instanciate each metavariable only once.
+This test will fail without the small fix done in build_sub function just after
+commit cb84b58 (we were looking for t instead of l in the current substitution) ;)
+(;
+#PROOF rewriteTest2 : !a, P (eq nat (add a a) (mult 2 a)).
+#REFINE a => _.
+#REWRITE add_same_times_two _.
+#REFINE refl nat (mult 2 a).
+#QED.
+;)

@@ -74,52 +74,7 @@ eq : !a, T a -> T a -> Prop.
 refl : !a, !x, P (eq a x x).
 
 eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
-(; FIXME: try to infer the type of p. ;)
-
-(; Symmetry of the equality ;)
-#PROOF eq_sym : !a, !x, !y, P (eq a x y) -> P (eq a y x).
-#REFINE a => x => y => H => _.
-(; First option, doing the proof via rewrite ;)
-#REWRITE H.
-#REFINE (refl a y).
-#QED.
-(; Second option, by hand, and full ;)
-(;
-#REFINE eqind a x y H (z => eq a y z) (refl a y).
-#QED.
-;)
-(; Third option, by hand, with a wildcard ;)
-(;
-#REFINE eqind a x y H (z => eq a y z) _.
-#SIMPL.
-#REFINE refl a y.
-#QED.
-;)
-
-
-(; s is compatible with Leibniz equality ;)
-#PROOF s_eq : !x, !y, P (eq nat x y) -> P (eq nat (s x) (s y)).
-#REFINE x => y => xy => _.
-#REFINE eqind nat x y xy (z => eq nat (s z) (s y)) (refl nat (s y)).
-#QED.
-
-
-(; 0 is right neutral for add. ;)
-#PROOF add0r : !n, P (eq nat (add n 0) n).
-(;FIXME: try to infer nat. ;)
-#INFER nat_ind.
-#REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
-(;FIXME: try to infer predicate. ;) #PRINT.
-#FOCUS 1. #PRINT.
-#FOCUS 1. #PRINT.
-(; Case 0 ;)
-#SIMPL. #PRINT.
-#REFINE (refl nat 0). #PRINT.
-(; Case S ;)
-#REFINE n => hn => _. #PRINT.
-#SIMPL. #PRINT.
-#REFINE s_eq (add n 0) n hn.
-#QED.
+  (;FIXME: try to infer the type of p.;)
 
 
 (; forall n m, n + S m = S (n+m) ;)
@@ -138,18 +93,11 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #QED.
 
 
-(; Commutativity of the addition ;)
-#PROOF addcomm : !n, !m, P (eq nat (add n m) (add m n)).
-#REFINE n => m => _.
-#REFINE (nat_ind (n:N => eq nat (add n m) (add m n)) ?case0[n,m] ?caseS[n,m] n).
-(; Case 0 ;)
-#SIMPL.
-#REFINE eq_sym nat (add m 0) m (add0r m). (; TO DO : Add a #SYM tactic ;)
-(; Case S ;)
-#SIMPL.
-#REFINE n => ih => _.
-#REWRITE ih.
+#PROOF rewriteTest0 : !x, !y, !z, P (eq nat (add (add x (s y)) z) (add (s (add x y)) z)).
+#REFINE x => y => z => _.
+#PRINT.
 #REWRITE add_succ_r.
-#REFINE refl nat (s (add m n0)).
+#REFINE refl nat (add (s (add x y)) z).
 #QED.
+
 

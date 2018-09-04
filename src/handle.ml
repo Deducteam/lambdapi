@@ -1,22 +1,36 @@
 (** Toplevel commands. *)
 
+open Extra
+open Timed
 open Console
-open Parser
 open Terms
+open Parser
 open Print
 open Pos
 open Sign
-open Extra
 open Files
 open Proofs
 
+(** Logging function for tactics. *)
+let log_tact = new_logger 'i' "tact" "debugging information for tactics"
+let log_tact = log_tact.logger
+
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
-let gen_obj : bool ref = ref false
+let gen_obj = Pervasives.ref false
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
-let too_long : float ref = ref infinity
+let too_long = Pervasives.ref infinity
+
+(** [use_legacy_parser] indicates whether the legacy (Menhir) parser should be
+    used. It is faster, but only supports the legacy syntax. *)
+let use_legacy_parser = Pervasives.ref false
+
+(** [parse_file fname] parses file [fname] using the right parser. *)
+let parse_file : string -> p_cmd Pos.loc list = fun fname ->
+  if Pervasives.(!use_legacy_parser) then Legacy_parser.parse_file fname
+  else parse_file fname
 
 (** [handle_symdecl definable x a] extends the current signature with
     [definable] a symbol named [x] and type [a]. If [a] does not have
@@ -136,28 +150,44 @@ let handle_start_proof (s:strloc) (a:term) : unit =
   (* We start the proof mode. *)
   let m = fresh_meta ~name:s.elt a 0 in
   let g = { g_meta = m; g_hyps = []; g_type = a } in
-  let t = { t_name = s; t_proof = m; t_goals = [g]; t_focus = g } in
-  theorem := Some t
+  let t = { t_name = s; t_proof = m; t_goals = [g] } in
+  theorem := Some(t)
 
-(** [handle_end_proof()] adds the proved theorem in the signature and
-    ends proof mode. *)
-let handle_end_proof () : unit =
-  out 3 "Proof finished!\n";
-  let thm = current_theorem() in
-  let s = current_sign() in
+(** [handle_qed ()] checks that no goal remain for the current theorem, and it
+    is then added to the signature, and the proof mode is exited. *)
+let handle_qed : unit -> unit = fun () ->
+  let thm = current_theorem () in
+  match thm.t_goals with
+  | _::_ -> fatal_no_pos "Current proof is not finished."
+  | []   ->
+  (* Adding the symbol. *)
+  let s = current_sign () in
   ignore (Sign.add_symbol s true thm.t_name !(thm.t_proof.meta_type));
-  theorem := None
+  (* Resetting theorem state. *)
+  theorem := None;
+  out 3 "[%s] is proved.\n" thm.t_name.elt
+
+(** [handle_focus i] focuses on the [i]-th goal. *)
+let handle_focus : int -> unit = fun i ->
+  let thm = current_theorem () in
+  let rec swap i acc gs =
+    match (i, gs) with
+    | (0, g::gs) -> g :: List.rev_append acc gs
+    | (i, g::gs) -> swap (i-1) (g::acc) gs
+    | (_, _    ) -> fatal_no_pos "Invalid goal index."
+  in
+  theorem := Some({thm with t_goals = swap i [] thm.t_goals})
 
 (** [handle_print_focus()] prints the focused goal. *)
-let handle_print_focus() : unit =
+let handle_print_focus () : unit =
   let thm = current_theorem () in
-  out 2 "%a" pp_goal thm.t_focus
+  out 2 "%a" pp_theorem thm
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
 let env_of_prod (n:int) (t:term) : Env.t * term =
   let rec aux n t acc =
-    if !debug_tac then log "env_of_prod" "%i %a" n pp t;
+    log_tact "env_of_prod %i [%a]" n pp t;
     match n, t with
     | 0, _ -> acc, t
     | _, Prod(a,b) ->
@@ -167,55 +197,66 @@ let env_of_prod (n:int) (t:term) : Env.t * term =
   in assert(n>=0); aux n t []
 
 let goal_of_meta (m:meta) : goal =
-  if !debug_tac then log "goal_of_prod" "%a" pp_meta m;
+  log_tact "goal_of_prod [%a]" pp_meta m;
   let env, typ = env_of_prod m.meta_arity !(m.meta_type) in
   { g_meta = m; g_hyps = env; g_type = typ }
 
 (** [handle_refine t] instantiates the focus goal by [t]. *)
-let handle_refine (new_metas:meta list) (t:term) : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
+let handle_refine : meta list -> term -> unit = fun metas t ->
+  let thm = current_theorem () in
+  let (g,gs) =
+    match thm.t_goals with
+    | g::gs -> (g,gs)
+    | []    -> fatal_no_pos "No focused goal, refine impossible."
+  in
   let m = g.g_meta in
+  log_tact "refining [%a] with term [%a]" pp_meta m pp t;
   (* We check that [m] does not occur in [t]. *)
   if occurs m t then fatal_no_pos "Invalid refinement.";
   (* Check that [t] has the correct type. *)
-  let bt = lift t in
-  let abst u (_,(x,a)) = _Abst a x u in
-  let u = Bindlib.unbox (List.fold_left abst bt g.g_hyps) in
-  if not (Solve.check (Ctxt.of_env g.g_hyps) u !(m.meta_type)) then
+  let ctx = Ctxt.of_env g.g_hyps in
+  log_tact "Proving [%a ⊢ %a : %a]." Ctxt.pp ctx pp t pp g.g_type;
+  if not (Solve.check ctx t g.g_type) then
     fatal_no_pos "Typing error.";
-  (* We update the list of new metavariables because some
-     metavariables may haven been instantiated by type checking. *)
-  let new_metas = List.filter unset new_metas in
   (* Instantiation. *)
-  if !debug_tac then log "refine" "[%a]" pp u;
   let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) g.g_hyps) in
-  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs bt));
+  m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
   (* New subgoals and new focus *)
-  let fn goals m = goal_of_meta m :: goals in
-  let goals = List.fold_left fn (remove_goal g thm.t_goals) new_metas in
-  match goals with
-  | [] -> handle_end_proof()
-  | g::_ -> theorem := Some { thm with t_goals = goals; t_focus = g }
+  let metas = List.filter unset metas in
+  let fn gs m = goal_of_meta m :: gs in
+  theorem := Some({thm with t_goals = List.fold_left fn gs metas})
 
 (** [handle_intro s] applies the [intro] tactic. *)
-let handle_intro (s:strloc) : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
+let handle_intro : strloc -> unit = fun s ->
+  let thm = current_theorem () in
+  let g =
+    match thm.t_goals with
+    | g::_ -> g
+    | []   -> fatal_no_pos "No focused goal, intro impossible."
+  in
   (* We check that [s] is not already used. *)
   if List.mem_assoc s.elt g.g_hyps then
     fatal_no_pos "[%s] already used." s.elt;
   fatal_no_pos "Not yet implemented..."
 
 (** [handle_simpl] normalize the focused goal. *)
-let handle_simpl () : unit =
-  let thm = current_theorem() in
-  let g = thm.t_focus in
+let handle_simpl : unit -> unit = fun _ ->
+  let thm = current_theorem () in
+  let g =
+    match thm.t_goals with
+    | g::_ -> g
+    | []   -> fatal_no_pos "No focused goal, simpl impossible."
+  in
   let g' = {g with g_type = Eval.snf g.g_type} in
-  theorem :=
-    Some {thm with
-      t_goals = replace_goal g g' thm.t_goals;
-      t_focus = g'}
+  let thm = {thm with t_goals = replace_goal g g' thm.t_goals} in
+  theorem := Some(thm)
+
+(** [check_end_proof ()] displays the current goal if a proof is in progress
+    (and a warning), and does nothing otherwise. *)
+let check_end_proof : unit -> unit = fun _ ->
+  match !theorem with
+  | None      -> ()
+  | Some(thm) -> wrn "The following proof is open:\n%a" pp_theorem thm
 
 (** [handle_require path] compiles the signature corresponding to  [path],
     if necessary, so that it becomes available for further commands. *)
@@ -263,14 +304,26 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         let metas = get_metas t in
         handle_refine metas t
     | P_Simpl               -> handle_simpl ()
+    | P_Rewrite(s,t)        ->
+        let env = Proofs.focus_goal_hyps () in
+        let s =
+          match s with
+          | None    -> None
+          | Some(s) -> Some(Scope.scope_rw_patt StrMap.empty env s)
+        in
+        let t = Scope.scope_term StrMap.empty env t in
+        Rewrite.handle_rewrite s t
+    | P_Focus(i)            -> handle_focus i
+    | P_QED                 -> handle_qed ()
     | P_Other(c)            ->
-        if !debug then wrn "[%a] ignored command.\n" Pos.print c.pos
+        if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos
   in
   try
     let (tm, ()) = time handle () in
-    if tm >= !too_long then
+    if Pervasives.(tm >= !too_long) then
       wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
   with
+  | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,_) as e -> raise e
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
@@ -304,7 +357,8 @@ and compile : bool -> Files.module_path -> unit =
       let sign = Sign.create path in
       loaded := PathMap.add path sign !loaded;
       List.iter handle_cmd (parse_file src);
-      if !gen_obj then Sign.write sign obj;
+      check_end_proof (); theorem := None;
+      if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
     end

@@ -24,13 +24,13 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     fatal pos "Unbound variable or symbol [%s]." s
   else
     let sign = Sign.current_sign() in
-    if not Sign.(mp = sign.path || PathMap.mem mp !(sign.deps)) then
+    if not Sign.(mp = sign.path || PathMap.mem mp Timed.(!(sign.deps))) then
       (* Module path is not available (not loaded), fail. *)
       fatal pos "No module [%a] loaded." Files.pp_path mp
     else
       (* Module path loaded, look for symbol. *)
       let sign =
-        try PathMap.find mp !Sign.loaded
+        try PathMap.find mp Timed.(!Sign.loaded)
         with _ -> assert false (* cannot fail. *)
       in
       try _Symb (Sign.find sign s) with Not_found ->
@@ -45,7 +45,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     fresh term metavariable is created if the name is not mapped. Note that if
     such fresh name is used twice, the same metavariable is referenced. *)
 let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
-  let mmap = ref mmap in
+  let mmap = Pervasives.ref mmap in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
     | P_Vari(qid)   -> find_ident env qid
@@ -53,11 +53,11 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Prod a v (scope (Env.add x.elt v a env) b)
+        _Prod a (Bindlib.bind_var v (scope (Env.add x.elt v a env) b))
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env a in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         (* We build a metavariable that may use the variables of [env]. *)
@@ -105,7 +105,7 @@ type full_lhs = sym * term list
     appear non-linearly in the LHS) have an associated index in [map]. *)
 let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   let fresh =
-    let c = ref (-1) in
+    let c = Pervasives.ref (-1) in
     fun () -> incr c; Printf.sprintf "#%i" !c
   in
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -120,7 +120,7 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
           | Some(a) -> fatal a.pos "Invalid LHS (type annotation)."
           | None    -> scope env (Pos.none P_Wild)
         in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        ->
         let e = List.map (fun (_,(x,_)) -> _Vari x) env in
@@ -159,11 +159,11 @@ let scope_rhs : pattern_map -> p_term -> rhs = fun map t ->
     | P_Prod(x,a,b) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Prod a v (scope (Env.add x.elt v a env) b)
+        _Prod a (Bindlib.bind_var v (scope (Env.add x.elt v a env) b))
     | P_Abst(x,a,t) ->
         let v = Bindlib.new_var mkfree x.elt in
         let a = scope_domain env t.pos a in
-        _Abst a v (scope (Env.add x.elt v a env) t)
+        _Abst a (Bindlib.bind_var v (scope (Env.add x.elt v a env) t))
     | P_Appl(t,u)   -> _Appl (scope env t) (scope env u)
     | P_Wild        -> fatal t.pos "Invalid RHS (wildcard).\n"
     | P_Meta(m,e)   ->
@@ -240,9 +240,41 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
-  let ctx = List.map (fun (x,_) -> x.elt) ctx in
+  let get_var ({elt},ao) =
+    let fn a =
+      if Timed.(!verbose) > 1 then
+        wrn "Ignored type annotation at [%a].\n" Pos.print a.pos
+    in
+    Option.iter fn ao; elt
+  in
+  let ctx = List.map get_var ctx in
   let is_pat_var env x = not (List.mem x env) && List.mem x ctx in
   let arity = Hashtbl.create 7 in
+
+  (** Find the minimum number of arguments a variable is applied to. *)
+  let rec compute_arities env t =
+    let h, lts = Parser.get_args t in
+    match h.elt with
+    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
+       begin
+         let m = List.length lts in
+         try
+           let n = Hashtbl.find arity x in
+           if m < n then Hashtbl.replace arity x m
+         with Not_found ->
+           Hashtbl.add arity x m
+       end
+    | _ ->
+       match t.elt with
+       | P_Vari(_)
+       | P_Wild
+       | P_Type
+       | P_Prod(_,_,_)
+       | P_Meta(_,_)   -> ()
+       | P_Abst(x,_,u) -> compute_arities (x.elt::env) u
+       | P_Appl(t1,t2) -> compute_arities env t1; compute_arities env t2
+  in
+
   let rec build env t =
     let h, lts = Parser.get_args t in
     match h.elt with
@@ -256,9 +288,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
            let h = Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts1)) in
            Parser.add_args h lts2
          with Not_found ->
-           Hashtbl.add arity x (List.length lts);
-           let ts = List.map snd lts in
-           Pos.make t.pos (P_Meta(Pos.none x, Array.of_list ts))
+           assert false
        end
     | _ ->
        match t.elt with
@@ -282,6 +312,35 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           fatal t.pos "Invalid legacy rule syntax."
   in
   (* NOTE the computation order is important for setting arities properly. *)
+  compute_arities [] lhs;
   let lhs = build [] lhs in
   let rhs = build [] rhs in
   (lhs, rhs)
+
+(** [scope_rw_spec mmap env t] turns a parser-level rewrite specification  [s]
+    into an actual rewrite specification. It may use the variables of [env] as
+    well as metavariables mapped in [mmap]. *)
+let scope_rw_patt : meta StrMap.t -> env -> p_rw_patt loc
+                    -> Rewrite.rw_patt = fun m env s ->
+  let open Rewrite in
+  match s.elt with
+  | P_Term(t)               -> RW_Term(scope_term m env t)
+  | P_InTerm(t)             -> RW_InTerm(scope_term m env t)
+  | P_InIdInTerm(x,t)       ->
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_IdInTerm(x,t)         ->
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_TermInIdInTerm(u,x,t) ->
+      let u = scope_term m env u in
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
+  | P_TermAsIdInTerm(u,x,t) ->
+      let u = scope_term m env u in
+      let v = Bindlib.new_var mkfree x.elt in
+      let t = scope_term m ((x.elt,(v, _Kind))::env) t in
+      RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

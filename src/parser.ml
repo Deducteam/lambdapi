@@ -1,8 +1,13 @@
 (** Parsing functions. *)
 
+open Timed
 open Console
 open Files
 open Pos
+
+(** Logging function for the parser. *)
+let log_pars = new_logger 'p' "pars" "debugging information for the parser"
+let log_pars = log_pars.logger
 
 #define LOCATE locate
 
@@ -106,6 +111,8 @@ let _wild_      = keyword "_"
 let _Type_      = keyword "Type"
 let _def_       = keyword "def"
 let _thm_       = keyword "thm"
+let _in_        = keyword "in"
+let _as_        = keyword "as"
 let _CHECK_     = command "CHECK"
 let _CHECKNOT_  = command "CHECKNOT"
 let _ASSERT_    = command "ASSERT"
@@ -118,6 +125,9 @@ let _PROOF_     = command "PROOF"
 let _PRINT_     = command "PRINT"
 let _REFINE_    = command "REFINE"
 let _SIMPL_     = command "SIMPL"
+let _REWRITE_   = command "REWRITE"
+let _QED_       = command "QED"
+let _FOCUS_     = command "FOCUS"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
@@ -170,35 +180,50 @@ type p_rule = p_term * p_term
 let opaque = true
 let const  = true
 
+(** Rewrite specification (for the rewrite tactic). *)
+type p_rw_patt =
+  | P_Term           of p_term
+  | P_InTerm         of p_term
+  | P_InIdInTerm     of strloc * p_term
+  | P_IdInTerm       of strloc * p_term
+  | P_TermInIdInTerm of p_term * strloc * p_term
+  | P_TermAsIdInTerm of p_term * strloc * p_term
+
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Symbol declaration (constant when the boolean is [true]). *)
-  | P_SymDecl  of bool * strloc * p_term
+  | P_SymDecl    of bool * strloc * p_term
   (** Quick definition (opaque when the boolean is [true]). *)
-  | P_SymDef   of bool * strloc * p_term option * p_term
+  | P_SymDef     of bool * strloc * p_term option * p_term
   (** Rewriting rules declaration. *)
-  | P_Rules    of p_rule list
-  | P_OldRules of old_p_rule list
+  | P_Rules      of p_rule list
+  | P_OldRules   of old_p_rule list
   (** Require an external signature. *)
-  | P_Require   of module_path
+  | P_Require    of module_path
   (** Type inference command. *)
-  | P_Infer    of p_term * Eval.config
+  | P_Infer      of p_term * Eval.config
   (** Normalisation command. *)
-  | P_Eval     of p_term * Eval.config
+  | P_Eval       of p_term * Eval.config
   (** Type-checking command. *)
-  | P_TestType of bool * bool * p_term * p_term
+  | P_TestType   of bool * bool * p_term * p_term
   (** Convertibility command. *)
-  | P_TestConv of bool * bool * p_term * p_term
+  | P_TestConv   of bool * bool * p_term * p_term
   (** Unimplemented command. *)
-  | P_Other    of strloc
+  | P_Other      of strloc
   (** Start a proof. *)
   | P_StartProof of strloc * p_term
   (** Print focused goal. *)
   | P_PrintFocus
   (** Refine the focused goal. *)
-  | P_Refine of p_term
+  | P_Refine     of p_term
   (** Normalize the focused goal. *)
   | P_Simpl
+  (** Rewrite command. *)
+  | P_Rewrite    of p_rw_patt loc option * p_term
+  (** Focus on a goal. *)
+  | P_Focus      of int
+  (** End the proof. *)
+  | P_QED
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -249,11 +274,24 @@ let parser eval_config =
       let strategy = match s with None -> Eval.SNF | Some(s) -> s in
       Eval.{strategy; steps = Some(n)}
 
+(** [check] parses an assertion configuration (depending on command). *)
 let parser check =
   | _CHECKNOT_  -> (false, true )
   | _CHECK_     -> (false, false)
   | _ASSERTNOT_ -> (true , true )
   | _ASSERT_    -> (true , false)
+
+(** [rw_pattern] is a parser for a rewrite pattern. *)
+let parser rw_pattern =
+  | t:expr                          -> P_Term(t)
+  | _in_ t:expr                     -> P_InTerm(t)
+  | _in_ x:ident _in_ t:expr        -> P_InIdInTerm(x,t)
+  | x:ident _in_ t:expr             -> P_IdInTerm(x,t)
+  | u:expr _in_ x:ident _in_ t:expr -> P_TermInIdInTerm(u,x,t)
+  | u:expr _as_ x:ident _in_ t:expr -> P_TermAsIdInTerm(u,x,t)
+
+(** [rw_patt] is a parser of a rewrite configuration. *)
+let parser rw_patt = {"[" s:rw_pattern "]" -> in_pos _loc_s s}?
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
@@ -273,6 +311,9 @@ let parser cmd_aux =
   | _PRINT_                          -> P_PrintFocus
   | _REFINE_ t:expr                  -> P_Refine(t)
   | _SIMPL_                          -> P_Simpl
+  | _REWRITE_ s:rw_patt t:expr       -> P_Rewrite(s,t)
+  | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
+  | _QED_                            -> P_QED
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
@@ -315,7 +356,7 @@ let blank buf pos =
   fn `Ini [] (buf, pos) (buf, pos)
 
 (** Accumulates parsing time for files (useful for profiling). *)
-let total_time : float ref = ref 0.0
+let total_time = Pervasives.ref 0.0
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
@@ -324,8 +365,8 @@ let parse_file : string -> p_cmd loc list = fun fname ->
   Hashtbl.reset qid_map;
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
-    if !debug_pars then log "pars" "parsed [%s] in %.2f seconds." fname d;
-    total_time := !total_time +. d; res
+    log_pars "parsed [%s] in %.2f seconds." fname d;
+    Pervasives.(total_time := !total_time +. d); res
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc  "Parse error."

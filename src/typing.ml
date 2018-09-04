@@ -1,11 +1,29 @@
 (** Type-checking and inference *)
 
+open Timed
 open Console
 open Terms
 open Print
 
+(** Logging function for typing. *)
+let log_type = new_logger 't' "type" "debugging information for typing"
+let log_type = log_type.logger
+
 (** Type of a function to be called to check convertibility. *)
 type conv_f = term -> term -> unit
+
+(** [make_prod_domain ctx] builds a metavariable intended as a domain type for
+    a product. It has access to the variables of the context [ctx]. *)
+let make_prod_domain : Ctxt.t -> term = fun ctx ->
+  Ctxt.make_meta ctx (Meta(fresh_meta Type 0, [||]))
+
+(** [make_prod_codomain ctx a] builds a metavariable intended as the  codomain
+    type for a product of domain type [a].  It has access to the variables  of
+    the context [ctx] and a fresh variables corresponding to the argument. *)
+let make_prod_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
+  let x = Bindlib.new_var mkfree "x" in
+  let b = Ctxt.make_meta ((x,a)::ctx) (Meta(fresh_meta Type 0, [||])) in
+  Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [infer_aux conv ctx t] infers a type for the term [t] in context [ctx]. In
     the process, the [conv] function is used as a convertibility test. In case
@@ -31,13 +49,13 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
   | Symb(s)     ->
       (* -------------------------------
           ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-      !(s.sym_type)
+      Timed.(!(s.sym_type))
   | Prod(a,b)   ->
       (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
          -----------------------------------------
                     ctx ⊢ Prod(a,b) ⇒ s            *)
       begin
-        (* We ensure that [a] is well-sorted. *)
+        (* We ensure that [a] is of type [Type]. *)
         check_aux conv ctx a Type;
         (* We infer the type of the body, first extending the context. *)
         let (x,b) = Bindlib.unbind b in
@@ -53,7 +71,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
          --------------------------------------------
                  ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
       begin
-        (* We ensure that [a] is well-sorted. *)
+        (* We ensure that [a] is of type [Type]. *)
         check_aux conv ctx a Type;
         (* We infer the type of the body, first extending the context. *)
         let (x,t) = Bindlib.unbind t in
@@ -68,14 +86,17 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
       begin
         (* We first infer a product type for [t]. *)
         let (a,b) =
-          match Eval.whnf (infer_aux conv ctx t) with
+          let c = Eval.whnf (infer_aux conv ctx t) in
+          match c with
           | Prod(a,b) -> (a,b)
-          | a         -> fatal_no_pos "Product expected, [%a] infered." pp a
-          (* FIXME is [Meta(_,_)] possible? *)
+          | _         ->
+              let a = make_prod_domain ctx in
+              let b = make_prod_codomain ctx a in
+              conv c (Prod(a,b)); (a,b)
         in
         (* We then check the type of [u] against the domain type. *)
         check_aux conv ctx u a;
-        (* We produce the redurned type. *)
+        (* We produce the returned type. *)
         Bindlib.subst b u
       end
   | Meta(m,e)   ->
@@ -108,10 +129,12 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
       begin
         (* We (hopefully) evaluate [c] to a product. *)
         let (a',b) =
-          match Eval.whnf c with
+          let c = Eval.whnf c in
+          match c with
           | Prod(d,b) -> (d,b)
-          | _         -> fatal_no_pos "Product expected, [%a] given." pp c
-          (* FIXME is [Meta(_,_)] possible? *)
+          | _         ->
+              let b = make_prod_codomain ctx a in
+              conv c (Prod(a,b)); (a,b)
         in
         (* We check domain type compatibility. *)
         conv a a';
@@ -135,27 +158,28 @@ type conv_constrs = (term * term) list
     context [ctx],  supposed well-formed).  The exception [Fatal] is raised in
     case of error (e.g., when [t] cannot be assigned a type). *)
 let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
+    let open Pervasives in
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try
     let a = infer_aux conv ctx t in
-    if !debug_type then
+    let constrs = Pervasives.(!constrs) in
+    if !log_enabled then
       begin
-        log "type" (gre "infer [%a] yields [%a]") pp t pp a;
-        let fn (a,b) =
-          log "type" (gre "  assuming [%a] ~ [%a]") pp a pp b
-        in
-        List.iter fn !constrs;
-        if !trivial > 0 then
-          log "type" (gre "  with %i trivial constraints") !trivial
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "infer [%a] yields [%a]") pp t pp a;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
       end;
-    (a, !constrs)
+    (a, constrs)
   with e ->
-    if !debug_type then log "type" (red "infer [%a] failed.") pp t;
+    if !log_enabled then log_type (red "infer [%a] failed.") pp t;
     raise e
 
 (** [check ctx t c] checks that the term [t] has type [c] in the context [ctx]
@@ -163,25 +187,26 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
     well-fomed, and the type [c] well-sorted. The exception [Fatal] is raised
     in case of error (e.g., when [t] definitely does not have type [c]). *)
 let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
-  let constrs = ref [] in (* Accumulated constraints. *)
-  let trivial = ref 0  in (* Number of trivial constraints. *)
+  let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
+  let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
+    let open Pervasives in
     if Terms.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try
     check_aux conv ctx t c;
-    if !debug_type then
+    let constrs = Pervasives.(!constrs) in
+    if !log_enabled then
       begin
-        log "type" (gre "check [%a] [%a] (succeeded)") pp t pp c;
-        let fn (a,b) =
-          log "type" (gre "  assuming [%a] ~ [%a]") pp a pp b
-        in
-        List.iter fn !constrs;
-        if !trivial > 0 then
-          log "type" (gre "  with %i trivial constraints") !trivial
+        let trivial = Pervasives.(!trivial) in
+        log_type (gre "check [%a] [%a] (succeeded)") pp t pp c;
+        let fn (a,b) = log_type (gre "  assuming [%a] ~ [%a]") pp a pp b in
+        List.iter fn constrs;
+        if trivial > 0 then
+          log_type (gre "  with %i trivial constraints") trivial;
       end;
-    !constrs
+    constrs
   with e ->
-    if !debug_type then log "type" (red "check [%a] [%a] (failed)") pp t pp c;
+    if !log_enabled then log_type (red "check [%a] [%a] (failed)") pp t pp c;
     raise e

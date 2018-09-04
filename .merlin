@@ -1,3 +1,4 @@
 S src
 B _build/src
-PKG bindlib earley earley.str
+PKG bindlib earley earley.str timed
+FLG -pp pa_ocaml

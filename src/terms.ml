@@ -5,6 +5,7 @@
     functions are also provided for basic term manipulations. *)
 
 open Extra
+open Timed
 
 (****************************************************************************)
 
@@ -156,7 +157,12 @@ type term =
     unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta({meta_value = {contents = Some(b)}}, ar)
+  | Meta(m, ar) ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold (Bindlib.msubst b ar)
+      end
   | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
   | _                    -> t
 
@@ -168,8 +174,8 @@ let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
 (** [get_key ()] returns a fresh metavariable key. *)
 let get_key : unit -> int =
-  let counter = ref (-1) in
-  (fun () -> incr counter; !counter)
+  let counter = Pervasives.ref (-1) in
+  (fun () -> Pervasives.(incr counter; !counter))
 
 (** [fresh_meta a n] returns a new metavariable of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
@@ -260,17 +266,16 @@ let _Symb : sym -> tbox = fun s ->
 let _Appl : tbox -> tbox -> tbox =
   Bindlib.box_apply2 (fun t u -> Appl(t,u))
 
-(** [_Prod a x b] lifts a dependent product node to the {!type:tbox} type. The
-    boxed term [a] is the domain of the product, and the variable [x] is to be
-    bound in the boxed term [b] to build the codomain. *)
-let _Prod : tbox -> tvar -> tbox -> tbox = fun a x b ->
-  Bindlib.box_apply2 (fun a b -> Prod(a,b)) a (Bindlib.bind_var x b)
+(** [_Prod a b] lifts a dependent product node to the {!type:tbox} type, given
+    a boxed term [a] for the domain of the product, and a boxed binder [b] for
+    its codomain. *)
+let _Prod : tbox -> tbinder Bindlib.box -> tbox =
+  Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
-(** [_Abst a x t] lifts an abstraction node to the {!type:tbox} type given the
-    boxed term [a] (used as the type of the bound variable), the variable [x],
-    and the term [t] in which it will be bound. *)
-let _Abst : tbox -> tvar -> tbox -> tbox = fun a x t ->
-  Bindlib.box_apply2 (fun a t -> Abst(a,t)) a (Bindlib.bind_var x t)
+(** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
+    boxed term [a] for the domain type, and a boxed binder [t]. *)
+let _Abst : tbox -> tbinder Bindlib.box -> tbox =
+  Bindlib.box_apply2 (fun a t -> Abst(a,t))
 
 (** [_Meta m ar] lifts the metavariable [m] to the {!type:tbox} type given its
     environment [ar]. As for symbols in {!val:_Symb}, metavariables are closed
@@ -300,10 +305,8 @@ let rec lift : term -> tbox = fun t ->
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> let (x,b) = Bindlib.unbind b in
-                   _Prod (lift a) x (lift b)
-  | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
-                   _Abst (lift a) x (lift t)
+  | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
+  | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
@@ -373,6 +376,12 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
+let is_symb : sym -> term -> bool = fun s t ->
+  match unfold t with
+  | Symb(r) -> r == s
+  | _       -> false
+
 (** [iter_meta f t] applies the function [f] to every metavariable in the term
     [t]. As for {!val:eq},  the behaviour of this function is unspecified when
     [t] uses the {!const:Patt} or {!const:TEnv} constructor. *)
@@ -398,9 +407,9 @@ let occurs : meta -> term -> bool = fun m t ->
 
 (** [get_metas t] returns the list of all the metavariables in [t]. *)
 let get_metas : term -> meta list = fun t ->
-  let l = ref [] in
-  iter_meta (fun m -> l := m :: !l) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
+  let l = Pervasives.ref [] in
+  iter_meta (fun m -> Pervasives.(l := m :: !l)) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) Pervasives.(!l)
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
 let distinct_vars : term array -> bool = fun ar ->

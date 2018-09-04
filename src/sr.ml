@@ -1,8 +1,14 @@
 (** Type-checking and inference. *)
 
+open Timed
 open Console
 open Terms
 open Print
+
+(** Logging function for typing. *)
+let log_subj = new_logger 'j' "subj" "debugging information for SR"
+let log_subj = log_subj.logger
+
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
@@ -62,7 +68,7 @@ let build_meta_type : int -> term = fun k ->
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * rule -> unit = fun (s,rule) ->
-  if !debug_subj then log "subj" "%a" pp_rule (s, rule);
+  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
@@ -71,7 +77,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
     | Vari(x)     -> _Vari x
     | Symb(s)     -> _Symb s
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
-                     _Abst (to_m 0 a) x (to_m 0 t)
+                     _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin
@@ -108,11 +114,13 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  let (lhs_constrs, ty_lhs) = Solve.infer_constr Ctxt.empty lhs in
-  if !debug_subj then
+  match Solve.infer_constr Ctxt.empty lhs with
+  | None                      -> wrn "untypable LHS\n" (* FIXME position *)
+  | Some(lhs_constrs, ty_lhs) ->
+  if !log_enabled then
     begin
-      log "subj" "[%a] : [%a]" pp lhs pp ty_lhs;
-      let fn (t,u) = log "subj" "  if [%a] = [%a]" pp t pp u in
+      log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
+      let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
       List.iter fn lhs_constrs
     end;
   (* Turn constraints into a substitution and apply it. *)
@@ -121,5 +129,5 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  try Solve.check_with_constr lhs_constrs rhs ty_lhs with Fatal(_,_) ->
+  if not (Solve.check_with_constr lhs_constrs rhs ty_lhs) then
     fatal_no_pos "Rule [%a] does not preserve typing." pp_rule (s,rule)

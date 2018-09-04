@@ -1,15 +1,16 @@
 (** Signature for symbols. *)
 
+open Extra
+open Timed
 open Console
 open Files
 open Terms
 open Pos
-open Extra
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { symbols : sym StrMap.t ref
+  { symbols : (sym * Pos.popt) StrMap.t ref
   ; path    : module_path
   ; deps    : (string * rule) list PathMap.t ref }
 
@@ -25,7 +26,7 @@ let create : module_path -> t = fun path ->
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
 let find : t -> string -> sym =
-  fun sign name -> StrMap.find name !(sign.symbols)
+  fun sign name -> fst (StrMap.find name !(sign.symbols))
 
 (** [mem sign name] checks whether the symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool =
@@ -63,7 +64,7 @@ let pp_symbol : sym pp = fun oc s ->
   in
   Format.pp_print_string oc full
 
-let _ = Print.pp_symbol_ref := pp_symbol
+let _ = Pervasives.(Print.pp_symbol_ref := pp_symbol)
 
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
@@ -96,7 +97,7 @@ let link : t -> unit = fun sign ->
       try find sign s.sym_name with Not_found -> assert false
     with Not_found -> assert false
   in
-  let fn _ s =
+  let fn _ (s,_) =
     s.sym_type  := link_term !(s.sym_type);
     s.sym_def   := Option.map link_term !(s.sym_def);
     s.sym_rules := List.map link_rule !(s.sym_rules)
@@ -146,7 +147,7 @@ let unlink : t -> unit = fun sign ->
     let (_, rhs) = Bindlib.unmbind r.rhs in
     unlink_term rhs
   in
-  let fn _ s =
+  let fn _ (s,_) =
     unlink_term !(s.sym_type);
     Option.iter unlink_term !(s.sym_def);
     List.iter unlink_rule !(s.sym_rules)
@@ -164,7 +165,7 @@ let add_symbol : t -> bool -> strloc -> term -> sym = fun sign const name a ->
     { sym_name ; sym_type = ref a ; sym_path = sign.path ; sym_def = ref None
     ; sym_rules = ref [] ; sym_const = const }
   in
-  sign.symbols := StrMap.add sym_name sym !(sign.symbols);
+  sign.symbols := StrMap.add sym_name (sym, name.pos) !(sign.symbols);
   out 3 "(symb) %s\n" sym_name; sym
 
 (** [is_const s] tells whether the symbol is constant. *)
@@ -209,4 +210,4 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
       try PathMap.find sym.sym_path !(sign.deps)
       with Not_found -> assert false
     in
-    sign.deps := PathMap.add sym.sym_path ((sym.sym_name,r) :: m) !(sign.deps)
+    sign.deps := PathMap.add sym.sym_path ((sym.sym_name,r)::m) !(sign.deps)
