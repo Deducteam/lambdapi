@@ -9,29 +9,30 @@ open Print
 let log_subj = new_logger 'j' "subj" "debugging information for SR"
 let log_subj = log_subj.logger
 
+(** Representation of a substitution. *)
+type subst = tvar array * term array
 
 (** [subst_from_constrs cs] builds a //typing substitution// from the list  of
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : (term * term) list -> tvar array * term array =
+let subst_from_constrs : (term * term) list -> subst = fun cs ->
   let rec build_sub acc cs =
     match cs with
-    | []        -> acc
+    | []        -> List.split acc
     | (a,b)::cs ->
-       let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
-       let na = List.length argsa and nb = List.length argsb in
+        let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
+        let na = List.length argsa and nb = List.length argsb in
         match (unfold ha, unfold hb) with
         | (Symb(sa), Symb(sb)) when sa == sb && na = nb && Sign.is_const sa ->
             let fn l t1 t2 = (t1,t2) :: l in
             build_sub acc (List.fold_left2 fn cs argsa argsb)
-        | (Vari(x),_) when argsa = [] -> build_sub ((x,b)::acc) cs
-        | (_,Vari(x)) when argsb = [] -> build_sub ((x,a)::acc) cs
-        | (_,_) -> build_sub acc cs
+        | (Vari(x) , _       ) when argsa = [] -> build_sub ((x,b)::acc) cs
+        | (_       , Vari(x) ) when argsb = [] -> build_sub ((x,a)::acc) cs
+        | (_       , _       )                 -> build_sub acc cs
   in
-  fun cs ->
-    let (vs,ts) = List.split (build_sub [] cs) in
-    (Array.of_list vs, Array.of_list ts)
+  let (vs,ts) = build_sub [] cs in
+  (Array.of_list vs, Array.of_list ts)
 
 (* Does not work in examples/cic.dk
 
