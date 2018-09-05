@@ -120,7 +120,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   | Some(lhs_constrs, ty_lhs) ->
   if !log_enabled then
     begin
-      log_subj "[%a] : [%a]" pp lhs pp ty_lhs;
+      log_subj "LHS has type [%a]" pp ty_lhs;
       let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
       List.iter fn lhs_constrs
     end;
@@ -130,5 +130,28 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  if not (Solve.check_with_constr lhs_constrs rhs ty_lhs) then
-    fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+  let to_solve = Typing.check Ctxt.empty rhs ty_lhs in
+  if !log_enabled && to_solve <> [] then
+    begin
+      log_subj "RHS has type [%a]" pp ty_lhs;
+      let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
+      List.iter fn to_solve
+    end;
+  (* Solving the constraints. *)
+  match Solve.(solve false {no_problems with to_solve}) with
+  | Some(cs) ->
+      let is_constr c =
+        let eq_comm (t1,u1) (t2,u2) =
+          (eq t1 t2 && eq u1 u2) || (eq t1 u2 && eq t2 u1)
+        in
+        List.exists (eq_comm c) lhs_constrs
+      in
+      let cs = List.filter (fun c -> not (is_constr c)) cs in
+      if cs <> [] then
+        begin
+          let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
+          List.iter fn cs;
+          fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+        end
+  | _        ->
+      fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
