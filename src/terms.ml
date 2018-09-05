@@ -33,6 +33,10 @@ type term =
   (** Pattern variable (used in the LHS of rewriting rules). *)
   | TEnv of term_env * term array
   (** Term environment (used in the RHS of rewriting rules). *)
+  | Wild
+  (** Wildcard term (corresponding to "_" in patterns). *)
+  | TRef of term option Pervasives.ref
+  (** Reference cell (used for surface matching). *)
 
 (** Representation of an higher-order term. *)
  and term_env =
@@ -157,13 +161,19 @@ type term =
     unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
-  | Meta(m, ar) ->
+  | Meta(m, ar)          ->
       begin
         match !(m.meta_value) with
         | None    -> t
         | Some(b) -> unfold (Bindlib.msubst b ar)
       end
   | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
+  | TRef(r)              ->
+      begin
+        match Pervasives.(!r) with
+        | None    -> t
+        | Some(v) -> unfold v
+      end
   | _                    -> t
 
 (** Note that the {!val:unfold} function should (almost always) be used before
@@ -291,6 +301,14 @@ let _Patt : int option -> string -> tbox array -> tbox = fun i n ar ->
 let _TEnv : tebox -> tbox array -> tbox = fun te ar ->
   Bindlib.box_apply2 (fun te ar -> TEnv(te,ar)) te (Bindlib.box_array ar)
 
+(** [_Wild] injects the constructor [Wild] into the {!type:tbox} type. *)
+let _Wild : tbox = Bindlib.box Wild
+
+(** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
+    should be the case that [!r] is [None]. *)
+let _TRef : term option Pervasives.ref -> tbox = fun r ->
+  Bindlib.box (TRef(r))
+
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
@@ -311,6 +329,8 @@ let rec lift : term -> tbox = fun t ->
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
+  | Wild        -> _Wild
+  | TRef(r)     -> _TRef r
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
     metavariable has been removed (collapsed), and the name of bound variables
@@ -368,6 +388,10 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
+    | (Wild       , _          )
+    | (_          , Wild       ) -> eq l
+    | (TRef(r)    , b          ) -> Pervasives.(r := Some(b)); eq l
+    | (a          , TRef(r)    ) -> Pervasives.(r := Some(a)); eq l
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -388,7 +412,9 @@ let is_symb : sym -> term -> bool = fun s t ->
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
-  | TEnv(_,_)  -> assert false
+  | TEnv(_,_)
+  | Wild
+  | TRef(_)    -> assert false
   | Vari(_)
   | Type
   | Kind
