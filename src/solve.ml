@@ -128,8 +128,7 @@ let solve : bool -> problems -> conv_constrs option = fun b p ->
   try Some (solve p) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s.\n") m; None
 
-let msg (a,b) =
-  if !log_enabled then log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b
+let msg (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b
 
 (** [check c t a] returns [true] iff [t] has type [a] in context [c]. *)
 let check : Ctxt.t -> term -> term -> bool = fun c t a ->
@@ -137,20 +136,8 @@ let check : Ctxt.t -> term -> term -> bool = fun c t a ->
   let to_solve = Typing.check c t a in
   let problems = {no_problems with to_solve} in
   match solve true problems with
-  | Some l -> List.iter msg l; l = []
-  | None   -> false
-
-(** [check_with_constrs cs t a] returns [true] iff [t] has type
-    [a] in context [c] and constraints [cs] without instantiating any
-    user-defined metavariable. *)
-let check_with_constr (cs:conv_constrs) (t:term) (a:term) : bool =
-  if !log_enabled then log_solv "check_with_constr [%a] [%a]" pp t pp a;
-  let to_solve = Typing.check Ctxt.empty t a in
-  let problems = {no_problems with to_solve} in
-  match solve false problems with
-  | Some l -> let l = List.filter (fun x -> not (List.mem x cs)) l in
-              List.iter msg l; l = []
-  | None   -> false
+  | Some(cs) -> if !log_enabled then List.iter msg cs; cs = []
+  | None     -> false
 
 (** [infer_constr c t] returns [Some (a,l)] where [l] is a list of
    unification problems for [a] to be the type of [t] in context [c],
@@ -160,16 +147,16 @@ let infer_constr (c:Ctxt.t) (t:term) : (conv_constrs * term) option =
   let (a, to_solve) = Typing.infer c t in
   let problems = {no_problems with to_solve} in
   match solve true problems with
-  | Some(l) -> Some (l, a)
-  | None    -> None
+  | Some(cs) -> Some(cs,a)
+  | None     -> None
 
 (** [infer c t] returns [Some u] if [t] has type [u] in context [c],
     and [None] otherwise. *)
 let infer (c:Ctxt.t) (t:term) : term option =
   match infer_constr c t with
-  | Some ([], a) -> Some a
-  | Some (l, _) -> List.iter msg l; None
-  | None -> None
+  | Some([],a) -> Some a
+  | Some(cs,_) -> if !log_enabled then List.iter msg cs; None
+  | None       -> None
 
 (** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
 let sort_type (c:Ctxt.t) (t:term) : unit =
