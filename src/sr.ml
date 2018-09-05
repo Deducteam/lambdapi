@@ -131,4 +131,4 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
   if not (Solve.check_with_constr lhs_constrs rhs ty_lhs) then
-    fatal_no_pos "Unable to prove SR for Rule [%a]." pp_rule (s,rule)
+    fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
