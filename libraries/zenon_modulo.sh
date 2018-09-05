@@ -69,8 +69,6 @@ echo "Compiling the theory files..."
 $LAMBDAPI --verbose 0 --gen-obj *.dk
 
 # Compilation function.
-export readonly LAMBDAPI=${LAMBDAPI}
-
 function test_gz() {
   LIBFILE="$1"
   FILE_GZ="$(basename $1)"
@@ -93,6 +91,8 @@ function test_gz() {
   rm -f ${FILE_dk}
 }
 
+# Export stuff for the above function.
+export readonly LAMBDAPI=${LAMBDAPI}
 export -f test_gz
 
 # Compiling the library files.
