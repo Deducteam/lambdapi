@@ -69,7 +69,7 @@ let loggers : logger_data list Pervasives.ref = Pervasives.ref []
 (** [log_summary ()] returns descriptions for logging options. *)
 let log_summary : unit -> string list = fun () ->
   let fn data = Format.sprintf "%c : %s" data.logger_key data.logger_desc in
-  List.map fn Pervasives.(!loggers)
+  List.sort Pervasives.compare (List.map fn Pervasives.(!loggers))
 
 (** [set_log value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)

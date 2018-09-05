@@ -63,7 +63,7 @@ let _ =
   let earleylvl_doc = "<int> Sets the internal debugging level of Earley" in
   let legacy_doc = " Use the legacy parser (faster, but old syntax only)" in
   let timeout_doc = "<int> Use a timeout of the given number of seconds" in
-  let spec =
+  let spec = List.sort Pervasives.compare
     [ ("--gen-obj"      , Arg.Set Handle.gen_obj          , gen_obj_doc  )
     ; ("--toolong"      , Arg.Float ((:=) Handle.too_long), too_long_doc )
     ; ("--verbose"      , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
