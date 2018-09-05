@@ -1,5 +1,7 @@
 #!/bin/bash
 
+NBWORKERS="1"
+
 SRC="https://deducteam.github.io/data/libraries/iProverModulo_dk.tar.gz"
 DIR="iprover"
 
@@ -232,11 +234,12 @@ function check() {
 
   # Run module check on all modules.
   find -name "*_sig.dk" | sed 's/_sig\.dk//g' \
-    | xargs -P 1 -n 1 -I{} bash -c "check_module {}"
+    | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_module {}"
 }
 
 # Export stuff for the checking function.
 export readonly LAMBDAPI=${LAMBDAPI}
+export readonly NBWORKERS=${NBWORKERS}
 export -f check
 
 # Run the actual checks.
