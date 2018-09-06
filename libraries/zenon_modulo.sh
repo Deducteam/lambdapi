@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NBWORKERS="4"
+NBWORKERS="${NBWORKERS:-1}"
 
 SRC="http://deducteam.gforge.inria.fr/lib/zenon_modulo.tar"
 DIR="zenon_modulo"
@@ -111,4 +111,3 @@ export -f check
 
 # Compiling the library files.
 \time -f "Finished in %E at %P with %MKb of RAM" bash -c "check"
-echo "DONE."

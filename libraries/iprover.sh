@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NBWORKERS="1"
+NBWORKERS="${NBWORKERS:-1}"
 
 SRC="https://deducteam.github.io/data/libraries/iProverModulo_dk.tar.gz"
 DIR="iprover"
@@ -244,4 +244,3 @@ export -f check
 
 # Run the actual checks.
 \time -f "Finished in %E at %P with %MKb of RAM" bash -c "check"
-echo "DONE."
