@@ -309,7 +309,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
         let s =
           match s with
           | None    -> None
-          | Some(s) -> Some(Scope.scope_rw_patt StrMap.empty env s)
+          | Some(s) -> Some(Scope.scope_rw_patt env s)
         in
         let t = Scope.scope_term StrMap.empty env t in
         Rewrite.handle_rewrite s t

@@ -84,6 +84,8 @@ let link : t -> unit = fun sign ->
     | Meta(_,_)   -> assert false
     | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
     | TEnv(t,m)   -> TEnv(t, Array.map link_term m)
+    | Wild        -> t
+    | TRef(_)     -> t
   and link_rule r =
     let lhs = List.map link_term r.lhs in
     let (xs, rhs) = Bindlib.unmbind r.rhs in
@@ -142,6 +144,8 @@ let unlink : t -> unit = fun sign ->
     | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
     | TEnv(t,m)    -> unlink_term_env t; Array.iter unlink_term m
+    | Wild         -> ()
+    | TRef(_)      -> ()
   and unlink_rule r =
     List.iter unlink_term r.lhs;
     let (_, rhs) = Bindlib.unmbind r.rhs in
