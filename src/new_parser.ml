@@ -136,12 +136,14 @@ let parser rule =
 
 (** Parser-level representation of a proof tactic. *)
 type p_tactic =
-  | P_tac_intro of ident list
+  | P_tac_intro  of ident list
+  | P_tac_refine of p_term
   (* TODO *)
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
   | "intro" xs:ident* -> P_tac_intro(xs)
+  | "refine" t:term   -> P_tac_refine(t)
 
 (** Parserl-level representation of a proof terminator. *)
 type p_proof_end =
