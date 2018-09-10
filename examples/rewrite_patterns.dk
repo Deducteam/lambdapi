@@ -179,7 +179,7 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #PROOF rewriteTest1 : !a, !b, P (eq nat (add a b) (add b a)).
 #REFINE a => b => _.
 #PRINT.
-#REWRITE [add a _] addcomm.
+#REWRITE [add _ b] addcomm.
 #REFINE refl nat (add b a).
 #QED.
 

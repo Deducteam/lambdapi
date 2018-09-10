@@ -196,7 +196,14 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
         match make_pat g_term p_refs with
         | None   ->
           fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
-        | Some s -> assert false
+        | Some p ->
+            match match_pattern (Array.of_list vars,l) p with
+            | None       ->
+                fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+            | Some sigma ->
+                let (t,l,r) = Bindlib.msubst bound sigma in
+                let pred_bind = bind_match l g_term in
+                (pred_bind, t, l, r)
 
         end
     | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
