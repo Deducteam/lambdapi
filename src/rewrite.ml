@@ -91,7 +91,7 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
     the RHS in the obtained goal. *)
-let handle_rewrite : term -> unit = fun t ->
+let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   (* Obtain the required symbols from the current signature. *)
   (* FIXME use a parametric notion of equality. *)
   let sign = Sign.current_sign () in
@@ -123,6 +123,7 @@ let handle_rewrite : term -> unit = fun t ->
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
   let (t_type, vars) = break_prod t_type in
+
   let (a, l, r)  =
     match get_args t_type with
     | (p,[eq]) when is_symb sign_P p ->
@@ -140,6 +141,8 @@ let handle_rewrite : term -> unit = fun t ->
   let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
   let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
 
+
+
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -148,10 +151,26 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
           pp g.g_type
   in
+  let (pred_bind, t, l, r) =
+    match p with
+    | None                         ->
+        begin
+        let sigma = find_sub g_term l (Array.of_list vars) in
+        let (t,l,r) = Bindlib.msubst bound sigma in
+        let pred_bind = bind_match l g_term in
+        (pred_bind, t, l, r)
+        end
 
-  let sigma = find_sub g_term l (Array.of_list vars) in
-  let (t,l,r) = Bindlib.msubst bound sigma in
-  let pred_bind = bind_match l g_term in
+    | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+
+    | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+
+    | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+  in
+
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
@@ -165,6 +184,7 @@ let handle_rewrite : term -> unit = fun t ->
 
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
+
   if not (Solve.check g_ctxt term g.g_type) then
     begin
       match Solve.infer g_ctxt term with
@@ -195,13 +215,3 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
 
-(** [handle_rewrite s] rewrites according to the specification [s]. *)
-let handle_rewrite : rw_patt option -> term -> unit = fun s t ->
-  match s with
-  | None                         -> handle_rewrite t
-  | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
