@@ -41,9 +41,9 @@ let match_pattern : pattern -> term -> term array option = fun (xs,p) t ->
 (** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
-let find_sub : term -> term -> tvar array -> term array = fun g l vars ->
+let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
   let rec find_sub_aux : term -> term array option = fun g ->
-    match match_pattern (vars,l) g with
+    match match_pattern (vs,l) g with
     | Some sub -> Some sub
     | None     ->
       begin
@@ -56,10 +56,7 @@ let find_sub : term -> term -> tvar array -> term array = fun g l vars ->
              end
           | _ -> None
       end
-  in
-  match find_sub_aux g with
-  | Some sub -> sub
-  | None     -> Array.map Terms.mkfree vars
+  in find_sub_aux g
 
 (** [bind_match t1 t2] produces a binder that abstracts away all the occurence
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
@@ -155,18 +152,26 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
     match p with
     | None                         ->
         begin
-        let sigma = find_sub g_term l (Array.of_list vars) in
-        let (t,l,r) = Bindlib.msubst bound sigma in
-        let pred_bind = bind_match l g_term in
-        (pred_bind, t, l, r)
+        match find_sub g_term l (Array.of_list vars) with
+        | None       ->
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp l
+        | Some sigma ->
+            let (t,l,r) = Bindlib.msubst bound sigma in
+            let pred_bind = bind_match l g_term in
+            (pred_bind, t, l, r)
         end
-
-    | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    (* Basic patterns. *)
+    | Some(RW_Term(p)            ) ->
+        begin
+        assert false
+        end
     | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
+    (* Combinational patterns. *)
     | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
     | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
+    (* Nested patterns. *)
     | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
     | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
   in
