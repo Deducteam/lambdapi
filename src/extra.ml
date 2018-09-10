@@ -12,6 +12,21 @@ module Int =
     let compare = (-)
   end
 
+module String =
+  struct
+    include String
+
+    let to_list : string -> char list = fun s ->
+      let l = ref [] in
+      String.iter (fun c -> l := c :: !l) s;
+      List.rev !l
+
+    let of_list : char list -> string = fun l ->
+      let b = Buffer.create 37 in
+      List.iter (Buffer.add_char b) l;
+      Buffer.contents b
+  end
+
 module Option =
   struct
     type 'a t = 'a option
