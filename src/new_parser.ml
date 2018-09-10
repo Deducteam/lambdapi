@@ -1,22 +1,4 @@
-open Extra
 open Pos
-
-module Charset =
-  struct
-    include Charset
-
-    let from_string : string -> Charset.t = fun s ->
-      let rec build cs l =
-        match l with
-        | []                     -> cs
-        | '-' :: '-' :: _        -> invalid_arg "bad charset description"
-        | '-' :: l               -> build Charset.(add cs '-') l
-        | _   :: '-' :: '-' :: _ -> invalid_arg "bad charset description"
-        | c1  :: '-' :: c2  :: l -> build Charset.(union cs (range c1 c2)) l
-        | c   :: l               -> build Charset.(add cs c) l
-      in
-      build Charset.empty (String.to_list s)
-  end
 
 #define LOCATE locate
 
@@ -239,7 +221,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
 
 (** [parse_file fname] parses the file [fname]. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
-  let blank = Blank.line_comments "//" in
+  let blank = Blanks.line_comments "//" in
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let file = Input.filename buf in
