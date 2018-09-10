@@ -101,6 +101,8 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | Wild        -> assert false (* Cannot appear in LHS. *)
+    | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = add_args (Symb(s)) lhs in

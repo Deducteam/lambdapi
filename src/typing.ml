@@ -35,6 +35,8 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
   | Kind        -> assert false (* Forbidden case. *)
+  | Wild        -> assert false (* Forbidden case. *)
+  | TRef(_)     -> assert false (* Forbidden case. *)
   | Type        ->
       (* -------------------
           ctx ⊢ Type ⇒ Kind  *)
