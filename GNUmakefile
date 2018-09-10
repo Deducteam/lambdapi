@@ -11,13 +11,18 @@ all: bin lib
 #### Compilation #############################################################
 
 .PHONY: bin
-bin: lambdapi.native
+bin: lambdapi.native new_parser.native
 
 lambdapi.native: _build/src/lambdapi.native
+new_parser.native: _build/src/new_parser.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
+
+_build/src/new_parser.native: $(wildcard src/*.ml)
+	@echo "[OPT] new_parser.native"
+	@$(OCAMLBUILD) $(CFLAGS) src/new_parser.native
 
 .PHONY: lib
 lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs

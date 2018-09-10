@@ -1,0 +1,66 @@
+reserved "require"
+reserved "open"
+reserved "sym"
+reserved "def"
+reserved "thm"
+reserved "rule"
+reserved "assert"
+reserved "proof"
+reserved "qed"
+reserved "admit"
+reserved "TYPE"
+reserved "_"
+
+<main> ::= <command>*
+
+<command> ::=
+  // Require and/or open a module
+  | "require" <ident> "as" <ident>
+  | "require" "open"? <ident>
+  | "open" <ident>
+  // Define a new symbol
+  | "symbol" <symtag>* <ident> ":" <type>
+  // Define a new rewriting rule
+  | "rule" <rule> {"and" <rule>}*
+  // Definition of a symbol (or theorem)
+  | {"definition" | "theorem"} <ident> <arg>* {":" <type>}? <def_or_proof>
+  // Assertion
+  | "assert" <term> ":" <type>
+  | "assert" <term> "≡" <term>
+
+<ident> ::=
+  // Regular identifier
+  | RE("[_'a-zA-Z][_'a-zA-Z0-9]*")
+  // Escaped identifier (arbitrary string)
+  | RE("[\"][^\"\s\t\r\n]+[\"]")
+
+<symtag> ::=
+  | "const"
+  | "injective"
+
+<type> ::= <term>
+
+<term> ::=
+  | "TYPE"
+  | {<ident> "."} <ident>
+  | "λ" <arg>+ "," <term>
+  | <term> <term>
+  | "∀" <arg>+ "," <type>
+  | <type> "⇒" <type>
+  | "(" <term> ")"
+
+<arg> ::=
+  | <ident>
+  | "(" <ident>+ ":" <type> ")"
+
+<rule> ::= <ruletag>* {<ident> ":"}? <patt> "→" <term>
+
+<ruletag> ::=
+  | "pos"
+  | "neg"
+
+<patt> ::= <term>
+
+<def_or_proof> ::=
+  | "≔" <term>
+  | "proof" <tactic>* {"qed" | "admit" | "abort"}
