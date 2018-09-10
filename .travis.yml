@@ -24,7 +24,7 @@ before_install:
   - unzip master.zip && rm master.zip
   - cd ocaml-earley-master && make && make install && cd ..
   - wget https://github.com/rlepigre/ocaml-earley-ocaml/archive/master.zip
-  - unzup master.zip && rm master.zip
+  - unzip master.zip && rm master.zip
   - cd ocaml-earley-ocaml-master && make && make && make install && cd ..
   - make
 install:
