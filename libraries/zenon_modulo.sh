@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NBWORKERS="4"
+NBWORKERS="${NBWORKERS:-1}"
 
 SRC="http://deducteam.gforge.inria.fr/lib/zenon_modulo.tar"
 DIR="zenon_modulo"
@@ -68,35 +68,46 @@ LAMBDAPI="../../../lambdapi.native"
 echo "Compiling the theory files..."
 $LAMBDAPI --verbose 0 --gen-obj *.dk
 
-# Compilation function.
-function test_gz() {
-  LIBFILE="$1"
-  FILE_GZ="$(basename $1)"
-  FILE_DK="$(basename $FILE_GZ .gz)"
-  MODNAME="${FILE_DK%%.dk}"
+# Checking function.
+function check() {
+  # Single file checking function.
+  function check_gz() {
+    LIBFILE="$1"
+    FILE_GZ="$(basename $1)"
+    FILE_DK="$(basename $FILE_GZ .gz)"
+    MODNAME="${FILE_DK%%.dk}"
+  
+    cp ${LIBFILE} ${FILE_GZ}
+    gzip -d ${FILE_GZ}
+    ocaml ../../../tools/deps.ml ${FILE_DK} ${MODNAME} > ${MODNAME}.aux
+    cat ${FILE_DK} >> ${MODNAME}.aux
+    mv ${MODNAME}.aux ${FILE_DK}
+  
+    ${LAMBDAPI} --legacy-parser --verbose 0 ${FILE_DK}
+    if [ $? -ne 0 ]; then
+      echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
+      echo "FAILED ${FILE_GZ}" >> error.log
+    else
+      echo -e "\033[0;32mOK\033[0m ${FILE_GZ}"
+    fi
+    rm -f ${FILE_dk}
+  }
 
-  cp ${LIBFILE} ${FILE_GZ}
-  gzip -d ${FILE_GZ}
-  ocaml ../../../tools/deps.ml ${FILE_DK} ${MODNAME} > ${MODNAME}.aux
-  cat ${FILE_DK} >> ${MODNAME}.aux
-  mv ${MODNAME}.aux ${FILE_DK}
+  # Export things for the single file checking function.
+  export readonly LAMBDAPI=${LAMBDAPI}
+  export -f check_gz
 
-  ${LAMBDAPI} --legacy-parser --verbose 0 ${FILE_DK}
-  if [ $? -ne 0 ]; then
-    echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
-    echo "FAILED ${FILE_GZ}" >> error.log
-  else
-    echo -e "\033[0;32mOK\033[0m ${FILE_GZ}"
-  fi
-  rm -f ${FILE_dk}
+  # Run check on all files.
+  echo "Compiling the library files with ${NBWORKERS} processes..."
+  find ../files -type f \
+    | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_gz {}"
 }
 
-# Export stuff for the above function.
+
+# Export stuff for the checking function.
 export readonly LAMBDAPI=${LAMBDAPI}
-export -f test_gz
+export readonly NBWORKERS=${NBWORKERS}
+export -f check
 
 # Compiling the library files.
-echo "Compiling the library files with ${NBWORKERS} processes..."
-find ../files -type f | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "test_gz {}"
-
-echo "DONE."
+\time -f "Finished in %E at %P with %MKb of RAM" bash -c "check"
