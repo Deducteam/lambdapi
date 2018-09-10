@@ -20,6 +20,12 @@ type rw_patt =
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
+let rec add_refs : term -> term = fun t ->
+  match t with
+  | Wild        -> TRef(ref None)
+  | Appl(t1,t2) -> Appl(add_refs t1, add_refs t2)
+  | _           -> t
+
 (** [break_prod] is given a nested product term (potentially with no products)
     and it unbinds all the the quantified variables. It returns the  term with
     the free variables and the list of variables that  were  unbound, so  that
@@ -34,7 +40,7 @@ let break_prod : term -> term * tvar list = fun t ->
 type pattern = tvar array * term
 
 let match_pattern : pattern -> term -> term array option = fun (xs,p) t ->
-  let ts = Array.map (fun _ -> TRef(Pervasives.ref None)) xs in
+  let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
   if Terms.eq p t then Some(Array.map unfold ts) else None
 
@@ -57,6 +63,23 @@ let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
           | _ -> None
       end
   in find_sub_aux g
+
+let make_pat : term -> term -> term option = fun g p ->
+  let time = Time.save() in
+  let rec make_pat_aux : term -> term option = fun g ->
+    if eq g p then Some p else
+      begin
+      Time.restore time ;
+      match g with
+      | Appl(x,y) ->
+          begin
+          match make_pat_aux x with
+          | Some p -> Some p
+          | None   -> Time.restore time ; make_pat_aux y
+          end
+      | _ -> None
+      end
+  in make_pat_aux g
 
 (** [bind_match t1 t2] produces a binder that abstracts away all the occurence
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
@@ -163,7 +186,18 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
     (* Basic patterns. *)
     | Some(RW_Term(p)            ) ->
         begin
-        assert false
+        (* Substitute every wildcard in p with a new TRef. *)
+        let p_refs = add_refs p in
+        (* Try to match this new p with some subterm of the goal. *)
+        (* If this succeeds p will no longer have any TRefs (we will unfold)
+         * and then we try to match p with l. This will give rise to the
+         * substitution. *)
+
+        match make_pat g_term p_refs with
+        | None   ->
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
+        | Some s -> assert false
+
         end
     | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
