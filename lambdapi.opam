@@ -11,11 +11,12 @@ dev-repo: "https://github.com/rlepigre/lambdapi.git"
 build: [make]
 install: [make "install"]
 remove: [make "uninstall"]
-depends:
-  [ "ocamlfind" {build}
-    "ocamlbuild" {build}
-    "unix"
-    "earley" {>= "1.0.2"}
-    "earley-ocaml" {>= "1.0.2"}
-    "bindlib" {>= "5.0.0"}
-    "timed" {>= "1.0"} ]
+depends: [
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
+  "unix"
+  "menhir"
+  "earley" {>= "1.0.2"}
+  "earley-ocaml" {>= "1.0.2"}
+  "bindlib" {>= "5.0.0"}
+  "timed" {>= "1.0"} ]
