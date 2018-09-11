@@ -188,7 +188,10 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
       P (eq nat (add (add a b) b) (add (add b a) b)).
 #REFINE a => b => _.
 #PRINT.
-#REWRITE [X in add X b] addcomm.
+(; #REFINE  eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add X b) (add (add b a) b)) _. ;)
+(;          eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add X b) (add (add b a) b)) );)
+#REFINE eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add X b) (add (add b a) b)) _.
+(;) #REWRITE [X in add X b] addcomm.;)
 #REFINE refl nat (add (add b a) b).
 #QED.
 
@@ -198,22 +201,36 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
         (add (add (add b a) b) (add (add b a) b))).
 #REFINE a => b => _.
 #PRINT.
-#REWRITE [X in add X b] addcomm.
+#REFINE eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add (add X b) (add X b)) (add (add (add b a) b) (add (add b a) b))) _.
+(;#REWRITE [X in add X b] addcomm.;)
 #REFINE refl nat (add (add (add b a) b) (add (add b a) b)).
 #QED.
 
-(; A slightly more complicated contextual rewrite ;)
+(; An easy contextual rewrite ;)
 #PROOF rewriteTest4 : !a, !b,
+  P (eq nat (add (add (add a b) (add a b)) a)
+            (add (add (add b a) (add a b)) a)).
+#REFINE a => b => _.
+#REFINE eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add (add X (add a b)) a) (add (add (add b a) (add a b)) a)) _.
+(; #REWRITE [X in (add X (add a b))] addcomm. ;)
+#REFINE refl nat (add (add (add b a) (add a b)) a).
+#QED.
+
+
+(; A slightly more complicated contextual rewrite ;)
+#PROOF rewriteTest5 : !a, !b,
   P (eq nat (add (add a b) (add a b)) (add (add b a) (add b a))).
 #REFINE a => b => _.
-#REWRITE [X in (add X X)] addcomm.
+#REFINE eqind nat (add a b) (add b a) (addcomm a b) (X:T nat => eq nat (add X X) (add (add b a) (add b a))) _.
+(; #REWRITE [X in (add X X)] addcomm.;)
 #REFINE refl nat (add (add b a) (add b a)).
 #QED.
 
 (; An even more complicated rewrite, combining both wildcards and binders. ;)
-#PROOF rewriteTest5 : !a, !b,
+#PROOF rewriteTest6 : !a, !b,
   P (eq nat (add (add (add a b) a) a) (add (add a (add a b) ) a) ).
 #REFINE a => b => _.
+(; #REFINE eqind nat (add (add a b) a) (add a (add a b)) (addcomm (add a b) a) (X:T nat => eq nat (add X a) (add (add a (add a b)) a)) _.;)
 #REWRITE [X in (add X _)] addcomm.
 #REFINE refl nat (add (add a (add a b) ) a).
 #QED.

@@ -48,17 +48,19 @@ let match_pattern : pattern -> term -> term array option = fun (xs,p) t ->
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
 let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
+  let time = Time.save () in
   let rec find_sub_aux : term -> term array option = fun g ->
     match match_pattern (vs,l) g with
     | Some sub -> Some sub
     | None     ->
       begin
+          Time.restore time ;
           match g with
           | Appl(x,y) ->
              begin
               match find_sub_aux x with
               | Some sub -> Some sub
-              | None     -> find_sub_aux y
+              | None     -> Time.restore time ; find_sub_aux y
              end
           | _ -> None
       end
@@ -200,7 +202,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
           pp g.g_type
   in
   (* Distinguish between possible paterns. *)
-  let (pred_bind, t, l, r) =
+  let (pred_bind, new_term, t, l, r) =
     match p with
     | None                         ->
         begin
@@ -212,7 +214,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
             let x = Bindlib.new_var mkfree "X" in
             let pred = bind_match (l,x) g_term in
             let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
-            (pred_bind, t, l, r)
+            (pred_bind, Bindlib.subst pred_bind r, t, l, r)
         end
     (* Basic patterns. *)
     | Some(RW_Term(p)            ) ->
@@ -235,7 +237,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 let x = Bindlib.new_var mkfree "X" in
                 let pred = bind_match (l,x) g_term in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
-                (pred_bind, t, l, r)
+                (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
         end
     | Some(RW_IdInTerm(p)      ) ->
@@ -245,24 +247,33 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
          * to get the actual pat and call the new bind_match function. *)
         begin
         let (x,p) = Bindlib.unbind p in
-        match find_sub g_term p (Array.of_list [x]) with
+        let p_refs = add_refs p in
+        match find_sub g_term p_refs (Array.of_list [x]) with
         | None       ->
             fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
         | Some x_val ->
             let x_val = x_val.(0) in
-            let pat_box = Bindlib.bind_var x (lift p) in
-            let pat = Bindlib.subst (Bindlib.unbox pat_box) x_val in
+            wrn "OK [%a]" pp x_val;
+            let pat = Bindlib.unbox (Bindlib.bind_var x (lift p_refs)) in
+            let pat_l = Bindlib.subst pat x_val in
+            wrn "OK [%a]" pp pat_l;
             match match_pattern (Array.of_list vars,l) x_val with
             | None       ->
                 fatal_no_pos
                 "The value of X, [%a], in [%a] does not match [%a]."
                   pp x_val pp p pp l
             | Some sigma ->
+
                 let (t,l,r) = Bindlib.msubst bound sigma in
+                let pat_r = Bindlib.subst pat r in
                 let x = Bindlib.new_var mkfree "X" in
-                let pred = bind_match_in (pat,x,x_val) g_term in
+                let pred = bind_match (pat_l, x) g_term in
+                let l_x = Bindlib.subst pat (Vari(x)) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
-                (pred_bind, t, l, r)
+                let pred_bind = Bindlib.subst pred_bind l_x in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x (lift pred_bind)) in
+                let new_term = Bindlib.subst pred_bind pat_r in
+                (pred_bind, new_term, t, l, r)
         end
 
     (* Combinational patterns. *)
@@ -277,7 +288,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(sign_P), Bindlib.subst pred_bind r) in
+  let goal_type = Appl(Symb(sign_P), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
   let new_goal =
     match goal_term with
