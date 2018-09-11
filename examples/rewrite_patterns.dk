@@ -202,6 +202,23 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #REFINE refl nat (add (add (add b a) b) (add (add b a) b)).
 #QED.
 
+(; A slightly more complicated contextual rewrite ;)
+#PROOF rewriteTest4 : !a, !b,
+  P (eq nat (add (add a b) (add a b)) (add (add b a) (add b a))).
+#REFINE a => b => _.
+#REWRITE [X in (add X X)] addcomm.
+#REFINE refl nat (add (add b a) (add b a)).
+#QED.
+
+(; An even more complicated rewrite, combining both wildcards and binders. ;)
+#PROOF rewriteTest5 : !a, !b,
+  P (eq nat (add (add (add a b) a) a) (add (add a (add a b) ) a) ).
+#REFINE a => b => _.
+#REWRITE [X in (add X _)] addcomm.
+#REFINE refl nat (add (add a (add a b) ) a).
+#QED.
+
+
 (; Underneath is an example where a metavariable appears multiple time
 (here the one corresponding to the universally quantified variable x
 in the lemma add_same_times_two).
