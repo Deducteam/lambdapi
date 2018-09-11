@@ -1,0 +1,20 @@
+A : Type.
+
+a : A.
+
+def T : A -> Type.
+
+[] T a --> A -> A.
+
+True : Type.
+
+def eq : A -> A -> Type.
+[x] eq x x --> True.
+true : True.
+def f : x : A -> y : A -> eq x y -> T x ->  A.
+
+(; OK ;)
+[] f a _ true (x => x) --> a.
+
+(; Not OK ;)
+[] f _ a true (x => x) --> a.
