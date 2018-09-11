@@ -64,6 +64,10 @@ let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
       end
   in find_sub_aux g
 
+(** [make_pat] is given a term [g] and a pattern [p],  containing  TRef's that
+    point to none. We try to match [p] with some subterm of [g] using Terms.eq
+    so that after the call [p] has been updated to be syntactically identical
+    to the subterm it matched with. *)
 let make_pat : term -> term -> term option = fun g p ->
   let time = Time.save() in
   let rec make_pat_aux : term -> term option = fun g ->
@@ -171,6 +175,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
           pp g.g_type
   in
+  (* Distinguish between possible paterns. *)
   let (pred_bind, t, l, r) =
     match p with
     | None                         ->
@@ -186,17 +191,16 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
     (* Basic patterns. *)
     | Some(RW_Term(p)            ) ->
         begin
-        (* Substitute every wildcard in p with a new TRef. *)
+        (* Substitute every wildcard in [p] with a new TRef. *)
         let p_refs = add_refs p in
-        (* Try to match this new p with some subterm of the goal. *)
-        (* If this succeeds p will no longer have any TRefs (we will unfold)
-         * and then we try to match p with l. This will give rise to the
-         * substitution. *)
 
+        (* Try to match this new p with some subterm of the goal. *)
         match make_pat g_term p_refs with
         | None   ->
           fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
         | Some p ->
+        (* Here [p] no longer has any TRefs and we try to match p with l, to
+         * get the substitution [sigma]. *)
             match match_pattern (Array.of_list vars,l) p with
             | None       ->
                 fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
@@ -206,7 +210,8 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 (pred_bind, t, l, r)
 
         end
-    | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_IdInTerm(_)        ) ->
+        wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
     (* Combinational patterns. *)
     | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
