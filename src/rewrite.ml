@@ -112,31 +112,6 @@ let bind_match : term * tvar -> term -> tbox =  fun (t1,x) t2 ->
   in
   lift_subst t2
 
-(* TODO: There is some horrible code duplication and unnecessary operations
- * here. Fix this. *)
-let bind_match_in : term * tvar * term -> term -> tbox  =
-  fun (t1,x,p) t2 ->
-  (* NOTE we lift to the bindbox while matching (for efficiency). *)
-  let rec lift_subst : term -> tbox = fun t ->
-    if Terms.eq t1 t then bind_match (p,x) t else
-    match unfold t with
-    | Vari(y)     -> _Vari y
-    | Type        -> _Type
-    | Kind        -> _Kind
-    | Symb(s)     -> _Symb s
-    | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
-    (* For now, we fail on products, abstractions and metavariables. *)
-    | Prod(_)     -> fatal_no_pos "Cannot rewrite under products."
-    | Abst(_)     -> fatal_no_pos "Cannot rewrite under abstractions."
-    | Meta(_)     -> fatal_no_pos "Cannot rewrite metavariables."
-    (* Forbidden cases. *)
-    | Patt(_,_,_) -> assert false
-    | TEnv(_,_)   -> assert false
-    | Wild        -> assert false
-    | TRef(_)     -> assert false
-  in
-  lift_subst t2
-
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
@@ -241,10 +216,21 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
         end
     | Some(RW_IdInTerm(p)      ) ->
-        (* Here we have [X in pat]. *)
-        (* First we need to identify what X is. For this we use find sub with
-         * goal and pat, with the variable X as the var. Then we substitute
-         * to get the actual pat and call the new bind_match function. *)
+        (* The code here works as follows: *)
+        (* 1 - Try to match [p] with some subterm of the goal. *)
+        (* 2 - If we succeed we do two things, we first replace X with [x_val],
+               the value matched to get [pat_l] and  try to match [x_val] with
+               the LHS of the lemma. *)
+        (* 3 - If we succeed we create the "RHS" of the pattern, which is [p]
+               with [sigma r] in place of X. *)
+        (* 4 - We then construct the following binders:
+               a - [pred_bind_l] : A binder with a new variable replacing each
+                   occurrence of [pat_l] in g_term.
+               b - [pred_bind] : A binder with a new variable only replacing
+                   the subterms where a rewrite happens. *)
+        (* 5 - The new goal [new_term] is constructed by substituting [r_pat]
+               in [pred_bind_l]. *)
+
         begin
         let (x,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
@@ -264,14 +250,18 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
                 let (t,l,r) = Bindlib.msubst bound sigma in
                 let pat_r = Bindlib.subst pat r in
+
                 let x = Bindlib.new_var mkfree "X" in
-                let pred = bind_match (pat_l, x) g_term in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
-                let new_term = Bindlib.subst pred_bind pat_r in
+                let pred_l = bind_match (pat_l, x) g_term in
+                let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+
+                let new_term = Bindlib.subst pred_bind_l pat_r in
+
                 let l_x = Bindlib.subst pat (Vari(x)) in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
-                let pred_bind = Bindlib.subst pred_bind l_x in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x (lift pred_bind)) in
+                let pred = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+                let pred_box = lift (Bindlib.subst pred l_x) in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+
                 (pred_bind, new_term, t, l, r)
         end
 
