@@ -253,10 +253,8 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
             fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
         | Some x_val ->
             let x_val = x_val.(0) in
-            wrn "OK [%a]" pp x_val;
             let pat = Bindlib.unbox (Bindlib.bind_var x (lift p_refs)) in
             let pat_l = Bindlib.subst pat x_val in
-            wrn "OK [%a]" pp pat_l;
             match match_pattern (Array.of_list vars,l) x_val with
             | None       ->
                 fatal_no_pos
@@ -268,11 +266,12 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 let pat_r = Bindlib.subst pat r in
                 let x = Bindlib.new_var mkfree "X" in
                 let pred = bind_match (pat_l, x) g_term in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+                let new_term = Bindlib.subst pred_bind pat_r in
                 let l_x = Bindlib.subst pat (Vari(x)) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
                 let pred_bind = Bindlib.subst pred_bind l_x in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x (lift pred_bind)) in
-                let new_term = Bindlib.subst pred_bind pat_r in
                 (pred_bind, new_term, t, l, r)
         end
 
@@ -298,7 +297,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
-
   if not (Solve.check g_ctxt term g.g_type) then
     begin
       match Solve.infer g_ctxt term with
