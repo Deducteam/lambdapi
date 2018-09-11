@@ -67,8 +67,8 @@ let parser term @(p : prio) =
   | _TYPE_
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
-  | x:qident
-      when p >= PAtom -> in_pos _loc (P_Vari(x))
+  | (p,x):qident
+      when p >= PAtom -> in_pos _loc (P_Vari(p,x))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -139,15 +139,24 @@ let parser assert_must_fail =
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
-  | _require_ o:{_open_ -> true}?[false] p:path            -> P_req(o,p)
-  | _require_ p:path _as_ n:ident                          -> P_req_as(p,n)
-  | _open_ p:path                                          -> P_open(p)
-  | _symbol_ l:symtag* s:ident ":" a:term                  -> P_symbol(l,s,a)
-  | _rule_ r:rule rs:{_:_and_ rule}*                       -> P_rules(r::rs)
-  | _definition_ s:ident al:arg* ao:{":" term}? "=" t:term -> P_def(s,al,ao,t)
-  | _theorem_ s:ident ":" a:term (ts,e):proof              -> P_thm(s,a,ts,e)
-  | mf:assert_must_fail a:assertion                        -> P_assert(mf,a)
-  | _set_ c:config                                         -> P_set(c)
+  | _require_ o:{_open_ -> true}?[false] p:path
+      -> P_require(o,p)
+  | _require_ p:path _as_ n:ident
+      -> P_require_as(p,n)
+  | _open_ p:path
+      -> P_open(p)
+  | _symbol_ l:symtag* s:ident ":" a:term
+      -> P_symbol(l,s,a)
+  | _rule_ r:rule rs:{_:_and_ rule}*
+      -> P_rules(r::rs)
+  | _definition_ s:ident al:arg* ao:{":" term}? "=" t:term
+      -> P_definition(s,al,ao,t)
+  | _theorem_ s:ident ":" a:term (ts,e):proof
+      -> P_theorem(s,a,ts,e)
+  | mf:assert_must_fail a:assertion
+      -> P_assert(mf,a)
+  | _set_ c:config
+      -> P_set(c)
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

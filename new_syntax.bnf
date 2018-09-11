@@ -11,28 +11,14 @@ reserved "admit"
 reserved "TYPE"
 reserved "_"
 
-<main> ::= <command>*
-
-<command> ::=
-  // Require and/or open a module
-  | "require" <ident> "as" <ident>
-  | "require" "open"? <ident>
-  | "open" <ident>
-  // Define a new symbol
-  | "symbol" <symtag>* <ident> ":" <type>
-  // Define a new rewriting rule
-  | "rule" <rule> {"and" <rule>}*
-  // Definition of a symbol (or theorem)
-  | {"definition" | "theorem"} <ident> <arg>* {":" <type>}? <def_or_proof>
-  // Assertion
-  | "assert" <term> ":" <type>
-  | "assert" <term> "≡" <term>
-
 <ident> ::=
   // Regular identifier
   | RE("[_'a-zA-Z][_'a-zA-Z0-9]*")
   // Escaped identifier (arbitrary string)
   | RE("[\"][^\"\s\t\r\n]+[\"]")
+
+<mpath> ::=
+  | {<ident> "."}* <ident>
 
 <symtag> ::=
   | "const"
@@ -53,14 +39,33 @@ reserved "_"
   | <ident>
   | "(" <ident>+ ":" <type> ")"
 
-<rule> ::= <ruletag>* {<ident> ":"}? <patt> "→" <term>
+<rule> ::= <ruletag>* {<ident> ":"}? <term> "→" <term>
 
 <ruletag> ::=
   | "pos"
   | "neg"
 
-<patt> ::= <term>
+// Single command.
+<command> ::=
+  // Require and/or open a module
+  | "require" <mpath> "as" <ident>
+  | "require" "open"? <mpath>
+  | "open" <mpath>
+  // Define a new symbol
+  | "symbol" <symtag>* <ident> ":" <type>
+  // Define a new rewriting rule
+  | "rule" <rule> {"and" <rule>}*
+  // Definition of a symbol or theorem
+  | "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | "theorem" <ident> ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  // Assertion
+  | "assert" <term> ":" <type>
+  | "assertnot" <term> ":" <type>
+  | "assert" <term> "≡" <term>
+  | "assertnot" <term> "≡" <term>
+  // Set option
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
 
-<def_or_proof> ::=
-  | "≔" <term>
-  | "proof" <tactic>* {"qed" | "admit" | "abort"}
+// Entry point: list of commands.
+<main> ::= <command>*
