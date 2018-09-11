@@ -1,4 +1,4 @@
-"src"              : include
+"src"              : traverse
 "src/parser.ml"    : pp(pa_ocaml)
 "src/new_parser.ml": pp(pa_ocaml)
 true               : package(unix)
@@ -6,6 +6,5 @@ true               : package(bindlib)
 true               : package(earley)
 true               : package(earley.str)
 true               : package(timed)
-"menhir_parser"    : include
 true               : use_menhir
-true               : external_tokens(Lexer)
+true               : external_tokens(Legacy_lexer)

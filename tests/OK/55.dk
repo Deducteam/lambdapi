@@ -1,0 +1,7 @@
+A : Type.
+
+def h : (A -> A) -> (A -> A) -> A -> A.
+
+[aa] h aa (x => aa x) --> aa.
+
+[aa] h (x => aa x) aa --> aa.
