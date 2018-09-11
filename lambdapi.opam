@@ -14,7 +14,6 @@ remove: [make "uninstall"]
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
-  "unix"
   "menhir"
   "earley" {>= "1.0.2"}
   "earley-ocaml" {>= "1.0.2"}
