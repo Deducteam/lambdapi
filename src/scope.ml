@@ -335,7 +335,7 @@ let scope_rw_patt : env -> p_rw_patt loc -> Rewrite.rw_patt = fun env s ->
   let open Rewrite in
   let scope_term = scope_term StrMap.empty in
   match s.elt with
-  | P_Term(t)               -> RW_Term(scope_term env t)
+  | P_Term(t)               -> RW_Term(scope_pattern env t)
   | P_InTerm(t)             -> RW_InTerm(scope_term env t)
   | P_InIdInTerm(x,t)       ->
       let v = Bindlib.new_var mkfree x.elt in

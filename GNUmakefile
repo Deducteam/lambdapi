@@ -8,6 +8,12 @@ VERSION    = dev
 .PHONY: all
 all: bin lib
 
+#### Targets #################################################################
+
+.PHONY: help
+help:
+	@cat MAKEFILE.md
+
 #### Compilation #############################################################
 
 .PHONY: bin

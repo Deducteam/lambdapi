@@ -34,7 +34,7 @@ let break_prod : term -> term * tvar list = fun t ->
 type pattern = tvar array * term
 
 let match_pattern : pattern -> term -> term array option = fun (xs,p) t ->
-  let ts = Array.map (fun _ -> TRef(Pervasives.ref None)) xs in
+  let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
   if Terms.eq p t then Some(Array.map unfold ts) else None
 

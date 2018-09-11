@@ -35,7 +35,7 @@ type term =
   (** Term environment (used in the RHS of rewriting rules). *)
   | Wild
   (** Wildcard term (corresponding to "_" in patterns). *)
-  | TRef of term option Pervasives.ref
+  | TRef of term option ref
   (** Reference cell (used for surface matching). *)
 
 (** Representation of an higher-order term. *)
@@ -170,7 +170,7 @@ let rec unfold : term -> term = fun t ->
   | TEnv(TE_Some(b), ar) -> unfold (Bindlib.msubst b ar)
   | TRef(r)              ->
       begin
-        match Pervasives.(!r) with
+        match !r with
         | None    -> t
         | Some(v) -> unfold v
       end
@@ -306,7 +306,7 @@ let _Wild : tbox = Bindlib.box Wild
 
 (** [_TRef r] injects the constructor [TRef(r)] into the {!type:tbox} type. It
     should be the case that [!r] is [None]. *)
-let _TRef : term option Pervasives.ref -> tbox = fun r ->
+let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
@@ -390,8 +390,8 @@ let eq : term -> term -> bool = fun a b -> a == b ||
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
     | (Wild       , _          )
     | (_          , Wild       ) -> eq l
-    | (TRef(r)    , b          ) -> Pervasives.(r := Some(b)); eq l
-    | (a          , TRef(r)    ) -> Pervasives.(r := Some(a)); eq l
+    | (TRef(r)    , b          ) -> r := Some(b); eq l
+    | (a          , TRef(r)    ) -> r := Some(a); eq l
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
