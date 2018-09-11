@@ -98,7 +98,10 @@ and solve_aux t1 t2 p : conv_constrs =
      else fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1 == m2 && ts1 = [] && ts2 = [] && Array.for_all2 eq_vari a1 a2 ->
+       when m1 == m2 && Array.for_all2 eq_vari a1 a2
+            && List.for_all2
+                 (fun x y -> Pervasives.(Eval.eq_modulo (snd !x) (snd !y)))
+                 ts1 ts2 ->
      solve p
 
   | Meta(m,ts), _ when ts1 = [] && instantiate m ts t2 ->

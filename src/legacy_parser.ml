@@ -5,7 +5,7 @@ let parse_channel : in_channel -> Parser.p_cmd Pos.loc list = fun ic ->
   let lexbuf = Lexing.from_channel ic in
   try
     while true do
-      let l = Menhir_parser.line Lexer.token lexbuf in
+      let l = Menhir_parser.line Legacy_lexer.token lexbuf in
       lines := l :: !lines
     done;
     assert false (* Unreachable. *)
