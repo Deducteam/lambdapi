@@ -20,6 +20,12 @@ type rw_patt =
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
+let rec add_refs : term -> term = fun t ->
+  match t with
+  | Wild        -> TRef(ref None)
+  | Appl(t1,t2) -> Appl(add_refs t1, add_refs t2)
+  | _           -> t
+
 (** [break_prod] is given a nested product term (potentially with no products)
     and it unbinds all the the quantified variables. It returns the  term with
     the free variables and the list of variables that  were  unbound, so  that
@@ -41,9 +47,9 @@ let match_pattern : pattern -> term -> term array option = fun (xs,p) t ->
 (** [find_sub] is given two terms and finds the first instance of  the  second
     term in the first, if one exists, and returns the substitution giving rise
     to this instance or an empty substitution otherwise. *)
-let find_sub : term -> term -> tvar array -> term array = fun g l vars ->
+let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
   let rec find_sub_aux : term -> term array option = fun g ->
-    match match_pattern (vars,l) g with
+    match match_pattern (vs,l) g with
     | Some sub -> Some sub
     | None     ->
       begin
@@ -56,10 +62,28 @@ let find_sub : term -> term -> tvar array -> term array = fun g l vars ->
              end
           | _ -> None
       end
-  in
-  match find_sub_aux g with
-  | Some sub -> sub
-  | None     -> Array.map Terms.mkfree vars
+  in find_sub_aux g
+
+(** [make_pat] is given a term [g] and a pattern [p],  containing  TRef's that
+    point to none. We try to match [p] with some subterm of [g] using Terms.eq
+    so that after the call [p] has been updated to be syntactically identical
+    to the subterm it matched with. *)
+let make_pat : term -> term -> term option = fun g p ->
+  let time = Time.save() in
+  let rec make_pat_aux : term -> term option = fun g ->
+    if eq g p then Some p else
+      begin
+      Time.restore time ;
+      match g with
+      | Appl(x,y) ->
+          begin
+          match make_pat_aux x with
+          | Some p -> Some p
+          | None   -> Time.restore time ; make_pat_aux y
+          end
+      | _ -> None
+      end
+  in make_pat_aux g
 
 (** [bind_match t1 t2] produces a binder that abstracts away all the occurence
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
@@ -91,7 +115,7 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
     the RHS in the obtained goal. *)
-let handle_rewrite : term -> unit = fun t ->
+let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   (* Obtain the required symbols from the current signature. *)
   (* FIXME use a parametric notion of equality. *)
   let sign = Sign.current_sign () in
@@ -123,6 +147,7 @@ let handle_rewrite : term -> unit = fun t ->
   (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
    * parameters. *)
   let (t_type, vars) = break_prod t_type in
+
   let (a, l, r)  =
     match get_args t_type with
     | (p,[eq]) when is_symb sign_P p ->
@@ -140,6 +165,8 @@ let handle_rewrite : term -> unit = fun t ->
   let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
   let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
 
+
+
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -148,10 +175,53 @@ let handle_rewrite : term -> unit = fun t ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
           pp g.g_type
   in
+  (* Distinguish between possible paterns. *)
+  let (pred_bind, t, l, r) =
+    match p with
+    | None                         ->
+        begin
+        match find_sub g_term l (Array.of_list vars) with
+        | None       ->
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp l
+        | Some sigma ->
+            let (t,l,r) = Bindlib.msubst bound sigma in
+            let pred_bind = bind_match l g_term in
+            (pred_bind, t, l, r)
+        end
+    (* Basic patterns. *)
+    | Some(RW_Term(p)            ) ->
+        begin
+        (* Substitute every wildcard in [p] with a new TRef. *)
+        let p_refs = add_refs p in
 
-  let sigma = find_sub g_term l (Array.of_list vars) in
-  let (t,l,r) = Bindlib.msubst bound sigma in
-  let pred_bind = bind_match l g_term in
+        (* Try to match this new p with some subterm of the goal. *)
+        match make_pat g_term p_refs with
+        | None   ->
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
+        | Some p ->
+        (* Here [p] no longer has any TRefs and we try to match p with l, to
+         * get the substitution [sigma]. *)
+            match match_pattern (Array.of_list vars,l) p with
+            | None       ->
+                fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+            | Some sigma ->
+                let (t,l,r) = Bindlib.msubst bound sigma in
+                let pred_bind = bind_match l g_term in
+                (pred_bind, t, l, r)
+
+        end
+    | Some(RW_IdInTerm(_)        ) ->
+        wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+
+    (* Combinational patterns. *)
+    | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+
+    (* Nested patterns. *)
+    | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+  in
+
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
@@ -165,6 +235,7 @@ let handle_rewrite : term -> unit = fun t ->
 
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
+
   if not (Solve.check g_ctxt term g.g_type) then
     begin
       match Solve.infer g_ctxt term with
@@ -195,13 +266,3 @@ let handle_rewrite : term -> unit = fun t ->
   log_rewr "  new goal       = [%a]" pp goal_type;
   log_rewr "  produced term  = [%a]" pp term
 
-(** [handle_rewrite s] rewrites according to the specification [s]. *)
-let handle_rewrite : rw_patt option -> term -> unit = fun s t ->
-  match s with
-  | None                         -> handle_rewrite t
-  | Some(RW_Term(_)            ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_IdInTerm(_)        ) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
-  | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *)
