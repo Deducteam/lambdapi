@@ -271,7 +271,41 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
     (* Nested patterns. *)
     | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
-    | Some(RW_InIdInTerm(_)      ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_InIdInTerm(p)      ) ->
+        (* This is very similar to the cases 1 and 2 combined. *)
+        begin
+        let (x,p) = Bindlib.unbind p in
+        let p_refs = add_refs p in
+        match find_sub g_term p_refs (Array.of_list [x]) with
+        | None       ->
+            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+        | Some x_val ->
+            let x_val = x_val.(0) in
+            let pat = Bindlib.unbox (Bindlib.bind_var x (lift p_refs)) in
+            let pat_l = Bindlib.subst pat x_val in
+            match find_sub x_val l (Array.of_list vars) with
+            | None       ->
+                fatal_no_pos
+                "The value of X, [%a], in [%a] does not match [%a]."
+                  pp x_val pp p pp l
+            | Some sigma ->
+
+                let (t,l,r) = Bindlib.msubst bound sigma in
+                let pat_r = Bindlib.subst pat r in
+
+                let x = Bindlib.new_var mkfree "X" in
+                let pred_l = bind_match (pat_l, x) g_term in
+                let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+
+                let new_term = Bindlib.subst pred_bind_l pat_r in
+
+                let l_x = Bindlib.subst pat (Vari(x)) in
+                let pred = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+                let pred_box = lift (Bindlib.subst pred l_x) in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+
+                (pred_bind, new_term, t, l, r)
+        end
   in
 
   let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in

@@ -228,16 +228,17 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #REFINE refl nat (add (add a (add a b)) a).
 #QED.
 
-(; Underneath is an example where a metavariable appears multiple time
-(here the one corresponding to the universally quantified variable x
-in the lemma add_same_times_two).
-This is to check that we effectively instanciate each metavariable only once.
-This test will fail without the small fix done in build_sub function just after
-commit cb84b58 (we were looking for t instead of l in the current substitution) ;)
-(;
-#PROOF rewriteTest2 : !a, P (eq nat (add a a) (mult 2 a)).
-#REFINE a => _.
-#REWRITE add_same_times_two _.
-#REFINE refl nat (mult 2 a).
+
+(; Example 17: Very trivial SSReflect example. ;)
+def silly_axiom : !m, !n, P (eq nat m n).
+
+
+#PROOF rewriteTest7 :  !a, !b, !c,
+ P (eq nat (add (add (add a b) c) (add a b))
+           (add (add (add c b) c) (add a b))).
+#REFINE a => b => c => _.
+#REWRITE [in X in (add X c)] (silly_axiom a).
+#REFINE refl nat (add (add (add c b) c) (add a b)).
 #QED.
-;)
+
+
