@@ -88,8 +88,7 @@ let make_pat : term -> term -> term option = fun g p ->
 (** [bind_match t1 t2] produces a binder that abstracts away all the occurence
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
     products, abstraction, metavariables, or other awkward terms. *)
-let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
-  let x = Bindlib.new_var mkfree "X" in
+let bind_match : term * tvar -> term -> tbox =  fun (t1,x) t2 ->
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
     if Terms.eq t1 t then _Vari x else
@@ -109,7 +108,32 @@ let bind_match : term -> term -> (term, term) Bindlib.binder = fun t1 t2 ->
     | Wild        -> assert false
     | TRef(_)     -> assert false
   in
-  Bindlib.unbox (Bindlib.bind_var x (lift_subst t2))
+  lift_subst t2
+
+(* TODO: There is some horrible code duplication and unnecessary operations
+ * here. Fix this. *)
+let bind_match_in : term * tvar * term -> term -> tbox  =
+  fun (t1,x,p) t2 ->
+  (* NOTE we lift to the bindbox while matching (for efficiency). *)
+  let rec lift_subst : term -> tbox = fun t ->
+    if Terms.eq t1 t then bind_match (p,x) t else
+    match unfold t with
+    | Vari(y)     -> _Vari y
+    | Type        -> _Type
+    | Kind        -> _Kind
+    | Symb(s)     -> _Symb s
+    | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
+    (* For now, we fail on products, abstractions and metavariables. *)
+    | Prod(_)     -> fatal_no_pos "Cannot rewrite under products."
+    | Abst(_)     -> fatal_no_pos "Cannot rewrite under abstractions."
+    | Meta(_)     -> fatal_no_pos "Cannot rewrite metavariables."
+    (* Forbidden cases. *)
+    | Patt(_,_,_) -> assert false
+    | TEnv(_,_)   -> assert false
+    | Wild        -> assert false
+    | TRef(_)     -> assert false
+  in
+  lift_subst t2
 
 (** [handle_rewrite t] rewrites according to the equality proved by [t] in the
     current goal. The term [t] should have a type corresponding to an equality
@@ -185,7 +209,9 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
           fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp l
         | Some sigma ->
             let (t,l,r) = Bindlib.msubst bound sigma in
-            let pred_bind = bind_match l g_term in
+            let x = Bindlib.new_var mkfree "X" in
+            let pred = bind_match (l,x) g_term in
+            let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
             (pred_bind, t, l, r)
         end
     (* Basic patterns. *)
@@ -206,12 +232,38 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
-                let pred_bind = bind_match l g_term in
+                let x = Bindlib.new_var mkfree "X" in
+                let pred = bind_match (l,x) g_term in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
                 (pred_bind, t, l, r)
 
         end
-    | Some(RW_IdInTerm(_)        ) ->
-        wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_IdInTerm(p)      ) ->
+        (* Here we have [X in pat]. *)
+        (* First we need to identify what X is. For this we use find sub with
+         * goal and pat, with the variable X as the var. Then we substitute
+         * to get the actual pat and call the new bind_match function. *)
+        begin
+        let (x,p) = Bindlib.unbind p in
+        match find_sub g_term p (Array.of_list [x]) with
+        | None       ->
+            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+        | Some x_val ->
+            let x_val = x_val.(0) in
+            let pat_box = Bindlib.bind_var x (lift p) in
+            let pat = Bindlib.subst (Bindlib.unbox pat_box) x_val in
+            match match_pattern (Array.of_list vars,l) x_val with
+            | None       ->
+                fatal_no_pos
+                "The value of X, [%a], in [%a] does not match [%a]."
+                  pp x_val pp p pp l
+            | Some sigma ->
+                let (t,l,r) = Bindlib.msubst bound sigma in
+                let x = Bindlib.new_var mkfree "X" in
+                let pred = bind_match_in (pat,x,x_val) g_term in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+                (pred_bind, t, l, r)
+        end
 
     (* Combinational patterns. *)
     | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false

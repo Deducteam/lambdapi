@@ -183,6 +183,24 @@ eqind : !a, !x, !y, P (eq a x y) -> !p : T a -> Prop, P (p y) -> P (p x).
 #REFINE refl nat (add b a).
 #QED.
 
+(; This stupid test directly uses the addcomm lemma in one place ;)
+#PROOF rewriteTest2 : !a, !b,
+      P (eq nat (add (add a b) b) (add (add b a) b)).
+#REFINE a => b => _.
+#PRINT.
+#REWRITE [X in add X b] addcomm.
+#REFINE refl nat (add (add b a) b).
+#QED.
+
+(; This stupid test directly uses the addcomm lemma in two places ;)
+#PROOF rewriteTest3 : !a, !b,
+      P (eq nat (add (add (add a b) b) (add (add a b) b))
+        (add (add (add b a) b) (add (add b a) b))).
+#REFINE a => b => _.
+#PRINT.
+#REWRITE [X in add X b] addcomm.
+#REFINE refl nat (add (add (add b a) b) (add (add b a) b)).
+#QED.
 
 (; Underneath is an example where a metavariable appears multiple time
 (here the one corresponding to the universally quantified variable x
