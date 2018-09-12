@@ -241,4 +241,11 @@ def silly_axiom : !m, !n, P (eq nat m n).
 #REFINE refl nat (add (add (add c b) c) (add a b)).
 #QED.
 
-
+(; Very trivial SSReflect example. ;)
+#PROOF rewriteTest8 : !a, !b, !c,
+ P (eq nat (add (add (add a b) c) (add a b))
+           (add (add (add c b) c) (add a b))).
+#REFINE a => b => c => _.
+#REWRITE [#in (add (_) c)] (silly_axiom a c).
+#REFINE refl nat (add (add (add c b) c) (add a b)).
+#QED.

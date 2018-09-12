@@ -32,7 +32,7 @@ let rec add_refs : term -> term = fun t ->
     they can be bound to the term and substituted with the right terms. *)
 let break_prod : term -> term * tvar list = fun t ->
   let rec aux : term -> tvar list -> term * tvar list = fun t vs ->
-    match t with
+    match unfold t with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
     | _         -> (t, List.rev vs)
   in aux t []
@@ -55,7 +55,7 @@ let find_sub : term -> term -> tvar array -> term array option = fun g l vs ->
     | None     ->
       begin
           Time.restore time ;
-          match g with
+          match unfold g with
           | Appl(x,y) ->
              begin
               match find_sub_aux x with
@@ -76,7 +76,7 @@ let make_pat : term -> term -> term option = fun g p ->
     if eq g p then Some p else
       begin
       Time.restore time ;
-      match g with
+      match unfold g with
       | Appl(x,y) ->
           begin
           match make_pat_aux x with
@@ -297,12 +297,13 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
          * with [l], to get the substitution [sigma]. *)
             match find_sub p l (Array.of_list vars) with
             | None       ->
-                fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+                fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
+                    pp p pp l
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
                 let x = Bindlib.new_var mkfree "X" in
-                let p_x = Bindlib.(unbox (bind_var x (bind_match (p,x) l))) in
+                let p_x = Bindlib.(unbox (bind_var x (bind_match (l,x) p))) in
                 let p_r = Bindlib.subst p_x r in
 
                 let pred = bind_match (p,x) g_term in
@@ -327,7 +328,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
         let p_refs = add_refs p in
         match find_sub g_term p_refs (Array.of_list [id]) with
         | None       ->
-            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp g_term
         | Some id_val ->
             let id_val = id_val.(0) in
             let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
