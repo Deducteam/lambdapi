@@ -6,32 +6,32 @@ open Pos
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
-    let id_charset = Charset.from_string "a-zA-Z0-9_'"
+    let id_charset = Charset.from_string "a-zA-Z0-9_"
     let reserved = []
   end)
 
 (** Keyword declarations. *)
-let _require_    = KW.create  "require"
-let _open_       = KW.create  "open"
-let _as_         = KW.special "as"
-let _symbol_     = KW.create  "symbol"
-let _definition_ = KW.create  "definition"
-let _theorem_    = KW.create  "theorem"
-let _rule_       = KW.create  "rule"
-let _and_        = KW.create  "and"
-let _assert_     = KW.create  "assert"
-let _assertnot_  = KW.create  "assertnot"
-let _const_      = KW.special "const"
-let _inj_        = KW.special "injective"
-let _TYPE_       = KW.create  "TYPE"
-let _pos_        = KW.special "pos"
-let _neg_        = KW.special "neg"
-let _proof_      = KW.create  "proof"
-let _qed_        = KW.create  "qed"
-let _admit_      = KW.create  "admit"
-let _abort_      = KW.create  "abort"
-let _set_        = KW.create  "set"
-let _wild_       = KW.create  "_"
+let _require_    = KW.create "require"
+let _open_       = KW.create "open"
+let _as_         = KW.create "as"
+let _symbol_     = KW.create "symbol"
+let _definition_ = KW.create "definition"
+let _theorem_    = KW.create "theorem"
+let _rule_       = KW.create "rule"
+let _and_        = KW.create "and"
+let _assert_     = KW.create "assert"
+let _assertnot_  = KW.create "assertnot"
+let _const_      = KW.create "const"
+let _inj_        = KW.create "injective"
+let _TYPE_       = KW.create "TYPE"
+let _pos_        = KW.create "pos"
+let _neg_        = KW.create "neg"
+let _proof_      = KW.create "proof"
+let _qed_        = KW.create "qed"
+let _admit_      = KW.create "admit"
+let _abort_      = KW.create "abort"
+let _set_        = KW.create "set"
+let _wild_       = KW.create "_"
 
 (** Type of a (located) identifier. *)
 type ident = strloc

@@ -62,6 +62,10 @@ OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk))
 TESTFILES    = $(sort $(wildcard examples/*.dk))
 
+.PHONY: tests_new_parser
+tests_new_parser: new_parser.native $(wildcard tests_new_parser/*.lp)
+	@./$^
+
 .PHONY: tests
 tests: lambdapi.native
 	@echo "## OK tests ##"
@@ -218,13 +222,15 @@ install: lambdapi.native META uninstall lib
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
-install_vim: editors/vim/ftdetect/dedukti.vim editors/vim/syntax/dedukti.vim
+install_vim: $(wildcard editors/vim/*/*.vim)
 ifeq ($(wildcard $(VIMDIR)/.),)
 	@echo -e "\e[36mWill not install vim mode.\e[39m"
 else
 	install -d $(VIMDIR)/syntax
 	install -d $(VIMDIR)/ftdetect
-	install -m 644 editors/vim/syntax/dedukti.vim $(VIMDIR)/syntax
-	install -m 644 editors/vim/ftdetect/dedukti.vim $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/syntax/dedukti.vim    $(VIMDIR)/syntax
+	install -m 644 editors/vim/syntax/lambdapi.vim   $(VIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/dedukti.vim  $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@echo -e "\e[36mVim mode installed.\e[39m"
 endif
