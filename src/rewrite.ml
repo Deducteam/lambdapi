@@ -452,16 +452,16 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
 
-  (* if not (Solve.check g_ctxt term g.g_type) then *)
-    (* begin *)
-      (* match Solve.infer g_ctxt term with *)
-      (* | Some(a) -> *)
-          (* fatal_no_pos "The term produced by rewrite has type [%a], not [%a]." *)
-            (* pp (Eval.snf a) pp g.g_type *)
-      (* | None    -> *)
-          (* fatal_no_pos "The term [%a] produced by rewrite is not typable." *)
-            (* pp term *)
-    (* end; *)
+  if not (Solve.check g_ctxt term g.g_type) then
+    begin
+      match Solve.infer g_ctxt term with
+      | Some(a) ->
+          fatal_no_pos "The term produced by rewrite has type [%a], not [%a]."
+            pp (Eval.snf a) pp g.g_type
+      | None    ->
+          fatal_no_pos "The term [%a] produced by rewrite is not typable."
+            pp term
+    end;
 
   (* Instantiate the current goal. *)
   let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
