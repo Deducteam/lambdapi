@@ -34,7 +34,7 @@ syntax keyword KeywordKO contained proof qed admit abort
 highlight link KeywordKO Error
 
 " Escaped identifiers member.
-syntax region EscapedIdentifier matchgroup=Identifier start="{|" end="|}"
+syntax region EscapedIdentifier contained matchgroup=Identifier start="{|" end="|}"
 highlight link EscapedIdentifier String
 
 " Normal identifiers member.
@@ -44,12 +44,12 @@ syntax match IdentifierOrAKeyword "\<\h\w*\>" contained contains=KeywordOK
 
 " Qualified identifiers.
 syntax match Identifier
-  \ "\(\(\w\+\|\({|[^}]*|}\)\)\.\)\+\(\w\+\|\({|[^}]*|}\)\)"
+  \ "\(\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)\.\)\+\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
   \ contains=EscapedIdentifier,IdentifierNotKeyword
 
 " Non-qualified identifier (or keyword).
 syntax match Identifier
-  \ "\(\w\+\|\({|[^}]*|}\)\)\>\.\@!"
+  \ "\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)\.\@!"
   \ contains=EscapedIdentifier,IdentifierOrAKeyword
 
 " Special symbols.

@@ -28,6 +28,14 @@ require file
 require folder.file
 require {|.git|}.folder.file // May contain (arbitrary) escaped parts.
 
+// Escaped identifiers cannot contain the sequence “|}”, but they can contain
+// “|” and “}” independently.
+require folder.{|weir|d}.|}.file
+require folder.{|weir|d}.|}
+require {|weir|d}.|}
+
+// ( [^|}] | [}] | [|][^}] )* [|]*
+
 // Require and open.
 require open file
 require open folder.file
