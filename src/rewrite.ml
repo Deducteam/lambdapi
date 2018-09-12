@@ -166,8 +166,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
   let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
 
-
-
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g.g_type with
@@ -279,7 +277,81 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
         end
 
     (* Combinational patterns. *)
-    | Some(RW_TermInIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_TermInIdInTerm(s,p)) ->
+        (* This pattern combines the previous. First we identify the subterm of
+           [g_term] that matches with [p], where [p] contains an identifier.
+           Once we have the value that the identifier in [p] has been matched
+           to we find a subterm of it that matches with [s].
+           Then in all occurrences of the first instance of [p] in [g_term] we
+           rewrite all occurrences of the first instance of [s] in the subterm
+           of [p] that was matched with the identifier. *)
+        begin
+        let (id,p) = Bindlib.unbind p in
+        let p_refs = add_refs p in
+        match find_sub g_term p_refs (Array.of_list [id]) with
+        | None       ->
+            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+        | Some id_val ->
+            let id_val = id_val.(0) in
+            let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+            let pat_l = Bindlib.subst pat id_val in
+            wrn "pat_l [%a]\n" pp pat_l ;
+            let s_refs = add_refs s in
+
+            match make_pat id_val s_refs with
+            | None   ->
+                fatal_no_pos
+                "The value of [%s], [%a], in [%a] does not match [%a]."
+                  (Bindlib.name_of id) pp id_val pp p pp s
+            | Some s ->
+                (* Now we must match s, which no longer contains any TRef's
+                   with the LHS of the lemma,*)
+                begin
+                  match match_pattern (Array.of_list vars, l) s with
+                  | None       ->
+                      fatal_no_pos "The term [%a] does not match the LHS [%a]"
+                          pp s pp l
+                  | Some sigma ->
+                      begin
+                      let (t,l,r) = Bindlib.msubst bound sigma in
+
+                      let x = Bindlib.new_var mkfree "X" in
+                      (* First we work in [id_val], that is, we substitute all
+                         the occurrences of [l] in [id_val] with [r]. *)
+                      let new_id = Bindlib.bind_var x (bind_match (l,x) id_val) in
+                      let new_id = Bindlib.(subst (unbox new_id) r) in
+                      wrn "Value of X: [%a]\n" pp new_id ;
+
+                      (* Then we replace in pat_l all occurrences of [id]
+                         with [new_id]. *)
+                      let pat_r = Bindlib.subst pat new_id in
+                      wrn "pat_r [%a]\n" pp pat_r ;
+
+                      (* To get the new goal we replace all occurrences of
+                        [pat_l] in [g_term] with [pat_r]. *)
+                      let pred_l = bind_match (pat_l, x) g_term in
+                      let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+
+                      let new_term = Bindlib.subst pred_bind_l pat_r in
+                      wrn "new term [%a]\n" pp new_term ;
+
+                      (* Finally we need to build the predicate. First we build
+                         the term l_x, in a few steps. We substitute all the
+                         rewrites in new_id with x and we repeat some steps. *)
+                      let l_x = bind_match (s,x) pat_l in
+                      let l_x = Bindlib.unbox (Bindlib.bind_var x l_x) in
+                      let l_x = Bindlib.subst l_x (Vari(x)) in
+                      wrn "l_x [%a]\n" pp l_x ;
+
+                      (* The last step to build the predicate is to substitute
+                         [l_x] everywhere we find [pat_l] and bind that x. *)
+
+                      let pred = Bindlib.subst pred_bind_l l_x in
+                      let pred_bind = Bindlib.bind_var x (lift pred) in
+                      (Bindlib.unbox pred_bind, new_term, t, l, r)
+                      end
+                end
+        end
     | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
     (* Nested patterns. *)
