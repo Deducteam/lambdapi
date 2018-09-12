@@ -213,7 +213,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 let pred = bind_match (l,x) g_term in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
                 (pred_bind, Bindlib.subst pred_bind r, t, l, r)
-
         end
     | Some(RW_IdInTerm(p)      ) ->
         (* The code here works as follows: *)
@@ -230,7 +229,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                    the subterms where a rewrite happens. *)
         (* 5 - The new goal [new_term] is constructed by substituting [r_pat]
                in [pred_bind_l]. *)
-
         begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
@@ -285,7 +283,39 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
     | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
     (* Nested patterns. *)
-    | Some(RW_InTerm(_)          ) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_InTerm(p)          ) ->
+        begin
+        (* Substitute every wildcard in [p] with a new TRef. *)
+        let p_refs = add_refs p in
+
+        (* Try to match this new p with some subterm of the goal. *)
+        match make_pat g_term p_refs with
+        | None   ->
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
+        | Some p ->
+        (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
+         * with [l], to get the substitution [sigma]. *)
+            match find_sub p l (Array.of_list vars) with
+            | None       ->
+                fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+            | Some sigma ->
+                let (t,l,r) = Bindlib.msubst bound sigma in
+
+                let x = Bindlib.new_var mkfree "X" in
+                let p_x = Bindlib.(unbox (bind_var x (bind_match (p,x) l))) in
+                let p_r = Bindlib.subst p_x r in
+
+                let pred = bind_match (p,x) g_term in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+
+                let new_term = Bindlib.subst pred_bind p_r in
+
+                let p_x = Bindlib.subst p_x (Vari(x)) in
+                let pred_box = lift (Bindlib.subst pred_bind p_x) in
+                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+
+                (pred_bind, new_term, t, l, r)
+        end
     | Some(RW_InIdInTerm(p)      ) ->
         (* This is very similar to the RW_IdInTerm case, with a few minor
            changes. *)
@@ -308,7 +338,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 "The value of [%s], [%a], in [%a] does not match [%a]."
                   (Bindlib.name_of id) pp id_val pp p pp l
             | Some sigma ->
-
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
                 (* Start building the term. *)
