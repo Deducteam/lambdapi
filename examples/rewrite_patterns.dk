@@ -257,3 +257,20 @@ def silly_axiom : !m, !n, P (eq nat m n).
 #REWRITE [(add a  _) #in X #in (add c X)] addcomm.
 #REFINE refl nat (add (add a b) (add c (add b a))).
 #QED.
+
+#PROOF rewriteTest10 : !a, !b, !c,
+  P (eq nat (add (add c (add a b)) (add (add a b) (add c (add a b))))
+            (add (add c (add b a)) (add (add a b) (add c (add b a))))).
+#REFINE a => b => c => _.
+#REWRITE [(add a _) #in X #in (add c X)] addcomm.
+#REFINE refl nat (add (add c (add b a)) (add (add a b) (add c (add b a)))).
+#QED.
+
+#PROOF rewriteTest11 : !a, !b, !c,
+  P (eq nat
+  (add (add (add (add a b) c) (add (add a b) c)) (add (add a b) c))
+  (add (add (add (add a b) c) (add (add b a) c)) (add (add a b) c))).
+#REFINE a => b => c => _.
+#REWRITE [(add a _) #in X #in (add(add _ X) _)] addcomm.
+#REFINE refl nat (add (add (add (add a b) c) (add (add b a) c)) (add (add a b) c)).
+#QED.
