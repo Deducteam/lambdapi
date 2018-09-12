@@ -36,15 +36,52 @@ let _wild_       = KW.create "_"
 (** Type of a (located) identifier. *)
 type ident = strloc
 
+(** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
+let regular_ident : ident Earley.grammar =
+  let head_cs = Charset.from_string "a-zA-Z_" in
+  let body_cs = Charset.from_string "a-zA-Z0-9_" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    (String.sub (Input.line buf) pos !nb, buf, pos + !nb)
+  in
+  let ident = Earley.black_box fn head_cs false "<r-ident>" in
+  parser id:ident -> KW.check id; in_pos _loc id
+
+(** Escaped identifier (regexp “[{][|][^}][|][}]”). *)
+let escaped_ident : ident Earley.grammar =
+  let fn buf pos =
+    let res = Buffer.create 20 in
+    (* Check start marker. *)
+    let (c, buf, pos) = Input.read buf (pos + 1) in
+    if c <> '|' then Earley.give_up ();
+    Buffer.add_string res "{|";
+    (* Accumulate until end marker. *)
+    let rec work buf pos =
+      let (c, buf, pos) = Input.read buf pos in
+      if c = '|' && Input.get buf pos = '}' then
+        (Buffer.add_string res "|}"; (buf, pos+1))
+      else if c <> '\255' then
+        (Buffer.add_char res c; work buf pos)
+      else
+        Earley.give_up ()
+    in
+    let (buf, pos) = work buf (pos+1) in
+    (* Return the contents. *)
+    (Buffer.contents res, buf, pos)
+  in
+  let fst_cs = Charset.singleton '{' in
+  let ident = Earley.black_box fn fst_cs false "<e-ident>" in
+  parser id:ident -> in_pos _loc id
+
 (** Identifier. *)
-let parser ident =
-  | id:''[a-zA-Z_'][a-zA-Z0-9_']*'' -> KW.check id; in_pos _loc id
+let parser ident = regular_ident | escaped_ident
 
 (** Type of a (qualified) identifier. *)
 type qident = string list * ident
 
 (** [path] parses a module path. *)
-let parser path_elt = ''[a-zA-Z_'][a-zA-Z0-9_']*''
+let parser path_elt = id:ident -> id.elt
 let parser path = m:path_elt ms:{"." path_elt}* -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
@@ -55,8 +92,8 @@ let parser symtag =
   | _const_ -> Sym_const
   | _inj_   -> Sym_inj
 
-let parser meta = "?" - id:''[a-zA-Z_'][a-zA-Z0-9_']*'' -> in_pos _loc id
-let parser patt = "&" - id:''[a-zA-Z_'][a-zA-Z0-9_']*'' -> in_pos _loc id
+let parser meta = "?" - id:regular_ident -> in_pos _loc id.elt
+let parser patt = "&" - id:regular_ident -> in_pos _loc id.elt
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PFunc
