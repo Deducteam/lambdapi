@@ -63,9 +63,11 @@ require blop.{|require|}.blop
 //                           Symbol declaration                             //
 //////////////////////////////////////////////////////////////////////////////
 
+symbol const Nat : TYPE
 
-symbol {|this is
-a very weird variable name|} : TYPE
+symbol {||} : Nat
+symbol injective {|this is
+a very weird variable name|} : Nat ⇒ Nat
 
 symbol {|test|} : Nat
 
@@ -75,11 +77,22 @@ assert zero ?blop[a,b] : Nat
 
 // TODO finish giving examples of every syntactic construct.
 
-definition id_id =
-  let id = λx, x in
+definition id_id ≔
+  let id = λ x, x in
   id id
 
-definition delta_id =
+rule s (λx, &F[x] x) → &F[zero]
+and  s f             → f
+
+definition delta_id ≔
   let delta x = x x in
   let id x = x in
   delta id
+
+theorem add_comm : ∀ m n, eq Nat (add m n) (add n m)
+proof
+  intro m n
+admit
+
+// config naturals Nat zero succ
+// 12

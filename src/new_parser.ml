@@ -32,6 +32,8 @@ let _TYPE_       = KW.create "TYPE"
 let _pos_        = KW.create "pos"
 let _neg_        = KW.create "neg"
 let _proof_      = KW.create "proof"
+let _intro_      = KW.create "intro"
+let _refine_     = KW.create "refine"
 let _qed_        = KW.create "qed"
 let _admit_      = KW.create "admit"
 let _abort_      = KW.create "abort"
@@ -153,8 +155,8 @@ let parser rule =
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
-  | "intro" xs:ident* -> P_tac_intro(xs)
-  | "refine" t:term   -> P_tac_refine(t)
+  | _intro_ xs:ident* -> P_tac_intro(xs)
+  | _refine_ t:term   -> P_tac_refine(t)
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 
@@ -174,7 +176,7 @@ let parser config =
       let s = String.sub d 0 (String.length d - 1) in
       P_debug(d.[0] = '+', s)
 
-let parser proof = _proof_ ts:{tactic ";"}* e:proof_end -> (ts,e)
+let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
 let parser assert_must_fail =
   | _assert_    -> false
@@ -192,7 +194,7 @@ let parser cmd =
       -> P_symbol(l,s,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | _definition_ s:ident al:arg* ao:{":" term}? "=" t:term
+  | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(s,al,ao,t)
   | _theorem_ s:ident ":" a:term (ts,e):proof
       -> P_theorem(s,a,ts,e)

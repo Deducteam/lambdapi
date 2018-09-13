@@ -29,5 +29,5 @@ rule append &n &m (cons _ &a &l1) &l2 →
 
 theorem add_comm : ∀ (m:Nat) (n:Nat), eq Nat (add m n) (add n m)
 proof
-  intro m n;
+  intro m n
 abort

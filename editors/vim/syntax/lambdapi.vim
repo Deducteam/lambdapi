@@ -20,17 +20,17 @@ syn region Comment start="///" end="$" contains=@markdown
 " Keywords.
 syntax keyword KeywordOK contained require open as let in
 syntax keyword KeywordOK contained symbol const injective
-syntax keyword KeywordOK contained rule definition theorem
+syntax keyword KeywordOK contained rule and definition theorem
 syntax keyword KeywordOK contained assert assertnot set
-syntax keyword KeywordOK contained proof qed admit abort
+syntax keyword KeywordOK contained proof qed admit abort intro rewrite
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
 syntax keyword KeywordKO contained require open as let in
 syntax keyword KeywordKO contained symbol const injective
-syntax keyword KeywordKO contained rule definition theorem
+syntax keyword KeywordKO contained rule and definition theorem
 syntax keyword KeywordKO contained assert assertnot set
-syntax keyword KeywordKO contained proof qed admit abort
+syntax keyword KeywordKO contained proof qed admit abort intro rewrite
 highlight link KeywordKO Error
 
 " Escaped identifiers member.
@@ -44,12 +44,12 @@ syntax match IdentifierOrAKeyword "\<\h\w*\>" contained contains=KeywordOK
 
 " Qualified identifiers.
 syntax match Identifier
-  \ "\(\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)\.\)\+\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
+  \ "\(\(\<\h\w*\>\|\({|\([^|]\|\n\|\(|[^}]\)\)*|*|}\)\)\.\)\+\(\<\h\w*\>\|\({|\([^|]\|\n\|\(|[^}]\)\)*|*|}\)\)"
   \ contains=EscapedIdentifier,IdentifierNotKeyword
 
 " Non-qualified identifier (or keyword).
 syntax match Identifier
-  \ "\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)\.\@!"
+  \ "\(\<\h\w*\>\|\({|\([^|]\|\n\|\(|[^}]\)\)*|*|}\)\)\.\@!"
   \ contains=EscapedIdentifier,IdentifierOrAKeyword
 
 " Special symbols.
@@ -77,6 +77,7 @@ syntax match PreProc  "?\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
 abbreviate -> →
 abbreviate => ⇒
 abbreviate !  ∀
+abbreviate (! (∀
 abbreviate := ≔
 abbreviate \  λ
-
+abbreviate (\ (λ
