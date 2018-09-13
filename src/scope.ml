@@ -151,7 +151,7 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   in
   let (h, args) = get_args (Bindlib.unbox (scope [] t)) in
   match h with
-  | Symb(s) when s.sym_const -> fatal t.pos "LHS with a static head symbol."
+  | Symb({sym_mode = Const}) -> fatal t.pos "LHS with a constant head symbol."
   | Symb(s)                  -> (s, args)
   | _                        -> fatal t.pos "LHS with no head symbol."
 

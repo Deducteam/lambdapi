@@ -55,6 +55,7 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 %token <string> REQUIRE
 %token TYPE
 %token KW_DEF
+%token KW_INJ
 %token KW_THM
 %token <string> ID
 %token <string*string> QID
@@ -68,9 +69,11 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 
 line:
   | s=ID ps=param* COLON a=term DOT
-      { Pos.none (P_SymDecl(true, Pos.none s, build_prod ps a)) }
+      { Pos.none (P_SymDecl(Terms.Const, Pos.none s, build_prod ps a)) }
   | KW_DEF s=ID COLON a=term DOT
-      { Pos.none (P_SymDecl(false, Pos.none s, a)) }
+      { Pos.none (P_SymDecl(Terms.Defin, Pos.none s, a)) }
+  | KW_INJ s=ID COLON a=term DOT
+      { Pos.none (P_SymDecl(Terms.Injec, Pos.none s, a)) }
   | KW_DEF s=ID COLON a=term DEF t=term DOT
       { Pos.none (P_SymDef(false, Pos.none s, Some(a), t)) }
   | KW_DEF s=ID DEF t=term DOT
