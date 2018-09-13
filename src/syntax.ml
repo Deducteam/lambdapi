@@ -25,6 +25,8 @@ and p_term_aux =
   (** Abstraction over several variables. *)
   | P_Prod of p_arg list * p_term
   (** Product over several variables. *)
+  | P_LLet of strloc * p_arg list * p_term * p_term
+  (** Local let. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term

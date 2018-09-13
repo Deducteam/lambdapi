@@ -3,6 +3,9 @@ open Pos
 
 #define LOCATE locate
 
+(** Blank function (for comments and white spaces). *)
+let blank = Blanks.line_comments "//"
+
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
@@ -14,6 +17,8 @@ module KW = Keywords.Make(
 let _require_    = KW.create "require"
 let _open_       = KW.create "open"
 let _as_         = KW.create "as"
+let _let_        = KW.create "let"
+let _in_         = KW.create "in"
 let _symbol_     = KW.create "symbol"
 let _definition_ = KW.create "definition"
 let _theorem_    = KW.create "theorem"
@@ -34,7 +39,7 @@ let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 
 (** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
-let regular_ident : ident Earley.grammar =
+let regular_ident =
   let head_cs = Charset.from_string "a-zA-Z_" in
   let body_cs = Charset.from_string "a-zA-Z0-9_" in
   let fn buf pos =
@@ -42,11 +47,10 @@ let regular_ident : ident Earley.grammar =
     while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
     (String.sub (Input.line buf) pos !nb, buf, pos + !nb)
   in
-  let ident = Earley.black_box fn head_cs false "<r-ident>" in
-  parser id:ident -> KW.check id; in_pos _loc id
+  Earley.black_box fn head_cs false "<r-ident>"
 
 (** Escaped identifier (regexp “{|\([^|]\|\(|[^}]\)\)|*|}”). *)
-let escaped_ident : ident Earley.grammar =
+let escaped_ident =
   let fn buf pos =
     let s = Buffer.create 20 in
     (* Check start marker. *)
@@ -65,27 +69,34 @@ let escaped_ident : ident Earley.grammar =
     (* Return the contents. *)
     (Buffer.contents s, buf, pos)
   in
-  let fst_cs = Charset.singleton '{' in
-  let ident = Earley.black_box fn fst_cs false "<e-ident>" in
-  parser id:ident -> in_pos _loc id
+  Earley.black_box fn (Charset.singleton '{') false "<e-ident>"
 
-(** Identifier. *)
-let parser ident = regular_ident | escaped_ident
+(** Any identifier (regular or escaped). *)
+let parser any_ident = regular_ident | escaped_ident
 
-(** [path] parses a module path. *)
-let parser path_elt = id:ident -> id.elt
-let parser path = m:path_elt ms:{"." path_elt}* -> m::ms
+(** Identifier (regular and non-keyword, or escaped). *)
+let parser ident =
+  | id:regular_ident -> KW.check id; in_pos _loc id
+  | id:escaped_ident -> in_pos _loc id
+
+(** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
+let parser meta =
+  | "?" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+
+(** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
+let parser patt =
+  | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+
+(** Module path (dot-separated identifiers. *)
+let parser path = m:any_ident ms:{"." any_ident}* -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
-let parser qident = ps:{path_elt "."}* x:ident
+let parser qident = {any_ident "."}* ident
 
 (** [symtag] parses a single symbol tag. *)
 let parser symtag =
   | _const_ -> Sym_const
   | _inj_   -> Sym_inj
-
-let parser meta = "?" - id:regular_ident -> in_pos _loc id.elt
-let parser patt = "&" - id:regular_ident -> in_pos _loc id.elt
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PFunc
@@ -122,6 +133,9 @@ let parser term @(p : prio) =
   (* Abstraction. *)
   | "λ" xs:arg* "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
+  (* Local let. *)
+  | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
@@ -192,7 +206,6 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
 
 (** [parse_file fname] parses the file [fname]. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
-  let blank = Blanks.line_comments "//" in
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let file = Input.filename buf in

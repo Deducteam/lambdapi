@@ -18,7 +18,7 @@ syn include @markdown syntax/markdown.vim
 syn region Comment start="///" end="$" contains=@markdown
 
 " Keywords.
-syntax keyword KeywordOK contained require open as in
+syntax keyword KeywordOK contained require open as let in
 syntax keyword KeywordOK contained symbol const injective
 syntax keyword KeywordOK contained rule definition theorem
 syntax keyword KeywordOK contained assert assertnot set
@@ -26,7 +26,7 @@ syntax keyword KeywordOK contained proof qed admit abort
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
-syntax keyword KeywordKO contained require open as in
+syntax keyword KeywordKO contained require open as let in
 syntax keyword KeywordKO contained symbol const injective
 syntax keyword KeywordKO contained rule definition theorem
 syntax keyword KeywordKO contained assert assertnot set
@@ -61,19 +61,22 @@ syntax match Keyword ":"
 syntax match Keyword "⇒"
 syntax match Keyword "→"
 syntax match Keyword "∀"
+syntax match Keyword "λ"
 syntax match Keyword "≔"
 syntax match Keyword ","
 syntax match Keyword ";"
 syntax match Keyword "_"
+syntax match Keyword "="
 
 " Other special classes.
 syntax match Type "\u\w*"
-syntax match Constant "&\h\w*"
-syntax match PreProc  "?\h\w*"
+syntax match Constant "&\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
+syntax match PreProc  "?\(\<\h\w*\>\|\({|\([^|]\|\(|[^}]\)\)*|*|}\)\)"
 
 " Abbreviations.
 abbreviate -> →
 abbreviate => ⇒
 abbreviate !  ∀
 abbreviate := ≔
+abbreviate \  λ
 

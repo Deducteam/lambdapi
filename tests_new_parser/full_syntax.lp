@@ -74,3 +74,12 @@ symbol {|test|} : Nat
 assert zero ?blop[a,b] : Nat
 
 // TODO finish giving examples of every syntactic construct.
+
+definition id_id =
+  let id = λx, x in
+  id id
+
+definition delta_id =
+  let delta x = x x in
+  let id x = x in
+  delta id
