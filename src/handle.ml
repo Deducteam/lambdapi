@@ -32,30 +32,29 @@ let parse_file : string -> p_cmd Pos.loc list = fun fname ->
   if Pervasives.(!use_legacy_parser) then Legacy_parser.parse_file fname
   else parse_file fname
 
-(** [handle_symdecl definable x a] extends the current signature with
-    [definable] a symbol named [x] and type [a]. If [a] does not have
-    sort [Type] or [Kind], then the program fails gracefully. *)
-let handle_symdecl : bool -> strloc -> term -> unit =
-  fun const x a ->
-    fail_if_in_proof();
-    (* We check that [s] is not already used. *)
-    let sign = current_sign() in
-    if Sign.mem sign x.elt then
-      fatal x.pos "Symbol [%s] already exists." x.elt;
-    (* We check that [a] is typable by a sort. *)
-    Solve.sort_type Ctxt.empty a;
-    (*FIXME: check that [a] contains no uninstantiated metavariables.*)
-    ignore (Sign.add_symbol sign const x a)
+(** [handle_symdecl mode x a] extends the current signature with a new  symbol
+    named [x] and with type [a].  If [a] does not have sort [Type] or [Kind],
+    then the program fails gracefully. *)
+let handle_symdecl : sym_mode -> strloc -> term -> unit = fun mode x a ->
+  fail_if_in_proof ();
+  (* We check that [s] is not already used. *)
+  let sign = current_sign () in
+  if Sign.mem sign x.elt then
+    fatal x.pos "Symbol [%s] already exists." x.elt;
+  (* We check that [a] is typable by a sort. *)
+  Solve.sort_type Ctxt.empty a;
+  (*FIXME: check that [a] contains no uninstantiated metavariables.*)
+  ignore (Sign.add_symbol sign mode x a)
 
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
 let handle_rule : sym * rule -> unit = fun (s,r) ->
-  fail_if_in_proof();
-  if s.sym_const || !(s.sym_def) <> None then
+  fail_if_in_proof ();
+  if s.sym_mode = Const || !(s.sym_def) <> None then
     fatal_no_pos "Symbol [%a] cannot be (re)defined." pp_symbol s;
   Sr.check_rule (s, r);
-  Sign.add_rule (current_sign()) s r
+  Sign.add_rule (current_sign ()) s r
 
 (** [handle_symdef opaque x ao t] checks that [t] is of type [a] if
     [ao = Some a]. Then, it does the same as [handle_symdecl (not
@@ -84,7 +83,7 @@ let handle_symdef : bool -> strloc -> term option -> term -> unit
        | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
   in
   (*FIXME: check that [t] and [a] have no uninstantiated metas.*)
-  let s = Sign.add_symbol sign false x a in
+  let s = Sign.add_symbol sign Defin x a in
   if not opaque then s.sym_def := Some(t)
 
 (** [handle_infer t] attempts to infer the type of [t]. In case
@@ -162,7 +161,7 @@ let handle_qed : unit -> unit = fun () ->
   | []   ->
   (* Adding the symbol. *)
   let s = current_sign () in
-  ignore (Sign.add_symbol s true thm.t_name !(thm.t_proof.meta_type));
+  ignore (Sign.add_symbol s Const thm.t_name !(thm.t_proof.meta_type));
   (* Resetting theorem state. *)
   theorem := None;
   out 3 "[%s] is proved.\n" thm.t_name.elt
@@ -273,7 +272,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
   let handle () =
     match cmd.elt with
     | P_Require(path)       -> handle_require path
-    | P_SymDecl(b,x,a)      -> handle_symdecl b x (scope_basic a)
+    | P_SymDecl(m,x,a)      -> handle_symdecl m x (scope_basic a)
     | P_SymDef(b,x,ao,t)    ->
         let t = scope_basic t in
         let ao =
