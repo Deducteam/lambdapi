@@ -47,12 +47,29 @@ type symtag =
 (** Parser-level rewriting rule representation. *)
 type p_rule = p_patt * p_term
 
+(** Rewrite pattern specification. *)
+type p_rw_patt =
+  | P_rw_Term           of p_term
+  | P_rw_InTerm         of p_term
+  | P_rw_InIdInTerm     of ident * p_term
+  | P_rw_IdInTerm       of ident * p_term
+  | P_rw_TermInIdInTerm of p_term * ident * p_term
+  | P_rw_TermAsIdInTerm of p_term * ident * p_term
+
 (** Parser-level representation of a proof tactic. *)
-type p_tactic = (* TODO *)
-  | P_tac_intro  of ident list
-  (** Eliminate quantifiers using the given names for hypotheses. *)
-  | P_tac_refine of p_term
+type p_tactic =
+  | P_tac_refine  of p_term
   (** Refine the current goal using the given term. *)
+  | P_tac_intro   of ident list
+  (** Eliminate quantifiers using the given names for hypotheses. *)
+  | P_tac_apply   of p_term
+  (** Apply the given term to the current goal. *)
+  | P_tac_simpl
+  (** Normalize in the focused goal. *)
+  | P_tac_rewrite of p_rw_patt loc option * p_term
+  (** Apply rewriting using the given lemma and pattern. *)
+  | P_tac_focus   of int
+  (** Focus on the given goal. *)
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =

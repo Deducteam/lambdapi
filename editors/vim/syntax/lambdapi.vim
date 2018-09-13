@@ -10,19 +10,25 @@ if exists("b:current_syntax")
 endif
 
 " Single-line comments.
-syn keyword Todo contained TODO FIXME NOTE
-syn region Comment start="//\($\|[^/]\)" end="$" contains=Todo
+syntax keyword Todo contained TODO FIXME NOTE
+syntax region Comment start="//\($\|[^/]\)" end="$" contains=Todo
 
 " Documentation comments (FIXME).
-syn include @markdown syntax/markdown.vim
-syn region Comment start="///" end="$" contains=@markdown
+syntax include @markdown syntax/markdown.vim
+syntax region Comment start="///" end="$" contains=@markdown
+
+" Natural number.
+syntax match NaturalNumber "\<\([0]\|\([1-9][0-9]*\)\)\>"
+highlight link NaturalNumber PreProc
+
 
 " Keywords.
 syntax keyword KeywordOK contained require open as let in
 syntax keyword KeywordOK contained symbol const injective
 syntax keyword KeywordOK contained rule and definition theorem
 syntax keyword KeywordOK contained assert assertnot set
-syntax keyword KeywordOK contained proof qed admit abort intro rewrite
+syntax keyword KeywordOK contained proof qed admit abort refine intro
+syntax keyword KeywordOK contained apply simpl rewrite focus
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
@@ -30,7 +36,8 @@ syntax keyword KeywordKO contained require open as let in
 syntax keyword KeywordKO contained symbol const injective
 syntax keyword KeywordKO contained rule and definition theorem
 syntax keyword KeywordKO contained assert assertnot set
-syntax keyword KeywordKO contained proof qed admit abort intro rewrite
+syntax keyword KeywordKO contained proof qed admit abort refine intro
+syntax keyword KeywordKK contained apply simpl rewrite focus
 highlight link KeywordKO Error
 
 " Escaped identifiers member.

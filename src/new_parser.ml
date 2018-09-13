@@ -32,13 +32,28 @@ let _TYPE_       = KW.create "TYPE"
 let _pos_        = KW.create "pos"
 let _neg_        = KW.create "neg"
 let _proof_      = KW.create "proof"
-let _intro_      = KW.create "intro"
 let _refine_     = KW.create "refine"
+let _intro_      = KW.create "intro"
+let _apply_      = KW.create "apply"
+let _simpl_      = KW.create "simpl"
+let _rewrite_    = KW.create "rewrite"
+let _focus_      = KW.create "focus"
 let _qed_        = KW.create "qed"
 let _admit_      = KW.create "admit"
 let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
+
+(** Natural number. *)
+let natural =
+  let head_cs = Charset.from_string "1-9" in
+  let body_cs = Charset.from_string "0-9" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
+  in
+  Earley.black_box fn head_cs false "<natural>"
 
 (** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
 let regular_ident =
@@ -153,10 +168,26 @@ let term = term PFunc
 let parser rule =
   | l:term "→" r:term (* TODO *)
 
+(** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
+let parser rw_patt_spec =
+  | t:term                          -> P_rw_Term(t)
+  | _in_ t:term                     -> P_rw_InTerm(t)
+  | _in_ x:ident _in_ t:term        -> P_rw_InIdInTerm(x,t)
+  | x:ident _in_ t:term             -> P_rw_IdInTerm(x,t)
+  | u:term _in_ x:ident _in_ t:term -> P_rw_TermInIdInTerm(u,x,t)
+  | u:term _as_ x:ident _in_ t:term -> P_rw_TermAsIdInTerm(u,x,t)
+
+(** [rw_patt] is a parser for a (located) rewrite pattern. *)
+let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
+
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
-  | _intro_ xs:ident* -> P_tac_intro(xs)
-  | _refine_ t:term   -> P_tac_refine(t)
+  | _refine_ t:term             -> P_tac_refine(t)
+  | _intro_ xs:ident*           -> P_tac_intro(xs)
+  | _apply_ t:term              -> P_tac_apply(t)
+  | _simpl_                     -> P_tac_simpl
+  | _rewrite_ p:rw_patt? t:term -> P_tac_rewrite(p,t)
+  | _focus_ i:natural           -> P_tac_focus(i)
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 

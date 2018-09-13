@@ -92,6 +92,11 @@ definition delta_id ≔
 theorem add_comm : ∀ m n, eq Nat (add m n) (add n m)
 proof
   intro m n
+  simpl
+  apply h
+  refine induction ?zero ?succ
+  rewrite [x in add x n] add_assoc
+  focus 2
 admit
 
 // config naturals Nat zero succ
