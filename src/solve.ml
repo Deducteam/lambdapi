@@ -88,7 +88,7 @@ and solve_aux t1 t2 p : conv_constrs =
   | Symb(s1), Symb(s2) when s1 == s2 && ts1 = [] && ts2 = [] ->
      solve p
 
-  | Symb(s1), Symb(s2) when Sign.is_const s1 && Sign.is_const s2 ->
+  | Symb(s1), Symb(s2) when Sign.is_inj s1 && Sign.is_inj s2 ->
      if s1 == s2 && List.same_length ts1 ts2 then
        let to_solve =
         let fn l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
@@ -98,7 +98,10 @@ and solve_aux t1 t2 p : conv_constrs =
      else fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
   | Meta(m1,a1), Meta(m2,a2)
-    when m1 == m2 && ts1 = [] && ts2 = [] && Array.for_all2 eq_vari a1 a2 ->
+       when m1 == m2 && Array.for_all2 eq_vari a1 a2
+            && List.for_all2
+                 (fun x y -> Pervasives.(Eval.eq_modulo (snd !x) (snd !y)))
+                 ts1 ts2 ->
      solve p
 
   | Meta(m,ts), _ when ts1 = [] && instantiate m ts t2 ->
@@ -110,11 +113,11 @@ and solve_aux t1 t2 p : conv_constrs =
   | _, Meta(_,_) ->
       solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | Symb(s), _ when not (Sign.is_const s) ->
+  | Symb(s), _ when not (Sign.is_inj s) ->
      if Eval.eq_modulo t1 t2 then solve p
      else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | _, Symb(s) when not (Sign.is_const s) ->
+  | _, Symb(s) when not (Sign.is_inj s) ->
      if Eval.eq_modulo t1 t2 then solve p
      else solve {p with unsolved = (t1,t2) :: p.unsolved}
 

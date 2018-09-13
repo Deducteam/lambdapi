@@ -1,0 +1,56 @@
+type : Type.
+def term : type -> Type.
+
+eq : A : type -> term A -> term A -> type.
+def Eq (A : type) (a : term A) (b : term A) : Type := term (eq A a b).
+
+refl : A : type -> a : term A -> Eq A a a.
+sym : A : type -> a : term A -> b : term A -> Eq A a b -> Eq A b a.
+def trans : A : type -> a : term A -> b : term A -> c : term A ->
+            Eq A a b -> Eq A b c -> Eq A a c.
+
+[A,a,b,ab] trans A a b a ab (sym A a b ab) --> refl A a
+[A,a,b,ab] trans A b a b (sym A a b ab) ab --> refl A b
+[A,a,b,ab] trans A a b b ab (refl A b) --> ab
+[A,a,b,ab] trans A a a b (refl A a) ab --> ab
+[A,w,x,y,z,wx,xy,yz] trans A w x z wx (trans A x y z xy yz) -->
+  trans A w y z (trans A w x y wx xy) yz.
+
+def bpi : A : type -> a : term A -> b : term A -> ab : Eq A a b ->
+          P : (c : term A -> Eq A a c -> type) ->
+          term (P a (refl A a)) -> term (P b ab).
+
+(; The left-hand side ;)
+
+def bpi_trans_1 (A : type) (x : term A) (y : term A) (z : term A)
+                (P : a : term A -> Eq A y a -> type)
+                (xy : Eq A x y) (yz : Eq A y z)
+                (p : term (P x (sym A x y xy))) :
+                term (P z yz) :=
+  bpi A y z yz P
+     (bpi A x y xy
+          (c => xc => P c (trans A y x c (sym A x y xy) xc))
+          p).
+
+(; The right-hand side ;)
+
+def bpi_trans_2 (A : type) (x : term A) (y : term A) (z : term A)
+                (P : a : term A -> Eq A y a -> type)
+                (xy : Eq A x y) (yz : Eq A y z)
+                (p : term (P x (sym A x y xy))) : term (P z yz) :=
+  bpi A x z (trans A x y z xy yz)
+    (c : term A => xc : Eq A x c => P c (trans A y x c (sym A x y xy) xc))
+    p.
+
+(; The following rule is rejected ;)
+
+[A,x,y,z,P,xy,yz,p]
+  bpi A y z yz P
+     (bpi A x y xy
+          (c => xc => P c (trans A y x c (sym A x y xy) xc))
+          p)
+    -->
+  bpi A x z (trans A x y z xy yz)
+    (c : term A => xc : Eq A x c => P c (trans A y x c (sym A x y xy) xc))
+    p.
+    

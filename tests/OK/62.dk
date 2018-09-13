@@ -1,0 +1,9 @@
+def A : Type.
+def eA : A -> Type.
+a : A.
+[] A --> eA a.
+
+B : Type.
+def eB : B -> Type.
+
+[] eB a --> eA a.

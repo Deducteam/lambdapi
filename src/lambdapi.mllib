@@ -5,6 +5,9 @@ Eval
 Extra
 Files
 Handle
+Legacy_lexer
+Legacy_parser
+Menhir_parser
 Parser
 Pos
 Print

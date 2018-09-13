@@ -74,13 +74,19 @@ type term =
   ; sym_type  : term ref
   (** Type of the symbol. *)
   ; sym_path  : Files.module_path
-  (** Module in which it is defined.  *)
+  (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_const : bool
-  (** Tells whether it is constant.   *) }
+  ; sym_mode  : sym_mode
+  (** Tells what kind of symbol it is. *) }
+
+(** Possible symbol modes. *)
+ and sym_mode =
+  | Const (** Constant symbol (no rewriting rule).          *)
+  | Defin (** Symbol has a definition (or rewriting rules). *)
+  | Injec (** Same as [Defin], but is assumed injective.    *)
 
 (** The {!recfield:sym_type} field contains a reference for a technical reason
     related to the representation of signatures as binary files (see functions
@@ -216,7 +222,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     ; sym_path  = []
     ; sym_def   = ref None
     ; sym_rules = ref []
-    ; sym_const = true }
+    ; sym_mode  = Const }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s)) e
 

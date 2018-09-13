@@ -139,13 +139,19 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
         let m = fresh () in
         _Patt None m (Array.of_list e)
     | P_Meta(id,ts) ->
-        let e = Array.map (scope env) ts in
+        let scope_var t =
+          let v = scope env t in
+          match unfold (Bindlib.unbox v) with
+          | Vari(_) -> v
+          | _       -> fatal t.pos "Not a bound variable."
+        in
+        let e = Array.map scope_var ts in
         let i = try Some(List.assoc id.elt map) with Not_found -> None in
         _Patt i id.elt e
   in
   let (h, args) = get_args (Bindlib.unbox (scope [] t)) in
   match h with
-  | Symb(s) when s.sym_const -> fatal t.pos "LHS with a static head symbol."
+  | Symb({sym_mode = Const}) -> fatal t.pos "LHS with a constant head symbol."
   | Symb(s)                  -> (s, args)
   | _                        -> fatal t.pos "LHS with no head symbol."
 
