@@ -160,21 +160,20 @@ let unlink : t -> unit = fun sign ->
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.deps)
 
-(** [add_symbol sign const name a] creates a fresh symbol with the name [name]
+(** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
-let add_symbol : t -> bool -> strloc -> term -> sym = fun sign const name a ->
-  let sym_name = name.elt in
+let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
+  let sym_name = s.elt in
   let sym =
     { sym_name ; sym_type = ref a ; sym_path = sign.path ; sym_def = ref None
-    ; sym_rules = ref [] ; sym_const = const }
+    ; sym_rules = ref [] ; sym_mode = mode }
   in
-  sign.symbols := StrMap.add sym_name (sym, name.pos) !(sign.symbols);
+  sign.symbols := StrMap.add sym_name (sym, s.pos) !(sign.symbols);
   out 3 "(symb) %s\n" sym_name; sym
 
-(** [is_const s] tells whether the symbol is constant. *)
-let is_const : sym -> bool = fun s ->
-  s.sym_const || (!(s.sym_rules) = [] && !(s.sym_def) = None)
+(** [is_inj s] tells whether the symbol is injective. *)
+let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->

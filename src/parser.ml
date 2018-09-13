@@ -110,6 +110,7 @@ let command : string -> unit Earley.grammar = fun name -> keyword ("#" ^ name)
 let _wild_      = keyword "_"
 let _Type_      = keyword "Type"
 let _def_       = keyword "def"
+let _inj_       = keyword "inj"
 let _thm_       = keyword "thm"
 let _in_        = command "in"
 let _as_        = command "as"
@@ -178,7 +179,6 @@ type old_p_rule = (strloc * p_term option) list * p_term * p_term
 type p_rule = p_term * p_term
 
 let opaque = true
-let const  = true
 
 (** Rewrite specification (for the rewrite tactic). *)
 type p_rw_patt =
@@ -192,7 +192,7 @@ type p_rw_patt =
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Symbol declaration (constant when the boolean is [true]). *)
-  | P_SymDecl    of bool * strloc * p_term
+  | P_SymDecl    of Terms.sym_mode * strloc * p_term
   (** Quick definition (opaque when the boolean is [true]). *)
   | P_SymDef     of bool * strloc * p_term option * p_term
   (** Rewriting rules declaration. *)
@@ -295,8 +295,9 @@ let parser rw_patt = {"[" s:rw_pattern "]" -> in_pos _loc_s s}?
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr               -> P_SymDecl(const,x,a)
-  | _def_ x:ident ":" a:expr         -> P_SymDecl(not const,x,a)
+  | x:ident ":" a:expr               -> P_SymDecl(Terms.Const,x,a)
+  | _def_ x:ident ":" a:expr         -> P_SymDecl(Terms.Defin,x,a)
+  | _inj_ x:ident ":" a:expr         -> P_SymDecl(Terms.Injec,x,a)
   | _def_ x:ident (ao,t):definition  -> P_SymDef(not opaque,x,ao,t)
   | _thm_ x:ident (ao,t):definition  -> P_SymDef(opaque,x,ao,t)
   | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
