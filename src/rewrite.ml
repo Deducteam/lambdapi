@@ -346,7 +346,8 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                       end
                 end
         end
-    | Some(RW_TermAsIdInTerm(_,_)) -> wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_TermAsIdInTerm(_,_)) ->
+        wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
 
     (* Nested patterns. *)
     | Some(RW_InTerm(p)          ) ->
