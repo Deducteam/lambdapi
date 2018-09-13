@@ -13,9 +13,9 @@ reserved "_"
 
 <ident> ::=
   // Regular identifier
-  | RE("[_'a-zA-Z][_'a-zA-Z0-9]*")
-  // Escaped identifier (arbitrary string)
-  | RE("[\"][^\"\s\t\r\n]+[\"]")
+  | RE("[a-zA-Z_][a-zA-Z0-9_]*")
+  // Escaped identifier
+  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}")
 
 <mpath> ::=
   | {<ident> "."}* <ident>

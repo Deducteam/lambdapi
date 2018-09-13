@@ -33,9 +33,6 @@ let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 
-(** Type of a (located) identifier. *)
-type ident = strloc
-
 (** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
 let regular_ident : ident Earley.grammar =
   let head_cs = Charset.from_string "a-zA-Z_" in
@@ -48,27 +45,25 @@ let regular_ident : ident Earley.grammar =
   let ident = Earley.black_box fn head_cs false "<r-ident>" in
   parser id:ident -> KW.check id; in_pos _loc id
 
-(** Escaped identifier (regexp “[{][|][^}][|][}]”). *)
+(** Escaped identifier (regexp “{|\([^|]\|\(|[^}]\)\)|*|}”). *)
 let escaped_ident : ident Earley.grammar =
   let fn buf pos =
-    let res = Buffer.create 20 in
+    let s = Buffer.create 20 in
     (* Check start marker. *)
     let (c, buf, pos) = Input.read buf (pos + 1) in
     if c <> '|' then Earley.give_up ();
-    Buffer.add_string res "{|";
+    Buffer.add_string s "{|";
     (* Accumulate until end marker. *)
     let rec work buf pos =
       let (c, buf, pos) = Input.read buf pos in
-      if c = '|' && Input.get buf pos = '}' then
-        (Buffer.add_string res "|}"; (buf, pos+1))
-      else if c <> '\255' then
-        (Buffer.add_char res c; work buf pos)
-      else
-        Earley.give_up ()
+      let next_c = Input.get buf pos in
+      if c = '|' && next_c = '}' then (Buffer.add_string s "|}"; (buf, pos+1))
+      else if c <> '\255' then (Buffer.add_char s c; work buf pos)
+      else Earley.give_up ()
     in
     let (buf, pos) = work buf (pos+1) in
     (* Return the contents. *)
-    (Buffer.contents res, buf, pos)
+    (Buffer.contents s, buf, pos)
   in
   let fst_cs = Charset.singleton '{' in
   let ident = Earley.black_box fn fst_cs false "<e-ident>" in
@@ -76,9 +71,6 @@ let escaped_ident : ident Earley.grammar =
 
 (** Identifier. *)
 let parser ident = regular_ident | escaped_ident
-
-(** Type of a (qualified) identifier. *)
-type qident = string list * ident
 
 (** [path] parses a module path. *)
 let parser path_elt = id:ident -> id.elt
