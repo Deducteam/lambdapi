@@ -295,7 +295,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
             let id_val = id_val.(0) in
             let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
             let pat_l = Bindlib.subst pat id_val in
-            wrn "pat_l [%a]\n" pp pat_l ;
             let s_refs = add_refs s in
 
             match make_pat id_val s_refs with
@@ -318,14 +317,13 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                       let x = Bindlib.new_var mkfree "X" in
                       (* First we work in [id_val], that is, we substitute all
                          the occurrences of [l] in [id_val] with [r]. *)
-                      let new_id = Bindlib.bind_var x (bind_match (l,x) id_val) in
-                      let new_id = Bindlib.(subst (unbox new_id) r) in
-                      wrn "Value of X: [%a]\n" pp new_id ;
+                      let id_bind = Bindlib.bind_var x (bind_match (l,x) id_val) in
+                      let new_id = Bindlib.(subst (unbox id_bind) r) in
+                      let id_x = Bindlib.(subst(unbox id_bind) (Vari(x))) in
 
                       (* Then we replace in pat_l all occurrences of [id]
                          with [new_id]. *)
                       let pat_r = Bindlib.subst pat new_id in
-                      wrn "pat_r [%a]\n" pp pat_r ;
 
                       (* To get the new goal we replace all occurrences of
                         [pat_l] in [g_term] with [pat_r]. *)
@@ -333,15 +331,11 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                       let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
 
                       let new_term = Bindlib.subst pred_bind_l pat_r in
-                      wrn "new term [%a]\n" pp new_term ;
 
                       (* Finally we need to build the predicate. First we build
                          the term l_x, in a few steps. We substitute all the
                          rewrites in new_id with x and we repeat some steps. *)
-                      let l_x = bind_match (s,x) pat_l in
-                      let l_x = Bindlib.unbox (Bindlib.bind_var x l_x) in
-                      let l_x = Bindlib.subst l_x (Vari(x)) in
-                      wrn "l_x [%a]\n" pp l_x ;
+                      let l_x = Bindlib.subst pat id_x in
 
                       (* The last step to build the predicate is to substitute
                          [l_x] everywhere we find [pat_l] and bind that x. *)
@@ -417,8 +411,11 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                 let x = Bindlib.new_var mkfree "X" in
 
                 (* Rewrite in id. *)
-                let id_bind = bind_match (l, x) id_val in
-                let id_val = Bindlib.(subst (unbox (bind_var x id_bind)) r) in
+                let id_bind_box = bind_match (l, x) id_val in
+                let id_bind = Bindlib.(unbox (bind_var x id_bind_box)) in
+                let id_val = Bindlib.subst id_bind r in
+
+                let id_x = Bindlib.subst id_bind (Vari(x)) in
 
                 (* The new RHS of the pattern is obtained by rewriting inside
                    id_val. *)
@@ -429,7 +426,8 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
                 let new_term = Bindlib.subst pred_bind_l r_val in
 
-                let l_x = Bindlib.subst pat (Vari(x)) in
+                let l_x = Bindlib.subst pat id_x in
+
                 let pred = Bindlib.unbox (Bindlib.bind_var x pred_l) in
                 let pred_box = lift (Bindlib.subst pred l_x) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
