@@ -5,10 +5,6 @@ open Console
 open Files
 open Pos
 
-(** Logging function for the parser. *)
-let log_pars = new_logger 'p' "pars" "debugging information for the parser"
-let log_pars = log_pars.logger
-
 #define LOCATE locate
 
 (** Parser-level representation of a qualified identifier. *)
@@ -366,7 +362,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
   Hashtbl.reset qid_map;
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
-    log_pars "parsed [%s] in %.2f seconds." fname d;
+    Syntax.log_pars "parsed [%s] in %.2f seconds." fname d;
     Pervasives.(total_time := !total_time +. d); res
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in

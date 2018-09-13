@@ -1,5 +1,12 @@
+(** Parser-level abstract syntax. *)
+
+open Console
 open Files
 open Pos
+
+(** Logging function for the parser. *)
+let log_pars = new_logger 'p' "pars" "debugging information for the parser"
+let log_pars = log_pars.logger
 
 (** Representation of a (located) identifier. *)
 type ident = strloc
@@ -70,6 +77,8 @@ type p_tactic =
   (** Apply rewriting using the given lemma and pattern. *)
   | P_tac_focus   of int
   (** Focus on the given goal. *)
+  | P_tac_print
+  (** Print the current goal. *)
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =

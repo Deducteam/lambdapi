@@ -28,7 +28,7 @@ syntax keyword KeywordOK contained symbol const injective
 syntax keyword KeywordOK contained rule and definition theorem
 syntax keyword KeywordOK contained assert assertnot set
 syntax keyword KeywordOK contained proof qed admit abort refine intro
-syntax keyword KeywordOK contained apply simpl rewrite focus
+syntax keyword KeywordOK contained apply simpl rewrite focus print
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
@@ -37,7 +37,7 @@ syntax keyword KeywordKO contained symbol const injective
 syntax keyword KeywordKO contained rule and definition theorem
 syntax keyword KeywordKO contained assert assertnot set
 syntax keyword KeywordKO contained proof qed admit abort refine intro
-syntax keyword KeywordKK contained apply simpl rewrite focus
+syntax keyword KeywordKK contained apply simpl rewrite focus print
 highlight link KeywordKO Error
 
 " Escaped identifiers member.

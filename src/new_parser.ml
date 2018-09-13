@@ -1,3 +1,6 @@
+(** Parsing functions for the Lambdapi syntax. *)
+
+open Console
 open Syntax
 open Pos
 
@@ -38,6 +41,7 @@ let _apply_      = KW.create "apply"
 let _simpl_      = KW.create "simpl"
 let _rewrite_    = KW.create "rewrite"
 let _focus_      = KW.create "focus"
+let _print_      = KW.create "print"
 let _qed_        = KW.create "qed"
 let _admit_      = KW.create "admit"
 let _abort_      = KW.create "abort"
@@ -188,6 +192,7 @@ let parser tactic =
   | _simpl_                     -> P_tac_simpl
   | _rewrite_ p:rw_patt? t:term -> P_tac_rewrite(p,t)
   | _focus_ i:natural           -> P_tac_focus(i)
+  | _print_                     -> P_tac_print
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 
@@ -237,16 +242,27 @@ let parser cmd =
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*
 
-(** [parse_file fname] parses the file [fname]. *)
+(** [parse_file fname] attempts to parse the file [fname], to obtain a list of
+    toplevel commands. In case of failure, a graceful error message containing
+    the error position is given through the [Fatal] exception. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
-    let file = Input.filename buf in
-    let line = Input.line_num buf in
-    let col = Input.utf8_col_num buf pos in
-    Printf.eprintf "%S %i:%i parse error...\n%!" file line col;
-    exit 1
+    let loc = Some(Pos.locate buf pos buf pos) in
+    fatal loc "Parse error."
 
+(** [parse_string fname str] attempts to parse the string [str] file to obtain
+    a list of toplevel commands.  In case of failure, a graceful error message
+    containing the error position is given through the [Fatal] exception.  The
+    [fname] argument should contain a relevant file name for the error message
+    to be constructed. *)
+let parse_string : string -> string -> p_cmd loc list = fun fname str ->
+  try Earley.parse_string ~filename:fname cmds blank str
+  with Earley.Parse_error(buf,pos) ->
+    let loc = Some(Pos.locate buf pos buf pos) in
+    fatal loc "Parse error."
+
+(* FIXME temporary testing code. *)
 let _ =
   for i = 1 to Array.length Sys.argv - 1 do
     let res = parse_file Sys.argv.(i) in
