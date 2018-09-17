@@ -370,3 +370,42 @@ and compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
+
+open Syntax
+open New_scope
+
+let new_handle_cmd : p_cmd loc -> unit = fun cmd ->
+  let handle () =
+    match cmd.elt with
+    | P_require(true , _)       -> assert false (* FIXME *)
+    | P_require(false, m)       ->
+        ignore m;
+        assert false (* TODO *)
+    | P_require_as(_, _)        -> assert false (* FIXME *)
+    | P_open(_)                 -> assert false (* FIXME *)
+    | P_symbol(ts, x, a)        ->
+        let m =
+          match ts with
+          | []              -> Defin
+          | Sym_const :: [] -> Const
+          | Sym_inj   :: [] -> Injec
+          | _               -> fatal cmd.pos "Multiple symbol tags."
+        in
+        ignore (m,x,a);
+        assert false (* TODO *)
+    | P_rules(rs)               ->
+        ignore rs;
+        assert false (* TODO *)
+    | P_definition(s, xs, a, t) ->
+        ignore (s, xs, a, t);
+        assert false (* TODO *)
+    | P_theorem(s, a, ts, pe)   ->
+        ignore (s, a, ts, pe);
+        assert false (* TODO *)
+    | P_assert(mf, asrt)        ->
+        ignore (mf, asrt);
+        assert false (* TODO *)
+    | P_set(P_debug(e,s))       -> Console.set_debug e s
+    | P_set(P_verbose(i))       -> Console.verbose := i
+  in
+  handle ()

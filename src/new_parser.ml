@@ -112,7 +112,7 @@ let parser patt =
 let parser path = m:any_ident ms:{"." any_ident}* -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
-let parser qident = {any_ident "."}* ident
+let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
 
 (** [symtag] parses a single symbol tag. *)
 let parser symtag =
@@ -128,8 +128,8 @@ let parser term @(p : prio) =
   | _TYPE_
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
-  | (p,x):qident
-      when p >= PAtom -> in_pos _loc (P_Vari(p,x))
+  | qid:qident
+      when p >= PAtom -> in_pos _loc (P_Vari(qid))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild

@@ -11,12 +11,15 @@ let log_pars = log_pars.logger
 (** Representation of a (located) identifier. *)
 type ident = strloc
 
+(** Representation of a possibly qualified (and located) identifier. *)
+type qident = (module_path * string) Pos.loc
+
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux Pos.loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Vari of module_path * ident
+  | P_Vari of qident
   (** Variable (empty module path) or symbol (arbitrary module path). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
