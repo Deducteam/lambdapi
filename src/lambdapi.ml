@@ -18,9 +18,12 @@ let set_timeout : int -> unit = fun i ->
 
 (** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
-  let compile = Handle.compile true in
+  let mp = module_path fname in
+  let compile =
+    if Filename.check_suffix fname src_extension then Handle.compile true
+    else New_handle.new_compile true
+  in
   let run () =
-    let mp = module_path fname in
     match !timeout with
     | None    -> compile mp
     | Some(i) -> with_timeout i compile mp

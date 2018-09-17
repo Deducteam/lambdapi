@@ -9,6 +9,12 @@ let src_extension : string = ".dk"
 (** [obj_extension] is the expected extension for binary (object) files. *)
 let obj_extension : string = ".dko"
 
+(** [lp_src_extension] is the expected extension for source files. *)
+let new_src_extension : string = ".lp"
+
+(** [lp_obj_extension] is the expected extension for binary (object) files. *)
+let new_obj_extension : string = ".lpo"
+
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
 
@@ -32,7 +38,9 @@ let pp_path : module_path pp = fun oc mp ->
     on the file name, and it should correspond to [src_extension]. When [path]
     is invalid, [Invalid_argument "invalid module path"] is raised. *)
 let module_path : string -> module_path = fun fname ->
-  if not (Filename.check_suffix fname src_extension) then
+  let ext_ok = Filename.check_suffix fname src_extension in
+  let ext_ok = ext_ok || Filename.check_suffix fname new_src_extension in
+  if not ext_ok then
     fatal_no_pos "Invalid file extension for [%s] (expected [%s])."
       fname src_extension;
   if not (Filename.is_relative fname) then

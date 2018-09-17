@@ -93,12 +93,12 @@ let escaped_ident =
   Earley.black_box fn (Charset.singleton '{') false "<e-ident>"
 
 (** Any identifier (regular or escaped). *)
-let parser any_ident = regular_ident | escaped_ident
+let parser any_ident =
+  | id:regular_ident -> KW.check id; id
+  | id:escaped_ident -> id
 
 (** Identifier (regular and non-keyword, or escaped). *)
-let parser ident =
-  | id:regular_ident -> KW.check id; in_pos _loc id
-  | id:escaped_ident -> in_pos _loc id
+let parser ident = id:any_ident -> in_pos _loc id
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
 let parser meta =
@@ -261,11 +261,3 @@ let parse_string : string -> string -> p_cmd loc list = fun fname str ->
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc "Parse error."
-
-(* FIXME temporary testing code. *)
-let _ =
-  for i = 1 to Array.length Sys.argv - 1 do
-    let res = parse_file Sys.argv.(i) in
-    Printf.printf "File %S has %i items.\n%!" Sys.argv.(i) (List.length res)
-  done;
-  Printf.printf "DONE.\n%!"
