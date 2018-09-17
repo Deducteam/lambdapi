@@ -27,7 +27,7 @@ rule append _ &m (cns &n &e &l1) &l2 →
 
 // FIXME add more functions.
 
-theorem add_comm : ∀ (m:Nat) (n:Nat), eq Nat (add m n) (add n m)
-proof
-  intro m n
-abort
+//theorem add_comm : ∀ (m:Nat) (n:Nat), eq Nat (add m n) (add n m)
+//proof
+//  intro m n
+//abort

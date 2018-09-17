@@ -11,12 +11,13 @@ open Env
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
-  { in_scope : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
-  ; aliases  : module_path StrMap.t      (** Established aliases. *) }
+  { signature : Sign.t                    (** Current signature.   *)
+  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
+  ; aliases   : module_path StrMap.t      (** Established aliases. *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
-let empty_sig_state : sig_state =
-  { in_scope = StrMap.empty ; aliases = StrMap.empty }
+let empty_sig_state : Sign.t -> sig_state = fun sign ->
+  { signature = sign ; in_scope = StrMap.empty ; aliases = StrMap.empty }
 
 (** [find_qid st env qid] returns a boxed term corresponding to a variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In
@@ -69,10 +70,10 @@ type mode =
       that can be updated with new metavariable on scoping. *)
   | M_Patt
   (** Scoping as a rewriting pattern. *)
-  | M_LHS  of int option StrMap.t
+  | M_LHS  of (string * int) list
   (** Left-hand side mode, used for scoping patterns.  The constructor carries
-      a map associating an optional index to every pattern variable. *)
-  | M_RHS  of tevar StrMap.t
+      a map associating an index to every (real) pattern variable. *)
+  | M_RHS  of (string * tevar) list
   (** Right-hand side mode. The constructor carries the environment for higher
       order variables that will be bound in the representation of the RHS. *)
 
@@ -80,7 +81,12 @@ type mode =
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope : mode -> sig_state -> env -> p_term -> term = fun md ss env t ->
+let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
+  (* Unique name generation for wildcards in LHS. *)
+  let fresh : unit -> string =
+    let c = Pervasives.ref (-1) in
+    fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
+  in
   let rec scope : env -> p_term -> tbox = fun env t ->
     let scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
       match (a, md) with
@@ -96,7 +102,19 @@ let scope : mode -> sig_state -> env -> p_term -> term = fun md ss env t ->
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
     | (P_Vari(qid)     , _        ) -> find_qid ss env qid
-    | (P_Wild          , _        ) -> _Wild
+    | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
+    | (P_Wild          , M_LHS(_) ) ->
+        let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
+        _Patt None (fresh ()) (Array.of_list xs)
+    | (P_Wild          , M_Patt   ) -> _Wild
+    | (P_Wild          , M_Term(_)) ->
+        (* We build a metavariable that may use the variables of [env]. *)
+        let xs = Env.vars_of_env env in
+        let a =
+          let m = fresh_meta (prod_of_env env _Type) (Array.length xs) in
+          prod_of_env env (_Meta m xs)
+        in
+        _Meta (fresh_meta a (List.length env)) xs
     | (P_Meta(id,ts)   , M_Term(m)) ->
         let v =
           (* We first check if the metavariable is in the map. *)
@@ -115,14 +133,14 @@ let scope : mode -> sig_state -> env -> p_term -> term = fun md ss env t ->
     | (P_Meta(_,_)     , _        ) -> fatal t.pos "Not allowed in a rule."
     | (P_Patt(id,ts)   , M_LHS(m) ) ->
         let i =
-          try StrMap.find id.elt m with Not_found -> (* Should not happen. *)
-          fatal t.pos "Pattern variable not in scope."
+          try Some(List.assoc id.elt m) with Not_found ->
+          fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
         in
         _Patt i id.elt (Array.map (scope env) ts)
     | (P_Patt(id,ts)   , M_RHS(m) ) ->
         let x =
-          try StrMap.find id.elt m with Not_found -> (* Should not happen. *)
-          fatal t.pos "Pattern variable not in scope."
+          try List.assoc id.elt m with Not_found ->
+          fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
@@ -161,7 +179,7 @@ let scope : mode -> sig_state -> env -> p_term -> term = fun md ss env t ->
         _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
   in
-  Bindlib.unbox (scope env t)
+  scope env t
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -171,17 +189,88 @@ let scope_term : metamap -> sig_state -> env -> p_term
     -> term * metamap = fun m ss env t ->
   let m = Pervasives.ref m in
   let t = scope (M_Term(m)) ss env t in  
-  (t, Pervasives.(!m))
+  (Bindlib.unbox t, Pervasives.(!m))
+
+(** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
+    association list giving the arity of all the “pattern variables” appearing
+    in the parser-level term [t]. The second component [nl] contains the names
+    of the “pattern variables” that appear non-linearly.  If a given  “pattern
+    variable” occurs with different arities the program fails gracefully. *)
+let patt_vars : p_term -> (string * int) list * string list =
+  let rec patt_vars acc t =
+    match t.elt with
+    | P_Type           -> acc
+    | P_Vari(_)        -> acc
+    | P_Wild           -> acc
+    | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
+    | P_Patt(id,ts)    ->
+        let (pvs, nl) as acc = Array.fold_left patt_vars acc ts in
+        let l = Array.length ts in
+        begin
+          try
+            if List.assoc id.elt pvs <> l then
+              fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
+            if List.mem id.elt nl then acc else (pvs, id.elt::nl)
+          with Not_found -> ((id.elt,l)::pvs, nl)
+        end
+    | P_Appl(t,u)      -> patt_vars (patt_vars acc t) u
+    | P_Impl(a,b)      -> patt_vars (patt_vars acc a) b
+    | P_Abst(xs,t)     -> patt_vars (arg_patt_vars acc xs) t
+    | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
+    | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
+  and arg_patt_vars acc xs =
+    match xs with
+    | []                 -> acc
+    | (_, None   ) :: xs -> arg_patt_vars acc xs
+    | (_, Some(a)) :: xs -> arg_patt_vars (patt_vars acc a) xs
+  in patt_vars ([],[])
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
 let scope_rule : sig_state -> p_rule -> sym * rule = fun ss (p_lhs, p_rhs) ->
-  ignore (ss, p_lhs, p_rhs);
-  assert false (* TODO *)
+  (* Compute the set of pattern variables on both sides. *)
+  let (pvs_lhs, nl) = patt_vars p_lhs in
+  let (pvs    , _ ) = patt_vars p_rhs in
+  (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
+  (* Check that the meta-variables of the RHS exist in the LHS. *)
+  let check_in_lhs (m,i) =
+    let j =
+      try List.assoc m pvs_lhs with Not_found ->
+      fatal p_rhs.pos "Unknown pattern variable [%s]." m
+    in
+    if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
+  in
+  List.iter check_in_lhs pvs;
+  let pvs = List.map fst pvs in
+  (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
+  let nl = List.filter (fun m -> not (List.mem m pvs)) nl in
+  let pvs = List.mapi (fun i m -> (m,i)) (pvs @ nl) in
+  (* NOTE [pvs] maps meta-variables to their position in the environment. *)
+  (* NOTE meta-variables not in [pvs] can be considered as wildcards. *)
+  (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
+  let lhs = Bindlib.unbox (scope (M_LHS(pvs)) ss Env.empty p_lhs) in
+  let (sym, lhs) =
+    let (h, args) = Terms.get_args lhs in
+    match h with
+    | Symb({sym_mode=Const}) -> fatal p_lhs.pos "Constant head symbol in LHS."
+    | Symb(s)                -> (s, args)
+    | _                      -> fatal p_lhs.pos "LHS with no head symbol."
+  in
+  (* We scope the RHS and bind the meta-variables. *)
+  let names = Array.of_list (List.map fst pvs) in
+  let vars = Bindlib.new_mvar te_mkfree names in
+  let rhs =
+    let map = Array.map2 (fun n v -> (n,v)) names vars in
+    let t = scope (M_RHS(Array.to_list map)) ss Env.empty p_rhs in
+    Bindlib.unbox (Bindlib.bind_mvar vars t)
+  in
+  (* We put everything together to build the rule. *)
+  (sym, {lhs; rhs; arity = List.length lhs})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
-let scope_pattern : sig_state -> env -> p_term -> term = scope M_Patt
+let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
+  Bindlib.unbox (scope M_Patt ss env t)
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of

@@ -58,9 +58,9 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 
 #### Unit tests ##############################################################
 
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk))
-TESTFILES    = $(sort $(wildcard examples/*.dk))
+OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
+KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
+TESTFILES    = $(sort $(wildcard examples/*.*))
 
 .PHONY: tests_new_parser
 tests_new_parser: new_parser.native $(wildcard tests_new_parser/*.lp)
@@ -69,7 +69,6 @@ tests_new_parser: new_parser.native $(wildcard tests_new_parser/*.lp)
 .PHONY: tests
 tests: lambdapi.native
 	@echo "## OK tests ##"
-	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 		&& echo -e "\033[0;32mOK\033[0m $$file"   \
@@ -77,14 +76,12 @@ tests: lambdapi.native
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 	@echo "## KO tests ##"
-	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 		&& echo -e "\033[0;31mOK\033[0m $$file"   \
 		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
 	done
 	@echo "## Examples ##"
-	@rm -f $(TESTFILES:.dk=.dko)
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 	  && echo -e "\033[0;32mOK\033[0m $$file"   \
@@ -95,7 +92,6 @@ tests: lambdapi.native
 .PHONY: real_tests
 real_tests: lambdapi.native
 	@echo "## OK tests ##"
-	@rm -f $(OK_TESTFILES:.dk=.dko)
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 		&& echo -e "\033[0;32mOK\033[0m $$file"   \
@@ -103,14 +99,12 @@ real_tests: lambdapi.native
 		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@echo "## KO tests ##"
-	@rm -f $(KO_TESTFILES:.dk=.dko)
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 		&& { echo -e "\033[0;31mOK\033[0m $$file" ; exit 1 ; } \
 		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
 	done
 	@echo "## Examples ##"
-	@rm -f $(TESTFILES:.dk=.dko)
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 	  && echo -e "\033[0;32mOK\033[0m $$file"   \
