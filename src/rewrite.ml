@@ -87,7 +87,7 @@ let make_pat : term -> term -> term option = fun g p ->
       end
   in make_pat_aux g
 
-(** [bind_match t1 t2] produces a binder that abstracts away all the occurence
+(** [bind_match t1 t2] produces a binder that abstracts away all the occurences
     of the term [t1] in the term [t2].  We require that [t2] does not  contain
     products, abstraction, metavariables, or other awkward terms. *)
 let bind_match : term * tvar -> term -> tbox =  fun (t1,x) t2 ->
@@ -346,9 +346,47 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
                       end
                 end
         end
-    | Some(RW_TermAsIdInTerm(_,_)) ->
-        wrn "NOT IMPLEMENTED" (* TODO *) ; assert false
+    | Some(RW_TermAsIdInTerm(s,p)) ->
+        begin
+        let (id,pat) = Bindlib.unbind p in
+        let s = add_refs s in
+        let p_s = Bindlib.subst p s in
+        (* Try to match p[s/id] with a subterm of the goal. *)
+        match make_pat g_term (add_refs p_s) with
+        | None   ->
+            fatal_no_pos "No subterm of [%a] matches the pattern [%a]"
+                pp g_term pp p_s
+        | Some p ->
+            let pat_refs = add_refs pat in
+            match match_pattern (Array.of_list [id], pat_refs) p with
+            | None   -> assert false
+            | Some sub ->
+                let id_val = sub.(0) in
+                match match_pattern (Array.of_list vars, l) id_val with
+                | None       ->
+                    fatal_no_pos
+                    "The value of X, [%a], does not match the LHS, [%a]"
+                    pp id_val pp l
+                | Some sigma ->
+                    let (t,l,r) = Bindlib.msubst bound sigma in
+                    let x = Bindlib.new_var mkfree "X" in
 
+                    (* Now to do some term building. *)
+                    let p_x = Bindlib.(unbox (bind_var x (bind_match (l,x) p))) in
+
+                    let p_r = Bindlib.subst p_x r in
+
+                    let pred = bind_match (p,x) g_term in
+                    let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+
+                    let new_term = Bindlib.subst pred_bind p_r in
+
+                    let p_x = Bindlib.subst p_x (Vari(x)) in
+                    let pred_box = lift (Bindlib.subst pred_bind p_x) in
+                    let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+
+                    (pred_bind, new_term, t, l, r)
+        end
     (* Nested patterns. *)
     | Some(RW_InTerm(p)          ) ->
         begin
@@ -358,7 +396,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
         (* Try to match this new p with some subterm of the goal. *)
         match make_pat g_term p_refs with
         | None   ->
-          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
+            fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
         | Some p ->
         (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
          * with [l], to get the substitution [sigma]. *)
