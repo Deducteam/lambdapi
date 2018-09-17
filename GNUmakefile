@@ -17,18 +17,13 @@ help:
 #### Compilation #############################################################
 
 .PHONY: bin
-bin: lambdapi.native new_parser.native
+bin: lambdapi.native
 
 lambdapi.native: _build/src/lambdapi.native
-new_parser.native: _build/src/new_parser.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
 	@echo "[OPT] lambdapi.native"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
-
-_build/src/new_parser.native: $(wildcard src/*.ml)
-	@echo "[OPT] new_parser.native"
-	@$(OCAMLBUILD) $(CFLAGS) src/new_parser.native
 
 .PHONY: lib
 lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
@@ -61,10 +56,6 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
 TESTFILES    = $(sort $(wildcard examples/*.*))
-
-.PHONY: tests_new_parser
-tests_new_parser: new_parser.native $(wildcard tests_new_parser/*.lp)
-	@./$^
 
 .PHONY: tests
 tests: lambdapi.native
