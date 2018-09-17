@@ -10,7 +10,7 @@ open Terms
 open Env
 
 (** State of the signature, including aliasing and accessible symbols. *)
-type mod_state =
+type sig_state =
   { in_scope : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases  : module_path StrMap.t      (** Established aliases. *) }
 
@@ -20,7 +20,7 @@ type mod_state =
     the name [snd qid.elt] in the environment, and if it is not mapped we also
     search in the opened modules.  The exception [Fatal] is raised if an error
     occurs (e.g., when the name cannot be found). *)
-let find_qid : mod_state -> env -> qident -> tbox = fun st env qid ->
+let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
   let {elt = (mp, s); pos} = qid in
   match mp with
   | []                               -> (** Variable or symbol in scope. *)
@@ -55,33 +55,67 @@ let find_qid : mod_state -> env -> qident -> tbox = fun st env qid ->
       end
 
 (** Representation of the different scoping modes.  Note that the constructors
-    hold specific information for the given mode. The type parameter gives the
-    return type that is desired for the scoping function. *)
-type 'a scoping_mode =
-  | SM_Term : meta StrMap.t       -> (term * meta StrMap.t) scoping_mode
+    hold specific information for the given mode. *)
+type mode =
+  | M_Term of meta StrMap.t ref
   (** Standard scoping mode for terms, holding a map of defined metavariables,
       and returning the updated map after scoping. *)
-  | SM_LHS  : int option StrMap.t ->                   term scoping_mode
+  | M_LHS  of int option StrMap.t
   (** Left-hand side mode, used for scoping patterns.  The constructor carries
       a map associating an optional index to every pattern variable. *)
-  | SM_RHS  : tebox StrMap.t      ->                   term scoping_mode
+  | M_RHS  of tevar StrMap.t
   (** Right-hand side mode. The constructor carries the environment for higher
       order variables that will be bound in the representation of the RHS. *)
 
-let scope_term : mod_state -> env -> p_term -> term = fun st env t ->
+let scope : mode -> sig_state -> env -> p_term -> term = fun md ss env t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
-    match t.elt with
-    | P_Type           -> _Type
-    | P_Vari(qid)      -> find_qid st env qid
-    | P_Wild           -> _Wild
-    | P_Meta(m,ts)     ->
-        assert false (* TODO *)
-    | P_Patt(p,ts)     ->
-        assert false (* TODO *)
-    | P_Appl(t,u)      -> _Appl (scope env t) (scope env u)
-    | P_Impl(a,b)      ->
-        scope env (Pos.make t.pos (P_Prod([(Pos.none "_", Some(a))], b)))
-    | P_Abst(xs,t)     ->
+    let scope_domain : env -> p_term option -> tbox = fun env t ->
+      match t with
+      | Some(t) -> scope env t
+      | None    ->
+          (* We build a metavariable that may use the variables of [env]. *)
+          let a = prod_of_env env _Type in
+          let vs = Env.vars_of_env env in
+          _Meta (fresh_meta a (Array.length vs)) vs
+    in
+    match (t.elt, md) with
+    | (P_Type          , M_LHS(_) ) -> fatal t.pos "Sort in LHS."
+    | (P_Type          , _        ) -> _Type
+    | (P_Vari(qid)     , _        ) -> find_qid ss env qid
+    | (P_Wild          , _        ) -> _Wild
+    | (P_Meta(id,ts)   , M_Term(m)) ->
+        let v =
+          (* We first check if the metavariable is in the map. *)
+          try StrMap.find id.elt !m with Not_found ->
+          (* Otherwise we create a new metavariable. *)
+          let a =
+            let vs = Env.vars_of_env env in
+            let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+            prod_of_env env (_Meta m vs)
+          in
+          let v = fresh_meta ~name:id.elt a (List.length env) in
+          m := StrMap.add id.elt v !m; v
+        in
+        (* The environment of the metavariable is build from [ts]. *)
+        _Meta v (Array.map (scope env) ts)
+    | (P_Meta(_,_)     , _        ) -> fatal t.pos "Metavariable in rule."
+    | (P_Patt(_,_)     , M_Term(_)) -> fatal t.pos "Pattern variable in term."
+    | (P_Patt(id,ts)   , M_LHS(m) ) ->
+        let i =
+          try StrMap.find id.elt m with Not_found -> (* Should not happen. *)
+          fatal t.pos "Pattern variable not in scope."
+        in
+        _Patt i id.elt (Array.map (scope env) ts)
+    | (P_Patt(id,ts)   , M_RHS(m) ) ->
+        let x =
+          try StrMap.find id.elt m with Not_found -> (* Should not happen. *)
+          fatal t.pos "Pattern variable not in scope."
+        in
+        _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
+    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
+    | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Implication in LHS."
+    | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
+    | (P_Abst(xs,t)    , _        ) ->
         let rec scope_abst env xs =
           match xs with
           | []        -> scope env t
@@ -92,7 +126,7 @@ let scope_term : mod_state -> env -> p_term -> term = fun st env t ->
               _Abst a (Bindlib.bind_var v t)
         in
         scope_abst env xs
-    | P_Prod(xs,b)     ->
+    | (P_Prod(xs,b)    , _        ) ->
         let rec scope_prod env xs =
           match xs with
           | []        -> scope env b
@@ -103,17 +137,9 @@ let scope_term : mod_state -> env -> p_term -> term = fun st env t ->
               _Prod a (Bindlib.bind_var v b)
         in
         scope_prod env xs
-    | P_LLet(x,xs,t,u) ->
+    | (P_LLet(x,xs,t,u), _        ) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
-  and scope_domain : env -> p_term option -> tbox = fun env t ->
-    match t with
-    | Some(t) -> scope env t
-    | None    ->
-        (* We build a metavariable that may use the variables of [env]. *)
-        let a = prod_of_env env _Type in
-        let vs = Env.vars_of_env env in
-        _Meta (fresh_meta a (Array.length vs)) vs
   in
   Bindlib.unbox (scope env t)

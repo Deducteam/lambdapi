@@ -288,6 +288,10 @@ let _Appl : tbox -> tbox -> tbox =
 let _Prod : tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply2 (fun a b -> Prod(a,b))
 
+let _Impl : tbox -> tbox -> tbox =
+  let dummy = Bindlib.new_var mkfree "_" in
+  fun a b -> _Prod a (Bindlib.bind_var dummy b)
+
 (** [_Abst a t] lifts an abstraction node to the {!type:tbox}  type,  given  a
     boxed term [a] for the domain type, and a boxed binder [t]. *)
 let _Abst : tbox -> tbinder Bindlib.box -> tbox =
