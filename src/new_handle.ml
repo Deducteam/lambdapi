@@ -13,12 +13,46 @@ open New_scope
 open New_parser
 module Proof = New_proof
 
-(** [handle_tactic ps tac] TODO *)
+(** [handle_tactic ps tac] tries to apply the tactic [tac] (in the proof state
+    [ps]), and returns the new proof state.  This function fails gracefully in
+    case of error. *)
 let handle_tactic : Proof.t -> p_tactic -> Proof.t = fun ps tac ->
   if Proof.finished ps then fatal tac.pos "There is nothing left to prove.";
-  ps (* TODO *)
+  match tac.elt with
+  | P_tac_refine(t)     ->
+      ignore t;
+      assert false (* TODO *)
+  | P_tac_intro(xs)     ->
+      ignore xs;
+      assert false (* TODO *)
+  | P_tac_apply(t)      ->
+      ignore t;
+      assert false (* TODO *)
+  | P_tac_simpl         ->
+      let (g, gs) =
+        match Proof.(ps.proof_goals) with
+        | g::gs -> (g,gs)
+        | []    -> assert false (* Cannot happen. *) 
+      in
+      Proof.({ps with proof_goals = {g with g_type = Eval.snf g.g_type}::gs})
+  | P_tac_rewrite(po,t) ->
+      ignore (po,t);
+      assert false (* TODO *)
+  | P_tac_focus(i)      ->
+      (* Put the [i]-th goal in focus (if possible). *)
+      let rec swap i acc gs =
+        match (i, gs) with
+        | (0, g::gs) -> g :: List.rev_append acc gs
+        | (i, g::gs) -> swap (i-1) (g::acc) gs
+        | (_, _    ) -> fatal tac.pos "Invalid goal index."
+      in
+      Proof.{ps with proof_goals = swap i [] ps.proof_goals}
+  | P_tac_print         ->
+      (* Just print the current proof state. *)
+      Console.out 1 "%a" Proof.pp ps; ps
 
-(** [new_handle_cmd ss cmd] TODO *)
+(** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
+    state [ss] at the same time. This function fails gracefully on errors. *)
 let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
   let scope_basic ss t = New_scope.scope_term StrMap.empty ss Env.empty t in 
   let handle ss =
