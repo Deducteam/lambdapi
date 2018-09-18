@@ -25,10 +25,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     | []    -> fatal tac.pos "There is nothing left to prove.";
     | g::gs -> (g, gs)
   in
-  let handle_refine : p_term -> Proof.t = fun t ->
-    (* Scoping the term in the goal's environment. *)
+  let handle_refine : term -> Proof.t = fun t ->
+    (* Obtaining the goals environment and type. *)
     let (env, a) = Proof.Goal.get_type g in
-    let (t, _) = New_scope.scope_term StrMap.empty ss env t in
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
     log_tact "refining [%a] with term [%a]" pp_meta m pp t;
@@ -47,24 +46,36 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   in
   match tac.elt with
   | P_tac_refine(t)     ->
+      (* Scoping the term in the goal's environment. *)
+      let env = fst (Proof.Goal.get_type g) in
+      let t = fst (New_scope.scope_term StrMap.empty ss env t) in
       (* Refine using the given term. *)
       handle_refine t
   | P_tac_intro(xs)     ->
-      (* Build a sequence of abstractions. *)
+      (* Scoping a sequence of abstraction in the goal's environment. *)
+      let env = fst (Proof.Goal.get_type g) in
       let xs = List.map (fun x -> (x, None)) xs in
       let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
+      let t = fst (New_scope.scope_term StrMap.empty ss env t) in
       (* Refine using the built term. *)
       handle_refine t
   | P_tac_apply(t)      ->
-      (* Build an application of [t]. *)
+      (* Scoping the term in the goal's environment. *)
+      let env = fst (Proof.Goal.get_type g) in
       let t = Pos.none (P_Appl(t, Pos.none P_Wild)) in
+      let t = fst (New_scope.scope_term StrMap.empty ss env t) in
       (* Refine using the built term. *)
       handle_refine t
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
-      ignore (po,t);
-      assert false (* TODO *)
+      (* Scoping the term in the goal's environment. *)
+      let env = fst (Proof.Goal.get_type g) in
+      let t = fst (New_scope.scope_term StrMap.empty ss env t) in
+      (* Scoping the rewrite pattern if given. *)
+      let po = Option.map (New_scope.scope_rw_patt ss env) po in
+      (* Calling rewriting, and refining. *)
+      handle_refine (Rewrite.handle_rewrite po t)
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       let rec swap i acc gs =

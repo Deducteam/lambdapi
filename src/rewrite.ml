@@ -116,7 +116,7 @@ let bind_match : term * tvar -> term -> tbox =  fun (t1,x) t2 ->
     current goal. The term [t] should have a type corresponding to an equality
     (without any quantifier for now). All instances of the LHS are replaced by
     the RHS in the obtained goal. *)
-let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
+let handle_rewrite : rw_patt option -> term -> term = fun p t ->
   (* Obtain the required symbols from the current signature. *)
   (* FIXME use a parametric notion of equality. *)
   let sign = Sign.current_sign () in
@@ -480,11 +480,6 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb(sign_P), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
-  let new_goal =
-    match goal_term with
-    | Meta(m,_) -> m
-    | _         -> assert false (* Cannot happen. *)
-  in
 
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
@@ -500,15 +495,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
             pp term
     end;
 
-  (* Instantiate the current goal. *)
-  let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
-  let b = Bindlib.bind_mvar (to_tvars meta_env) (lift term) in
-  g.g_meta.meta_value := Some(Bindlib.unbox b);
-
-  (* Update current theorem with the newly created goal. *)
-  let new_g = {g_meta = new_goal; g_hyps = g.g_hyps; g_type = goal_type} in
-  theorem := Some({thm with t_goals = new_g :: gs});
-
+  (* Debugging data to the log. *)
   log_rewr "Rewriting with:";
   log_rewr "  goal           = [%a]" pp g.g_type;
   log_rewr "  equality proof = [%a]" pp t;
@@ -517,5 +504,7 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   log_rewr "  equality RHS   = [%a]" pp r;
   log_rewr "  pred           = [%a]" pp pred;
   log_rewr "  new goal       = [%a]" pp goal_type;
-  log_rewr "  produced term  = [%a]" pp term
+  log_rewr "  produced term  = [%a]" pp term;
 
+  (* Return the proof-term. *)
+  term

@@ -84,7 +84,8 @@ symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ 
 // Symmetry of the equality.
 theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof
-  intro a x y
+  intro a x y h
+  //rewrite h
 //(; First option, doing the proof via rewrite ;)
 //#REWRITE H.
 //#REFINE (refl a y).

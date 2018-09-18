@@ -311,7 +311,9 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
           | Some(s) -> Some(Scope.scope_rw_patt env s)
         in
         let t = Scope.scope_term StrMap.empty env t in
-        Rewrite.handle_rewrite s t
+        let p = Rewrite.handle_rewrite s t in
+        let metas = get_metas p in
+        handle_refine metas p
     | P_Focus(i)            -> handle_focus i
     | P_QED                 -> handle_qed ()
     | P_Other(c)            ->
