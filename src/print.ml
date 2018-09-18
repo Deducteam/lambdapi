@@ -69,30 +69,3 @@ let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
   let lhs = add_args (Symb(sym)) rule.lhs in
   let (_, rhs) = Bindlib.unmbind rule.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
-
-(** [pp_theorem oc thm] prints the theorem [thm] to channel [oc]. *)
-let pp_theorem : Proofs.theorem pp = fun oc thm ->
-  let open Proofs in
-  Format.fprintf oc "== Current theorem ======================\n";
-  begin
-    match thm.t_goals with
-    | []    -> Format.fprintf oc " No more goals...\n"
-    | g::gs ->
-        let print_hyp (s,(_,t)) =
-          Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
-        in
-        List.iter print_hyp g.g_hyps;
-        Format.fprintf oc " ----------------------------------------\n";
-        Format.fprintf oc "  %a\n" pp g.g_type;
-        if gs <> [] then
-          begin
-            Format.fprintf oc "\n";
-            Format.fprintf oc " >0< %a : %a\n" pp_meta g.g_meta pp g.g_type;
-            let print_goal i g =
-              Format.fprintf oc " (%i) %a : %a\n" (i+1)
-                pp_meta g.g_meta pp g.g_type
-            in
-            List.iteri print_goal gs
-          end
-  end;
-  Format.fprintf oc "==========================================\n"

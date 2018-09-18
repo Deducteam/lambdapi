@@ -11,7 +11,6 @@ open Files
 open Syntax
 open New_scope
 open New_parser
-module Proof = New_proof
 
 let log_tact = Handle.log_tact
 
@@ -75,7 +74,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (New_scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)
-      handle_refine (Rewrite.handle_rewrite po t)
+      handle_refine (Rewrite.rewrite ps po t)
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       let rec swap i acc gs =
@@ -267,7 +266,6 @@ and new_compile : bool -> Files.module_path -> unit =
       let sig_st = empty_sig_state sign in
       loaded := PathMap.add path sign !loaded;
       ignore (List.fold_left new_handle_cmd sig_st (parse_file src));
-      Handle.check_end_proof (); Proofs.theorem := None;
       if Pervasives.(!Handle.gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

@@ -87,11 +87,3 @@ beq (s _) 0 --> false.
 eq : !i, !a:U i, T _ a -> T _ a -> Prop.
 
 refl : !i, !a, !x, T _ (eq i a x x).
-
-(; 0 is right neutral for add. ;)
-
-#PROOF add0r : !n : T 1 nat, P (eq 1 nat (add n 0) n).
-#PRINT.
-(;#REFINE n => _. #PRINT.;)
-#INFER nat_ind.
-(;#REFINE (nat_ind _ ?case0 ?caseS). #PRINT.;)
