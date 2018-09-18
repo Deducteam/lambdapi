@@ -12,11 +12,6 @@ open Syntax
 open New_scope
 open New_parser
 
-(** [open_sign ss sign] TODO *)
-let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let fn _ v _ = Some(v) in
-  {ss with in_scope = StrMap.union fn ss.in_scope !(sign.symbols)}
-
 (** [new_handle_cmd ss cmd] TODO *)
 let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
   let scope_basic ss t = New_scope.scope_term StrMap.empty ss Env.empty t in 
@@ -82,9 +77,33 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         let rs = List.map handle_rule rs in
         (* Adding the rules all at once. *)
         List.iter (fun (s,r) -> Sign.add_rule ss.signature s r) rs; ss
-    | P_definition(x, xs, a, t)  ->
-        ignore (x, xs, a, t);
-        assert false (* TODO *)
+    | P_definition(x, xs, ao, t) ->
+        (* Desugaring of arguments and scoping of [t]. *)
+        let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
+        let t = fst (scope_basic ss t) in
+        (* Desugaring of arguments and scoping of [ao] (if not [None]). *)
+        let fn a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+        let ao = Option.map fn ao in
+        let ao = Option.map (fun a -> fst (scope_basic ss a)) ao in
+        (* We check that [x] is not already used. *)
+        if Sign.mem ss.signature x.elt then
+          fatal x.pos "Symbol [%s] already exists." x.elt;
+        (* We check that [t] has a type [a], and return it. *)
+        let a =
+          match ao with
+          | Some(a) ->
+              Solve.sort_type Ctxt.empty a;
+              if Solve.check Ctxt.empty t a then a else
+              fatal cmd.pos "Term [%a] does not have type [%a]." pp t pp a
+          | None    ->
+              match Solve.infer Ctxt.empty t with
+              | Some(a) -> a
+              | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
+        in
+        (* Actually add the symbol to the signature. *)
+        let s = Sign.add_symbol ss.signature Defin x a in
+        s.sym_def := Some(t);
+        {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
     | P_theorem(s, a, ts, pe)    ->
         ignore (s, a, ts, pe);
         assert false (* TODO *)

@@ -19,6 +19,13 @@ type sig_state =
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
   { signature = sign ; in_scope = StrMap.empty ; aliases = StrMap.empty }
 
+(** [open_sign ss sign] extends the signature state [ss] with every symbol  of
+    the signature [sign].  This has the effect of putting these symbols in the
+    scope when (possibly masking symbols with the same name). *)
+let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
+  let fn _ v _ = Some(v) in
+  {ss with in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.symbols))}
+
 (** [find_qid st env qid] returns a boxed term corresponding to a variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In
     the case where the module path [fst qid.elt] is empty, we first search for
