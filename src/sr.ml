@@ -123,7 +123,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   if !log_enabled then
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
+      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
       List.iter fn lhs_constrs
     end;
   (* Turn constraints into a substitution and apply it. *)
@@ -136,7 +136,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   if !log_enabled && to_solve <> [] then
     begin
       log_subj "RHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] = [%a]" pp t pp u in
+      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
       List.iter fn to_solve
     end;
   (* Solving the constraints. *)
