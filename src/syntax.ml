@@ -101,17 +101,23 @@ type p_assertion =
 
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_verbose of int
+  | P_config_verbose of int
   (** Sets the verbosity level. *)
-  | P_debug   of bool * string
+  | P_config_debug   of bool * string
   (** Toggles logging functions described by string according to boolean. *)
+
+type require_mode =
+  | P_require_default
+  (** Just require the module. *)
+  | P_require_open
+  (** Require the module and open it. *)
+  | P_require_as of ident
+  (** Require the module and aliases it with the given indentifier. *)
 
 (** Parser-level representation of a single command. *)
 type p_cmd =
-  | P_require    of bool * module_path
-  (** Require statement (opened if boolean is [true]). *)
-  | P_require_as of module_path * ident
-  (** Require statement with alias (renaming). *)
+  | P_require    of module_path * require_mode
+  (** Require statement. *)
   | P_open       of module_path
   (** Open statement. *)
   | P_symbol     of symtag list * ident * p_type

@@ -207,10 +207,11 @@ let parser assertion =
 
 (** [config] pases a single configuration option. *)
 let parser config =
-  | "verbose" i:''[1-9][0-9]*'' -> P_verbose(int_of_string i)
+  | "verbose" i:''[1-9][0-9]*'' ->
+      P_config_verbose(int_of_string i)
   | "debug" d:''[-+][a-zA-Z]+'' ->
       let s = String.sub d 0 (String.length d - 1) in
-      P_debug(d.[0] = '+', s)
+      P_config_debug(d.[0] = '+', s)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
@@ -220,10 +221,10 @@ let parser assert_must_fail =
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
-  | _require_ o:{_open_ -> true}?[false] p:path
-      -> P_require(o,p)
-  | _require_ p:path _as_ n:ident
-      -> P_require_as(p,n)
+  | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
+      -> P_require(p,m)
+  | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
+      -> P_require(p,m)
   | _open_ p:path
       -> P_open(p)
   | _symbol_ l:symtag* s:ident ":" a:term
