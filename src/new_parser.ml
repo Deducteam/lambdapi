@@ -186,13 +186,13 @@ let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
-  | _refine_ t:term             -> P_tac_refine(t)
-  | _intro_ xs:ident*           -> P_tac_intro(xs)
-  | _apply_ t:term              -> P_tac_apply(t)
-  | _simpl_                     -> P_tac_simpl
-  | _rewrite_ p:rw_patt? t:term -> P_tac_rewrite(p,t)
-  | _focus_ i:natural           -> P_tac_focus(i)
-  | _print_                     -> P_tac_print
+  | _refine_ t:term             -> Pos.in_pos _loc (P_tac_refine(t))
+  | _intro_ xs:ident*           -> Pos.in_pos _loc (P_tac_intro(xs))
+  | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
+  | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
+  | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
+  | _focus_ i:natural           -> Pos.in_pos _loc (P_tac_focus(i))
+  | _print_                     -> Pos.in_pos _loc P_tac_print
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 

@@ -67,7 +67,7 @@ type p_rw_patt =
   | P_rw_TermAsIdInTerm of p_term * ident * p_term
 
 (** Parser-level representation of a proof tactic. *)
-type p_tactic =
+type p_tactic_aux =
   | P_tac_refine  of p_term
   (** Refine the current goal using the given term. *)
   | P_tac_intro   of ident list
@@ -82,6 +82,7 @@ type p_tactic =
   (** Focus on the given goal. *)
   | P_tac_print
   (** Print the current goal. *)
+type p_tactic = p_tactic_aux Pos.loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =

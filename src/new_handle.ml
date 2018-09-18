@@ -12,6 +12,22 @@ open Syntax
 open New_scope
 open New_parser
 
+(** TODO *)
+type proof_state = unit option (* FIXME *)
+
+(** [initial_proof_state a] TODO *)
+let initial_proof_state : term -> proof_state = fun a ->
+  ignore a; assert false (* TODO *)
+
+(** [proof_finished ps] TODO *)
+let proof_finished : proof_state -> bool = fun ps ->
+  ignore ps; assert false (* TODO *)
+
+(** [handle_tactic ps tac] TODO *)
+let handle_tactic : proof_state -> p_tactic -> proof_state = fun ps tac ->
+  if proof_finished ps then fatal tac.pos "There is nothing left to prove.";
+  assert false (* TODO *)
+
 (** [new_handle_cmd ss cmd] TODO *)
 let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
   let scope_basic ss t = New_scope.scope_term StrMap.empty ss Env.empty t in 
@@ -119,18 +135,22 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               wrn "[%a] Proof aborted.\n" Pos.print cmd.pos; ss
           | P_proof_admit ->
               (* Initialize the proof and plan the tactics. *)
-              ignore ts; (* TODO *)
+              let st = initial_proof_state a in
+              let st = List.fold_left handle_tactic st ts in
               (* If the proof is finished, display a warning. *)
-              ignore ts; (* TODO *)
+              if proof_finished st then
+                wrn "[%a] Proof can be terminated." Pos.print cmd.pos;
               (* Add a symbol corresponding to the proof, with a warning. *)
               let s = Sign.add_symbol ss.signature Const x a in
               wrn "[%a] Proof admitted.\n" Pos.print cmd.pos;
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
           | P_proof_QED   ->
               (* Initialize the proof and plan the tactics. *)
-              ignore ts; (* TODO *)
+              let st = initial_proof_state a in
+              let st = List.fold_left handle_tactic st ts in
               (* Check that the proof is indeed finished. *)
-              ignore ts; (* TODO *)
+              if not (proof_finished st) then
+                fatal cmd.pos "The proof is not finished.";
               (* Add a symbol corresponding to the proof. *)
               let s = Sign.add_symbol ss.signature Const x a in
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
