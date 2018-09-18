@@ -104,9 +104,37 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         let s = Sign.add_symbol ss.signature Defin x a in
         s.sym_def := Some(t);
         {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
-    | P_theorem(s, a, ts, pe)    ->
-        ignore (s, a, ts, pe);
-        assert false (* TODO *)
+    | P_theorem(x, a, ts, pe)    ->
+        (* Scoping the type (statement) of the theorem, check sort. *)
+        let a = fst (scope_basic ss a) in
+        Solve.sort_type Ctxt.empty a;
+        (* We check that [x] is not already used. *)
+        if Sign.mem ss.signature x.elt then
+          fatal x.pos "Symbol [%s] already exists." x.elt;
+        (* Act according to the ending state. *)
+        begin
+          match pe with
+          | P_proof_abort ->
+              (* Just ignore the command, with a warning. *)
+              wrn "[%a] Proof aborted.\n" Pos.print cmd.pos; ss
+          | P_proof_admit ->
+              (* Initialize the proof and plan the tactics. *)
+              ignore ts; (* TODO *)
+              (* If the proof is finished, display a warning. *)
+              ignore ts; (* TODO *)
+              (* Add a symbol corresponding to the proof, with a warning. *)
+              let s = Sign.add_symbol ss.signature Const x a in
+              wrn "[%a] Proof admitted.\n" Pos.print cmd.pos;
+              {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
+          | P_proof_QED   ->
+              (* Initialize the proof and plan the tactics. *)
+              ignore ts; (* TODO *)
+              (* Check that the proof is indeed finished. *)
+              ignore ts; (* TODO *)
+              (* Add a symbol corresponding to the proof. *)
+              let s = Sign.add_symbol ss.signature Const x a in
+              {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
+        end
     | P_assert(mf, asrt)         ->
         let test_type =
           match asrt with

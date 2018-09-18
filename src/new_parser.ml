@@ -196,9 +196,9 @@ let parser tactic =
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 
-  | _qed_   -> Proof_QED
-  | _admit_ -> Proof_admit
-  | _abort_ -> Proof_abort
+  | _qed_   -> P_proof_QED
+  | _admit_ -> P_proof_admit
+  | _abort_ -> P_proof_abort
 
 (** [assertion] parses a single assertion. *)
 let parser assertion =

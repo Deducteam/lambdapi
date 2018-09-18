@@ -85,11 +85,11 @@ type p_tactic =
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
-  | Proof_QED
+  | P_proof_QED
   (** The proof is done and fully checked. *)
-  | Proof_admit
+  | P_proof_admit
   (** Give up current state and admit the theorem. *)
-  | Proof_abort
+  | P_proof_abort
   (** Abort the proof (theorem not admitted). *)
 
 (** Parser-level representation of an assertion. *)
