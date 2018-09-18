@@ -85,17 +85,18 @@ and solve_aux t1 t2 p : conv_constrs =
      let to_solve = (a,b) :: (u,v) :: p.to_solve in
      solve {p with to_solve}
 
-  | Symb(s1), Symb(s2) when s1 == s2 && ts1 = [] && ts2 = [] ->
-     solve p
-
-  | Symb(s1), Symb(s2) when Sign.is_inj s1 && Sign.is_inj s2 ->
-     if s1 == s2 && List.same_length ts1 ts2 then
+  | Symb(s1), Symb(s2) ->
+     if s1 == s2 && Sign.is_inj s1 && List.same_length ts1 ts2 then
        let to_solve =
-        let fn l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
-        List.fold_left2 fn p.to_solve ts1 ts2
+         let fn l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
+         List.fold_left2 fn p.to_solve ts1 ts2
        in
        solve {p with to_solve}
-     else fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+     else
+       let t1 = Eval.to_term h1 ts1
+       and t2 = Eval.to_term h2 ts2 in
+       if Eval.eq_modulo t1 t2 then solve p
+       else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
   | Meta(m1,a1), Meta(m2,a2)
        when m1 == m2 && Array.for_all2 eq_vari a1 a2
@@ -111,13 +112,14 @@ and solve_aux t1 t2 p : conv_constrs =
 
   | Meta(_,_), _
   | _, Meta(_,_) ->
-      solve {p with unsolved = (t1,t2) :: p.unsolved}
+     let t1 = Eval.to_term h1 ts1
+     and t2 = Eval.to_term h2 ts2 in
+     solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | Symb(s), _ when not (Sign.is_inj s) ->
-     if Eval.eq_modulo t1 t2 then solve p
-     else solve {p with unsolved = (t1,t2) :: p.unsolved}
-
-  | _, Symb(s) when not (Sign.is_inj s) ->
+  | Symb(_), _
+  | _, Symb(_) ->
+     let t1 = Eval.to_term h1 ts1
+     and t2 = Eval.to_term h2 ts2 in
      if Eval.eq_modulo t1 t2 then solve p
      else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
