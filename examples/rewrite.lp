@@ -84,7 +84,7 @@ symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ 
 // Symmetry of the equality.
 theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof
-//#REFINE a => x => y => H => _.
+  intro a x y
 //(; First option, doing the proof via rewrite ;)
 //#REWRITE H.
 //#REFINE (refl a y).
@@ -103,39 +103,37 @@ admit
 // [s] is compatible with Leibniz equality.
 theorem s_eq : ∀x y, P (eq nat x y) ⇒ P (eq nat (s x) (s y))
 proof
-//#REFINE x => y => xy => _.
-//#REFINE eqind nat x y xy (z => eq nat (s z) (s y)) (refl nat (s y)).
-admit
+  intro x y xy
+  refine eqind nat x y xy (λz, eq nat (s z) (s y)) (refl nat (s y))
+qed
 
 // [z] is right neutral for add.
 theorem add0r : ∀n, P (eq nat (add n z) n)
 proof
-//(;FIXME: try to infer nat. ;)
-//#INFER nat_ind.
-//#REFINE (nat_ind (n => eq nat (add n 0) n) ?case0 ?caseS).
-//(;FIXME: try to infer predicate. ;) #PRINT.
-//#FOCUS 1. #PRINT.
-//#FOCUS 1. #PRINT.
-//(; Case 0 ;)
-//#SIMPL. #PRINT.
-//#REFINE (refl nat 0). #PRINT.
-//(; Case S ;)
-//#REFINE n => hn => _. #PRINT.
-//#SIMPL. #PRINT.
-//#REFINE s_eq (add n 0) n hn.
-admit
+  // FIXME try to infer nat.
+  // FIXME try to infer the predicate
+  refine nat_ind (λn, eq nat (add n z) n) ?CZ ?CS
+  // Case Z
+  simpl
+  refine refl nat z
+  // Case S
+  intro n h
+  simpl
+  refine s_eq (add n z) n h
+qed
 
 // [∀ n m, n + S m = S (n+m)]
 theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
 proof
-//#REFINE n => m => _.
-//#REFINE (nat_ind (n:N => eq nat (add n (s m)) (s (add n m))) ?case0[n,m] ?caseS[n,m] n).
-//(; Case 0 ;)
-//#SIMPL.
-//#REFINE refl nat (s m). (; TO DO : ADD a #REFL tactic ;)
-//(; Case S ;)
-//#SIMPL.
-//#REFINE pn => ih => _.
+  intro n m
+  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
+  // Case Z
+  simpl
+  refine refl nat (s m)
+  // Case S
+  simpl
+  intro pn ih
+  print
 //#REWRITE ih.
 //#SIMPL.
 //#REFINE refl nat (s (s (add pn m))).

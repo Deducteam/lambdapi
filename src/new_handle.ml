@@ -13,28 +13,55 @@ open New_scope
 open New_parser
 module Proof = New_proof
 
+let log_tact = Handle.log_tact
+
 (** [handle_tactic ps tac] tries to apply the tactic [tac] (in the proof state
     [ps]), and returns the new proof state.  This function fails gracefully in
     case of error. *)
-let handle_tactic : Proof.t -> p_tactic -> Proof.t = fun ps tac ->
-  if Proof.finished ps then fatal tac.pos "There is nothing left to prove.";
+let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
+    fun ss ps tac ->
+  let (g, gs) =
+    match Proof.(ps.proof_goals) with
+    | []    -> fatal tac.pos "There is nothing left to prove.";
+    | g::gs -> (g, gs)
+  in
+  let handle_refine : p_term -> Proof.t = fun t ->
+    (* Scoping the term in the goal's environment. *)
+    let (env, a) = Proof.Goal.get_type g in
+    let (t, _) = New_scope.scope_term StrMap.empty ss env t in
+    (* Check if the goal metavariable appears in [t]. *)
+    let m = Proof.Goal.get_meta g in
+    log_tact "refining [%a] with term [%a]" pp_meta m pp t;
+    if occurs m t then fatal tac.pos "Circular refinement.";
+    (* Check that [t] is well-typed. *)
+    let ctx = Ctxt.of_env env in
+    log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
+    if not (Solve.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
+    (* Instantiation. *)
+    let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) env) in
+    m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
+    (* New subgoals and focus. *)
+    let metas = get_metas t in
+    let new_goals = List.rev_map Proof.Goal.of_meta_decomposed metas in
+    Proof.({ps with proof_goals = new_goals @ gs})
+  in
   match tac.elt with
   | P_tac_refine(t)     ->
-      ignore t;
-      assert false (* TODO *)
+      (* Refine using the given term. *)
+      handle_refine t
   | P_tac_intro(xs)     ->
-      ignore xs;
-      assert false (* TODO *)
+      (* Build a sequence of abstractions. *)
+      let xs = List.map (fun x -> (x, None)) xs in
+      let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
+      (* Refine using the built term. *)
+      handle_refine t
   | P_tac_apply(t)      ->
-      ignore t;
-      assert false (* TODO *)
+      (* Build an application of [t]. *)
+      let t = Pos.none (P_Appl(t, Pos.none P_Wild)) in
+      (* Refine using the built term. *)
+      handle_refine t
   | P_tac_simpl         ->
-      let (g, gs) =
-        match Proof.(ps.proof_goals) with
-        | g::gs -> (g,gs)
-        | []    -> assert false (* Cannot happen. *) 
-      in
-      Proof.({ps with proof_goals = {g with g_type = Eval.snf g.g_type}::gs})
+      Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
       ignore (po,t);
       assert false (* TODO *)
@@ -46,7 +73,7 @@ let handle_tactic : Proof.t -> p_tactic -> Proof.t = fun ps tac ->
         | (i, g::gs) -> swap (i-1) (g::acc) gs
         | (_, _    ) -> fatal tac.pos "Invalid goal index."
       in
-      Proof.{ps with proof_goals = swap i [] ps.proof_goals}
+      Proof.{ps with proof_goals = swap i [] (g::gs)}
   | P_tac_print         ->
       (* Just print the current proof state. *)
       Console.out 1 "%a" Proof.pp ps; ps
@@ -160,7 +187,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
           | P_proof_admit ->
               (* Initialize the proof and plan the tactics. *)
               let st = Proof.init x a in
-              let st = List.fold_left handle_tactic st ts in
+              let st = List.fold_left (handle_tactic ss) st ts in
               (* If the proof is finished, display a warning. *)
               if Proof.finished st then
                 wrn "[%a] Proof can be terminated." Pos.print cmd.pos;
@@ -171,7 +198,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
           | P_proof_QED   ->
               (* Initialize the proof and plan the tactics. *)
               let st = Proof.init x a in
-              let st = List.fold_left handle_tactic st ts in
+              let st = List.fold_left (handle_tactic ss) st ts in
               (* Check that the proof is indeed finished. *)
               if not (Proof.finished st) then
                 fatal cmd.pos "The proof is not finished.";
