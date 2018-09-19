@@ -1,0 +1,71 @@
+reserved "require"
+reserved "open"
+reserved "sym"
+reserved "def"
+reserved "thm"
+reserved "rule"
+reserved "assert"
+reserved "proof"
+reserved "qed"
+reserved "admit"
+reserved "TYPE"
+reserved "_"
+
+<ident> ::=
+  // Regular identifier
+  | RE("[a-zA-Z_][a-zA-Z0-9_]*")
+  // Escaped identifier
+  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}")
+
+<mpath> ::=
+  | {<ident> "."}* <ident>
+
+<symtag> ::=
+  | "const"
+  | "injective"
+
+<type> ::= <term>
+
+<term> ::=
+  | "TYPE"
+  | {<ident> "."} <ident>
+  | "λ" <arg>+ "," <term>
+  | <term> <term>
+  | "∀" <arg>+ "," <type>
+  | <type> "⇒" <type>
+  | "(" <term> ")"
+
+<arg> ::=
+  | <ident>
+  | "(" <ident>+ ":" <type> ")"
+
+<rule> ::= <ruletag>* {<ident> ":"}? <term> "→" <term>
+
+<ruletag> ::=
+  | "pos"
+  | "neg"
+
+// Single command.
+<command> ::=
+  // Require and/or open a module
+  | "require" <mpath> "as" <ident>
+  | "require" "open"? <mpath>
+  | "open" <mpath>
+  // Define a new symbol
+  | "symbol" <symtag>* <ident> ":" <type>
+  // Define a new rewriting rule
+  | "rule" <rule> {"and" <rule>}*
+  // Definition of a symbol or theorem
+  | "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | "theorem" <ident> ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  // Assertion
+  | "assert" <term> ":" <type>
+  | "assertnot" <term> ":" <type>
+  | "assert" <term> "≡" <term>
+  | "assertnot" <term> "≡" <term>
+  // Set option
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
+
+// Entry point: list of commands.
+<main> ::= <command>*

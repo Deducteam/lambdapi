@@ -2,10 +2,10 @@
 
 open Timed
 open Terms
-open Print
 open Console
-open Proofs
+open Proof
 open Solve
+open Print
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
@@ -112,11 +112,11 @@ let bind_match : term * tvar -> term -> tbox =  fun (t1,x) t2 ->
   in
   lift_subst t2
 
-(** [handle_rewrite t] rewrites according to the equality proved by [t] in the
-    current goal. The term [t] should have a type corresponding to an equality
-    (without any quantifier for now). All instances of the LHS are replaced by
-    the RHS in the obtained goal. *)
-let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
+(** [rewrite ps po t] rewrites according to the equality proved by [t] in  the
+    current goal of [ps].  The term [t] should have a type corresponding to an
+    equality (without any quantifier for now). Every instance of the left-hand
+    side (LHS)) is replaced by the right-hand side of the obtained goal. *)
+let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the required symbols from the current signature. *)
   (* FIXME use a parametric notion of equality. *)
   let sign = Sign.current_sign () in
@@ -130,15 +130,13 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   let sign_eqind = find_sym "eqind" in
 
   (* Get the focused goal, and related data. *)
-  let thm = current_theorem () in
-  let (g, gs) =
-    match thm.t_goals with
-    | []    -> fatal_no_pos "No remaining goals..."
-    | g::gs -> (g, gs)
+  let g =
+    try List.hd Proof.(ps.proof_goals) with Failure _  ->
+    fatal_no_pos "No remaining goals..."
   in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let g_ctxt = Ctxt.of_env g.g_hyps in
+  let g_ctxt = Ctxt.of_env (fst (Goal.get_type g)) in
   let t_type =
     match Solve.infer g_ctxt t with
     | Some(a) -> a
@@ -168,11 +166,11 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
-    match get_args g.g_type with
+    match get_args (snd (Goal.get_type g)) with
     | (p, [t]) when is_symb sign_P p -> t
     | _                              ->
         fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
-          pp g.g_type
+          pp (snd (Goal.get_type g))
   in
   (* Distinguish between possible paterns. *)
   let (pred_bind, new_term, t, l, r) =
@@ -480,42 +478,31 @@ let handle_rewrite : rw_patt option -> term -> unit = fun p t ->
   (* Construct the new goal and its type. *)
   let goal_type = Appl(Symb(sign_P), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
-  let new_goal =
-    match goal_term with
-    | Meta(m,_) -> m
-    | _         -> assert false (* Cannot happen. *)
-  in
 
   (* Build the final term produced by the tactic, and check its type. *)
   let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
 
-  if not (Solve.check g_ctxt term g.g_type) then
+  if not (Solve.check g_ctxt term (snd (Goal.get_type g))) then
     begin
       match Solve.infer g_ctxt term with
       | Some(a) ->
           fatal_no_pos "The term produced by rewrite has type [%a], not [%a]."
-            pp (Eval.snf a) pp g.g_type
+            pp (Eval.snf a) pp (snd (Goal.get_type g))
       | None    ->
           fatal_no_pos "The term [%a] produced by rewrite is not typable."
             pp term
     end;
 
-  (* Instantiate the current goal. *)
-  let meta_env = Array.map Bindlib.unbox (Env.vars_of_env g.g_hyps)  in
-  let b = Bindlib.bind_mvar (to_tvars meta_env) (lift term) in
-  g.g_meta.meta_value := Some(Bindlib.unbox b);
-
-  (* Update current theorem with the newly created goal. *)
-  let new_g = {g_meta = new_goal; g_hyps = g.g_hyps; g_type = goal_type} in
-  theorem := Some({thm with t_goals = new_g :: gs});
-
+  (* Debugging data to the log. *)
   log_rewr "Rewriting with:";
-  log_rewr "  goal           = [%a]" pp g.g_type;
+  log_rewr "  goal           = [%a]" pp (snd (Goal.get_type g));
   log_rewr "  equality proof = [%a]" pp t;
   log_rewr "  equality type  = [%a]" pp t_type;
   log_rewr "  equality LHS   = [%a]" pp l;
   log_rewr "  equality RHS   = [%a]" pp r;
   log_rewr "  pred           = [%a]" pp pred;
   log_rewr "  new goal       = [%a]" pp goal_type;
-  log_rewr "  produced term  = [%a]" pp term
+  log_rewr "  produced term  = [%a]" pp term;
 
+  (* Return the proof-term. *)
+  term

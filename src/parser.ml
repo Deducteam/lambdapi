@@ -5,10 +5,6 @@ open Console
 open Files
 open Pos
 
-(** Logging function for the parser. *)
-let log_pars = new_logger 'p' "pars" "debugging information for the parser"
-let log_pars = log_pars.logger
-
 #define LOCATE locate
 
 (** Parser-level representation of a qualified identifier. *)
@@ -122,13 +118,6 @@ let _REQUIRE_   = command "REQUIRE"
 let _INFER_     = command "INFER"
 let _EVAL_      = command "EVAL"
 let _NAME_      = command "NAME"
-let _PROOF_     = command "PROOF"
-let _PRINT_     = command "PRINT"
-let _REFINE_    = command "REFINE"
-let _SIMPL_     = command "SIMPL"
-let _REWRITE_   = command "REWRITE"
-let _QED_       = command "QED"
-let _FOCUS_     = command "FOCUS"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
@@ -180,15 +169,6 @@ type p_rule = p_term * p_term
 
 let opaque = true
 
-(** Rewrite specification (for the rewrite tactic). *)
-type p_rw_patt =
-  | P_Term           of p_term
-  | P_InTerm         of p_term
-  | P_InIdInTerm     of strloc * p_term
-  | P_IdInTerm       of strloc * p_term
-  | P_TermInIdInTerm of p_term * strloc * p_term
-  | P_TermAsIdInTerm of p_term * strloc * p_term
-
 (** Representation of a toplevel command. *)
 type p_cmd =
   (** Symbol declaration (constant when the boolean is [true]). *)
@@ -210,20 +190,6 @@ type p_cmd =
   | P_TestConv   of bool * bool * p_term * p_term
   (** Unimplemented command. *)
   | P_Other      of strloc
-  (** Start a proof. *)
-  | P_StartProof of strloc * p_term
-  (** Print focused goal. *)
-  | P_PrintFocus
-  (** Refine the focused goal. *)
-  | P_Refine     of p_term
-  (** Normalize the focused goal. *)
-  | P_Simpl
-  (** Rewrite command. *)
-  | P_Rewrite    of p_rw_patt loc option * p_term
-  (** Focus on a goal. *)
-  | P_Focus      of int
-  (** End the proof. *)
-  | P_QED
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
@@ -281,18 +247,6 @@ let parser check =
   | _ASSERTNOT_ -> (true , true )
   | _ASSERT_    -> (true , false)
 
-(** [rw_pattern] is a parser for a rewrite pattern. *)
-let parser rw_pattern =
-  | t:expr                          -> P_Term(t)
-  | _in_ t:expr                     -> P_InTerm(t)
-  | _in_ x:ident _in_ t:expr        -> P_InIdInTerm(x,t)
-  | x:ident _in_ t:expr             -> P_IdInTerm(x,t)
-  | u:expr _in_ x:ident _in_ t:expr -> P_TermInIdInTerm(u,x,t)
-  | u:expr _as_ x:ident _in_ t:expr -> P_TermAsIdInTerm(u,x,t)
-
-(** [rw_patt] is a parser of a rewrite configuration. *)
-let parser rw_patt = {"[" s:rw_pattern "]" -> in_pos _loc_s s}?
-
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
   | x:ident ":" a:expr               -> P_SymDecl(Terms.Const,x,a)
@@ -308,13 +262,6 @@ let parser cmd_aux =
   | _INFER_ c:eval_config t:expr     -> P_Infer(t,c)
   | _EVAL_ c:eval_config t:expr      -> P_Eval(t,c)
   | _NAME_ _:ident                   -> P_Other(in_pos _loc "#NAME")
-  | _PROOF_ x:ident ":" a:expr       -> P_StartProof(x,a)
-  | _PRINT_                          -> P_PrintFocus
-  | _REFINE_ t:expr                  -> P_Refine(t)
-  | _SIMPL_                          -> P_Simpl
-  | _REWRITE_ s:rw_patt t:expr       -> P_Rewrite(s,t)
-  | _FOCUS_ i:''[0-9]+''             -> P_Focus(int_of_string i)
-  | _QED_                            -> P_QED
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
@@ -366,7 +313,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
   Hashtbl.reset qid_map;
   try
     let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
-    log_pars "parsed [%s] in %.2f seconds." fname d;
+    Syntax.log_pars "parsed [%s] in %.2f seconds." fname d;
     Pervasives.(total_time := !total_time +. d); res
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in

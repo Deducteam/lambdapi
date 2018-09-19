@@ -18,9 +18,12 @@ let set_timeout : int -> unit = fun i ->
 
 (** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
-  let compile = Handle.compile true in
+  let mp = module_path fname in
+  let compile =
+    if Filename.check_suffix fname src_extension then Handle.compile true
+    else New_handle.new_compile true
+  in
   let run () =
-    let mp = module_path fname in
     match !timeout with
     | None    -> compile mp
     | Some(i) -> with_timeout i compile mp
@@ -78,10 +81,15 @@ let _ =
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ " [OPTIONS] [FILES]");
   if !justparse then
     let parse_file fname =
-      if !Handle.use_legacy_parser then Legacy_parser.parse_file fname
-      else Parser.parse_file fname
+      if Filename.check_suffix fname src_extension then
+        if !Handle.use_legacy_parser then
+          ignore (Legacy_parser.parse_file fname)
+        else
+          ignore (Parser.parse_file fname)
+      else
+        ignore (New_parser.parse_file fname)
     in
-    List.iter (fun f -> ignore (parse_file f)) !files
+    List.iter parse_file !files
   else
     List.iter compile (List.rev !files);
-  Parser.log_pars "Total time in parsing: %.2f seconds.\n" !Parser.total_time
+  Syntax.log_pars "Total time in parsing: %.2f seconds.\n" !Parser.total_time

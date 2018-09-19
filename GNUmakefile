@@ -22,22 +22,22 @@ bin: lambdapi.native
 lambdapi.native: _build/src/lambdapi.native
 
 _build/src/lambdapi.native: $(wildcard src/*.ml)
-	@echo "[OPT] lambdapi.native"
+	@printf "[OPT] lambdapi.native\n"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
 
 .PHONY: lib
 lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
 
 _build/src/lambdapi.cma: $(wildcard src/*.ml)
-	@echo "[BYT] lambdapi.cma"
+	@printf "[BYT] lambdapi.cma\n"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cma
 
 _build/src/lambdapi.cmxa: $(wildcard src/*.ml)
-	@echo "[OPT] lambdapi.cmxa"
+	@printf "[OPT] lambdapi.cmxa\n"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxa
 
 _build/src/lambdapi.cmxs: $(wildcard src/*.ml)
-	@echo "[DYN] lambdapi.cmxs"
+	@printf "[DYN] lambdapi.cmxs\n"
 	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxs
 
 #### Documentation ###########################################################
@@ -48,64 +48,58 @@ doc: lambdapi.docdir/index.html
 lambdapi.docdir/index.html: _build/src/lambdapi.docdir/index.html
 
 _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
-	@echo "[DOC] lambdapi.docdir/index.html"
+	@printf "[DOC] lambdapi.docdir/index.html\n"
 	@$(OCAMLBUILD) $(DFLAGS) src/lambdapi.docdir/index.html
 
 #### Unit tests ##############################################################
 
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk))
-TESTFILES    = $(sort $(wildcard examples/*.dk))
+OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
+KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
+TESTFILES    = $(sort $(wildcard examples/*.*))
 
 .PHONY: tests
 tests: lambdapi.native
-	@echo "## OK tests ##"
-	@rm -f $(OK_TESTFILES:.dk=.dko)
+	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& echo -e "\033[0;32mOK\033[0m $$file"   \
-	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
-	@echo "## KO tests ##"
-	@rm -f $(KO_TESTFILES:.dk=.dko)
+	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& echo -e "\033[0;31mOK\033[0m $$file"   \
-		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
+		&& printf "\033[31mOK\033[0m $$file\n" \
+		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
-	@echo "## Examples ##"
-	@rm -f $(TESTFILES:.dk=.dko)
+	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-	  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 
 .PHONY: real_tests
 real_tests: lambdapi.native
-	@echo "## OK tests ##"
-	@rm -f $(OK_TESTFILES:.dk=.dko)
+	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& echo -e "\033[0;32mOK\033[0m $$file"   \
-	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+		&& printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
 	done
-	@echo "## KO tests ##"
-	@rm -f $(KO_TESTFILES:.dk=.dko)
+	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& { echo -e "\033[0;31mOK\033[0m $$file" ; exit 1 ; } \
-		|| echo -e "\033[0;32mKO\033[0m $$file" ; \
+		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
+		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
-	@echo "## Examples ##"
-	@rm -f $(TESTFILES:.dk=.dko)
+	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-	  && echo -e "\033[0;32mOK\033[0m $$file"   \
-	  || { echo -e "\033[0;31mKO\033[0m $$file"   \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
@@ -113,42 +107,42 @@ real_tests: lambdapi.native
 
 .PHONY: matita
 matita: lambdapi.native
-	@echo "## Compiling the Matita's arithmetic library ##"
+	@printf "## Compiling the Matita's arithmetic library ##\n"
 	@cd libraries && ./matita.sh
 
 .PHONY: plein_de_dks
 plein_de_dks: lambdapi.native
-	@echo "## Compiling “plein de dks” ##"
+	@printf "## Compiling “plein de dks” ##\n"
 	@cd libraries && ./plein_de_dks.sh
 
 .PHONY: focalide
 focalide: lambdapi.native
-	@echo "## Compiling focalide library ##"
+	@printf "## Compiling focalide library ##\n"
 	@cd libraries && ./focalide.sh
 
 .PHONY: holide
 holide: lambdapi.native
-	@echo "## Compiling holide library ##"
+	@printf "## Compiling holide library ##\n"
 	@cd libraries && ./holide.sh
 
 .PHONY: verine
 verine: lambdapi.native
-	@echo "## Compiling verine library ##"
+	@printf "## Compiling verine library ##\n"
 	@cd libraries && ./verine.sh
 
 .PHONY: iprover
 iprover: lambdapi.native
-	@echo "## Compiling iProverModulo library ##"
+	@printf "## Compiling iProverModulo library ##\n"
 	@cd libraries && ./iprover.sh
 
 .PHONY: dklib
 dklib: lambdapi.native
-	@echo "## Compiling the dklib library ##"
+	@printf "## Compiling the dklib library ##\n"
 	@cd libraries && ./dklib.sh
 
 .PHONY: zenon_modulo
 zenon_modulo: lambdapi.native
-	@echo "## Compiling the zenon library ##"
+	@printf "## Compiling the zenon library ##\n"
 	@cd libraries && ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
@@ -186,15 +180,15 @@ fullclean: distclean
 
 # META generation.
 META: GNUmakefile
-	@echo "[GEN] $@ (version $(VERSION))"
-	@echo "name            = \"lambdapi\""                              > $@
-	@echo "version         = \"$(VERSION)\""                           >> $@
-	@echo "requires        = \"unix,earley,earley.str,bindlib,timed\"" >> $@
-	@echo "description     = \"The Lambdapi prover as a library\""     >> $@
-	@echo "archive(byte)   = \"lambdapi.cma\""                         >> $@
-	@echo "plugin(byte)    = \"lambdapi.cma\""                         >> $@
-	@echo "archive(native) = \"lambdapi.cmxa\""                        >> $@
-	@echo "plugin(native)  = \"lambdapi.cmxs\""                        >> $@
+	@printf "[GEN] $@ (version $(VERSION))\n"
+	@printf "name            = \"lambdapi\"\n"                              > $@
+	@printf "version         = \"$(VERSION)\"\n"                           >> $@
+	@printf "requires        = \"unix,earley,earley.str,bindlib,timed\"\n" >> $@
+	@printf "description     = \"The Lambdapi prover as a library\"\n"     >> $@
+	@printf "archive(byte)   = \"lambdapi.cma\"\n"                         >> $@
+	@printf "plugin(byte)    = \"lambdapi.cma\"\n"                         >> $@
+	@printf "archive(native) = \"lambdapi.cmxa\"\n"                        >> $@
+	@printf "plugin(native)  = \"lambdapi.cmxs\"\n"                        >> $@
 
 # Uninstalling everything.
 .PHONY: uninstall
@@ -213,13 +207,15 @@ install: lambdapi.native META uninstall lib
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
-install_vim: editors/vim/ftdetect/dedukti.vim editors/vim/syntax/dedukti.vim
+install_vim: $(wildcard editors/vim/*/*.vim)
 ifeq ($(wildcard $(VIMDIR)/.),)
-	@echo -e "\e[36mWill not install vim mode.\e[39m"
+	@printf "\e[36mWill not install vim mode.\e[39m\n"
 else
 	install -d $(VIMDIR)/syntax
 	install -d $(VIMDIR)/ftdetect
-	install -m 644 editors/vim/syntax/dedukti.vim $(VIMDIR)/syntax
-	install -m 644 editors/vim/ftdetect/dedukti.vim $(VIMDIR)/ftdetect
-	@echo -e "\e[36mVim mode installed.\e[39m"
+	install -m 644 editors/vim/syntax/dedukti.vim    $(VIMDIR)/syntax
+	install -m 644 editors/vim/syntax/lambdapi.vim   $(VIMDIR)/syntax
+	install -m 644 editors/vim/ftdetect/dedukti.vim  $(VIMDIR)/ftdetect
+	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
+	@printf "\e[36mVim mode installed.\e[39m\n"
 endif

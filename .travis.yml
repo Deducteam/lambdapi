@@ -18,7 +18,14 @@ before_install:
   - opam init --compiler=${OCAML_VERSION}
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind menhir
-  - opam install earley.1.0.2 earley-ocaml.1.0.2 bindlib.5.0.0 timed.1.0
+  - opam install bindlib.5.0.0 timed.1.0
+  # opam install earley.1.0.2 earley-ocaml.1.0.2 
+  - wget https://github.com/rlepigre/ocaml-earley/archive/master.zip
+  - unzip master.zip && rm master.zip
+  - cd ocaml-earley-master && make && make install && cd ..
+  - wget https://github.com/rlepigre/ocaml-earley-ocaml/archive/master.zip
+  - unzip master.zip && rm master.zip
+  - cd ocaml-earley-ocaml-master && make && make && make install && cd ..
   - make
 install:
   - make install
