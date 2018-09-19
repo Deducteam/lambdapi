@@ -3,7 +3,7 @@ CFLAGS     = -cflags -w,A-4-50-9-44-33
 DFLAGS     = -docflags -hide-warnings,-charset,utf-8
 BINDIR     = $(dir $(shell which ocaml))
 VIMDIR     = $(HOME)/.vim
-VERSION    = dev
+VERSION    = 1.0
 
 .PHONY: all
 all: bin lib
