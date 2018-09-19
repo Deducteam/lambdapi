@@ -62,21 +62,21 @@ tests: lambdapi.native
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[0;32mOK\033[0m $$file\n" \
-	  || { printf "\033[0;31mKO\033[0m $$file\n" \
+		&& printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[0;31mOK\033[0m $$file\n" \
-		|| printf "\033[0;32mKO\033[0m $$file\n" ; \
+		&& printf "\033[31mOK\033[0m $$file\n" \
+		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[0;32mOK\033[0m $$file\n" \
-	  || { printf "\033[0;31mKO\033[0m $$file\n" \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
 
@@ -85,21 +85,21 @@ real_tests: lambdapi.native
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& printf "\033[0;32mOK\033[0m $$file\n" \
-	  || { printf "\033[0;31mKO\033[0m $$file\n" \
+		&& printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-		&& { printf "\033[0;31mOK\033[0m $$file\n" ; exit 1 ; } \
-		|| printf "\033[0;32mKO\033[0m $$file\n" ; \
+		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
+		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[0;32mOK\033[0m $$file\n" \
-	  || { printf "\033[0;31mKO\033[0m $$file\n" \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
