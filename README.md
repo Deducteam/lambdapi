@@ -17,8 +17,8 @@ List of dependencies:
  - ocamlbuild,
  - findlib,
  - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
- - earley devel (https://github.com/rlepigre/ocaml-earley),
- - earley-ocaml devel (https://github.com/rlepigre/ocaml-earley-ocaml).
+ - earley 1.1.0 (https://github.com/rlepigre/ocaml-earley),
+ - earley-ocaml 1.1.0 (https://github.com/rlepigre/ocaml-earley-ocaml).
  - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
  - menhir
 
@@ -28,8 +28,7 @@ opam switch 4.05.0
 eval `opam config env`
 opam install ocamlfind ocamlbuild menhir
 opam install bindlib.5.0.0 timed.1.0
-# Get earley and earley-ocaml from developement repository
-# opam install earley.1.0.2 earley-ocaml.1.0.2
+opam install earley.1.1.0 earley-ocaml.1.1.0
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.

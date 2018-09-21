@@ -9,7 +9,7 @@ env:
 before_install:
   # Obtain and install opam locally.
   - mkdir -p ${HOME}/bin
-  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0-beta6/opam-2.0.0-beta6-x86_64-linux
+  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux
   - chmod +x ${HOME}/bin/opam
   - export PATH=$PATH:${HOME}/bin
   - export OPAMYES=1
@@ -19,13 +19,7 @@ before_install:
   - eval `opam config env`
   - opam install ocamlbuild ocamlfind menhir
   - opam install bindlib.5.0.0 timed.1.0
-  # opam install earley.1.0.2 earley-ocaml.1.0.2 
-  - wget https://github.com/rlepigre/ocaml-earley/archive/master.zip
-  - unzip master.zip && rm master.zip
-  - cd ocaml-earley-master && make && make install && cd ..
-  - wget https://github.com/rlepigre/ocaml-earley-ocaml/archive/master.zip
-  - unzip master.zip && rm master.zip
-  - cd ocaml-earley-ocaml-master && make && make && make install && cd ..
+  - opam install earley.1.1.0 earley-ocaml.1.1.0 
   - make
 install:
   - make install
