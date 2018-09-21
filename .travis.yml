@@ -9,7 +9,7 @@ env:
 before_install:
   # Obtain and install opam locally.
   - mkdir -p ${HOME}/bin
-  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux
+  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0-beta6/opam-2.0.0-beta6-x86_64-linux
   - chmod +x ${HOME}/bin/opam
   - export PATH=$PATH:${HOME}/bin
   - export OPAMYES=1
