@@ -116,16 +116,6 @@ module Array =
       List.pp pp_elt sep oc (to_list a)
   end
 
-module Stack =
-  struct
-    include Stack
-
-    (** [mem e s] checks whether the element [e] occurs in the stack [s]. *)
-    let mem : 'a -> 'a t -> bool = fun e s ->
-      let test x = if x = e then raise Exit in
-      try iter test s; false with Exit -> true
-  end
-
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
