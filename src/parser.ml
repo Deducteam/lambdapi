@@ -303,18 +303,12 @@ let blank buf pos =
   in
   fn `Ini [] (buf, pos) (buf, pos)
 
-(** Accumulates parsing time for files (useful for profiling). *)
-let total_time = Pervasives.ref 0.0
-
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> p_cmd loc list = fun fname ->
   Hashtbl.reset qid_map;
-  try
-    let (d, res) = Extra.time (Earley.parse_file cmd_list blank) fname in
-    Syntax.log_pars "parsed [%s] in %.2f seconds." fname d;
-    Pervasives.(total_time := !total_time +. d); res
+  try Earley.parse_file cmd_list blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc  "Parse error."

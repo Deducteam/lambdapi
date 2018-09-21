@@ -4,10 +4,6 @@ open Console
 open Files
 open Pos
 
-(** Logging function for the parser. *)
-let log_pars = new_logger 'p' "pars" "debugging information for the parser"
-let log_pars = log_pars.logger
-
 (** Representation of a (located) identifier. *)
 type ident = strloc
 

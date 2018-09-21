@@ -91,5 +91,4 @@ let _ =
     in
     List.iter parse_file !files
   else
-    List.iter compile (List.rev !files);
-  Syntax.log_pars "Total time in parsing: %.2f seconds.\n" !Parser.total_time
+    List.iter compile (List.rev !files)
