@@ -1,7 +1,7 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
 CFLAGS     = -cflags -w,A-4-50-9-44-33
 DFLAGS     = -docflags -hide-warnings,-charset,utf-8
-BINDIR     = $(dir $(shell which ocaml))
+BINDIR     = $(realpath $(dir $(shell which ocaml)))
 VIMDIR     = $(HOME)/.vim
 VERSION    = dev
 
@@ -193,17 +193,30 @@ META: GNUmakefile
 # Uninstalling everything.
 .PHONY: uninstall
 uninstall:
+ifeq ("$(wildcard $(BINDIR)/lambdapi)","")
+	@printf "\e[36mWas not previously installed.\e[39m\n"
+else
 	@ocamlfind remove lambdapi
-	@rm -f $(BINDIR)/lambdapi
+	rm -f $(BINDIR)/lambdapi
+	@printf "\e[36mRemoved previously installed version.\e[39m\n"
+endif
 
-# Install the main program.
 .PHONY: install
-install: lambdapi.native META uninstall lib
+install: uninstall install_lib install_bin install_vim
+
+# Install the library
+.PHONY: install_lib
+install_lib: META lib
 	@ocamlfind install lambdapi META  _build/src/lambdapi.cmxa \
 		_build/src/lambdapi.a _build/src/lambdapi.cma _build/src/lambdapi.cmxs \
 		$(wildcard _build/src/*.cmi) $(wildcard _build/src/*.cmx) \
 		$(wildcard _build/src/*.o) $(wildcard _build/src/*.ml)
-	@install -m 755 $< $(BINDIR)/lambdapi
+	@printf "\e[36mLibrary installed.\e[39m\n"
+
+.PHONY: install_bin
+install_bin: lambdapi.native
+	install -m 755 $< $(BINDIR)/lambdapi
+	@printf "\e[36mProgram installed.\e[39m\n"
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
