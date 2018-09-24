@@ -11,24 +11,6 @@ open Typing
 let log_solv = new_logger 's' "solv" "debugging information for unification"
 let log_solv = log_solv.logger
 
-(** Boolean saying whether user metavariables can be set or not. *)
-let can_instantiate : bool ref = ref true
-
-(** [instantiate m ts v] check whether [m] can be instantiated to
-    solve the unification problem [m[ts] = v]. Actually make the
-    instantiation if it is possible. *)
-let instantiate : meta -> term array -> term -> bool = fun m ar v ->
-  (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
-  let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
-  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
-
-(** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
-    pariwise equal. *)
-let eq_vari : term -> term -> bool = fun t u ->
-  match (unfold t, unfold u) with
-  | (Vari(x), Vari(y)) -> Bindlib.eq_vars x y
-  | (_      , _      ) -> false
-
 (** Representation of a set of problems. *)
 type problems =
   { to_solve  : conv_constrs
@@ -40,9 +22,18 @@ type problems =
 
 (** Empty problem. *)
 let no_problems : problems =
-  { to_solve  = []
-  ; unsolved  = []
-  ; recompute = false }
+  {to_solve  = []; unsolved = []; recompute = false}
+
+(** Boolean saying whether user metavariables can be set or not. *)
+let can_instantiate : bool ref = ref true
+
+(** [instantiate m ts v] check whether [m] can be instantiated to
+    solve the unification problem [m[ts] = v]. Actually make the
+    instantiation if it is possible. *)
+let instantiate : meta -> term array -> term -> bool = fun m ar v ->
+  (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
+  let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
+  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
 
 (** [solve p] tries to solve the unification problems of [p]. *)
 let rec solve : problems -> conv_constrs = fun p ->
@@ -126,52 +117,50 @@ and solve_aux t1 t2 p : conv_constrs =
   | (_        , _        ) ->
      fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
-(** [solve b p] sets [can_instantiate] to [b] and returns
-    [Some(l)] if [solve p] returns [l], and [None] otherwise. *)
+(** [solve flag problems] attempts to solve [problems],  after having sets the
+    value of [can_instantiate] to [flag].  If there is no solution,  the value
+    [None] is returned. Otherwise [Some(cs)] is returned,  where the list [cs]
+    is a list of unsolved convertibility constraints. *)
 let solve : bool -> problems -> conv_constrs option = fun b p ->
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s.\n") m; None
 
-let msg (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b
-
-(** [check c t a] returns [true] iff [t] has type [a] in context [c]. *)
-let check : Ctxt.t -> term -> term -> bool = fun c t a ->
+(** [check ctx t a] tells whether [t] has type [a] in context [ctx]. *)
+let check : Ctxt.t -> term -> term -> bool = fun ctx t a ->
   if !log_enabled then log_solv "check [%a] [%a]" pp t pp a;
-  let to_solve = Typing.check c t a in
-  let problems = {no_problems with to_solve} in
-  match solve true problems with
-  | Some(cs) -> if !log_enabled then List.iter msg cs; cs = []
+  let to_solve = Typing.check ctx t a in
+  match solve true {no_problems with to_solve} with
   | None     -> false
+  | Some(cs) ->
+      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b in
+      if !log_enabled then List.iter fn cs; cs = []
 
-(** [infer_constr c t] returns [Some (a,l)] where [l] is a list of
-   unification problems for [a] to be the type of [t] in context [c],
-   or [None]. *)
-let infer_constr (c:Ctxt.t) (t:term) : (conv_constrs * term) option =
+(** [infer_constr ctx t] tries to infer a type [a],  together with unification
+    constraints [cs], for the term [t] in context [ctx].  The function returns
+    [Some(a,cs)] in case of success, and [None] otherwise. *)
+let infer_constr : Ctxt.t -> term -> (conv_constrs*term) option = fun ctx t ->
   if !log_enabled then log_solv "infer_constr [%a]" pp t;
-  let (a, to_solve) = Typing.infer c t in
-  let problems = {no_problems with to_solve} in
-  match solve true problems with
-  | Some(cs) -> Some(cs,a)
-  | None     -> None
+  let (a, to_solve) = Typing.infer ctx t in
+  Option.map (fun cs -> (cs, a)) (solve true {no_problems with to_solve})
 
-(** [infer c t] returns [Some u] if [t] has type [u] in context [c],
-    and [None] otherwise. *)
-let infer (c:Ctxt.t) (t:term) : term option =
-  match infer_constr c t with
-  | Some([],a) -> Some a
-  | Some(cs,_) -> if !log_enabled then List.iter msg cs; None
+(** [infer ctx t] tries to infer a type [a] for [t] in the context [ctx].  The
+    function returns [Some(a)] in case of success, and [None] otherwise. *)
+let infer : Ctxt.t -> term -> term option = fun ctx t ->
+  match infer_constr ctx t with
   | None       -> None
+  | Some([],a) -> Some(a)
+  | Some(cs,_) ->
+      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b in
+      if !log_enabled then List.iter fn cs; None
 
-(** [sort_type c t] returns [true] iff [t] has type a sort in context [c]. *)
-let sort_type (c:Ctxt.t) (t:term) : unit =
+(** [sort_type ctx t] checks that the type of the term [t] in context [ctx] is
+    a sort. If that is not the case, the exception [Fatal] is raised. *)
+let sort_type : Ctxt.t -> term -> unit = fun ctx t ->
   if !log_enabled then log_solv "sort_type [%a]" pp t;
-  match infer c t with
-  | Some(a) ->
-      begin
-        match unfold a with
-        | Type
-        | Kind -> ()
-        | a    -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
-      end
+  match infer ctx t with
   | None    -> fatal_no_pos "Unable to infer a sort for [%a]." pp t
+  | Some(a) ->
+  match unfold a with
+  | Type | Kind -> ()
+  | a           -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a

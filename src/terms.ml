@@ -410,6 +410,13 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
+    pariwise equal. *)
+let eq_vari : term -> term -> bool = fun t u ->
+  match (unfold t, unfold u) with
+  | (Vari(x), Vari(y)) -> Bindlib.eq_vars x y
+  | (_      , _      ) -> false
+
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with

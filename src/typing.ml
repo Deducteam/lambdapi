@@ -148,8 +148,7 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
       (*  ctx ⊢ t ⇒ a
          -------------
           ctx ⊢ t ⇐ a  *)
-      let a = infer_aux conv ctx t in
-      conv a c
+      conv (infer_aux conv ctx t) c
 
 (** Type of a list of convertibility constraints. *)
 type conv_constrs = (term * term) list
