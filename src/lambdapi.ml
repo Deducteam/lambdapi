@@ -5,9 +5,10 @@ open Console
 open Files
 open Legacy_parser
 
-(** Timeout for compilation (in seconds). *)
+(** [timeout] holds a possible timeout for compilation (in seconds). *)
 let timeout : int option Pervasives.ref = Pervasives.ref None
 
+(** [set_timeout i] sets a timeout of [i] seconds on the compilation. *)
 let set_timeout : int -> unit = fun i ->
   if i <= 0 then
     begin
