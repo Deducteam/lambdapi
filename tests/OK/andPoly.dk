@@ -22,9 +22,9 @@ def and1_ : n : Nat -> Bool_ n.
 
 (; Ici un and acceptant un nombre variable d'arguments qui type-check bien ;)
 def and2_ : n : Nat -> Bool_ n.
-[]      and2_ 0         --> True.
-[x]     and2_ (S 0)     --> x:Bool => x.
-[x,y,n] and2_ (S (S n)) --> x:Bool => y:Bool => (and2_ (S n) (and x y)).
+[]  and2_ 0         --> True.
+[]  and2_ (S 0)     --> x:Bool => x.
+[n] and2_ (S (S n)) --> x:Bool => y:Bool => (and2_ (S n) (and x y)).
 
 def e : n : Nat -> Bool_ n -> Bool_ n.
 def andb : n:Nat -> Bool_ n.

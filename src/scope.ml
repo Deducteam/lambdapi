@@ -246,40 +246,52 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
-  let get_var ({elt},ao) =
+  (** Check for (deprecated) annotations in the context. *)
+  let get_var (x,ao) =
     let fn a =
       if Timed.(!verbose) > 1 then
         wrn "Ignored type annotation at [%a].\n" Pos.print a.pos
     in
-    Option.iter fn ao; elt
+    Option.iter fn ao; x
   in
   let ctx = List.map get_var ctx in
-  let is_pat_var env x = not (List.mem x env) && List.mem x ctx in
-  let arity = Hashtbl.create 7 in
 
   (** Find the minimum number of arguments a variable is applied to. *)
-  let rec compute_arities env t =
-    let h, lts = Parser.get_args t in
-    match h.elt with
-    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
-       begin
-         let m = List.length lts in
-         try
-           let n = Hashtbl.find arity x in
-           if m < n then Hashtbl.replace arity x m
-         with Not_found ->
-           Hashtbl.add arity x m
-       end
-    | _ ->
-       match t.elt with
-       | P_Vari(_)
-       | P_Wild
-       | P_Type
-       | P_Prod(_,_,_)
-       | P_Meta(_,_)   -> ()
-       | P_Abst(x,_,u) -> compute_arities (x.elt::env) u
-       | P_Appl(t1,t2) -> compute_arities env t1; compute_arities env t2
+  let is_pat_var env x =
+    not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
+  let arity = Hashtbl.create 7 in
+  let rec compute_arities env t =
+    let (h, args) = Parser.get_args t in
+    let nb_args = List.length args in
+    begin
+      match h.elt with
+      | P_Appl(_,_)           -> assert false (* Cannot happen. *)
+      | P_Vari({elt = (p,x)}) ->
+          if p = [] && is_pat_var env x then
+            begin
+              try
+                let n = Hashtbl.find arity x in
+                if nb_args < n then Hashtbl.replace arity x nb_args
+              with Not_found -> Hashtbl.add arity x nb_args
+            end
+      | P_Wild                -> ()
+      | P_Type                -> ()
+      | P_Prod(_,_,_)         -> fatal h.pos "Product in legacy pattern."
+      | P_Meta(_,_)           -> fatal h.pos "Metaviable in legacy pattern."
+      | P_Abst(_,Some(a),_)   -> fatal a.pos "Annotation in legacy pattern."
+      | P_Abst(x,None,t)      -> compute_arities (x.elt::env) t
+    end;
+    List.iter (fun (_,t) -> compute_arities env t) args
+  in
+  compute_arities [] lhs;
+
+  (** Check that all context variables occur in the LHS. *)
+  let check_here x =
+    try ignore (Hashtbl.find arity x.elt) with Not_found ->
+      fatal x.pos "Variable [%s] does not occur in the LHS." x.elt
+  in
+  List.iter check_here ctx;
 
   let rec build env t =
     let h, lts = Parser.get_args t in
@@ -318,7 +330,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
           fatal t.pos "Invalid legacy rule syntax."
   in
   (* NOTE the computation order is important for setting arities properly. *)
-  compute_arities [] lhs;
   let lhs = build [] lhs in
   let rhs = build [] rhs in
   (lhs, rhs)

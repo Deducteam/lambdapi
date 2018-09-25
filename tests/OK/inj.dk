@@ -12,5 +12,5 @@ def app : A : type -> B : type -> eta (arr A B) -> eta A -> eta B.
 
 def get_context : A : type -> B : type -> eta A -> eta A -> eta B -> eta A.
 
-[A,B,AB,C,f,a,f',z] get_context _ C (app A AB f a) (app _ _ f' a) z -->
+[A,AB,C,f,a,f',z] get_context _ C (app A AB f a) (app _ _ f' a) z -->
                        (app A AB (get_context (arr A AB) C f f' z) a).

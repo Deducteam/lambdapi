@@ -1,0 +1,5 @@
+A : Type.
+
+def f : A -> A.
+
+[x] f _ --> x.
