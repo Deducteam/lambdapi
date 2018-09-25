@@ -144,7 +144,8 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   | Some(cs) ->
       let is_constr c =
         let eq_comm (t1,u1) (t2,u2) =
-          (eq t1 t2 && eq u1 u2) || (eq t1 u2 && eq t2 u1)
+          (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
+          (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
         in
         List.exists (eq_comm c) lhs_constrs
       in
