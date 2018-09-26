@@ -85,26 +85,26 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
                                  && List.for_all2 eq_modulo_arg ts1 ts2 ->
       solve p
 
-  | (Meta(m,ts), _         ) when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
       solve {p with recompute = true}
-  | (_         , Meta(m,ts)) when ts2 = [] && instantiate m ts t1 ->
+  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
-  | (Meta(_,_) , _         )
-  | (_         , Meta(_,_) ) ->
+  | (Meta(_,_)  , _          )
+  | (_          , Meta(_,_)  ) ->
       let t1 = Eval.to_term h1 ts1 in
       let t2 = Eval.to_term h2 ts2 in
       solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | (Symb(_)   , _         )
-  | (_         , Symb(_)   ) ->
+  | (Symb(_)    , _          )
+  | (_          , Symb(_)    ) ->
       let t1 = Eval.to_term h1 ts1 in
       let t2 = Eval.to_term h2 ts2 in
       if Eval.eq_modulo t1 t2 then solve p
       else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | (_        , _        ) ->
-     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  | (_          , _          ) ->
+      fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
 
 (** [solve flag problems] attempts to solve [problems],  after having sets the
     value of [can_instantiate] to [flag].  If there is no solution,  the value
