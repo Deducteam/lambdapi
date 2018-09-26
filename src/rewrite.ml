@@ -99,14 +99,11 @@ let make_pat : term -> term -> bool = fun t p ->
       end
   in make_pat_aux t
 
-(* FIXME make [make_pat] return a boolean? *)
-
 (** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
     We require [t] not to contain products, abstractions, metavariables or any
     other awkward term constructor. *)
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
-  (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
     if Terms.eq p t then _Vari x else
     match unfold t with
@@ -126,6 +123,8 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | TRef(_)     -> assert false
   in
   Bindlib.(unbox (bind_var x (lift_subst t)))
+
+(* NOTE in [bind_match] we lift while matching for efficiency. *)
 
 (** [rewrite ps po t] rewrites according to the equality proved by [t] in  the
     current goal of [ps].  The term [t] should have a type corresponding to an
@@ -195,7 +194,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
     match p with
-    | None                         -> (* Simple rewrite, no pattern. *)
+    (* Simple rewrite, no pattern. *)
+    | None                         ->
         (* Build a substitution from the first instance of [l] in the goal. *)
         let sigma =
           match find_subst g_term (vars, l) with
@@ -208,7 +208,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let pred_bind = bind_match l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
-    | Some(RW_Term(p)            ) -> (* Basic patterns. *)
+    (* Basic patterns. *)
+    | Some(RW_Term(p)            ) ->
         (* Find a subterm of the goal [match_p] that matchec [p]. *)
         let match_p =
           let p_refs = add_refs p in
@@ -228,7 +229,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let pred_bind = bind_match l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
-    | Some(RW_IdInTerm(p)      ) ->
+    | Some(RW_IdInTerm(p)        ) ->
         (* The code here works as follows: *)
         (* 1 - Try to match [p] with some subterm of the goal. *)
         (* 2 - If we succeed we do two things, we first replace [id] with its
