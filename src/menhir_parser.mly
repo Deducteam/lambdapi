@@ -26,8 +26,8 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
     | (i     , Some "SNF" ) -> config (Some(i)) SNF
     | (i     , Some "HNF" ) -> config (Some(i)) HNF
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
-    | (i     , None       ) -> config (Some(i)) SNF
-    | (_     , _          ) -> raise Exit (* captured bellow *)
+    | (i     , None       ) -> config (Some(i)) NONE
+    | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> fatal_no_pos "Invalid command configuration."
 %}
 
@@ -92,9 +92,10 @@ line:
   | EVAL t=term DOT
       { Pos.none (P_Eval(t, Eval.{strategy = SNF; steps = None})) }
   | EVAL c=eval_config t=term DOT
-      { Pos.none (P_Eval(t, c)) }
+    { let c = Eval.(if c.strategy = NONE then {c with strategy=SNF} else c) in
+      Pos.none (P_Eval(t, c)) }
   | INFER t=term DOT
-      { Pos.none (P_Infer(t, Eval.{strategy = SNF; steps = None})) }
+      { Pos.none (P_Infer(t, Eval.{strategy = NONE; steps = None})) }
   | INFER c=eval_config t=term DOT
       { Pos.none (P_Infer(t, c)) }
   | CHECK     t=aterm COLON a=term DOT

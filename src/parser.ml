@@ -233,8 +233,8 @@ let parser strategy =
 let parser steps = n:''[0-9]+'' -> int_of_string n
 
 (** [eval_config] is a parser for an evaluation configuration. *)
-let parser eval_config =
-  | EMPTY                             -> Eval.{strategy = SNF; steps = None}
+let parser eval_config default =
+  | EMPTY                             -> Eval.{strategy = default; steps = None}
   | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s  ; steps = n   }
   | "[" n:steps s:{"," strategy}? "]" ->
       let strategy = match s with None -> Eval.SNF | Some(s) -> s in
@@ -259,8 +259,8 @@ let parser cmd_aux =
   | _REQUIRE_ path:mod_path          -> P_Require(path)
   | (ia,mf):check t:expr "::" a:expr -> P_TestType(ia,mf,t,a)
   | (ia,mf):check t:expr "==" u:expr -> P_TestConv(ia,mf,t,u)
-  | _INFER_ c:eval_config t:expr     -> P_Infer(t,c)
-  | _EVAL_ c:eval_config t:expr      -> P_Eval(t,c)
+  | _INFER_ c:(eval_config Eval.NONE) t:expr -> P_Infer(t,c)
+  | _EVAL_ c:(eval_config Eval.SNF) t:expr   -> P_Eval(t,c)
   | _NAME_ _:ident                   -> P_Other(in_pos _loc "#NAME")
 
 (** [cmd] parses a single toplevel command with its position. *)
