@@ -157,4 +157,4 @@ let check_rule : sym * rule Pos.loc -> unit = fun (s, Pos.{elt=rule;pos}) ->
           fatal pos  "Unable to prove SR for rule [%a]." pp_rule (s,rule)
         end
   | None     ->
-      fatal pos "Rule [%a] does not preserve SR." pp_rule (s,rule)
+      fatal pos "Rule [%a] does not preserve typing." pp_rule (s,rule)
