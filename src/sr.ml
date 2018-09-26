@@ -157,4 +157,4 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
           fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
         end
   | _        ->
-      fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+      fatal_no_pos "Rule [%a] does not preserve typing." pp_rule (s,rule)
