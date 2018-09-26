@@ -180,7 +180,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
   (* Bind the variables in this new witness. *)
   let bound =
-    let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
+    let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r) in
     Bindlib.unbox (Bindlib.bind_mvar vars triple)
   in
 
@@ -191,7 +191,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     | _                              ->
         fatal_no_pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
-  (* Distinguish between possible paterns. *)
+
+  (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
     match p with
     | None                         ->
@@ -504,6 +505,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         end
   in
 
+  (* Construct the predicate (context). *)
   let pred = Abst(Appl(Symb(symb_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
@@ -516,12 +518,9 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   if not (Solve.check g_ctxt term g_type) then
     begin
       match Solve.infer g_ctxt term with
-      | Some(a) ->
-          fatal_no_pos "The term produced by rewrite has type [%a], not [%a]."
-            pp (Eval.snf a) pp g_type
-      | None    ->
-          fatal_no_pos "The term [%a] produced by rewrite is not typable."
-            pp term
+      | Some(a) -> fatal_no_pos "Produced term has type [%a], not [%a]."
+                     pp (Eval.snf a) pp g_type
+      | None    -> fatal_no_pos "Produced term [%a] is not typable." pp term
     end;
 
   (* Debugging data to the log. *)
