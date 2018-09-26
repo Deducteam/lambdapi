@@ -277,14 +277,12 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                 let pred_bind_l = bind_match pat_l g_term in
 
-                let x = Bindlib.new_var mkfree "X" in
-
                 (* This will be the new goal. *)
                 let new_term = Bindlib.subst pred_bind_l pat_r in
 
                 (* [l_x] is the pattern with [id] replaced by the variable X *)
                 (* that we use for building the predicate. *)
-                let l_x = Bindlib.subst pat (Vari(x)) in
+                let (x, l_x) = Bindlib.unbind pat in
                 let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
@@ -339,13 +337,11 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                          the occurrences of [l] in [id_val] with [r]. *)
                       let id_bind = bind_match l id_val in
 
-                      let x = Bindlib.new_var mkfree "X" in
-
                       (* [new_id] is the value of [id_val] with [l] replaced
                          by [r] and [id_x] is the value of [id_val] with the
                          free variable [x]. *)
                       let new_id = Bindlib.subst id_bind r in
-                      let id_x = Bindlib.subst id_bind (Vari(x)) in
+                      let (x, id_x) = Bindlib.unbind id_bind in
 
                       (* Then we replace in pat_l all occurrences of [id]
                          with [new_id]. *)
@@ -413,8 +409,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                     let new_term = Bindlib.subst pred_bind p_r in
 
-                    let x = Bindlib.new_var mkfree "X" in
-                    let p_x = Bindlib.subst p_x (Vari(x)) in
+                    let (x, p_x) = Bindlib.unbind p_x in
                     let pred_box = lift (Bindlib.subst pred_bind p_x) in
                     let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
 
@@ -447,9 +442,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                 let new_term = Bindlib.subst pred_bind p_r in
 
-                let x = Bindlib.new_var mkfree "X" in
-
-                let p_x = Bindlib.subst p_x (Vari(x)) in
+                let (x, p_x) = Bindlib.unbind p_x in
                 let pred_box = lift (Bindlib.subst pred_bind p_x) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
@@ -483,8 +476,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                 let id_val = Bindlib.subst id_bind r in
 
-                let x = Bindlib.new_var mkfree "X" in
-                let id_x = Bindlib.subst id_bind (Vari(x)) in
+                let (x, id_x) = Bindlib.unbind id_bind in
 
                 (* The new RHS of the pattern is obtained by rewriting inside
                    id_val. *)
