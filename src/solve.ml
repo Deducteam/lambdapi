@@ -54,7 +54,6 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
       let t2 = Eval.to_term h2 ts2 in
       log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
     end;
-  let eq_modulo_arg p1 p2 = Pervasives.(Eval.eq_modulo (snd !p1) (snd !p2)) in
   let add_args =
     List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
   in
@@ -62,40 +61,28 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
   | (Kind       , Kind       ) -> solve p
+
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
       let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
       solve {p with to_solve = (a1,a2) :: (b1,b2) :: p.to_solve}
 
+  | (Vari(x1)   , Vari(x2)   )
+       when Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 ->
+     solve {p with to_solve = add_args p.to_solve ts1 ts2}
 
-  | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2
-                                 && List.same_length ts1 ts2 ->
-      solve {p with to_solve = add_args p.to_solve ts1 ts2}
-
-  | (Symb(s1)   , Symb(s2)   ) ->
-     if s1 == s2 && Sign.is_inj s1 && List.same_length ts1 ts2 then
-       solve {p with to_solve = add_args p.to_solve ts1 ts2}
-     else
-       let t1 = Eval.to_term h1 ts1
-       and t2 = Eval.to_term h2 ts2 in
-       if Eval.eq_modulo t1 t2 then solve p
-       else solve {p with unsolved = (t1,t2) :: p.unsolved}
-
-  | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 && Array.for_all2 eq_vari a1 a2
-                                 && List.for_all2 eq_modulo_arg ts1 ts2 ->
-      solve p
+  | (Symb(s1)   , Symb(s2)   )
+       when s1 == s2 && Sign.is_inj s1 && List.same_length ts1 ts2 ->
+     solve {p with to_solve = add_args p.to_solve ts1 ts2}
 
   | (Meta(m,ts), _         ) when ts1 = [] && instantiate m ts t2 ->
       solve {p with recompute = true}
   | (_         , Meta(m,ts)) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
+  | (Symb(_)   , Symb(_)   )
   | (Meta(_,_) , _         )
-  | (_         , Meta(_,_) ) ->
-      let t1 = Eval.to_term h1 ts1 in
-      let t2 = Eval.to_term h2 ts2 in
-      solve {p with unsolved = (t1,t2) :: p.unsolved}
-
+  | (_         , Meta(_,_) )
   | (Symb(_)   , _         )
   | (_         , Symb(_)   ) ->
       let t1 = Eval.to_term h1 ts1 in
