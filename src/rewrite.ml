@@ -244,52 +244,53 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                    the subterms where a rewrite happens. *)
         (* 5 - The new goal [new_term] is constructed by substituting [r_pat]
                in [pred_bind_l]. *)
-        begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_subst g_term ([|id|],p_refs)  with
-        | None       ->
-            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
-        | Some id_val ->
-            let id_val = id_val.(0) in
-            let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
-            (* The LHS of the pattern, i.e. the pattern with id replaced by *)
-            (* id_val. *)
-            let pat_l = Bindlib.subst pat id_val in
+        let id_val =
+          match find_subst g_term ([|id|],p_refs) with
+          | Some(id_val) -> id_val
+          | None         ->
+              fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+        in
+        let id_val = id_val.(0) in
+        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        (* The LHS of the pattern, i.e. the pattern with id replaced by *)
+        (* id_val. *)
+        let pat_l = Bindlib.subst pat id_val in
 
-            (* This must match with the LHS of the equality proof we use. *)
-            match match_pattern (vars,l) id_val with
-            | None       ->
-                fatal_no_pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                  (Bindlib.name_of id) pp id_val pp p pp l
-            | Some sigma ->
-                (* Build t, l, using the substitution we found. Note that r  *)
-                (* corresponds to the value we get by applying rewrite to *)
-                (* id val. *)
-                let (t,l,r) = Bindlib.msubst bound sigma in
+        (* This must match with the LHS of the equality proof we use. *)
+        let sigma =
+          match match_pattern (vars,l) id_val with
+          | Some(sigma) -> sigma
+          | None        ->
+              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+                (Bindlib.name_of id) pp id_val pp p pp l
+        in
+        (* Build t, l, using the substitution we found. Note that r  *)
+        (* corresponds to the value we get by applying rewrite to *)
+        (* id val. *)
+        let (t,l,r) = Bindlib.msubst bound sigma in
 
-                (* The RHS of the pattern, i.e. the pattern with id replaced *)
-                (* by the result of rewriting id_val. *)
-                let pat_r = Bindlib.subst pat r in
+        (* The RHS of the pattern, i.e. the pattern with id replaced *)
+        (* by the result of rewriting id_val. *)
+        let pat_r = Bindlib.subst pat r in
 
-                (* Build the predicate, identifying all occurrences of pat_l *)
-                (* substituting them, first with pat_r, for the new goal and *)
-                (* then with l_x for the lambda term. *)
+        (* Build the predicate, identifying all occurrences of pat_l *)
+        (* substituting them, first with pat_r, for the new goal and *)
+        (* then with l_x for the lambda term. *)
 
-                let pred_bind_l = bind_match pat_l g_term in
+        let pred_bind_l = bind_match pat_l g_term in
 
-                (* This will be the new goal. *)
-                let new_term = Bindlib.subst pred_bind_l pat_r in
+        (* This will be the new goal. *)
+        let new_term = Bindlib.subst pred_bind_l pat_r in
 
-                (* [l_x] is the pattern with [id] replaced by the variable X *)
-                (* that we use for building the predicate. *)
-                let (x, l_x) = Bindlib.unbind pat in
-                let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        (* [l_x] is the pattern with [id] replaced by the variable X *)
+        (* that we use for building the predicate. *)
+        let (x, l_x) = Bindlib.unbind pat in
+        let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
+        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
-                (pred_bind, new_term, t, l, r)
-        end
+        (pred_bind, new_term, t, l, r)
 
     (* Combinational patterns. *)
     | Some(RW_TermInIdInTerm(s,p)) ->
@@ -300,78 +301,75 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
            Then in all occurrences of the first instance of [p] in [g_term] we
            rewrite all occurrences of the first instance of [s] in the subterm
            of [p] that was matched with the identifier. *)
-        begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_subst g_term ([|id|],p_refs) with
-        | None        ->
-            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
-        | Some id_val ->
-            (* Once we get the value of id, we work with that as our main term
-               since this is where s will appear and will be substituted in. *)
-            let id_val = id_val.(0) in
-            (* [pat] is the full value of the pattern, with the wildcards now
-               replaced by subterms of the goal and [id]. *)
-            let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
-            let pat_l = Bindlib.subst pat id_val in
+        let id_val =
+          match find_subst g_term ([|id|],p_refs) with
+          | Some(id_val) -> id_val
+          | None         ->
+              fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+        in
+        (* Once we get the value of id, we work with that as our main term
+           since this is where s will appear and will be substituted in. *)
+        let id_val = id_val.(0) in
+        (* [pat] is the full value of the pattern, with the wildcards now
+           replaced by subterms of the goal and [id]. *)
+        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        let pat_l = Bindlib.subst pat id_val in
 
-            (* We then try to match the wildcards in [s] with subterms of
-               [id_val]. *)
-            let s_refs = add_refs s in
-            if not (make_pat id_val s_refs) then
-              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp id_val pp p pp s;
-            (* Now we must match s, which no longer contains any TRef's
-               with the LHS of the lemma,*)
-            let s = s_refs in
-            begin
-              match match_pattern (vars,l) s with
-              | None       ->
-                  fatal_no_pos "The term [%a] does not match the LHS [%a]"
-                      pp s pp l
-              | Some sigma ->
-                  begin
-                  let (t,l,r) = Bindlib.msubst bound sigma in
+        (* We then try to match the wildcards in [s] with subterms of
+           [id_val]. *)
+        let s_refs = add_refs s in
+        if not (make_pat id_val s_refs) then
+          fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+            (Bindlib.name_of id) pp id_val pp p pp s;
+        (* Now we must match s, which no longer contains any TRef's
+           with the LHS of the lemma,*)
+        let s = s_refs in
+        let sigma =
+          match match_pattern (vars,l) s with
+          | Some(sigma) -> sigma
+          | None        ->
+              fatal_no_pos "The term [%a] does not match the LHS [%a]" pp s pp l
+        in
+        let (t,l,r) = Bindlib.msubst bound sigma in
 
-                  (* First we work in [id_val], that is, we substitute all
-                     the occurrences of [l] in [id_val] with [r]. *)
-                  let id_bind = bind_match l id_val in
+        (* First we work in [id_val], that is, we substitute all
+           the occurrences of [l] in [id_val] with [r]. *)
+        let id_bind = bind_match l id_val in
 
-                  (* [new_id] is the value of [id_val] with [l] replaced
-                     by [r] and [id_x] is the value of [id_val] with the
-                     free variable [x]. *)
-                  let new_id = Bindlib.subst id_bind r in
-                  let (x, id_x) = Bindlib.unbind id_bind in
+        (* [new_id] is the value of [id_val] with [l] replaced
+           by [r] and [id_x] is the value of [id_val] with the
+           free variable [x]. *)
+        let new_id = Bindlib.subst id_bind r in
+        let (x, id_x) = Bindlib.unbind id_bind in
 
-                  (* Then we replace in pat_l all occurrences of [id]
-                     with [new_id]. *)
-                  let pat_r = Bindlib.subst pat new_id in
+        (* Then we replace in pat_l all occurrences of [id]
+           with [new_id]. *)
+        let pat_r = Bindlib.subst pat new_id in
 
-                  (* To get the new goal we replace all occurrences of
-                    [pat_l] in [g_term] with [pat_r]. *)
-                  let pred_bind_l = bind_match pat_l g_term in
+        (* To get the new goal we replace all occurrences of
+          [pat_l] in [g_term] with [pat_r]. *)
+        let pred_bind_l = bind_match pat_l g_term in
 
-                  (* [new_term] is the type of the new goal meta. *)
-                  let new_term = Bindlib.subst pred_bind_l pat_r in
+        (* [new_term] is the type of the new goal meta. *)
+        let new_term = Bindlib.subst pred_bind_l pat_r in
 
-                  (* Finally we need to build the predicate. First we build
-                     the term l_x, in a few steps. We substitute all the
-                     rewrites in new_id with x and we repeat some steps. *)
-                  let l_x = Bindlib.subst pat id_x in
+        (* Finally we need to build the predicate. First we build
+           the term l_x, in a few steps. We substitute all the
+           rewrites in new_id with x and we repeat some steps. *)
+        let l_x = Bindlib.subst pat id_x in
 
-                  (* The last step to build the predicate is to substitute
-                     [l_x] everywhere we find [pat_l] and bind that x. *)
-                  let pred = Bindlib.subst pred_bind_l l_x in
-                  let pred_bind = Bindlib.bind_var x (lift pred) in
-                  (Bindlib.unbox pred_bind, new_term, t, l, r)
-                  end
-            end
-        end
+        (* The last step to build the predicate is to substitute
+           [l_x] everywhere we find [pat_l] and bind that x. *)
+        let pred = Bindlib.subst pred_bind_l l_x in
+        let pred_bind = Bindlib.bind_var x (lift pred) in
+        (Bindlib.unbox pred_bind, new_term, t, l, r)
+
     | Some(RW_TermAsIdInTerm(s,p)) ->
         (* In this pattern we have essentially a let clause. We first match the
            value of [pat] with some subeterm of the goal and then we rewrtie in
            each occurence [id]. *)
-        begin
         let (id,pat) = Bindlib.unbind p in
         let s = add_refs s in
         let p_s = Bindlib.subst p s in
@@ -385,39 +383,41 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         (* Here we have already asserted tat an instance of p[s/id] exists
            so we know that this will match something. The step is repeated
            in order to get the value of [id]. *)
-        match match_pattern ([|id|], pat_refs) p with
-        | None   -> assert false
-        | Some sub ->
-            let id_val = sub.(0) in
-            (* This part of the term-building is similar to the previous
-               case, as we are essentially rebuilding a term, with some
-               subterms that are replaced by new ones. *)
-            match match_pattern (vars, l) id_val with
-            | None       ->
-                fatal_no_pos
-                "The value of X, [%a], does not match the LHS, [%a]"
+        let sub =
+          match match_pattern ([|id|], pat_refs) p with
+          | Some(sub) -> sub
+          | None      -> assert false
+        in
+        let id_val = sub.(0) in
+        (* This part of the term-building is similar to the previous
+           case, as we are essentially rebuilding a term, with some
+           subterms that are replaced by new ones. *)
+        let sigma =
+          match match_pattern (vars, l) id_val with
+          | Some(sigma) -> sigma
+          | None        ->
+              fatal_no_pos "The value of X, [%a], does not match the LHS, [%a]"
                 pp id_val pp l
-            | Some sigma ->
-                let (t,l,r) = Bindlib.msubst bound sigma in
+        in
+        let (t,l,r) = Bindlib.msubst bound sigma in
 
-                (* Now to do some term building. *)
-                let p_x = bind_match l p in
+        (* Now to do some term building. *)
+        let p_x = bind_match l p in
 
-                let p_r = Bindlib.subst p_x r in
+        let p_r = Bindlib.subst p_x r in
 
-                let pred_bind = bind_match p g_term in
+        let pred_bind = bind_match p g_term in
 
-                let new_term = Bindlib.subst pred_bind p_r in
+        let new_term = Bindlib.subst pred_bind p_r in
 
-                let (x, p_x) = Bindlib.unbind p_x in
-                let pred_box = lift (Bindlib.subst pred_bind p_x) in
-                let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
+        let (x, p_x) = Bindlib.unbind p_x in
+        let pred_box = lift (Bindlib.subst pred_bind p_x) in
+        let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
 
-                (pred_bind, new_term, t, l, r)
-        end
+        (pred_bind, new_term, t, l, r)
+
     (* Nested patterns. *)
     | Some(RW_InTerm(p)          ) ->
-        begin
         (* Substitute every wildcard in [p] with a new TRef. *)
         let p_refs = add_refs p in
 
@@ -427,71 +427,75 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
          * with [l], to get the substitution [sigma]. *)
         let p = p_refs in
-        match find_subst p (vars,l) with
-        | None       ->
-            fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
+        let sigma =
+          match find_subst p (vars,l) with
+          | Some(sigma) -> sigma
+          | None        ->
+              fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
                 pp p pp l
-        | Some sigma ->
-            let (t,l,r) = Bindlib.msubst bound sigma in
+        in
+        let (t,l,r) = Bindlib.msubst bound sigma in
 
-            let p_x = bind_match l p in
-            let p_r = Bindlib.subst p_x r in
+        let p_x = bind_match l p in
+        let p_r = Bindlib.subst p_x r in
 
-            let pred_bind = bind_match p g_term in
+        let pred_bind = bind_match p g_term in
 
-            let new_term = Bindlib.subst pred_bind p_r in
+        let new_term = Bindlib.subst pred_bind p_r in
 
-            let (x, p_x) = Bindlib.unbind p_x in
-            let pred_box = lift (Bindlib.subst pred_bind p_x) in
-            let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        let (x, p_x) = Bindlib.unbind p_x in
+        let pred_box = lift (Bindlib.subst pred_bind p_x) in
+        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
-            (pred_bind, new_term, t, l, r)
-        end
+        (pred_bind, new_term, t, l, r)
+
     | Some(RW_InIdInTerm(p)      ) ->
         (* This is very similar to the RW_IdInTerm case, with a few minor
            changes. Instead of trying to match [id_val] with [l] we try to
            match a subterm of id_val with [l] and then we rewrite this subterm.
            So we just change the way we construct a [pat_r]. *)
-        begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_subst g_term ([|id|],p_refs)  with
-        | None       ->
-            fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp g_term
-        | Some id_val ->
-            let id_val = id_val.(0) in
-            let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
-            let pat_l = Bindlib.subst pat id_val in
-            match find_subst id_val (vars,l) with
-            | None       ->
-                fatal_no_pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                  (Bindlib.name_of id) pp id_val pp p pp l
-            | Some sigma ->
-                let (t,l,r) = Bindlib.msubst bound sigma in
+        let id_val =
+          match find_subst g_term ([|id|],p_refs) with
+          | Some(id_val) -> id_val
+          | None         ->
+              fatal_no_pos "The pattern [%a] does not match [%a]."
+                pp p pp g_term
+        in
+        let id_val = id_val.(0) in
+        let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
+        let pat_l = Bindlib.subst pat id_val in
+        let sigma =
+          match find_subst id_val (vars,l) with
+          | Some(sigma) -> sigma
+          | None        ->
+              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+                (Bindlib.name_of id) pp id_val pp p pp l
+        in
+        let (t,l,r) = Bindlib.msubst bound sigma in
 
-                (* Rewrite in id. *)
-                let id_bind = bind_match l id_val in
+        (* Rewrite in id. *)
+        let id_bind = bind_match l id_val in
 
-                let id_val = Bindlib.subst id_bind r in
+        let id_val = Bindlib.subst id_bind r in
 
-                let (x, id_x) = Bindlib.unbind id_bind in
+        let (x, id_x) = Bindlib.unbind id_bind in
 
-                (* The new RHS of the pattern is obtained by rewriting inside
-                   id_val. *)
-                let r_val = Bindlib.subst pat id_val in
+        (* The new RHS of the pattern is obtained by rewriting inside
+           id_val. *)
+        let r_val = Bindlib.subst pat id_val in
 
-                let pred_bind_l = bind_match pat_l g_term in
+        let pred_bind_l = bind_match pat_l g_term in
 
-                let new_term = Bindlib.subst pred_bind_l r_val in
+        let new_term = Bindlib.subst pred_bind_l r_val in
 
-                let l_x = Bindlib.subst pat id_x in
+        let l_x = Bindlib.subst pat id_x in
 
-                let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+        let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
+        let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
-                (pred_bind, new_term, t, l, r)
-        end
+        (pred_bind, new_term, t, l, r)
   in
 
   (* Construct the predicate (context). *)
