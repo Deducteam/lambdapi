@@ -101,11 +101,11 @@ let make_pat : term -> term -> term option = fun t p ->
 
 (* FIXME make [make_pat] return a boolean? *)
 
-(** [bind_match x p t] replaces every occurence of the pattern [p] with [x] in
-    the term [t]. The produced term is boxed, and it does not necessarily have
-    occurences of [x].  We require [t] not to contain  products,  abstraction,
-    metavariables, or other awkward terms. *)
-let bind_match : tvar -> term -> term -> tbinder =  fun x p t ->
+(** [bind_match p t] binds every occurence of the pattern [p] in the term [t].
+    We require [t] not to contain products, abstractions, metavariables or any
+    other awkward term constructor. *)
+let bind_match : term -> term -> tbinder =  fun p t ->
+  let x = Bindlib.new_var mkfree "X" in
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
     if Terms.eq p t then _Vari x else
@@ -195,17 +195,17 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the different components depending on the pattern. *)
   let (pred_bind, new_term, t, l, r) =
     match p with
-    | None                         ->
-        begin
-        match find_subst g_term (vars,l) with
-        | None       ->
-          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp l
-        | Some sigma ->
-            let (t,l,r) = Bindlib.msubst bound sigma in
-            let x = Bindlib.new_var mkfree "X" in
-            let pred_bind = bind_match x l g_term in
-            (pred_bind, Bindlib.subst pred_bind r, t, l, r)
-        end
+    | None                         -> (* Simple rewrite, no pattern. *)
+        let sigma =
+          match find_subst g_term (vars, l) with
+          | Some(sigma) -> sigma
+          | None        -> fatal_no_pos "No subterm of [%a] matches [%a]."
+                             pp g_term pp l
+        in
+        let (t, l, r) = Bindlib.msubst bound sigma in
+        let pred_bind = bind_match l g_term in
+        (pred_bind, Bindlib.subst pred_bind r, t, l, r)
+
     (* Basic patterns. *)
     | Some(RW_Term(p)            ) ->
         begin
@@ -224,8 +224,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
-                let x = Bindlib.new_var mkfree "X" in
-                let pred_bind = bind_match x l g_term in
+                let pred_bind = bind_match l g_term in
                 (pred_bind, Bindlib.subst pred_bind r, t, l, r)
         end
     | Some(RW_IdInTerm(p)      ) ->
@@ -275,9 +274,10 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 (* Build the predicate, identifying all occurrences of pat_l *)
                 (* substituting them, first with pat_r, for the new goal and *)
                 (* then with l_x for the lambda term. *)
-                let x = Bindlib.new_var mkfree "X" in
 
-                let pred_bind_l = bind_match x pat_l g_term in
+                let pred_bind_l = bind_match pat_l g_term in
+
+                let x = Bindlib.new_var mkfree "X" in
 
                 (* This will be the new goal. *)
                 let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -335,11 +335,11 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                       begin
                       let (t,l,r) = Bindlib.msubst bound sigma in
 
-                      let x = Bindlib.new_var mkfree "X" in
-
                       (* First we work in [id_val], that is, we substitute all
                          the occurrences of [l] in [id_val] with [r]. *)
-                      let id_bind = bind_match x l id_val in
+                      let id_bind = bind_match l id_val in
+
+                      let x = Bindlib.new_var mkfree "X" in
 
                       (* [new_id] is the value of [id_val] with [l] replaced
                          by [r] and [id_x] is the value of [id_val] with the
@@ -353,7 +353,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                       (* To get the new goal we replace all occurrences of
                         [pat_l] in [g_term] with [pat_r]. *)
-                      let pred_bind_l = bind_match x pat_l g_term in
+                      let pred_bind_l = bind_match pat_l g_term in
 
                       (* [new_term] is the type of the new goal meta. *)
                       let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -403,17 +403,17 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                     pp id_val pp l
                 | Some sigma ->
                     let (t,l,r) = Bindlib.msubst bound sigma in
-                    let x = Bindlib.new_var mkfree "X" in
 
                     (* Now to do some term building. *)
-                    let p_x = bind_match x l p in
+                    let p_x = bind_match l p in
 
                     let p_r = Bindlib.subst p_x r in
 
-                    let pred_bind = bind_match x p g_term in
+                    let pred_bind = bind_match p g_term in
 
                     let new_term = Bindlib.subst pred_bind p_r in
 
+                    let x = Bindlib.new_var mkfree "X" in
                     let p_x = Bindlib.subst p_x (Vari(x)) in
                     let pred_box = lift (Bindlib.subst pred_bind p_x) in
                     let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
@@ -440,14 +440,14 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
-                let x = Bindlib.new_var mkfree "X" in
-
-                let p_x = bind_match x l p in
+                let p_x = bind_match l p in
                 let p_r = Bindlib.subst p_x r in
 
-                let pred_bind = bind_match x p g_term in
+                let pred_bind = bind_match p g_term in
 
                 let new_term = Bindlib.subst pred_bind p_r in
+
+                let x = Bindlib.new_var mkfree "X" in
 
                 let p_x = Bindlib.subst p_x (Vari(x)) in
                 let pred_box = lift (Bindlib.subst pred_bind p_x) in
@@ -478,21 +478,19 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
-                (* Start building the term. *)
-                let x = Bindlib.new_var mkfree "X" in
-
                 (* Rewrite in id. *)
-                let id_bind = bind_match x l id_val in
+                let id_bind = bind_match l id_val in
 
                 let id_val = Bindlib.subst id_bind r in
 
+                let x = Bindlib.new_var mkfree "X" in
                 let id_x = Bindlib.subst id_bind (Vari(x)) in
 
                 (* The new RHS of the pattern is obtained by rewriting inside
                    id_val. *)
                 let r_val = Bindlib.subst pat id_val in
 
-                let pred_bind_l = bind_match x pat_l g_term in
+                let pred_bind_l = bind_match pat_l g_term in
 
                 let new_term = Bindlib.subst pred_bind_l r_val in
 
