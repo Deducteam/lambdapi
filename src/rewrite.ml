@@ -239,7 +239,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_sub g_term ((Array.of_list [id]),p_refs)  with
+        match find_sub g_term ([|id|],p_refs)  with
         | None       ->
             fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
         | Some id_val ->
@@ -297,7 +297,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_sub g_term ((Array.of_list [id]),p_refs) with
+        match find_sub g_term ([|id|],p_refs) with
         | None        ->
             fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
         | Some id_val ->
@@ -385,7 +385,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             (* Here we have already asserted tat an instance of p[s/id] exists
                so we know that this will match something. The step is repeated
                in order to get the value of [id]. *)
-            match match_pattern (Array.of_list [id], pat_refs) p with
+            match match_pattern ([|id|], pat_refs) p with
             | None   -> assert false
             | Some sub ->
                 let id_val = sub.(0) in
@@ -461,7 +461,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         begin
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
-        match find_sub g_term ((Array.of_list [id]),p_refs)  with
+        match find_sub g_term ([|id|],p_refs)  with
         | None       ->
             fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp g_term
         | Some id_val ->
