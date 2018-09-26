@@ -1,0 +1,7 @@
+Nat : Type.
+
+0 : Nat.
+
+def D : Nat -> Nat -> Nat.
+
+[] D 0 --> 0.

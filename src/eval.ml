@@ -206,7 +206,7 @@ let rec hnf : term -> term = fun t ->
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
-type strategy = WHNF | HNF | SNF
+type strategy = WHNF | HNF | SNF | NONE
 
 (** Configuration for evaluation. *)
 type config =
@@ -216,7 +216,8 @@ type config =
 (** [eval cfg t] evaluates the term [t] according to configuration [cfg]. *)
 let eval : config -> term -> term = fun c t ->
   match (c.strategy, c.steps) with
-  | (_   , Some(0)) -> t
+  | (_   , Some(0))
+  | (NONE, _      ) -> t
   | (WHNF, None   ) -> whnf t
   | (SNF , None   ) -> snf t
   | (HNF , None   ) -> hnf t
