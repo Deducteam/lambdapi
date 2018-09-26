@@ -54,8 +54,21 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
       let t2 = Eval.to_term h2 ts2 in
       log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
     end;
-  let add_args =
-    List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
+  let add_to_unsolved () =
+    let t1 = Eval.to_term h1 ts1 in
+    let t2 = Eval.to_term h2 ts2 in
+    if Eval.eq_modulo t1 t2 then solve p
+    else solve {p with unsolved = (t1,t2) :: p.unsolved}
+  in
+  let decompose () =
+    let add_args =
+      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
+    in solve {p with to_solve = add_args p.to_solve ts1 ts2}
+  in
+  let error () =
+    let t1 = Eval.to_term h1 ts1 in
+    let t2 = Eval.to_term h2 ts2 in
+    fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
   in
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
@@ -69,29 +82,28 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
 
   | (Vari(x1)   , Vari(x2)   )
        when Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 ->
-     solve {p with to_solve = add_args p.to_solve ts1 ts2}
+     decompose ()
 
-  | (Symb(s1)   , Symb(s2)   )
-       when s1 == s2 && Sign.is_inj s1 && List.same_length ts1 ts2 ->
-     solve {p with to_solve = add_args p.to_solve ts1 ts2}
+  | (Symb(s1)   , Symb(s2)   ) ->
+     if s1 == s2 then
+       if Sign.is_inj s1 && List.same_length ts1 ts2 then decompose ()
+       else add_to_unsolved ()
+     else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
+     else add_to_unsolved ()
 
   | (Meta(m,ts), _         ) when ts1 = [] && instantiate m ts t2 ->
       solve {p with recompute = true}
   | (_         , Meta(m,ts)) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
-  | (Symb(_)   , Symb(_)   )
   | (Meta(_,_) , _         )
-  | (_         , Meta(_,_) )
-  | (Symb(_)   , _         )
-  | (_         , Symb(_)   ) ->
-      let t1 = Eval.to_term h1 ts1 in
-      let t2 = Eval.to_term h2 ts2 in
-      if Eval.eq_modulo t1 t2 then solve p
-      else solve {p with unsolved = (t1,t2) :: p.unsolved}
+  | (_         , Meta(_,_) ) -> add_to_unsolved ()
 
-  | (_        , _        ) ->
-     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  | (Symb(s)   , _         )
+  | (_         , Symb(s)   ) ->
+    if !(s.sym_rules) = [] then error () else add_to_unsolved ()
+
+  | (_        , _        ) -> error ()
 
 (** [solve flag problems] attempts to solve [problems],  after having sets the
     value of [can_instantiate] to [flag].  If there is no solution,  the value
