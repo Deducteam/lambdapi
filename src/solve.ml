@@ -91,9 +91,9 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
      else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
-  | (Meta(m,ts), _         ) when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
       solve {p with recompute = true}
-  | (_         , Meta(m,ts)) when ts2 = [] && instantiate m ts t1 ->
+  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
   | (Meta(_,_) , _         )

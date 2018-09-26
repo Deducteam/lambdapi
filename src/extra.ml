@@ -40,6 +40,11 @@ module Option =
       match o with
       | None    -> ()
       | Some(e) -> f e
+
+    let get : 'a option -> 'a -> 'a = fun o d ->
+      match o with
+      | None    -> d
+      | Some(e) -> e
   end
 
 module List =

@@ -163,11 +163,7 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     | P_SymDecl(m,x,a)      -> handle_symdecl m x (scope_basic a)
     | P_SymDef(b,x,ao,t)    ->
         let t = scope_basic t in
-        let ao =
-          match ao with
-          | None    -> None
-          | Some(a) -> Some(scope_basic a)
-        in
+        let ao = Option.map scope_basic ao in
         handle_symdef b x ao t
     | P_Rules(rs)           ->
         let rs = List.map Scope.scope_rule rs in
