@@ -101,11 +101,11 @@ let make_pat : term -> term -> term option = fun t p ->
 
 (* FIXME make [make_pat] return a boolean? *)
 
-(** [match_box x p t] replaces every occurence of the pattern [p] using [x] in
+(** [bind_match x p t] replaces every occurence of the pattern [p] using [x] in
     the term [t]. The produced term is boxed, and it does not necessarily have
     occurences of [x].  We require [t] not to contain  products,  abstraction,
     metavariables, or other awkward terms. *)
-let match_box : tvar -> term -> term -> tbox =  fun x p ->
+let bind_match : tvar -> term -> term -> tbinder =  fun x p t ->
   (* NOTE we lift to the bindbox while matching (for efficiency). *)
   let rec lift_subst : term -> tbox = fun t ->
     if Terms.eq p t then _Vari x else
@@ -124,9 +124,8 @@ let match_box : tvar -> term -> term -> tbox =  fun x p ->
     | TEnv(_,_)   -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
-  in lift_subst
-
-(* FIXME [match_box] should probably also take care of the binding. *)
+  in
+  Bindlib.(unbox (bind_var x (lift_subst t)))
 
 (** [rewrite ps po t] rewrites according to the equality proved by [t] in  the
     current goal of [ps].  The term [t] should have a type corresponding to an
@@ -203,8 +202,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         | Some sigma ->
             let (t,l,r) = Bindlib.msubst bound sigma in
             let x = Bindlib.new_var mkfree "X" in
-            let pred = match_box x l g_term in
-            let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+            let pred_bind = bind_match x l g_term in
             (pred_bind, Bindlib.subst pred_bind r, t, l, r)
         end
     (* Basic patterns. *)
@@ -226,8 +224,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
                 let x = Bindlib.new_var mkfree "X" in
-                let pred = match_box x l g_term in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+                let pred_bind = bind_match x l g_term in
                 (pred_bind, Bindlib.subst pred_bind r, t, l, r)
         end
     | Some(RW_IdInTerm(p)      ) ->
@@ -278,8 +275,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 (* substituting them, first with pat_r, for the new goal and *)
                 (* then with l_x for the lambda term. *)
                 let x = Bindlib.new_var mkfree "X" in
-                let pred_l = match_box x pat_l g_term in
-                let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+
+                let pred_bind_l = bind_match x pat_l g_term in
 
                 (* This will be the new goal. *)
                 let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -287,8 +284,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 (* [l_x] is the pattern with [id] replaced by the variable X *)
                 (* that we use for building the predicate. *)
                 let l_x = Bindlib.subst pat (Vari(x)) in
-                let pred = Bindlib.unbox (Bindlib.bind_var x pred_l) in
-                let pred_box = lift (Bindlib.subst pred l_x) in
+                let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
                 (pred_bind, new_term, t, l, r)
@@ -342,14 +338,13 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                       (* First we work in [id_val], that is, we substitute all
                          the occurrences of [l] in [id_val] with [r]. *)
-                      let id_box = match_box x l id_val in
-                      let id_bind = Bindlib.bind_var x id_box in
+                      let id_bind = bind_match x l id_val in
 
                       (* [new_id] is the value of [id_val] with [l] replaced
                          by [r] and [id_x] is the value of [id_val] with the
                          free variable [x]. *)
-                      let new_id = Bindlib.(subst (unbox id_bind) r) in
-                      let id_x = Bindlib.(subst(unbox id_bind) (Vari(x))) in
+                      let new_id = Bindlib.subst id_bind r in
+                      let id_x = Bindlib.subst id_bind (Vari(x)) in
 
                       (* Then we replace in pat_l all occurrences of [id]
                          with [new_id]. *)
@@ -357,8 +352,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                       (* To get the new goal we replace all occurrences of
                         [pat_l] in [g_term] with [pat_r]. *)
-                      let pred_l = match_box x pat_l g_term in
-                      let pred_bind_l = Bindlib.(unbox (bind_var x pred_l)) in
+                      let pred_bind_l = bind_match x pat_l g_term in
 
                       (* [new_term] is the type of the new goal meta. *)
                       let new_term = Bindlib.subst pred_bind_l pat_r in
@@ -411,19 +405,17 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                     let x = Bindlib.new_var mkfree "X" in
 
                     (* Now to do some term building. *)
-                    let p_box = match_box x l p in
-                    let p_x = Bindlib.(unbox (bind_var x p_box)) in
+                    let p_x = bind_match x l p in
 
                     let p_r = Bindlib.subst p_x r in
 
-                    let pred = match_box x p g_term in
-                    let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+                    let pred_bind = bind_match x p g_term in
 
                     let new_term = Bindlib.subst pred_bind p_r in
 
                     let p_x = Bindlib.subst p_x (Vari(x)) in
                     let pred_box = lift (Bindlib.subst pred_bind p_x) in
-                    let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+                    let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
 
                     (pred_bind, new_term, t, l, r)
         end
@@ -448,11 +440,11 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
                 let x = Bindlib.new_var mkfree "X" in
-                let p_x = Bindlib.(unbox (bind_var x (match_box x l p))) in
+
+                let p_x = bind_match x l p in
                 let p_r = Bindlib.subst p_x r in
 
-                let pred = match_box x p g_term in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred) in
+                let pred_bind = bind_match x p g_term in
 
                 let new_term = Bindlib.subst pred_bind p_r in
 
@@ -489,8 +481,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 let x = Bindlib.new_var mkfree "X" in
 
                 (* Rewrite in id. *)
-                let id_box = match_box x l id_val in
-                let id_bind = Bindlib.(unbox (bind_var x id_box)) in
+                let id_bind = bind_match x l id_val in
+
                 let id_val = Bindlib.subst id_bind r in
 
                 let id_x = Bindlib.subst id_bind (Vari(x)) in
@@ -499,15 +491,13 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                    id_val. *)
                 let r_val = Bindlib.subst pat id_val in
 
-                let pred_l = match_box x pat_l g_term in
-                let pred_bind_l = Bindlib.unbox (Bindlib.bind_var x pred_l) in
+                let pred_bind_l = bind_match x pat_l g_term in
 
                 let new_term = Bindlib.subst pred_bind_l r_val in
 
                 let l_x = Bindlib.subst pat id_x in
 
-                let pred = Bindlib.unbox (Bindlib.bind_var x pred_l) in
-                let pred_box = lift (Bindlib.subst pred l_x) in
+                let pred_box = lift (Bindlib.subst pred_bind_l l_x) in
                 let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
 
                 (pred_bind, new_term, t, l, r)
