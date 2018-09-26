@@ -182,7 +182,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         assert (xs <> []); scope_prod env xs
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
-        let t = scope env (Pos.none (P_Abst(xs,t))) in
+        let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
   in
