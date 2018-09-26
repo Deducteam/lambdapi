@@ -1,6 +1,7 @@
 (** Parsing functions. *)
 
 open Timed
+open Extra
 open Console
 open Files
 open Pos
@@ -225,6 +226,7 @@ let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
 
 (** [strategy] is a parser for an evaluation strategy name. *)
 let parser strategy =
+  | "NONE" -> Eval.NONE
   | "WHNF" -> Eval.WHNF
   | "HNF"  -> Eval.HNF
   | "SNF"  -> Eval.SNF
@@ -232,13 +234,13 @@ let parser strategy =
 (** [steps] is a parser for an integer, used in evaluation configuration. *)
 let parser steps = n:''[0-9]+'' -> int_of_string n
 
-(** [eval_config] is a parser for an evaluation configuration. *)
-let parser eval_config default =
-  | EMPTY                             -> Eval.{strategy = default; steps = None}
-  | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s  ; steps = n   }
+(** [eval_config d] is a parser for an evaluation configuration with a default
+    evaluation strategy set to be [d]. *)
+let parser eval_config d =
+  | EMPTY                             -> Eval.{strategy = d; steps = None}
+  | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s; steps = n   }
   | "[" n:steps s:{"," strategy}? "]" ->
-      let strategy = match s with None -> Eval.SNF | Some(s) -> s in
-      Eval.{strategy; steps = Some(n)}
+      Eval.{strategy = Option.get s d; steps = Some(n)}
 
 (** [check] parses an assertion configuration (depending on command). *)
 let parser check =
@@ -249,19 +251,19 @@ let parser check =
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr               -> P_SymDecl(Terms.Const,x,a)
-  | _def_ x:ident ":" a:expr         -> P_SymDecl(Terms.Defin,x,a)
-  | _inj_ x:ident ":" a:expr         -> P_SymDecl(Terms.Injec,x,a)
-  | _def_ x:ident (ao,t):definition  -> P_SymDef(not opaque,x,ao,t)
-  | _thm_ x:ident (ao,t):definition  -> P_SymDef(opaque,x,ao,t)
-  | r:rule rs:{"," rule}*            -> P_Rules(r::rs)
-  | rs:old_rule+                     -> P_OldRules(rs)
-  | _REQUIRE_ path:mod_path          -> P_Require(path)
-  | (ia,mf):check t:expr "::" a:expr -> P_TestType(ia,mf,t,a)
-  | (ia,mf):check t:expr "==" u:expr -> P_TestConv(ia,mf,t,u)
+  | x:ident ":" a:expr                       -> P_SymDecl(Terms.Const,x,a)
+  | _def_ x:ident ":" a:expr                 -> P_SymDecl(Terms.Defin,x,a)
+  | _inj_ x:ident ":" a:expr                 -> P_SymDecl(Terms.Injec,x,a)
+  | _def_ x:ident (ao,t):definition          -> P_SymDef(not opaque,x,ao,t)
+  | _thm_ x:ident (ao,t):definition          -> P_SymDef(opaque,x,ao,t)
+  | r:rule rs:{"," rule}*                    -> P_Rules(r::rs)
+  | rs:old_rule+                             -> P_OldRules(rs)
+  | _REQUIRE_ path:mod_path                  -> P_Require(path)
+  | (ia,mf):check t:expr "::" a:expr         -> P_TestType(ia,mf,t,a)
+  | (ia,mf):check t:expr "==" u:expr         -> P_TestConv(ia,mf,t,u)
   | _INFER_ c:(eval_config Eval.NONE) t:expr -> P_Infer(t,c)
-  | _EVAL_ c:(eval_config Eval.SNF) t:expr   -> P_Eval(t,c)
-  | _NAME_ _:ident                   -> P_Other(in_pos _loc "#NAME")
+  | _EVAL_  c:(eval_config Eval.SNF)  t:expr -> P_Eval(t,c)
+  | _NAME_ _:ident                           -> P_Other(in_pos _loc "#NAME")
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c
