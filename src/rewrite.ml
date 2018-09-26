@@ -101,7 +101,7 @@ let make_pat : term -> term -> term option = fun t p ->
 
 (* FIXME make [make_pat] return a boolean? *)
 
-(** [bind_match x p t] replaces every occurence of the pattern [p] using [x] in
+(** [bind_match x p t] replaces every occurence of the pattern [p] with [x] in
     the term [t]. The produced term is boxed, and it does not necessarily have
     occurences of [x].  We require [t] not to contain  products,  abstraction,
     metavariables, or other awkward terms. *)
