@@ -216,7 +216,8 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
 
 (** [scope_rule r] turns the parser-level rewriting rule [r] into a  rewriting
     rule (and the associated head symbol). *)
-let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
+let scope_rule : p_rule Pos.loc -> sym * rule Pos.loc = fun r ->
+  let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
   let (mvs    , _ ) = meta_vars p_rhs in
@@ -241,18 +242,16 @@ let scope_rule : p_rule -> sym * rule = fun (p_lhs, p_rhs) ->
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs mvs p_rhs in
   (* We put everything together to build the rule. *)
-  (sym, {lhs; rhs; arity = List.length lhs})
+  (sym, Pos.make r.pos  {lhs; rhs; arity = List.length lhs})
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)
-let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
+let translate_old_rule : old_p_rule Pos.loc -> p_rule Pos.loc = fun r ->
+  let (ctx, lhs, rhs) = r.elt in
   (** Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
-    let fn a =
-      if Timed.(!verbose) > 1 then
-        wrn "Ignored type annotation at [%a].\n" Pos.print a.pos
-    in
-    Option.iter fn ao; x
+    let fn a = wrn a.pos "Ignored type annotation." in
+    (if Timed.(!verbose) > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
 
@@ -332,4 +331,4 @@ let translate_old_rule : old_p_rule -> p_rule = fun (ctx,lhs,rhs) ->
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
   let rhs = build [] rhs in
-  (lhs, rhs)
+  Pos.make r.pos (lhs, rhs)

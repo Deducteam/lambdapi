@@ -116,7 +116,7 @@ line:
   | ASSERTNOT t=aterm EQUAL u=term DOT
       { Pos.none (P_TestConv(true , true , t, u)) }
 
-  | NAME         DOT { Pos.none (P_Other(Pos.none "NAME")) }
+  | NAME         DOT { Pos.none P_Other }
   | r=REQUIRE    DOT { Pos.none (P_Require([r])) }
   | EOF              { raise End_of_file }
 
@@ -128,7 +128,8 @@ param:
   | LEFTPAR id=ID COLON te=term RIGHTPAR { (id, te) }
 
 rule:
-  | LEFTSQU c=context RIGHTSQU lhs=term LONGARROW rhs=term { (c, lhs, rhs ) }
+  | LEFTSQU c=context RIGHTSQU lhs=term LONGARROW rhs=term
+      { Pos.none (c, lhs, rhs ) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (Pos.none x, ao) }

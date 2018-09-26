@@ -170,7 +170,7 @@ let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
-  | l:term "→" r:term (* TODO *)
+  | l:term "→" r:term -> Pos.in_pos _loc (l, r) (* TODO *)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =

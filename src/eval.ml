@@ -222,6 +222,4 @@ let eval : config -> term -> term = fun c t ->
   | (SNF , None   ) -> snf t
   | (HNF , None   ) -> hnf t
   (* TODO implement the rest. *)
-  | (WHNF, Some(_)) -> wrn "number of steps not supported for WHNF...\n"; t
-  | (HNF , Some(_)) -> wrn "number of steps not supported for HNF...\n"; t
-  | (SNF , Some(_)) -> wrn "number of steps not supported for SNF...\n";  t
+  | (_   , Some(_)) -> wrn None "Number of steps not supported."; t

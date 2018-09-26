@@ -68,7 +68,7 @@ let build_meta_type : int -> term = fun k ->
 
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
-let check_rule : sym * rule -> unit = fun (s,rule) ->
+let check_rule : sym * rule Pos.loc -> unit = fun (s, Pos.{elt=rule;pos}) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
@@ -118,7 +118,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
   let rhs = Bindlib.msubst rule.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   match Solve.infer_constr Ctxt.empty lhs with
-  | None                      -> wrn "untypable LHS\n" (* FIXME position *)
+  | None                      -> wrn pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
   if !log_enabled then
     begin
@@ -154,7 +154,7 @@ let check_rule : sym * rule -> unit = fun (s,rule) ->
         begin
           let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
           List.iter fn cs;
-          fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+          fatal pos  "Unable to prove SR for rule [%a]." pp_rule (s,rule)
         end
-  | _        ->
-      fatal_no_pos "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+  | None     ->
+      fatal pos "Rule [%a] does not preserve SR." pp_rule (s,rule)

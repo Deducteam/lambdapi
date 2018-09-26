@@ -234,7 +234,8 @@ let patt_vars : p_term -> (string * int) list * string list =
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
-let scope_rule : sig_state -> p_rule -> sym * rule = fun ss (p_lhs, p_rhs) ->
+let scope_rule : sig_state -> p_rule -> sym * rule Pos.loc = fun ss r ->
+  let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
   let (pvs    , _ ) = patt_vars p_rhs in
@@ -272,7 +273,7 @@ let scope_rule : sig_state -> p_rule -> sym * rule = fun ss (p_lhs, p_rhs) ->
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We put everything together to build the rule. *)
-  (sym, {lhs; rhs; arity = List.length lhs})
+  (sym, Pos.make r.pos {lhs; rhs; arity = List.length lhs})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

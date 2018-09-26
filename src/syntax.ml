@@ -51,7 +51,7 @@ type symtag =
   (** The symbol is injective. *)
 
 (** Parser-level rewriting rule representation. *)
-type p_rule = p_patt * p_term
+type p_rule = (p_patt * p_term) Pos.loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =

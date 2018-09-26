@@ -153,7 +153,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         in
         let rs = List.map handle_rule rs in
         (* Adding the rules all at once. *)
-        List.iter (fun (s,r) -> Sign.add_rule ss.signature s r) rs; ss
+        List.iter (fun (s,r) -> Sign.add_rule ss.signature s r.elt) rs; ss
     | P_definition(x, xs, ao, t) ->
         (* Desugaring of arguments and scoping of [t]. *)
         let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
@@ -193,17 +193,16 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
           match pe with
           | P_proof_abort ->
               (* Just ignore the command, with a warning. *)
-              wrn "[%a] Proof aborted.\n" Pos.print cmd.pos; ss
+              wrn cmd.pos "Proof aborted."; ss
           | P_proof_admit ->
               (* Initialize the proof and plan the tactics. *)
               let st = Proof.init x a in
               let st = List.fold_left (handle_tactic ss) st ts in
               (* If the proof is finished, display a warning. *)
-              if Proof.finished st then
-                wrn "[%a] Proof can be terminated." Pos.print cmd.pos;
+              if Proof.finished st then wrn cmd.pos "You should add QED.";
               (* Add a symbol corresponding to the proof, with a warning. *)
               let s = Sign.add_symbol ss.signature Const x a in
-              wrn "[%a] Proof admitted.\n" Pos.print cmd.pos;
+              wrn cmd.pos "Proof admitted.";
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
           | P_proof_QED   ->
               (* Initialize the proof and plan the tactics. *)
@@ -216,7 +215,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               let s = Sign.add_symbol ss.signature Const x a in
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
         end
-    | P_assert(mf, asrt)         ->
+    | P_assert(must_fail, asrt)  ->
         let test_type =
           match asrt with
           | P_assert_typing(t,a) ->
@@ -228,7 +227,8 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               let u = fst (scope_basic ss u) in
               Handle.Convert(t, u)
         in
-        Handle.(handle_test {is_assert = true; must_fail = mf; test_type}); ss
+        let cfg = Handle.{is_assert = true; must_fail; test_type} in
+        Handle.handle_test cmd.pos cfg; ss
     | P_set(P_config_debug(e,s)) ->
         (* Just update the option, state not modified. *)
         Console.set_debug e s; ss

@@ -177,8 +177,8 @@ type p_cmd =
   (** Quick definition (opaque when the boolean is [true]). *)
   | P_SymDef     of bool * strloc * p_term option * p_term
   (** Rewriting rules declaration. *)
-  | P_Rules      of p_rule list
-  | P_OldRules   of old_p_rule list
+  | P_Rules      of p_rule Pos.loc list
+  | P_OldRules   of old_p_rule Pos.loc list
   (** Require an external signature. *)
   | P_Require    of module_path
   (** Type inference command. *)
@@ -190,20 +190,21 @@ type p_cmd =
   (** Convertibility command. *)
   | P_TestConv   of bool * bool * p_term * p_term
   (** Unimplemented command. *)
-  | P_Other      of strloc
+  | P_Other
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
 
 (** [rule] is a parser for a single rewriting rule. *)
-let parser rule = t:expr "-->" u:expr
+let parser rule = t:expr "-->" u:expr -> Pos.in_pos _loc (t,u)
 
 (** [context] is a parser for a rewriting rule context. *)
 let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
 
 (** [old_rule] is a parser for a single rewriting rule (old syntax). *)
 let parser old_rule =
-  _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr
+  _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr ->
+    Pos.in_pos _loc (xs,t,u)
 
 let parser arg =
   | "(" x:ident ":" a:expr ")" -> (x, Some(a))
@@ -263,7 +264,7 @@ let parser cmd_aux =
   | (ia,mf):check t:expr "==" u:expr         -> P_TestConv(ia,mf,t,u)
   | _INFER_ c:(eval_config Eval.NONE) t:expr -> P_Infer(t,c)
   | _EVAL_  c:(eval_config Eval.SNF)  t:expr -> P_Eval(t,c)
-  | _NAME_ _:ident                           -> P_Other(in_pos _loc "#NAME")
+  | _NAME_ _:ident                           -> P_Other
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c

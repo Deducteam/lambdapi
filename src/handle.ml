@@ -47,11 +47,11 @@ let handle_symdecl : sym_mode -> strloc -> term -> unit = fun mode x a ->
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
-let handle_rule : sym * rule -> unit = fun (s,r) ->
+let handle_rule : sym * rule Pos.loc -> unit = fun (s,r) ->
   if s.sym_mode = Const || !(s.sym_def) <> None then
     fatal_no_pos "Symbol [%a] cannot be (re)defined." pp_symbol s;
   Sr.check_rule (s, r);
-  Sign.add_rule (current_sign ()) s r
+  Sign.add_rule (current_sign ()) s r.elt
 
 (** [handle_symdef opaque x ao t] checks that [t] is of type [a] if
     [ao = Some a]. Then, it does the same as [handle_symdecl (not
@@ -105,19 +105,10 @@ type test =
   ; must_fail : bool (** Is this test supposed to fail? *)
   ; test_type : test_type  (** The test itself. *) }
 
-(** [handle_test test] runs the test [test]. When the test does not
+(** [handle_test pos test] runs the test [test]. When the test does not
     succeed, the program may fail gracefully or continue its exection
     depending on the value of [test.is_assert]. *)
-let handle_test : test -> unit = fun test ->
-  let pp_test : test pp = fun oc test ->
-    if test.must_fail then Format.pp_print_string oc "¬(";
-    begin
-      match test.test_type with
-      | Convert(t,u) -> Format.fprintf oc "%a == %a" pp t pp u
-      | HasType(t,a) -> Format.fprintf oc "%a :: %a" pp t pp a
-    end;
-    if test.must_fail then Format.pp_print_string oc ")"
-  in
+let handle_test : Pos.popt -> test -> unit = fun pos test ->
   let result =
     match test.test_type with
     | Convert(t,u) -> Eval.eq_modulo t u
@@ -129,8 +120,8 @@ let handle_test : test -> unit = fun test ->
   match (success, test.is_assert) with
   | (true , true ) -> ()
   | (true , false) -> out 3 "(check) OK\n"
-  | (false, true ) -> fatal_no_pos "Assertion [%a] failed." pp_test test
-  | (false, false) -> wrn "A check failed: [%a]\n" pp_test test
+  | (false, true ) -> fatal pos "Assertion failed."
+  | (false, false) -> wrn pos "Check failed."
 
 (** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
     returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
@@ -175,17 +166,17 @@ and handle_cmd : p_cmd loc -> unit = fun cmd ->
     | P_Eval(t,cfg)         -> handle_eval  (scope_basic t) cfg
     | P_TestType(ia,mf,t,a) ->
         let test_type = HasType(scope_basic t, scope_basic a) in
-        handle_test {is_assert = ia; must_fail = mf; test_type}
+        handle_test cmd.pos {is_assert = ia; must_fail = mf; test_type}
     | P_TestConv(ia,mf,t,u) ->
         let test_type = Convert(scope_basic t, scope_basic u) in
-        handle_test {is_assert = ia; must_fail = mf; test_type}
-    | P_Other(c)            ->
-        if !log_enabled then wrn "[%a] ignored command.\n" Pos.print c.pos
+        handle_test cmd.pos {is_assert = ia; must_fail = mf; test_type}
+    | P_Other               ->
+        if !log_enabled then wrn cmd.pos "Ignored command."
   in
   try
     let (tm, ()) = time handle () in
     if Pervasives.(tm >= !too_long) then
-      wrn "%.2f seconds spent on a command at [%a]\n" tm Pos.print cmd.pos
+      wrn cmd.pos "It took %.2f seconds to handle the command." tm
   with
   | Timeout                as e -> raise e
   | Fatal(Some(Some(_)),_) as e -> raise e
