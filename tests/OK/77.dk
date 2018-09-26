@@ -1,0 +1,93 @@
+Nat : Type.
+
+z : Nat.
+s : Nat -> Nat.
+
+def m : Nat -> Nat -> Nat.
+m ?i z --> ?i.
+m z ?j --> ?j.
+m (s ?i) (s ?j) --> s (m ?i ?j).
+
+(; Sorts ;)
+
+Sort : Type.
+
+prop : Sort.
+type : Nat -> Sort.
+
+(; Universe successors ;)
+def succ : Sort -> Sort.
+succ prop --> type z.
+succ (type ?i) --> type (s ?i).
+
+(; Universe product rules ;)
+def rule : Sort -> Sort -> Sort.
+[s1] rule s1 prop --> prop.
+[s2] rule prop s2 --> s2.
+[i, j] rule (type i) (type j) --> type (m i j).
+
+def max : Sort -> Sort -> Sort.
+max ?s1 prop --> ?s1.
+max prop ?s2 --> ?s2.
+max (type ?i) (type ?j) --> type (m ?i ?j).
+
+(; Types and terms ;)
+
+Univ : s : Sort -> Type.
+def Term : s : Sort -> a : Univ s -> Type.
+
+univ : s : Sort -> Univ (succ s).
+def lift : s1 : Sort -> s2 : Sort -> a : Univ s1 -> Univ (max s1 s2).
+def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ (rule s1 s2).
+
+Term _ (univ ?s) --> Univ ?s.
+Term _ (lift ?s1 ?s2 ?a) --> Term ?s1 ?a.
+Term _ (prod ?s1 ?s2 ?a ?b) --> x : Term ?s1 ?a -> Term ?s2 (?b x).
+
+max ?s ?s --> ?s.
+lift ?s ?s ?a --> ?a.
+
+def Type0 := type z.
+
+def Type1 := type (s z).
+
+def Type2 := type (s (s z)).
+
+def Type3 := type (s (s (s z))).
+
+eq :
+  Term Type3
+    (prod Type3 Type2 (univ Type2)
+       (A : Univ Type2 =>
+        prod Type2
+          Type2 A
+          (_x : Term Type2 A =>
+           prod Type2 (Type0) A
+             (__ : Term Type2 A =>
+              univ prop)))).
+
+refl :
+  Term prop
+    (prod Type3 prop
+       (univ Type2)
+       (A : Univ Type2 =>
+        prod Type2 prop A
+          (x : Term Type2 A =>
+           eq
+             (lift Type2
+                Type2 A)
+             x x))).
+
+def filter_eq :
+      return_sort : Sort ->
+      A : Univ Type2 ->
+      _x : Term Type2 A ->
+      __ : Term Type2 A ->
+      return_type :
+        (z : Term prop (eq (lift Type2 Type2 A) _x __) -> Univ return_sort) ->
+      return :
+        (z : Term prop (eq (lift Type2 Type2 A) _x __) -> Term return_sort (return_type z)) ->
+      z : Term prop (eq (lift Type2 Type2 A) _x __) ->
+      Term return_sort (return_type z).
+
+filter_eq _ _ ?x ?x _ ?ret (refl ?A ?x) --> ?ret (refl (lift Type2 Type2 ?A) ?x).
