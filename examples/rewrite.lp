@@ -27,7 +27,6 @@ rule add (s &x) &y → s (add &x &y)
 symbol mul : N ⇒ N ⇒ N
 
 rule mul z      _  → z
-//rule mul (s &x) &y → add &y (mul &x ay) // FIXME scoping bug
 rule mul (s &x) &y → add &y (mul &x &y)
 
 // Type of data type codes and their interpretation as types.
