@@ -37,11 +37,11 @@ let rec add_refs : term -> term = fun t ->
 (** [break_prod a] eliminates the products at the surface of [a],  and returns
     the remaining term the variables that used to correspond to the eliminated
     products. These variables may appear free in the returned term. *)
-let break_prod : term -> term * tvar list = fun a ->
-  let rec aux : term -> tvar list -> term * tvar list = fun a vs ->
+let break_prod : term -> term * tvar array = fun a ->
+  let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
     match unfold a with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
-    | a         -> (a, List.rev vs)
+    | a         -> (a, Array.of_list (List.rev vs))
   in aux a []
 
 (** [match_pattern (xs,p) t] attempts to match the pattern [p] (containing the
@@ -135,66 +135,69 @@ let match_box : tvar -> term -> term -> tbox =  fun x p ->
     full set of SSReflect patterns. *)
 let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the required symbols from the current signature. *)
-  (* FIXME use a parametric notion of equality. *)
-  let sign = Sign.current_sign () in
-  let find_sym : string -> sym = fun name ->
-    try Sign.find sign name with Not_found ->
-    fatal_no_pos "Current signature does not define symbol [%s]." name
+  let (symb_P, symb_T, symb_eq, symb_eqind) =
+    (* FIXME use a parametric notion of equality. *)
+    let sign = Sign.current_sign () in
+    let find_sym : string -> sym = fun name ->
+      try Sign.find sign name with Not_found ->
+      fatal_no_pos "Current signature does not define symbol [%s]." name
+    in
+    (find_sym "P", find_sym "T", find_sym "eq", find_sym "eqind")
   in
-  let sign_P  = find_sym "P"  in
-  let sign_T  = find_sym "T"  in
-  let sign_eq = find_sym "eq" in
-  let sign_eqind = find_sym "eqind" in
 
-  (* Get the focused goal, and related data. *)
+  (* Get the focused goal. *)
   let g =
-    try List.hd Proof.(ps.proof_goals) with Failure _  ->
-    fatal_no_pos "No remaining goals..."
+    try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
+      fatal_no_pos "No remaining goals..."
   in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let g_ctxt = Ctxt.of_env (fst (Goal.get_type g)) in
+  let (g_env, g_type) = Goal.get_type g in
+  let g_ctxt = Ctxt.of_env g_env in
   let t_type =
     match Solve.infer g_ctxt t with
     | Some(a) -> a
-    | None    ->
-        fatal_no_pos "Cannot infer the type of [%a] (given to rewrite)." pp t
+    | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
   in
-  (* Check that the type of [t] is of the form “P (Eq a l r)”. and return the
-   * parameters. *)
+
+  (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
 
   let (a, l, r)  =
     match get_args t_type with
-    | (p,[eq]) when is_symb sign_P p ->
+    | (p, [eq]) when is_symb symb_P p ->
         begin
           match get_args eq with
-          | (e,[a;l;r]) when is_symb sign_eq e -> (a, l, r)
-          | _                                  ->
-              fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+          | (e, [a;l;r]) when is_symb symb_eq e -> (a, l, r)
+          | _                                   ->
+              fatal_no_pos "Expected an equality type, found [%a]." pp t
         end
-    | _                              ->
-        fatal_no_pos "Rewrite expected equality type (found [%a])." pp t
+    | _                               ->
+        fatal_no_pos "Expected an equality type, found [%a]." pp t
   in
 
-  let t_args = add_args t (List.map mkfree vars) in
-  let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
-  let bound = Bindlib.unbox (Bindlib.bind_mvar (Array.of_list vars) triple) in
+  (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
+  let t_args = Array.fold_left (fun t x -> Appl(t, Vari(x))) t vars in
+
+  (* Bind the variables in this new witness. *)
+  let bound =
+    let triple = Bindlib.box_triple (lift t_args) (lift l) (lift r)  in
+    Bindlib.unbox (Bindlib.bind_mvar vars triple)
+  in
 
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
-    match get_args (snd (Goal.get_type g)) with
-    | (p, [t]) when is_symb sign_P p -> t
+    match get_args g_type with
+    | (p, [t]) when is_symb symb_P p -> t
     | _                              ->
-        fatal_no_pos "Rewrite expects a goal of the form “P t” (found [%a])."
-          pp (snd (Goal.get_type g))
+        fatal_no_pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
   (* Distinguish between possible paterns. *)
   let (pred_bind, new_term, t, l, r) =
     match p with
     | None                         ->
         begin
-        match find_subst g_term  ((Array.of_list vars),l) with
+        match find_subst g_term (vars,l) with
         | None       ->
           fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp l
         | Some sigma ->
@@ -217,7 +220,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         | Some p ->
         (* Here [p] no longer has any TRefs and we try to match p with l, to
          * get the substitution [sigma]. *)
-            match match_pattern (Array.of_list vars,l) p with
+            match match_pattern (vars,l) p with
             | None       ->
                 fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
             | Some sigma ->
@@ -256,7 +259,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             let pat_l = Bindlib.subst pat id_val in
 
             (* This must match with the LHS of the equality proof we use. *)
-            match match_pattern (Array.of_list vars,l) id_val with
+            match match_pattern (vars,l) id_val with
             | None       ->
                 fatal_no_pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
@@ -327,7 +330,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 (* Now we must match s, which no longer contains any TRef's
                    with the LHS of the lemma,*)
                 begin
-                  match match_pattern (Array.of_list vars,l) s with
+                  match match_pattern (vars,l) s with
                   | None       ->
                       fatal_no_pos "The term [%a] does not match the LHS [%a]"
                           pp s pp l
@@ -398,7 +401,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
                 (* This part of the term-building is similar to the previous
                    case, as we are essentially rebuilding a term, with some
                    subterms that are replaced by new ones. *)
-                match match_pattern (Array.of_list vars, l) id_val with
+                match match_pattern (vars, l) id_val with
                 | None       ->
                     fatal_no_pos
                     "The value of X, [%a], does not match the LHS, [%a]"
@@ -437,7 +440,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         | Some p ->
         (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
          * with [l], to get the substitution [sigma]. *)
-            match find_subst p ((Array.of_list vars),l) with
+            match find_subst p (vars,l) with
             | None       ->
                 fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
                     pp p pp l
@@ -474,7 +477,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             let id_val = id_val.(0) in
             let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
             let pat_l = Bindlib.subst pat id_val in
-            match find_subst id_val ((Array.of_list vars),l) with
+            match find_subst id_val (vars,l) with
             | None       ->
                 fatal_no_pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
@@ -511,21 +514,21 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         end
   in
 
-  let pred = Abst(Appl(Symb(sign_T), a), pred_bind) in
+  let pred = Abst(Appl(Symb(symb_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(sign_P), new_term) in
+  let goal_type = Appl(Symb(symb_P), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let term = add_args (Symb(sign_eqind)) [a; l; r; t; pred; goal_term] in
+  let term = add_args (Symb(symb_eqind)) [a; l; r; t; pred; goal_term] in
 
-  if not (Solve.check g_ctxt term (snd (Goal.get_type g))) then
+  if not (Solve.check g_ctxt term g_type) then
     begin
       match Solve.infer g_ctxt term with
       | Some(a) ->
           fatal_no_pos "The term produced by rewrite has type [%a], not [%a]."
-            pp (Eval.snf a) pp (snd (Goal.get_type g))
+            pp (Eval.snf a) pp g_type
       | None    ->
           fatal_no_pos "The term [%a] produced by rewrite is not typable."
             pp term
@@ -533,7 +536,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
   (* Debugging data to the log. *)
   log_rewr "Rewriting with:";
-  log_rewr "  goal           = [%a]" pp (snd (Goal.get_type g));
+  log_rewr "  goal           = [%a]" pp g_type;
   log_rewr "  equality proof = [%a]" pp t;
   log_rewr "  equality type  = [%a]" pp t_type;
   log_rewr "  equality LHS   = [%a]" pp l;
