@@ -38,24 +38,24 @@ let pp_term : term pp = fun oc t ->
     match (unfold t, p) with
     (* Atoms are printed inconditonally. *)
     | (Vari(x)    , _    ) -> pp_tvar oc x
-    | (Type       , _    ) -> out oc "Type"
-    | (Kind       , _    ) -> out oc "Kind"
+    | (Type       , _    ) -> out oc "TYPE"
+    | (Kind       , _    ) -> out oc "KIND"
     | (Symb(s)    , _    ) -> pp_symbol oc s
     | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
-    | (Patt(_,n,e), _    ) -> out oc "?%s%a" n pp_env e
-    | (TEnv(t,e)  , _    ) -> out oc "<%a>%a" pp_term_env t pp_env e
+    | (Patt(_,n,e), _    ) -> out oc "&%s%a" n pp_env e
+    | (TEnv(t,e)  , _    ) -> out oc "&%a%a" pp_term_env t pp_env e
     (* Applications are printed when priority is above [`Appl]. *)
     | (Appl(t,u)  , `Appl)
     | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
     (* Abstractions and products are only printed at priority [`Func]. *)
     | (Abst(a,t)  , `Func) ->
         let (x,t) = Bindlib.unbind t in
-        out oc "%a:%a => %a" pp_tvar x pp_func a pp_func t
+        out oc "λ(%a:%a), %a" pp_tvar x pp_func a pp_func t
     | (Prod(a,b)  , `Func) ->
         let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "!%a:%a, %a" pp_tvar x pp_appl a pp_func c
-        else out oc "%a -> %a" pp_appl a pp_func c
+          out oc "∀(%a:%a), %a" pp_tvar x pp_appl a pp_func c
+        else out oc "%a ⇒ %a" pp_appl a pp_func c
     (* Anything else needs parentheses. *)
     | (_          , _    ) -> out oc "(%a)" pp_func t
   in
