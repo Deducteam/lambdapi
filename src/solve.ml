@@ -27,9 +27,9 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [instantiate m ts v] check whether [m] can be instantiated to
-    solve the unification problem [m[ts] = v]. Actually make the
-    instantiation if it is possible. *)
+(** [instantiate m ts v] check whether [m] can be instantiated for solving the
+    unification problem “m[ts] = v”. The returne boolean tells whether [m] was
+    instantiated or not. *)
 let instantiate : meta -> term array -> term -> bool = fun m ar v ->
   (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
@@ -38,16 +38,14 @@ let instantiate : meta -> term array -> term -> bool = fun m ar v ->
 (** [solve p] tries to solve the unification problems of [p]. *)
 let rec solve : problems -> conv_constrs = fun p ->
   match p.to_solve with
-  | []       ->
-     if p.unsolved = [] then []
-     else if p.recompute then
-       solve {no_problems with to_solve = p.unsolved}
-     else p.unsolved
-  | (t,u)::l -> solve_aux t u {p with to_solve = l}
+  | [] when p.unsolved = [] -> []
+  | [] when p.recompute     -> solve {no_problems with to_solve = p.unsolved}
+  | []                      -> p.unsolved
+  | (t,u)::to_solve         -> solve_aux t u {p with to_solve}
 
-(** [solve_aux t1 t2 p] tries to solve the unificaton problem
-    [(t1,t2)]. Then, it continues with the remaining problems. *)
-and solve_aux t1 t2 p : conv_constrs =
+(** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
+    the constraint [(t1,t2)], starting with the latter. *)
+and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
@@ -56,63 +54,54 @@ and solve_aux t1 t2 p : conv_constrs =
       let t2 = Eval.to_term h2 ts2 in
       log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
     end;
-  match h1, h2 with
-  | Type, Type
-  | Kind, Kind -> solve p
-  (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
+  let eq_modulo_arg p1 p2 = Pervasives.(Eval.eq_modulo (snd !p1) (snd !p2)) in
+  let add_args =
+    List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
+  in
+  match (h1, h2) with
+  (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
+  | (Type       , Type       )
+  | (Kind       , Kind       ) -> solve p
+  | (Prod(a1,b1), Prod(a2,b2))
+  | (Abst(a1,b1), Abst(a2,b2)) ->
+      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
+      solve {p with to_solve = (a1,a2) :: (b1,b2) :: p.to_solve}
 
-  | Vari x, Vari y when Bindlib.eq_vars x y && List.same_length ts1 ts2 ->
-      let to_solve =
-        let fn l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
-        List.fold_left2 fn p.to_solve ts1 ts2
-      in
-      solve {p with to_solve}
 
-  | Prod(a,f), Prod(b,g)
-  (* We have [ts1=ts2=[]] since [t1] and [t2] are [Kind] or typable. *)
-  | Abst(a,f), Abst(b,g) ->
-  (* We have [ts1=ts2=[]] since [t1] and [t2] are in whnf. *)
-     let (_,u,v) = Bindlib.unbind2 f g in
-     let to_solve = (a,b) :: (u,v) :: p.to_solve in
-     solve {p with to_solve}
+  | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2
+                                 && List.same_length ts1 ts2 ->
+      solve {p with to_solve = add_args p.to_solve ts1 ts2}
 
-  | Symb(s1), Symb(s2) ->
+  | (Symb(s1)   , Symb(s2)   ) ->
      if s1 == s2 && Sign.is_inj s1 && List.same_length ts1 ts2 then
-       let to_solve =
-         let fn l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
-         List.fold_left2 fn p.to_solve ts1 ts2
-       in
-       solve {p with to_solve}
+       solve {p with to_solve = add_args p.to_solve ts1 ts2}
      else
        let t1 = Eval.to_term h1 ts1
        and t2 = Eval.to_term h2 ts2 in
        if Eval.eq_modulo t1 t2 then solve p
        else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | Meta(m1,a1), Meta(m2,a2)
-       when m1 == m2 && Array.for_all2 eq_vari a1 a2
-            && List.for_all2
-                 (fun x y -> Pervasives.(Eval.eq_modulo (snd !x) (snd !y)))
-                 ts1 ts2 ->
-     solve p
+  | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 && Array.for_all2 eq_vari a1 a2
+                                 && List.for_all2 eq_modulo_arg ts1 ts2 ->
+      solve p
 
-  | Meta(m,ts), _ when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts), _         ) when ts1 = [] && instantiate m ts t2 ->
       solve {p with recompute = true}
-  | _, Meta(m,ts) when ts2 = [] && instantiate m ts t1 ->
+  | (_         , Meta(m,ts)) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
-  | Meta(_,_), _
-  | _, Meta(_,_) ->
-     let t1 = Eval.to_term h1 ts1
-     and t2 = Eval.to_term h2 ts2 in
-     solve {p with unsolved = (t1,t2) :: p.unsolved}
+  | (Meta(_,_) , _         )
+  | (_         , Meta(_,_) ) ->
+      let t1 = Eval.to_term h1 ts1 in
+      let t2 = Eval.to_term h2 ts2 in
+      solve {p with unsolved = (t1,t2) :: p.unsolved}
 
-  | Symb(_), _
-  | _, Symb(_) ->
-     let t1 = Eval.to_term h1 ts1
-     and t2 = Eval.to_term h2 ts2 in
-     if Eval.eq_modulo t1 t2 then solve p
-     else solve {p with unsolved = (t1,t2) :: p.unsolved}
+  | (Symb(_)   , _         )
+  | (_         , Symb(_)   ) ->
+      let t1 = Eval.to_term h1 ts1 in
+      let t2 = Eval.to_term h2 ts2 in
+      if Eval.eq_modulo t1 t2 then solve p
+      else solve {p with unsolved = (t1,t2) :: p.unsolved}
 
   | (_        , _        ) ->
      fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
