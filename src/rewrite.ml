@@ -80,22 +80,22 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 (** [make_pat t p] is given a term [t], and a pattern [p] containing reference
     cells (that are not instantiated) and wildcards.  It then tries to find  a
     subterm of [t] that matches [p], using (instantiating) syntactic equality.
-    In case of success, the matching term is returned (it is actually equal to
-    [p]). The value [None] is returned in case of failure. *)
-let make_pat : term -> term -> term option = fun t p ->
+    In case of success, the function returns [true],  and the matching term is
+    [p] itself (through instantiation). *)
+let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
-  let rec make_pat_aux : term -> term option = fun t ->
-    if Terms.eq t p then Some p else
+  let rec make_pat_aux : term -> bool = fun t ->
+    if Terms.eq t p then true else
       begin
         Time.restore time;
         match unfold t with
         | Appl(t,u) ->
             begin
               match make_pat_aux t with
-              | None -> Time.restore time; make_pat_aux u
-              | res  -> res
+              | false -> Time.restore time; make_pat_aux u
+              | true  -> true
             end
-        | _         -> None
+        | _         -> false
       end
   in make_pat_aux t
 
@@ -196,37 +196,38 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   let (pred_bind, new_term, t, l, r) =
     match p with
     | None                         -> (* Simple rewrite, no pattern. *)
+        (* Build a substitution from the first instance of [l] in the goal. *)
         let sigma =
           match find_subst g_term (vars, l) with
           | Some(sigma) -> sigma
           | None        -> fatal_no_pos "No subterm of [%a] matches [%a]."
                              pp g_term pp l
         in
+        (* Build the required data from that substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
         let pred_bind = bind_match l g_term in
         (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
-    (* Basic patterns. *)
-    | Some(RW_Term(p)            ) ->
-        begin
-        (* Substitute every wildcard in [p] with a new TRef. *)
-        let p_refs = add_refs p in
+    | Some(RW_Term(p)            ) -> (* Basic patterns. *)
+        (* Find a subterm of the goal [match_p] that matchec [p]. *)
+        let match_p =
+          let p_refs = add_refs p in
+          if not (make_pat g_term p_refs) then
+            fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+          p_refs (* [TRef] cells have been instantiated here. *)
+        in
+        (* Build a substitution by matching [match_p] with the LHS [l]. *)
+        let sigma =
+          match match_pattern (vars,l) match_p with
+          | Some(sigma) -> sigma
+          | None        -> fatal_no_pos "No subterm of [%a] matches [%a]."
+                             pp match_p pp l
+        in
+        (* Build the data from the substitution. *)
+        let (t, l, r) = Bindlib.msubst bound sigma in
+        let pred_bind = bind_match l g_term in
+        (pred_bind, Bindlib.subst pred_bind r, t, l, r)
 
-        (* Try to match this new p with some subterm of the goal. *)
-        match make_pat g_term p_refs with
-        | None   ->
-          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
-        | Some p ->
-        (* Here [p] no longer has any TRefs and we try to match p with l, to
-         * get the substitution [sigma]. *)
-            match match_pattern (vars,l) p with
-            | None       ->
-                fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
-            | Some sigma ->
-                let (t,l,r) = Bindlib.msubst bound sigma in
-                let pred_bind = bind_match l g_term in
-                (pred_bind, Bindlib.subst pred_bind r, t, l, r)
-        end
     | Some(RW_IdInTerm(p)      ) ->
         (* The code here works as follows: *)
         (* 1 - Try to match [p] with some subterm of the goal. *)
@@ -316,56 +317,54 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
             (* We then try to match the wildcards in [s] with subterms of
                [id_val]. *)
             let s_refs = add_refs s in
-            match make_pat id_val s_refs with
-            | None   ->
-                fatal_no_pos
-                "The value of [%s], [%a], in [%a] does not match [%a]."
-                  (Bindlib.name_of id) pp id_val pp p pp s
-            | Some s ->
-                (* Now we must match s, which no longer contains any TRef's
-                   with the LHS of the lemma,*)
-                begin
-                  match match_pattern (vars,l) s with
-                  | None       ->
-                      fatal_no_pos "The term [%a] does not match the LHS [%a]"
-                          pp s pp l
-                  | Some sigma ->
-                      begin
-                      let (t,l,r) = Bindlib.msubst bound sigma in
+            if not (make_pat id_val s_refs) then
+              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+                (Bindlib.name_of id) pp id_val pp p pp s;
+            (* Now we must match s, which no longer contains any TRef's
+               with the LHS of the lemma,*)
+            let s = s_refs in
+            begin
+              match match_pattern (vars,l) s with
+              | None       ->
+                  fatal_no_pos "The term [%a] does not match the LHS [%a]"
+                      pp s pp l
+              | Some sigma ->
+                  begin
+                  let (t,l,r) = Bindlib.msubst bound sigma in
 
-                      (* First we work in [id_val], that is, we substitute all
-                         the occurrences of [l] in [id_val] with [r]. *)
-                      let id_bind = bind_match l id_val in
+                  (* First we work in [id_val], that is, we substitute all
+                     the occurrences of [l] in [id_val] with [r]. *)
+                  let id_bind = bind_match l id_val in
 
-                      (* [new_id] is the value of [id_val] with [l] replaced
-                         by [r] and [id_x] is the value of [id_val] with the
-                         free variable [x]. *)
-                      let new_id = Bindlib.subst id_bind r in
-                      let (x, id_x) = Bindlib.unbind id_bind in
+                  (* [new_id] is the value of [id_val] with [l] replaced
+                     by [r] and [id_x] is the value of [id_val] with the
+                     free variable [x]. *)
+                  let new_id = Bindlib.subst id_bind r in
+                  let (x, id_x) = Bindlib.unbind id_bind in
 
-                      (* Then we replace in pat_l all occurrences of [id]
-                         with [new_id]. *)
-                      let pat_r = Bindlib.subst pat new_id in
+                  (* Then we replace in pat_l all occurrences of [id]
+                     with [new_id]. *)
+                  let pat_r = Bindlib.subst pat new_id in
 
-                      (* To get the new goal we replace all occurrences of
-                        [pat_l] in [g_term] with [pat_r]. *)
-                      let pred_bind_l = bind_match pat_l g_term in
+                  (* To get the new goal we replace all occurrences of
+                    [pat_l] in [g_term] with [pat_r]. *)
+                  let pred_bind_l = bind_match pat_l g_term in
 
-                      (* [new_term] is the type of the new goal meta. *)
-                      let new_term = Bindlib.subst pred_bind_l pat_r in
+                  (* [new_term] is the type of the new goal meta. *)
+                  let new_term = Bindlib.subst pred_bind_l pat_r in
 
-                      (* Finally we need to build the predicate. First we build
-                         the term l_x, in a few steps. We substitute all the
-                         rewrites in new_id with x and we repeat some steps. *)
-                      let l_x = Bindlib.subst pat id_x in
+                  (* Finally we need to build the predicate. First we build
+                     the term l_x, in a few steps. We substitute all the
+                     rewrites in new_id with x and we repeat some steps. *)
+                  let l_x = Bindlib.subst pat id_x in
 
-                      (* The last step to build the predicate is to substitute
-                         [l_x] everywhere we find [pat_l] and bind that x. *)
-                      let pred = Bindlib.subst pred_bind_l l_x in
-                      let pred_bind = Bindlib.bind_var x (lift pred) in
-                      (Bindlib.unbox pred_bind, new_term, t, l, r)
-                      end
-                end
+                  (* The last step to build the predicate is to substitute
+                     [l_x] everywhere we find [pat_l] and bind that x. *)
+                  let pred = Bindlib.subst pred_bind_l l_x in
+                  let pred_bind = Bindlib.bind_var x (lift pred) in
+                  (Bindlib.unbox pred_bind, new_term, t, l, r)
+                  end
+            end
         end
     | Some(RW_TermAsIdInTerm(s,p)) ->
         (* In this pattern we have essentially a let clause. We first match the
@@ -376,66 +375,33 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let s = add_refs s in
         let p_s = Bindlib.subst p s in
         (* Try to match p[s/id] with a subterm of the goal. *)
-        match make_pat g_term (add_refs p_s) with
-        | None   ->
+        let p_refs = add_refs p_s in
+        if not (make_pat g_term p_refs) then
             fatal_no_pos "No subterm of [%a] matches the pattern [%a]"
-                pp g_term pp p_s
-        | Some p ->
-            let pat_refs = add_refs pat in
-            (* Here we have already asserted tat an instance of p[s/id] exists
-               so we know that this will match something. The step is repeated
-               in order to get the value of [id]. *)
-            match match_pattern ([|id|], pat_refs) p with
-            | None   -> assert false
-            | Some sub ->
-                let id_val = sub.(0) in
-                (* This part of the term-building is similar to the previous
-                   case, as we are essentially rebuilding a term, with some
-                   subterms that are replaced by new ones. *)
-                match match_pattern (vars, l) id_val with
-                | None       ->
-                    fatal_no_pos
-                    "The value of X, [%a], does not match the LHS, [%a]"
-                    pp id_val pp l
-                | Some sigma ->
-                    let (t,l,r) = Bindlib.msubst bound sigma in
-
-                    (* Now to do some term building. *)
-                    let p_x = bind_match l p in
-
-                    let p_r = Bindlib.subst p_x r in
-
-                    let pred_bind = bind_match p g_term in
-
-                    let new_term = Bindlib.subst pred_bind p_r in
-
-                    let (x, p_x) = Bindlib.unbind p_x in
-                    let pred_box = lift (Bindlib.subst pred_bind p_x) in
-                    let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
-
-                    (pred_bind, new_term, t, l, r)
-        end
-    (* Nested patterns. *)
-    | Some(RW_InTerm(p)          ) ->
-        begin
-        (* Substitute every wildcard in [p] with a new TRef. *)
-        let p_refs = add_refs p in
-
-        (* Try to match this new p with some subterm of the goal. *)
-        match make_pat g_term p_refs with
-        | None   ->
-            fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p
-        | Some p ->
-        (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
-         * with [l], to get the substitution [sigma]. *)
-            match find_subst p (vars,l) with
+                pp g_term pp p_s;
+        let p = p_refs in
+        let pat_refs = add_refs pat in
+        (* Here we have already asserted tat an instance of p[s/id] exists
+           so we know that this will match something. The step is repeated
+           in order to get the value of [id]. *)
+        match match_pattern ([|id|], pat_refs) p with
+        | None   -> assert false
+        | Some sub ->
+            let id_val = sub.(0) in
+            (* This part of the term-building is similar to the previous
+               case, as we are essentially rebuilding a term, with some
+               subterms that are replaced by new ones. *)
+            match match_pattern (vars, l) id_val with
             | None       ->
-                fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
-                    pp p pp l
+                fatal_no_pos
+                "The value of X, [%a], does not match the LHS, [%a]"
+                pp id_val pp l
             | Some sigma ->
                 let (t,l,r) = Bindlib.msubst bound sigma in
 
+                (* Now to do some term building. *)
                 let p_x = bind_match l p in
+
                 let p_r = Bindlib.subst p_x r in
 
                 let pred_bind = bind_match p g_term in
@@ -444,9 +410,41 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
                 let (x, p_x) = Bindlib.unbind p_x in
                 let pred_box = lift (Bindlib.subst pred_bind p_x) in
-                let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+                let pred_bind = Bindlib.(unbox (bind_var x pred_box)) in
 
                 (pred_bind, new_term, t, l, r)
+        end
+    (* Nested patterns. *)
+    | Some(RW_InTerm(p)          ) ->
+        begin
+        (* Substitute every wildcard in [p] with a new TRef. *)
+        let p_refs = add_refs p in
+
+        (* Try to match this new p with some subterm of the goal. *)
+        if not (make_pat g_term p_refs) then
+          fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+        (* Here [p] no longer has any TRefs and we try to find a subterm of [p]
+         * with [l], to get the substitution [sigma]. *)
+        let p = p_refs in
+        match find_subst p (vars,l) with
+        | None       ->
+            fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
+                pp p pp l
+        | Some sigma ->
+            let (t,l,r) = Bindlib.msubst bound sigma in
+
+            let p_x = bind_match l p in
+            let p_r = Bindlib.subst p_x r in
+
+            let pred_bind = bind_match p g_term in
+
+            let new_term = Bindlib.subst pred_bind p_r in
+
+            let (x, p_x) = Bindlib.unbind p_x in
+            let pred_box = lift (Bindlib.subst pred_bind p_x) in
+            let pred_bind = Bindlib.unbox (Bindlib.bind_var x pred_box) in
+
+            (pred_bind, new_term, t, l, r)
         end
     | Some(RW_InIdInTerm(p)      ) ->
         (* This is very similar to the RW_IdInTerm case, with a few minor
