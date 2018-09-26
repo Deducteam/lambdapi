@@ -48,7 +48,7 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
         try Ctxt.find x ctx with Not_found -> assert false
         (* Every free variable must be in the context. *)
       end
-  | Symb(s)     ->
+  | Symb(s,_)   ->
       (* -------------------------------
           ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
       Timed.(!(s.sym_type))

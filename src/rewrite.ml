@@ -110,7 +110,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Vari(y)     -> _Vari y
     | Type        -> _Type
     | Kind        -> _Kind
-    | Symb(s)     -> _Symb s
+    | Symb(s,h)   -> _Symb s h
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
     (* For now, we fail on products, abstractions and metavariables. *)
     | Prod(_)     -> fatal_no_pos "Cannot rewrite under products."
@@ -478,14 +478,16 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(Symb(symb_T), a), pred_bind) in
+  let pred = Abst(Appl(Symb(symb_T, Qualified), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(symb_P), new_term) in
+  let goal_type = Appl(Symb(symb_P, Qualified), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let term = add_args (Symb(symb_eqind)) [a; l; r; t; pred; goal_term] in
+  let term =
+    add_args (Symb(symb_eqind, Qualified)) [a; l; r; t; pred; goal_term]
+  in
 
   if not (Solve.check g_ctxt term g_type) then
     begin

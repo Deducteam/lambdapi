@@ -47,11 +47,11 @@ let handle_symdecl : sym_mode -> strloc -> term -> unit = fun mode x a ->
 (** [handle_rule r] checks that the rule [r] preserves typing, while
     adding it to the corresponding symbol. The program fails
     gracefully when an error occurs. *)
-let handle_rule : sym * rule Pos.loc -> unit = fun (s,r) ->
+let handle_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   if s.sym_mode = Const || !(s.sym_def) <> None then
-    fatal_no_pos "Symbol [%a] cannot be (re)defined." pp_symbol s;
-  Sr.check_rule (s, r);
-  Sign.add_rule (current_sign ()) s r.elt
+    fatal_no_pos "Symbol [%s] cannot be (re)defined." s.sym_name;
+  Sr.check_rule (s,h,r);
+  Sign.add_rule (current_sign ()) s h r.elt
 
 (** [handle_symdef opaque x ao t] checks that [t] is of type [a] if
     [ao = Some a]. Then, it does the same as [handle_symdecl (not

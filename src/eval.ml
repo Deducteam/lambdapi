@@ -56,7 +56,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
       Pervasives.incr steps;
       whnf_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
   (* Try to rewrite. *)
-  | (Symb(s)  , stk    ) ->
+  | (Symb(s,_), stk    ) ->
       begin
         match Timed.(!(s.sym_def)) with
         | Some(t) -> Pervasives.incr steps; whnf_stk t stk
@@ -81,11 +81,7 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args ps ts =
       match (ps, ts) with
-      | ([]   , _    ) ->
-         begin
-           if !log_enabled then log_eval "%a" pp_rule (s,r);
-           Some(Bindlib.msubst r.rhs env, ts)
-         end
+      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
       | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
@@ -132,7 +128,7 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
         matching ar t1 (Pervasives.ref (fst Pervasives.(!t), t2))
         && matching ar u1 (Pervasives.ref (false, u2))
     | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Symb(s1)         , Symb(s2)     ) -> s1 == s2
+    | (Symb(s1,_)       , Symb(s2,_)   ) -> s1 == s2
     | (_                , _            ) -> false
   in
   if !log_enabled then
@@ -157,7 +153,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (_          , Kind       ) -> assert false
     | (Type       , Type       ) -> eq_modulo l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq_modulo l
-    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq_modulo l
+    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq_modulo l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> eq_modulo ((a1,a2)::(unbind2 b1 b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)

@@ -53,19 +53,6 @@ let current_sign () =
   in
   PathMap.find mp !loaded
 
-(** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
-    name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : sym pp = fun oc s ->
-  let (path, name) = (s.sym_path, s.sym_name) in
-  let sign = current_sign() in
-  let full =
-    if path = sign.path then name
-    else String.concat "." (path @ [name])
-  in
-  Format.pp_print_string oc full
-
-let _ = Pervasives.(Print.pp_symbol_ref := pp_symbol)
-
 (** [link sign] establishes physical links to the external symbols. *)
 let link : t -> unit = fun sign ->
   let rec link_term t =
@@ -77,7 +64,7 @@ let link : t -> unit = fun sign ->
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
-    | Symb(s)     -> Symb(link_symb s)
+    | Symb(s,h)   -> Symb(link_symb s, h)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
     | Appl(t,u)   -> Appl(link_term t, link_term u)
@@ -137,7 +124,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s)      -> if s.sym_path <> sign.path then unlink_sym s
+    | Symb(s,_)    -> if s.sym_path <> sign.path then unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
@@ -205,9 +192,9 @@ let read : string -> t = fun fname ->
 (** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
     the rule does not correspond to a symbol of the current signature,  it  is
     also stored in the dependencies. *)
-let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
+let add_rule : t -> sym -> pp_hint -> rule -> unit = fun sign sym hint r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  out 3 "(rule) %a\n" Print.pp_rule (sym, r);
+  out 3 "(rule) %a\n" Print.pp_rule (sym, hint, r); (* FIXME *)
   if sym.sym_path <> sign.path then
     let m =
       try PathMap.find sym.sym_path !(sign.deps)

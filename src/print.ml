@@ -3,13 +3,13 @@
 open Extra
 open Terms
 
-(** [pp_symbol_ref] is used to avoid module circularity (with [Sign]). *)
-let pp_symbol_ref = Pervasives.ref (fun _ _ -> assert false)
-
-(** [pp_symbol oc s] prints the name of the symbol [s] to the channel [oc].The
-    name is qualified when the symbol is not defined in the current module. *)
-let pp_symbol : sym pp = fun oc s ->
-  Pervasives.(!pp_symbol_ref oc s)
+(** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
+    the printing hint [h] to decide qualification. *)
+let pp_symbol : pp_hint -> sym pp = fun h oc s ->
+  match h with
+  | Nothing   -> Format.pp_print_string oc s.sym_name
+  | Qualified -> Format.fprintf oc "%a.%s" Files.pp_path s.sym_path s.sym_name
+  | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
@@ -40,7 +40,7 @@ let pp_term : term pp = fun oc t ->
     | (Vari(x)    , _    ) -> pp_tvar oc x
     | (Type       , _    ) -> out oc "TYPE"
     | (Kind       , _    ) -> out oc "KIND"
-    | (Symb(s)    , _    ) -> pp_symbol oc s
+    | (Symb(s,h)  , _    ) -> pp_symbol h oc s
     | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
     | (Patt(_,n,e), _    ) -> out oc "&%s%a" n pp_env e
     | (TEnv(t,e)  , _    ) -> out oc "&%a%a" pp_term_env t pp_env e
@@ -64,8 +64,9 @@ let pp_term : term pp = fun oc t ->
 (** [pp] is a short synonym of [pp_term]. *)
 let pp : term pp = pp_term
 
-(** [pp_rule oc (s,r)] prints the rule [r] of symbol [s] to channel [oc]. *)
-let pp_rule : (sym * rule) pp = fun oc (sym,rule) ->
-  let lhs = add_args (Symb(sym)) rule.lhs in
-  let (_, rhs) = Bindlib.unmbind rule.rhs in
+(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hing
+    [h]) to the output channel [oc]. *)
+let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
+  let lhs = add_args (Symb(s,h)) r.lhs in
+  let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs

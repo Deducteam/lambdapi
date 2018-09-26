@@ -146,14 +146,14 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
     | P_rules(rs)                ->
         (* Scoping and checking each rule in turn. *)
         let handle_rule r =
-          let (s,_) as r = scope_rule ss r in
+          let (s,_,_) as r = scope_rule ss r in
           if !(s.sym_def) <> None then
-            fatal_no_pos "Symbol [%a] cannot be (re)defined." pp_symbol s;
+            fatal_no_pos "Symbol [%s] cannot be (re)defined." s.sym_name;
           Sr.check_rule r; r
         in
         let rs = List.map handle_rule rs in
         (* Adding the rules all at once. *)
-        List.iter (fun (s,r) -> Sign.add_rule ss.signature s r.elt) rs; ss
+        List.iter (fun (s,h,r) -> Sign.add_rule ss.signature s h r.elt) rs; ss
     | P_definition(x, xs, ao, t) ->
         (* Desugaring of arguments and scoping of [t]. *)
         let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in

@@ -20,7 +20,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     (* No module path, search the local environment first. *)
     try _Vari (Env.find s env) with Not_found ->
     (* Then, search in the global environment. *)
-    try _Symb (Sign.find (Sign.current_sign()) s) with Not_found ->
+    try _Symb (Sign.find (Sign.current_sign()) s) Nothing with Not_found ->
     fatal pos "Unbound variable or symbol [%s]." s
   else
     let sign = Sign.current_sign() in
@@ -33,7 +33,7 @@ let find_ident : env -> qident -> tbox = fun env qid ->
         try PathMap.find mp Timed.(!Sign.loaded)
         with _ -> assert false (* cannot fail. *)
       in
-      try _Symb (Sign.find sign s) with Not_found ->
+      try _Symb (Sign.find sign s) Qualified with Not_found ->
       fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
 
 (** [scope_term mmap env t] turns a parser-level term [t] into an actual term.
@@ -97,7 +97,7 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
 type pattern_map = (string * int) list
 
 (** Representation of a LHS (pattern) as a head symbol and its arguments. *)
-type full_lhs = sym * term list
+type full_lhs = sym * pp_hint * term list
 
 (** [scope_lhs map t] computes a rule LHS from the parser-level term [t].  The
     association list [map] gives the index that is reserved in the environment
@@ -139,8 +139,8 @@ let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   in
   let (h, args) = get_args (Bindlib.unbox (scope [] t)) in
   match h with
-  | Symb({sym_mode = Const}) -> fatal t.pos "LHS with a constant head symbol."
-  | Symb(s)                  -> (s, args)
+  | Symb({sym_mode=Const},_) -> fatal t.pos "LHS with a constant head symbol."
+  | Symb(s,h)                -> (s, h, args)
   | _                        -> fatal t.pos "LHS with no head symbol."
 
 (* NOTE wildcards are given a unique name so that we can produce more readable
@@ -216,7 +216,7 @@ let meta_vars : p_term -> (string * int) list * string list = fun t ->
 
 (** [scope_rule r] turns the parser-level rewriting rule [r] into a  rewriting
     rule (and the associated head symbol). *)
-let scope_rule : p_rule Pos.loc -> sym * rule Pos.loc = fun r ->
+let scope_rule : p_rule Pos.loc -> sym * pp_hint * rule Pos.loc = fun r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of the meta-variables on both sides. *)
   let (mvs_lhs, nl) = meta_vars p_lhs in
@@ -238,11 +238,11 @@ let scope_rule : p_rule Pos.loc -> sym * rule Pos.loc = fun r ->
   (* NOTE [mvs] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [mvs] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
-  let (sym, lhs) = scope_lhs mvs p_lhs in
+  let (sym, hint, lhs) = scope_lhs mvs p_lhs in
   (* We scope the RHS and bind the meta-variables. *)
   let rhs = scope_rhs mvs p_rhs in
   (* We put everything together to build the rule. *)
-  (sym, Pos.make r.pos  {lhs; rhs; arity = List.length lhs})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs})
 
 (** [translate_old_rule r] transforms the legacy representation of a rule into
     the new representation. This function will be removed soon. *)

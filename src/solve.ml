@@ -84,7 +84,7 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
        when Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 ->
      decompose ()
 
-  | (Symb(s1)   , Symb(s2)   ) ->
+  | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        if Sign.is_inj s1 && List.same_length ts1 ts2 then decompose ()
        else add_to_unsolved ()
@@ -96,14 +96,14 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
-  | (Meta(_,_) , _         )
-  | (_         , Meta(_,_) ) -> add_to_unsolved ()
+  | (Meta(_,_)  , _          )
+  | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s)   , _         )
-  | (_         , Symb(s)   ) ->
-    if !(s.sym_rules) = [] then error () else add_to_unsolved ()
+  | (Symb(s,_)  , _          )
+  | (_          , Symb(s,_)  ) ->
+      if !(s.sym_rules) = [] then error () else add_to_unsolved ()
 
-  | (_        , _        ) -> error ()
+  | (_          , _          ) -> error ()
 
 (** [solve flag problems] attempts to solve [problems],  after having sets the
     value of [can_instantiate] to [flag].  If there is no solution,  the value

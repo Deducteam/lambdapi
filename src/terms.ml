@@ -19,7 +19,7 @@ type term =
   (** "Type" constant. *)
   | Kind
   (** "Kind" constant. *)
-  | Symb of sym
+  | Symb of sym * pp_hint
   (** Symbol (static or definable). *)
   | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
@@ -37,6 +37,12 @@ type term =
   (** Wildcard term (corresponding to "_" in patterns). *)
   | TRef of term option ref
   (** Reference cell (used for surface matching). *)
+
+(** Printing hint for symbols. *)
+ and pp_hint =
+  | Nothing             (** Just print the name of the symbol. *)
+  | Qualified           (** Fully qualify the symbol name.     *)
+  | Alias     of string (** Use the given alias as qualifier.  *)
 
 (** Representation of an higher-order term. *)
  and term_env =
@@ -224,7 +230,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     ; sym_rules = ref []
     ; sym_mode  = Const }
   in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s)) e
+  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
 (* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
    as otherwise we would need to polute the typing context with variables that
@@ -274,8 +280,8 @@ let _Kind : tbox = Bindlib.box Kind
 
 (** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
     symbols are closed object they do not require lifting. *)
-let _Symb : sym -> tbox = fun s ->
-  Bindlib.box (Symb(s))
+let _Symb : sym -> pp_hint -> tbox = fun s h ->
+  Bindlib.box (Symb(s,h))
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
     terms [t] and [u]. *)
@@ -332,7 +338,7 @@ let rec lift : term -> tbox = fun t ->
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
-  | Symb(s)     -> _Symb s
+  | Symb(s,h)   -> _Symb s h
   | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
   | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
@@ -392,7 +398,7 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
-    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
+    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
@@ -420,8 +426,8 @@ let eq_vari : term -> term -> bool = fun t u ->
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
-  | Symb(r) -> r == s
-  | _       -> false
+  | Symb(r,_) -> r == s
+  | _         -> false
 
 (** [iter_meta f t] applies the function [f] to every metavariable in the term
     [t]. As for {!val:eq},  the behaviour of this function is unspecified when

@@ -21,15 +21,15 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     match cs with
     | []        -> List.split acc
     | (a,b)::cs ->
-        let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
-        let na = List.length argsa and nb = List.length argsb in
-        match (unfold ha, unfold hb) with
-        | (Symb(sa), Symb(sb)) when sa == sb && na = nb && Sign.is_inj sa ->
-            let fn l t1 t2 = (t1,t2) :: l in
-            build_sub acc (List.fold_left2 fn cs argsa argsb)
-        | (Vari(x) , _       ) when argsa = [] -> build_sub ((x,b)::acc) cs
-        | (_       , Vari(x) ) when argsb = [] -> build_sub ((x,a)::acc) cs
-        | (_       , _       )                 -> build_sub acc cs
+    let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
+    let na = List.length argsa and nb = List.length argsb in
+    match (unfold ha, unfold hb) with
+    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && Sign.is_inj sa ->
+        let fn l t1 t2 = (t1,t2) :: l in
+        build_sub acc (List.fold_left2 fn cs argsa argsb)
+    | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
+    | (_         , Vari(x)   ) when argsb = [] -> build_sub ((x,a)::acc) cs
+    | (_         , _         )                 -> build_sub acc cs
   in
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
@@ -68,15 +68,16 @@ let build_meta_type : int -> term = fun k ->
 
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
-let check_rule : sym * rule Pos.loc -> unit = fun (s, Pos.{elt=rule;pos}) ->
-  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, rule);
+let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
+  let Pos.{elt=rule;pos} = r in
+  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
   (** We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
   let rec to_m : int -> term -> tbox = fun k t ->
     match unfold t with
     | Vari(x)     -> _Vari x
-    | Symb(s)     -> _Symb s
+    | Symb(s,h)   -> _Symb s h
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
                      _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
@@ -105,7 +106,7 @@ let check_rule : sym * rule Pos.loc -> unit = fun (s, Pos.{elt=rule;pos}) ->
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
-  let lhs = add_args (Symb(s)) lhs in
+  let lhs = add_args (Symb(s,h)) lhs in
   (** We substitute the RHS with the corresponding metavariables.*)
   let fn m =
     let m = match m with Some(m) -> m | None -> assert false in
@@ -154,7 +155,7 @@ let check_rule : sym * rule Pos.loc -> unit = fun (s, Pos.{elt=rule;pos}) ->
         begin
           let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
           List.iter fn cs;
-          fatal pos  "Unable to prove SR for rule [%a]." pp_rule (s,rule)
+          fatal pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,rule)
         end
   | None     ->
-      fatal pos "Rule [%a] does not preserve typing." pp_rule (s,rule)
+      fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)

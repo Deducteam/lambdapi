@@ -40,7 +40,7 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
         (* Search the local environment first. *)
         try _Vari (Env.find s env) with Not_found ->
         (* Then, search symbols in scope. *)
-        try _Symb (fst (StrMap.find s st.in_scope)) with Not_found ->
+        try _Symb (fst (StrMap.find s st.in_scope)) Nothing with Not_found ->
         fatal pos "Unbound variable or symbol [%s]." s
       end
   | [m] when StrMap.mem m st.aliases -> (** Aliased module path. *)
@@ -51,7 +51,7 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
           with _ -> assert false (* cannot fail. *)
         in
         (* Look for the symbol. *)
-        try _Symb (Sign.find sign s) with Not_found ->
+        try _Symb (Sign.find sign s) (Alias m) with Not_found ->
         fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
   | _                                -> (** Fully-qualified symbol. *)
@@ -62,7 +62,7 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
           fatal pos "No module [%a] loaded." Files.pp_path mp
         in
         (* Look for the symbol. *)
-        try _Symb (Sign.find sign s) with Not_found ->
+        try _Symb (Sign.find sign s) Qualified with Not_found ->
         fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
 
@@ -234,7 +234,7 @@ let patt_vars : p_term -> (string * int) list * string list =
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
-let scope_rule : sig_state -> p_rule -> sym * rule Pos.loc = fun ss r ->
+let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
@@ -257,12 +257,12 @@ let scope_rule : sig_state -> p_rule -> sym * rule Pos.loc = fun ss r ->
   (* NOTE meta-variables not in [pvs] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(pvs)) ss Env.empty p_lhs) in
-  let (sym, lhs) =
+  let (sym, hint, lhs) =
     let (h, args) = Terms.get_args lhs in
     match h with
-    | Symb({sym_mode=Const}) -> fatal p_lhs.pos "Constant head symbol in LHS."
-    | Symb(s)                -> (s, args)
-    | _                      -> fatal p_lhs.pos "LHS with no head symbol."
+    | Symb({sym_mode=Const},_) -> fatal p_lhs.pos "Constant LHS head symbol."
+    | Symb(s,h)                -> (s, h, args)
+    | _                        -> fatal p_lhs.pos "No head symbol in LHS."
   in
   (* We scope the RHS and bind the meta-variables. *)
   let names = Array.of_list (List.map fst pvs) in
@@ -273,7 +273,7 @@ let scope_rule : sig_state -> p_rule -> sym * rule Pos.loc = fun ss r ->
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We put everything together to build the rule. *)
-  (sym, Pos.make r.pos {lhs; rhs; arity = List.length lhs})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
