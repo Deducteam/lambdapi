@@ -121,7 +121,7 @@ let check : Ctxt.t -> term -> term -> bool = fun ctx t a ->
   match solve true {no_problems with to_solve} with
   | None     -> false
   | Some(cs) ->
-      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b in
+      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]." pp a pp b in
       if !log_enabled then List.iter fn cs; cs = []
 
 (** [infer_constr ctx t] tries to infer a type [a],  together with unification
@@ -139,7 +139,7 @@ let infer : Ctxt.t -> term -> term option = fun ctx t ->
   | None       -> None
   | Some([],a) -> Some(a)
   | Some(cs,_) ->
-      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]\n" pp a pp b in
+      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]." pp a pp b in
       if !log_enabled then List.iter fn cs; None
 
 (** [sort_type ctx t] checks that the type of the term [t] in context [ctx] is
