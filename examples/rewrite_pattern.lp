@@ -285,6 +285,6 @@ theorem rewriteTest12 : ∀a b c,
             (add (add c (add b a)) (add (add a b) (add c (add b a)))))
 proof
   intro a b c
-  //rewrite [(add a b) as x in (add _ x)] addcomm
-  //refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))))
-admit
+  rewrite [(add a b) as x in (add _ x)] addcomm
+  refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))))
+qed
