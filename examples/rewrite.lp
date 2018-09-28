@@ -87,12 +87,12 @@ proof
   refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z.
   simpl
-  refine refl nat (s m) // TODO add a reflexivity tactic
+  reflexivity
   // Case S.
   simpl
   intro pn ih
   rewrite ih
-  refine refl nat (s (s (add pn m)))
+  reflexivity
 qed
 
 theorem rewriteTest0 : ∀x y z,

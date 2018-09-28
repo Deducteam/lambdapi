@@ -40,6 +40,7 @@ let _intro_      = KW.create "intro"
 let _apply_      = KW.create "apply"
 let _simpl_      = KW.create "simpl"
 let _rewrite_    = KW.create "rewrite"
+let _refl_       = KW.create "reflexivity"
 let _focus_      = KW.create "focus"
 let _print_      = KW.create "print"
 let _qed_        = KW.create "qed"
@@ -191,6 +192,7 @@ let parser tactic =
   | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
   | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
+  | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _focus_ i:natural           -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
 

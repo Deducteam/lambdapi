@@ -489,14 +489,6 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     add_args (Symb(symb_eqind, Qualified)) [a; l; r; t; pred; goal_term]
   in
 
-  if not (Solve.check g_ctxt term g_type) then
-    begin
-      match Solve.infer g_ctxt term with
-      | Some(a) -> fatal_no_pos "Produced term has type [%a], not [%a]."
-                     pp (Eval.snf a) pp g_type
-      | None    -> fatal_no_pos "Produced term [%a] is not typable." pp term
-    end;
-
   (* Debugging data to the log. *)
   log_rewr "Rewriting with:";
   log_rewr "  goal           = [%a]" pp g_type;
@@ -510,3 +502,45 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
   (* Return the proof-term. *)
   term
+
+(** [reflexivity ps] attempts to use reflexivity (of equality) on the  focused
+    goal. If successful, the corresponding proof term is returned. *)
+let reflexivity : Proof.t -> term = fun ps ->
+  (* Obtain the required symbols from the current signature. *)
+  let (symb_P, symb_eq, symb_refl) =
+    (* FIXME use a parametric notion of equality. *)
+    let sign = Sign.current_sign () in
+    let find_sym : string -> sym = fun name ->
+      try Sign.find sign name with Not_found ->
+      fatal_no_pos "Current signature does not define symbol [%s]." name
+    in
+    (find_sym "P", find_sym "eq", find_sym "refl")
+  in
+
+  (* Get the type of the focused goal. *)
+  let g_type =
+    let g =
+      try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
+        fatal_no_pos "No remaining goals..."
+    in
+    snd (Goal.get_type g)
+  in
+
+  (* Check that the type of [g] is of the form “P (Eq a t t)”. *)
+  let (a, t)  =
+    match get_args g_type with
+    | (p, [eq]) when is_symb symb_P p ->
+        begin
+          match get_args eq with
+          | (e, [a;l;r]) when is_symb symb_eq e ->
+              if not (Terms.eq l r) then
+                fatal_no_pos "Cannot apply reflexivity.";
+              (a, l)
+          | _                                   ->
+              fatal_no_pos "Expected an equality type, found [%a]." pp g_type
+        end
+    | _                               ->
+        fatal_no_pos "Expected an equality type, found [%a]." pp g_type
+  in
+
+  add_args (Symb(symb_refl, Qualified)) [a; t]

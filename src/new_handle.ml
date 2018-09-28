@@ -75,6 +75,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let po = Option.map (New_scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)
       handle_refine (Rewrite.rewrite ps po t)
+  | P_tac_refl          ->
+      handle_refine (Rewrite.reflexivity ps)
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       let rec swap i acc gs =
