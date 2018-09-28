@@ -20,6 +20,44 @@ type rw_patt =
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
 
+(** Equality configuration. *)
+type eq_config =
+  { symb_P     : sym (** Encoding of propositions.        *)
+  ; symb_T     : sym (** Encoding of types.               *)
+  ; symb_eq    : sym (** Equality proposition.            *)
+  ; symb_eqind : sym (** Induction principle on equality. *)
+  ; symb_refl  : sym (** Reflexivity of equality.         *) }
+
+(** [get_eq_config ()] returns the current configuration for equality, used by
+    tactics such as “rewrite” or “reflexivity”. *)
+let get_eq_config : unit -> eq_config = fun _ ->
+  (* FIXME use a parametric notion of equality. *)
+  let sign = Sign.current_sign () in
+  let find_sym : string -> sym = fun name ->
+    try Sign.find sign name with Not_found ->
+    fatal_no_pos "Current signature does not define symbol [%s]." name
+  in
+  { symb_P     = find_sym "P"
+  ; symb_T     = find_sym "T"
+  ; symb_eq    = find_sym "eq"
+  ; symb_eqind = find_sym "eqind"
+  ; symb_refl  = find_sym "refl" }
+
+(** [get_eq_data cfg a] extra data from an equality type [a]. It consists of a
+    triple containing the type in which equality is used and the equated terms
+    (LHS and RHS). *)
+let get_eq_data : eq_config -> term -> term * term * term = fun cfg a ->
+  match get_args a with
+  | (p, [eq]) when is_symb cfg.symb_P p ->
+      begin
+        match get_args eq with
+        | (e, [a;l;r]) when is_symb cfg.symb_eq e -> (a, l, r)
+        | _                                       ->
+            fatal_no_pos "Expected an equality type, found [%a]." pp a
+      end
+  | _                                   ->
+      fatal_no_pos "Expected an equality type, found [%a]." pp a
+
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
     of equality, together with the variables that were quantified over. *)
@@ -133,15 +171,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     full set of SSReflect patterns. *)
 let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the required symbols from the current signature. *)
-  let (symb_P, symb_T, symb_eq, symb_eqind) =
-    (* FIXME use a parametric notion of equality. *)
-    let sign = Sign.current_sign () in
-    let find_sym : string -> sym = fun name ->
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    (find_sym "P", find_sym "T", find_sym "eq", find_sym "eqind")
-  in
+  let cfg = get_eq_config () in
 
   (* Get the focused goal. *)
   let g =
@@ -160,19 +190,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
   (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
-
-  let (a, l, r)  =
-    match get_args t_type with
-    | (p, [eq]) when is_symb symb_P p ->
-        begin
-          match get_args eq with
-          | (e, [a;l;r]) when is_symb symb_eq e -> (a, l, r)
-          | _                                   ->
-              fatal_no_pos "Expected an equality type, found [%a]." pp t
-        end
-    | _                               ->
-        fatal_no_pos "Expected an equality type, found [%a]." pp t
-  in
+  let (a, l, r)  = get_eq_data cfg t_type in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t_args = Array.fold_left (fun t x -> Appl(t, Vari(x))) t vars in
@@ -186,8 +204,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g_type with
-    | (p, [t]) when is_symb symb_P p -> t
-    | _                              ->
+    | (p, [t]) when is_symb cfg.symb_P p -> t
+    | _                                  ->
         fatal_no_pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
 
@@ -478,16 +496,15 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(Symb(symb_T, Qualified), a), pred_bind) in
+  let pred = Abst(Appl(Symb(cfg.symb_T, Qualified), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(symb_P, Qualified), new_term) in
+  let goal_type = Appl(Symb(cfg.symb_P, Qualified), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let term =
-    add_args (Symb(symb_eqind, Qualified)) [a; l; r; t; pred; goal_term]
-  in
+  let eqind = Symb(cfg.symb_eqind, Qualified) in
+  let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
   log_rewr "Rewriting with:";
@@ -507,15 +524,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     goal. If successful, the corresponding proof term is returned. *)
 let reflexivity : Proof.t -> term = fun ps ->
   (* Obtain the required symbols from the current signature. *)
-  let (symb_P, symb_eq, symb_refl) =
-    (* FIXME use a parametric notion of equality. *)
-    let sign = Sign.current_sign () in
-    let find_sym : string -> sym = fun name ->
-      try Sign.find sign name with Not_found ->
-      fatal_no_pos "Current signature does not define symbol [%s]." name
-    in
-    (find_sym "P", find_sym "eq", find_sym "refl")
-  in
+  let cfg = get_eq_config () in
 
   (* Get the type of the focused goal. *)
   let g_type =
@@ -527,20 +536,8 @@ let reflexivity : Proof.t -> term = fun ps ->
   in
 
   (* Check that the type of [g] is of the form “P (Eq a t t)”. *)
-  let (a, t)  =
-    match get_args g_type with
-    | (p, [eq]) when is_symb symb_P p ->
-        begin
-          match get_args eq with
-          | (e, [a;l;r]) when is_symb symb_eq e ->
-              if not (Terms.eq l r) then
-                fatal_no_pos "Cannot apply reflexivity.";
-              (a, l)
-          | _                                   ->
-              fatal_no_pos "Expected an equality type, found [%a]." pp g_type
-        end
-    | _                               ->
-        fatal_no_pos "Expected an equality type, found [%a]." pp g_type
-  in
+  let (a, l, r)  = get_eq_data cfg g_type in
+  if not (eq l r) then fatal_no_pos "Cannot apply reflexivity.";
 
-  add_args (Symb(symb_refl, Qualified)) [a; t]
+  (* Build the witness. *)
+  add_args (Symb(cfg.symb_refl, Qualified)) [a; l]
