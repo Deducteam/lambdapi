@@ -41,6 +41,7 @@ let _apply_      = KW.create "apply"
 let _simpl_      = KW.create "simpl"
 let _rewrite_    = KW.create "rewrite"
 let _refl_       = KW.create "reflexivity"
+let _sym_        = KW.create "symmetry"
 let _focus_      = KW.create "focus"
 let _print_      = KW.create "print"
 let _qed_        = KW.create "qed"
@@ -193,11 +194,12 @@ let parser tactic =
   | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
+  | _sym_                       -> Pos.in_pos _loc P_tac_sym
   | _focus_ i:natural           -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
 
 (** [proof_end] is a parser for a proof terminator. *)
-let parser proof_end = 
+let parser proof_end =
   | _qed_   -> P_proof_QED
   | _admit_ -> P_proof_admit
   | _abort_ -> P_proof_abort

@@ -75,7 +75,9 @@ type p_tactic_aux =
   | P_tac_rewrite of p_rw_patt loc option * p_term
   (** Apply rewriting using the given lemma and pattern. *)
   | P_tac_refl
-  (** Apply reflexivity (of equality). *)
+  (** Apply reflexivity of equality. *)
+  | P_tac_sym
+  (** Apply symmetry of equality. *)
   | P_tac_focus   of int
   (** Focus on the given goal. *)
   | P_tac_print

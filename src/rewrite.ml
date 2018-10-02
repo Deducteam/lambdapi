@@ -536,8 +536,90 @@ let reflexivity : Proof.t -> term = fun ps ->
   in
 
   (* Check that the type of [g] is of the form “P (Eq a t t)”. *)
-  let (a, l, r)  = get_eq_data cfg g_type in
-  if not (eq l r) then fatal_no_pos "Cannot apply reflexivity.";
+  let (a, l, r)  = get_eq_data cfg (Eval.whnf g_type) in
+  if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
   add_args (Symb(cfg.symb_refl, Qualified)) [a; l]
+
+
+
+
+let symmetry : Proof.t -> term = fun ps ->
+  (* Obtain the required symbols from the current signature. *)
+  let cfg = get_eq_config () in
+
+  (* Get the type of the focused goal. *)
+  let (g_env, g_type) =
+    let g =
+      try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
+        fatal_no_pos "No remaining goals..."
+    in
+    Goal.get_type g
+  in
+
+  (* Check that the type of [g] is of the form “P (Eq a l r)”. *)
+  let (a, l, r)  = get_eq_data cfg g_type in
+
+  (* We will build the term
+     eqind a l r NewMeta (x => eq a r x) (refl a r).
+  *)
+
+  let t_a        = Appl(Symb(cfg.symb_T, Nothing), a) in
+
+  let g_ctxt = Ctxt.of_env g_env in
+
+  (* Construct the new goal and its type. *)
+  let meta_type = Appl ((Symb(cfg.symb_P, Nothing)),
+                       (Appl (Appl (Appl ((Symb(cfg.symb_eq, Nothing)),
+                                           a),
+                                    r),
+                              l))) in
+  let meta_type_type = match Solve.infer g_ctxt meta_type with
+    | Some(x) -> x
+    | None -> fatal_no_pos "Meta_type doesn't have any type."
+  in
+
+  let meta_term = Ctxt.make_meta g_ctxt meta_type in
+
+  (* Building the predicate (x => eq a r x) *)
+  let x          = Bindlib.new_var mkfree "X" in
+  let varX       = Vari x in
+  let pred_body  = add_args (Symb(cfg.symb_eq, Nothing)) [a; l; varX] in
+  let pred_bind  = lift pred_body in
+  let pred_bind  = Bindlib.unbox (Bindlib.bind_var x pred_bind) in
+  let pred       = Abst(t_a, pred_bind) in
+  let pred_type = match Solve.infer g_ctxt pred with
+    | Some(x) -> x
+    | None -> fatal_no_pos "The pred doesn't have any type."
+  in
+
+  (* Building the second term (refl a r) *)
+  let secondTerm = add_args (Symb(cfg.symb_refl, Nothing)) [a; l] in
+  let secondTerm_type = match Solve.infer g_ctxt secondTerm with
+    | Some(x) -> x
+    | None -> fatal_no_pos "The second term doesn't have any type."
+  in
+
+  let producedTerm = add_args (Symb(cfg.symb_eqind, Nothing))
+      [a; r; l; meta_term; pred; secondTerm] in
+  let producedTerm_type = match Solve.infer g_ctxt producedTerm with
+    | Some(x) -> x
+    | None -> fatal_no_pos "The produced term doesn't have any type."
+  in
+
+  log_rewr "  goal           = [%a]" pp g_type;
+
+  log_rewr "  pred           = [%a]" pp pred;
+  log_rewr "  type of pred  = [%a]" pp pred_type;
+
+  log_rewr "  second term    = [%a]" pp secondTerm;
+  log_rewr "  type of second term  = [%a]" pp secondTerm_type;
+
+  log_rewr "  produced term  = [%a]" pp producedTerm;
+  log_rewr "  type of produced term  = [%a]" pp producedTerm_type;
+
+  log_rewr "  new goal       = [%a]" pp meta_type;
+  log_rewr "  type of new goal       = [%a]" pp meta_type_type;
+
+  producedTerm

@@ -77,6 +77,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.rewrite ps po t)
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity ps)
+  | P_tac_sym           ->
+      handle_refine (Rewrite.symmetry ps)
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       let rec swap i acc gs =
@@ -93,7 +95,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
 (** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
     state [ss] at the same time. This function fails gracefully on errors. *)
 let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
-  let scope_basic ss t = New_scope.scope_term StrMap.empty ss Env.empty t in 
+  let scope_basic ss t = New_scope.scope_term StrMap.empty ss Env.empty t in
   let handle ss =
     match cmd.elt with
     | P_require(p, m)            ->
@@ -281,5 +283,3 @@ and new_compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
-
-
