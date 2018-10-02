@@ -16,6 +16,9 @@ module KW = Keywords.Make(
     let reserved = []
   end)
 
+(** Reserve ["KIND"] to disallow it as an identifier. *)
+let _ = KW.reserve "KIND"
+
 (** Keyword declarations. *)
 let _require_    = KW.create "require"
 let _open_       = KW.create "open"
