@@ -243,12 +243,20 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         in
         let cfg = Handle.{is_assert = true; must_fail; test_type} in
         Handle.handle_test cmd.pos cfg; ss
-    | P_set(P_config_debug(e,s)) ->
-        (* Just update the option, state not modified. *)
-        Console.set_debug e s; ss
-    | P_set(P_config_verbose(i)) ->
-        (* Just update the option, state not modified. *)
-        Console.verbose := i; ss
+    | P_set(cfg)                 ->
+        begin
+          match cfg with
+          | P_config_debug(e,s)     ->
+              (* Just update the option, state not modified. *)
+              Console.set_debug e s; ss
+          | P_config_verbose(i)     ->
+              (* Just update the option, state not modified. *)
+              Console.verbose := i; ss
+          | P_config_builtin(s,qid) ->
+              (* Set the builtin symbol [s]. *)
+              let sym = find_sym false ss qid in
+              {ss with builtins = StrMap.add s sym ss.builtins}
+        end
   in
   handle ss
 
@@ -293,5 +301,3 @@ and new_compile : bool -> Files.module_path -> unit =
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
-
-

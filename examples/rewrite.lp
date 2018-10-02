@@ -12,8 +12,8 @@ symbol const N : TYPE
 symbol const z : N
 symbol const s : N ⇒ N
 
-definition one ≔ s z
-definition two ≔ s one
+set builtin "0"  ≔ z
+set builtin "+1" ≔ s
 
 // Addition on natural numbers.
 

@@ -21,6 +21,9 @@ syntax region Comment start="///" end="$" contains=@markdown
 syntax match NaturalNumber "\<\([0]\|\([1-9][0-9]*\)\)\>"
 highlight link NaturalNumber PreProc
 
+" String literal.
+syntax match StringLiteral "["][^"]*["]"
+highlight link StringLiteral String
 
 " Keywords.
 syntax keyword KeywordOK contained require open as let in

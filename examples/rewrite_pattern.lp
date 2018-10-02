@@ -12,8 +12,8 @@ symbol const N : TYPE
 symbol const z : N
 symbol const s : N ⇒ N
 
-definition one ≔ s z
-definition two ≔ s one
+set builtin "0"  ≔ z
+set builtin "+1" ≔ s
 
 // Addition on natural numbers.
 
@@ -159,7 +159,7 @@ proof
 qed
 
 // Adding the same value is the same as multiplying by 2.
-theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul two x))
+theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
 proof
   intro x
   simpl

@@ -33,6 +33,8 @@ and p_term_aux =
   (** Product over several variables. *)
   | P_LLet of strloc * p_arg list * p_term * p_term
   (** Local let. *)
+  | P_NLit of int
+  (** Natural number literal. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
@@ -106,6 +108,8 @@ type p_config =
   (** Sets the verbosity level. *)
   | P_config_debug   of bool * string
   (** Toggles logging functions described by string according to boolean. *)
+  | P_config_builtin of string * qident
+  (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
 
 type require_mode =
   | P_require_default
