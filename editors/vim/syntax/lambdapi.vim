@@ -27,8 +27,10 @@ syntax keyword KeywordOK contained require open as let in
 syntax keyword KeywordOK contained symbol const injective
 syntax keyword KeywordOK contained rule and definition theorem
 syntax keyword KeywordOK contained assert assertnot set
-syntax keyword KeywordOK contained proof qed admit abort refine intro
-syntax keyword KeywordOK contained apply simpl rewrite focus print reflexivity
+syntax keyword KeywordOK contained proof qed admit abort
+syntax keyword KeywordOK contained focus print proofterm
+syntax keyword KeywordOK contained refine apply simpl intro
+syntax keyword KeywordOK contained rewrite reflexivity
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.

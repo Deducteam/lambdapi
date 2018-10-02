@@ -48,6 +48,7 @@ let _admit_      = KW.create "admit"
 let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
+let _proofterm_  = KW.create "proofterm"
 
 (** Natural number. *)
 let natural =
@@ -195,6 +196,7 @@ let parser tactic =
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _focus_ i:natural           -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
+  | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end = 

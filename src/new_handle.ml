@@ -24,6 +24,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_print         ->
       (* Just print the current proof state. *)
       Console.out 1 "%a" Proof.pp ps; ps
+  | P_tac_proofterm     ->
+      (* Just print the current proof term. *)
+      let t = Eval.snf (Meta(Proof.(ps.proof_term), [||])) in
+      let name = Proof.(ps.proof_name).elt in
+      Console.out 1 "Proof term for [%s]: [%a]\n" name Print.pp t; ps
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
       let rec swap i acc gs =
@@ -61,6 +66,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   in
   match tac.elt with
   | P_tac_print
+  | P_tac_proofterm
   | P_tac_focus(_)      -> assert false (* Handled above. *)
   | P_tac_refine(t)     ->
       (* Scoping the term in the goal's environment. *)

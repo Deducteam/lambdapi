@@ -80,6 +80,8 @@ type p_tactic_aux =
   (** Focus on the given goal. *)
   | P_tac_print
   (** Print the current goal. *)
+  | P_tac_proofterm
+  (** Print the current proof term (possibly containing open goals). *)
 type p_tactic = p_tactic_aux Pos.loc
 
 (** Parser-level representation of a proof terminator. *)
