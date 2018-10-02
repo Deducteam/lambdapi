@@ -86,8 +86,17 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
-       if Sign.is_inj s1 && List.same_length ts1 ts2 then decompose ()
-       else add_to_unsolved ()
+       match s1.sym_mode with
+       | Const ->
+          if List.same_length ts1 ts2 then decompose () else error ()
+       | Injec ->
+          if List.same_length ts1 ts2 then decompose ()
+          else if !(s1.sym_rules) = [] then error ()
+          else add_to_unsolved ()
+       | Defin ->
+          if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
+          then add_to_unsolved ()
+          else error ()
      else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
