@@ -210,7 +210,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               wrn cmd.pos "Proof aborted."; ss
           | P_proof_admit ->
               (* Initialize the proof and plan the tactics. *)
-              let st = Proof.init x a in
+              let st = Proof.init ss.builtins x a in
               let st = List.fold_left (handle_tactic ss) st ts in
               (* If the proof is finished, display a warning. *)
               if Proof.finished st then wrn cmd.pos "You should add QED.";
@@ -220,7 +220,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
           | P_proof_QED   ->
               (* Initialize the proof and plan the tactics. *)
-              let st = Proof.init x a in
+              let st = Proof.init ss.builtins x a in
               let st = List.fold_left (handle_tactic ss) st ts in
               (* Check that the proof is indeed finished. *)
               if not (Proof.finished st) then

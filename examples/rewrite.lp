@@ -80,6 +80,14 @@ symbol const refl : ∀a x, P (eq a x x)
 symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 // FIXME Try to infer the type of p.
 
+// Setting up builtins for rewrite.
+
+set builtin "P"     ≔ P
+set builtin "T"     ≔ T
+set builtin "eq"    ≔ eq
+set builtin "eqind" ≔ eqind
+set builtin "refl"  ≔ refl
+
 // [∀ n m, n + S m = S (n+m)]
 theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
 proof
