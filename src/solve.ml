@@ -86,8 +86,17 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
-       if Sign.is_inj s1 && List.same_length ts1 ts2 then decompose ()
-       else add_to_unsolved ()
+       match s1.sym_mode with
+       | Const ->
+          if List.same_length ts1 ts2 then decompose () else error ()
+       | Injec ->
+          if List.same_length ts1 ts2 then decompose ()
+          else if !(s1.sym_rules) = [] then error ()
+          else add_to_unsolved ()
+       | Defin ->
+          if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
+          then add_to_unsolved ()
+          else error ()
      else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
@@ -121,7 +130,7 @@ let check : Ctxt.t -> term -> term -> bool = fun ctx t a ->
   match solve true {no_problems with to_solve} with
   | None     -> false
   | Some(cs) ->
-      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]." pp a pp b in
+      let fn (a,b) = log_solv (red "Cannot solve [%a] ~ [%a].") pp a pp b in
       if !log_enabled then List.iter fn cs; cs = []
 
 (** [infer_constr ctx t] tries to infer a type [a],  together with unification
@@ -139,7 +148,7 @@ let infer : Ctxt.t -> term -> term option = fun ctx t ->
   | None       -> None
   | Some([],a) -> Some(a)
   | Some(cs,_) ->
-      let fn (a,b) = log_solv "Cannot solve [%a] ~ [%a]." pp a pp b in
+      let fn (a,b) = log_solv (red "Cannot solve [%a] ~ [%a].") pp a pp b in
       if !log_enabled then List.iter fn cs; None
 
 (** [sort_type ctx t] checks that the type of the term [t] in context [ctx] is

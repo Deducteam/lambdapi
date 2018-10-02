@@ -16,6 +16,9 @@ module KW = Keywords.Make(
     let reserved = []
   end)
 
+(** Reserve ["KIND"] to disallow it as an identifier. *)
+let _ = KW.reserve "KIND"
+
 (** Keyword declarations. *)
 let _require_    = KW.create "require"
 let _open_       = KW.create "open"
@@ -49,9 +52,10 @@ let _admit_      = KW.create "admit"
 let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
+let _proofterm_  = KW.create "proofterm"
 
-(** Natural number. *)
-let natural =
+(** Natural number literal. *)
+let nat_lit =
   let head_cs = Charset.from_string "1-9" in
   let body_cs = Charset.from_string "0-9" in
   let fn buf pos =
@@ -59,7 +63,18 @@ let natural =
     while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
     (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  Earley.black_box fn head_cs false "<natural>"
+  Earley.black_box fn head_cs false "<nat>"
+
+(** String literal. *)
+let string_lit =
+  let body_cs = List.fold_left Charset.del Charset.full ['"'; '\n'] in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    if Input.get buf (pos + !nb) <> '"' then Earley.give_up ();
+    (String.sub (Input.line buf) (pos+1) (!nb-1), buf, pos + !nb + 1)
+  in
+  Earley.black_box fn (Charset.singleton '"') false "<string>"
 
 (** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
 let regular_ident =
@@ -159,6 +174,9 @@ let parser term @(p : prio) =
   (* Local let. *)
   | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
+  (* Natural number literal. *)
+  | n:nat_lit
+      when p >= PAtom -> in_pos _loc (P_NLit(n))
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
@@ -195,8 +213,9 @@ let parser tactic =
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _sym_                       -> Pos.in_pos _loc P_tac_sym
-  | _focus_ i:natural           -> Pos.in_pos _loc (P_tac_focus(i))
+  | _focus_ i:nat_lit           -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
+  | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
@@ -216,6 +235,8 @@ let parser config =
   | "debug" d:''[-+][a-zA-Z]+'' ->
       let s = String.sub d 0 (String.length d - 1) in
       P_config_debug(d.[0] = '+', s)
+  | "builtin" s:string_lit "≔" qid:qident ->
+      P_config_builtin(s,qid)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 

@@ -1,6 +1,8 @@
 (** Implementation of the REWRITE tactic. *)
 
 open Timed
+open Extra
+open Pos
 open Terms
 open Console
 open Proof
@@ -22,20 +24,19 @@ type rw_patt =
 
 (** Equality configuration. *)
 type eq_config =
-  { symb_P     : sym (** Encoding of propositions.        *)
-  ; symb_T     : sym (** Encoding of types.               *)
-  ; symb_eq    : sym (** Equality proposition.            *)
-  ; symb_eqind : sym (** Induction principle on equality. *)
-  ; symb_refl  : sym (** Reflexivity of equality.         *) }
+  { symb_P     : sym * pp_hint (** Encoding of propositions.        *)
+  ; symb_T     : sym * pp_hint (** Encoding of types.               *)
+  ; symb_eq    : sym * pp_hint (** Equality proposition.            *)
+  ; symb_eqind : sym * pp_hint (** Induction principle on equality. *)
+  ; symb_refl  : sym * pp_hint (** Reflexivity of equality.         *) }
 
 (** [get_eq_config ()] returns the current configuration for equality, used by
     tactics such as “rewrite” or “reflexivity”. *)
-let get_eq_config : unit -> eq_config = fun _ ->
-  (* FIXME use a parametric notion of equality. *)
-  let sign = Sign.current_sign () in
-  let find_sym : string -> sym = fun name ->
-    try Sign.find sign name with Not_found ->
-    fatal_no_pos "Current signature does not define symbol [%s]." name
+let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
+  let {elt = id; pos} = name in
+  let find_sym key =
+    try StrMap.find key builtins with Not_found ->
+    fatal pos "Builtin symbol [%s] undefined in the proof of [%s]." key id
   in
   { symb_P     = find_sym "P"
   ; symb_T     = find_sym "T"
@@ -48,14 +49,14 @@ let get_eq_config : unit -> eq_config = fun _ ->
     (LHS and RHS). *)
 let get_eq_data : eq_config -> term -> term * term * term = fun cfg a ->
   match get_args a with
-  | (p, [eq]) when is_symb cfg.symb_P p ->
+  | (p, [eq]) when is_symb (fst cfg.symb_P) p ->
       begin
         match get_args eq with
-        | (e, [a;l;r]) when is_symb cfg.symb_eq e -> (a, l, r)
-        | _                                       ->
+        | (e, [a;l;r]) when is_symb (fst cfg.symb_eq) e -> (a, l, r)
+        | _                                             ->
             fatal_no_pos "Expected an equality type, found [%a]." pp a
       end
-  | _                                   ->
+  | _                                         ->
       fatal_no_pos "Expected an equality type, found [%a]." pp a
 
 (** Type of a term with the free variables that need to be substituted (during
@@ -171,7 +172,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     full set of SSReflect patterns. *)
 let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config () in
+  let cfg = get_eq_config ps.proof_name ps.proof_builtins in
 
   (* Get the focused goal. *)
   let g =
@@ -204,8 +205,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g_type with
-    | (p, [t]) when is_symb cfg.symb_P p -> t
-    | _                                  ->
+    | (p, [t]) when is_symb (fst cfg.symb_P) p -> t
+    | _                                        ->
         fatal_no_pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
 
@@ -496,14 +497,14 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(Symb(cfg.symb_T, Qualified), a), pred_bind) in
+  let pred = Abst(Appl(Symb(fst cfg.symb_T, snd cfg.symb_T), a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(cfg.symb_P, Qualified), new_term) in
+  let goal_type = Appl(Symb(fst cfg.symb_P, snd cfg.symb_P), new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let eqind = Symb(cfg.symb_eqind, Qualified) in
+  let eqind = Symb(fst cfg.symb_eqind, snd cfg.symb_eqind) in
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
@@ -524,7 +525,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     goal. If successful, the corresponding proof term is returned. *)
 let reflexivity : Proof.t -> term = fun ps ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config () in
+  let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
 
   (* Get the type of the focused goal. *)
   let g_type =
@@ -540,14 +541,12 @@ let reflexivity : Proof.t -> term = fun ps ->
   if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
-  add_args (Symb(cfg.symb_refl, Qualified)) [a; l]
-
-
+  add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l]
 
 
 let symmetry : Proof.t -> term = fun ps ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config () in
+  let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
 
   (* Get the type of the focused goal. *)
   let (g_env, g_type) =
@@ -565,13 +564,13 @@ let symmetry : Proof.t -> term = fun ps ->
      eqind a l r NewMeta (x => eq a r x) (refl a r).
   *)
 
-  let t_a        = Appl(Symb(cfg.symb_T, Nothing), a) in
+  let t_a        = Appl(Symb(fst cfg.symb_T, snd cfg.symb_T), a) in
 
   let g_ctxt = Ctxt.of_env g_env in
 
   (* Construct the new goal and its type. *)
-  let meta_type = Appl ((Symb(cfg.symb_P, Nothing)),
-                       (Appl (Appl (Appl ((Symb(cfg.symb_eq, Nothing)),
+  let meta_type = Appl ((Symb(fst cfg.symb_P, snd cfg.symb_P)),
+                       (Appl (Appl (Appl ((Symb(fst cfg.symb_eq, snd cfg.symb_eq)),
                                            a),
                                     r),
                               l))) in
@@ -585,7 +584,7 @@ let symmetry : Proof.t -> term = fun ps ->
   (* Building the predicate (x => eq a r x) *)
   let x          = Bindlib.new_var mkfree "X" in
   let varX       = Vari x in
-  let pred_body  = add_args (Symb(cfg.symb_eq, Nothing)) [a; l; varX] in
+  let pred_body  = add_args (Symb(fst cfg.symb_eq, snd cfg.symb_eq)) [a; l; varX] in
   let pred_bind  = lift pred_body in
   let pred_bind  = Bindlib.unbox (Bindlib.bind_var x pred_bind) in
   let pred       = Abst(t_a, pred_bind) in
@@ -595,13 +594,13 @@ let symmetry : Proof.t -> term = fun ps ->
   in
 
   (* Building the second term (refl a r) *)
-  let secondTerm = add_args (Symb(cfg.symb_refl, Nothing)) [a; l] in
+  let secondTerm = add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l] in
   let secondTerm_type = match Solve.infer g_ctxt secondTerm with
     | Some(x) -> x
     | None -> fatal_no_pos "The second term doesn't have any type."
   in
 
-  let producedTerm = add_args (Symb(cfg.symb_eqind, Nothing))
+  let producedTerm = add_args (Symb(fst cfg.symb_eqind, snd cfg.symb_eqind))
       [a; r; l; meta_term; pred; secondTerm] in
   let producedTerm_type = match Solve.infer g_ctxt producedTerm with
     | Some(x) -> x

@@ -1,86 +1,9 @@
-// Data type of booleans.
+require open proofs.logic
+require open proofs.bool
+require open proofs.nat
 
-symbol const B : TYPE
-
-symbol const true  : B
-symbol const false : B
-
-// Data type of natural numbers.
-
-symbol const N : TYPE
-
-symbol const z : N
-symbol const s : N ⇒ N
-
-set builtin "0"  ≔ z
-set builtin "+1" ≔ s
-
-// Addition on natural numbers.
-
-symbol add : N ⇒ N ⇒ N
-
-rule add z      &x → &x
-rule add (s &x) &y → s (add &x &y)
-
-// Multiplication on natural numbers.
-
-symbol mul : N ⇒ N ⇒ N
-
-rule mul z      _  → z
-rule mul (s &x) &y → add &y (mul &x &y)
-
-// Type of data type codes and their interpretation as types.
-
-symbol const U : TYPE
-
-symbol T : U ⇒ TYPE
-
-symbol const bool : U
-symbol const nat  : U
-
-rule T bool → B
-rule T nat  → N
-
-symbol const pi : ∀ (a : U), (T a ⇒ U) ⇒ U
-
-rule T (pi &a &f) → ∀ (x : T &a), T (&f x)
-
-// Type of propositions and their interpretation as types.
-
-symbol const Prop : TYPE
-
-symbol P : Prop ⇒ TYPE
-
-symbol const all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
-
-rule P (all &a &f) → ∀ (x : T &a), P (&f x)
-
-// Induction principle on N.
-
-symbol nat_ind : ∀ (p:N⇒Prop), P(p z) ⇒ (∀n, P(p n) ⇒ P(p (s n))) ⇒ ∀n, P(p n)
-
-rule nat_ind _  &u _  z      → &u
-rule nat_ind &p &u &v (s &n) → &v &n (nat_ind &p &u &v &n)
-
-// Boolean equality on N.
-
-symbol beq : N ⇒ N ⇒ B
-
-rule beq z      z      → true
-rule beq (s &x) (s &y) → beq &x &y
-rule beq z      (s _ ) → false
-rule beq (s _ ) z      → false
-
-// Leibniz equality.
-
-symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
-
-symbol const refl : ∀a x, P (eq a x x)
-
-symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
-// FIXME Try to infer the type of p.
-
-// Setting up builtins for rewrite.
+set builtin "0"     ≔ z
+set builtin "+1"    ≔ s
 
 set builtin "P"     ≔ P
 set builtin "T"     ≔ T
@@ -157,14 +80,12 @@ proof
   refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
-  symmetry // NEW !
-  refine (add0r m)
+  refine eq_sym nat (add m z) m (add0r m) // TODO add a symmetry tactic
   // Case S
   simpl
   intro k ih
   rewrite ih
-  rewrite add_succ_r m k
-  refine refl nat (s (add m k))
+  reflexivity
 qed
 
 // Adding the same value is the same as multiplying by 2.
@@ -172,7 +93,6 @@ theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
 proof
   intro x
   simpl
-  rewrite add0r
   refine refl nat (add x x)
 qed
 

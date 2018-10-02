@@ -13,11 +13,15 @@ open Env
 type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
-  ; aliases   : module_path StrMap.t      (** Established aliases. *) }
+  ; aliases   : module_path StrMap.t      (** Established aliases. *)
+  ; builtins  : (sym * pp_hint) StrMap.t  (** Builtin symbols.     *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
-  { signature = sign ; in_scope = StrMap.empty ; aliases = StrMap.empty }
+  { signature = sign
+  ; in_scope  = StrMap.empty
+  ; aliases   = StrMap.empty
+  ; builtins  = StrMap.empty }
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
@@ -26,22 +30,28 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let fn _ v _ = Some(v) in
   {ss with in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.symbols))}
 
-(** [find_qid st env qid] returns a boxed term corresponding to a variable  of
-    the environment [env] (or to a symbol) which name corresponds to [qid]. In
-    the case where the module path [fst qid.elt] is empty, we first search for
-    the name [snd qid.elt] in the environment, and if it is not mapped we also
-    search in the opened modules.  The exception [Fatal] is raised if an error
-    occurs (e.g., when the name cannot be found). *)
-let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
+(** [get_builtin loc st key] TODO *)
+let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
+  let (s, hint) =
+    try StrMap.find key st.builtins with Not_found ->
+    fatal loc "Builtin symbol [0] not defined."
+  in
+  _Symb s hint
+
+(** [find_sym b st qid] returns the symbol and printing hint corresponding  to
+    the qualified identifier [qid].  If [fst qid.elt] is empty,  we search for
+    the name [snd qid.elt] in the opened modules of [st]. The boolean [b] only
+    indicates if the error message should mention variables, in the case where
+    the module path is empty and the symbol is unbound. This is reported using
+    the [Fatal] exception. *)
+let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let {elt = (mp, s); pos} = qid in
   match mp with
-  | []                               -> (** Variable or symbol in scope. *)
+  | []                               -> (** Symbol in scope. *)
       begin
-        (* Search the local environment first. *)
-        try _Vari (Env.find s env) with Not_found ->
-        (* Then, search symbols in scope. *)
-        try _Symb (fst (StrMap.find s st.in_scope)) Nothing with Not_found ->
-        fatal pos "Unbound variable or symbol [%s]." s
+        try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
+        let txt = if b then " or variable" else "" in
+        fatal pos "Unbound symbol%s [%s]." txt s
       end
   | [m] when StrMap.mem m st.aliases -> (** Aliased module path. *)
       begin
@@ -51,7 +61,7 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
           with _ -> assert false (* cannot fail. *)
         in
         (* Look for the symbol. *)
-        try _Symb (Sign.find sign s) (Alias m) with Not_found ->
+        try (Sign.find sign s, Alias m) with Not_found ->
         fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
   | _                                -> (** Fully-qualified symbol. *)
@@ -62,9 +72,25 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
           fatal pos "No module [%a] loaded." Files.pp_path mp
         in
         (* Look for the symbol. *)
-        try _Symb (Sign.find sign s) Qualified with Not_found ->
+        try (Sign.find sign s, Qualified) with Not_found ->
         fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
+
+(** [find_qid st env qid] returns a boxed term corresponding to a variable  of
+    the environment [env] (or to a symbol) which name corresponds to [qid]. In
+    the case where the module path [fst qid.elt] is empty, we first search for
+    the name [snd qid.elt] in the environment, and if it is not mapped we also
+    search in the opened modules.  The exception [Fatal] is raised if an error
+    occurs (e.g., when the name cannot be found). *)
+let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
+  let (mp, s) = qid.elt in
+  (* Check for variables in the environment first. *)
+  try
+    if mp <> [] then raise Not_found; (* Variables cannot be qualified. *)
+    _Vari (Env.find s env)
+  with Not_found ->
+  (* Check for symbols. *)
+  let (s, hint) = find_sym true st qid in _Symb s hint
 
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
@@ -185,6 +211,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
+    | (P_NLit(n)       , _        ) ->
+        let sym_z = get_builtin t.pos ss "0"  in
+        let sym_s = get_builtin t.pos ss "+1" in
+        let rec unsugar_nat_lit acc n =
+          if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
+        in
+        unsugar_nat_lit sym_z n
   in
   scope env t
 
@@ -225,6 +258,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Abst(xs,t)     -> patt_vars (arg_patt_vars acc xs) t
     | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
     | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
+    | P_NLit(_)        -> acc
   and arg_patt_vars acc xs =
     match xs with
     | []                 -> acc

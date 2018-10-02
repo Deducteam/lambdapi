@@ -34,7 +34,7 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
   | None    -> Format.fprintf Pervasives.(!err_fmt) (yel fmt)
   | Some(_) -> Format.fprintf Pervasives.(!err_fmt)
-                 (yel ("[%a]" ^^ fmt ^^ "\n")) Pos.print pos
+                 (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 
 (** Exception raised in case of failure. *)
 exception Fatal of Pos.popt option * string

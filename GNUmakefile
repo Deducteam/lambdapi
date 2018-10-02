@@ -56,6 +56,7 @@ _build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
 TESTFILES    = $(sort $(wildcard examples/*.*))
+TESTPROOFS   = $(sort $(wildcard proofs/*.lp))
 
 .PHONY: tests
 tests: lambdapi.native
@@ -79,6 +80,13 @@ tests: lambdapi.native
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& ./lambdapi.native --verbose 0 $$file ; } ; \
 	done
+	@printf "## Proofs   ##\n"
+	@for file in $(TESTPROOFS) ; do \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
+		&& ./lambdapi.native --verbose 0 $$file ; } ; \
+	done
 
 .PHONY: real_tests
 real_tests: lambdapi.native
@@ -97,6 +105,13 @@ real_tests: lambdapi.native
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
+		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+	  && printf "\033[32mOK\033[0m $$file\n" \
+	  || { printf "\033[31mKO\033[0m $$file\n" \
+		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+	done
+	@printf "## Proofs   ##\n"
+	@for file in $(TESTPROOFS) ; do \
 		./lambdapi.native --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \

@@ -52,18 +52,23 @@ module Goal :
 
 (** Representation of the state of the proof of a theorem. *)
 type proof =
-  { proof_name  : Pos.strloc  (** Name of the proved theorem.            *)
-  ; proof_term  : meta        (** Metavariable holding the proof term.   *)
-  ; proof_goals : Goal.t list (** List of open goals (focused is first). *) }
+  { proof_name     : Pos.strloc  (** Name of the proved theorem.          *)
+  ; proof_term     : meta        (** Metavariable holding the proof term. *)
+  ; proof_goals    : Goal.t list (** Open goals (focused is first).       *)
+  ; proof_builtins : builtins    (** Signature state, for builtins.       *) }
+
+and builtins = (sym * pp_hint) StrMap.t
 
 (** Short synonym for qualified use. *)
 type t = proof
 
-(** [init id a] returns an initial proof state for a theorem named [id], which
-    statement is represented by the type [a]. *)
-let init : Pos.strloc -> term -> t = fun ({elt=id} as proof_name) a ->
-  let proof_term = fresh_meta ~name:id a 0 in
-  {proof_name; proof_term; proof_goals = [Goal.of_meta proof_term]}
+(** [init builtins name a] returns an initial proof state for a theorem  named
+    [name], which statement is represented by the type [a]. Builtin symbols of
+    [builtins] may be used by tactics, and have been declared. *)
+let init : builtins -> Pos.strloc -> term -> t = fun proof_builtins name a ->
+  let proof_term = fresh_meta ~name:name.elt a 0 in
+  let proof_goals = [Goal.of_meta proof_term] in
+  {proof_name = name; proof_term; proof_goals; proof_builtins}
 
 (** [finished ps] tells whether the proof represented by [ps] is finished. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
