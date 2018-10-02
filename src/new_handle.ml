@@ -19,6 +19,22 @@ let log_tact = Handle.log_tact
     case of error. *)
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
+  (* First handle the tactics that are independant from the goal. *)
+  match tac.elt with
+  | P_tac_print         ->
+      (* Just print the current proof state. *)
+      Console.out 1 "%a" Proof.pp ps; ps
+  | P_tac_focus(i)      ->
+      (* Put the [i]-th goal in focus (if possible). *)
+      let rec swap i acc gs =
+        match (i, gs) with
+        | (0, g::gs) -> g :: List.rev_append acc gs
+        | (i, g::gs) -> swap (i-1) (g::acc) gs
+        | (_, _    ) -> fatal tac.pos "Invalid goal index."
+      in
+      Proof.{ps with proof_goals = swap i [] ps.proof_goals}
+  | _                   ->
+  (* Other tactics need to act on the goal / goals. *)
   let (g, gs) =
     match Proof.(ps.proof_goals) with
     | []    -> fatal tac.pos "There is nothing left to prove.";
@@ -44,6 +60,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     Proof.({ps with proof_goals = new_goals @ gs})
   in
   match tac.elt with
+  | P_tac_print
+  | P_tac_focus(_)      -> assert false (* Handled above. *)
   | P_tac_refine(t)     ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
@@ -77,18 +95,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.rewrite ps po t)
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity ps)
-  | P_tac_focus(i)      ->
-      (* Put the [i]-th goal in focus (if possible). *)
-      let rec swap i acc gs =
-        match (i, gs) with
-        | (0, g::gs) -> g :: List.rev_append acc gs
-        | (i, g::gs) -> swap (i-1) (g::acc) gs
-        | (_, _    ) -> fatal tac.pos "Invalid goal index."
-      in
-      Proof.{ps with proof_goals = swap i [] (g::gs)}
-  | P_tac_print         ->
-      (* Just print the current proof state. *)
-      Console.out 1 "%a" Proof.pp ps; ps
 
 (** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
     state [ss] at the same time. This function fails gracefully on errors. *)
