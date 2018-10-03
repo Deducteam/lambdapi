@@ -45,9 +45,8 @@ qed
 // [z] is right neutral for add.
 theorem add0r : ∀n, P (eq nat (add n z) n)
 proof
-  // FIXME try to infer nat.
   // FIXME try to infer the predicate
-  refine nat_ind (λn, eq nat (add n z) n) ?CZ ?CS
+  refine nat_ind (λn, eq _ (add n z) n) ?CZ ?CS
   // Case Z
   simpl
   refine refl nat z
@@ -77,10 +76,11 @@ qed
 theorem addcomm : ∀n m, P (eq nat (add n m) (add m n))
 proof
   intro n m
-  refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
+  // FIXME try to infer nat
+  refine nat_ind (λ n, eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
-  refine eq_sym nat (add m z) m (add0r m) // TODO add a symmetry tactic
+  refine eq_sym _ (add m z) m (add0r m) // TODO add a symmetry tactic
   // Case S
   simpl
   intro k ih
