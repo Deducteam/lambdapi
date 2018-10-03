@@ -537,8 +537,8 @@ let reflexivity : Proof.t -> term = fun ps ->
   in
 
   (* Check that the type of [g] is of the form “P (Eq a t t)”. *)
-  let (a, l, r)  = get_eq_data cfg g_type in
-  if not (eq l r) then fatal_no_pos "Cannot apply reflexivity.";
+  let (a, l, r)  = get_eq_data cfg (Eval.whnf g_type) in
+  if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
   add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l]
