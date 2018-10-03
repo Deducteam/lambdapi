@@ -231,7 +231,7 @@ let parser config =
   | "verbose" i:''[1-9][0-9]*'' ->
       P_config_verbose(int_of_string i)
   | "debug" d:''[-+][a-zA-Z]+'' ->
-      let s = String.sub d 0 (String.length d - 1) in
+      let s = String.sub d 0 (String.length d) in
       P_config_debug(d.[0] = '+', s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
