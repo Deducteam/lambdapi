@@ -521,7 +521,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   (* Return the proof-term. *)
   term
 
-(** [reflexivity ps] attempts to use reflexivity (of equality) on the  focused
+(** [reflexivity ps] attempts to use reflexivity of equality on the focused
     goal. If successful, the corresponding proof term is returned. *)
 let reflexivity : Proof.t -> term = fun ps ->
   (* Obtain the required symbols from the current signature. *)
@@ -542,3 +542,85 @@ let reflexivity : Proof.t -> term = fun ps ->
 
   (* Build the witness. *)
   add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l]
+
+  (** [symmetry ps] attempts to use symmetry of equality on the focused
+      goal. If successful, a new goal is generated, and the corresponding proof
+      term is returned. Unlike the reflexivity tactic, this tactic does not
+      expect a specific symbol, as the symmetry of the equality can be proven
+      from the induction principle of the equality and from its reflexivity *)
+let symmetry : Proof.t -> term = fun ps ->
+  (* Obtain the required symbols from the current signature. *)
+  let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
+
+  (* Get the type of the focused goal. *)
+  let (g_env, g_type) =
+    let g =
+      try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
+        fatal_no_pos "[symmetry] No remaining goals..."
+    in
+    Goal.get_type g
+  in
+
+  (* Check that the type of [g] is of the form “P (Eq a l r)”. *)
+  let (a, l, r)  = get_eq_data cfg g_type in
+  let t_a        = Appl(Symb(fst cfg.symb_T, snd cfg.symb_T), a) in
+  let g_ctxt     = Ctxt.of_env g_env in
+
+  (* This tactic builds the term
+     eqind a r l NewMeta (x => eq a l x) (refl a l)
+     in three steps : first it builds the meta, then it builds the predicate
+     (x => eq a l x), and finally it builds the second term (refl a l)
+  *)
+
+  (* 1. Constructing the type of the new goal and its associated metavariable. *)
+  let meta_type  = Appl ((Symb(fst cfg.symb_P, snd cfg.symb_P)),
+                         (add_args (Symb(fst cfg.symb_eq, snd cfg.symb_eq)) [a; r; l])) in
+  let meta_type_type = match Solve.infer g_ctxt meta_type with
+    | Some(x) -> x
+    | None -> fatal_no_pos "[symmetry] meta_type doesn't have any type."
+  in
+  let meta_term  = Ctxt.make_meta g_ctxt meta_type in
+
+  (* 2. Building the predicate (x => eq a r x) *)
+  let x          = Bindlib.new_var mkfree "X" in
+  let varX       = Vari x in
+  let pred_body  = add_args (Symb(fst cfg.symb_eq, snd cfg.symb_eq)) [a; l; varX] in
+  let pred_bind  = lift pred_body in
+  let pred_bind  = Bindlib.unbox (Bindlib.bind_var x pred_bind) in
+  let pred       = Abst(t_a, pred_bind) in
+  let pred_type  = match Solve.infer g_ctxt pred with
+    | Some(x) -> x
+    | None -> fatal_no_pos "[symmetry] The predicate built doesn't have any type."
+  in
+
+  (* 3. Building the second term (refl a l) *)
+  let secondTerm = add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l] in
+  let secondTerm_type = match Solve.infer g_ctxt secondTerm with
+    | Some(x) -> x
+    | None -> fatal_no_pos "[symmetry] The second term built doesn't have any type."
+  in
+
+  let producedTerm = add_args (Symb(fst cfg.symb_eqind, snd cfg.symb_eqind))
+      [a; r; l; meta_term; pred; secondTerm] in
+  let producedTerm_type = match Solve.infer g_ctxt producedTerm with
+    | Some(x) -> x
+    | None -> fatal_no_pos "[symmetry] The produced term doesn't have any type."
+  in
+
+  log_rewr "using symmetry with:";
+  log_rewr "  goal                   = [%a]" pp g_type;
+
+  log_rewr "  pred built             = [%a]" pp pred;
+  log_rewr "  type of pred           = [%a]" pp pred_type;
+
+  log_rewr "  second term built      = [%a]" pp secondTerm;
+  log_rewr "  type of second term    = [%a]" pp secondTerm_type;
+
+  log_rewr "  produced term          = [%a]" pp producedTerm;
+  log_rewr "  type of produced term  = [%a]" pp producedTerm_type;
+
+  log_rewr "  new goal               = [%a]" pp meta_type;
+  log_rewr "  type of new goal       = [%a]" pp meta_type_type;
+
+  (* Return the proof-term. *)
+  producedTerm
