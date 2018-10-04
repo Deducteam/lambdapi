@@ -1,5 +1,16 @@
+dist: trusty
 language: c
+
+cache:
+  directories:
+  - $HOME/.opam
+
 env:
+  global:
+  - OPAMJOBS="2"
+  - OPAMYES="true"
+  - OPAMVERBOSE="true"
+  matrix:
   - OCAML_VERSION=4.04.0
   - OCAML_VERSION=4.04.1
   - OCAML_VERSION=4.04.2
@@ -7,25 +18,22 @@ env:
   - OCAML_VERSION=4.06.0
   - OCAML_VERSION=4.06.1
   - OCAML_VERSION=4.07.0
+
 before_install:
   # Obtain and install opam locally.
-  - mkdir -p ${HOME}/bin
-  - wget -O ${HOME}/bin/opam https://github.com/ocaml/opam/releases/download/2.0.0-beta6/opam-2.0.0-beta6-x86_64-linux
-  - chmod +x ${HOME}/bin/opam
-  - export PATH=$PATH:${HOME}/bin
-  - export OPAMYES=1
-  - export OPAMVERBOSE=1
+  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
+  - sudo chmod 755 /usr/bin/opam
   # Initialize the switch.
-  - opam init --compiler=${OCAML_VERSION}
-  - eval `opam config env`
-  - opam install ocamlbuild ocamlfind menhir
-  - opam install bindlib.5.0.0 timed.1.0
-  - opam install earley.1.1.0 earley-ocaml.1.1.0 
-  - make
+  - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
+  - opam update
+  - opam switch "$OCAML_VERSION"
+  - eval $(opam env)
+  - opam install dune menhir bindlib.5.0.0 timed.1.0 earley.1.1.0 earley-ocaml.1.1.0
+
 script:
+  - make
   - make real_tests
-os:
-  - linux
+
 notifications:
   email:
     - rodolphe.lepigre@inria.fr
