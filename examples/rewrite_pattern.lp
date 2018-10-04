@@ -157,7 +157,7 @@ proof
   refine nat_ind (λ (n:N), eq nat (add n m) (add m n)) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
-  symmetry // NEW !
+  symmetry
   refine (add0r m)
   // Case S
   simpl

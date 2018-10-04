@@ -33,7 +33,7 @@ syntax keyword KeywordOK contained assert assertnot set
 syntax keyword KeywordOK contained proof qed admit abort
 syntax keyword KeywordOK contained focus print proofterm
 syntax keyword KeywordOK contained refine apply simpl intro
-syntax keyword KeywordOK contained rewrite reflexivity
+syntax keyword KeywordOK contained rewrite reflexivity symmetry
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
