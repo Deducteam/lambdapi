@@ -125,21 +125,19 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
         | _    -> fatal_no_pos "[Kind] expected, [%a] given." pp c
       end
   | Abst(a,t)   ->
-      (*  c → Prod(a',b)    a ~ a'    ctx, x : A ⊢ t<x> ⇐ b<x>
-         ------------------------------------------------------
-                          ctx ⊢ Abst(a,t) ⇐ c                   *)
+      (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
+         ----------------------------------------------------
+                         ctx ⊢ Abst(a,t) ⇐ c                   *)
       begin
-        (* We (hopefully) evaluate [c] to a product. *)
-        let (a',b) =
+        (* We (hopefully) evaluate [c] to a product, and get its body. *)
+        let b =
           let c = Eval.whnf c in
           match c with
-          | Prod(d,b) -> (d,b)
-          | _         ->
+          | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
+          | _         -> (* Generate product type with codomain [a]. *)
               let b = make_prod_codomain ctx a in
-              conv c (Prod(a,b)); (a,b)
+              conv c (Prod(a,b)); b
         in
-        (* We check domain type compatibility. *)
-        conv a a';
         (* We type-check the body with the codomain. *)
         let (x,t) = Bindlib.unbind t in
         check_aux conv (Ctxt.add x a ctx) t (Bindlib.subst b (Vari(x)))

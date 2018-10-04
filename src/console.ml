@@ -53,7 +53,9 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   Format.kfprintf cont Format.str_formatter fmt
 
 (** [fatal_no_pos fmt] is equivalent to [fatal None fmt]. *)
-let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt -> fatal None fmt
+let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
+  let cont _ = raise (Fatal(None, Format.flush_str_formatter ())) in
+  Format.kfprintf cont Format.str_formatter fmt
 
 (** Type of a logging function. *)
 type logger = { logger : 'a. 'a outfmt -> 'a }

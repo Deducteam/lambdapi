@@ -121,7 +121,7 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
 let solve : bool -> problems -> conv_constrs option = fun b p ->
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
-    if !log_enabled then log_solv (red "solve: %s.\n") m; None
+    if !log_enabled then log_solv (red "solve: %s") m; None
 
 (** [check ctx t a] tells whether [t] has type [a] in context [ctx]. *)
 let check : Ctxt.t -> term -> term -> bool = fun ctx t a ->

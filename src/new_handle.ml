@@ -260,7 +260,18 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               {ss with builtins = StrMap.add s sym ss.builtins}
         end
   in
-  handle ss
+  try
+    let (tm, ss) = time handle ss in
+    if Pervasives.(tm >= !Handle.too_long) then
+      wrn cmd.pos "It took %.2f seconds to handle the command." tm;
+    ss
+  with
+  | Timeout                as e -> raise e
+  | Fatal(Some(Some(_)),_) as e -> raise e
+  | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | e                           -> let e = Printexc.to_string e in
+                                   fatal cmd.pos "Uncaught exception [%s]." e
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,

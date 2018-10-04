@@ -298,6 +298,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     | Symb(s,h)                -> (s, h, args)
     | _                        -> fatal p_lhs.pos "No head symbol in LHS."
   in
+  if lhs = [] then fatal p_lhs.pos "LHS head symbol with no argument.";
   (* We scope the RHS and bind the meta-variables. *)
   let names = Array.of_list (List.map fst pvs) in
   let vars = Bindlib.new_mvar te_mkfree names in
