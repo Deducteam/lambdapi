@@ -37,75 +37,70 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
   | Kind        -> assert false (* Forbidden case. *)
   | Wild        -> assert false (* Forbidden case. *)
   | TRef(_)     -> assert false (* Forbidden case. *)
-  | Type        ->
-      (* -------------------
-          ctx ⊢ Type ⇒ Kind  *)
-      Kind
-  | Vari(x)     ->
-      (* ---------------------------------
-          ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-      begin
-        try Ctxt.find x ctx with Not_found -> assert false
-        (* Every free variable must be in the context. *)
-      end
-  | Symb(s,_)   ->
-      (* -------------------------------
-          ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-      Timed.(!(s.sym_type))
+
+  (* -------------------
+      ctx ⊢ Type ⇒ Kind  *)
+  | Type        -> Kind
+
+  (* ---------------------------------
+      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
+  | Vari(x)     -> (try Ctxt.find x ctx with Not_found -> assert false)
+
+  (* -------------------------------
+      ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
+  | Symb(s,_)   -> Timed.(!(s.sym_type))
+
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
+     -----------------------------------------
+                ctx ⊢ Prod(a,b) ⇒ s            *)
   | Prod(a,b)   ->
-      (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
-         -----------------------------------------
-                    ctx ⊢ Prod(a,b) ⇒ s            *)
+      (* We ensure that [a] is of type [Type]. *)
+      check_aux conv ctx a Type;
+      (* We infer the type of the body, first extending the context. *)
+      let (x,b) = Bindlib.unbind b in
+      let s = infer_aux conv (Ctxt.add x a ctx) b in
+      (* We check that [s] is a sort. *)
       begin
-        (* We ensure that [a] is of type [Type]. *)
-        check_aux conv ctx a Type;
-        (* We infer the type of the body, first extending the context. *)
-        let (x,b) = Bindlib.unbind b in
-        let s = infer_aux conv (Ctxt.add x a ctx) b in
-        (* We check that [s] is a sort. *)
         match unfold s with
         | Type | Kind -> s
-        | _           -> fatal_no_pos "Sort expected, [%a] infered." pp s
-        (* FIXME is [Meta(_,_)] possible? *)
+        | s           -> conv s Type; Type
       end
+
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
+     --------------------------------------------
+             ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
   | Abst(a,t)   ->
-      (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
-         --------------------------------------------
-                 ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
-      begin
-        (* We ensure that [a] is of type [Type]. *)
-        check_aux conv ctx a Type;
-        (* We infer the type of the body, first extending the context. *)
-        let (x,t) = Bindlib.unbind t in
-        let b = infer_aux conv (Ctxt.add x a ctx) t in
-        (* We build the product type by binding [x] in [b]. *)
-        Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
-      end
+      (* We ensure that [a] is of type [Type]. *)
+      check_aux conv ctx a Type;
+      (* We infer the type of the body, first extending the context. *)
+      let (x,t) = Bindlib.unbind t in
+      let b = infer_aux conv (Ctxt.add x a ctx) t in
+      (* We build the product type by binding [x] in [b]. *)
+      Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+
+  (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
+     ------------------------------------
+         ctx ⊢ Appl(t,u) ⇒ subst b u      *)
   | Appl(t,u)   ->
-      (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
-         ------------------------------------
-             ctx ⊢ Appl(t,u) ⇒ subst b u      *)
-      begin
-        (* We first infer a product type for [t]. *)
-        let (a,b) =
-          let c = Eval.whnf (infer_aux conv ctx t) in
-          match c with
-          | Prod(a,b) -> (a,b)
-          | _         ->
-              let a = make_prod_domain ctx in
-              let b = make_prod_codomain ctx a in
-              conv c (Prod(a,b)); (a,b)
-        in
-        (* We then check the type of [u] against the domain type. *)
-        check_aux conv ctx u a;
-        (* We produce the returned type. *)
-        Bindlib.subst b u
-      end
-  | Meta(m,e)   ->
-      (*  ctx ⊢ term_of_meta m e ⇒ a
-         ----------------------------
-             ctx ⊢ Meta(m,e) ⇒ a      *)
-      infer_aux conv ctx (term_of_meta m e)
+      (* We first infer a product type for [t]. *)
+      let (a,b) =
+        let c = Eval.whnf (infer_aux conv ctx t) in
+        match c with
+        | Prod(a,b) -> (a,b)
+        | _         ->
+            let a = make_prod_domain ctx in
+            let b = make_prod_codomain ctx a in
+            conv c (Prod(a,b)); (a,b)
+      in
+      (* We then check the type of [u] against the domain type. *)
+      check_aux conv ctx u a;
+      (* We produce the returned type. *)
+      Bindlib.subst b u
+
+  (*  ctx ⊢ term_of_meta m e ⇒ a
+     ----------------------------
+         ctx ⊢ Meta(m,e) ⇒ a      *)
+  | Meta(m,e)   -> infer_aux conv ctx (term_of_meta m e)
 
 (** [check_aux conv ctx t c] checks that the term [t] has type [c], in context
     [ctx]. In the process, the [conv] function is used as convertibility test.
