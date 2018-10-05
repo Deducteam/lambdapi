@@ -14,7 +14,8 @@ with "bash on Windows").
 List of dependencies:
  - GNU make,
  - OCaml (at least 4.04.0),
- - Dune >= 1.2.0
+ - Dune (at least 1.2.0),
+ - odoc (for documentation only),
  - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
  - earley 1.1.0 (https://github.com/rlepigre/ocaml-earley),
  - earley-ocaml 1.1.0 (https://github.com/rlepigre/ocaml-earley-ocaml).
@@ -25,9 +26,8 @@ Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install dune menhir
-opam install bindlib.5.0.0 timed.1.0
-opam install earley.1.1.0 earley-ocaml.1.1.0
+opam install dune odoc menhir
+opam install bindlib.5.0.0 timed.1.0 earley.1.1.0 earley-ocaml.1.1.0
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.
