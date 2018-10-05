@@ -21,12 +21,14 @@ List of dependencies:
  - earley-ocaml 1.1.0 (https://github.com/rlepigre/ocaml-earley-ocaml).
  - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
  - menhir
+ - yojson
+ - cmdliner
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install dune odoc menhir
+opam install dune odoc menhir yojson cmdliner
 opam install bindlib.5.0.0 timed.1.0 earley.1.1.0 earley-ocaml.1.1.0
 ```
 
@@ -75,6 +77,7 @@ The root directory of the repository contains several folders:
  - `editors` holds the files related to editor support (Vim only for now),
  - `examples` holds a bunch of examples (taken from Dedukti and new ones),
  - `libraries` holds the scripts used for checking supported libraries,
+ - `lp-lsp` contains a server for the LSP protocol,
  - `proofs` holds some proofs written using tactics,
  - `src` contains the source code of Lambdapi,
  - `tests` contains test files (mostly from Dedukti),
