@@ -1,8 +1,0 @@
-(lang dune 1.2)
-
-(context default)
-
-; Add custom flags here. Default developer profile is `dev`
-(env
- (dev     (flags :standard))
- (release (flags :standard)))
