@@ -2,9 +2,6 @@
 *~
 *.swp
 _build
-lambdapi.native
-lambdapi.docdir
-new_parser.native
 libraries/*.tar.gz
 libraries/*.tar
 libraries/*.zip
