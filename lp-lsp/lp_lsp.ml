@@ -130,9 +130,8 @@ let kind_of_type tm =
     12                         (* Function *)
 
 let do_symbols ofmt ~id params =
-  let open Timed in
   let file, _, final_st = grab_doc params in
-  let sym = Pure.in_state final_st (fun () -> !(Sign.(current_sign ()).symbols)) () in
+  let sym = Pure.get_symbols final_st in
   let sym = Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
       (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)

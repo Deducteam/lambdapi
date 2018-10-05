@@ -1,12 +1,19 @@
-(** Interface to PLOF. *)
+(** Interface to lp-lsp. *)
 
-open Handle
-open Console
-open Parser
-open Pos
 open Timed
+open Extra
+open Console
 
-type command = p_cmd loc
+(** Representation of a single command (abstract). *)
+type command = Parser.p_cmd
+
+(** Exception raised by [parse_text] on error. *)
+exception Parse_error of Pos.pos
+
+let parse_text : string -> command Pos.loc list = fun s ->
+  let parse = Earley.parse_string Parser.cmd_list Parser.blank in
+  try parse s with Earley.Parse_error(buf, pos) ->
+  raise (Parse_error(Pos.locate buf pos buf pos))
 
 type state = Time.t
 
@@ -22,8 +29,9 @@ let initial_state : Files.module_path -> state = fun path ->
   Sign.loaded  := Files.PathMap.add path (Sign.create path) !Sign.loaded;
   Time.save ()
 
-let handle_command : state -> command -> result = fun t cmd ->
+let handle_command : state -> command Pos.loc -> result = fun t cmd ->
   Time.restore t;
-  try handle_cmd cmd; OK(Time.save ()) with Fatal(p,m) -> Error(p,m)
+  try Handle.handle_cmd cmd; OK(Time.save ()) with Fatal(p,m) -> Error(p,m)
 
-let in_state st f x = Time.restore st; f x
+let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun st ->
+  Time.restore st; !(Sign.((current_sign ()).symbols))
