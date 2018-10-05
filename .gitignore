@@ -17,4 +17,5 @@ libraries/matita
 libraries/verine
 libraries/zenon_modulo
 ignored
-META
+.merlin
+*.install

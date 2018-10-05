@@ -1,12 +1,6 @@
-OCAMLBUILD = ocamlbuild -use-ocamlfind -quiet
-CFLAGS     = -cflags -w,A-4-50-9-44-33
-DFLAGS     = -docflags -hide-warnings,-charset,utf-8
-BINDIR     = $(realpath $(dir $(shell which ocaml)))
 VIMDIR     = $(HOME)/.vim
-VERSION    = dev
-
 .PHONY: all
-all: bin lib
+all: bin
 
 #### Targets #################################################################
 
@@ -16,40 +10,16 @@ help:
 
 #### Compilation #############################################################
 
+LPBIN=_build/install/default/bin/lambdapi
 .PHONY: bin
-bin: lambdapi.native
-
-lambdapi.native: _build/src/lambdapi.native
-
-_build/src/lambdapi.native: $(wildcard src/*.ml)
-	@printf "[OPT] lambdapi.native\n"
-	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.native
-
-.PHONY: lib
-lib: _build/src/lambdapi.cma _build/src/lambdapi.cmxa _build/src/lambdapi.cmxs
-
-_build/src/lambdapi.cma: $(wildcard src/*.ml)
-	@printf "[BYT] lambdapi.cma\n"
-	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cma
-
-_build/src/lambdapi.cmxa: $(wildcard src/*.ml)
-	@printf "[OPT] lambdapi.cmxa\n"
-	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxa
-
-_build/src/lambdapi.cmxs: $(wildcard src/*.ml)
-	@printf "[DYN] lambdapi.cmxs\n"
-	@$(OCAMLBUILD) $(CFLAGS) src/lambdapi.cmxs
+bin:
+	dune build
 
 #### Documentation ###########################################################
 
 .PHONY: doc
-doc: lambdapi.docdir/index.html
-
-lambdapi.docdir/index.html: _build/src/lambdapi.docdir/index.html
-
-_build/src/lambdapi.docdir/index.html: $(wildcard src/*.ml)
-	@printf "[DOC] lambdapi.docdir/index.html\n"
-	@$(OCAMLBUILD) $(DFLAGS) src/lambdapi.docdir/index.html
+doc:
+	dune build @doc
 
 #### Unit tests ##############################################################
 
@@ -59,104 +29,104 @@ TESTFILES    = $(sort $(wildcard examples/*.*))
 TESTPROOFS   = $(sort $(wildcard proofs/*.lp))
 
 .PHONY: tests
-tests: lambdapi.native
+tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[31mOK\033[0m $$file\n" \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; } ; \
 	done
 	@printf "## Proofs   ##\n"
 	@for file in $(TESTPROOFS) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; } ; \
 	done
 
 .PHONY: real_tests
-real_tests: lambdapi.native
+real_tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## Proofs   ##\n"
 	@for file in $(TESTPROOFS) ; do \
-		./lambdapi.native --verbose 0 $$file 2> /dev/null \
+		$(LPBIN) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& ./lambdapi.native --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
 #### Library tests ###########################################################
 
 .PHONY: matita
-matita: lambdapi.native
+matita: bin
 	@printf "## Compiling the Matita's arithmetic library ##\n"
 	@cd libraries && ./matita.sh
 
 .PHONY: plein_de_dks
-plein_de_dks: lambdapi.native
+plein_de_dks: bin
 	@printf "## Compiling “plein de dks” ##\n"
 	@cd libraries && ./plein_de_dks.sh
 
 .PHONY: focalide
-focalide: lambdapi.native
+focalide: bin
 	@printf "## Compiling focalide library ##\n"
 	@cd libraries && ./focalide.sh
 
 .PHONY: holide
-holide: lambdapi.native
+holide: bin
 	@printf "## Compiling holide library ##\n"
 	@cd libraries && ./holide.sh
 
 .PHONY: verine
-verine: lambdapi.native
+verine: bin
 	@printf "## Compiling verine library ##\n"
 	@cd libraries && ./verine.sh
 
 .PHONY: iprover
-iprover: lambdapi.native
+iprover: bin
 	@printf "## Compiling iProverModulo library ##\n"
 	@cd libraries && ./iprover.sh
 
 .PHONY: dklib
-dklib: lambdapi.native
+dklib: bin
 	@printf "## Compiling the dklib library ##\n"
 	@cd libraries && ./dklib.sh
 
 .PHONY: zenon_modulo
-zenon_modulo: lambdapi.native
+zenon_modulo: bin
 	@printf "## Compiling the zenon library ##\n"
 	@cd libraries && ./zenon_modulo.sh
 
@@ -164,7 +134,7 @@ zenon_modulo: lambdapi.native
 
 .PHONY: clean
 clean:
-	@$(OCAMLBUILD) -clean
+	dune clean
 
 .PHONY: distclean
 distclean: clean
@@ -178,7 +148,6 @@ distclean: clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.dko" -exec rm {} \;
-	@rm -f META
 
 .PHONY: fullclean
 fullclean: distclean
@@ -193,45 +162,13 @@ fullclean: distclean
 
 #### Installation targets ####################################################
 
-# META generation.
-META: GNUmakefile
-	@printf "[GEN] $@ (version $(VERSION))\n"
-	@printf "name            = \"lambdapi\"\n"                              > $@
-	@printf "version         = \"$(VERSION)\"\n"                           >> $@
-	@printf "requires        = \"unix,earley,earley.str,bindlib,timed\"\n" >> $@
-	@printf "description     = \"The Lambdapi prover as a library\"\n"     >> $@
-	@printf "archive(byte)   = \"lambdapi.cma\"\n"                         >> $@
-	@printf "plugin(byte)    = \"lambdapi.cma\"\n"                         >> $@
-	@printf "archive(native) = \"lambdapi.cmxa\"\n"                        >> $@
-	@printf "plugin(native)  = \"lambdapi.cmxs\"\n"                        >> $@
+.PHONY: install
+install:
+	dune install
 
-# Uninstalling everything.
 .PHONY: uninstall
 uninstall:
-ifeq ("$(wildcard $(BINDIR)/lambdapi)","")
-	@printf "\e[36mWas not previously installed.\e[39m\n"
-else
-	@ocamlfind remove lambdapi
-	rm -f $(BINDIR)/lambdapi
-	@printf "\e[36mRemoved previously installed version.\e[39m\n"
-endif
-
-.PHONY: install
-install: uninstall install_lib install_bin install_vim
-
-# Install the library
-.PHONY: install_lib
-install_lib: META lib
-	@ocamlfind install lambdapi META  _build/src/lambdapi.cmxa \
-		_build/src/lambdapi.a _build/src/lambdapi.cma _build/src/lambdapi.cmxs \
-		$(wildcard _build/src/*.cmi) $(wildcard _build/src/*.cmx) \
-		$(wildcard _build/src/*.o) $(wildcard _build/src/*.ml)
-	@printf "\e[36mLibrary installed.\e[39m\n"
-
-.PHONY: install_bin
-install_bin: lambdapi.native
-	install -m 755 $< $(BINDIR)/lambdapi
-	@printf "\e[36mProgram installed.\e[39m\n"
+	dune uninstall
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
@@ -247,3 +184,7 @@ else
 	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@printf "\e[36mVim mode installed.\e[39m\n"
 endif
+
+opam-release:
+	dune-release distrib
+	dune-release opam pkg
