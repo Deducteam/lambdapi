@@ -3,7 +3,10 @@ VIMDIR = $(HOME)/.vim
 #### Compilation (binary, library and documentation) #########################
 
 .PHONY: all
-all:
+all: bin
+
+.PHONY: bin
+bin:
 	@dune build
 
 .PHONY: doc
