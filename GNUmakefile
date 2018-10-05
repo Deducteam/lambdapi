@@ -1,8 +1,7 @@
-VIMDIR     = $(HOME)/.vim
+VIMDIR = $(HOME)/.vim
+
 .PHONY: all
 all: bin
-
-#### Targets #################################################################
 
 .PHONY: help
 help:
@@ -10,7 +9,6 @@ help:
 
 #### Compilation #############################################################
 
-LPBIN=_build/install/default/bin/lambdapi
 .PHONY: bin
 bin:
 	dune build
@@ -23,6 +21,7 @@ doc:
 
 #### Unit tests ##############################################################
 
+LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
 TESTFILES    = $(sort $(wildcard examples/*.*))
@@ -32,60 +31,60 @@ TESTPROOFS   = $(sort $(wildcard proofs/*.lp))
 tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[31mOK\033[0m $$file\n" \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
 	done
 	@printf "## Proofs   ##\n"
 	@for file in $(TESTPROOFS) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
 	done
 
 .PHONY: real_tests
 real_tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
 	@printf "## Examples ##\n"
 	@for file in $(TESTFILES) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## Proofs   ##\n"
 	@for file in $(TESTPROOFS) ; do \
-		$(LPBIN) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 	  && printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LPBIN) --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
 #### Library tests ###########################################################
@@ -93,42 +92,42 @@ real_tests: bin
 .PHONY: matita
 matita: bin
 	@printf "## Compiling the Matita's arithmetic library ##\n"
-	@cd libraries && ./matita.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./matita.sh
 
 .PHONY: plein_de_dks
 plein_de_dks: bin
 	@printf "## Compiling “plein de dks” ##\n"
-	@cd libraries && ./plein_de_dks.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./plein_de_dks.sh
 
 .PHONY: focalide
 focalide: bin
 	@printf "## Compiling focalide library ##\n"
-	@cd libraries && ./focalide.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./focalide.sh
 
 .PHONY: holide
 holide: bin
 	@printf "## Compiling holide library ##\n"
-	@cd libraries && ./holide.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./holide.sh
 
 .PHONY: verine
 verine: bin
 	@printf "## Compiling verine library ##\n"
-	@cd libraries && ./verine.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./verine.sh
 
 .PHONY: iprover
 iprover: bin
 	@printf "## Compiling iProverModulo library ##\n"
-	@cd libraries && ./iprover.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./iprover.sh
 
 .PHONY: dklib
 dklib: bin
 	@printf "## Compiling the dklib library ##\n"
-	@cd libraries && ./dklib.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./dklib.sh
 
 .PHONY: zenon_modulo
 zenon_modulo: bin
 	@printf "## Compiling the zenon library ##\n"
-	@cd libraries && ./zenon_modulo.sh
+	@cd libraries && LAMBDAPI=${LAMBDAPI} ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
 
@@ -160,7 +159,7 @@ fullclean: distclean
 	@cd libraries && ./dklib.sh fullclean
 	@cd libraries && ./zenon_modulo.sh fullclean
 
-#### Installation targets ####################################################
+#### Installation and release targets ########################################
 
 .PHONY: install
 install:

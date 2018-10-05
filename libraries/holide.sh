@@ -1,6 +1,5 @@
 #!/bin/bash
 
-LAMBDAPI="../../lambdapi.native"
 SRC="https://deducteam.github.io/data/libraries/holide.tar.gz"
 DIR="holide"
 
@@ -17,6 +16,17 @@ fi
 if [[ "$#" -ne 0 ]]; then
   echo "Invalid argument, usage: $0 [clean | fullclean]"
   exit -1
+fi
+
+# Checking for the "lambadpi" command (first in LAMBDAPI).
+if [[ ! -v LAMBDAPI ]]; then
+  # Falling back to installed "lambdapi" command.
+  LAMBDAPI="$(which lambdapi 2> /dev/null)"
+  if [[ -z "${LAMBDAPI}" ]]; then
+    echo "No lambdapi command found... (not in path)"
+    echo "A command may be specified with the LAMBDAPI environment variable."
+    exit -1
+  fi
 fi
 
 # Prepare the library if necessary.
