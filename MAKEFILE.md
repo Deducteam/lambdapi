@@ -10,7 +10,6 @@ targets:
 - tests: run basic tests without failing
 - real_tests: run basic tests, stoping at the first failure
 - dklib: run Lambdapi on https://github.com/rafoo/dklib/
-- plein_de_dks: run Lambdapi on https://git.lsv.fr/genestier/PleinDeDk/
 - focalide: run Lambdapi on the Dedukti files generated from the Focalize library
 - holide: run Lambdapi on the Dedukti files generated from the OpenTheory library
 - matita: run Lambdapi on the Dedukti files generated from the arithmetic library of Matita

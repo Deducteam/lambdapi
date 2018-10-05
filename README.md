@@ -46,7 +46,6 @@ Tests and supported libraries
 You can run tests with:
  - `make tests`        (unit tests)
  - `make matita`       (type-checks Matita's arithmetic library)
- - `make plein_de_dks` (type-checks many random files)
  - `make focalide`     (type-checks the Focalide library)
  - `make holide`       (type-checks the Holide library)
  - `make verine`       (type-checks the Verine library)

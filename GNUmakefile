@@ -94,11 +94,6 @@ matita: bin
 	@printf "## Compiling the Matita's arithmetic library ##\n"
 	@cd libraries && LAMBDAPI=${LAMBDAPI} ./matita.sh
 
-.PHONY: plein_de_dks
-plein_de_dks: bin
-	@printf "## Compiling “plein de dks” ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./plein_de_dks.sh
-
 .PHONY: focalide
 focalide: bin
 	@printf "## Compiling focalide library ##\n"
@@ -138,7 +133,6 @@ clean:
 .PHONY: distclean
 distclean: clean
 	@cd libraries && ./matita.sh clean
-	@cd libraries && ./plein_de_dks.sh clean
 	@cd libraries && ./focalide.sh clean
 	@cd libraries && ./holide.sh clean
 	@cd libraries && ./verine.sh clean
@@ -151,7 +145,6 @@ distclean: clean
 .PHONY: fullclean
 fullclean: distclean
 	@cd libraries && ./matita.sh fullclean
-	@cd libraries && ./plein_de_dks.sh fullclean
 	@cd libraries && ./focalide.sh fullclean
 	@cd libraries && ./holide.sh fullclean
 	@cd libraries && ./verine.sh fullclean

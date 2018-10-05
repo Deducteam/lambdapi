@@ -8,7 +8,6 @@ new_parser.native
 libraries/*.tar.gz
 libraries/*.tar
 libraries/*.zip
-libraries/plein_de_dks
 libraries/dklib
 libraries/focalide
 libraries/holide
