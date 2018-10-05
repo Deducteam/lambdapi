@@ -1,23 +1,14 @@
 VIMDIR = $(HOME)/.vim
 
+#### Compilation (binary, library and documentation) #########################
+
 .PHONY: all
-all: bin
-
-.PHONY: help
-help:
-	@cat MAKEFILE.md
-
-#### Compilation #############################################################
-
-.PHONY: bin
-bin:
-	dune build
-
-#### Documentation ###########################################################
+all:
+	@dune build
 
 .PHONY: doc
 doc:
-	dune build @doc
+	@dune build @doc
 
 #### Unit tests ##############################################################
 
@@ -128,7 +119,7 @@ zenon_modulo: bin
 
 .PHONY: clean
 clean:
-	dune clean
+	@dune clean
 
 .PHONY: distclean
 distclean: clean
@@ -156,11 +147,11 @@ fullclean: distclean
 
 .PHONY: install
 install:
-	dune install
+	@dune install
 
 .PHONY: uninstall
 uninstall:
-	dune uninstall
+	@dune uninstall
 
 # Install for the vim mode (in the user's directory).
 .PHONY: install_vim
