@@ -76,7 +76,7 @@ let string_lit =
   in
   Earley.black_box fn (Charset.singleton '"') false "<string>"
 
-(** Regular identifier (regexp “[a-zA-Z_][a-zA-Z0-9_]*”). *)
+(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
 let regular_ident =
   let head_cs = Charset.from_string "a-zA-Z_" in
   let body_cs = Charset.from_string "a-zA-Z0-9_" in
@@ -87,7 +87,7 @@ let regular_ident =
   in
   Earley.black_box fn head_cs false "<r-ident>"
 
-(** Escaped identifier (regexp “{|\([^|]\|\(|[^}]\)\)|*|}”). *)
+(** Escaped identifier (regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]). *)
 let escaped_ident =
   let fn buf pos =
     let s = Buffer.create 20 in
