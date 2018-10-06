@@ -12,6 +12,5 @@ libraries/iprover
 libraries/matita
 libraries/verine
 libraries/zenon_modulo
-ignored
 .merlin
 *.install
