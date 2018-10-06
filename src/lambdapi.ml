@@ -4,6 +4,15 @@ open Extra
 open Console
 open Files
 
+(** [confluence_checker] holds a possible confluence checking command. When it
+    is given, the command should accept TPDB format on its input and the first
+    line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+let confluence_checker : string option Pervasives.ref = Pervasives.ref None
+
+(** [set_confluence cmd] sets the confluence checker command to [cmd]. *)
+let set_confluence : string -> unit = fun cmd ->
+  Pervasives.(confluence_checker := Some(cmd))
+
 (** [timeout] holds a possible timeout for compilation (in seconds). *)
 let timeout : int option Pervasives.ref = Pervasives.ref None
 
@@ -28,7 +37,17 @@ let compile : string -> unit = fun fname ->
     | None    -> compile mp
     | Some(i) -> with_timeout i compile mp
   in
-  try run () with
+  try
+    run ();
+    match !confluence_checker with
+    | None      -> ()
+    | Some(cmd) ->
+        let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
+        match Confluence.check cmd sign with
+        | None     -> fatal_no_pos "The rewrite system may not be confluent."
+        | Some(ok) -> if not ok then
+                        fatal_no_pos "The rewrite system is not confluent."
+  with
   | Fatal(popt,msg) ->
       begin
         match popt with
@@ -60,6 +79,7 @@ let _ =
     "<int> Set the verbosity level.\n      Available values:\n"
     ^ String.concat "\n" flags
   in
+  let cc_doc = "<cmd> Runs the given confluence checker" in
   let gen_obj_doc = " Produce object files (\".dko\" extension)" in
   let too_long_doc = "<flt> Duration considered too long for a command" in
   let onlyparse_doc = " Only parse the input files (no type-checking)" in
@@ -74,6 +94,7 @@ let _ =
     ; ("--earleylvl"    , Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
     ; ("--legacy-parser", Arg.Set Handle.use_legacy_parser, legacy_doc   )
     ; ("--timeout"      , Arg.Int set_timeout             , timeout_doc  )
+    ; ("--confluence"   , Arg.String set_confluence       , cc_doc       )
     ; ("--debug"        , Arg.String (set_debug true)     , debug_doc    ) ]
   in
   let files = Pervasives.ref [] in
