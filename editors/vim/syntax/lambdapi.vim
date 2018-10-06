@@ -41,8 +41,10 @@ syntax keyword KeywordKO contained require open as let in
 syntax keyword KeywordKO contained symbol const injective
 syntax keyword KeywordKO contained rule and definition theorem
 syntax keyword KeywordKO contained assert assertnot set
-syntax keyword KeywordKO contained proof qed admit abort refine intro
-syntax keyword KeywordKK contained apply simpl rewrite focus print
+syntax keyword KeywordKO contained proof qed admit abort
+syntax keyword KeywordKO contained focus print proofterm
+syntax keyword KeywordKO contained refine apply simpl intro
+syntax keyword KeywordKO contained rewrite reflexivity symmetry
 highlight link KeywordKO Error
 
 " Escaped identifiers member.
