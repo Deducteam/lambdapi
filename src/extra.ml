@@ -151,3 +151,15 @@ let with_timeout : int -> ('a -> 'b) -> 'a -> 'b = fun nbs f x ->
     let res = f x in
     reset_sigalrm (); res
   with e -> reset_sigalrm (); raise e
+
+(** [input_lines ic] reads the input channel [ic] line by line and returns its
+    contents. The trailing newlines are removed in lines. The input channel is
+    not closed by the function. *)
+let input_lines : in_channel -> string list = fun ic ->
+  let lines = ref [] in
+  try
+    while true do
+      lines := input_line ic :: !lines
+    done;
+    assert false (* Unreachable. *)
+  with End_of_file -> List.rev !lines
