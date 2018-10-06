@@ -43,6 +43,11 @@
   (setq-default indent-tabs-mode nil)
   (set-input-method "LambdaPi"))
 
+;; LSP mode
+(require 'eglot)
+(add-to-list 'eglot-server-programs '(lambdapi-mode . ("lp-lsp" "--std")))
+(add-hook 'lambdapi-mode-hook 'eglot-ensure)
+
 ;; Register mode the the ".lp" extension
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 
