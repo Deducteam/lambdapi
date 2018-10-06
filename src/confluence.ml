@@ -76,7 +76,11 @@ let check : string -> Sign.t -> bool option = fun cmd sign ->
   to_TPDB (Format.formatter_of_out_channel oc) sign;
   flush oc;
   (* Read the answer. *)
-  let answer = input_line ic in
+  let answer =
+    try input_line ic with End_of_file ->
+      ignore (Unix.close_process (ic, oc));
+      fatal_no_pos "The confluence checker did not output anything."
+  in
   (* Terminate the process. *)
   match (Unix.close_process (ic, oc), answer) with
   | (Unix.WEXITED 0, "YES"  ) -> Some true
