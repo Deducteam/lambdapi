@@ -38,10 +38,11 @@ be run on files with the `.dk` or `.lp` extension (use the `--help` option
 for more information).
 
 ```bash
-make             # Build lambdapi.
-make doc         # Build the documentation.
-make install     # Optionally install the program.
-make install_vim # Optionally install vim support.
+make               # Build lambdapi.
+make doc           # Build the documentation.
+make install       # Optionally install the program.
+make install_vim   # Optionally install vim support.
+make install_emacs # Optionally install emacs support.
 ```
 
 **Note:** you can run `lambdapi` with `dune exec lambdapi`.

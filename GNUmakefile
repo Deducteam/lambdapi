@@ -1,4 +1,5 @@
-VIMDIR = $(HOME)/.vim
+VIMDIR   = $(HOME)/.vim
+EMACSDIR = $(shell opam var share)/emacs/site-lisp
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -149,7 +150,7 @@ fullclean: distclean
 #### Installation and release targets ########################################
 
 .PHONY: install
-install:
+install: bin
 	@dune install
 
 .PHONY: uninstall
@@ -169,6 +170,18 @@ else
 	install -m 644 editors/vim/ftdetect/dedukti.vim  $(VIMDIR)/ftdetect
 	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@printf "\e[36mVim mode installed.\e[39m\n"
+endif
+
+# Install for the emacs mode (system-wide).
+.PHONY: install_emacs
+install_emacs: editors/emacs/lambdapi.el
+ifeq ($(wildcard $(EMACSDIR)/.),)
+	@echo -e "\e[36mWill not install emacs mode.\e[39m"
+else
+	install -d $(EMACSDIR)
+	install -m 644 editors/emacs/lambdapi.el $(EMACSDIR)
+	@echo -e "\e[36mEmacs mode installed.\e[39m"
+	@echo -e "\e[33m[(load \"lambdapi\")] should be added to [~/.emacs].\e[39m"
 endif
 
 opam-release:
