@@ -71,5 +71,6 @@ let check_text ~doc =
         | None     -> acc
         | Some pos -> (pos,lvl,msg,goal) :: acc
       ) [] diag
-  with Pure.Parse_error(loc) ->
+  with
+  | Pure.Parse_error(loc) ->
     doc.root, mk_error ~doc loc "Parse error."
