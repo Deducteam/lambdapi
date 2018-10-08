@@ -177,7 +177,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
               wrn t.pos "Pattern variable not bound in the RHS.";
             None
         in
-        _Patt i id.elt (Array.map (scope env) ts)
+        let scope_var t =
+          match unfold (Bindlib.unbox (scope env t)) with
+          | Vari(x) -> Bindlib.box_var x
+          | _       -> fatal t.pos "Not a variable."
+        in
+        _Patt i id.elt (Array.map scope_var ts)
     | (P_Patt(id,ts)   , M_RHS(m) ) ->
         let x =
           try List.assoc id.elt m with Not_found ->
