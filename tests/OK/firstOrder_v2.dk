@@ -1,5 +1,3 @@
-#NAME Prop.
-
 Prop: Type.
 def prf : Prop -> Type.
 Term: Type.

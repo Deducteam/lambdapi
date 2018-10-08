@@ -11,7 +11,6 @@ type token =
   | RIGHTPAR
   | RIGHTBRA
   | QID        of (string * string)
-  | NAME       of string
   | REQUIRE    of string
   | LONGARROW
   | LEFTSQU
@@ -29,9 +28,7 @@ type token =
   | ARROW
   | EVAL
   | INFER
-  | CHECK
   | ASSERT
-  | CHECKNOT
   | ASSERTNOT
   | PRINT
   | GDT
@@ -66,12 +63,9 @@ rule token = parse
   | "def"       { KW_DEF        }
   | "inj"       { KW_INJ        }
   | "thm"       { KW_THM        }
-  | "#NAME"    space+ (mident as md) { NAME    md }
   | "#REQUIRE" space+ (mident as md) { REQUIRE md }
   | "#EVAL"     { EVAL          }
   | "#INFER"    { INFER         }
-  | "#CHECK"    { CHECK         }
-  | "#CHECKNOT" { CHECKNOT      }
   | "#ASSERT"   { ASSERT        }
   | "#ASSERTNOT"{ ASSERTNOT     }
   | "#PRINT"    { PRINT         }

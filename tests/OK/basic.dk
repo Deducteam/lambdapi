@@ -1,8 +1,8 @@
 X : Type.
 Y : Type.
 
-#CHECK x:X => x :: x:X -> X.
-#CHECK x:X => y:Y => x :: X -> Y -> X.
+#ASSERT x:X => x :: x:X -> X.
+#ASSERT x:X => y:Y => x :: X -> Y -> X.
 
 Nat  : Type.
 zero : Nat.
@@ -16,8 +16,8 @@ cons : n:Nat -> Nat -> Vec n -> Vec (succ n).
 #INFER cons zero.
 #INFER cons zero zero nil.
 
-#CHECK nil :: Vec zero.
-#CHECK cons zero (succ zero) nil :: Vec (succ zero).
+#ASSERT nil :: Vec zero.
+#ASSERT cons zero (succ zero) nil :: Vec (succ zero).
 
 def add : Nat -> Nat -> Nat.
 [n]   add n        zero     --> n.

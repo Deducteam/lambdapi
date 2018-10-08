@@ -1,5 +1,3 @@
-#NAME bug.
-
 A : Type.
 
 def F : (A -> A) -> A -> A.
@@ -11,4 +9,4 @@ g : A -> A.
 def test (b : A) := F (x => g x) b.
 
 #EVAL test.
-#CHECK test == b : A => a. (; Answer must be YES ;)
+#ASSERT test == b : A => a. (; Answer must be YES ;)

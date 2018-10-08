@@ -6,6 +6,19 @@ open Pos
 open Terms
 open Console
 
+(* FIXME move that. *)
+(** If [t] is a product term [x1:t1->..->xn:tn->u], [env_of_prod n t]
+    returns the environment [xn:tn;..;x1:t1] and the type [u]. *)
+let env_of_prod (n:int) (t:term) : Env.t * term =
+  let rec aux n t acc =
+    match n, t with
+    | 0, _ -> acc, t
+    | _, Prod(a,b) ->
+       let (v,b) = Bindlib.unbind b in
+       aux (n-1) b ((Bindlib.name_of v,(v,lift a))::acc)
+    | _, _ -> assert false
+  in assert(n>=0); aux n t []
+
 (** Abstract representation of a goal. *)
 module Goal :
   sig
@@ -39,7 +52,7 @@ module Goal :
 
     let of_meta_decomposed : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        Handle.env_of_prod m.meta_arity !(m.meta_type)
+        env_of_prod m.meta_arity !(m.meta_type)
       in
       {goal_meta = m; goal_hyps; goal_type}
 

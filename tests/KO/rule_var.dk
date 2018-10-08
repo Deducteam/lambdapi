@@ -1,4 +1,3 @@
-#NAME var.
 A:Type.
 a:A.
 [x:A] x --> a.

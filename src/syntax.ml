@@ -139,3 +139,149 @@ type p_cmd =
   (** Assertion (must fail if boolean is [true]). *)
   | P_set        of p_config
   (** Set the configuration (debug, logging, ...). *)
+  | P_infer      of p_term * Eval.config
+  (** Type inference command. *)
+  | P_normalize  of p_term * Eval.config
+  (** Normalisation command. *)
+
+
+
+
+
+(* The following is required for compatibility. *)
+
+open Extra
+open Timed
+
+(** [get_args t] decomposes the {!type:p_term} [t] into a head term and a list
+    of arguments. Note that in the returned pair [(h,args)],  [h] can never be
+    a {!constr:P_Appl} node. *)
+let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
+  let rec get_args acc t =
+    match t.elt with
+    | P_Appl(u,v) -> get_args ((t.pos,v)::acc) u
+    | _           -> (t, acc)
+  in get_args [] t
+
+(** [add_args t args] builds the application of the {!type:p_term} [t] to  the
+    arguments [args]. When [args] is empty, the returned value is (physically)
+    equal to [t]. *)
+let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
+  let rec add_args t args =
+    match args with
+    | []      -> t
+    | (p,u)::args -> add_args (Pos.make p (P_Appl(t,u))) args
+  in add_args t args
+
+(** Representation of a reduction rule, with its context. *)
+type old_p_rule = ((strloc * p_term option) list * p_term * p_term) Pos.loc
+
+(** [translate_old_rule r] transforms the legacy representation of a rule into
+    the new representation. This function will be removed soon. *)
+let translate_old_rule : old_p_rule -> p_rule = fun r ->
+  let (ctx, lhs, rhs) = r.elt in
+  (** Check for (deprecated) annotations in the context. *)
+  let get_var (x,ao) =
+    let fn a = wrn a.pos "Ignored type annotation." in
+    (if !verbose > 1 then Option.iter fn ao); x
+  in
+  let ctx = List.map get_var ctx in
+
+  (** Find the minimum number of arguments a variable is applied to. *)
+  let is_pat_var env x =
+    not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
+  in
+  let arity = Hashtbl.create 7 in
+  let rec compute_arities env t =
+    let (h, args) = get_args t in
+    let nb_args = List.length args in
+    begin
+      match h.elt with
+      | P_Appl(_,_)           -> assert false (* Cannot happen. *)
+      | P_Vari({elt = (p,x)}) ->
+          if p = [] && is_pat_var env x then
+            begin
+              try
+                let n = Hashtbl.find arity x in
+                if nb_args < n then Hashtbl.replace arity x nb_args
+              with Not_found -> Hashtbl.add arity x nb_args
+            end
+      | P_Wild          -> ()
+      | P_Type          -> ()
+      | P_Prod(_,_)     -> fatal h.pos "Product in legacy pattern."
+      | P_Meta(_,_)     -> fatal h.pos "Metaviable in legacy pattern."
+      | P_Abst(xs,t)    ->
+          begin
+            match xs with
+            | [(_, Some(a))] -> fatal a.pos "Annotation in legacy pattern."
+            | [(x, None   )] -> compute_arities (x.elt::env) t
+            | _              -> fatal h.pos "Invalid legacy pattern lambda."
+          end
+      | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
+      | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
+      | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+      | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
+    end;
+    List.iter (fun (_,t) -> compute_arities env t) args
+  in
+  compute_arities [] lhs;
+
+  (** Check that all context variables occur in the LHS. *)
+  let check_here x =
+    try ignore (Hashtbl.find arity x.elt) with Not_found ->
+      fatal x.pos "Variable [%s] does not occur in the LHS." x.elt
+  in
+  List.iter check_here ctx;
+
+  let rec build env t =
+    let (h, lts) = get_args t in
+    match h.elt with
+    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
+       let lts = List.map (fun (p,t) -> p,build env t) lts in
+       begin
+         try
+           let n = Hashtbl.find arity x in
+           let lts1, lts2 = List.cut lts n in
+           let ts1 = Array.of_list (List.map snd lts1) in
+           let h = Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1)) in
+           add_args h lts2
+         with Not_found ->
+           assert false
+       end
+    | _ ->
+       match t.elt with
+       | P_Vari(_)
+       | P_Type
+       | P_Wild -> t
+       | P_Prod(xs,b) ->
+           begin
+             match xs with
+             | [(x, Some(a))] ->
+                 let a = build env a in
+                 let b = build (x.elt::env) b in
+                 Pos.make t.pos (P_Prod([(x,Some(a))],b))
+             | _              -> assert false
+           end
+       | P_Abst(xs,u) ->
+           let (x,a) =
+             match xs with
+             | [(x, Some(a))] -> (x, Some(build env a))
+             | [(x, None   )] -> (x, None             )
+             | _              -> assert false
+           in
+           let u = build (x.elt::env) u in
+           Pos.make t.pos (P_Abst([(x,a)],u))
+       | P_Appl(t1,t2) ->
+          let t1 = build env t1 in
+          let t2 = build env t2 in
+          Pos.make t.pos (P_Appl(t1,t2))
+       | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
+       | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
+       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
+       | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
+  in
+  (* NOTE the computation order is important for setting arities properly. *)
+  let lhs = build [] lhs in
+  let rhs = build [] rhs in
+  Pos.make r.pos (lhs, rhs)

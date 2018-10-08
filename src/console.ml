@@ -32,7 +32,7 @@ let err_fmt = Pervasives.ref Format.err_formatter
     at the end of the message as well. *)
 let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
-  | None    -> Format.fprintf Pervasives.(!err_fmt) (yel fmt)
+  | None    -> Format.fprintf Pervasives.(!err_fmt) (yel (fmt ^^ "\n"))
   | Some(_) -> Format.fprintf Pervasives.(!err_fmt)
                  (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 

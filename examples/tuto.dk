@@ -1,5 +1,3 @@
-#NAME simple.
-
 (; Les Types ;)
 
 Nat : Type.
@@ -267,5 +265,5 @@ def 0_right_neutral : n : Nat ->
 [n] 0_right_neutral (S n) --> 0_right_neutral n.
 
 (; FIXME too slow
-#CHECK factorielle 14 == mult 95 95.
+#ASSERT factorielle 14 == mult 95 95.
 ;)

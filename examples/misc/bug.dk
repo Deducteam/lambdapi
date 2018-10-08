@@ -1,5 +1,3 @@
-#NAME bug.
-
 def A : Type.
 def eA : A -> Type.
 a : A.

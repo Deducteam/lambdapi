@@ -3,6 +3,7 @@
 open Timed
 open Extra
 open Console
+open Syntax
 open Files
 open Pos
 
@@ -21,46 +22,6 @@ let to_qid : string -> module_path * string = fun str ->
   let fs = List.rev (String.split_on_char '.' str) in
   let qid = (List.rev (List.tl fs), List.hd fs) in
   Hashtbl.add qid_map str qid; qid
-
-(** Parser-level representation of terms (and patterns). *)
-type p_term = p_term_aux loc
- and p_term_aux =
-  | P_Vari of qident
-  | P_Type
-  | P_Prod of strloc * p_term option * p_term
-  | P_Abst of strloc * p_term option * p_term
-  | P_Appl of p_term * p_term
-  | P_Wild
-  | P_Meta of strloc * p_term array
-
-(* NOTE: the [P_Vari] constructor is used for variables (with an empty  module
-   path), and for symbols. The [P_Wild] constructor corresponds to a  wildcard
-   pattern or to a fresh metavariable. *)
-
-(** [get_args t] decomposes the {!type:p_term} [t] into a head term and a list
-    of arguments. Note that in the returned pair [(h,args)],  [h] can never be
-    a {!constr:P_Appl} node. *)
-let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
-  let rec get_args acc t =
-    match t.elt with
-    | P_Appl(u,v) -> get_args ((t.pos,v)::acc) u
-    | _           -> (t, acc)
-  in get_args [] t
-
-(** [add_args t args] builds the application of the {!type:p_term} [t] to  the
-    arguments [args]. When [args] is empty, the returned value is (physically)
-    equal to [t]. *)
-let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | (p,u)::args -> add_args (Pos.make p (P_Appl(t,u))) args
-  in add_args t args
-
-(** [build_prod xs a] build a product by abstracting away the arguments of the
-    list [xs] on the body [a]. *)
-let build_prod : (strloc * p_term option) list -> p_term -> p_term =
-  List.fold_right (fun (x,a) b -> Pos.none (P_Prod(x,a,b)))
 
 (** [ident] is an atomic parser for an identifier (for example variable name).
     It accepts (and returns as semantic value) any non-empty strings formed of
@@ -118,10 +79,12 @@ let _ASSERTNOT_ = command "ASSERTNOT"
 let _REQUIRE_   = command "REQUIRE"
 let _INFER_     = command "INFER"
 let _EVAL_      = command "EVAL"
-let _NAME_      = command "NAME"
 
 (** [meta] is an atomic parser for a metavariable identifier. *)
 let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
+
+(** [patt] is an atomic parser for a pattern variable identifier. *)
+let parser patt = "&" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
 
 (** Priority level for an expression. *)
 type prio = PAtom | PAppl | PFunc
@@ -138,21 +101,22 @@ let parser expr @(p : prio) =
       when p >= PAtom -> in_pos _loc P_Type
   (* Product *)
   | x:{ident ":"}?[Pos.none "_"] a:(expr PAppl) "->" b:(expr PFunc)
-      when p >= PFunc -> in_pos _loc (P_Prod(x,Some(a),b))
-  | "!" x:ident a:{":" (expr PFunc)}? "," b:(expr PFunc)
-      when p >= PFunc -> in_pos _loc (P_Prod(x,a,b))
+      when p >= PFunc -> in_pos _loc (P_Prod([(x,Some(a))],b))
   (* Wildcard *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
   (* Abstraction *)
   | x:ident a:{":" (expr PFunc)}? "=>" t:(expr PFunc)
-      when p >= PFunc -> in_pos _loc (P_Abst(x,a,t))
+      when p >= PFunc -> in_pos _loc (P_Abst([(x,a)],t))
   (* Application *)
   | t:(expr PAppl) u:(expr PAtom)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Metavariable *)
   | m:meta e:env?[[]]
       when p >= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
+  (* Pattern variable. *)
+  | x:patt e:env?[[]]
+      when p >= PAtom -> in_pos _loc (P_Patt(x, Array.of_list e))
   (* Parentheses *)
   | "(" t:(expr PFunc) ")"
       when p >= PAtom
@@ -164,13 +128,10 @@ and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
     terms, types and patterns. *)
 let expr = expr PFunc
 
-(** Representation of a reduction rule, with its context. *)
-type old_p_rule = (strloc * p_term option) list * p_term * p_term
-type p_rule = p_term * p_term
-
 let opaque = true
 
 (** Representation of a toplevel command. *)
+(*
 type p_cmd =
   (** Symbol declaration (constant when the boolean is [true]). *)
   | P_SymDecl    of Terms.sym_mode * strloc * p_term
@@ -189,17 +150,16 @@ type p_cmd =
   | P_TestType   of bool * bool * p_term * p_term
   (** Convertibility command. *)
   | P_TestConv   of bool * bool * p_term * p_term
-  (** Unimplemented command. *)
-  | P_Other
+  *)
 
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
 
-(** [rule] is a parser for a single rewriting rule. *)
-let parser rule = t:expr "-->" u:expr -> Pos.in_pos _loc (t,u)
-
 (** [context] is a parser for a rewriting rule context. *)
 let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
+
+(** [rule] is a parser for a single rewriting rule. *)
+let parser rule = t:expr "-->" u:expr -> Pos.in_pos _loc (t,u)
 
 (** [old_rule] is a parser for a single rewriting rule (old syntax). *)
 let parser old_rule =
@@ -209,17 +169,6 @@ let parser old_rule =
 let parser arg =
   | "(" x:ident ":" a:expr ")" -> (x, Some(a))
   | x:ident                    -> (x, None   )
-
-(** [definition] is a parser for one specifc syntax of symbol definition. *)
-let parser definition = xs:arg* ao:{":" expr}? ":=" t:expr ->
-  let fn (x,a) t = Pos.none (P_Abst(x,a,t)) in
-    let t = List.fold_right fn xs t in
-    let ao =
-      match ao with
-      | None    -> None
-      | Some(a) -> Some(build_prod xs a)
-    in
-    (ao, t)
 
 (** [mod_path] is a parser for a module path. *)
 let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
@@ -244,27 +193,36 @@ let parser eval_config d =
       Eval.{strategy = Option.get s d; steps = Some(n)}
 
 (** [check] parses an assertion configuration (depending on command). *)
-let parser check =
-  | _CHECKNOT_  -> (false, true )
-  | _CHECK_     -> (false, false)
-  | _ASSERTNOT_ -> (true , true )
-  | _ASSERT_    -> (true , false)
+let parser assert_kw =
+  | _ASSERTNOT_ -> true
+  | _ASSERT_    -> false
 
 (** [cmd_aux] parses a single toplevel command. *)
 let parser cmd_aux =
-  | x:ident ":" a:expr                       -> P_SymDecl(Terms.Const,x,a)
-  | _def_ x:ident ":" a:expr                 -> P_SymDecl(Terms.Defin,x,a)
-  | _inj_ x:ident ":" a:expr                 -> P_SymDecl(Terms.Injec,x,a)
-  | _def_ x:ident (ao,t):definition          -> P_SymDef(not opaque,x,ao,t)
-  | _thm_ x:ident (ao,t):definition          -> P_SymDef(opaque,x,ao,t)
-  | r:rule rs:{"," rule}*                    -> P_Rules(r::rs)
-  | rs:old_rule+                             -> P_OldRules(rs)
-  | _REQUIRE_ path:mod_path                  -> P_Require(path)
-  | (ia,mf):check t:expr "::" a:expr         -> P_TestType(ia,mf,t,a)
-  | (ia,mf):check t:expr "==" u:expr         -> P_TestConv(ia,mf,t,u)
-  | _INFER_ c:(eval_config Eval.NONE) t:expr -> P_Infer(t,c)
-  | _EVAL_  c:(eval_config Eval.SNF)  t:expr -> P_Eval(t,c)
-  | _NAME_ _:ident                           -> P_Other
+  | _REQUIRE_ p:mod_path
+      -> P_require(p, P_require_default)
+  | x:ident ":" a:expr
+      -> P_symbol([Sym_const], x, a)
+  | _def_ x:ident ":" a:expr
+      -> P_symbol([], x, a)
+  | _inj_ x:ident ":" a:expr
+      -> P_symbol([Sym_inj], x, a)
+  | r:rule rs:{"," rule}*
+      -> P_rules(r::rs)
+  | rs:old_rule+
+      -> P_rules(List.map translate_old_rule rs)
+  | _def_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
+      -> P_definition(x, xs, ao, t)
+  | _thm_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
+      -> P_definition(x, xs, ao, t) (* FIXME opaque *)
+  | mf:assert_kw t:expr "::" a:expr
+      -> P_assert(mf, P_assert_typing(t,a))
+  | mf:assert_kw t:expr "==" u:expr
+      -> P_assert(mf, P_assert_conv(t,u)  )
+  | _INFER_ c:(eval_config Eval.NONE) t:expr
+      -> P_infer(t, c)
+  | _EVAL_  c:(eval_config Eval.SNF)  t:expr
+      -> P_normalize(t, c)
 
 (** [cmd] parses a single toplevel command with its position. *)
 let parser cmd = c:cmd_aux -> in_pos _loc c

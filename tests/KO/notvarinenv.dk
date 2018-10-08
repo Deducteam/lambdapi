@@ -6,4 +6,4 @@ S : Nat -> Nat.
 
 def f : (Nat -> Nat) -> Nat.
 
-f (x => ?m[x,0])--> 0.
+f (x => &m[x,0])--> 0.

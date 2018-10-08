@@ -1,4 +1,3 @@
-#NAME sort.
 nat : Type.
 
 x : nat.

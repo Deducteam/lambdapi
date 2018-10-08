@@ -1,5 +1,3 @@
-#NAME zen.
-
 A : Type.
 
 def e0 : A -> A.
@@ -42,5 +40,5 @@ def pr1 (a : A) (c : A) :=
 (; pr2 is the normal form of pr1. ;)
 def pr2 (__ : A) (c : A) := e1 c b.
 
-#CHECK pr1   == pr2.               (; Answer must be YES ;)
-#CHECK f pr1 == f pr2.             (; Answer must be YES ;)
+#ASSERT pr1   == pr2.               (; Answer must be YES ;)
+#ASSERT f pr1 == f pr2.             (; Answer must be YES ;)

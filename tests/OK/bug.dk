@@ -16,5 +16,5 @@ def 3 := S 2.
 #EVAL S_bis 2.
 #EVAL S_bis 3.
 
-#CHECK S_bis 0 == S_bis 1.
-#CHECK S_bis 2 == S_bis 3.
+#ASSERT S_bis 0 == S_bis 1.
+#ASSERT S_bis 2 == S_bis 3.

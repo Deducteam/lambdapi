@@ -12,7 +12,7 @@
 
 module LSP = Lsp_base
 
-type ast = Parser.p_cmd Pos.loc
+type ast = Syntax.p_cmd Pos.loc
 
 type doc_node = {
   ast  : ast;

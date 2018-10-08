@@ -53,11 +53,12 @@ if [[ ! -d ${DIR} ]]; then
 
   # Applying the changes (add "#REQUIRE hol" and fix obsolete syntax).
   echo -n "  - applying changes... "
+  sed -i "s/^#NAME FOL.//g" "${DIR}/FOL.dk"
   for SIG in `find ${DIR} -type f -name "*_sig.dk"`; do
-    MODSIG=`basename "${SIG}" ".dk"`
+    MSIG=`basename "${SIG}" ".dk"`
     PRF="${SIG%%_sig.dk}_prf.dk"
-    sed -i "s/^#NAME/#REQUIRE FOL.\n#NAME/g" ${SIG}
-    sed -i "s/^#NAME/#REQUIRE FOL.\n#REQUIRE ${MODSIG}.\n#NAME/g" ${PRF}
+    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL./g" ${SIG}
+    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE FOL.\n#REQUIRE ${MSIG}./g" ${PRF}
   done
   echo "OK"
 

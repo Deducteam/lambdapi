@@ -9,4 +9,4 @@ def half : Nat -> Nat.
 []  half (S 0)     --> 0.
 [n] half (S (S n)) --> half n.
 
-#CHECK half 0 == half (S 0).
+#ASSERT half 0 == half (S 0).

@@ -1,5 +1,3 @@
-#NAME plus.
-
 nat : Type.
 Z : nat.
 S : nat -> nat.
@@ -8,9 +6,9 @@ def plus : nat -> nat -> nat.
 
 def double : nat -> nat.
 
-plus Z      (S ?m) --> S ?m,
-plus ?n     Z      --> ?n,
-plus (S ?n) (S ?m) --> S (S (plus ?n ?m)).
+plus Z      (S &m) --> S &m,
+plus &n     Z      --> &n,
+plus (S &n) (S &m) --> S (S (plus &n &m)).
 
 e : nat -> Type.
 def x : e Z.
@@ -19,7 +17,7 @@ y : e (plus Z Z).
 x --> y.
 
 def eq : nat -> nat -> nat.
-eq ?n ?n --> S Z.
+eq &n &n --> S Z.
 
 #EVAL (x => x) Z.
 #EVAL plus (S Z) (S (S Z)).

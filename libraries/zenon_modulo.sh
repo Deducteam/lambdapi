@@ -90,7 +90,7 @@ function check() {
     cp ${LIBFILE} ${FILE_GZ}
     gzip -d ${FILE_GZ}
     ocaml ../../../tools/deps.ml ${FILE_DK} ${MODNAME} > ${MODNAME}.aux
-    cat ${FILE_DK} >> ${MODNAME}.aux
+    cat ${FILE_DK} | grep -v "^#NAME" >> ${MODNAME}.aux
     mv ${MODNAME}.aux ${FILE_DK}
   
     ${LAMBDAPI} --legacy-parser --verbose 0 ${FILE_DK}
