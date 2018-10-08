@@ -2,15 +2,6 @@ require open proofs.logic
 require open proofs.bool
 require open proofs.nat
 
-set builtin "0"     ≔ z
-set builtin "+1"    ≔ s
-
-set builtin "P"     ≔ P
-set builtin "T"     ≔ T
-set builtin "eq"    ≔ eq
-set builtin "eqind" ≔ eqind
-set builtin "refl"  ≔ refl
-
 // Symmetry of the equality (first option, rewrite).
 theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof

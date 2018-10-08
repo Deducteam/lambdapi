@@ -257,6 +257,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
           | P_config_builtin(s,qid) ->
               (* Set the builtin symbol [s]. *)
               let sym = find_sym false ss qid in
+              Sign.add_builtin ss.signature s sym;
               {ss with builtins = StrMap.add s sym ss.builtins}
         end
   in

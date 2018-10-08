@@ -25,10 +25,13 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
-    scope when (possibly masking symbols with the same name). *)
+    scope when (possibly masking symbols with the same name).  Builtin symbols
+    are also handled in a similar way. *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let fn _ v _ = Some(v) in
-  {ss with in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols))}
+  let in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols)) in
+  let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
+  {ss with in_scope; builtins}
 
 (** [get_builtin loc st key] TODO *)
 let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->

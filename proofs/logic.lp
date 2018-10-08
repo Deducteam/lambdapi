@@ -51,3 +51,9 @@ symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
 
 symbol const refl  : ∀a x, P (eq a x x)
 symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+
+set builtin "P"     ≔ P
+set builtin "T"     ≔ T
+set builtin "eq"    ≔ eq
+set builtin "eqind" ≔ eqind
+set builtin "refl"  ≔ refl

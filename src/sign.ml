@@ -10,9 +10,10 @@ open Pos
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
-  { sign_symbols : (sym * Pos.popt) StrMap.t ref
-  ; sign_path    : module_path
-  ; sign_deps    : (string * rule) list PathMap.t ref }
+  { sign_symbols  : (sym * Pos.popt) StrMap.t ref
+  ; sign_path     : module_path
+  ; sign_deps     : (string * rule) list PathMap.t ref
+  ; sign_builtins : (sym * pp_hint) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -22,7 +23,7 @@ type t =
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
   { sign_path ; sign_symbols = ref StrMap.empty
-  ; sign_deps = ref PathMap.empty }
+  ; sign_deps = ref PathMap.empty ; sign_builtins = ref StrMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -105,7 +106,9 @@ let link : t -> unit = fun sign ->
     in
     List.iter h ls
   in
-  PathMap.iter gn !(sign.sign_deps)
+  PathMap.iter gn !(sign.sign_deps);
+  let hn (s,h) = (link_symb s, h) in
+  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -146,7 +149,8 @@ let unlink : t -> unit = fun sign ->
   in
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
-  PathMap.iter gn !(sign.sign_deps)
+  PathMap.iter gn !(sign.sign_deps);
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins)
 
 (** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
@@ -158,6 +162,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
     ; sym_def = ref None ; sym_rules = ref [] ; sym_mode = mode }
   in
   sign.sign_symbols := StrMap.add sym_name (sym, s.pos) !(sign.sign_symbols);
+  (* FIXME should not print here. *)
   out 3 "(symb) %s\n" sym_name; sym
 
 (** [is_inj s] tells whether the symbol is injective. *)
@@ -190,12 +195,13 @@ let read : string -> t = fun fname ->
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
 
-(** [add_rule def r] adds the new rule [r] to the definable symbol [def]. When
-    the rule does not correspond to a symbol of the current signature,  it  is
-    also stored in the dependencies. *)
+(** [add_rule sign sym hint r] adds the new rule [r] to the symbol [sym]. When
+    the rule does not correspond to a symbol of signature [sign], it is stored
+    in its dependencies. *)
 let add_rule : t -> sym -> pp_hint -> rule -> unit = fun sign sym hint r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  out 3 "(rule) %a\n" Print.pp_rule (sym, hint, r); (* FIXME *)
+  (* FIXME should not print here *)
+  out 3 "(rule) %a\n" Print.pp_rule (sym, hint, r);
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
@@ -203,6 +209,11 @@ let add_rule : t -> sym -> pp_hint -> rule -> unit = fun sign sym hint r ->
     in
     let m = (sym.sym_name, r) :: m in
     sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
+
+(** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
+    signature [sign]). *)
+let add_builtin : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
+  sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
