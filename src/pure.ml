@@ -38,4 +38,4 @@ let handle_command : state -> command Pos.loc -> result = fun (st,ss) cmd ->
   with Fatal(p,m) -> Error(p,m)
 
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun (st,_) ->
-  Time.restore st; !(Sign.((current_sign ()).symbols))
+  Time.restore st; !(Sign.((current_sign ()).sign_symbols))

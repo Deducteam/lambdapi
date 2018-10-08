@@ -49,7 +49,7 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
   (* Function to iterate over every symbols. *)
   let iter_symbols : (sym -> unit) -> unit = fun fn ->
     let iter_symbols sign =
-      StrMap.iter (fun _ (s,_) -> fn s) Sign.(!(sign.symbols))
+      StrMap.iter (fun _ (s,_) -> fn s) Sign.(!(sign.sign_symbols))
     in
     List.iter (fun (_, sign) -> iter_symbols sign) deps
   in

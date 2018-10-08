@@ -28,7 +28,7 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
     scope when (possibly masking symbols with the same name). *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let fn _ v _ = Some(v) in
-  {ss with in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.symbols))}
+  {ss with in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols))}
 
 (** [get_builtin loc st key] TODO *)
 let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->

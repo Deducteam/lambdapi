@@ -1,7 +1,8 @@
 (** Scoping. *)
 
-open Console
 open Extra
+open Timed
+open Console
 open Files
 open Pos
 open Parser
@@ -24,13 +25,13 @@ let find_ident : env -> qident -> tbox = fun env qid ->
     fatal pos "Unbound variable or symbol [%s]." s
   else
     let sign = Sign.current_sign() in
-    if not Sign.(mp = sign.path || PathMap.mem mp Timed.(!(sign.deps))) then
+    if not Sign.(mp = sign.sign_path || PathMap.mem mp !(sign.sign_deps)) then
       (* Module path is not available (not loaded), fail. *)
       fatal pos "No module [%a] loaded." Files.pp_path mp
     else
       (* Module path loaded, look for symbol. *)
       let sign =
-        try PathMap.find mp Timed.(!Sign.loaded)
+        try PathMap.find mp Sign.(!loaded)
         with _ -> assert false (* cannot fail. *)
       in
       try _Symb (Sign.find sign s) Qualified with Not_found ->
@@ -70,7 +71,7 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
     | P_Meta(id,ts) ->
         let m =
           (* We first check if the metavariable is in the map. *)
-          try StrMap.find id.elt !mmap with Not_found ->
+          try StrMap.find id.elt Pervasives.(!mmap) with Not_found ->
           (* Otherwise we create a new metavariable. *)
           let a =
             let vs = Env.vars_of_env env in
@@ -78,7 +79,7 @@ let scope_term : meta StrMap.t -> env -> p_term -> term = fun mmap env t ->
             prod_of_env env (_Meta m vs)
           in
           let m = fresh_meta ~name:id.elt a (List.length env) in
-          mmap := StrMap.add id.elt m !mmap; m
+          Pervasives.(mmap := StrMap.add id.elt m !mmap); m
         in
         (* The environment of the metavariable is build from [ts]. *)
         _Meta m (Array.map (scope env) ts)
@@ -106,7 +107,7 @@ type full_lhs = sym * pp_hint * term list
 let scope_lhs : pattern_map -> p_term -> full_lhs = fun map t ->
   let fresh =
     let c = Pervasives.ref (-1) in
-    fun () -> incr c; Printf.sprintf "#%i" !c
+    fun () -> Pervasives.(incr c; Printf.sprintf "#%i" !c)
   in
   let rec scope : env -> p_term -> tbox = fun env t ->
     match t.elt with
@@ -251,7 +252,7 @@ let translate_old_rule : old_p_rule Pos.loc -> p_rule Pos.loc = fun r ->
   (** Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
     let fn a = wrn a.pos "Ignored type annotation." in
-    (if Timed.(!verbose) > 1 then Option.iter fn ao); x
+    (if !verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
 

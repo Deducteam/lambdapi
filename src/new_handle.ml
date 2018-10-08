@@ -112,10 +112,10 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
     match cmd.elt with
     | P_require(p, m)            ->
         (* Check that the module has not already been required. *)
-        if PathMap.mem p !(ss.signature.deps) then
+        if PathMap.mem p !(ss.signature.sign_deps) then
           fatal cmd.pos "Module [%a] is already required." pp_path p;
         (* Add the dependency and compile the module. *)
-        ss.signature.deps := PathMap.add p [] !(ss.signature.deps);
+        ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
         new_compile false p;
         (* Open or alias if necessary. *)
         begin
@@ -309,7 +309,7 @@ and new_compile : bool -> Files.module_path -> unit =
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> new_compile false mp) !(sign.deps);
+      PathMap.iter (fun mp _ -> new_compile false mp) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;

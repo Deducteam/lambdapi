@@ -140,8 +140,8 @@ let env_of_prod (n:int) (t:term) : Env.t * term =
     if necessary, so that it becomes available for further commands. *)
 let rec handle_require : Files.module_path -> unit = fun path ->
   let sign = current_sign() in
-  if not (PathMap.mem path !(sign.deps)) then
-    sign.deps := PathMap.add path [] !(sign.deps);
+  if not (PathMap.mem path !(sign.sign_deps)) then
+    sign.sign_deps := PathMap.add path [] !(sign.sign_deps);
   compile false path
 
 (** [handle_cmd cmd] interprets the parser-level command [cmd]. Note that this
@@ -220,7 +220,7 @@ and compile : bool -> Files.module_path -> unit =
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> compile false mp) !(sign.deps);
+      PathMap.iter (fun mp _ -> compile false mp) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
