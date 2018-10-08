@@ -39,7 +39,7 @@ let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
 let compile : string -> unit = fun fname ->
   let mp = module_path fname in
   let old = Filename.check_suffix fname src_extension in
-  let compile = Handle.new_compile old parse_file true in
+  let compile = Handle.compile old parse_file true in
   let run () =
     match !timeout with
     | None    -> compile mp

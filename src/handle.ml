@@ -130,7 +130,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
           fatal cmd.pos "Module [%a] is already required." pp_path p;
         (* Add the dependency and compile the module. *)
         ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-        new_compile false p;
+        compile false p;
         (* Open or alias if necessary. *)
         begin
           match m with
@@ -296,7 +296,7 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-and new_compile : bool -> Files.module_path -> unit = fun force path ->
+and compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
   let src = base ^ Pervasives.(!src_extension) in
   let obj = base ^ Pervasives.(!obj_extension) in
@@ -327,15 +327,15 @@ and new_compile : bool -> Files.module_path -> unit = fun force path ->
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> new_compile false mp) !(sign.sign_deps);
+      PathMap.iter (fun mp _ -> compile false mp) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
 
-let new_compile old parse b p =
+let compile old parse b p =
   let open Pervasives in
   parse_file := parse;
   src_extension := Files.(if old then src_extension else new_src_extension);
   obj_extension := Files.(if old then obj_extension else new_obj_extension);
-  new_compile b p
+  compile b p
