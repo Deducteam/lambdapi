@@ -128,30 +128,6 @@ and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
     terms, types and patterns. *)
 let expr = expr PFunc
 
-let opaque = true
-
-(** Representation of a toplevel command. *)
-(*
-type p_cmd =
-  (** Symbol declaration (constant when the boolean is [true]). *)
-  | P_SymDecl    of Terms.sym_mode * strloc * p_term
-  (** Quick definition (opaque when the boolean is [true]). *)
-  | P_SymDef     of bool * strloc * p_term option * p_term
-  (** Rewriting rules declaration. *)
-  | P_Rules      of p_rule Pos.loc list
-  | P_OldRules   of old_p_rule Pos.loc list
-  (** Require an external signature. *)
-  | P_Require    of module_path
-  (** Type inference command. *)
-  | P_Infer      of p_term * Eval.config
-  (** Normalisation command. *)
-  | P_Eval       of p_term * Eval.config
-  (** Type-checking command. *)
-  | P_TestType   of bool * bool * p_term * p_term
-  (** Convertibility command. *)
-  | P_TestConv   of bool * bool * p_term * p_term
-  *)
-
 (** [ty_ident] is a parser for an (optionally) typed identifier. *)
 let parser ty_ident = id:ident a:{":" expr}?
 
