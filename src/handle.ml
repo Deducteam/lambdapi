@@ -184,7 +184,8 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         let rs = List.map handle_rule rs in
         (* Adding the rules all at once. *)
         List.iter (fun (s,h,r) -> Sign.add_rule ss.signature s h r.elt) rs; ss
-    | P_definition(x, xs, ao, t) ->
+    | P_definition(op,x,xs,ao,t) ->
+        ignore op; (* FIXME opaque *)
         (* Desugaring of arguments and scoping of [t]. *)
         let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
         let t = fst (scope_basic ss t) in
@@ -275,9 +276,25 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
               {ss with builtins = StrMap.add s sym ss.builtins}
         end
     | P_infer(t, cfg)            ->
-        ss (* TODO *)
+        (* Infer the type of [t]. *)
+        let t_pos = t.pos in
+        let t = fst (scope_basic ss t) in
+        let a =
+          match Solve.infer [] t with
+          | Some(a) -> Eval.eval cfg a
+          | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
+        in
+        out 3 "(infr) %a : %a\n" pp t pp a; ss
     | P_normalize(t, cfg)        ->
-        ss (* TODO *)
+        (* Infer a type for [t], and evaluate [t]. *)
+        let t_pos = t.pos in
+        let t = fst (scope_basic ss t) in
+        let v =
+          match Solve.infer [] t with
+          | Some(_) -> Eval.eval cfg t
+          | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
+        in
+        out 3 "(eval) %a\n" pp v; ss
   in
   try
     let (tm, ss) = time handle ss in

@@ -133,7 +133,7 @@ type p_cmd =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of ident * p_arg list * p_type option * p_term
+  | P_definition of bool * ident * p_arg list * p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
   | P_theorem    of ident * p_type * p_tactic list * p_proof_end
   (** Theorem with its proof. *)

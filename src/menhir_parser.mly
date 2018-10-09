@@ -68,17 +68,17 @@ line:
   | KW_INJ s=ID COLON a=term DOT
       { Pos.none (P_symbol([Sym_inj], Pos.none s, a)) }
   | KW_DEF s=ID COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, [], Some(a), t)) }
+      { Pos.none (P_definition(false, Pos.none s, [], Some(a), t)) }
   | KW_DEF s=ID DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, [], None, t)) }
+      { Pos.none (P_definition(false, Pos.none s, [], None, t)) }
   | KW_DEF s=ID ps=param+ COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, ps, Some(a), t)) }
+      { Pos.none (P_definition(false, Pos.none s, ps, Some(a), t)) }
   | KW_DEF s=ID ps=param+ DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, ps, None, t)) }
+      { Pos.none (P_definition(false, Pos.none s, ps, None, t)) }
   | KW_THM s=ID COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, [], Some(a), t)) } (* FIXME opaque *)
+      { Pos.none (P_definition(true , Pos.none s, [], Some(a), t)) }
   | KW_THM s=ID ps=param+ COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(Pos.none s, ps, Some(a), t)) } (* FIXME opaque *)
+      { Pos.none (P_definition(true , Pos.none s, ps, Some(a), t)) }
   | rs=rule+ DOT
       { Pos.none (P_rules(List.map translate_old_rule rs)) }
   | EVAL t=term DOT

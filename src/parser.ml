@@ -188,9 +188,9 @@ let parser cmd_aux =
   | rs:old_rule+
       -> P_rules(List.map translate_old_rule rs)
   | _def_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
-      -> P_definition(x, xs, ao, t)
+      -> P_definition(false, x, xs, ao, t)
   | _thm_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
-      -> P_definition(x, xs, ao, t) (* FIXME opaque *)
+      -> P_definition(true , x, xs, ao, t)
   | mf:assert_kw t:expr "::" a:expr
       -> P_assert(mf, P_assert_typing(t,a))
   | mf:assert_kw t:expr "==" u:expr

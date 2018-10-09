@@ -257,7 +257,7 @@ let parser cmd =
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(s,al,ao,t)
+      -> P_definition(false,s,al,ao,t)
   | _theorem_ s:ident ":" a:term (ts,e):proof
       -> P_theorem(s,a,ts,e)
   | mf:assert_must_fail a:assertion
