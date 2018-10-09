@@ -185,7 +185,6 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         (* Adding the rules all at once. *)
         List.iter (fun (s,h,r) -> Sign.add_rule ss.signature s h r.elt) rs; ss
     | P_definition(op,x,xs,ao,t) ->
-        ignore op; (* FIXME opaque *)
         (* Desugaring of arguments and scoping of [t]. *)
         let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
         let t = fst (scope_basic ss t) in
@@ -210,7 +209,8 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
         in
         (* Actually add the symbol to the signature. *)
         let s = Sign.add_symbol ss.signature Defin x a in
-        s.sym_def := Some(t);
+        (* Also add its definition, if it is not opaque. *)
+        if not op then s.sym_def := Some(t);
         {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
     | P_theorem(x, a, ts, pe)    ->
         (* Scoping the type (statement) of the theorem, check sort. *)
