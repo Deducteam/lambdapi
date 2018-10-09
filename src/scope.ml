@@ -33,7 +33,9 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [get_builtin loc st key] TODO *)
+(** [get_builtin loc st key] extracts the builtin symbol associated mapped  to
+    [key] in the signature state [st]. If it does not exist, [Fatal] is raised
+    using the position [loc] in the associated error message. *)
 let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
   let (s, hint) =
     try StrMap.find key st.builtins with Not_found ->
