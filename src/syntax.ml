@@ -1,5 +1,7 @@
 (** Parser-level abstract syntax. *)
 
+open Extra
+open Timed
 open Console
 open Files
 open Pos
@@ -144,18 +146,8 @@ type p_cmd =
   | P_normalize  of p_term * Eval.config
   (** Normalisation command. *)
 
-
-
-
-
-(* The following is required for compatibility. *)
-
-open Extra
-open Timed
-
-(** [get_args t] decomposes the {!type:p_term} [t] into a head term and a list
-    of arguments. Note that in the returned pair [(h,args)],  [h] can never be
-    a {!constr:P_Appl} node. *)
+(** [get_args t] decomposes [t] into a head term and a list of arguments. Note
+    that in the returned pair [(h,args)], [h] is never a [P_Appl] node. *)
 let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
   let rec get_args acc t =
     match t.elt with
@@ -163,15 +155,11 @@ let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
     | _           -> (t, acc)
   in get_args [] t
 
-(** [add_args t args] builds the application of the {!type:p_term} [t] to  the
-    arguments [args]. When [args] is empty, the returned value is (physically)
-    equal to [t]. *)
-let add_args : p_term -> (Pos.popt * p_term) list -> p_term = fun t args ->
-  let rec add_args t args =
-    match args with
-    | []      -> t
-    | (p,u)::args -> add_args (Pos.make p (P_Appl(t,u))) args
-  in add_args t args
+(** [add_args t args] builds the application of the term [t] to the  arguments
+    [args]. When [args] is empty, the returned value is exactly [t]. Note that
+    this function is the inverse of [get_args] (in some sense). *)
+let add_args : p_term -> (Pos.popt * p_term) list -> p_term =
+  List.fold_left (fun t (p,u) -> Pos.make p (P_Appl(t,u)))
 
 (** Representation of a reduction rule, with its context. *)
 type old_p_rule = ((strloc * p_term option) list * p_term * p_term) Pos.loc
@@ -186,7 +174,6 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     (if !verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
-
   (** Find the minimum number of arguments a variable is applied to. *)
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
@@ -225,61 +212,50 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     List.iter (fun (_,t) -> compute_arities env t) args
   in
   compute_arities [] lhs;
-
   (** Check that all context variables occur in the LHS. *)
   let check_here x =
     try ignore (Hashtbl.find arity x.elt) with Not_found ->
       fatal x.pos "Variable [%s] does not occur in the LHS." x.elt
   in
   List.iter check_here ctx;
-
+  (** Actually process the LHS and RHS. *)
   let rec build env t =
     let (h, lts) = get_args t in
     match h.elt with
     | P_Vari({elt = ([],x)}) when is_pat_var env x ->
        let lts = List.map (fun (p,t) -> p,build env t) lts in
-       begin
-         try
-           let n = Hashtbl.find arity x in
-           let lts1, lts2 = List.cut lts n in
-           let ts1 = Array.of_list (List.map snd lts1) in
-           let h = Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1)) in
-           add_args h lts2
-         with Not_found ->
-           assert false
-       end
-    | _ ->
-       match t.elt with
-       | P_Vari(_)
-       | P_Type
-       | P_Wild -> t
-       | P_Prod(xs,b) ->
-           begin
-             match xs with
-             | [(x, Some(a))] ->
-                 let a = build env a in
-                 let b = build (x.elt::env) b in
-                 Pos.make t.pos (P_Prod([(x,Some(a))],b))
-             | _              -> assert false
-           end
-       | P_Abst(xs,u) ->
-           let (x,a) =
-             match xs with
-             | [(x, Some(a))] -> (x, Some(build env a))
-             | [(x, None   )] -> (x, None             )
-             | _              -> assert false
-           in
-           let u = build (x.elt::env) u in
-           Pos.make t.pos (P_Abst([(x,a)],u))
-       | P_Appl(t1,t2) ->
-          let t1 = build env t1 in
-          let t2 = build env t2 in
-          Pos.make t.pos (P_Appl(t1,t2))
-       | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
-       | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
-       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
-       | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
-       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
+       let n =
+         try Hashtbl.find arity x with Not_found ->
+           assert false (* Unreachable. *)
+       in
+       let (lts1, lts2) = List.cut lts n in
+       let ts1 = Array.of_list (List.map snd lts1) in
+       add_args (Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1))) lts2
+    | _                                            ->
+    match t.elt with
+    | P_Vari(_)
+    | P_Type
+    | P_Wild          -> t
+    | P_Prod(xs,b)    ->
+        let (x,a) =
+          match xs with
+          | [(x, Some(a))] -> (x, build env a)
+          | _              -> assert false (* Unreachable. *)
+        in
+        Pos.make t.pos (P_Prod([(x, Some(a))], build (x.elt::env) b))
+    | P_Abst(xs,u)    ->
+        let (x,a) =
+          match xs with
+          | [(x, ao)] -> (x, Option.map (build env) ao)
+          | _         -> assert false (* Unreachable. *)
+        in
+        Pos.make t.pos (P_Abst([(x,a)], build (x.elt::env) u))
+    | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
+    | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
+    | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
+    | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+    | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
