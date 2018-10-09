@@ -1,5 +1,3 @@
-#NAME test.
-
 Term : Type.
 Prop: Type.
 def prf: Prop -> Type.

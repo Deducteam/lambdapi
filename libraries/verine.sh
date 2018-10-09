@@ -46,10 +46,11 @@ if [[ ! -d ${DIR} ]]; then
   tar xf verine.tar.gz
   echo "OK"
 
-  # Applying the changes (add "#REQUIRE logic").
+  # Applying the changes (add "#REQUIRE logic", remove "#NAME ...").
   echo -n "  - applying changes... "
+  sed -i "s/^#NAME [a-zA-Z0-9_]\+.//g" ${DIR}/logic.dk
   for FILE in `ls ${DIR}/SEQ*.dk`; do
-    sed -i "s/^#NAME/#REQUIRE logic.\n#NAME/g" ${FILE}
+    sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE logic./g" ${FILE}
   done
   echo "OK"
 

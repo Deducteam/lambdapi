@@ -1,4 +1,3 @@
-
 Term : Type.
 
 def App : Term -> Term -> Term.
@@ -26,12 +25,12 @@ def times : Term := Abs (m => Abs (n => Abs (f => Abs (x =>
   App2 m (App n f) x)))).
 def power : Term := Abs (m => Abs (n => App n m)).
 
-#CHECK App2 plus  2 3 == App2 plus  3 2.
-#CHECK App2 times 2 3 == App2 times 3 2.
-#CHECK App2 power 2 (App2 times 3 4)
-    == App2 power 2 (App2 times 4 3).
+#ASSERT App2 plus  2 3 == App2 plus  3 2.
+#ASSERT App2 times 2 3 == App2 times 3 2.
+#ASSERT App2 power 2 (App2 times 3 4)
+     == App2 power 2 (App2 times 4 3).
 
-#CHECK Abs (a:Term => Abs (b:Term => App a b))
-    == Abs (a:Term => a).
-#CHECK Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b)))
-    == Abs (a:Term => a).
+#ASSERT Abs (a:Term => Abs (b:Term => App a b))
+     == Abs (a:Term => a).
+#ASSERT Abs (a:Term => Abs (b:Term => App a (App (Abs (a:Term => a)) b)))
+     == Abs (a:Term => a).

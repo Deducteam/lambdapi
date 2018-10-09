@@ -4,9 +4,9 @@ z : Nat.
 s : Nat -> Nat.
 
 def m : Nat -> Nat -> Nat.
-m ?i z --> ?i.
-m z ?j --> ?j.
-m (s ?i) (s ?j) --> s (m ?i ?j).
+m &i z --> &i.
+m z &j --> &j.
+m (s &i) (s &j) --> s (m &i &j).
 
 (; Sorts ;)
 
@@ -18,7 +18,7 @@ type : Nat -> Sort.
 (; Universe successors ;)
 def succ : Sort -> Sort.
 succ prop --> type z.
-succ (type ?i) --> type (s ?i).
+succ (type &i) --> type (s &i).
 
 (; Universe product rules ;)
 def rule : Sort -> Sort -> Sort.
@@ -27,9 +27,9 @@ def rule : Sort -> Sort -> Sort.
 [i, j] rule (type i) (type j) --> type (m i j).
 
 def max : Sort -> Sort -> Sort.
-max ?s1 prop --> ?s1.
-max prop ?s2 --> ?s2.
-max (type ?i) (type ?j) --> type (m ?i ?j).
+max &s1 prop --> &s1.
+max prop &s2 --> &s2.
+max (type &i) (type &j) --> type (m &i &j).
 
 (; Types and terms ;)
 
@@ -40,12 +40,12 @@ univ : s : Sort -> Univ (succ s).
 def lift : s1 : Sort -> s2 : Sort -> a : Univ s1 -> Univ (max s1 s2).
 def prod : s1 : Sort -> s2 : Sort -> a : Univ s1 -> b : (Term s1 a -> Univ s2) -> Univ (rule s1 s2).
 
-Term _ (univ ?s) --> Univ ?s.
-Term _ (lift ?s1 ?s2 ?a) --> Term ?s1 ?a.
-Term _ (prod ?s1 ?s2 ?a ?b) --> x : Term ?s1 ?a -> Term ?s2 (?b x).
+Term _ (univ &s) --> Univ &s.
+Term _ (lift &s1 &s2 &a) --> Term &s1 &a.
+Term _ (prod &s1 &s2 &a &b) --> x : Term &s1 &a -> Term &s2 (&b x).
 
-max ?s ?s --> ?s.
-lift ?s ?s ?a --> ?a.
+max &s &s --> &s.
+lift &s &s &a --> &a.
 
 def Type0 := type z.
 
@@ -90,4 +90,4 @@ def filter_eq :
       z : Term prop (eq (lift Type2 Type2 A) _x __) ->
       Term return_sort (return_type z).
 
-filter_eq _ _ ?x ?x _ ?ret (refl ?A ?x) --> ?ret (refl (lift Type2 Type2 ?A) ?x).
+filter_eq _ _ &x &x _ &ret (refl &A &x) --> &ret (refl (lift Type2 Type2 &A) &x).

@@ -1,5 +1,3 @@
-#NAME test.
-
 U : Type.
 foo : U.
 e : U -> Type.

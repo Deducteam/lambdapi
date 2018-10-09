@@ -3,4 +3,4 @@
 
 def one := tests.OK.dummy1.s tests.OK.dummy1.z.
 
-#CHECK one == tests.OK.dummy1.plus one tests.OK.dummy1.z.
+#ASSERT one == tests.OK.dummy1.plus one tests.OK.dummy1.z.

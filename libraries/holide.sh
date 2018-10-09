@@ -48,9 +48,10 @@ if [[ ! -d ${DIR} ]]; then
 
   # Applying the changes (add "#REQUIRE hol" and fix obsolete syntax).
   echo -n "  - applying changes... "
+  sed -i "s/^#NAME [a-zA-Z0-9_]\+.//g" "${DIR}/hol.dk"
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
     if [ ${FILE} != "${DIR}/hol.dk" ]; then
-      sed -i "s/^#NAME/#REQUIRE hol.\n#NAME/g" ${FILE}
+      sed -i "s/^#NAME [a-zA-Z0-9_]\+./#REQUIRE hol./g" ${FILE}
       sed -i 's/^[{]\([a-zA-Z0-9_-]*\)[}]/def \1/g' ${FILE}
     fi
   done

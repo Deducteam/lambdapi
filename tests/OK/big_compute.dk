@@ -49,6 +49,6 @@ def 7 : Nat := S 6.
 #EVAL (plus (fact 3) (fact 2)).
 #EVAL (plus (fact 2) (fact 3)).
 
-#CHECK (plus (fact 5) (fact 4)) == (plus (fact 4) (fact 5)).
-#CHECK (plus (fact seven) (fact six)) == (plus (fact six) (fact seven)).
-#CHECK (plus (fact seven) (fact eight)) == (plus (fact eight) (fact seven)).
+#ASSERT (plus (fact 5) (fact 4)) == (plus (fact 4) (fact 5)).
+#ASSERT (plus (fact seven) (fact six)) == (plus (fact six) (fact seven)).
+#ASSERT (plus (fact seven) (fact eight)) == (plus (fact eight) (fact seven)).

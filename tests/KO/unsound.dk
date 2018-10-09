@@ -1,5 +1,3 @@
-#NAME Unsound.
-
 X:Type.
 Nat:Type.
 Bool:Type.

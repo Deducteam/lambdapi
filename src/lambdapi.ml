@@ -18,20 +18,28 @@ let timeout : int option Pervasives.ref = Pervasives.ref None
 
 (** [set_timeout i] sets a timeout of [i] seconds on the compilation. *)
 let set_timeout : int -> unit = fun i ->
-  if i <= 0 then
-    begin
-      Format.eprintf (red "Invalid timeout value.\n");
-      exit 1
-    end;
+  if i <= 0 then (Format.eprintf (red "Invalid timeout value.\n"); exit 1);
   timeout := Some(i)
+
+(** [use_legacy_parser] indicates whether the legacy (Menhir) parser should be
+    used. It is faster, but only supports the legacy syntax. *)
+let use_legacy_parser = Pervasives.ref false
+
+let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
+  let new_syntax = Filename.check_suffix fname new_src_extension in
+  let parse =
+    match (new_syntax, !use_legacy_parser) with
+    | (true , _    ) -> New_parser.parse_file
+    | (false, true ) -> Legacy_parser.parse_file
+    | (false, false) -> Parser.parse_file
+  in
+  parse fname
 
 (** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let mp = module_path fname in
-  let compile =
-    if Filename.check_suffix fname src_extension then Handle.compile true
-    else New_handle.new_compile true
-  in
+  let old = Filename.check_suffix fname src_extension in
+  let compile = Handle.compile old parse_file true in
   let run () =
     match !timeout with
     | None    -> compile mp
@@ -92,7 +100,7 @@ let _ =
     ; ("--verbose"      , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
     ; ("--justparse"    , Arg.Set justparse               , onlyparse_doc)
     ; ("--earleylvl"    , Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
-    ; ("--legacy-parser", Arg.Set Handle.use_legacy_parser, legacy_doc   )
+    ; ("--legacy-parser", Arg.Set use_legacy_parser       , legacy_doc   )
     ; ("--timeout"      , Arg.Int set_timeout             , timeout_doc  )
     ; ("--confluence"   , Arg.String set_confluence       , cc_doc       )
     ; ("--debug"        , Arg.String (set_debug true)     , debug_doc    ) ]
@@ -103,7 +111,7 @@ let _ =
   if !justparse then
     let parse_file fname =
       if Filename.check_suffix fname src_extension then
-        if !Handle.use_legacy_parser then
+        if !use_legacy_parser then
           ignore (Legacy_parser.parse_file fname)
         else
           ignore (Parser.parse_file fname)

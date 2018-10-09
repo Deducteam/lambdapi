@@ -48,8 +48,8 @@ let unbind2 : t -> term -> tbinder -> tbinder -> t * term * term =
     let c = if occurs then add x a ctx else ctx in
     (c, b1, b2)
 
-(** [to_prod ctx t] builds a product type by abstracting over the context [ctx]
-    in the term [t]. *)
+(** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
+    the term [t]. *)
 let to_prod : t -> term -> term = fun ctx t ->
   match ctx with
   | []      -> t

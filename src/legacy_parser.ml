@@ -1,6 +1,6 @@
 open Console
 
-let parse_channel : in_channel -> Parser.p_cmd Pos.loc list = fun ic ->
+let parse_channel : in_channel -> Syntax.p_cmd Pos.loc list = fun ic ->
   let lines = ref [] in
   let lexbuf = Lexing.from_channel ic in
   try
@@ -15,7 +15,7 @@ let parse_channel : in_channel -> Parser.p_cmd Pos.loc list = fun ic ->
       let lex = Lexing.lexeme lexbuf in
       fatal_no_pos "ERROR: unexpected token '%s'...\n%!" lex
 
-let parse_file : string -> Parser.p_cmd Pos.loc list = fun fname ->
+let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
   let ic = open_in fname in
   try
     let l = parse_channel ic in

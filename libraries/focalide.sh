@@ -51,6 +51,7 @@ if [[ ! -d ${DIR} ]]; then
   echo -n "  - applying changes... "
   mv ${DIR}/modulogic.dk ${DIR}/zen.dk
   for FILE in `find ${DIR} -type f -name "*.dk"`; do
+    sed -i "/^#NAME [a-zA-Z_]\+./d" ${FILE}
     sed -i "s/^#SNF/#EVAL/g" ${FILE}
     MODNAME=`basename "${FILE}" ".dk"`
     ocaml ../tools/deps.ml ${FILE} ${MODNAME} > ${FILE}.aux

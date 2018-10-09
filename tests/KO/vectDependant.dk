@@ -43,7 +43,7 @@ def right : Vec 2.
 
 #EVAL left.
 #EVAL right.
-#CHECK left == right.
+#ASSERT left == right.
 
 (; Subject reduction is broken: left of type (Vec 3) reduces to right
 of type (Vec 2), and right is NOT of type (Vec 3). ;)

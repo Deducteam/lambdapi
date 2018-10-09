@@ -8,4 +8,4 @@ def eB : B -> Type.
 
 [] eB a --> eA a.
 
-#CHECK a :: eB a.
+#ASSERT a :: eB a.

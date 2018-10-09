@@ -1,5 +1,3 @@
-#NAME cic.
-
 Nat : Type.
 
 z : Nat.
@@ -29,7 +27,7 @@ def next : Sort -> Sort.
 
 (; Universe product rules ;)
 def rule : Sort -> Sort -> Sort.
-[s1]  rule s1       prop     --> prop.
+[]    rule _       prop     --> prop.
 [s2]  rule prop     s2       --> s2.
 [i,j] rule (type i) (type j) --> type (m i j).
 
@@ -48,7 +46,7 @@ def lift : s1:Sort -> s2:Sort -> a:Univ s1 -> Univ (max s1 s2).
 def prod : s1:Sort -> s2:Sort -> a:Univ s1 -> b:(Term s1 a -> Univ s2) -> Univ (rule s1 s2).
 
 [s] Term _ (univ s) --> Univ s.
-[s1,s2,a]   Term _ (lift s1 s2 a)   --> Term s1 a.
+[s1,a]      Term _ (lift s1 _ a)    --> Term s1 a.
 [s1,s2,a,b] Term _ (prod s1 s2 a b) --> x : Term s1 a -> Term s2 (b x).
 
 (; Canonicity rules ;)

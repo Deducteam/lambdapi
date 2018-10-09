@@ -11,7 +11,6 @@ type token =
   | RIGHTPAR
   | RIGHTBRA
   | QID        of (string * string)
-  | NAME       of string
   | REQUIRE    of string
   | LONGARROW
   | LEFTSQU
@@ -29,18 +28,17 @@ type token =
   | ARROW
   | EVAL
   | INFER
-  | CHECK
   | ASSERT
-  | CHECKNOT
   | ASSERTNOT
   | PRINT
   | GDT
   | INT        of int
 }
 
-let space   = [' ' '\t' '\r']
-let mident  = ['a'-'z' 'A'-'Z' '0'-'9' '_']+
-let ident   = ['a'-'z' 'A'-'Z' '0'-'9' '_' '!' '?']['a'-'z' 'A'-'Z' '0'-'9' '_' '!' '?' '\'' ]*
+let space   = [' ''\t''\r']
+let mident  = ['a'-'z''A'-'Z''0'-'9''_']+
+let ident   =
+  ['a'-'z''A'-'Z''0'-'9''_''!' '?']['a'-'z''A'-'Z''0'-'9''_''!''?''\'']*
 let capital = ['A'-'Z']+
 
 rule token = parse
@@ -66,12 +64,9 @@ rule token = parse
   | "def"       { KW_DEF        }
   | "inj"       { KW_INJ        }
   | "thm"       { KW_THM        }
-  | "#NAME"    space+ (mident as md) { NAME    md }
   | "#REQUIRE" space+ (mident as md) { REQUIRE md }
   | "#EVAL"     { EVAL          }
   | "#INFER"    { INFER         }
-  | "#CHECK"    { CHECK         }
-  | "#CHECKNOT" { CHECKNOT      }
   | "#ASSERT"   { ASSERT        }
   | "#ASSERTNOT"{ ASSERTNOT     }
   | "#PRINT"    { PRINT         }

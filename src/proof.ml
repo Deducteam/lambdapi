@@ -39,7 +39,15 @@ module Goal :
 
     let of_meta_decomposed : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        Handle.env_of_prod m.meta_arity !(m.meta_type)
+        let rec aux n t acc =
+          if n = 0 then (acc, t) else
+          match t with
+          | Prod(a,b) ->
+              let (v,b) = Bindlib.unbind b in
+              aux (n-1) b ((Bindlib.name_of v,(v,lift a))::acc)
+          | _         -> assert false
+        in
+        aux m.meta_arity !(m.meta_type) []
       in
       {goal_meta = m; goal_hyps; goal_type}
 

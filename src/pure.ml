@@ -15,7 +15,7 @@ let parse_text : string -> command Pos.loc list = fun s ->
   try parse s with Earley.Parse_error(buf, pos) ->
   raise (Parse_error(Pos.locate buf pos buf pos))
 
-type state = Time.t * New_scope.sig_state
+type state = Time.t * Scope.sig_state
 
 type result =
   | OK    of state
@@ -28,12 +28,12 @@ let initial_state : Files.module_path -> state = fun path ->
   Sign.loading := [path];
   let sign = Sign.create path in
   Sign.loaded  := Files.PathMap.add path sign !Sign.loaded;
-  (Time.save (), New_scope.empty_sig_state sign)
+  (Time.save (), Scope.empty_sig_state sign)
 
 let handle_command : state -> command Pos.loc -> result = fun (st,ss) cmd ->
   Time.restore st;
   try
-    let ss = New_handle.new_handle_cmd ss cmd in
+    let ss = Handle.new_handle_cmd ss cmd in
     OK(Time.save (), ss)
   with Fatal(p,m) -> Error(p,m)
 

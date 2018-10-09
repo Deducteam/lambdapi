@@ -18,8 +18,8 @@ def 1 := s 0.
 
 def add : N -> N -> N.
 
-add 0 ?x --> ?x.
-add (s ?x) ?y --> s (add ?x ?y).
+add 0 &x --> &x.
+add (s &x) &y --> s (add &x &y).
 
 #EVAL (add (s 1) (s 1)).
 
@@ -29,7 +29,7 @@ U : N -> Type.
 
 (; Decoding function. ;)
 
-def T : !i, U i -> Type.
+def T : i : N -> U i -> Type.
 
 (; Prop is an abbreviation for the universe 0; ;)
 
@@ -51,39 +51,39 @@ nat : U 1.
 
 (; Cumulativity: [lift i] maps [U i] to [U (s i)]. ;)
 
-lift : !i, U i -> U (s i).
+lift : i : N -> U i -> U (s i).
 
 (; Code for the product type in universe i. ;)
 
-pi : !i, !a : U i, (T _ a -> U i) -> U i.
+pi : i : _ -> a : U i -> (T _ a -> U i) -> U i.
 
-T _ (pi ?i ?a ?f) --> x : T ?i ?a -> T ?i (?f x).
+T _ (pi &i &a &f) --> x : T &i &a -> T &i (&f x).
 
 (; Code for the type of vectors in universe i. ;)
 
-vec : !i, U i -> N -> U i.
+vec : i : _ -> U i -> N -> U i.
 
-nil : !i, !a, T _ (vec i a 0).
-cons : !i, !a, T i a -> !n, T _ (vec _ a n) -> T _ (vec _ a (s n)).
+nil : i : _ -> a : _ -> T _ (vec i a 0).
+cons : i : _ -> a : _ -> T i a -> n : _ -> T _ (vec _ a n) -> T _ (vec _ a (s n)).
 
 (; Induction principle on N. ;)
 
-def nat_ind : !p:N -> Prop, P (p 0) -> (!n, P (p n) -> P (p (s n))) -> !n, P (p n).
+def nat_ind : p:(N -> Prop) -> P (p 0) -> (n : _ -> P (p n) -> P (p (s n))) -> n : _ -> P (p n).
 
-nat_ind _  ?u _  0      --> ?u.
-nat_ind ?p ?u ?v (s ?n) --> ?v ?n (nat_ind ?p ?u ?v ?n).
+nat_ind _  &u _  0      --> &u.
+nat_ind &p &u &v (s &n) --> &v &n (nat_ind &p &u &v &n).
 
 (; Boolean equality on N. ;)
 
 def beq : N->N->B.
 
 beq 0 0 --> true.
-beq (s ?x) (s ?y) --> beq ?x ?y.
+beq (s &x) (s &y) --> beq &x &y.
 beq 0 (s _) --> false.
 beq (s _) 0 --> false.
 
 (; Leibniz equality. ;)
 
-eq : !i, !a:U i, T _ a -> T _ a -> Prop.
+eq : i : _ -> a : U i -> T _ a -> T _ a -> Prop.
 
-refl : !i, !a, !x, T _ (eq i a x x).
+refl : i : _ -> a : _ -> x : _ -> T _ (eq i a x x).

@@ -1,4 +1,3 @@
-#NAME abs.
 A:Type.
 y:A.
 P:A->Type.

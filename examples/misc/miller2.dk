@@ -1,5 +1,3 @@
-#NAME miller.
-
 R : Type.
 0 : R.
 def p : R -> R -> R.
@@ -53,4 +51,4 @@ def f : R -> R -> R := plus (x : R => y : R => ch x) (x : R => y : R => sh y).
 #EVAL flip (grad f).
 #EVAL grad (trans f).
 
-#CHECK grad (trans f) == flip (grad f).
+#ASSERT grad (trans f) == flip (grad f).
