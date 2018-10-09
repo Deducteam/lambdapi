@@ -30,7 +30,7 @@ let create : module_path -> t = fun sign_path ->
 let find : t -> string -> sym =
   fun sign name -> fst (StrMap.find name !(sign.sign_symbols))
 
-(** [mem sign name] checks whether the symbol named [name] exists in [sign]. *)
+(** [mem sign name] checks whether a symbol named [name] exists in [sign]. *)
 let mem : t -> string -> bool =
   fun sign name -> StrMap.mem name !(sign.sign_symbols)
 

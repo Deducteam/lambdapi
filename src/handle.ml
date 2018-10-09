@@ -335,7 +335,8 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
       let sign = Sign.create path in
       let sig_st = empty_sig_state sign in
       loaded := PathMap.add path sign !loaded;
-      ignore (List.fold_left new_handle_cmd sig_st Pervasives.(!parse_file src));
+      let parse = Pervasives.(!parse_file) in
+      ignore (List.fold_left new_handle_cmd sig_st (parse src));
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

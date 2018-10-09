@@ -67,7 +67,7 @@ module List =
       | []    -> None
       | e::es -> match f e with None -> map_find f es | res -> res
 
-    (** [cut l k] returns a pair of lists [(l1,l2)] such that [l1] has length
+    (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
         [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
     let cut : 'a list -> int -> 'a list * 'a list = fun l k ->
       let rec cut acc l k =
@@ -78,20 +78,13 @@ module List =
       in
       if k <= 0 then ([], l) else cut [] l k
 
-    (** [add_array a l] returns a list containing the elements of [l]
-        and [a]. *)
-    let add_array : 'a array -> 'a list -> 'a list = fun a l ->
+    (** [add_array a1 a2 l] returns a list containing the elements of [l], and
+        the (corresponding) elements of [a1] and [a2]. Note that [a1] and [a2]
+        should have the same lenght otherwise [Invalid_argument] is raised. *)
+    let add_array2 : 'a array -> 'b array -> ('a * 'b) list
+        -> ('a * 'b) list = fun a1 a2 l ->
       let res = ref l in
-      Array.iter (fun x -> res := x::!res) a;
-      !res
-
-    (** [add_array a l] returns a list containing the elements of [l]
-        and [a]. *)
-    let add_array2 : 'a array -> 'b array -> ('a * 'b) list -> ('a * 'b) list =
-      fun a1 a2 l ->
-        let res = ref l in
-        Array.iter2 (fun x1 x2 -> res := (x1,x2)::!res) a1 a2;
-        !res
+      Array.iter2 (fun x1 x2 -> res := (x1,x2)::!res) a1 a2; !res
 
     (** [same_length l1 l2] returns [true] whenever [l1] and [l2] are lists of
         the same length. The function stops as soon as possible. *)
