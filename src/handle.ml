@@ -114,9 +114,16 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ps)
 
-let parse_file    = Pervasives.ref Parser.parse_file
-let src_extension = Pervasives.ref Files.new_src_extension
-let obj_extension = Pervasives.ref Files.new_obj_extension
+(** [parse_file fname] selects and runs the correct parser on file [fname], by
+    looking at its extension. *)
+let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
+  let new_syntax = Filename.check_suffix fname new_src_extension in
+  let parse =
+    match new_syntax with
+    | true  -> Parser.parse_file
+    | false -> Legacy_parser.parse_file
+  in
+  parse fname
 
 (** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
     state [ss] at the same time. This function fails gracefully on errors. *)
@@ -315,8 +322,11 @@ let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
     the corresponding object file. *)
 and compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
-  let src = base ^ Pervasives.(!src_extension) in
-  let obj = base ^ Pervasives.(!obj_extension) in
+  let (src, obj) =
+    let new_src = base ^ new_src_extension in
+    if Sys.file_exists new_src then (new_src, base ^ new_obj_extension)
+    else (base ^ src_extension, base ^ obj_extension)
+  in
   if not (Sys.file_exists src) then fatal_no_pos "File [%s] not found." src;
   if List.mem path !loading then
     begin
@@ -335,8 +345,7 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
       let sign = Sign.create path in
       let sig_st = empty_sig_state sign in
       loaded := PathMap.add path sign !loaded;
-      let parse = Pervasives.(!parse_file) in
-      ignore (List.fold_left new_handle_cmd sig_st (parse src));
+      ignore (List.fold_left new_handle_cmd sig_st (parse_file src));
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
@@ -350,10 +359,3 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
-
-let compile old parse b p =
-  let open Pervasives in
-  parse_file := parse;
-  src_extension := Files.(if old then src_extension else new_src_extension);
-  obj_extension := Files.(if old then obj_extension else new_obj_extension);
-  compile b p

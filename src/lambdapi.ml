@@ -22,24 +22,13 @@ let set_timeout : int -> unit = fun i ->
   if i <= 0 then (Format.eprintf (red "Invalid timeout value.\n"); exit 1);
   timeout := Some(i)
 
-let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
-  let new_syntax = Filename.check_suffix fname new_src_extension in
-  let parse =
-    match new_syntax with
-    | true  -> Parser.parse_file
-    | false -> Legacy_parser.parse_file
-  in
-  parse fname
-
 (** [compile fname] compiles the source file [fname]. *)
 let compile : string -> unit = fun fname ->
   let mp = module_path fname in
-  let old = Filename.check_suffix fname src_extension in
-  let compile = Handle.compile old parse_file true in
   let run () =
     match !timeout with
-    | None    -> compile mp
-    | Some(i) -> with_timeout i compile mp
+    | None    -> Handle.compile true mp
+    | Some(i) -> with_timeout i (Handle.compile true) mp
   in
   try
     run ();
@@ -103,12 +92,6 @@ let _ =
   let anon fn = Pervasives.(files := fn :: !files) in
   Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ " [OPTIONS] [FILES]");
   if !justparse then
-    let parse_file fname =
-      if Filename.check_suffix fname src_extension then
-        ignore (Legacy_parser.parse_file fname)
-      else
-        ignore (Parser.parse_file fname)
-    in
-    List.iter parse_file !files
+    List.iter (fun fname -> ignore (Handle.parse_file fname)) !files
   else
     List.iter compile (List.rev !files)
