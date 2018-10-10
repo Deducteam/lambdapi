@@ -65,7 +65,7 @@ let close_doc _modname = ()
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
-    let doc_spans = Pure.parse_text doc.text in
+    let doc_spans = Pure.parse_text uri doc.text in
     let st, diag = List.fold_left (process_cmd uri) (doc.root,[]) doc_spans in
     st, LSP.mk_diagnostics ~uri ~version @@ List.fold_left (fun acc (pos,lvl,msg,goal) ->
         match pos with
@@ -73,5 +73,4 @@ let check_text ~doc =
         | Some pos -> (pos,lvl,msg,goal) :: acc
       ) [] diag
   with
-  | Pure.Parse_error(loc) ->
-    doc.root, mk_error ~doc loc "Parse error."
+  | Pure.Parse_error(loc, msg) -> doc.root, mk_error ~doc loc msg

@@ -8,12 +8,16 @@ open Console
 type command = Syntax.p_cmd
 
 (** Exception raised by [parse_text] on error. *)
-exception Parse_error of Pos.pos
+exception Parse_error of Pos.pos * string
 
-let parse_text : string -> command Pos.loc list = fun s ->
-  let parse = Earley.parse_string Parser.cmds Parser.blank in
-  try parse s with Earley.Parse_error(buf, pos) ->
-  raise (Parse_error(Pos.locate buf pos buf pos))
+let parse_text : string -> string -> command Pos.loc list = fun fname s ->
+  let old_syntax = Filename.check_suffix fname Files.src_extension in
+  try
+    if old_syntax then Legacy_parser.parse_string fname s
+    else Parser.parse_string fname s
+  with
+  | Fatal(Some(Some(pos)), msg) -> raise (Parse_error(pos, msg))
+  | Fatal(_              , _  ) -> assert false (* Should not produce. *)
 
 type state = Time.t * Scope.sig_state
 

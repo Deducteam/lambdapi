@@ -3,8 +3,9 @@
 type command
 type state
 
-exception Parse_error of Pos.pos
-val parse_text : string -> command Pos.loc list
+exception Parse_error of Pos.pos * string
+
+val parse_text : string -> string -> command Pos.loc list
 
 type result =
   | OK    of state
