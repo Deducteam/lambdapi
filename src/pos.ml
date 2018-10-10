@@ -36,6 +36,17 @@ let locate : Input.buffer -> int -> Input.buffer -> int -> pos =
 (** Convenient short name for an optional position. *)
 type popt = pos option
 
+(** [equal_pos p1 p2] tells whether [p1] and [p2] denote the same location. *)
+let equal_pos : pos -> pos -> bool = fun p1 p2 ->
+  Lazy.force p1 = Lazy.force p2
+
+(** [equal p1 p2] tells whether [p1] and [p2] denote the same position. *)
+let equal : popt -> popt -> bool = fun p1 p2 ->
+  match (p1, p2) with
+  | (Some(p1), Some(p2)) -> equal_pos p1 p2
+  | (None    , None    ) -> true
+  | (_       , _       ) -> false
+
 (** Type constructor extending a type (e.g. a piece of abstract syntax) with a
     a source code position. *)
 type 'a loc =
