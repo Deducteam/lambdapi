@@ -5,9 +5,7 @@
  (wrapped false)
  (modules :standard \ lambdapi)
  (flags -w -9)
- (preprocess (per_module
-              ((action (run pa_ocaml %{input-file})) new_parser)
-              ((action (run pa_ocaml %{input-file})) parser)))
+ (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
  (libraries unix timed bindlib earley.str))
 
 (executable

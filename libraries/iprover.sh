@@ -210,7 +210,7 @@ fi
 cd ${DIR}
 
 # Compiling the theory file.
-${LAMBDAPI} --legacy-parser --gen-obj FOL.dk
+${LAMBDAPI} --gen-obj FOL.dk
 
 # Checking function.
 function check() {
@@ -219,13 +219,13 @@ function check() {
     SIG_FILE="$1_sig.dk"
     OBJ_FILE="$1_sig.dko"
     PRF_FILE="$1_prf.dk"
-    ${LAMBDAPI} --legacy-parser --verbose 0 --gen-obj ${SIG_FILE}
+    ${LAMBDAPI} --verbose 0 --gen-obj ${SIG_FILE}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${SIG_FILE}"
       echo "FAILED ${SIG_FILE}" >> error.log
     elif [ -f "${PRF_FILE}" ]; then
       echo -e "\033[0;32mOK\033[0m ${SIG_FILE}"
-      ${LAMBDAPI} --legacy-parser --verbose 0 ${PRF_FILE}
+      ${LAMBDAPI} --verbose 0 ${PRF_FILE}
       if [ $? -ne 0 ]; then
         echo -e "\033[0;31mKO\033[0m ${PRF_FILE}"
         echo "FAILED ${PRF_FILE}" >> error.log

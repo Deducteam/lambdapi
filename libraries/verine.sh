@@ -67,9 +67,9 @@ fi
 # Checking function.
 function check_verine() {
   rm -f logic.dko
-  ${LAMBDAPI} --legacy-parser --gen-obj logic.dk
+  ${LAMBDAPI} --gen-obj logic.dk
   for FILE in `ls SEQ*.dk`; do
-    ${LAMBDAPI} --legacy-parser ${FILE}
+    ${LAMBDAPI} ${FILE}
   done
 }
 

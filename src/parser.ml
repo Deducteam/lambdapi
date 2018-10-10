@@ -1,266 +1,289 @@
-(** Parsing functions. *)
+(** Parsing functions for the Lambdapi syntax. *)
 
-open Timed
-open Extra
 open Console
 open Syntax
-open Files
 open Pos
 
 #define LOCATE locate
 
-(** Parser-level representation of a qualified identifier. *)
-type qident = (module_path * string) loc
+(** Blank function (for comments and white spaces). *)
+let blank = Blanks.line_comments "//"
 
-(** Hashtbl for the memoization of the parsing of qualified identifiers. It is
-    a good idea to reset this table before parsing. *)
-let qid_map : (string, module_path * string) Hashtbl.t = Hashtbl.create 31
+(** Keyword module. *)
+module KW = Keywords.Make(
+  struct
+    let id_charset = Charset.from_string "a-zA-Z0-9_"
+    let reserved = []
+  end)
 
-(** [to_qident loc str] builds a qualified identifier from [str]. *)
-let to_qid : string -> module_path * string = fun str ->
-  try Hashtbl.find qid_map str with Not_found ->
-  let fs = List.rev (String.split_on_char '.' str) in
-  let qid = (List.rev (List.tl fs), List.hd fs) in
-  Hashtbl.add qid_map str qid; qid
+(** Reserve ["KIND"] to disallow it as an identifier. *)
+let _ = KW.reserve "KIND"
 
-(** [ident] is an atomic parser for an identifier (for example variable name).
-    It accepts (and returns as semantic value) any non-empty strings formed of
-    letters, decimal digits, and the ['_'] and ['''] characters. Note that the
-    special identifiers ["Type"] and ["_"] are rejected (since reserved). *)
-let parser ident = id:''[_'a-zA-Z0-9]+'' ->
-  if List.mem id ["Type"; "_"] then Earley.give_up (); in_pos _loc id
+(** Keyword declarations. *)
+let _require_    = KW.create "require"
+let _open_       = KW.create "open"
+let _as_         = KW.create "as"
+let _let_        = KW.create "let"
+let _in_         = KW.create "in"
+let _symbol_     = KW.create "symbol"
+let _definition_ = KW.create "definition"
+let _theorem_    = KW.create "theorem"
+let _rule_       = KW.create "rule"
+let _and_        = KW.create "and"
+let _assert_     = KW.create "assert"
+let _assertnot_  = KW.create "assertnot"
+let _const_      = KW.create "const"
+let _inj_        = KW.create "injective"
+let _TYPE_       = KW.create "TYPE"
+let _pos_        = KW.create "pos"
+let _neg_        = KW.create "neg"
+let _proof_      = KW.create "proof"
+let _refine_     = KW.create "refine"
+let _intro_      = KW.create "intro"
+let _apply_      = KW.create "apply"
+let _simpl_      = KW.create "simpl"
+let _rewrite_    = KW.create "rewrite"
+let _refl_       = KW.create "reflexivity"
+let _sym_        = KW.create "symmetry"
+let _focus_      = KW.create "focus"
+let _print_      = KW.create "print"
+let _qed_        = KW.create "qed"
+let _admit_      = KW.create "admit"
+let _abort_      = KW.create "abort"
+let _set_        = KW.create "set"
+let _wild_       = KW.create "_"
+let _proofterm_  = KW.create "proofterm"
 
-(** [qident] is an atomic parser for a qualified identifier, or in other words
-    an identifier preceded by an optional module path. Its different parts are
-    formed of the same characters as [ident], and are separated with the ['.']
-    character. *)
-let parser qident = id:''\([_'a-zA-Z0-9]+[.]\)*[_'a-zA-Z0-9]+'' ->
-  let (_,id) as qid = to_qid id in
-  if List.mem id ["Type"; "_"] then Earley.give_up ();
-  in_pos _loc qid
-
-(* NOTE we use an [Earley] regular expression to parse “qualified identifiers”
-   for efficiency reasons. Indeed, there is an ambiguity in the parser (due to
-   the final dot), and this is one way to resolve it by being “greedy”. *)
-
-(** [keyword name] is an atomic parser for the keywork [name], not followed by
-    any identifier character. *)
-let keyword : string -> unit Earley.grammar = fun name ->
-  let len = String.length name in
-  if len < 1 then invalid_arg "Parser.keyword";
-  let rec fn i buf pos =
-    if i = len then
-      match Input.get buf pos with
-      | 'a'..'z' | 'A'..'Z' | '0'..'9' | '_' | '\'' -> Earley.give_up ()
-      | _                                           -> ((), buf, pos)
-    else
-      let (c, buf, pos) = Input.read buf pos in
-      if c <> name.[i] then Earley.give_up ();
-      fn (i+1) buf pos
+(** Natural number literal. *)
+let nat_lit =
+  let head_cs = Charset.from_string "1-9" in
+  let body_cs = Charset.from_string "0-9" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  let cs = Charset.singleton name.[0] in
-  Earley.black_box (fn 0) cs false ("_" ^ name ^ "_")
+  Earley.black_box fn head_cs false "<nat>"
 
-(** [command name] is an atomic parser for the command ["#" ^ name]. *)
-let command : string -> unit Earley.grammar = fun name -> keyword ("#" ^ name)
+(** String literal. *)
+let string_lit =
+  let body_cs = List.fold_left Charset.del Charset.full ['"'; '\n'] in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    if Input.get buf (pos + !nb) <> '"' then Earley.give_up ();
+    (String.sub (Input.line buf) (pos+1) (!nb-1), buf, pos + !nb + 1)
+  in
+  Earley.black_box fn (Charset.singleton '"') false "<string>"
 
-(* Defined keywords and commands. *)
-let _wild_      = keyword "_"
-let _Type_      = keyword "Type"
-let _def_       = keyword "def"
-let _inj_       = keyword "inj"
-let _thm_       = keyword "thm"
-let _in_        = command "in"
-let _as_        = command "as"
-let _CHECK_     = command "CHECK"
-let _CHECKNOT_  = command "CHECKNOT"
-let _ASSERT_    = command "ASSERT"
-let _ASSERTNOT_ = command "ASSERTNOT"
-let _REQUIRE_   = command "REQUIRE"
-let _INFER_     = command "INFER"
-let _EVAL_      = command "EVAL"
+(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
+let regular_ident =
+  let head_cs = Charset.from_string "a-zA-Z_" in
+  let body_cs = Charset.from_string "a-zA-Z0-9_" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    (String.sub (Input.line buf) pos !nb, buf, pos + !nb)
+  in
+  Earley.black_box fn head_cs false "<r-ident>"
 
-(** [meta] is an atomic parser for a metavariable identifier. *)
-let parser meta = "?" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
+(** Escaped identifier (regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]). *)
+let escaped_ident =
+  let fn buf pos =
+    let s = Buffer.create 20 in
+    (* Check start marker. *)
+    let (c, buf, pos) = Input.read buf (pos + 1) in
+    if c <> '|' then Earley.give_up ();
+    Buffer.add_string s "{|";
+    (* Accumulate until end marker. *)
+    let rec work buf pos =
+      let (c, buf, pos) = Input.read buf pos in
+      let next_c = Input.get buf pos in
+      if c = '|' && next_c = '}' then (Buffer.add_string s "|}"; (buf, pos+1))
+      else if c <> '\255' then (Buffer.add_char s c; work buf pos)
+      else Earley.give_up ()
+    in
+    let (buf, pos) = work buf (pos+1) in
+    (* Return the contents. *)
+    (Buffer.contents s, buf, pos)
+  in
+  Earley.black_box fn (Charset.singleton '{') false "<e-ident>"
 
-(** [patt] is an atomic parser for a pattern variable identifier. *)
-let parser patt = "&" - id:''[a-zA-Z][_'a-zA-Z0-9]*'' -> in_pos _loc id
+(** Any identifier (regular or escaped). *)
+let parser any_ident =
+  | id:regular_ident -> KW.check id; id
+  | id:escaped_ident -> id
 
-(** Priority level for an expression. *)
+(** Identifier (regular and non-keyword, or escaped). *)
+let parser ident = id:any_ident -> in_pos _loc id
+
+(** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
+let parser meta =
+  | "?" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+
+(** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
+let parser patt =
+  | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+
+(** Module path (dot-separated identifiers. *)
+let parser path = m:any_ident ms:{"." any_ident}* -> m::ms
+
+(** [qident] parses a single (possibly qualified) identifier. *)
+let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
+
+(** [symtag] parses a single symbol tag. *)
+let parser symtag =
+  | _const_ -> Sym_const
+  | _inj_   -> Sym_inj
+
+(** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PFunc
 
-(** [expr p] is a parser for an expression at priority level [p]. The possible
-    priority levels are [PFunc] (top level, including abstraction or product),
-    [PAppl] (application) and [PAtom] (smallest priority). *)
-let parser expr @(p : prio) =
-  (* Variable *)
+(** [term] is a parser for a term. *)
+let parser term @(p : prio) =
+  (* TYPE constant. *)
+  | _TYPE_
+      when p >= PAtom -> in_pos _loc P_Type
+  (* Variable (or possibly qualified symbol). *)
   | qid:qident
       when p >= PAtom -> in_pos _loc (P_Vari(qid))
-  (* Type constant *)
-  | _Type_
-      when p >= PAtom -> in_pos _loc P_Type
-  (* Product *)
-  | x:{ident ":"}?[Pos.none "_"] a:(expr PAppl) "->" b:(expr PFunc)
-      when p >= PFunc -> in_pos _loc (P_Prod([(x,Some(a))],b))
-  (* Wildcard *)
+  (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
-  (* Abstraction *)
-  | x:ident a:{":" (expr PFunc)}? "=>" t:(expr PFunc)
-      when p >= PFunc -> in_pos _loc (P_Abst([(x,a)],t))
-  (* Application *)
-  | t:(expr PAppl) u:(expr PAtom)
-      when p >= PAppl -> in_pos _loc (P_Appl(t,u))
-  (* Metavariable *)
+  (* Metavariable. *)
   | m:meta e:env?[[]]
       when p >= PAtom -> in_pos _loc (P_Meta(m, Array.of_list e))
-  (* Pattern variable. *)
-  | x:patt e:env?[[]]
-      when p >= PAtom -> in_pos _loc (P_Patt(x, Array.of_list e))
-  (* Parentheses *)
-  | "(" t:(expr PFunc) ")"
-      when p >= PAtom
+  (* Pattern (LHS) or pattern application (RHS). *)
+  | p:patt e:env?[[]]
+      when p >= PAtom -> in_pos _loc (P_Patt(p, Array.of_list e))
+  (* Parentheses. *)
+  | "(" t:(term PFunc) ")"
+      when p >= PAtom -> t
+  (* Application. *)
+  | t:(term PAppl) u:(term PAtom)
+      when p >= PAppl -> in_pos _loc (P_Appl(t,u))
+  (* Implication. *)
+  | a:(term PAppl) "⇒" b:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_Impl(a,b))
+  (* Products. *)
+  | "∀" xs:arg* "," b:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
+  (* Abstraction. *)
+  | "λ" xs:arg* "," t:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
+  (* Local let. *)
+  | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
+  (* Natural number literal. *)
+  | n:nat_lit
+      when p >= PAtom -> in_pos _loc (P_NLit(n))
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
+and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
-(** [expr_appl] accepts application level expressions. *)
-let expr_appl = expr PAppl
+(** [arg] parses a single function argument. *)
+and parser arg =
+  | x:ident                            -> (x, None   )
+  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a))
 
-(** [expr] is the entry point of the parser for expressions, which include all
-    terms, types and patterns. *)
-let expr = expr PFunc
-
-(** [ty_ident] is a parser for an (optionally) typed identifier. *)
-let parser ty_ident = id:ident a:{":" expr}?
-
-(** [context] is a parser for a rewriting rule context. *)
-let parser context = {x:ty_ident xs:{"," ty_ident}* -> x::xs}?[[]]
+let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
-let parser rule = t:expr "-->" u:expr -> Pos.in_pos _loc (t,u)
+let parser rule =
+  | l:term "→" r:term -> Pos.in_pos _loc (l, r) (* TODO *)
 
-(** [old_rule] is a parser for a single rewriting rule (old syntax). *)
-let parser old_rule =
-  _:{"{" ident "}"}? "[" xs:context "]" t:expr "-->" u:expr ->
-    Pos.in_pos _loc (xs,t,u)
+(** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
+let parser rw_patt_spec =
+  | t:term                          -> P_rw_Term(t)
+  | _in_ t:term                     -> P_rw_InTerm(t)
+  | _in_ x:ident _in_ t:term        -> P_rw_InIdInTerm(x,t)
+  | x:ident _in_ t:term             -> P_rw_IdInTerm(x,t)
+  | u:term _in_ x:ident _in_ t:term -> P_rw_TermInIdInTerm(u,x,t)
+  | u:term _as_ x:ident _in_ t:term -> P_rw_TermAsIdInTerm(u,x,t)
 
-let parser arg =
-  | "(" x:ident ":" a:expr ")" -> (x, Some(a))
-  | x:ident                    -> (x, None   )
+(** [rw_patt] is a parser for a (located) rewrite pattern. *)
+let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 
-(** [mod_path] is a parser for a module path. *)
-let parser mod_path = path:''\([-_'a-zA-Z0-9]+[.]\)*[-_'a-zA-Z0-9]+'' ->
-  String.split_on_char '.' path
+(** [tactic] is a parser for a single tactic. *)
+let parser tactic =
+  | _refine_ t:term             -> Pos.in_pos _loc (P_tac_refine(t))
+  | _intro_ xs:ident*           -> Pos.in_pos _loc (P_tac_intro(xs))
+  | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
+  | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
+  | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
+  | _refl_                      -> Pos.in_pos _loc P_tac_refl
+  | _sym_                       -> Pos.in_pos _loc P_tac_sym
+  | _focus_ i:nat_lit           -> Pos.in_pos _loc (P_tac_focus(i))
+  | _print_                     -> Pos.in_pos _loc P_tac_print
+  | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
 
-(** [strategy] is a parser for an evaluation strategy name. *)
-let parser strategy =
-  | "NONE" -> Eval.NONE
-  | "WHNF" -> Eval.WHNF
-  | "HNF"  -> Eval.HNF
-  | "SNF"  -> Eval.SNF
+(** [proof_end] is a parser for a proof terminator. *)
+let parser proof_end =
+  | _qed_   -> P_proof_QED
+  | _admit_ -> P_proof_admit
+  | _abort_ -> P_proof_abort
 
-(** [steps] is a parser for an integer, used in evaluation configuration. *)
-let parser steps = n:''[0-9]+'' -> int_of_string n
+(** [assertion] parses a single assertion. *)
+let parser assertion =
+  | t:term ":" a:term -> P_assert_typing(t,a)
+  | t:term "≡" u:term -> P_assert_conv(t,u)
 
-(** [eval_config d] is a parser for an evaluation configuration with a default
-    evaluation strategy set to be [d]. *)
-let parser eval_config d =
-  | EMPTY                             -> Eval.{strategy = d; steps = None}
-  | "[" s:strategy n:{"," steps}? "]" -> Eval.{strategy = s; steps = n   }
-  | "[" n:steps s:{"," strategy}? "]" ->
-      Eval.{strategy = Option.get s d; steps = Some(n)}
+(** [config] pases a single configuration option. *)
+let parser config =
+  | "verbose" i:''[1-9][0-9]*'' ->
+      P_config_verbose(int_of_string i)
+  | "debug" d:''[-+][a-zA-Z]+'' ->
+      let s = String.sub d 0 (String.length d) in
+      P_config_debug(d.[0] = '+', s)
+  | "builtin" s:string_lit "≔" qid:qident ->
+      P_config_builtin(s,qid)
 
-(** [check] parses an assertion configuration (depending on command). *)
-let parser assert_kw =
-  | _ASSERTNOT_ -> true
-  | _ASSERT_    -> false
+let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
-(** [cmd_aux] parses a single toplevel command. *)
-let parser cmd_aux =
-  | _REQUIRE_ p:mod_path
-      -> P_require(p, P_require_default)
-  | x:ident ":" a:expr
-      -> P_symbol([Sym_const], x, a)
-  | _def_ x:ident ":" a:expr
-      -> P_symbol([], x, a)
-  | _inj_ x:ident ":" a:expr
-      -> P_symbol([Sym_inj], x, a)
-  | r:rule rs:{"," rule}*
+let parser assert_must_fail =
+  | _assert_    -> false
+  | _assertnot_ -> true
+
+(** [cmd] is a parser for a single command. *)
+let parser cmd =
+  | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
+      -> P_require(p,m)
+  | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
+      -> P_require(p,m)
+  | _open_ p:path
+      -> P_open(p)
+  | _symbol_ l:symtag* s:ident ":" a:term
+      -> P_symbol(l,s,a)
+  | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | rs:old_rule+
-      -> P_rules(List.map translate_old_rule rs)
-  | _def_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
-      -> P_definition(false, x, xs, ao, t)
-  | _thm_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
-      -> P_definition(true , x, xs, ao, t)
-  | mf:assert_kw t:expr_appl ":" a:expr
-      -> P_assert(mf, P_assert_typing(t,a))
-  | mf:assert_kw t:expr "==" u:expr
-      -> P_assert(mf, P_assert_conv(t,u)  )
-  | _INFER_ c:(eval_config Eval.NONE) t:expr
-      -> P_infer(t, c)
-  | _EVAL_  c:(eval_config Eval.SNF)  t:expr
-      -> P_normalize(t, c)
+  | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(false,s,al,ao,t)
+  | _theorem_ s:ident ":" a:term (ts,e):proof
+      -> P_theorem(s,a,ts,e)
+  | mf:assert_must_fail a:assertion
+      -> P_assert(mf,a)
+  | _set_ c:config
+      -> P_set(c)
 
-(** [cmd] parses a single toplevel command with its position. *)
-let parser cmd = c:cmd_aux -> in_pos _loc c
-
-(** [cmd_list] parses a list of commands (the main entry point). *)
-let parser cmd_list = {cmd "."}*
-
-(** Blank function for ignoring basic blank characters ([' '], ['\t'], ['\r'],
-    ['\n']) and (possibly nested) comments delimited by ["(;"] and [";)"]. *)
-let blank buf pos =
-  let rec fn state stack prev ((buf0, pos0) as curr) =
-    let open Input in
-    let (c, buf1, pos1) = read buf0 pos0 in
-    let next = (buf1, pos1) in
-    match (state, stack, c) with
-    (* Basic blancs (not inside comment). *)
-    | (`Ini, []  , ' '   )
-    | (`Ini, []  , '\t'  )
-    | (`Ini, []  , '\r'  )
-    | (`Ini, []  , '\n'  ) -> fn `Ini stack curr next
-    (* Opening of a comment (pushed on the stack). *)
-    | (`Ini, _   , '('   ) -> fn `Opn stack curr next
-    | (`Opn, _   , ';'   ) ->
-        let loc = Pos.locate (fst prev) (snd prev) (fst curr) (snd curr) in
-        fn `Ini (Some(loc)::stack) curr next
-    (* Closing of a comment (popped from the stack). *)
-    | (`Ini, _::_, ';'   ) -> fn `Cls stack curr next
-    | (`Cls, _::s, ')'   ) -> fn `Ini s curr next
-    (* Error on end of file if in a comment. *)
-    | (_   , p::_, '\255') -> fatal p "Parse error (unclosed comment)."
-    (* Ignoring any character inside comments. *)
-    | (`Cls, []  , _     ) -> assert false (* impossible *)
-    | (`Cls, _::_, _     )
-    | (`Opn, _::_, _     ) -> fn `Ini stack curr next
-    | (`Ini, _::_, _     ) -> fn `Ini stack curr next
-    (* End of the blanks. *)
-    | (`Opn, []  , _     ) -> prev
-    | (`Ini, []  , _     ) -> curr
-  in
-  fn `Ini [] (buf, pos) (buf, pos)
+(** [cmds] is a parser for multiple (located) commands. *)
+let parser cmds = {c:cmd -> in_pos _loc c}*
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
-let parse_file : string -> Syntax.ast = fun fname ->
-  Hashtbl.reset qid_map;
-  try Earley.parse_file cmd_list blank fname
+let parse_file : string -> p_cmd loc list = fun fname ->
+  try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
-    fatal loc  "Parse error."
+    fatal loc "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> Syntax.ast = fun fname str ->
-  Hashtbl.reset qid_map;
-  try Earley.parse_string ~filename:fname cmd_list blank str
+let parse_string : string -> string -> p_cmd loc list = fun fname str ->
+  try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
     fatal loc "Parse error."

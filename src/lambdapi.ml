@@ -21,17 +21,12 @@ let set_timeout : int -> unit = fun i ->
   if i <= 0 then (Format.eprintf (red "Invalid timeout value.\n"); exit 1);
   timeout := Some(i)
 
-(** [use_legacy_parser] indicates whether the legacy (Menhir) parser should be
-    used. It is faster, but only supports the legacy syntax. *)
-let use_legacy_parser = Pervasives.ref false
-
 let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
   let new_syntax = Filename.check_suffix fname new_src_extension in
   let parse =
-    match (new_syntax, !use_legacy_parser) with
-    | (true , _    ) -> New_parser.parse_file
-    | (false, true ) -> Legacy_parser.parse_file
-    | (false, false) -> Parser.parse_file
+    match new_syntax with
+    | true  -> Parser.parse_file
+    | false -> Legacy_parser.parse_file
   in
   parse fname
 
@@ -92,7 +87,6 @@ let _ =
   let too_long_doc = "<flt> Duration considered too long for a command" in
   let onlyparse_doc = " Only parse the input files (no type-checking)" in
   let earleylvl_doc = "<int> Sets the internal debugging level of Earley" in
-  let legacy_doc = " Use the legacy parser (faster, but old syntax only)" in
   let timeout_doc = "<int> Use a timeout of the given number of seconds" in
   let spec = List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2)
     [ ("--gen-obj"      , Arg.Set Handle.gen_obj          , gen_obj_doc  )
@@ -100,7 +94,6 @@ let _ =
     ; ("--verbose"      , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
     ; ("--justparse"    , Arg.Set justparse               , onlyparse_doc)
     ; ("--earleylvl"    , Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
-    ; ("--legacy-parser", Arg.Set use_legacy_parser       , legacy_doc   )
     ; ("--timeout"      , Arg.Int set_timeout             , timeout_doc  )
     ; ("--confluence"   , Arg.String set_confluence       , cc_doc       )
     ; ("--debug"        , Arg.String (set_debug true)     , debug_doc    ) ]
@@ -111,12 +104,9 @@ let _ =
   if !justparse then
     let parse_file fname =
       if Filename.check_suffix fname src_extension then
-        if !use_legacy_parser then
-          ignore (Legacy_parser.parse_file fname)
-        else
-          ignore (Parser.parse_file fname)
+        ignore (Legacy_parser.parse_file fname)
       else
-        ignore (New_parser.parse_file fname)
+        ignore (Parser.parse_file fname)
     in
     List.iter parse_file !files
   else

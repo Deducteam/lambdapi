@@ -11,7 +11,7 @@ type command = Syntax.p_cmd
 exception Parse_error of Pos.pos
 
 let parse_text : string -> command Pos.loc list = fun s ->
-  let parse = Earley.parse_string New_parser.cmds New_parser.blank in
+  let parse = Earley.parse_string Parser.cmds Parser.blank in
   try parse s with Earley.Parse_error(buf, pos) ->
   raise (Parse_error(Pos.locate buf pos buf pos))
 

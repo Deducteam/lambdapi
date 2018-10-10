@@ -10,7 +10,7 @@ open Pos
 open Files
 open Syntax
 open Scope
-open New_parser
+open Parser
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 'i' "tact" "debugging information for tactics"
@@ -114,7 +114,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ps)
 
-let parse_file = Pervasives.ref Parser.parse_file
+let parse_file    = Pervasives.ref Parser.parse_file
 let src_extension = Pervasives.ref Files.new_src_extension
 let obj_extension = Pervasives.ref Files.new_obj_extension
 

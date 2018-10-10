@@ -18,8 +18,8 @@ def 1 := s 0.
 
 def add : N -> N -> N.
 
-add 0 &x --> &x.
-add (s &x) &y --> s (add &x &y).
+[x]   add 0 x --> x.
+[x,y] add (s x) y --> s (add x y).
 
 #EVAL (add (s 1) (s 1)).
 
@@ -57,7 +57,7 @@ lift : i : N -> U i -> U (s i).
 
 pi : i : _ -> a : U i -> (T _ a -> U i) -> U i.
 
-T _ (pi &i &a &f) --> x : T &i &a -> T &i (&f x).
+[i,a,f] T _ (pi i a f) --> x : T i a -> T i (f x).
 
 (; Code for the type of vectors in universe i. ;)
 
@@ -70,17 +70,17 @@ cons : i : _ -> a : _ -> T i a -> n : _ -> T _ (vec _ a n) -> T _ (vec _ a (s n)
 
 def nat_ind : p:(N -> Prop) -> P (p 0) -> (n : _ -> P (p n) -> P (p (s n))) -> n : _ -> P (p n).
 
-nat_ind _  &u _  0      --> &u.
-nat_ind &p &u &v (s &n) --> &v &n (nat_ind &p &u &v &n).
+[u]       nat_ind _  u _  0   --> u.
+[p,u,v,n] nat_ind p u v (s n) --> v n (nat_ind p u v n).
 
 (; Boolean equality on N. ;)
 
 def beq : N->N->B.
 
-beq 0 0 --> true.
-beq (s &x) (s &y) --> beq &x &y.
-beq 0 (s _) --> false.
-beq (s _) 0 --> false.
+[]    beq 0     0     --> true.
+[x,y] beq (s x) (s y) --> beq x y.
+[]    beq 0     (s _) --> false.
+[]    beq (s _) 0     --> false.
 
 (; Leibniz equality. ;)
 
