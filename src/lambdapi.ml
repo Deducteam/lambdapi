@@ -3,95 +3,95 @@
 open Core
 open Extra
 open Console
-open Files
 
 (** [confluence_checker] holds a possible confluence checking command. When it
     is given, the command should accept TPDB format on its input and the first
     line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option Pervasives.ref = Pervasives.ref None
 
-(** [set_confluence cmd] sets the confluence checker command to [cmd]. *)
-let set_confluence : string -> unit = fun cmd ->
-  Pervasives.(confluence_checker := Some(cmd))
+(** [justparse] holds a boolean indicating whether files should only be parsed
+    (when set to [true]) or fully processed (when set to [false]). *)
+let justparse = Pervasives.ref false
 
 (** [timeout] holds a possible timeout for compilation (in seconds). *)
 let timeout : int option Pervasives.ref = Pervasives.ref None
 
-(** [set_timeout i] sets a timeout of [i] seconds on the compilation. *)
-let set_timeout : int -> unit = fun i ->
-  if i <= 0 then (Format.eprintf (red "Invalid timeout value.\n"); exit 1);
-  timeout := Some(i)
-
-(** [compile fname] compiles the source file [fname]. *)
+(** [compile fname] compiles the source file [fname] taking care of pottential
+    errors in the process. *)
 let compile : string -> unit = fun fname ->
-  let mp = module_path fname in
-  let run () =
-    match !timeout with
-    | None    -> Handle.compile true mp
-    | Some(i) -> with_timeout i (Handle.compile true) mp
-  in
   try
-    run ();
+    (* Only parse if compilation not required. *)
+    if !justparse then ignore (Handle.parse_file fname) else
+    (* Compute the module path (checking the extension). *)
+    let mp = Files.module_path fname in
+    (* Run the compilation, possibly using a timeout. *)
+    let compile = Handle.compile true in
+    let _ =
+      match !timeout with
+      | None    -> compile mp
+      | Some(i) -> try with_timeout i compile mp with Timeout ->
+                     fatal_no_pos "Compilation timed out for [%s]." fname
+    in
+    (* Possibly check the confluence. *)
     match !confluence_checker with
     | None      -> ()
     | Some(cmd) ->
-        let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
-        match Confluence.check cmd sign with
-        | None     -> fatal_no_pos "The rewrite system may not be confluent."
-        | Some(ok) -> if not ok then
-                        fatal_no_pos "The rewrite system is not confluent."
+    let sign = Files.PathMap.find mp Sign.(Timed.(!loaded)) in
+    match Confluence.check cmd sign with
+    | Some(true ) -> ()
+    | Some(false) -> fatal_no_pos "The rewrite system is not confluent."
+    | None        -> fatal_no_pos "The rewrite system may not be confluent."
   with
-  | Fatal(popt,msg) ->
-      begin
-        match popt with
-        | None    -> Format.eprintf (red "%s\n") msg
-        | Some(p) -> Format.eprintf (red "[%a] %s\n") Pos.print p msg
-      end;
-      exit 1
-  | Timeout         ->
-      Format.eprintf (red "[%s] Compilation timed out.\n") fname;
-      exit 1
+  | Fatal(None,    msg) -> exit_with "%s" msg
+  | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
 
-(* Main program. *)
+(** [spec] contains the command line argument specification. *)
+let spec =
+  let set_timeout : int -> unit = fun i ->
+    if i <= 0 then exit_with "Invalid timeout value [%i] (≤ 0)." i;
+    timeout := Some(i)
+  in
+  let debug_flags =
+    let fn acc l = acc ^ "\n        " ^ l in
+    List.fold_left fn "\n      Available flags:" (Console.log_summary ())
+  in
+  let verbose_values = "\n" ^ String.concat "\n"
+    [ "      Available values:"
+    ; "        ≤ 0 : no output at all"
+    ; "        = 1 : only file loading information (default)"
+    ; "        = 2 : more file loading information"
+    ; "        ≥ 3 : show the results of commands" ]
+  in
+  let spec = Arg.align
+    [ ( "--gen-obj"
+      , Arg.Set Handle.gen_obj
+      , " Produce object files (\".dko\" extension)." )
+    ; ( "--toolong"
+      , Arg.Float ((:=) Handle.too_long)
+      , "<flt> Duration considered too long for a command." )
+    ; ( "--verbose"
+      , Arg.Int (Timed.(:=) verbose)
+      , "<int> Set the verbosity level." ^ verbose_values )
+    ; ( "--justparse"
+      , Arg.Set justparse
+      , " Only parse the input files (no type-checking)." )
+    ; ( "--timeout"
+      , Arg.Int set_timeout
+      , "<int> Use a timeout of the given number of seconds." )
+    ; ( "--confluence"
+      , Arg.String (fun cmd -> confluence_checker := Some(cmd))
+      , "<cmd> Runs the given confluence checker." )
+    ; ( "--debug"
+      , Arg.String (set_debug true)
+      , "<str> Sets the given debugging flags." ^ debug_flags ) ]
+  in
+  List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2) spec
+
+(** Main program. *)
 let _ =
-  let justparse = Pervasives.ref false in
-  let padding = String.make 8 ' ' in
-  let debug_doc =
-    let flags = Console.log_summary () in
-    let flags = List.map (fun s -> padding ^ s) flags in
-    "<str> Sets the given debugging flags.\n      Available flags:\n"
-    ^ String.concat "\n" flags
-  in
-  let verbose_doc =
-    let flags = List.map (fun s -> padding ^ s)
-      [ "0 (or less) : no output at all"
-      ; "1 : only file loading information (default)"
-      ; "2 : more file loading information"
-      ; "3 (or more) : show the results of commands" ]
-    in
-    "<int> Set the verbosity level.\n      Available values:\n"
-    ^ String.concat "\n" flags
-  in
-  let cc_doc = "<cmd> Runs the given confluence checker" in
-  let gen_obj_doc = " Produce object files (\".dko\" extension)" in
-  let too_long_doc = "<flt> Duration considered too long for a command" in
-  let onlyparse_doc = " Only parse the input files (no type-checking)" in
-  let earleylvl_doc = "<int> Sets the internal debugging level of Earley" in
-  let timeout_doc = "<int> Use a timeout of the given number of seconds" in
-  let spec = List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2)
-    [ ("--gen-obj"      , Arg.Set Handle.gen_obj          , gen_obj_doc  )
-    ; ("--toolong"      , Arg.Float ((:=) Handle.too_long), too_long_doc )
-    ; ("--verbose"      , Arg.Int (Timed.(:=) verbose)    , verbose_doc  )
-    ; ("--justparse"    , Arg.Set justparse               , onlyparse_doc)
-    ; ("--earleylvl"    , Arg.Int ((:=) Earley.debug_lvl) , earleylvl_doc)
-    ; ("--timeout"      , Arg.Int set_timeout             , timeout_doc  )
-    ; ("--confluence"   , Arg.String set_confluence       , cc_doc       )
-    ; ("--debug"        , Arg.String (set_debug true)     , debug_doc    ) ]
-  in
+  (* Parse command line arguments while accumulating all files. *)
+  let usage = Printf.sprintf "Usage: %s [OPTIONS] [FILES]" Sys.argv.(0) in
   let files = Pervasives.ref [] in
-  let anon fn = Pervasives.(files := fn :: !files) in
-  Arg.parse (Arg.align spec) anon (Sys.argv.(0) ^ " [OPTIONS] [FILES]");
-  if !justparse then
-    List.iter (fun fname -> ignore (Handle.parse_file fname)) !files
-  else
-    List.iter compile (List.rev !files)
+  Arg.parse spec (fun s -> files := s :: !files) usage;
+  (* Compile each file separately. *)
+  List.iter compile (List.rev !files)

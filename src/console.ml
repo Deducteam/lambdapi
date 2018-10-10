@@ -57,6 +57,11 @@ let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
   let cont _ = raise (Fatal(None, Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt
 
+(** [exit_with fmt] is similar to [fatal_no_pos fmt], but the whole program is
+    (irrecoverably) stopped with return code [1], indicating failure. *)
+let exit_with : ('a,'b) koutfmt -> 'a = fun fmt ->
+  Format.kfprintf (fun _ -> exit 1) Format.err_formatter (red (fmt ^^ "\n%!"))
+
 (** Type of a logging function. *)
 type logger = { logger : 'a. 'a outfmt -> 'a }
 

@@ -41,8 +41,8 @@ let module_path : string -> module_path = fun fname ->
   let ext_ok = Filename.check_suffix fname src_extension in
   let ext_ok = ext_ok || Filename.check_suffix fname new_src_extension in
   if not ext_ok then
-    fatal_no_pos "Invalid file extension for [%s] (expected [%s])."
-      fname src_extension;
+    fatal_no_pos "Invalid file extension for [%s] (expected [%s] or [%s])."
+      fname src_extension new_src_extension;
   if not (Filename.is_relative fname) then
     fatal_no_pos "Invalid path for [%s] (expected relative path)." fname;
   let base = Filename.chop_extension (Filename.basename fname) in
