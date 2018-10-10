@@ -23,6 +23,20 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
   with _ -> fatal_no_pos "Invalid command configuration."
+
+let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
+  fun (p1,p2) elt ->
+    let pos =
+      let open Lexing in
+      let open Pos in
+      let fname = Some(p1.pos_fname) in
+      let start_line = p1.pos_lnum in
+      let start_col = p1.pos_cnum - p1.pos_bol in
+      let end_line = p2.pos_lnum in
+      let end_col = p2.pos_cnum - p2.pos_bol in
+      Lazy.from_val {fname; start_line; start_col; end_line; end_col}
+    in
+    Pos.{pos = Some(pos); elt}
 %}
 
 %token EOF
@@ -60,44 +74,44 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 
 line:
   | s=ID COLON a=term DOT
-      { Pos.none (P_symbol([Sym_const], Pos.none s, a)) }
+      { make_pos $loc (P_symbol([Sym_const], Pos.none s, a)) }
   | s=ID ps=param+ COLON a=term DOT
-      { Pos.none (P_symbol([Sym_const],Pos.none s,Pos.none (P_Prod(ps,a)))) }
+      { make_pos $loc (P_symbol([Sym_const],Pos.none s,Pos.none (P_Prod(ps,a)))) }
   | KW_DEF s=ID COLON a=term DOT
-      { Pos.none (P_symbol([], Pos.none s, a)) }
+      { make_pos $loc (P_symbol([], Pos.none s, a)) }
   | KW_INJ s=ID COLON a=term DOT
-      { Pos.none (P_symbol([Sym_inj], Pos.none s, a)) }
+      { make_pos $loc (P_symbol([Sym_inj], Pos.none s, a)) }
   | KW_DEF s=ID COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(false, Pos.none s, [], Some(a), t)) }
+      { make_pos $loc (P_definition(false, Pos.none s, [], Some(a), t)) }
   | KW_DEF s=ID DEF t=term DOT
-      { Pos.none (P_definition(false, Pos.none s, [], None, t)) }
+      { make_pos $loc (P_definition(false, Pos.none s, [], None, t)) }
   | KW_DEF s=ID ps=param+ COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(false, Pos.none s, ps, Some(a), t)) }
+      { make_pos $loc (P_definition(false, Pos.none s, ps, Some(a), t)) }
   | KW_DEF s=ID ps=param+ DEF t=term DOT
-      { Pos.none (P_definition(false, Pos.none s, ps, None, t)) }
+      { make_pos $loc (P_definition(false, Pos.none s, ps, None, t)) }
   | KW_THM s=ID COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(true , Pos.none s, [], Some(a), t)) }
+      { make_pos $loc (P_definition(true , Pos.none s, [], Some(a), t)) }
   | KW_THM s=ID ps=param+ COLON a=term DEF t=term DOT
-      { Pos.none (P_definition(true , Pos.none s, ps, Some(a), t)) }
+      { make_pos $loc (P_definition(true , Pos.none s, ps, Some(a), t)) }
   | rs=rule+ DOT
-      { Pos.none (P_rules(List.map translate_old_rule rs)) }
+      { make_pos $loc (P_rules(List.map translate_old_rule rs)) }
   | EVAL t=term DOT
-      { Pos.none (P_normalize(t, Eval.{strategy = SNF; steps = None})) }
+      { make_pos $loc (P_normalize(t, Eval.{strategy = SNF; steps = None})) }
   | EVAL c=eval_config t=term DOT
       { let c = Eval.(if c.strategy=NONE then {c with strategy=SNF} else c) in
-        Pos.none (P_normalize(t, c)) }
+        make_pos $loc (P_normalize(t, c)) }
   | INFER t=term DOT
-      { Pos.none (P_infer(t, Eval.{strategy = NONE; steps = None})) }
+      { make_pos $loc (P_infer(t, Eval.{strategy = NONE; steps = None})) }
   | INFER c=eval_config t=term DOT
-      { Pos.none (P_infer(t, c)) }
+      { make_pos $loc (P_infer(t, c)) }
   | ASSERT    t=aterm COLON a=term DOT
-      { Pos.none (P_assert(false, P_assert_typing(t,a))) }
+      { make_pos $loc (P_assert(false, P_assert_typing(t,a))) }
   | ASSERTNOT t=aterm COLON a=term DOT
-      { Pos.none (P_assert(true , P_assert_typing(t,a))) }
+      { make_pos $loc (P_assert(true , P_assert_typing(t,a))) }
   | ASSERT    t=aterm EQUAL u=term DOT
-      { Pos.none (P_assert(false, P_assert_conv(t,u))) }
+      { make_pos $loc (P_assert(false, P_assert_conv(t,u))) }
   | ASSERTNOT t=aterm EQUAL u=term DOT
-      { Pos.none (P_assert(true , P_assert_conv(t,u))) }
+      { make_pos $loc (P_assert(true , P_assert_conv(t,u))) }
   | r=REQUIRE    DOT { Pos.none (P_require([r], P_require_default)) }
   | EOF              { raise End_of_file }
 
@@ -110,7 +124,7 @@ param:
 
 rule:
   | LEFTSQU c=context RIGHTSQU lhs=term LONGARROW rhs=term
-      { Pos.none (c, lhs, rhs ) }
+      { make_pos $loc (c, lhs, rhs ) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (Pos.none x, ao) }
@@ -122,13 +136,13 @@ sterm:
   | qid=QID
       { let (m,id)=qid in Pos.none (P_Vari(Pos.none([m], id))) }
   | id=ID
-      { Pos.none (P_Vari(Pos.none([], id))) }
+      { make_pos $loc (P_Vari(Pos.none([], id))) }
   | LEFTPAR t=term RIGHTPAR
       { t }
   | UNDERSCORE
-      { Pos.none P_Wild }
+      { make_pos $loc P_Wild }
   | TYPE
-      { Pos.none P_Type }
+      { make_pos $loc P_Type }
 
 aterm:
   | t=sterm ts=sterm*
@@ -138,13 +152,13 @@ term:
   | t=aterm
       { t }
   | x=ID COLON a=aterm ARROW b=term
-      { Pos.none (P_Prod([(Pos.none x, Some(a))], b)) }
+      { make_pos $loc (P_Prod([(Pos.none x, Some(a))], b)) }
   | LEFTPAR x=ID COLON a=aterm RIGHTPAR ARROW b=term
-      { Pos.none (P_Prod([(Pos.none x, Some(a))], b)) }
+      { make_pos $loc (P_Prod([(Pos.none x, Some(a))], b)) }
   | a=term ARROW b=term
-      { Pos.none (P_Prod([(Pos.none "_", Some(a))], b)) }
+      { make_pos $loc (P_Prod([(Pos.none "_", Some(a))], b)) }
   | x=ID FATARROW t=term
-      { Pos.none (P_Abst([(Pos.none x, None)], t)) }
+      { make_pos $loc (P_Abst([(Pos.none x, None)], t)) }
   | x=ID COLON a=aterm FATARROW t=term
-      { Pos.none (P_Abst([(Pos.none x, Some(a))], t)) }
+      { make_pos $loc (P_Abst([(Pos.none x, Some(a))], t)) }
 %%
