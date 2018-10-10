@@ -243,7 +243,7 @@ let blank buf pos =
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
-let parse_file : string -> p_cmd loc list = fun fname ->
+let parse_file : string -> Syntax.ast = fun fname ->
   Hashtbl.reset qid_map;
   try Earley.parse_file cmd_list blank fname
   with Earley.Parse_error(buf,pos) ->
@@ -255,7 +255,7 @@ let parse_file : string -> p_cmd loc list = fun fname ->
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> p_cmd loc list = fun fname str ->
+let parse_string : string -> string -> Syntax.ast = fun fname str ->
   Hashtbl.reset qid_map;
   try Earley.parse_string ~filename:fname cmd_list blank str
   with Earley.Parse_error(buf,pos) ->

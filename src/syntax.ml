@@ -146,6 +146,9 @@ type p_cmd =
   | P_normalize  of p_term * Eval.config
   (** Normalisation command. *)
 
+(** Top level AST returned by the parser. *)
+type ast = p_cmd Pos.loc list
+
 (** [get_args t] decomposes [t] into a head term and a list of arguments. Note
     that in the returned pair [(h,args)], [h] is never a [P_Appl] node. *)
 let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->

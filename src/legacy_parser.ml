@@ -1,8 +1,8 @@
 open Console
 
-let parse_channel : in_channel -> Syntax.p_cmd Pos.loc list = fun ic ->
+let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
+  (* FIXME handle fname ? *)
   let lines = ref [] in
-  let lexbuf = Lexing.from_channel ic in
   try
     while true do
       let l = Menhir_parser.line Legacy_lexer.token lexbuf in
@@ -16,10 +16,11 @@ let parse_channel : in_channel -> Syntax.p_cmd Pos.loc list = fun ic ->
       let loc = Some(Legacy_lexer.locate loc loc) in
       fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
 
-let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
+let parse_file : string -> Syntax.ast = fun fname ->
   let ic = open_in fname in
-  try
-    let l = parse_channel ic in
-    close_in ic; l
-  with e ->
-    close_in ic; raise e
+  let lexbuf = Lexing.from_channel ic in
+  try let l = parse_lexbuf fname lexbuf in close_in ic; l
+  with e -> close_in ic; raise e
+
+let parse_string : string -> string -> Syntax.ast = fun fname s ->
+  parse_lexbuf fname (Lexing.from_string s)
