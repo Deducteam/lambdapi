@@ -24,15 +24,10 @@ let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
 
 type token =
   (* Special characters and symbols. *)
-  | L_SQB | R_SQB | L_PAR | R_PAR
-  | ARROW | LARROW | FARROW
-  | DEFEQ | COMMA | COLON | EQUAL
-  | DOT | EOF
+  | L_SQB | R_SQB | L_PAR | R_PAR | ARROW | LARROW | FARROW | DEFEQ | COMMA
+  | COLON | EQUAL | DOT | EOF
   (* Keywords. *)
-  | KW_DEF
-  | KW_INJ
-  | KW_THM
-  | TYPE
+  | KW_DEF | KW_INJ | KW_THM | TYPE
   (* Identifiers and wildcard. *)
   | WILD
   | ID      of string

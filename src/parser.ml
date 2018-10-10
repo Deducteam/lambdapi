@@ -124,6 +124,9 @@ let parser expr @(p : prio) =
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(expr PAppl) ts:{"," (expr PAppl)}* "]" -> t::ts
 
+(** [expr_appl] accepts application level expressions. *)
+let expr_appl = expr PAppl
+
 (** [expr] is the entry point of the parser for expressions, which include all
     terms, types and patterns. *)
 let expr = expr PFunc
@@ -191,7 +194,7 @@ let parser cmd_aux =
       -> P_definition(false, x, xs, ao, t)
   | _thm_ x:ident xs:arg* ao:{":" expr}? ":=" t:expr
       -> P_definition(true , x, xs, ao, t)
-  | mf:assert_kw t:expr "::" a:expr
+  | mf:assert_kw t:expr_appl ":" a:expr
       -> P_assert(mf, P_assert_typing(t,a))
   | mf:assert_kw t:expr "==" u:expr
       -> P_assert(mf, P_assert_conv(t,u)  )

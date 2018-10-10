@@ -2,5 +2,5 @@ N : Type.
 0 : N.
 S : N -> N.
 
-#ASSERT 0 :: N.
-#ASSERTNOT S :: N.
+#ASSERT    0 : N.
+#ASSERTNOT S : N.

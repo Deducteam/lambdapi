@@ -1,9 +1,0 @@
-(; From issue #70 ;)
-
-Nat : Type.
-0 : Nat.
-S : Nat -> Nat.
-
-def f : (Nat -> Nat) -> Nat.
-
-f (x => &m[x,0])--> 0.
