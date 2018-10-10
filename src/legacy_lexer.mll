@@ -1,5 +1,17 @@
 {
 open Lexing
+open Pos
+
+let locate : Lexing.position -> Lexing.position -> Pos.pos = fun p1 p2 ->
+  let fname = if p1.pos_fname = "" then None else Some(p1.pos_fname) in
+  let start_line = p1.pos_lnum in
+  let start_col = p1.pos_cnum - p1.pos_bol in
+  let end_line = p2.pos_lnum in
+  let end_col = p2.pos_cnum - p2.pos_bol in
+  Lazy.from_val {fname; start_line; start_col; end_line; end_col}
+
+let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
+  fun (p1,p2) elt -> {pos = Some(locate p1 p2); elt}
 
 type token =
   | UNDERSCORE
@@ -28,8 +40,7 @@ type token =
   | ARROW
   | EVAL
   | INFER
-  | ASSERT
-  | ASSERTNOT
+  | ASSERT     of bool
   | PRINT
   | GDT
   | INT        of int
@@ -67,8 +78,8 @@ rule token = parse
   | "#REQUIRE" space+ (mident as md) { REQUIRE md }
   | "#EVAL"     { EVAL          }
   | "#INFER"    { INFER         }
-  | "#ASSERT"   { ASSERT        }
-  | "#ASSERTNOT"{ ASSERTNOT     }
+  | "#ASSERT"   { ASSERT(false) }
+  | "#ASSERTNOT"{ ASSERT(true)  }
   | "#PRINT"    { PRINT         }
   | "#GDT"      { GDT           }
   | mident as md '.' (ident as id) { QID (md, id) }

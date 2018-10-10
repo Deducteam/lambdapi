@@ -12,8 +12,9 @@ let parse_channel : in_channel -> Syntax.p_cmd Pos.loc list = fun ic ->
   with
   | End_of_file         -> List.rev !lines
   | Menhir_parser.Error ->
-      let lex = Lexing.lexeme lexbuf in
-      fatal_no_pos "ERROR: unexpected token '%s'...\n%!" lex
+      let loc = Lexing.(lexbuf.lex_start_p) in
+      let loc = Some(Legacy_lexer.locate loc loc) in
+      fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
 
 let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
   let ic = open_in fname in
