@@ -2,8 +2,10 @@
 open Lexing
 open Pos
 
+let filename = Pervasives.ref ""
+
 let locate : Lexing.position -> Lexing.position -> Pos.pos = fun p1 p2 ->
-  let fname = if p1.pos_fname = "" then None else Some(p1.pos_fname) in
+  let fname = if !filename = "" then None else Some(!filename) in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
   let end_line = p2.pos_lnum in

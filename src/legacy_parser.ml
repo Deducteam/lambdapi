@@ -1,7 +1,7 @@
 open Console
 
 let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
-  (* FIXME handle fname ? *)
+  Pervasives.(Legacy_lexer.filename := fname);
   let lines = ref [] in
   try
     while true do
