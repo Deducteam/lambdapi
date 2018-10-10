@@ -10,6 +10,8 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Core
+
 module F = Format
 module J = Yojson.Basic
 module U = Yojson.Basic.Util

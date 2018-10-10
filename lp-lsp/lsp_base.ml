@@ -10,6 +10,8 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Core
+
 (* Whether to send extended lsp messages *)
 let std_protocol = ref true
 

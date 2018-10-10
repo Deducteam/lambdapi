@@ -10,6 +10,7 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
+open Core
 module LSP = Lsp_base
 
 type ast = Syntax.p_cmd Pos.loc

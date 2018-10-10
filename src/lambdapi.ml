@@ -1,5 +1,6 @@
 (** Main program. *)
 
+open Core
 open Extra
 open Console
 open Files
