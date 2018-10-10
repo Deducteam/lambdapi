@@ -17,9 +17,9 @@ doc:
 #### Unit tests ##############################################################
 
 LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
-OK_TESTFILES = $(sort $(wildcard tests/OK/*.*))
-KO_TESTFILES = $(sort $(wildcard tests/KO/*.*))
-TESTFILES    = $(sort $(wildcard examples/*.*))
+OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
+KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
+TESTFILES    = $(sort $(wildcard examples/*.dk examples/*.lp))
 TESTPROOFS   = $(sort $(wildcard proofs/*.lp))
 
 .PHONY: tests
