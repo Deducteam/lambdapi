@@ -26,6 +26,7 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
   with _ -> fatal_no_pos "Invalid command configuration."
 %}
 
+%token EOF
 %token DOT
 %token COMMA
 %token COLON
@@ -110,6 +111,9 @@ line:
     }
   | r=REQUIRE    DOT {
       make_pos $loc (P_require(r, P_require_default))
+    }
+  | EOF {
+      raise End_of_file
     }
 
 eval_config:
