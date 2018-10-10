@@ -50,10 +50,9 @@ let json_of_thm thm =
 
 let mk_range (p : Pos.pos) : J.json =
   let open Pos in
-  let line1 = Input.line_num p.start_buf in
-  let line2 = Input.line_num p.end_buf   in
-  let col1  = Input.utf8_col_num p.start_buf p.start_pos in
-  let col2  = Input.utf8_col_num p.end_buf   p.end_pos   in
+  let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
+    Lazy.force p
+  in
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
