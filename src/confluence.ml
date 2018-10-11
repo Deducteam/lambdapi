@@ -17,29 +17,45 @@ let print_sym : sym pp = Print.pp_symbol Qualified
 
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)
-let rec print_term : [`Func | `Appl | `Atom] -> term pp = fun p oc t ->
-  let pp_atom = print_term `Atom in
-  let pp_appl = print_term `Appl in
-  let pp_func = print_term `Func in
-  let out fmt = Format.fprintf oc fmt in
-  match (unfold t, p) with
-  (* Forbidden cases. *)
-  | (Meta(_,_)  , _    ) -> assert false
-  | (TRef(_)    , _    ) -> assert false
-  | (Kind       , _    ) -> assert false
-  (* Printing of atoms. *)
-  | (Type       , _    ) -> out "TYPE"
-  | (Symb(s,_)  , _    ) -> print_sym oc s
-  | (Patt(_,_,_), _    ) -> out "..." (* TODO *)
-  | (TEnv(_,_)  , _    ) -> out "..." (* TODO *)
-  (* Applications are printed when priority is above [`Appl]. *)
-  | (Appl(t,u)  , `Appl)
-  | (Appl(t,u)  , `Func) -> out "%a %a" pp_appl t pp_atom u
-  (* Abstractions and products are only printed at priority [`Func]. *)
-  | (Abst(_,_)  , `Func) -> out "..." (* TODO *)
-  | (Prod(_,_)  , `Func) -> out "..." (* TODO *)
-  (* Anything else needs parentheses. *)
-  | (_          , _    ) -> out "(%a)" pp_func t
+let print_term : bool -> [`Func | `Appl | `Atom] -> term pp = fun lhs ->
+  let rec print_term p oc t =
+    let pp_atom = print_term `Atom in
+    let pp_appl = print_term `Appl in
+    let pp_func = print_term `Func in
+    let out fmt = Format.fprintf oc fmt in
+    match (unfold t, p) with
+    (* Forbidden cases. *)
+    | (Meta(_,_)     , _    ) -> assert false
+    | (TRef(_)       , _    ) -> assert false
+    | (TEnv(_,_)     , _    ) -> assert false
+    | (Wild          , _    ) -> assert false
+    | (Kind          , _    ) -> assert false
+    (* Printing of atoms. *)
+    | (Vari(x)       , _    ) -> out "v_%s" (Bindlib.name_of x)
+    | (Type          , _    ) -> out "TYPE"
+    | (Symb(s,_)     , _    ) -> print_sym oc s
+    | (Patt(_,n,[||]), _    ) -> out "&%s" n
+    | (Patt(_,n,ts)  , `Appl) -> out "&%s %a" n (Array.pp pp_atom " ") ts
+    (* Applications are printed when priority is above [`Appl]. *)
+    | (Appl(t,u)     , `Appl)
+    | (Appl(t,u)     , `Func) -> out "%a %a" pp_appl t pp_atom u
+    (* Abstractions and products are only printed at priority [`Func]. *)
+    | (Abst(_,t)     , `Func) when lhs ->
+        let (x, t) = Bindlib.unbind t in
+        out "lam(m_typ,\\v_%s.%a)" (Bindlib.name_of x) pp_func t
+    | (Abst(a,t)     , `Func) ->
+        let (x, t) = Bindlib.unbind t in
+        out "lam(%a,\\v_%s.%a)" pp_func a (Bindlib.name_of x) pp_func t
+    | (Prod(a,b)     , `Func) ->
+        let (x, b) = Bindlib.unbind b in
+        out "pi(%a,\\v_%s.%a)" pp_func a (Bindlib.name_of x) pp_func b
+    (* Anything else needs parentheses. *)
+    | (_             , _    ) -> out "(%a)" pp_func t
+  in
+  print_term
+
+(* FIXME Patt when wildcard in print_term. *)
+(* FIXME Print pattern variables when printing rules. *)
 
 (** [to_TPDB oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
@@ -84,14 +100,14 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
   let print_rules s =
     match !(s.sym_def) with
     | Some(d) ->
-        Format.fprintf oc "(RULES %a -> %a)\n" print_sym s
-          (print_term `Func) d
+        Format.fprintf oc "(RULES %a\n    -> %a)\n" print_sym s
+          (print_term false `Func) d
     | None    ->
         let print_rule r =
           Format.fprintf oc "(RULES %a" print_sym s;
-          List.iter (Format.fprintf oc " %a" (print_term `Atom)) r.lhs;
+          List.iter (Format.fprintf oc " %a" (print_term true `Atom)) r.lhs;
           let rhs = term_of_rhs r in
-          Format.fprintf oc "\n    -> %a)\n" (print_term `Func) rhs
+          Format.fprintf oc "\n    -> %a)\n" (print_term false `Func) rhs
         in
         List.iter print_rule !(s.sym_rules)
   in
