@@ -14,7 +14,8 @@ let log_conf = log_conf.logger
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. *)
 let print_sym : sym pp = Print.pp_symbol Qualified
-
+(* FIXME use underscore rather than dots. *)
+                       
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)
 let print_term : bool -> term pp = fun lhs ->
@@ -31,7 +32,7 @@ let print_term : bool -> term pp = fun lhs ->
     (* Printing of atoms. *)
     | Vari(x)      -> out "v_%s" (Bindlib.name_of x)
     | Type         -> out "TYPE"
-    | Symb(s,_)    -> print_sym oc s
+    | Symb(s,_)    -> out "c_%a" print_sym s
     | Patt(_,n,ts) -> out "&%s" n; if ts <> [||] then out "(%a)" pp_ar ts
     (* Applications are printed when priority is above [`Appl]. *)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
@@ -115,8 +116,8 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
           in
           Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names;
           (* Print the rewriting rule. *)
-          Format.fprintf oc "(RULES %a" print_sym s;
-          List.iter (Format.fprintf oc " %a" (print_term true)) r.lhs;
+          let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
+          Format.fprintf oc "(RULES %a" (print_term true) lhs;
           let rhs = Basics.term_of_rhs r in
           Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
         in
