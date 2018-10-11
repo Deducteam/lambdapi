@@ -1,16 +1,22 @@
 (** Interface to lp-lsp. *)
 
 open Timed
-open Extra
-open Console
+
+(* Lambdapi core *)
+open Core
+open Core.Extra
+open Core.Console
 
 (** Representation of a single command (abstract). *)
-type command = Syntax.p_cmd
+module Command = struct
+  type t = Syntax.p_cmd
+  let equal x y = Syntax.eq_p_cmd x y
+end
 
 (** Exception raised by [parse_text] on error. *)
 exception Parse_error of Pos.pos * string
 
-let parse_text : string -> string -> command Pos.loc list = fun fname s ->
+let parse_text : string -> string -> Command.t Pos.loc list = fun fname s ->
   let old_syntax = Filename.check_suffix fname Files.src_extension in
   try
     if old_syntax then Legacy_parser.parse_string fname s
@@ -34,7 +40,7 @@ let initial_state : Files.module_path -> state = fun path ->
   Sign.loaded  := Files.PathMap.add path sign !Sign.loaded;
   (Time.save (), Scope.empty_sig_state sign)
 
-let handle_command : state -> command Pos.loc -> result = fun (st,ss) cmd ->
+let handle_command : state -> Command.t Pos.loc -> result = fun (st,ss) cmd ->
   Time.restore st;
   try
     let ss = Handle.new_handle_cmd ss cmd in
@@ -43,3 +49,36 @@ let handle_command : state -> command Pos.loc -> result = fun (st,ss) cmd ->
 
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun (st,_) ->
   Time.restore st; !(Sign.((current_sign ()).sign_symbols))
+
+let%test _ =
+  let c = parse_text "foo.lp" "symbol const B : TYPE" in
+  List.equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c c
+
+let%test _ =
+  let c = parse_text "foo.lp" "symbol const B : TYPE" in
+  let d = parse_text "foo.lp" "symbol const C : TYPE" in
+  not List.(equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c d)
+
+let%test _ =
+  let c = parse_text "foo.lp" "
+symbol const B : TYPE
+
+symbol const true  : B
+symbol const false : B
+symbol bool_neg : B ⇒ B
+
+rule bool_neg true  → false
+rule bool_neg false → true
+
+symbol const Prop : TYPE
+symbol injective P : Prop ⇒ TYPE
+
+symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
+
+theorem notK : ∀a, P (eq bool (bool_neg (bool_neg a)) a)
+proof
+   intro a
+qed
+" in
+  List.(equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c c)
+
