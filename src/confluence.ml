@@ -17,42 +17,33 @@ let print_sym : sym pp = Print.pp_symbol Qualified
 
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)
-let print_term : bool -> [`Func | `Appl | `Atom] -> term pp = fun lhs ->
-  let rec print_term p oc t =
-    let pp_atom = print_term `Atom in
-    let pp_appl = print_term `Appl in
-    let pp_func = print_term `Func in
+let print_term : bool -> term pp = fun lhs ->
+  let rec pp oc t =
     let out fmt = Format.fprintf oc fmt in
-    match (unfold t, p) with
+    let pp_ar = Array.pp pp "," in
+    match unfold t with
     (* Forbidden cases. *)
-    | (Meta(_,_)     , _    ) -> assert false
-    | (TRef(_)       , _    ) -> assert false
-    | (TEnv(_,_)     , _    ) -> assert false
-    | (Wild          , _    ) -> assert false
-    | (Kind          , _    ) -> assert false
+    | Meta(_,_)    -> assert false
+    | TRef(_)      -> assert false
+    | TEnv(_,_)    -> assert false
+    | Wild         -> assert false
+    | Kind         -> assert false
     (* Printing of atoms. *)
-    | (Vari(x)       , _    ) -> out "v_%s" (Bindlib.name_of x)
-    | (Type          , _    ) -> out "TYPE"
-    | (Symb(s,_)     , _    ) -> print_sym oc s
-    | (Patt(_,n,[||]), _    ) -> out "&%s" n
-    | (Patt(_,n,ts)  , `Appl) -> out "&%s %a" n (Array.pp pp_atom " ") ts
+    | Vari(x)      -> out "v_%s" (Bindlib.name_of x)
+    | Type         -> out "TYPE"
+    | Symb(s,_)    -> print_sym oc s
+    | Patt(_,n,ts) -> out "&%s" n; if ts <> [||] then out "(%a)" pp_ar ts
     (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(t,u)     , `Appl)
-    | (Appl(t,u)     , `Func) -> out "%a %a" pp_appl t pp_atom u
+    | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(_,t)     , `Func) when lhs ->
+    | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
-        out "lam(m_typ,\\v_%s.%a)" (Bindlib.name_of x) pp_func t
-    | (Abst(a,t)     , `Func) ->
-        let (x, t) = Bindlib.unbind t in
-        out "lam(%a,\\v_%s.%a)" pp_func a (Bindlib.name_of x) pp_func t
-    | (Prod(a,b)     , `Func) ->
+        if lhs then out "lam(m_typ,\\v_%s.%a)" (Bindlib.name_of x) pp t
+        else out "lam(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp t
+    | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
-        out "pi(%a,\\v_%s.%a)" pp_func a (Bindlib.name_of x) pp_func b
-    (* Anything else needs parentheses. *)
-    | (_             , _    ) -> out "(%a)" pp_func t
-  in
-  print_term
+        out "pi(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp b
+  in pp
 
 (** [to_TPDB oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
@@ -98,7 +89,7 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
     match !(s.sym_def) with
     | Some(d) ->
         Format.fprintf oc "(RULES %a\n    -> %a)\n" print_sym s
-          (print_term false `Func) d
+          (print_term false) d
     | None    ->
         let get_patt_names : term list -> string list = fun ts ->
           let names = Pervasives.ref [] in
@@ -113,13 +104,21 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
         let print_rule r =
           (* Print the pattern variables declarations. *)
           let names = get_patt_names r.lhs in
-          let print_name oc x = Format.fprintf oc "  %s : ..." x in (*FIXME*)
+          let ctxt = Array.to_list r.ctxt in
+          let print_name oc x =
+            let arity = try List.assoc x ctxt with Not_found -> 0 in
+            Format.fprintf oc "  &%s : " x;
+            for i = 1 to arity do
+              Format.fprintf oc "term -> ";
+            done;
+            Format.fprintf oc "term"
+          in
           Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names;
           (* Print the rewriting rule. *)
           Format.fprintf oc "(RULES %a" print_sym s;
-          List.iter (Format.fprintf oc " %a" (print_term true `Atom)) r.lhs;
+          List.iter (Format.fprintf oc " %a" (print_term true)) r.lhs;
           let rhs = Basics.term_of_rhs r in
-          Format.fprintf oc "\n    -> %a)\n" (print_term false `Func) rhs
+          Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
         in
         List.iter print_rule !(s.sym_rules)
   in
