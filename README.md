@@ -32,6 +32,7 @@ List of dependencies:
  - menhir
  - yojson
  - cmdliner
+ - ppx\_inline\_test
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
