@@ -51,7 +51,7 @@
   (let ((synTable (make-syntax-table)))
     (modify-syntax-entry ?\( ". 1" synTable)
     (modify-syntax-entry ?\) ". 4" synTable)
-    (modify-syntax-entry ?; ". 23" synTable)
+    (modify-syntax-entry ?\; ". 23" synTable)
     synTable))
 
 ;; Keywords (legacy syntax)
