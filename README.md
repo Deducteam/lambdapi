@@ -102,7 +102,7 @@ checking command, which is expected to:
 
 For now, only `CSI^ho` has been tested, and it can be called as follows.
 ``` bash
-  lambdapi --confluence "path/to/csiho.sh --ext .trs --stdin" input_file.lp
+  lambdapi --confluence "path/to/csiho.sh --ext trs --stdin" input_file.lp
 ```
 
 It may be convinient to generate the corresponding `.trs` file. To this aim,
