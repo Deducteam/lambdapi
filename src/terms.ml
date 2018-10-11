@@ -112,7 +112,9 @@ type term =
   ; rhs   : (term_env, term) Bindlib.mbinder
   (** Right hand side.  *)
   ; arity : int
-  (** Required number of arguments to be applicable. *) }
+  (** Required number of arguments to be applicable. *)
+  ; ctxt  : (string * int) array
+  (** Bound higher-order variables names and arities. *) }
 
 (** A rewriting rule is formed of a LHS (left hand side), which is the pattern
     that should be matched for the rule to apply, and a RHS (right hand side),
@@ -470,3 +472,19 @@ let distinct_vars : term array -> bool = fun ar ->
     | _       -> false
   in
   distinct_vars [] (Array.length ar - 1)
+
+(** {6 Conversion of a rule into a "pair" of terms} *)
+
+(** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term.  The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors.  They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+let term_of_rhs : rule -> term = fun r ->
+  let fn i (name, arity) =
+    let make_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
+    let vars = Array.init arity make_var in
+    let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
+    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
+  in
+  Bindlib.msubst r.rhs (Array.mapi fn r.ctxt)
