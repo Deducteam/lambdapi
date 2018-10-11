@@ -23,6 +23,9 @@ depends: [
   "earley"       { >= "1.0.2" }
   "earley-ocaml" { >= "1.0.2" }
   "timed"        { >= "1.0"   }
+
+  "ppx_inline_test" { with-test }
 ]
 
 build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
+run-test: [ [ "dune" "runtest" "-p" name "-j" jobs ] ]

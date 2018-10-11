@@ -3,4 +3,4 @@
  (public_name lp-lsp)
  (modules lsp_base lsp_io lp_doc lp_lsp)
  (package lambdapi-lsp)
- (libraries lambdapi.core yojson cmdliner))
+ (libraries lambdapi.pure yojson cmdliner))
