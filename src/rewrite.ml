@@ -4,6 +4,7 @@ open Timed
 open Extra
 open Pos
 open Terms
+open Basics
 open Console
 open Proof
 open Solve
@@ -91,7 +92,7 @@ let break_prod : term -> term * tvar array = fun a ->
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if Terms.eq p t then Some(Array.map unfold ts) else None
+  if Basics.eq p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
     variables” of [xs]),  and it finds the first instance of (a term matching)
@@ -124,7 +125,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if Terms.eq t p then true else
+    if Basics.eq t p then true else
       begin
         Time.restore time;
         match unfold t with
@@ -144,7 +145,7 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
-    if Terms.eq p t then _Vari x else
+    if Basics.eq p t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type

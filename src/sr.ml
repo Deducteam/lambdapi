@@ -21,8 +21,10 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     match cs with
     | []        -> List.split acc
     | (a,b)::cs ->
-    let (ha,argsa) = get_args a and (hb,argsb) = get_args b in
-    let na = List.length argsa and nb = List.length argsb in
+    let (ha,argsa) = Basics.get_args a in
+    let (hb,argsb) = Basics.get_args b in
+    let na = List.length argsa in
+    let nb = List.length argsb in
     match (unfold ha, unfold hb) with
     | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && Sign.is_inj sa ->
         let fn l t1 t2 = (t1,t2) :: l in
@@ -106,7 +108,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
-  let lhs = add_args (Symb(s,h)) lhs in
+  let lhs = Basics.add_args (Symb(s,h)) lhs in
   (** We substitute the RHS with the corresponding metavariables.*)
   let fn m =
     let m = match m with Some(m) -> m | None -> assert false in

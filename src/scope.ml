@@ -308,7 +308,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
-    let (h, args) = Terms.get_args lhs in
+    let (h, args) = Basics.get_args lhs in
     match h with
     | Symb({sym_mode=Const},_) -> fatal p_lhs.pos "Constant LHS head symbol."
     | Symb(s,h)                -> (s, h, args)

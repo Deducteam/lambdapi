@@ -156,7 +156,7 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
   let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
     let open Pervasives in
-    if Terms.eq a b then incr trivial
+    if Basics.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try
@@ -184,7 +184,7 @@ let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
   let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
   let conv a b =
     let open Pervasives in
-    if Terms.eq a b then incr trivial
+    if Basics.eq a b then incr trivial
     else constrs := (a,b) :: !constrs
   in
   try

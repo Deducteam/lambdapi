@@ -106,7 +106,7 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
         let print_rule r =
           Format.fprintf oc "(RULES %a" print_sym s;
           List.iter (Format.fprintf oc " %a" (print_term true `Atom)) r.lhs;
-          let rhs = term_of_rhs r in
+          let rhs = Basics.term_of_rhs r in
           Format.fprintf oc "\n    -> %a)\n" (print_term false `Func) rhs
         in
         List.iter print_rule !(s.sym_rules)

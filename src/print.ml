@@ -67,6 +67,6 @@ let pp : term pp = pp_term
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hing
     [h]) to the output channel [oc]. *)
 let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
-  let lhs = add_args (Symb(s,h)) r.lhs in
+  let lhs = Basics.add_args (Symb(s,h)) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs

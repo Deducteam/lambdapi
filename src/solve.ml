@@ -4,6 +4,7 @@ open Extra
 open Timed
 open Console
 open Terms
+open Basics
 open Print
 open Typing
 

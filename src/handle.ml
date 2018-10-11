@@ -61,7 +61,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
     log_tact "refining [%a] with term [%a]" pp_meta m pp t;
-    if occurs m t then fatal tac.pos "Circular refinement.";
+    if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
     let ctx = Ctxt.of_env env in
     log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
@@ -70,7 +70,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) env) in
     m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
     (* New subgoals and focus. *)
-    let metas = get_metas t in
+    let metas = Basics.get_metas t in
     let new_goals = List.rev_map Proof.Goal.of_meta_decomposed metas in
     Proof.({ps with proof_goals = new_goals @ gs})
   in
