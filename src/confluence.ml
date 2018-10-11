@@ -54,9 +54,6 @@ let print_term : bool -> [`Func | `Appl | `Atom] -> term pp = fun lhs ->
   in
   print_term
 
-(* FIXME Patt when wildcard in print_term. *)
-(* FIXME Print pattern variables when printing rules. *)
-
 (** [to_TPDB oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
 let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
@@ -103,7 +100,22 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
         Format.fprintf oc "(RULES %a\n    -> %a)\n" print_sym s
           (print_term false `Func) d
     | None    ->
+        let get_patt_names : term list -> string list = fun ts ->
+          let names = Pervasives.ref [] in
+          let fn _ t =
+            match t with
+            | Patt(_,n,_) -> Pervasives.(names := n :: !names)
+            | _           -> ()
+          in
+          List.iter (Basics.iter fn) ts;
+          List.sort_uniq String.compare Pervasives.(!names)
+        in
         let print_rule r =
+          (* Print the pattern variables declarations. *)
+          let names = get_patt_names r.lhs in
+          let print_name oc x = Format.fprintf oc "  %s : ..." x in (*FIXME*)
+          Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names;
+          (* Print the rewriting rule. *)
           Format.fprintf oc "(RULES %a" print_sym s;
           List.iter (Format.fprintf oc " %a" (print_term true `Atom)) r.lhs;
           let rhs = Basics.term_of_rhs r in
