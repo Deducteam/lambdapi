@@ -45,6 +45,12 @@ module Option =
       match o with
       | None    -> d
       | Some(e) -> e
+
+    let equal : 'a eq -> 'a option eq = fun eq o1 o2 ->
+      match (o1, o2) with
+      | (None    , None    ) -> true
+      | (Some(e1), Some(e2)) -> eq e1 e2
+      | (_       , _       ) -> false
   end
 
 module List =
@@ -93,6 +99,11 @@ module List =
       | ([]   , []   ) -> true
       | (_::l1, _::l2) -> same_length l1 l2
       | (_    , _    ) -> false
+
+    (** [equal eq l1 l2] tests the equality of [l1] and [l2],  comparing their
+        elements with [eq]. *)
+    let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
+      try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
   end
 
 module Array =
@@ -112,6 +123,11 @@ module Array =
         [sep] as separator, and [pp_e] for printing the elements. *)
     let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
       List.pp pp_elt sep oc (to_list a)
+
+    (** [equal eq a1 a2] tests the equality of [a1] and [a2],  comparing their
+        elements with [eq]. *)
+    let equal : 'a eq -> 'a array eq = fun eq a1 a2 ->
+      Array.length a1 = Array.length a2 && for_all2 eq a1 a2
   end
 
 (* Functional maps with [int] keys. *)
