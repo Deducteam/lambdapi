@@ -298,14 +298,15 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
   List.iter check_in_lhs pvs;
-  let pvs = List.map fst pvs in
+  (* Get the non-linear variables not in the RHS. *)
+  let nl = List.filter (fun m -> not (List.mem_assoc m pvs)) nl in
   (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
-  let nl = List.filter (fun m -> not (List.mem m pvs)) nl in
-  let pvs = List.mapi (fun i m -> (m,i)) (pvs @ nl) in
-  (* NOTE [pvs] maps meta-variables to their position in the environment. *)
-  (* NOTE meta-variables not in [pvs] can be considered as wildcards. *)
+  let pvs = pvs @ (List.map (fun m -> (m, List.assoc m pvs_lhs)) nl) in
+  let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
+  (* NOTE [map] maps meta-variables to their position in the environment. *)
+  (* NOTE meta-variables not in [map] can be considered as wildcards. *)
   (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
-  let lhs = Bindlib.unbox (scope (M_LHS(pvs)) ss Env.empty p_lhs) in
+  let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Terms.get_args lhs in
     match h with
@@ -316,14 +317,14 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   if lhs = [] && !verbose > 1 then
     wrn p_lhs.pos "LHS head symbol with no argument.";
   (* We scope the RHS and bind the meta-variables. *)
-  let names = Array.of_list (List.map fst pvs) in
+  let names = Array.of_list (List.map fst map) in
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
     let map = Array.map2 (fun n v -> (n,v)) names vars in
     let t = scope (M_RHS(Array.to_list map)) ss Env.empty p_rhs in
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
-  (* We also keep [pvs] to facilitate confluence / termination checking. *)
+  (* We also store [pvs] to facilitate confluence / termination checking. *)
   let ctxt = Array.of_list pvs in
   (* We put everything together to build the rule. *)
   (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; ctxt})
