@@ -431,9 +431,34 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
+(** [iter f t] applies the function [f] to every node of the term [t]. At each
+    call, the function is given the list of the free variables in the term, in
+    the reverse order they were given. Free variables that were already in the
+    term before the call are not included in the list. *)
+let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
+  let rec iter xs t =
+    let t = unfold t in
+    action xs t;
+    match t with
+    | Wild
+    | TRef(_)
+    | Vari(_)
+    | Type
+    | Kind
+    | Symb(_)    -> ()
+    | Patt(_,_,ts)
+    | TEnv(_,ts)
+    | Meta(_,ts) -> Array.iter (iter xs) ts
+    | Prod(a,b)
+    | Abst(a,b)  -> let (x,b) = Bindlib.unbind b in iter xs a; iter (x::xs) b
+    | Appl(t,u)  -> iter xs t; iter xs u
+  in
+  iter [] (cleanup t)
+
 (** [iter_meta f t] applies the function [f] to every metavariable in the term
     [t]. As for {!val:eq},  the behaviour of this function is unspecified when
-    [t] uses the {!const:Patt} or {!const:TEnv} constructor. *)
+    [t] uses the {!const:Patt} or {!const:TEnv} constructor.  This function is
+    implemented using [iter] as it is critical for performances. *)
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
