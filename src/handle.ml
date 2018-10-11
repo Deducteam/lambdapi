@@ -116,7 +116,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
+let parse_file : string -> ast = fun fname ->
   let new_syntax = Filename.check_suffix fname new_src_extension in
   let parse =
     match new_syntax with
@@ -127,7 +127,7 @@ let parse_file : string -> Syntax.p_cmd Pos.loc list = fun fname ->
 
 (** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
     state [ss] at the same time. This function fails gracefully on errors. *)
-let rec new_handle_cmd : sig_state -> p_cmd loc -> sig_state = fun ss cmd ->
+let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
   let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in
   let handle ss =
     match cmd.elt with

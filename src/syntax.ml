@@ -146,5 +146,120 @@ type p_cmd =
   | P_normalize  of p_term * Eval.config
   (** Normalisation command. *)
 
+(** Parser-level representation of a single (located) command. *)
+type command = p_cmd Pos.loc
+
 (** Top level AST returned by the parser. *)
-type ast = p_cmd Pos.loc list
+type ast = command list
+
+let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
+
+let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
+
+let rec eq_p_term : p_term eq = fun t1 t2 ->
+  match (t1.elt, t2.elt) with
+  | (P_Vari(q1)          , P_Vari(q2)          ) ->
+      eq_qident q1 q2
+  | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
+  | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
+      eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
+  | (P_Appl(t1,u1)       , P_Appl(t2,u2)       )
+  | (P_Impl(t1,u1)       , P_Impl(t2,u2)       ) ->
+      eq_p_term t1 t2 && eq_p_term u1 u2
+  | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)      )
+  | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)      ) ->
+      List.equal eq_p_arg xs1 xs2 && eq_p_term t1 t2
+  | (P_LLet(x1,xs1,t1,u1), P_LLet(x2,xs2,t2,u2)) ->
+      eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
+      && List.equal eq_p_arg xs1 xs2
+  | (t1                  ,                   t2) ->
+      t1 = t2
+
+and eq_p_arg : p_arg eq = fun (x1,ao1) (x2,ao2) ->
+  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2
+
+let eq_p_rule : p_rule eq = fun r1 r2 ->
+  let {elt = (lhs1, rhs1); _} = r1 in
+  let {elt = (lhs2, rhs2); _} = r2 in
+  eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
+
+let eq_require_mode : require_mode eq = fun r1 r2 ->
+  match (r1, r2) with
+  | (P_require_default, P_require_default) -> true
+  | (P_require_open   , P_require_open   ) -> true
+  | (P_require_as(id1), P_require_as(id2)) -> id1.elt = id2.elt
+  | (_                , _                ) -> false
+
+let eq_p_rw_patt : p_rw_patt Pos.loc eq = fun r1 r2 ->
+  match (r1.elt, r2.elt) with
+  | (P_rw_Term(t1)                , P_rw_Term(t2)                )
+  | (P_rw_InTerm(t1)              , P_rw_InTerm(t2)              ) ->
+      eq_p_term t1 t2
+  | (P_rw_InIdInTerm(x1,t1)       , P_rw_InIdInTerm(x2,t2)       )
+  | (P_rw_IdInTerm(x1,t1)         , P_rw_IdInTerm(x2,t2)         ) ->
+      eq_ident x1 x2 && eq_p_term t1 t2
+  | (P_rw_TermInIdInTerm(t1,x1,u1), P_rw_TermInIdInTerm(t2,x2,u2))
+  | (P_rw_TermAsIdInTerm(t1,x1,u1), P_rw_TermAsIdInTerm(t2,x2,u2)) ->
+      eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
+  | (_                            , _                            ) ->
+      false
+
+let eq_p_tactic : p_tactic eq = fun t1 t2 ->
+  match (t1.elt, t2.elt) with
+  | (P_tac_refine(t1)    , P_tac_refine(t2)    ) ->
+      eq_p_term t1 t2
+  | (P_tac_intro(xs1)    , P_tac_intro(xs2)    ) ->
+      List.equal eq_ident xs1 xs2
+  | (P_tac_apply(t1)     , P_tac_apply(t2)     ) ->
+      eq_p_term t1 t2
+  | (P_tac_rewrite(r1,t1), P_tac_rewrite(r2,t2)) ->
+      Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
+  | (t1                  , t2                  ) ->
+      t1 = t2
+
+let eq_p_assertion : p_assertion eq = fun a1 a2 ->
+  match (a1, a2) with
+  | (P_assert_typing(t1,a1), P_assert_typing(t2,a2)) ->
+      eq_p_term t1 t2 && eq_p_term a1 a2
+  | (P_assert_conv(t1,u1)  , P_assert_conv(t2,u2)  ) ->
+      eq_p_term t1 t2 && eq_p_term u1 u2
+  | (_                     , _                     ) ->
+      false
+
+let eq_p_config : p_config eq = fun c1 c2 ->
+  match (c1, c2) with
+  | (P_config_builtin(s1,q1), P_config_builtin(s2,q2)) ->
+      s1 = s2 && eq_qident q1 q2
+  | (c1                     , c2                     ) ->
+      c1 = c2
+
+let eq_p_cmd : p_cmd eq = fun c1 c2 ->
+  match (c1, c2) with
+  | (P_require(m1,r1)            , P_require(m2,r2)            ) ->
+      m1 = m2 && eq_require_mode r1 r2
+  | (P_open(m1)                  , P_open(m2)                  ) ->
+      m1 = m2
+  | (P_symbol(l1,s1,a1)          , P_symbol(l2,s2,a2)          ) ->
+      l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+  | (P_rules(rs1)                , P_rules(rs2)                ) ->
+      List.equal eq_p_rule rs1 rs2
+  | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->
+      b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+      && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
+  | (P_theorem(s1,a1,ts1,e1)     , P_theorem(s2,a2,ts2,e2)     ) ->
+      eq_ident s1 s2 && eq_p_term a1 a2 && e1 = e2
+      && List.equal eq_p_tactic ts1 ts2
+  | (P_assert(mf1,a1)            , P_assert(mf2,a2)            ) ->
+      mf1 = mf2 && eq_p_assertion a1 a2
+  | (P_set(c1)                   , P_set(c2)                   ) ->
+      eq_p_config c1 c2
+  | (P_infer(t1,c1)              , P_infer(t2,c2)              ) ->
+      eq_p_term t1 t2 && c1 = c2
+  | (P_normalize(t1,c1)          , P_normalize(t2,c2)          ) ->
+      eq_p_term t1 t2 && c1 = c2
+  | (_                           , _                           ) ->
+      false
+
+(** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
+    are compared up to source code positions. *)
+let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt

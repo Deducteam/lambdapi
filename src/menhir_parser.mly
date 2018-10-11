@@ -171,7 +171,7 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 %token <string list * string> QID
 
 %start line
-%type <Syntax.p_cmd Pos.loc> line
+%type <Syntax.command> line
 
 %right ARROW FARROW
 
