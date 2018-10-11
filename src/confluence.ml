@@ -12,10 +12,12 @@ open Terms
 let log_conf = new_logger 'c' "conf" "informations for the confluence checker"
 let log_conf = log_conf.logger
 
-(** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. *)
-let print_sym : sym pp = Print.pp_symbol Qualified
-(* FIXME use underscore rather than dots. *)
-                       
+(** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
+    is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
+let print_sym : sym pp = fun oc s ->
+  let print_path = List.pp Format.pp_print_string "_" in
+  Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
+  
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)
 let print_term : bool -> term pp = fun lhs ->
@@ -32,7 +34,7 @@ let print_term : bool -> term pp = fun lhs ->
     (* Printing of atoms. *)
     | Vari(x)      -> out "v_%s" (Bindlib.name_of x)
     | Type         -> out "TYPE"
-    | Symb(s,_)    -> out "c_%a" print_sym s
+    | Symb(s,_)    -> print_sym oc s
     | Patt(_,n,ts) -> out "&%s" n; if ts <> [||] then out "(%a)" pp_ar ts
     (* Applications are printed when priority is above [`Appl]. *)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
@@ -82,7 +84,7 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
   List.iter (Format.fprintf oc "%s\n") prelude;
   (* Print the symbol declarations. *)
   Format.fprintf oc "\n(COMMENT symbols)\n";
-  let print_symbol s = Format.fprintf oc "(FUN c_%a : term)\n" print_sym s in
+  let print_symbol s = Format.fprintf oc "(FUN %a : term)\n" print_sym s in
   iter_symbols print_symbol;
   (* Print the rewriting rules. *)
   Format.fprintf oc "\n(COMMENT rewriting rules)\n";
