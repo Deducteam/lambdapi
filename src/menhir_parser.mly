@@ -28,13 +28,13 @@ type old_p_rule = ((strloc * p_term option) list * p_term * p_term) Pos.loc
     the new representation. This function will be removed soon. *)
 let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let (ctx, lhs, rhs) = r.elt in
-  (** Check for (deprecated) annotations in the context. *)
+  (* Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
     let fn a = wrn a.pos "Ignored type annotation." in
     (if !verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
-  (** Find the minimum number of arguments a variable is applied to. *)
+  (* Find the minimum number of arguments a variable is applied to. *)
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
@@ -44,8 +44,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)           -> assert false (* Cannot happen. *)
-      | P_Vari({elt = (p,x)}) ->
+      | P_Appl(_,_)      -> assert false (* Cannot happen. *)
+      | P_Vari(x)        ->
+          let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
               try
@@ -72,17 +73,17 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     List.iter (fun (_,t) -> compute_arities env t) args
   in
   compute_arities [] lhs;
-  (** Check that all context variables occur in the LHS. *)
+  (* Check that all context variables occur in the LHS. *)
   let check_here x =
     try ignore (Hashtbl.find arity x.elt) with Not_found ->
       fatal x.pos "Variable [%s] does not occur in the LHS." x.elt
   in
   List.iter check_here ctx;
-  (** Actually process the LHS and RHS. *)
+  (* Actually process the LHS and RHS. *)
   let rec build env t =
     let (h, lts) = get_args t in
     match h.elt with
-    | P_Vari({elt = ([],x)}) when is_pat_var env x ->
+    | P_Vari({elt = ([],x); _}) when is_pat_var env x ->
        let lts = List.map (fun (p,t) -> p,build env t) lts in
        let n =
          try Hashtbl.find arity x with Not_found ->
@@ -91,7 +92,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
        let (lts1, lts2) = List.cut lts n in
        let ts1 = Array.of_list (List.map snd lts1) in
        add_args (Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1))) lts2
-    | _                                            ->
+    | _                                               ->
     match t.elt with
     | P_Vari(_)
     | P_Type

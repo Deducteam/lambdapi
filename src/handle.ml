@@ -10,7 +10,6 @@ open Pos
 open Files
 open Syntax
 open Scope
-open Parser
 
 (** Logging function for tactics. *)
 let log_tact = new_logger 'i' "tact" "debugging information for tactics"

@@ -3,7 +3,6 @@
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
  (modules :standard \ lambdapi pure)
- (flags -w -9)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
  (libraries unix timed bindlib earley.str))
 

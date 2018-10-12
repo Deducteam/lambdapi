@@ -73,7 +73,7 @@ let build_meta_type : int -> term = fun k ->
 let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   let Pos.{elt=rule;pos} = r in
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
-  (** We process the LHS to replace pattern variables by metavariables. *)
+  (* We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity rule.rhs in
   let metas = Array.init arity (fun _ -> None) in
   let rec to_m : int -> term -> tbox = fun k t ->
@@ -109,7 +109,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs in
-  (** We substitute the RHS with the corresponding metavariables.*)
+  (* We substitute the RHS with the corresponding metavariables.*)
   let fn m =
     let m = match m with Some(m) -> m | None -> assert false in
     let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
