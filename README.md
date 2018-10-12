@@ -22,7 +22,7 @@ with "bash on Windows".
 
 List of dependencies:
  - GNU make,
- - OCaml (at least 4.04.0),
+ - OCaml (at least 4.04.1),
  - Dune (at least 1.2.0),
  - odoc (for documentation only),
  - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
