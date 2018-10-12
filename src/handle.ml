@@ -178,6 +178,7 @@ let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
         Solve.sort_type Ctxt.empty a;
         (* Actually add the symbol to the signature and the state. *)
         let s = Sign.add_symbol ss.signature m x a in
+        out 3 "(symb) %s.\n" s.sym_name;
         {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
     | P_rules(rs)                ->
         (* Scoping and checking each rule in turn. *)
@@ -189,7 +190,11 @@ let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
         in
         let rs = List.map handle_rule rs in
         (* Adding the rules all at once. *)
-        List.iter (fun (s,h,r) -> Sign.add_rule ss.signature s h r.elt) rs; ss
+        let add_rule (s,h,r) =
+          out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt);
+          Sign.add_rule ss.signature s r.elt
+        in
+        List.iter add_rule rs; ss
     | P_definition(op,x,xs,ao,t) ->
         (* Desugaring of arguments and scoping of [t]. *)
         let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
@@ -215,6 +220,7 @@ let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
         in
         (* Actually add the symbol to the signature. *)
         let s = Sign.add_symbol ss.signature Defin x a in
+        out 3 "(symb) %s (definition).\n" s.sym_name;
         (* Also add its definition, if it is not opaque. *)
         if not op then s.sym_def := Some(t);
         {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -239,6 +245,7 @@ let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
               if Proof.finished st then wrn cmd.pos "You should add QED.";
               (* Add a symbol corresponding to the proof, with a warning. *)
               let s = Sign.add_symbol ss.signature Const x a in
+              out 3 "(symb) %s (admit).\n" s.sym_name;
               wrn cmd.pos "Proof admitted.";
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
           | P_proof_QED   ->
@@ -250,6 +257,7 @@ let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
                 fatal cmd.pos "The proof is not finished.";
               (* Add a symbol corresponding to the proof. *)
               let s = Sign.add_symbol ss.signature Const x a in
+              out 3 "(symb) %s (QED).\n" s.sym_name;
               {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
         end
     | P_assert(must_fail, asrt)  ->

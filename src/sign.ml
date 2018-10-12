@@ -156,14 +156,11 @@ let unlink : t -> unit = fun sign ->
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
-  let sym_name = s.elt in
   let sym =
-    { sym_name ; sym_type = ref a ; sym_path = sign.sign_path
+    { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_rules = ref [] ; sym_mode = mode }
   in
-  sign.sign_symbols := StrMap.add sym_name (sym, s.pos) !(sign.sign_symbols);
-  (* FIXME should not print here. *)
-  out 3 "(symb) %s\n" sym_name; sym
+  sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
 (** [is_inj s] tells whether the symbol is injective. *)
 let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
@@ -195,13 +192,11 @@ let read : string -> t = fun fname ->
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
 
-(** [add_rule sign sym hint r] adds the new rule [r] to the symbol [sym]. When
-    the rule does not correspond to a symbol of signature [sign], it is stored
-    in its dependencies. *)
-let add_rule : t -> sym -> pp_hint -> rule -> unit = fun sign sym hint r ->
+(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
+    rule does not correspond to a symbol of signature [sign],  it is stored in
+    its dependencies. *)
+let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  (* FIXME should not print here *)
-  out 3 "(rule) %a\n" Print.pp_rule (sym, hint, r);
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
