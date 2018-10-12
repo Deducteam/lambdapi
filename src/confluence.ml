@@ -171,5 +171,5 @@ let check : string -> Sign.t -> bool option = fun cmd sign ->
       fatal_no_pos "The confluence checker was stopped by signal [%i]." i
 
 (* NOTE the simplest, valid confluence checking command is ["echo MAYBE"]. The
-   command ["sponge out.txt; echo MAYBE"] can be used to output the  generated
-   TPDB problem to the file ["out.txt"] for debugging purposes. *)
+   command ["cat > out.txt; echo MAYBE"] can conveniently be used to write the
+   generated TPDB problem to the file ["out.txt"] for debugging purposes. *)

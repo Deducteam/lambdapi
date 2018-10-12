@@ -107,8 +107,7 @@ For now, only `CSI^ho` has been tested, and it can be called as follows.
 ```
 
 It may be convinient to generate the corresponding `.trs` file. To this aim,
-you can use the `sponge` command (provided by the `moreutils` on Debian) as
-follows.
+you can use the `cat` as follows.
 ``` bash
-  lambdapi --confluence "sponge output.trs; echo MAYBE" input_file.lp
+  lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 ```
