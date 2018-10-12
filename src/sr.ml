@@ -71,10 +71,9 @@ let build_meta_type : int -> term = fun k ->
 (** [check_rule r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
-  let Pos.{elt=rule;pos} = r in
-  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
+  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
   (* We process the LHS to replace pattern variables by metavariables. *)
-  let arity = Bindlib.mbinder_arity rule.rhs in
+  let arity = Bindlib.mbinder_arity r.elt.rhs in
   let metas = Array.init arity (fun _ -> None) in
   let rec to_m : int -> term -> tbox = fun k t ->
     match unfold t with
@@ -107,7 +106,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
+  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs in
   (* We substitute the RHS with the corresponding metavariables.*)
   let fn m =
@@ -118,10 +117,10 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m e)))
   in
   let te_envs = Array.map fn metas in
-  let rhs = Bindlib.msubst rule.rhs te_envs in
+  let rhs = Bindlib.msubst r.elt.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
   match Solve.infer_constr Ctxt.empty lhs with
-  | None                      -> wrn pos "Untypable LHS."
+  | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
   if !log_enabled then
     begin
@@ -157,7 +156,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
         begin
           let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
           List.iter fn cs;
-          fatal pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,rule)
+          fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
         end
   | None     ->
-      fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)
+      fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
