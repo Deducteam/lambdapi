@@ -50,15 +50,24 @@ let handle_command : state -> Command.t Pos.loc -> result = fun (st,ss) cmd ->
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun (st,_) ->
   Time.restore st; !(Sign.((current_sign ()).sign_symbols))
 
+(* Equality on *)
 let%test _ =
   let c = parse_text "foo.lp" "symbol const B : TYPE" in
   List.equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c c
 
+(* Equality not *)
 let%test _ =
   let c = parse_text "foo.lp" "symbol const B : TYPE" in
   let d = parse_text "foo.lp" "symbol const C : TYPE" in
   not List.(equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c d)
 
+(* Equality is not sensitive to whitespace *)
+let%test _ =
+  let c = parse_text "foo.lp" "symbol   const  B : TYPE" in
+  let d = parse_text "foo.lp" "  symbol const B :   TYPE " in
+  List.(equal (fun x y -> Command.equal x.Pos.elt y.Pos.elt) c d)
+
+(* More complex test stressing most commands *)
 let%test _ =
   let c = parse_text "foo.lp" "
 symbol const B : TYPE

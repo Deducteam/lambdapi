@@ -10,6 +10,10 @@ all: bin
 bin:
 	@dune build
 
+.PHONY: unit_tests
+unit_tests:
+	@dune runtest
+
 .PHONY: doc
 doc:
 	@dune build @doc

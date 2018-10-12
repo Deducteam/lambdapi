@@ -12,7 +12,7 @@ maintainer: "dedukti-dev@inria.fr"
 authors: "Emilio Jesús Gallego Arias <e@x80.org>"
 homepage: "https://github.com/rlepigre/lambdapi"
 bug-reports: "https://github.com/rlepigre/lambdapi/issues"
-dev-repo: "https://github.com/ejgallego/lambdapi.git"
+dev-repo: "git+https://github.com/rlepigre/lambdapi.git"
 license: "CeCILL"
 
 depends: [
