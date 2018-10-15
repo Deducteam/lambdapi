@@ -22,7 +22,7 @@ with "bash on Windows".
 
 List of dependencies:
  - GNU make,
- - OCaml (at least 4.04.0),
+ - OCaml (at least 4.04.1),
  - Dune (at least 1.2.0),
  - odoc (for documentation only),
  - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
@@ -32,6 +32,7 @@ List of dependencies:
  - menhir
  - yojson
  - cmdliner
+ - ppx\_inline\_test
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
@@ -102,12 +103,11 @@ checking command, which is expected to:
 
 For now, only `CSI^ho` has been tested, and it can be called as follows.
 ``` bash
-  lambdapi --confluence "path/to/csiho.sh --ext .trs --stdin" input_file.lp
+  lambdapi --confluence "path/to/csiho.sh --ext trs --stdin" input_file.lp
 ```
 
 It may be convinient to generate the corresponding `.trs` file. To this aim,
-you can use the `sponge` command (provided by the `moreutils` on Debian) as
-follows.
+you can use the `cat` as follows.
 ``` bash
-  lambdapi --confluence "sponge output.trs; echo MAYBE" input_file.lp
+  lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 ```

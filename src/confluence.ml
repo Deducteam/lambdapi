@@ -23,7 +23,6 @@ let print_sym : sym pp = fun oc s ->
 let print_term : bool -> term pp = fun lhs ->
   let rec pp oc t =
     let out fmt = Format.fprintf oc fmt in
-    let pp_ar = Array.pp pp "," in
     match unfold t with
     (* Forbidden cases. *)
     | Meta(_,_)    -> assert false
@@ -35,7 +34,9 @@ let print_term : bool -> term pp = fun lhs ->
     | Vari(x)      -> out "v_%s" (Bindlib.name_of x)
     | Type         -> out "TYPE"
     | Symb(s,_)    -> print_sym oc s
-    | Patt(_,n,ts) -> out "&%s" n; if ts <> [||] then out "(%a)" pp_ar ts
+    | Patt(i,n,ts) ->
+        if ts = [||] then out "&%s" n else
+        pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
     (* Applications are printed when priority is above [`Appl]. *)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     (* Abstractions and products are only printed at priority [`Func]. *)
@@ -47,6 +48,32 @@ let print_term : bool -> term pp = fun lhs ->
         let (x, b) = Bindlib.unbind b in
         out "pi(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp b
   in pp
+
+(** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
+    symbol [s]), to the output channel [oc]. *)
+let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
+  (* Print the pattern variables declarations. *)
+  let get_patt_names : term list -> string list = fun ts ->
+    let names = Pervasives.ref [] in
+    let fn _ t =
+      match t with
+      | Patt(_,n,_) -> Pervasives.(names := n :: !names)
+      | _           -> ()
+    in
+    List.iter (Basics.iter fn) ts;
+    List.sort_uniq String.compare Pervasives.(!names)
+  in
+  let names = get_patt_names r.lhs in
+  if names <> [] then
+    begin
+      let print_name oc x = Format.fprintf oc "  &%s : term" x in
+      Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names
+    end;
+  (* Print the rewriting rule. *)
+  let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
+  Format.fprintf oc "(RULES %a" (print_term true) lhs;
+  let rhs = Basics.term_of_rhs r in
+  Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
 
 (** [to_TPDB oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
@@ -90,40 +117,9 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
   Format.fprintf oc "\n(COMMENT rewriting rules)\n";
   let print_rules s =
     match !(s.sym_def) with
-    | Some(d) ->
-        Format.fprintf oc "(RULES %a\n    -> %a)\n" print_sym s
-          (print_term false) d
-    | None    ->
-        let get_patt_names : term list -> string list = fun ts ->
-          let names = Pervasives.ref [] in
-          let fn _ t =
-            match t with
-            | Patt(_,n,_) -> Pervasives.(names := n :: !names)
-            | _           -> ()
-          in
-          List.iter (Basics.iter fn) ts;
-          List.sort_uniq String.compare Pervasives.(!names)
-        in
-        let print_rule r =
-          (* Print the pattern variables declarations. *)
-          let names = get_patt_names r.lhs in
-          let ctxt = Array.to_list r.ctxt in
-          let print_name oc x =
-            let arity = try List.assoc x ctxt with Not_found -> 0 in
-            Format.fprintf oc "  &%s : " x;
-            for i = 1 to arity do
-              Format.fprintf oc "term -> ";
-            done;
-            Format.fprintf oc "term"
-          in
-          Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names;
-          (* Print the rewriting rule. *)
-          let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
-          Format.fprintf oc "(RULES %a" (print_term true) lhs;
-          let rhs = Basics.term_of_rhs r in
-          Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
-        in
-        List.iter print_rule !(s.sym_rules)
+    | Some(d) -> Format.fprintf oc "(RULES %a\n" print_sym s;
+                 Format.fprintf oc "    -> %a)\n" (print_term false) d
+    | None    -> List.iter (print_rule oc s) !(s.sym_rules)
   in
   iter_symbols print_rules
 
@@ -175,5 +171,5 @@ let check : string -> Sign.t -> bool option = fun cmd sign ->
       fatal_no_pos "The confluence checker was stopped by signal [%i]." i
 
 (* NOTE the simplest, valid confluence checking command is ["echo MAYBE"]. The
-   command ["sponge out.txt; echo MAYBE"] can be used to output the  generated
-   TPDB problem to the file ["out.txt"] for debugging purposes. *)
+   command ["cat > out.txt; echo MAYBE"] can conveniently be used to write the
+   generated TPDB problem to the file ["out.txt"] for debugging purposes. *)

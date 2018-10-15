@@ -86,7 +86,7 @@ let log_summary : unit -> string list = fun () ->
 (** [set_log value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)
 let set_debug : bool -> string -> unit = fun value str ->
-  let fn {logger_key; logger_enabled} =
+  let fn {logger_key; logger_enabled; _} =
     if String.contains str logger_key then logger_enabled := value
   in
   List.iter fn Pervasives.(!loggers);

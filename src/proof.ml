@@ -4,7 +4,6 @@ open Timed
 open Extra
 open Pos
 open Terms
-open Console
 
 (** Abstract representation of a goal. *)
 module Goal :

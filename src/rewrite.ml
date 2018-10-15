@@ -7,7 +7,6 @@ open Terms
 open Basics
 open Console
 open Proof
-open Solve
 open Print
 
 (** Logging function for the rewrite tactic. *)

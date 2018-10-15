@@ -1,8 +1,6 @@
 (** Parser-level abstract syntax. *)
 
 open Extra
-open Timed
-open Console
 open Files
 open Pos
 

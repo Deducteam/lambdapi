@@ -52,13 +52,13 @@ let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
 let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let {elt = (mp, s); pos} = qid in
   match mp with
-  | []                               -> (** Symbol in scope. *)
+  | []                               -> (* Symbol in scope. *)
       begin
         try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
         let txt = if b then " or variable" else "" in
         fatal pos "Unbound symbol%s [%s]." txt s
       end
-  | [m] when StrMap.mem m st.aliases -> (** Aliased module path. *)
+  | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
       begin
         (* The signature must be loaded (alias is mapped). *)
         let sign =
@@ -69,7 +69,7 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
         try (Sign.find sign s, Alias m) with Not_found ->
         fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
-  | _                                -> (** Fully-qualified symbol. *)
+  | _                                -> (* Fully-qualified symbol. *)
       begin
         (* Check that the signature exists. *)
         let sign =
@@ -309,10 +309,11 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
+    let is_const s = s.sym_mode = Const in
     match h with
-    | Symb({sym_mode=Const},_) -> fatal p_lhs.pos "Constant LHS head symbol."
-    | Symb(s,h)                -> (s, h, args)
-    | _                        -> fatal p_lhs.pos "No head symbol in LHS."
+    | Symb(s,_) when is_const s -> fatal p_lhs.pos "Constant LHS head symbol."
+    | Symb(s,h)                 -> (s, h, args)
+    | _                         -> fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] && !verbose > 1 then
     wrn p_lhs.pos "LHS head symbol with no argument.";

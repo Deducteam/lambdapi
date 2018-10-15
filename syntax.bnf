@@ -1,0 +1,141 @@
+reserved "require"
+reserved "open"
+reserved "as"
+reserved "let"
+reserved "in"
+reserved "symbol"
+reserved "definition"
+reserved "theorem"
+reserved "rule"
+reserved "and"
+reserved "assert"
+reserved "assertnot"
+reserved "const"
+reserved "injective"
+reserved "TYPE"
+reserved "pos"
+reserved "neg"
+reserved "proof"
+reserved "refine"
+reserved "intro"
+reserved "apply"
+reserved "simpl"
+reserved "rewrite"
+reserved "reflexivity"
+reserved "symmetry"
+reserved "focus"
+reserved "print"
+reserved "proofterm"
+reserved "qed"
+reserved "admit"
+reserved "abort"
+reserved "set"
+reserved "_"
+
+// Identifier
+<ident> ::=
+  | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
+  | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
+
+// Natural number literal
+<nat_lit> ::=
+  | RE("[1-9][0-9]*")
+
+// String literal
+<string_lit> ::=
+  | RE("\"[^\"\n]*\"")
+
+<path> ::=
+  | {<ident> "."}* <ident>
+
+<qident> ::=
+  | {<ident> "."}* <ident>
+
+<symtag> ::=
+  | "const"
+  | "injective"
+
+// Term (including patterns and everything)
+<term> ::=
+  | "TYPE"
+  | <qident>
+  | "_"
+  | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
+  | "&" - <ident> {"[" <term> {"," <term>}* "]"}?
+  | "(" <term> ")"
+  | <term> <term>
+  | <type> "⇒" <type>
+  | "∀" <arg>+ "," <type>
+  | "λ" <arg>+ "," <term>
+  | "let" <ident> <arg>* "=" <term> "in" <term>
+  | <nat_lit>
+
+// Synonym for types
+<type> ::= <term>
+
+// Synonym for patterns
+<patt> ::= <term>
+
+// Argument (of abstraction, product, ...)
+<arg> ::=
+  | <ident>
+  | "(" <ident>+ ":" <type> ")"
+
+// Rewriting rule
+<rule> ::=
+  | <patt> "→" <term>
+
+// TODO rule naming, positive / negative
+
+// Rewrite pattern
+<rw_patt> ::=
+  | <term>
+  | "in" <term>
+  | "in" <ident> "in" <term>
+  | <ident> "in" <term>
+  | <term> "in" <ident> "in" <term>
+  | <term> "as" <ident> "in" <term>
+
+// Proof tactics
+<tactic> ::=
+  | "refine" <term>
+  | "intro" <ident>+
+  | "apply" <term>
+  | "simpl"
+  | "rewrite" {"[" <rw_patt> "]"}? <term>
+  | "reflexivity"
+  | "symmetry"
+  | "focus" <nat_lit>
+  | "print"
+  | "proofterm"
+
+// Assertion predicate
+<assertion> ::=
+  // Typing assertion
+  | <term> ":" <term>
+  // Convertibility assertion
+  | <term> "≡" <term>
+
+// Single command.
+<command> ::=
+  // Require and/or open a module
+  | "require" <path> "as" <ident>
+  | "require" "open"? <path>
+  | "open" <path>
+  // Define a new symbol
+  | "symbol" <symtag>* <ident> ":" <type>
+  // Define a new rewriting rule
+  | "rule" <rule> {"and" <rule>}*
+  // Definition of a symbol or theorem
+  | "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | "theorem" <ident> ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  // Assertion
+  | "assert" <assertion>
+  | "assertnot" <assertion>
+  // Set option
+  | "set" "verbose" RE("[1-9][0-9]*")
+  | "set" "debug" RE("[-+][a-zA-Z]+")
+  | "set" "builtin" <string_lit> "≔" <qident>
+
+// Entry point: list of commands.
+<main> ::= <command>*
