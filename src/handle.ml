@@ -124,9 +124,9 @@ let parse_file : string -> ast = fun fname ->
   in
   parse fname
 
-(** [new_handle_cmd ss cmd] tries to handle the command [cmd], updating module
+(** [handle_cmd ss cmd] tries to handle the command [cmd], updating the module
     state [ss] at the same time. This function fails gracefully on errors. *)
-let rec new_handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
+let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
   let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in
   let handle ss =
     match cmd.elt with
@@ -352,7 +352,7 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
       let sign = Sign.create path in
       let sig_st = empty_sig_state sign in
       loaded := PathMap.add path sign !loaded;
-      ignore (List.fold_left new_handle_cmd sig_st (parse_file src));
+      ignore (List.fold_left handle_cmd sig_st (parse_file src));
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

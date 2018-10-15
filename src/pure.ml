@@ -43,7 +43,7 @@ let initial_state : Files.module_path -> state = fun path ->
 let handle_command : state -> Command.t Pos.loc -> result = fun (st,ss) cmd ->
   Time.restore st;
   try
-    let ss = Handle.new_handle_cmd ss cmd in
+    let ss = Handle.handle_cmd ss cmd in
     OK(Time.save (), ss)
   with Fatal(p,m) -> Error(p,m)
 
