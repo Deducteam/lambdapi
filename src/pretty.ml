@@ -109,7 +109,9 @@ let pp_command : command pp = fun oc cmd ->
   | P_open(m)                       ->
       out "open %a" pp_path m
   | P_symbol(tags,s,a)              ->
-      out "symbol %a%s : %a" (List.pp pp_symtag "") tags s.elt pp_p_term a
+      out "symbol";
+      List.iter (out " %a" pp_symtag) tags;
+      out " %s : %a" s.elt pp_p_term a
   | P_rules(rs)                     ->
       List.pp pp_p_rule "\n" oc rs
   | P_definition(_,s,args,ao,t)     ->
