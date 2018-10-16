@@ -115,7 +115,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
     | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
     | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
-    | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+    | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
@@ -271,7 +271,7 @@ term:
       make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a))], b))
     }
   | a=term ARROW b=term {
-      make_pos $loc (P_Impl(a, b))
+      make_pos $loc (P_Prod([(Pos.none "_", Some(a))], b))
     }
   | x=ID FARROW t=term {
       make_pos $loc (P_Abst([(make_pos $loc(x) x, None)], t))
