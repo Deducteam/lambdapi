@@ -137,5 +137,6 @@ let pp_command : command pp = fun oc cmd ->
 let pp_ast : ast pp =
   List.pp pp_command "\n\n"
 
+(** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit =
   pp_ast Format.std_formatter
