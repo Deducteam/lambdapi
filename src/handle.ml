@@ -116,13 +116,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
 let parse_file : string -> ast = fun fname ->
-  let new_syntax = Filename.check_suffix fname new_src_extension in
-  let parse =
-    match new_syntax with
-    | true  -> Parser.parse_file
-    | false -> Legacy_parser.parse_file
-  in
-  parse fname
+  match Filename.check_suffix fname new_src_extension with
+  | true  -> Parser.parse_file fname
+  | false -> Legacy_parser.parse_file fname
 
 (** [handle_cmd ss cmd] tries to handle the command [cmd], updating the module
     state [ss] at the same time. This function fails gracefully on errors. *)
