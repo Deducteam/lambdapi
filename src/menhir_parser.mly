@@ -271,7 +271,7 @@ term:
       make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a))], b))
     }
   | a=term ARROW b=term {
-      make_pos $loc (P_Prod([(Pos.none "_", Some(a))], b))
+      make_pos $loc (P_Impl(a, b))
     }
   | x=ID FARROW t=term {
       make_pos $loc (P_Abst([(make_pos $loc(x) x, None)], t))

@@ -55,7 +55,7 @@ and pp_p_arg : p_arg pp = fun oc (id,ao) ->
 
 let pp_p_rule : p_rule pp = fun oc r ->
   let (lhs, rhs) = r.elt in
-  Format.fprintf oc "rule %a\n   → %a" pp_p_term lhs pp_p_term rhs
+  Format.fprintf oc "rule %a → %a" pp_p_term lhs pp_p_term rhs
 
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
