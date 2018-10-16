@@ -39,7 +39,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
   let (s, hint) =
     try StrMap.find key st.builtins with Not_found ->
-    fatal loc "Builtin symbol [0] not defined."
+    fatal loc "Builtin symbol [%s] not defined." key
   in
   _Symb s hint
 
