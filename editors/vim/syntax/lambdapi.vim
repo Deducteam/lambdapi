@@ -18,7 +18,7 @@ syntax include @markdown syntax/markdown.vim
 syntax region Comment start="///" end="$" contains=@markdown
 
 " Natural number.
-syntax match NaturalNumber "\<\([0]\|\([1-9][0-9]*\)\)\>"
+syntax match NaturalNumber "\<[0-9]\+\>"
 highlight link NaturalNumber PreProc
 
 " String literal.
