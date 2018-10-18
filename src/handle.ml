@@ -330,7 +330,8 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
     if Sys.file_exists new_src then (new_src, base ^ new_obj_extension)
     else (base ^ src_extension, base ^ obj_extension)
   in
-  if not (Sys.file_exists src) then fatal_no_pos "File [%s] not found." src;
+  if not (Sys.file_exists src) then
+    fatal_no_pos "File [%s.{lp|dk}] not found." base;
   if List.mem path !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" src;
