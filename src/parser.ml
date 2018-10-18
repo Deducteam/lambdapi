@@ -102,7 +102,7 @@ let escaped_ident =
       else if c <> '\255' then (Buffer.add_char s c; work buf pos)
       else Earley.give_up ()
     in
-    let (buf, pos) = work buf (pos+1) in
+    let (buf, pos) = work buf pos in
     (* Return the contents. *)
     (Buffer.contents s, buf, pos)
   in
