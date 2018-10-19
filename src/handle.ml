@@ -77,6 +77,55 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_print
   | P_tac_proofterm
   | P_tac_focus(_)      -> assert false (* Handled above. *)
+  | P_tac_assert(t)     ->
+     begin
+       (* Obtaining the goals environment, type and meta variable. *)
+       let env = fst (Proof.Goal.get_type g) in
+       let t = fst (Scope.scope_term StrMap.empty ss env t) in
+       let m = Proof.Goal.get_meta g in
+       (* Enriching the environnement with a var of type t *)
+       let var = Bindlib.new_var Terms.mkfree "n" in
+       let vs = Array.of_list ((List.map (fun (_,(x,_)) -> x) env)@[var]) in
+       let m2val = match !(m.meta_value) with
+         | None     -> None
+         | Some(mb) ->
+            let mbox = Bindlib.box (snd (Bindlib.unmbind mb)) in
+            Some(Bindlib.unbox (Bindlib.bind_mvar vs mbox))
+       in
+       let sz_ctx = m.meta_arity in
+       let rec add_last_prod n a b =
+         if n = 0
+         then
+           let a_bind = Bindlib.unbox (Bindlib.bind_var var (lift a)) in
+           Prod(b,a_bind)
+         else
+           match a with
+           | Prod(x,y) ->
+              let (v,y) = Bindlib.unbind y in
+              let prod_b_y = Bindlib.box (add_last_prod (n-1) y b) in
+              Prod(x,Bindlib.unbox (Bindlib.bind_var v prod_b_y))
+           | _         -> assert false
+       in
+       let m2typ = add_last_prod sz_ctx !(m.meta_type) t in
+       let m2 = fresh_meta m2typ (sz_ctx+1) in
+       m2.meta_value := m2val;
+       let g_enrich = Proof.Goal.of_meta_decomposed m2 in
+       let rec replace_goal_prod n a b =
+         if n = 0
+         then b
+         else
+           match a with
+           | Prod(x,y) ->
+              let (v,y) = Bindlib.unbind y in
+              let prod_b_y = Bindlib.box (replace_goal_prod (n-1) y b) in
+              Prod(x,Bindlib.unbox (Bindlib.bind_var v prod_b_y))
+           | _         -> assert false
+       in
+       let m3typ = replace_goal_prod sz_ctx !(m.meta_type) t in
+       let m3 = fresh_meta m3typ m.meta_arity in
+       let new_goal = Proof.Goal.of_meta_decomposed m3 in
+       Proof.({ps with proof_goals = new_goal :: g_enrich :: gs})
+     end
   | P_tac_refine(t)     ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in

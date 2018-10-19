@@ -215,6 +215,7 @@ let parser tactic =
   | _focus_ i:nat_lit           -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
+  | _assert_ t:term             -> Pos.in_pos _loc (P_tac_assert(t))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =

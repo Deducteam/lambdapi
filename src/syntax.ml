@@ -86,6 +86,8 @@ type p_tactic_aux =
   (** Print the current goal. *)
   | P_tac_proofterm
   (** Print the current proof term (possibly containing open goals). *)
+  | P_tac_assert of p_term
+  (** [P_tac_assert(t) adds an hypothesis of type [t] and a subgoal of proving [t] *)               
 type p_tactic = p_tactic_aux Pos.loc
 
 (** Parser-level representation of a proof terminator. *)

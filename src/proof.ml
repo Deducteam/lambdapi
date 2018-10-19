@@ -24,7 +24,7 @@ module Goal :
     (** [get_type g] returns the environment and expected type of the goal. *)
     val get_type : t -> Env.t * term
 
-    (** [simpl g] simlifies the given goal, evaluating its type to SNF. *)
+    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
   end =
   struct
