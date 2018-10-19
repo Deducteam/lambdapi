@@ -116,7 +116,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
            | _         -> assert false
        in
        let m3typ = replace_goal_prod sz_ctx !(m.meta_type) t in
-       let m3 = fresh_meta m3typ m.meta_arity in
+       let m3 = fresh_meta m3typ sz_ctx in
        let new_goal = Proof.Goal.of_meta_decomposed m3 in
        Proof.({ps with proof_goals = new_goal :: g_enrich :: gs})
      end
