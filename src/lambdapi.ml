@@ -9,9 +9,14 @@ open Console
     line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option Pervasives.ref = Pervasives.ref None
 
-(** [justparse] holds a boolean indicating whether files should only be parsed
-    (when set to [true]) or fully processed (when set to [false]). *)
-let justparse = Pervasives.ref false
+(** Available modes for handling input files. *)
+type execution_mode =
+  | Normal    (** Type-checking (default mode).     *)
+  | JustParse (** Only parse the files.             *)
+  | Beautify  (** Parse and pretty-print the files. *)
+
+(** [mode] holds the chosen exectuion mode for the run. *)
+let mode = Pervasives.ref Normal
 
 (** [timeout] holds a possible timeout for compilation (in seconds). *)
 let timeout : int option Pervasives.ref = Pervasives.ref None
@@ -20,8 +25,11 @@ let timeout : int option Pervasives.ref = Pervasives.ref None
     errors in the process. *)
 let compile : string -> unit = fun fname ->
   try
-    (* Only parse if compilation not required. *)
-    if !justparse then ignore (Handle.parse_file fname) else
+    (* Handle non-normal modes first. *)
+    match !mode with
+    | JustParse -> ignore (Handle.parse_file fname)
+    | Beautify  -> Pretty.beautify (Handle.parse_file fname)
+    | Normal    ->
     (* Compute the module path (checking the extension). *)
     let mp = Files.module_path fname in
     (* Run the compilation, possibly using a timeout. *)
@@ -73,8 +81,11 @@ let spec =
       , Arg.Int (Timed.(:=) verbose)
       , "<int> Set the verbosity level." ^ verbose_values )
     ; ( "--justparse"
-      , Arg.Set justparse
+      , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)." )
+    ; ( "--beautify"
+      , Arg.Unit (fun _ -> mode := Beautify)
+      , " Parse the input files and pretty-print them (in the new syntax)." )
     ; ( "--timeout"
       , Arg.Int set_timeout
       , "<int> Use a timeout of the given number of seconds." )

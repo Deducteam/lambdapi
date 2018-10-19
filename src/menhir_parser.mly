@@ -66,8 +66,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
             | _              -> fatal h.pos "Invalid legacy pattern lambda."
           end
       | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
-      | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
-      | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+      | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
+      | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
@@ -104,6 +104,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           | _              -> assert false (* Unreachable. *)
         in
         Pos.make t.pos (P_Prod([(x, Some(a))], build (x.elt::env) b))
+    | P_Impl(a,b)     -> Pos.make t.pos (P_Impl(build env a, build env b))
     | P_Abst(xs,u)    ->
         let (x,a) =
           match xs with
@@ -114,8 +115,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
     | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
     | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
-    | P_Impl(_,_)     -> fatal h.pos "Implication in legacy rule."
-    | P_LLet(_,_,_,_) -> fatal h.pos "Implication in legacy rule."
+    | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
@@ -271,7 +271,7 @@ term:
       make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a))], b))
     }
   | a=term ARROW b=term {
-      make_pos $loc (P_Prod([(Pos.none "_", Some(a))], b))
+      make_pos $loc (P_Impl(a, b))
     }
   | x=ID FARROW t=term {
       make_pos $loc (P_Abst([(make_pos $loc(x) x, None)], t))

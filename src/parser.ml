@@ -56,14 +56,13 @@ let _proofterm_  = KW.create "proofterm"
 
 (** Natural number literal. *)
 let nat_lit =
-  let head_cs = Charset.from_string "1-9" in
-  let body_cs = Charset.from_string "0-9" in
+  let nat_cs = Charset.from_string "0-9" in
   let fn buf pos =
     let nb = ref 1 in
-    while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
+    while Charset.mem nat_cs (Input.get buf (pos + !nb)) do incr nb done;
     (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  Earley.black_box fn head_cs false "<nat>"
+  Earley.black_box fn nat_cs false "<nat>"
 
 (** String literal. *)
 let string_lit =
@@ -103,7 +102,7 @@ let escaped_ident =
       else if c <> '\255' then (Buffer.add_char s c; work buf pos)
       else Earley.give_up ()
     in
-    let (buf, pos) = work buf (pos+1) in
+    let (buf, pos) = work buf pos in
     (* Return the contents. *)
     (Buffer.contents s, buf, pos)
   in
