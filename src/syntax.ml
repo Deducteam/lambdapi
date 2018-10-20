@@ -112,6 +112,8 @@ type p_config =
   (** Toggles logging functions described by string according to boolean. *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
+  | P_config_binop   of string * qident
+  (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
 
 type require_mode =
   | P_require_default

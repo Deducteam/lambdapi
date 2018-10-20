@@ -284,6 +284,9 @@ let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
               let sym = find_sym false ss qid in
               Sign.add_builtin ss.signature s sym;
               {ss with builtins = StrMap.add s sym ss.builtins}
+          | P_config_binop(s,qid)   ->
+              (* Define the binary operator [s]. *)
+              ignore (s,qid); ss (* TODO *)
         end
     | P_infer(t, cfg)            ->
         (* Infer the type of [t]. *)

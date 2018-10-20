@@ -6,6 +6,76 @@ open Pos
 
 #define LOCATE locate
 
+(** Prefix trees for greedy parsing among a set of string. *)
+module Prefix :
+  sig
+    (** Type of a prefix tree. *)
+    type 'a t
+
+    (** [init ()] initializes a new (empty) prefix tree. *)
+    val init : unit -> 'a t
+
+    (** [reset t] resets [t] to an empty prefix tree [t]. *)
+    val reset : 'a t -> unit
+
+    (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
+        a previous value associated to [k]) in the tree [t]. *)
+    val add : 'a t -> string -> 'a -> unit
+
+    (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
+        of the input corresponding to a word of [t]. The corresponding, stored
+        value is returned. It fails if no such longest prefix exist. *)
+    val grammar : 'a t -> 'a Earley.grammar
+  end =
+  struct
+    type 'a tree = Node of 'a option * (char * 'a tree) list
+    type 'a t = 'a tree Pervasives.ref
+
+    let init : unit -> 'a t = fun _ -> ref (Node(None, []))
+
+    let reset : 'a t -> unit = fun t -> t := Node(None, [])
+
+    let add : 'a t -> string -> 'a -> unit = fun t k v ->
+      let rec add i (Node(vo,l)) =
+        match try Some(k.[i]) with _ -> None with
+        | None    -> Node(Some(v), l)
+        | Some(c) ->
+            let l =
+              try
+                let t = List.assoc c l in
+                (c, add (i+1) t) :: (List.remove_assoc c l)
+              with Not_found -> (c, add (i+1) (Node(None, []))) :: l
+            in
+            Node(vo, l)
+      in
+      t := add 0 !t
+
+    let grammar : 'a t -> 'a Earley.grammar = fun t ->
+      let fn buf pos =
+        let rec fn best (Node(vo,l)) buf pos =
+          let best =
+            match vo with
+            | None    -> best
+            | Some(v) -> Some(v,buf,pos)
+          in
+          try
+            let (c, buf, pos) = Input.read buf pos in
+            fn best (List.assoc c l) buf pos
+          with Not_found ->
+            match best with
+            | None       -> Earley.give_up ()
+            | Some(best) -> best
+        in fn None !t buf pos
+      in
+      (* FIXME charset, accept empty ? *)
+      Earley.black_box fn Charset.full false "<tree>"
+  end
+
+(** Currently defined binary operators. *)
+let binops : (string * qident) Prefix.t = Prefix.init ()
+
+let binop = Prefix.grammar binops
+
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
 
@@ -136,7 +206,7 @@ let parser symtag =
   | _inj_   -> Sym_inj
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PAppl | PFunc
+type prio = PAtom | PBinO | PAppl | PFunc
 
 (** [term] is a parser for a term. *)
 let parser term @(p : prio) =
@@ -159,7 +229,7 @@ let parser term @(p : prio) =
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> t
   (* Application. *)
-  | t:(term PAppl) u:(term PAtom)
+  | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Implication. *)
   | a:(term PAppl) "⇒" b:(term PFunc)
@@ -176,6 +246,12 @@ let parser term @(p : prio) =
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
+  (* Binary operator. *)
+  | t:(term PAtom) b:binop u:(term PAtom)
+      when p >= PBinO ->
+        let appl = Pos.none (P_Vari(snd b)) in
+        let appl = Pos.none (P_Appl(appl, t)) in
+        in_pos _loc (P_Appl(appl, u))
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
@@ -236,6 +312,9 @@ let parser config =
       P_config_debug(d.[0] = '+', s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
+  | "binop" s:string_lit "≔" qid:qident ->
+      Prefix.add binops s (s,qid);
+      P_config_binop(s,qid)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
@@ -271,6 +350,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> ast = fun fname ->
+  Prefix.reset binops;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
@@ -282,6 +362,7 @@ let parse_file : string -> ast = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
+  Prefix.reset binops;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in

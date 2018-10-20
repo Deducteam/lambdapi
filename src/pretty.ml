@@ -147,6 +147,8 @@ let pp_command : command pp = fun oc cmd ->
       out "set debug \"-%s\"" s
   | P_set(P_config_builtin(n,i)  )  ->
       out "set builtin %S ≔ %a" n pp_qident i
+  | P_set(P_config_binop(n,i)    )  ->
+      out "set binop %S ≔ %a" n pp_qident i
   | P_infer(t, _)                   ->
       out "@[<hov 4>infer %a@]" pp_p_term t
   | P_normalize(t, _)               ->
