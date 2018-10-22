@@ -205,18 +205,17 @@ let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
-  | _refine_ t:term              -> Pos.in_pos _loc (P_tac_refine(t))
-  | _intro_ xs:ident+            -> Pos.in_pos _loc (P_tac_intro(xs))
-  | _apply_ t:term               -> Pos.in_pos _loc (P_tac_apply(t))
-  | _simpl_                      -> Pos.in_pos _loc P_tac_simpl
-  | _rewrite_ p:rw_patt? t:term  -> Pos.in_pos _loc (P_tac_rewrite(p,t))
-  | _refl_                       -> Pos.in_pos _loc P_tac_refl
-  | _sym_                        -> Pos.in_pos _loc P_tac_sym
-  | _focus_ i:nat_lit            -> Pos.in_pos _loc (P_tac_focus(i))
-  | _print_                      -> Pos.in_pos _loc P_tac_print
-  | _proofterm_                  -> Pos.in_pos _loc P_tac_proofterm
-  | _assert_ t:term              -> Pos.in_pos _loc (P_tac_assert(None   ,t))
-  | _assert_ t:term _as_ h:ident -> Pos.in_pos _loc (P_tac_assert(Some(h),t))
+  | _refine_ t:term                 -> Pos.in_pos _loc (P_tac_refine(t))
+  | _intro_ xs:ident+               -> Pos.in_pos _loc (P_tac_intro(xs))
+  | _apply_ t:term                  -> Pos.in_pos _loc (P_tac_apply(t))
+  | _simpl_                         -> Pos.in_pos _loc P_tac_simpl
+  | _rewrite_ p:rw_patt? t:term     -> Pos.in_pos _loc (P_tac_rewrite(p,t))
+  | _refl_                          -> Pos.in_pos _loc P_tac_refl
+  | _sym_                           -> Pos.in_pos _loc P_tac_sym
+  | _focus_ i:nat_lit               -> Pos.in_pos _loc (P_tac_focus(i))
+  | _print_                         -> Pos.in_pos _loc P_tac_print
+  | _proofterm_                     -> Pos.in_pos _loc P_tac_proofterm
+  | _assert_ t:term h:{_as_ ident}? -> Pos.in_pos _loc (P_tac_assert(t,h))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
