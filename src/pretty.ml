@@ -104,8 +104,8 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_proofterm          -> out "proofterm"
   | P_tac_assert(t,h)        ->
      match h with
-     | None       -> out "@[<hov 2>assert@ %a@]" pp_p_term t
-     | Some((),h) -> out "@[<hov 2>assert@ %a@ as %a@]" pp_p_term t pp_ident h
+     | None   -> out "@[<hov 2>assert@ %a@]" pp_p_term t
+     | Some h -> out "@[<hov 2>assert@ %a@ as %a@]" pp_p_term t pp_ident h
 
 let pp_p_assertion : p_assertion pp = fun oc asrt ->
   let out fmt = Format.fprintf oc fmt in

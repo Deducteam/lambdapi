@@ -85,8 +85,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Enriching the environnement with a var of type t *)
       let h =
         match h with
-        | None       -> "h"
-        | Some((),x) -> x.elt
+        | None   -> "h"
+        | Some x -> x.elt
       in
       let var = Bindlib.new_var Terms.mkfree h in
       let vs = Array.of_list (var::(List.map (fun (_,(x,_)) -> x) env)) in
