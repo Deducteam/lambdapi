@@ -82,15 +82,14 @@ qed
 // ----------------------------------------------------------------------------
 
 // Proof that the two definitions of the boolean impl are equivalent
-//theorem bool_impl_bool_impl_2_equiv : ∀b1 b2, P (eq bool (bool_impl b1 b2) (bool_impl_2 b1 b2))
-//proof
-//    intro b1 b2
-//    simpl
-//    print
-//    refine  ((bool_ind (λ(b2x:B), eq bool (bool_impl b1 b2x) (bool_impl_2 b1 b2x)) // FIXME : infer predicate
-//                       (refl bool true) 
-//                       (refl bool bool_not b1)) b2) 
-//qed
+theorem bool_impl_bool_impl_2_equiv : ∀b1 b2, P (eq bool (bool_impl b1 b2) (bool_impl_2 b1 b2))
+proof
+    intro b1 b2
+    // here we gain by having used the versions by rewriting in the def of bool_impl
+    refine  ((bool_ind (λ(b2x:B), eq bool (bool_impl b1 b2x) (bool_impl_2 b1 b2x)) // FIXME : infer predicate
+                       (refl bool true) 
+                       (refl bool (bool_not_2 b1))) b2) 
+qed
 
 theorem bool_impl_right_true : ∀b, P(eq bool (bool_impl b true) true)
 proof

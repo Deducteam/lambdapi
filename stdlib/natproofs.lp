@@ -56,6 +56,20 @@ proof
   refine refl nat (s (add m k))
 qed
 
+// Associativity of the addition.
+theorem addassoc : ∀n m p, P (eq nat (add (add n m) p) (add n (add m p)))
+proof
+  intro n m p
+  refine ((nat_ind (λ (x:N), eq nat (add (add x m) p) (add x (add m p)))
+          (refl nat (add m p)) 
+          _) n)
+  simpl
+  intro y H
+  // we use the induction hypothesis
+  rewrite H
+  refine (refl nat (s (add y (add m p))))
+qed
+
 // Adding the same value is the same as multiplying by 2.
 theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
 proof
@@ -65,3 +79,20 @@ proof
   refine refl nat (add x x)
 qed
 
+// Distributivity of the multiplication on the addition
+//theorem multdist : ∀ n m p, P(eq nat (mul n (add m p))
+//                                     (add (mul n m) (mul n p)))
+//proof
+//  intro n m p
+//  refine ((nat_ind (λ (x:N), eq nat (mul x (add m p)) (add (mul x m) (mul x p)))
+//          (refl nat z) 
+//          _) n)
+//  simpl
+//  intro y H
+//  rewrite H
+//  print
+  // Why is is not working ? Anyway FIXME and use assert
+//  refine ((λ(pr:P(eq nat (add (mul y m) (mul y p))
+//                         (add (mul y p) (mul y m)))), _)
+//            _)
+//admit

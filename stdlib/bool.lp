@@ -59,7 +59,8 @@ rule bool_and_2 _     false → false
 
 // Boolean implication by case analysis
 definition bool_impl a b ≔
-  bool_or b (bool_not a)
+  // here we gain by using the versions by rewriting
+  bool_or_2 b (bool_not_2 a)
 
 // Boolean implication by rewrite rules
 symbol bool_impl_2 : B ⇒ B ⇒ B
