@@ -48,7 +48,12 @@ rule eq_nat (s &m) (s &n) → eq_nat &m &n
 rule eq_nat z      (s _)  → false
 rule eq_nat (s _)  z      → false
 
-// Lower or equal than function
+// Predicate "Lower or equal than"
+symbol const le_nat : N ⇒ N ⇒ Prop
+symbol le_n : ∀n, P(eq nat n n)
+symbol le_S : ∀n m, P(le_nat n m) ⇒ P(le_nat n (s m))
+
+// Function "Lower or equal than"
 symbol le_nat_bool : N ⇒ N ⇒ B
 
 rule le_nat_bool z      _      → true
@@ -63,4 +68,11 @@ definition lt_nat_bool x y ≔ le_nat_bool (s x) y
 
 // Stricly greater than function
 definition gt_nat_bool x y ≔ lt_nat_bool y x
+
+// Maximum
+symbol max : N ⇒ N ⇒ N
+rule max z &y          → &y
+// in the following rule, it's more convenient to have the firts argument be &x instead of (s &x)
+rule max &x z          → &x
+rule max (s &x) (s &y) → s (max &x &y)
 

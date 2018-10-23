@@ -8,6 +8,10 @@ proof
   refine eqind nat x y xy (λz, eq nat (s z) (s y)) (refl nat (s y))
 qed
 
+// ----------------------------------------------------------------------------
+// ----------------------- Proofs about the addition --------------------------
+// ----------------------------------------------------------------------------
+
 // [z] is right neutral for add.
 theorem add0r : ∀n, P (eq nat (add n z) n)
 proof
@@ -70,6 +74,10 @@ proof
   refine (refl nat (s (add y (add m p))))
 qed
 
+// ----------------------------------------------------------------------------
+// ----------------------- Proofs about the multiplication --------------------
+// ----------------------------------------------------------------------------
+
 // Adding the same value is the same as multiplying by 2.
 theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
 proof
@@ -79,7 +87,7 @@ proof
   refine refl nat (add x x)
 qed
 
-// Distributivity of the multiplication on the addition
+// Distributivity of the multiplication over the addition
 //theorem multdist : ∀ n m p, P(eq nat (mul n (add m p))
 //                                     (add (mul n m) (mul n p)))
 //proof
@@ -91,8 +99,28 @@ qed
 //  intro y H
 //  rewrite H
 //  print
-  // Why is is not working ? Anyway FIXME and use assert
+  // Why is is not working? Anyway FIXME and use assert
 //  refine ((λ(pr:P(eq nat (add (mul y m) (mul y p))
 //                         (add (mul y p) (mul y m)))), _)
 //            _)
 //admit
+
+// ----------------------------------------------------------------------------
+// ----------------------- Proofs about the max -------------------------------
+// ----------------------------------------------------------------------------
+
+theorem max_l: ∀(n:N)(m:N), P(le_nat m n) ⇒ P(eq nat (max n m) n)
+proof
+  intro n m H
+  // FIXME : need revert tactic here
+  //refine (((λ(aux:(∀(mx:N), eq nat (max n mx) n)), 
+  //                (eq nat (max n m) n))
+  //          _) m)
+  
+
+
+  
+
+
+  print
+admit
