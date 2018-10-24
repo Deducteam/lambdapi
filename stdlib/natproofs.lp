@@ -5,7 +5,8 @@ require open stdlib.nat
 theorem s_eq : ∀x y, P (eq nat x y) ⇒ P (eq nat (s x) (s y))
 proof
   intro x y xy
-  refine eqind nat x y xy (λz, eq nat (s z) (s y)) (refl nat (s y))
+  refine eqind nat x y xy (λz, eq nat (s z) (s y)) _
+  reflexivity
 qed
 
 // ----------------------------------------------------------------------------
@@ -19,8 +20,7 @@ proof
   // FIXME try to infer the predicate
   refine nat_ind (λn, eq nat (add n z) n) ?CZ ?CS
   // Case Z
-  simpl
-  refine refl nat z
+  reflexivity
   // Case S
   intro n h
   simpl
@@ -34,13 +34,13 @@ proof
   refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
-  refine refl nat (s m)
+  reflexivity
   // Case S
   simpl
   intro pn ih
   rewrite ih
   simpl
-  refine refl nat (s (s (add pn m)))
+  reflexivity
 qed
 
 // Commutativity of the addition.
@@ -57,7 +57,7 @@ proof
   intro k ih
   rewrite ih
   rewrite add_succ_r m k
-  refine refl nat (s (add m k))
+  reflexivity
 qed
 
 // Associativity of the addition.
@@ -71,7 +71,7 @@ proof
   intro y H
   // we use the induction hypothesis
   rewrite H
-  refine (refl nat (s (add y (add m p))))
+  reflexivity
 qed
 
 // ----------------------------------------------------------------------------
@@ -84,7 +84,7 @@ proof
   intro x
   simpl
   rewrite add0r
-  refine refl nat (add x x)
+  reflexivity
 qed
 
 // Distributivity of the multiplication over the addition

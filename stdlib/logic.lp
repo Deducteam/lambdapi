@@ -47,14 +47,14 @@ theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof
   intro a x y h
   rewrite h
-  refine refl a y
+  reflexivity
 qed
 
 // Symmetry of the equality (second option, by hand).
 theorem eq_sym_other_1 : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof
   intro a x y h
-  refine eqind a x y h (λz, eq a y z) (refl a y)
+  refine eqind a x y h (λ(z:T a), eq a y z) (refl a y)
 qed
 
 // Symmetry of the equality (third option, by hand with a wildcard).

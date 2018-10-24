@@ -72,7 +72,7 @@ definition gt_nat_bool x y ≔ lt_nat_bool y x
 // Maximum
 symbol max : N ⇒ N ⇒ N
 rule max z &y          → &y
-// in the following rule, it's more convenient to have the firts argument be &x instead of (s &x)
+// in the following rule, it's more convenient to have &x as the first argument instead of (s &x)
 rule max &x z          → &x
 rule max (s &x) (s &y) → s (max &x &y)
 
