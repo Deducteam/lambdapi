@@ -339,7 +339,6 @@ let compile_ref : (bool -> Files.module_path -> unit) Pervasives.ref =
   Pervasives.ref (fun _ _ -> ())
 
 let do_require : Files.module_path -> unit = fun p ->
-  wrn None "Requiring [%a]." Files.pp_path p;
   !compile_ref false p
 
 (** [cmd] is a parser for a single command. *)

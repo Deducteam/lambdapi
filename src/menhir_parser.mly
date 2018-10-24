@@ -230,6 +230,7 @@ line:
       make_pos $loc (P_assert(mf, P_assert_conv(t,u)))
     }
   | r=REQUIRE    DOT {
+      Parser.do_require r;
       make_pos $loc (P_require(r, P_require_default))
     }
   | EOF {

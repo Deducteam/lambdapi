@@ -113,16 +113,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ps)
 
-(** [parse_file fname] selects and runs the correct parser on file [fname], by
-    looking at its extension. *)
-let parse_file : string -> ast = fun fname ->
-  match Filename.check_suffix fname new_src_extension with
-  | true  -> Parser.parse_file fname
-  | false -> Legacy_parser.parse_file fname
-
 (** [handle_cmd ss cmd] tries to handle the command [cmd], updating the module
     state [ss] at the same time. This function fails gracefully on errors. *)
-let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
+let handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
   let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in
   let handle ss =
     match cmd.elt with
@@ -132,7 +125,7 @@ let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
           fatal cmd.pos "Module [%a] is already required." pp_path p;
         (* Add the dependency and compile the module. *)
         ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-        compile false p;
+        (*compile false p;*)
         (* Open or alias if necessary. *)
         begin
           match m with
@@ -323,11 +316,18 @@ let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
   | e                           -> let e = Printexc.to_string e in
                                    fatal cmd.pos "Uncaught exception [%s]." e
 
+(** [parse_file fname] selects and runs the correct parser on file [fname], by
+    looking at its extension. *)
+let parse_file : string -> ast = fun fname ->
+  match Filename.check_suffix fname new_src_extension with
+  | true  -> Parser.parse_file fname
+  | false -> Legacy_parser.parse_file fname
+
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-and compile : bool -> Files.module_path -> unit = fun force path ->
+let rec compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
   let (src, obj) =
     let new_src = base ^ new_src_extension in
