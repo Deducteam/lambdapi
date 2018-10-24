@@ -286,7 +286,8 @@ let rec handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
               {ss with builtins = StrMap.add s sym ss.builtins}
           | P_config_binop(s,qid)   ->
               (* Define the binary operator [s]. *)
-              ignore (s,qid); ss (* TODO *)
+              let sym = find_sym false ss qid in
+              Sign.add_binop ss.signature s sym; ss
         end
     | P_infer(t, cfg)            ->
         (* Infer the type of [t]. *)
@@ -366,3 +367,5 @@ and compile : bool -> Files.module_path -> unit = fun force path ->
       Sign.link sign;
       out 2 "Loaded  [%s]\n%!" obj;
     end
+
+let _ = Pervasives.(Parser.compile_ref := compile)

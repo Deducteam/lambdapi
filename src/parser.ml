@@ -1,7 +1,9 @@
 (** Parsing functions for the Lambdapi syntax. *)
 
+open Extra
 open Console
 open Syntax
+open Files
 open Pos
 
 #define LOCATE locate
@@ -75,6 +77,17 @@ module Prefix :
 let binops : (string * qident) Prefix.t = Prefix.init ()
 
 let binop = Prefix.grammar binops
+
+let get_binops : module_path -> unit = fun mp ->
+  let sign =
+    try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
+      fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
+  in
+  let fn s (sym,_) =
+    let qid = Pos.none Terms.(sym.sym_path, sym.sym_name) in
+    Prefix.add binops s (s,qid)
+  in
+  StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
 
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
@@ -195,7 +208,7 @@ let parser patt =
   | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
 
 (** Module path (dot-separated identifiers. *)
-let parser path = m:any_ident ms:{"." any_ident}* -> m::ms
+let parser path = m:any_ident ms:{"." any_ident}* $ -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
@@ -288,7 +301,7 @@ let parser tactic =
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _sym_                       -> Pos.in_pos _loc P_tac_sym
-  | _focus_ i:nat_lit           -> Pos.in_pos _loc (P_tac_focus(i))
+  | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
 
@@ -322,14 +335,21 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
+let compile_ref : (bool -> Files.module_path -> unit) Pervasives.ref =
+  Pervasives.ref (fun _ _ -> ())
+
+let do_require : Files.module_path -> unit = fun p ->
+  wrn None "Requiring [%a]." Files.pp_path p;
+  !compile_ref false p
+
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> P_require(p,m)
+      -> do_require p; if m = P_require_open then get_binops p; P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> P_require(p,m)
+      -> do_require p; P_require(p,m)
   | _open_ p:path
-      -> P_open(p)
+      -> get_binops p; P_open(p)
   | _symbol_ l:symtag* s:ident ":" a:term
       -> P_symbol(l,s,a)
   | _rule_ r:rule rs:{_:_and_ rule}*

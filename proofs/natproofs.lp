@@ -34,10 +34,10 @@ proof
 qed
 
 // [z] is right neutral for add.
-theorem add0r : ∀n, P (eq nat (add n z) n)
+theorem add0r : ∀n, P (eq nat (n + z) n)
 proof
   // FIXME try to infer the predicate
-  refine nat_ind (λn, eq _ (add n z) n) ?CZ ?CS
+  refine nat_ind (λn, eq _ (n + z) n) ?CZ ?CS
   // Case Z
   simpl
   refine refl nat z
@@ -48,10 +48,10 @@ proof
 qed
 
 // [∀ n m, n + S m = S (n+m)]
-theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
+theorem add_succ_r : ∀n m, P (eq nat (n + (s m)) (s (n + m)))
 proof
   intro n m
-  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λn, eq nat (n + (s m)) (s (n + m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
   refine refl nat (s m)
@@ -60,7 +60,7 @@ proof
   intro pn ih
   rewrite ih
   simpl
-  refine refl nat (s (s (add pn m)))
+  refine refl nat (s (s (pn + m)))
 qed
 
 // Commutativity of the addition.
