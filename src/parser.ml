@@ -335,18 +335,14 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
-let compile_ref : (bool -> Files.module_path -> unit) Pervasives.ref =
-  Pervasives.ref (fun _ _ -> ())
-
-let do_require : Files.module_path -> unit = fun p ->
-  !compile_ref false p
+let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> do_require p; if m = P_require_open then get_binops p; P_require(p,m)
+      -> !require p; if m = P_require_open then get_binops p; P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> do_require p; P_require(p,m)
+      -> !require p; P_require(p,m)
   | _open_ p:path
       -> get_binops p; P_open(p)
   | _symbol_ l:symtag* s:ident ":" a:term

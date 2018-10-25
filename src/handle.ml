@@ -368,4 +368,4 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       out 2 "Loaded  [%s]\n%!" obj;
     end
 
-let _ = Pervasives.(Parser.compile_ref := compile)
+let _ = Pervasives.(Parser.require := compile false)
