@@ -107,9 +107,8 @@ theorem rewriteTest0 : ∀x y z,
   P (eq nat (add (add x (s y)) z) (add (s (add x y)) z))
 proof
   intro x y z
-  print
   rewrite add_succ_r
-  refine refl nat (add (s (add x y)) z)
+  reflexivity
 qed
 
 

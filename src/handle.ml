@@ -10,10 +10,8 @@ open Pos
 open Files
 open Syntax
 open Scope
-
-(** Logging function for tactics. *)
-let log_tact = new_logger 'i' "tact" "debugging information for tactics"
-let log_tact = log_tact.logger
+open Refine
+open Apply
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
@@ -54,25 +52,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     | []    -> fatal tac.pos "There is nothing left to prove.";
     | g::gs -> (g, gs)
   in
-  let handle_refine : term -> Proof.t = fun t ->
-    (* Obtaining the goals environment and type. *)
-    let (env, a) = Proof.Goal.get_type g in
-    (* Check if the goal metavariable appears in [t]. *)
-    let m = Proof.Goal.get_meta g in
-    log_tact "refining [%a] with term [%a]" pp_meta m pp t;
-    if Basics.occurs m t then fatal tac.pos "Circular refinement.";
-    (* Check that [t] is well-typed. *)
-    let ctx = Ctxt.of_env env in
-    log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
-    if not (Solve.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
-    (* Instantiation. *)
-    let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) env) in
-    m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
-    (* New subgoals and focus. *)
-    let metas = Basics.get_metas t in
-    let new_goals = List.rev_map Proof.Goal.of_meta_decomposed metas in
-    Proof.({ps with proof_goals = new_goals @ gs})
-  in
   match tac.elt with
   | P_tac_print
   | P_tac_proofterm
@@ -82,7 +61,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let env = fst (Proof.Goal.get_type g) in
       let t = fst (Scope.scope_term StrMap.empty ss env t) in
       (* Refine using the given term. *)
-      handle_refine t
+      handle_refine t tac.pos ps
   | P_tac_intro(xs)     ->
       (* Scoping a sequence of abstraction in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
@@ -90,14 +69,13 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
       let t = fst (Scope.scope_term StrMap.empty ss env t) in
       (* Refine using the built term. *)
-      handle_refine t
+      handle_refine t tac.pos ps
   | P_tac_apply(t)      ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
-      let t = Pos.none (P_Appl(t, Pos.none P_Wild)) in
       let t = fst (Scope.scope_term StrMap.empty ss env t) in
       (* Refine using the built term. *)
-      handle_refine t
+      handle_apply t tac.pos ps
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
@@ -107,11 +85,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)
-      handle_refine (Rewrite.rewrite ps po t)
+      handle_refine (Rewrite.rewrite ps po t) tac.pos ps
   | P_tac_refl          ->
-      handle_refine (Rewrite.reflexivity ps)
+      handle_refine (Rewrite.reflexivity ps) tac.pos ps
   | P_tac_sym           ->
-      handle_refine (Rewrite.symmetry ps)
+      handle_refine (Rewrite.symmetry ps) tac.pos ps
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)

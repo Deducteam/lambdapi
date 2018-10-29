@@ -24,7 +24,7 @@ proof
   // Case S
   intro n h
   simpl
-  refine s_eq (add n z) n h
+  apply s_eq (add n z) n h
 qed
 
 // [∀ n m, n + S m = S (n+m)]
@@ -119,8 +119,5 @@ proof
   
 
 
-  
-
-
-  print
+  // print
 admit

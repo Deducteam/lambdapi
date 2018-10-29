@@ -93,7 +93,7 @@ theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)
 proof
   intro a x y h
   rewrite h
-  refine refl a y
+  reflexivity
 qed
 
 // Symmetry of the equality (second option, by hand).
@@ -109,14 +109,14 @@ proof
   intro a x y h
   refine eqind a x y h (λz, eq a y z) _
   simpl
-  refine refl a y
+  reflexivity
 qed
 
 // [s] is compatible with Leibniz equality.
 theorem s_eq : ∀x y, P (eq nat x y) ⇒ P (eq nat (s x) (s y))
 proof
   intro x y xy
-  refine eqind nat x y xy (λz, eq nat (s z) (s y)) (refl nat (s y))
+  apply eqind nat x y xy (λz, eq nat (s z) (s y)) (refl nat (s y))
 qed
 
 // [z] is right neutral for add.
@@ -127,11 +127,11 @@ proof
   refine nat_ind (λn, eq nat (add n z) n) ?CZ ?CS
   // Case Z
   simpl
-  refine refl nat z
+  reflexivity
   // Case S
   intro n h
   simpl
-  refine s_eq (add n z) n h
+  apply s_eq (add n z) n h
 qed
 
 // [∀ n m, n + S m = S (n+m)]
@@ -141,13 +141,13 @@ proof
   refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
-  refine refl nat (s m)
+  reflexivity
   // Case S
   simpl
   intro pn ih
   rewrite ih
   simpl
-  refine refl nat (s (s (add pn m)))
+  reflexivity
 qed
 
 // Commutativity of the addition.
@@ -158,13 +158,13 @@ proof
   // Case Z
   simpl
   symmetry
-  refine (add0r m)
+  apply (add0r m)
   // Case S
   simpl
   intro k ih
   rewrite ih
   rewrite add_succ_r m k
-  refine refl nat (s (add m k))
+  reflexivity
 qed
 
 // Adding the same value is the same as multiplying by 2.
@@ -173,7 +173,7 @@ proof
   intro x
   simpl
   rewrite add0r
-  refine refl nat (add x x)
+  reflexivity
 qed
 
 //////////////////////////////////////////////////////////////////////////////
@@ -184,18 +184,16 @@ qed
 theorem rewriteTest1 : ∀a b, P (eq nat (add a b) (add b a))
 proof
   intro a b
-  //print
   rewrite [add _ b] addcomm
-  refine refl nat (add b a)
+  reflexivity
 qed
 
 // This stupid test directly uses the addcomm lemma in one place.
 theorem rewriteTest2 : ∀a b, P (eq nat (add (add a b) b) (add (add b a) b))
 proof
   intro a b
-  //print
   rewrite [x in (add x b)] addcomm
-  refine refl nat (add (add b a) b)
+  reflexivity
 qed
 
 // This stupid test directly uses the addcomm lemma in two places.
@@ -204,9 +202,8 @@ theorem rewriteTest3 : ∀a b,
             (add (add (add b a) b) (add (add b a) b)))
 proof
   intro a b
-  //print
   rewrite [x in (add x b)] addcomm
-  refine refl nat (add (add (add b a) b) (add (add b a) b))
+  reflexivity
 qed
 
 // An easy contextual rewrite.
@@ -216,7 +213,7 @@ theorem rewriteTest4 : ∀a b,
 proof
   intro a b
   rewrite [x in (add x (add a b))] addcomm
-  refine refl nat (add (add (add b a) (add a b)) a)
+  reflexivity
 qed
 
 // A slightly more complicated contextual rewrite.
@@ -225,17 +222,16 @@ theorem rewriteTest5 : ∀a b,
 proof
   intro a b
   rewrite [x in add x x] addcomm
-  refine refl nat (add (add b a) (add b a))
+  reflexivity
 qed
 
 // An even more complicated rewrite, combining both wildcards and binders.
 theorem rewriteTest6 : ∀a b,
   P (eq nat (add (add (add a b) a) a) (add (add a (add a b)) a))
 proof
-  // print
   intro a b
   rewrite [x in (add x _)] addcomm
-  refine refl nat (add (add a (add a b)) a)
+  reflexivity
 qed
 
 // Example 17: Very trivial SSReflect example.
@@ -247,7 +243,7 @@ theorem rewriteTest7 : ∀a b c,
 proof
   intro a b c
   rewrite [in x in (add x c)] (silly_axiom a c)
-  refine refl nat (add (add (add c b) c) (add a b))
+  reflexivity
 qed
 
 // Very trivial SSReflect example.
@@ -257,7 +253,7 @@ theorem rewriteTest8 : ∀a b c,
 proof
   intro a b c
   rewrite [in (add (_) c)] (silly_axiom a c)
-  refine refl nat (add (add (add c b) c) (add a b))
+  reflexivity
 qed
 
 theorem rewriteTest9 : ∀a b c,
@@ -266,7 +262,7 @@ theorem rewriteTest9 : ∀a b c,
 proof
   intro a b c
   rewrite [(add a  _) in x in (add c x)] addcomm
-  refine refl nat (add (add a b) (add c (add b a)))
+  reflexivity
 qed
 
 theorem rewriteTest10 : ∀a b c,
@@ -275,7 +271,7 @@ theorem rewriteTest10 : ∀a b c,
 proof
   intro a b c
   rewrite [(add a _) in x in (add c x)] addcomm
-  refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))))
+  reflexivity
 qed
 
 theorem rewriteTest11 : ∀a b c,
@@ -284,8 +280,7 @@ theorem rewriteTest11 : ∀a b c,
 proof
   intro a b c
   rewrite [(add a _) in x in (add (add _ x) _)] addcomm
-  refine refl nat (add (add (add (add a b) c)
-           (add (add b a) c)) (add (add a b) c))
+  reflexivity
 qed
 
 theorem rewriteTest12 : ∀a b c,
@@ -294,5 +289,5 @@ theorem rewriteTest12 : ∀a b c,
 proof
   intro a b c
   rewrite [(add a b) as x in (add _ x)] addcomm
-  refine refl nat (add (add c (add b a)) (add (add a b) (add c (add b a))))
+  reflexivity
 qed

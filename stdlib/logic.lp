@@ -63,6 +63,6 @@ proof
   intro a x y h
   refine eqind a x y h (λz, eq a y z) _
   simpl
-  refine refl a y
+  reflexivity
 qed
 
