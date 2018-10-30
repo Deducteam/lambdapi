@@ -35,6 +35,7 @@ and p_term_aux =
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
+  | P_BinO of p_term * (string * qident) * p_term
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term

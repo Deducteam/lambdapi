@@ -264,10 +264,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc (P_NLit(n))
   (* Binary operator. *)
   | t:(term PAtom) b:binop u:(term PAtom)
-      when p >= PBinO ->
-        let appl = Pos.none (P_Vari(snd b)) in
-        let appl = Pos.none (P_Appl(appl, t)) in
-        in_pos _loc (P_Appl(appl, u))
+      when p >= PBinO -> in_pos _loc (P_BinO(t,b,u))
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
