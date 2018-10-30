@@ -76,8 +76,11 @@ module Prefix :
 (** Currently defined binary operators. *)
 let binops : (string * qident) Prefix.t = Prefix.init ()
 
+(** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
 
+(** [get_binops mp] loads the binary operators associated to module path [mp].
+    Note that this requires the module to be loaded (i.e., compile). *)
 let get_binops : module_path -> unit = fun mp ->
   let sign =
     try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
@@ -335,6 +338,8 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
+(** [!require mp] can be called to require the compilation of the module (that
+    corresponds to) [mp]. The reference is set in the [Compile] module. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
 (** [cmd] is a parser for a single command. *)
