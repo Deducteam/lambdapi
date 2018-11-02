@@ -17,7 +17,7 @@ definition forty_two ≔ 42
 // Addition function.
 
 symbol add : N ⇒ N ⇒ N
-set binop "+" ≔ add
+set infixl 6/1 "+" ≔ add
 
 rule z      + &n     → &n
 rule (s &m) + &n     → s (&m + &n)
@@ -27,7 +27,7 @@ rule &m     + (s &n) → s (&m + &n)
 // Multiplication function.
 
 symbol mul : N ⇒ N ⇒ N
-set binop "×" ≔ mul
+set infixl 7/1 "×" ≔ mul
 
 rule z      × _      → z
 rule (s &m) × &n     → &n + (&m × &n)

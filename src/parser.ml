@@ -74,7 +74,7 @@ module Prefix :
   end
 
 (** Currently defined binary operators. *)
-let binops : (string * qident) Prefix.t = Prefix.init ()
+let binops : binop Prefix.t = Prefix.init ()
 
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
@@ -86,10 +86,7 @@ let get_binops : module_path -> unit = fun mp ->
     try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
       fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
   in
-  let fn s (sym,_) =
-    let qid = Pos.none Terms.(sym.sym_path, sym.sym_name) in
-    Prefix.add binops s (s,qid)
-  in
+  let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
 
 (** Blank function (for comments and white spaces). *)
@@ -316,6 +313,13 @@ let parser assertion =
   | t:term ":" a:term -> P_assert_typing(t,a)
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
+let parser assoc =
+  | EMPTY -> Assoc_none
+  | "l"   -> Assoc_left
+  | "r"   -> Assoc_right
+
+let parser priority = n:nat_lit - "/" - d:nat_lit
+
 (** [config] pases a single configuration option. *)
 let parser config =
   | "verbose" i:''[1-9][0-9]*'' ->
@@ -325,9 +329,10 @@ let parser config =
       P_config_debug(d.[0] = '+', s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
-  | "binop" s:string_lit "≔" qid:qident ->
-      Prefix.add binops s (s,qid);
-      P_config_binop(s,qid)
+  | "infix" a:assoc p:priority s:string_lit "≔" qid:qident ->
+      let binop = (s, a, p, qid) in
+      Prefix.add binops s binop;
+      P_config_binop(binop)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
