@@ -180,12 +180,12 @@ endif
 .PHONY: install_emacs
 install_emacs: editors/emacs/lambdapi.el
 ifeq ($(wildcard $(EMACSDIR)/.),)
-	@echo -e "\e[36mWill not install emacs mode.\e[39m"
+	@printf "\e[36mWill not install emacs mode.\e[39m\n"
 else
 	install -d $(EMACSDIR)
 	install -m 644 editors/emacs/lambdapi.el $(EMACSDIR)
-	@echo -e "\e[36mEmacs mode installed.\e[39m"
-	@echo -e "\e[33m[(load \"lambdapi\")] should be added to [~/.emacs].\e[39m"
+	@printf "\e[36mEmacs mode installed.\e[39m\n"
+	@printf "\e[33m[(load \"lambdapi\")] should be added to [~/.emacs].\e[39m\n"
 endif
 
 opam-release:

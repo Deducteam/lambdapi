@@ -71,7 +71,7 @@ let handle_command : command_state -> Command.t -> command_result =
 let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
   let (_, ss, p, finalize) = s in
   try
-    let p = Handle.handle_tactic ss p t in
+    let p = Tactics.handle_tactic ss p t in
     Tac_OK(Time.save (), ss, p, finalize)
   with Fatal(p,m) -> Tac_Error(p,m)
 
