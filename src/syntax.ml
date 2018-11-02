@@ -10,6 +10,9 @@ type ident = strloc
 (** Representation of a possibly qualified (and located) identifier. *)
 type qident = (module_path * string) Pos.loc
 
+(** Representation of a binary operator. *)
+type binop = string * qident
+
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux Pos.loc
 and p_term_aux =
@@ -35,7 +38,7 @@ and p_term_aux =
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
-  | P_BinO of p_term * (string * qident) * p_term
+  | P_BinO of p_term * binop * p_term
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term

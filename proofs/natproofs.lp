@@ -34,17 +34,17 @@ proof
 qed
 
 // [z] is right neutral for add.
-theorem add0r : ∀n, P (eq nat (n + z) n)
+theorem add0r : ∀n, P (eq nat (n + 0) n)
 proof
   // FIXME try to infer the predicate
-  refine nat_ind (λn, eq _ (n + z) n) ?CZ ?CS
+  refine nat_ind (λn, eq _ (n + 0) n) ?CZ ?CS
   // Case Z
   simpl
-  refine refl nat z
+  reflexivity
   // Case S
   intro n h
   simpl
-  refine s_eq (add n z) n h
+  refine s_eq (add n 0) n h
 qed
 
 // [∀ n m, n + S m = S (n+m)]
