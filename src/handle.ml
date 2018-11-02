@@ -105,6 +105,14 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
+      (* We check that no metavariable remains. *)
+      let nb = List.length (Basics.get_metas t) in
+      if nb > 0 then
+        begin
+          fatal_msg "The definition of [%s] contains [%i] metavariables.\n"
+            x.elt nb;
+          fatal x.pos "We have %s ≔ %a." x.elt pp t
+        end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a in
       out 3 "(symb) %s (definition).\n" s.sym_name;
