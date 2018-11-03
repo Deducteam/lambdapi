@@ -23,11 +23,12 @@ let parse_file : string -> Syntax.ast = fun fname ->
     the corresponding object file. *)
 let rec compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
-  let (src, obj) =
+  let src =
+    let old_src = base ^ src_extension in
     let new_src = base ^ new_src_extension in
-    if Sys.file_exists new_src then (new_src, base ^ new_obj_extension)
-    else (base ^ src_extension, base ^ obj_extension)
+    if Sys.file_exists new_src then new_src else old_src
   in
+  let obj = base ^ obj_extension in
   if not (Sys.file_exists src) then
     fatal_no_pos "File [%s.{lp|dk}] not found." base;
   if List.mem path !loading then

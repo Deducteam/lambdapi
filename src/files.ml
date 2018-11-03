@@ -7,13 +7,10 @@ open Console
 let src_extension : string = ".dk"
 
 (** [obj_extension] is the expected extension for binary (object) files. *)
-let obj_extension : string = ".dko"
+let obj_extension : string = ".lpo"
 
 (** [lp_src_extension] is the expected extension for source files. *)
 let new_src_extension : string = ".lp"
-
-(** [lp_obj_extension] is the expected extension for binary (object) files. *)
-let new_obj_extension : string = ".lpo"
 
 (** Representation of a module path (roughly, a file path). *)
 type module_path = string list
