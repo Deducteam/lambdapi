@@ -139,13 +139,28 @@ let _proofterm_  = KW.create "proofterm"
 
 (** Natural number literal. *)
 let nat_lit =
-  let nat_cs = Charset.from_string "0-9" in
+  let num_cs = Charset.from_string "0-9" in
   let fn buf pos =
     let nb = ref 1 in
-    while Charset.mem nat_cs (Input.get buf (pos + !nb)) do incr nb done;
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
     (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  Earley.black_box fn nat_cs false "<nat>"
+  Earley.black_box fn num_cs false "<nat>"
+
+(** Floating-point number literal. *)
+let float_lit =
+  let num_cs = Charset.from_string "0-9" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+    if Input.get buf (pos + !nb) = '.' then
+      begin
+        incr nb;
+        while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+      end;
+    (float_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
+  in
+  Earley.black_box fn num_cs false "<float>"
 
 (** String literal. *)
 let string_lit =
@@ -318,8 +333,6 @@ let parser assoc =
   | "l"   -> Assoc_left
   | "r"   -> Assoc_right
 
-let parser priority = n:nat_lit - "/" - d:nat_lit
-
 (** [config] pases a single configuration option. *)
 let parser config =
   | "verbose" i:''[1-9][0-9]*'' ->
@@ -329,7 +342,7 @@ let parser config =
       P_config_debug(d.[0] = '+', s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
-  | "infix" a:assoc p:priority s:string_lit "≔" qid:qident ->
+  | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
       Prefix.add binops s binop;
       P_config_binop(binop)

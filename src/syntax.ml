@@ -16,8 +16,8 @@ type assoc =
   | Assoc_left
   | Assoc_right
 
-(** Representation of the priority of an infix operator as a fraction. *)
-type priority = int * int
+(** The priority of an infix operator is a floating-point number. *)
+type priority = float
 
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident

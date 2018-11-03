@@ -154,14 +154,14 @@ let pp_command : command pp = fun oc cmd ->
   | P_set(P_config_builtin(n,i)  )  ->
       out "set builtin %S ≔ %a" n pp_qident i
   | P_set(P_config_binop(binop)  )  ->
-      let (s, a, (n, d), qid) = binop in
+      let (s, a, p, qid) = binop in
       let a =
         match a with
         | Assoc_none  -> ""
         | Assoc_left  -> "l"
         | Assoc_right -> "r"
       in
-      out "set infix%s %i/%i %S ≔ %a" a n d s pp_qident qid
+      out "set infix%s %f %S ≔ %a" a p s pp_qident qid
   | P_infer(t, _)                   ->
       out "@[<hov 4>infer %a@]" pp_p_term t
   | P_normalize(t, _)               ->
