@@ -309,7 +309,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars,l) id_val with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+              fatal_no_pos
+                "The value of [%s], [%a], in [%a] does not match [%a]."
                 (Bindlib.name_of id) pp id_val pp p pp l
         in
         (* Build t, l, using the substitution we found. Note that r  *)
@@ -338,13 +339,13 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
     (* Combinational patterns. *)
     | Some(RW_TermInIdInTerm(s,p)) ->
-        (* This pattern combines the previous. First we identify the subterm of
-           [g_term] that matches with [p], where [p] contains an identifier.
-           Once we have the value that the identifier in [p] has been matched
-           to we find a subterm of it that matches with [s].
-           Then in all occurrences of the first instance of [p] in [g_term] we
-           rewrite all occurrences of the first instance of [s] in the subterm
-           of [p] that was matched with the identifier. *)
+        (* This pattern combines the previous.  First, we identify the subterm
+           of [g_term] that matches with [p] where [p] contains an identifier.
+           Once we have the value that the identifier in [p] has been  matched
+           to, we find a subterm of it that matches with [s].  Then in all the
+           occurrences of the first instance of [p] in [g_term] we rewrite all
+           occurrences of the first instance of [s] in the subterm of [p] that
+           was matched with the identifier. *)
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
         let id_val =
@@ -374,7 +375,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars,l) s with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "The term [%a] does not match the LHS [%a]" pp s pp l
+              fatal_no_pos "The term [%a] does not match the LHS [%a]"
+                pp s pp l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 
@@ -411,9 +413,9 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         (Bindlib.unbox pred_bind, new_term, t, l, r)
 
     | Some(RW_TermAsIdInTerm(s,p)) ->
-        (* In this pattern we have essentially a let clause. We first match the
-           value of [pat] with some subeterm of the goal and then we rewrtie in
-           each occurence [id]. *)
+        (* This pattern is essentially a let clause.  We first match the value
+           of [pat] with some subterm of the goal, and then rewrite in each of
+           the occurences of [id]. *)
         let (id,pat) = Bindlib.unbind p in
         let s = add_refs s in
         let p_s = Bindlib.subst p s in
@@ -421,7 +423,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let p_refs = add_refs p_s in
         if not (make_pat g_term p_refs) then
             fatal_no_pos "No subterm of [%a] matches the pattern [%a]"
-                pp g_term pp p_s;
+              pp g_term pp p_s;
         let p = p_refs in
         let pat_refs = add_refs pat in
         (* Here we have already asserted tat an instance of p[s/id] exists
@@ -440,7 +442,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars, l) id_val with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "The value of X, [%a], does not match the LHS, [%a]"
+              fatal_no_pos
+                "The value of X, [%a], does not match the LHS, [%a]"
                 pp id_val pp l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
@@ -456,10 +459,10 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         (pred_bind, new_term, t, l, r)
 
     | Some(RW_InIdInTerm(p)      ) ->
-        (* This is very similar to the RW_IdInTerm case, with a few minor
-           changes. Instead of trying to match [id_val] with [l] we try to
-           match a subterm of id_val with [l] and then we rewrite this subterm.
-           So we just change the way we construct a [pat_r]. *)
+        (* This is very similar to the [RW_IdInTerm] case. Instead of matching
+           [id_val] with [l],  we try to match a subterm of [id_val] with [l],
+           and then we rewrite this subterm. As a consequence,  we just change
+           the way we construct a [pat_r]. *)
         let (id,p) = Bindlib.unbind p in
         let p_refs = add_refs p in
         let id_val =
@@ -476,7 +479,8 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst id_val (vars,l) with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+              fatal_no_pos
+                "The value of [%s], [%a], in [%a] does not match [%a]."
                 (Bindlib.name_of id) pp id_val pp p pp l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
