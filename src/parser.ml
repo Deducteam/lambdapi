@@ -275,8 +275,44 @@ let parser term @(p : prio) =
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
   (* Binary operator. *)
-  | t:(term PAtom) b:binop u:(term PAtom)
-      when p >= PBinO -> in_pos _loc (P_BinO(t,b,u))
+  | t:(term PBinO) b:binop
+      when p >= PBinO ->>
+        (* Find out minimum priorities for left and right operands. *)
+        let (min_pl, min_pr) =
+          let (_, assoc, p, _) = b in
+          let p_plus_epsilon = p +. 1e-6 in
+          match assoc with
+          | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
+          | Assoc_left  -> (p             , p_plus_epsilon)
+          | Assoc_right -> (p_plus_epsilon, p             )
+        in
+        (* Check that priority of left operand is above [min_pl]. *)
+        let _ =
+          match t.elt with
+          | P_BinO(_,(_,_,p,_),_) -> if p < min_pl then Earley.give_up ()
+          | _                     -> ()
+        in
+        u:(term PBinO) ->
+          (* Check that priority of the right operand is above [min_pr]. *)
+          let _ =
+            match u.elt with
+            | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Earley.give_up ()
+            | _                     -> ()
+          in
+          in_pos _loc (P_BinO(t,b,u))
+
+(* Examples of declarations:
+   - infixl 6 "+",
+   - infixr 7 "×". *)
+
+(* NOTE on binary operators. To handle infix binary operators, we need to rely
+   on a dependent (Earley) grammar. The operands are parsed using the priority
+   level [PBinO]. The left operand is parsed first, together with the operator
+   to obtain the corresponding priority and associativity parameters.  We then
+   check whether the (binary operator) priority level [pl] of the left operand
+   satifies the conditions, and reject it earley if it does not. We then parse
+   the right operand in a second step, and also check whether is satisfied the
+   required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
