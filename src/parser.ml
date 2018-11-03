@@ -301,10 +301,6 @@ let parser term @(p : prio) =
           in
           in_pos _loc (P_BinO(t,b,u))
 
-(* Examples of declarations:
-   - infixl 6 "+",
-   - infixr 7 "×". *)
-
 (* NOTE on binary operators. To handle infix binary operators, we need to rely
    on a dependent (Earley) grammar. The operands are parsed using the priority
    level [PBinO]. The left operand is parsed first, together with the operator
