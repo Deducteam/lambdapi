@@ -1,12 +1,12 @@
 Lambdapi user manual
 ====================
 
-This document explains several of the concepts behing `lambdapi` and serves as
+This document explains several of the concepts behind `lambdapi` and serves as
 a user documentation. Installation instructions can be found in the repository
 (see [README.md](README.md)). Here is a rough summary:
 ```bash
 git clone https://github.com/rlepigre/lambdapi.git
-cd lambadpi
+cd lambdapi
 make && make install
 ```
 
@@ -17,7 +17,7 @@ The `lambdapi` system is several things!
 
 ### A logical framework
 
-The core (theoretical) system of `lambdpi` is a logical framework based on the
+The core (theoretical) system of `lambdapi` is a logical framework based on the
 λΠ-calculus modulo rewriting. In other words, it is dependent type theory that
 is somewhat similar to Martin-Lőf's dependent type theory  (i.e., an extension
 of the λ-calculus) but that has the peculiarity of allowing the user to define
@@ -31,7 +31,7 @@ The ability to encode several rather different systems make of `lambdapi` (and
 its predecessor `Dedukti`) an ideal target for proof interoperability. Indeed,
 one can for example export a proof written in Matita (an implementation of the
 calculus of inductive constructions) to the OpenTheory format (shared  between 
-several implementation of HOL).
+several implementations of HOL).
 
 ### An interactive proof system
 
@@ -50,7 +50,7 @@ Here is a list of new features brought by `lambdapi`:
 
 ### An experimental proof system
 
-Finally,  let us note that `lambdapi` is to be considere (at least for now) as
+Finally, let us note that `lambdapi` is to be considered (at least for now) as
 an experimental proof system based on the λΠ-calculus modulo rewriting.  It is
 aimed at exploring (and experimenting with)  the many possibilities offered by
 rewriting, and the associated notion of conversion. In particular, it leads to
@@ -69,8 +69,8 @@ The installation of `lambdapi` give you:
  - a main executable named `lambdapi` in your `PATH`,
  - an OCaml library called `lambdapi`,
  - an LSP-compatible server called `lp-lsp` in your `PATH`,
- - a `lambdapi` mode for `Vim` (optinal),
- - a `lambdapi` mode for `emacs` (optinal).
+ - a `lambdapi` mode for `Vim` (optional),
+ - a `lambdapi` mode for `emacs` (optional).
 
 ### Main Lambdapi program
 
