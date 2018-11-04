@@ -17,7 +17,7 @@ The `lambdapi` system is several things!
 
 ### A logical framework
 
-The core (theoretical) system of `lambdapi` is a logical framework based on the
+The core theoretical system of `lambdapi` is a logical framework based on  the
 λΠ-calculus modulo rewriting. In other words, it is dependent type theory that
 is somewhat similar to Martin-Lőf's dependent type theory  (i.e., an extension
 of the λ-calculus) but that has the peculiarity of allowing the user to define
