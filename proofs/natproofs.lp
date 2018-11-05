@@ -34,24 +34,24 @@ proof
 qed
 
 // [z] is right neutral for add.
-theorem add0r : ∀n, P (eq nat (add n z) n)
+theorem add0r : ∀n, P (eq nat (n + 0) n)
 proof
   // FIXME try to infer the predicate
-  refine nat_ind (λn, eq _ (add n z) n) ?CZ ?CS
+  refine nat_ind (λn, eq _ (n + 0) n) ?CZ ?CS
   // Case Z
   simpl
-  refine refl nat z
+  reflexivity
   // Case S
   intro n h
   simpl
-  refine s_eq (add n z) n h
+  refine s_eq (add n 0) n h
 qed
 
 // [∀ n m, n + S m = S (n+m)]
-theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
+theorem add_succ_r : ∀n m, P (eq nat (n + (s m)) (s (n + m)))
 proof
   intro n m
-  refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
+  refine nat_ind (λn, eq nat (n + (s m)) (s (n + m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z
   simpl
   refine refl nat (s m)
@@ -60,7 +60,7 @@ proof
   intro pn ih
   rewrite ih
   simpl
-  refine refl nat (s (s (add pn m)))
+  refine refl nat (s (s (pn + m)))
 qed
 
 // Commutativity of the addition.
@@ -80,7 +80,7 @@ proof
 qed
 
 // Adding the same value is the same as multiplying by 2.
-theorem add_same_times_two : ∀x, P (eq nat (add x x) (mul 2 x))
+theorem add_same_times_two : ∀x, P (eq nat (x + x) (2 × x))
 proof
   intro x
   simpl
@@ -92,7 +92,7 @@ qed
 //////////////////////////////////////////////////////////////////////////////
 
 // This stupid test directly uses the addcomm lemma.
-theorem rewriteTest1 : ∀a b, P (eq nat (add a b) (add b a))
+theorem rewriteTest1 : ∀a b, P (eq nat (a + b) (b + a))
 proof
   intro a b
   //print
@@ -101,12 +101,12 @@ proof
 qed
 
 // This stupid test directly uses the addcomm lemma in one place.
-theorem rewriteTest2 : ∀a b, P (eq nat (add (add a b) b) (add (add b a) b))
+theorem rewriteTest2 : ∀a b, P (eq nat (a + b + b) (b + a + b))
 proof
   intro a b
   //print
-  rewrite [x in (add x b)] addcomm
-  refine refl nat (add (add b a) b)
+  rewrite [x in x + b] addcomm
+  refine refl nat (b + a + b)
 qed
 
 // This stupid test directly uses the addcomm lemma in two places.
