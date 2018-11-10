@@ -25,7 +25,7 @@ end
 exception Parse_error of Pos.pos * string
 
 let parse_text : string -> string -> Command.t list = fun fname s ->
-  let old_syntax = Filename.check_suffix fname Files.src_extension in
+  let old_syntax = Filename.check_suffix fname Files.legacy_src_extension in
   try
     if old_syntax then Legacy_parser.parse_string fname s
     else Parser.parse_string fname s
