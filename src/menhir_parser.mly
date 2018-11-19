@@ -279,4 +279,8 @@ term:
   | x=ID COLON a=aterm FARROW t=term {
       make_pos $loc (P_Abst([(make_pos $loc(x) x, Some(a))], t))
     }
+  | L_PAR x=ID COLON t=aterm DEFEQ b=aterm R_PAR FARROW u=term {
+      let lam = make_pos $loc (P_Abst([(make_pos $loc(x) x, Some(t))],u)) in
+      make_pos $loc (P_Appl(lam,b))
+    }
 %%
