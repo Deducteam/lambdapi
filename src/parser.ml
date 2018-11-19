@@ -1,10 +1,94 @@
 (** Parsing functions for the Lambdapi syntax. *)
 
+open Earley_core
+open Extra
 open Console
 open Syntax
+open Files
 open Pos
 
 #define LOCATE locate
+
+(** Prefix trees for greedy parsing among a set of string. *)
+module Prefix :
+  sig
+    (** Type of a prefix tree. *)
+    type 'a t
+
+    (** [init ()] initializes a new (empty) prefix tree. *)
+    val init : unit -> 'a t
+
+    (** [reset t] resets [t] to an empty prefix tree [t]. *)
+    val reset : 'a t -> unit
+
+    (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
+        a previous value associated to [k]) in the tree [t]. *)
+    val add : 'a t -> string -> 'a -> unit
+
+    (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
+        of the input corresponding to a word of [t]. The corresponding, stored
+        value is returned. It fails if no such longest prefix exist. *)
+    val grammar : 'a t -> 'a Earley.grammar
+  end =
+  struct
+    type 'a tree = Node of 'a option * (char * 'a tree) list
+    type 'a t = 'a tree Pervasives.ref
+
+    let init : unit -> 'a t = fun _ -> ref (Node(None, []))
+
+    let reset : 'a t -> unit = fun t -> t := Node(None, [])
+
+    let add : 'a t -> string -> 'a -> unit = fun t k v ->
+      let rec add i (Node(vo,l)) =
+        match try Some(k.[i]) with _ -> None with
+        | None    -> Node(Some(v), l)
+        | Some(c) ->
+            let l =
+              try
+                let t = List.assoc c l in
+                (c, add (i+1) t) :: (List.remove_assoc c l)
+              with Not_found -> (c, add (i+1) (Node(None, []))) :: l
+            in
+            Node(vo, l)
+      in
+      t := add 0 !t
+
+    let grammar : 'a t -> 'a Earley.grammar = fun t ->
+      let fn buf pos =
+        let rec fn best (Node(vo,l)) buf pos =
+          let best =
+            match vo with
+            | None    -> best
+            | Some(v) -> Some(v,buf,pos)
+          in
+          try
+            let (c, buf, pos) = Input.read buf pos in
+            fn best (List.assoc c l) buf pos
+          with Not_found ->
+            match best with
+            | None       -> Earley.give_up ()
+            | Some(best) -> best
+        in fn None !t buf pos
+      in
+      (* FIXME charset, accept empty ? *)
+      Earley.black_box fn Charset.full false "<tree>"
+  end
+
+(** Currently defined binary operators. *)
+let binops : binop Prefix.t = Prefix.init ()
+
+(** Parser for a binary operator. *)
+let binop = Prefix.grammar binops
+
+(** [get_binops mp] loads the binary operators associated to module path [mp].
+    Note that this requires the module to be loaded (i.e., compile). *)
+let get_binops : module_path -> unit = fun mp ->
+  let sign =
+    try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
+      fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
+  in
+  let fn s (_, binop) = Prefix.add binops s binop in
+  StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
 
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
@@ -56,13 +140,28 @@ let _proofterm_  = KW.create "proofterm"
 
 (** Natural number literal. *)
 let nat_lit =
-  let nat_cs = Charset.from_string "0-9" in
+  let num_cs = Charset.from_string "0-9" in
   let fn buf pos =
     let nb = ref 1 in
-    while Charset.mem nat_cs (Input.get buf (pos + !nb)) do incr nb done;
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
     (int_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
   in
-  Earley.black_box fn nat_cs false "<nat>"
+  Earley.black_box fn num_cs false "<nat>"
+
+(** Floating-point number literal. *)
+let float_lit =
+  let num_cs = Charset.from_string "0-9" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+    if Input.get buf (pos + !nb) = '.' then
+      begin
+        incr nb;
+        while Charset.mem num_cs (Input.get buf (pos + !nb)) do incr nb done;
+      end;
+    (float_of_string (String.sub (Input.line buf) pos !nb), buf, pos + !nb)
+  in
+  Earley.black_box fn num_cs false "<float>"
 
 (** String literal. *)
 let string_lit =
@@ -74,6 +173,16 @@ let string_lit =
     (String.sub (Input.line buf) (pos+1) (!nb-1), buf, pos + !nb + 1)
   in
   Earley.black_box fn (Charset.singleton '"') false "<string>"
+
+(** Sequence of alphabetical characters. *)
+let alpha =
+  let alpha = Charset.from_string "a-zA-Z" in
+  let fn buf pos =
+    let nb = ref 1 in
+    while Charset.mem alpha (Input.get buf (pos + !nb)) do incr nb done;
+    (String.sub (Input.line buf) pos !nb, buf, pos + !nb)
+  in
+  Earley.black_box fn alpha false "<alpha>"
 
 (** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
 let regular_ident =
@@ -125,7 +234,7 @@ let parser patt =
   | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
 
 (** Module path (dot-separated identifiers. *)
-let parser path = m:any_ident ms:{"." any_ident}* -> m::ms
+let parser path = m:any_ident ms:{"." any_ident}* $ -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
@@ -136,7 +245,7 @@ let parser symtag =
   | _inj_   -> Sym_inj
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PAppl | PFunc
+type prio = PAtom | PBinO | PAppl | PFunc
 
 (** [term] is a parser for a term. *)
 let parser term @(p : prio) =
@@ -159,7 +268,7 @@ let parser term @(p : prio) =
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> t
   (* Application. *)
-  | t:(term PAppl) u:(term PAtom)
+  | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Implication. *)
   | a:(term PAppl) "⇒" b:(term PFunc)
@@ -176,6 +285,41 @@ let parser term @(p : prio) =
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
+  (* Binary operator. *)
+  | t:(term PBinO) b:binop
+      when p >= PBinO ->>
+        (* Find out minimum priorities for left and right operands. *)
+        let (min_pl, min_pr) =
+          let (_, assoc, p, _) = b in
+          let p_plus_epsilon = p +. 1e-6 in
+          match assoc with
+          | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
+          | Assoc_left  -> (p             , p_plus_epsilon)
+          | Assoc_right -> (p_plus_epsilon, p             )
+        in
+        (* Check that priority of left operand is above [min_pl]. *)
+        let _ =
+          match t.elt with
+          | P_BinO(_,(_,_,p,_),_) -> if p < min_pl then Earley.give_up ()
+          | _                     -> ()
+        in
+        u:(term PBinO) ->
+          (* Check that priority of the right operand is above [min_pr]. *)
+          let _ =
+            match u.elt with
+            | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Earley.give_up ()
+            | _                     -> ()
+          in
+          in_pos _loc (P_BinO(t,b,u))
+
+(* NOTE on binary operators. To handle infix binary operators, we need to rely
+   on a dependent (Earley) grammar. The operands are parsed using the priority
+   level [PBinO]. The left operand is parsed first, together with the operator
+   to obtain the corresponding priority and associativity parameters.  We then
+   check whether the (binary operator) priority level [pl] of the left operand
+   satifies the conditions, and reject it earley if it does not. We then parse
+   the right operand in a second step, and also check whether is satisfied the
+   required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
@@ -212,7 +356,7 @@ let parser tactic =
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
   | _refl_                      -> Pos.in_pos _loc P_tac_refl
   | _sym_                       -> Pos.in_pos _loc P_tac_sym
-  | _focus_ i:nat_lit           -> Pos.in_pos _loc (P_tac_focus(i))
+  | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
 
@@ -227,15 +371,23 @@ let parser assertion =
   | t:term ":" a:term -> P_assert_typing(t,a)
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
+let parser assoc =
+  | EMPTY -> Assoc_none
+  | "l"   -> Assoc_left
+  | "r"   -> Assoc_right
+
 (** [config] pases a single configuration option. *)
 let parser config =
-  | "verbose" i:''[1-9][0-9]*'' ->
-      P_config_verbose(int_of_string i)
-  | "debug" d:''[-+][a-zA-Z]+'' ->
-      let s = String.sub d 0 (String.length d) in
-      P_config_debug(d.[0] = '+', s)
+  | "verbose" i:nat_lit ->
+      P_config_verbose(i)
+  | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
+      P_config_debug(b, s)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
+  | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
+      let binop = (s, a, p, qid) in
+      Prefix.add binops s binop;
+      P_config_binop(binop)
 
 let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
 
@@ -243,14 +395,18 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
+(** [!require mp] can be called to require the compilation of the module (that
+    corresponds to) [mp]. The reference is set in the [Compile] module. *)
+let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
+
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> P_require(p,m)
+      -> !require p; if m = P_require_open then get_binops p; P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> P_require(p,m)
+      -> !require p; P_require(p,m)
   | _open_ p:path
-      -> P_open(p)
+      -> get_binops p; P_open(p)
   | _symbol_ l:symtag* s:ident ":" a:term
       -> P_symbol(l,s,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
@@ -271,6 +427,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> ast = fun fname ->
+  Prefix.reset binops;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
@@ -282,6 +439,7 @@ let parse_file : string -> ast = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
+  Prefix.reset binops;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Some(Pos.locate buf pos buf pos) in
