@@ -67,5 +67,3 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
    is the only way infix symbols can be parsed, since they may be added to the
    scope by a “require” command. *)
 let _ = Pervasives.(Parser.require := compile false)
-
-
