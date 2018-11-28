@@ -6,14 +6,14 @@ mostly compatible with Dedukti (https://github.com/Deducteam/Dedukti).
 """
 opam-version: "2.0"
 maintainer: "dedukti-dev@inria.fr"
-bug-reports: "https://github.com/rlepigre/lambdapi/issues"
-homepage: "https://github.com/rlepigre/lambdapi"
-dev-repo: "git+https://github.com/rlepigre/lambdapi.git"
+bug-reports: "https://github.com/Deducteam/lambdapi/issues"
+homepage: "https://github.com/Deducteam/lambdapi"
+dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 authors: [
   "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
   "Frédéric Blanqui <frederic.blanqui@inria.fr>" ]
 license: "CeCILL"
-doc: "https://rlepigre.github.io/lambdapi/doc"
+doc: "https://deducteam.github.io/lambdapi/"
 
 depends: [
   "ocaml"        {         >= "4.04.0" }
