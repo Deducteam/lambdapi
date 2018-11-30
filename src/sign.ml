@@ -110,7 +110,8 @@ let link : t -> unit = fun sign ->
   in
   PathMap.iter gn !(sign.sign_deps);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins)
+  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins);
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -155,7 +156,8 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins);
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
 (** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
