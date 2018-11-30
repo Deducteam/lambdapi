@@ -118,7 +118,10 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type := Kind; s.sym_rules := [] in
+  let unlink_sym s =
+    if s.sym_path <> sign.sign_path then
+      (s.sym_type := Kind; s.sym_rules := [])
+  in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
     let unlink_term_env t =
@@ -130,7 +133,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> if s.sym_path <> sign.sign_path then unlink_sym s
+    | Symb(s,_)    -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
