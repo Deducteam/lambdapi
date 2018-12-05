@@ -1,7 +1,7 @@
 Contributors
 ============
 
- - Aristomenis-Dionysios Papadopoulos (LSV)
+ - Aristomenis-Dionysios Papadopoulos (INRIA & LSV)
  - Franck Slama (INRIA & LSV)
  - Emilio Gallego (Mines ParisTech)
  - Frédéric Blanqui (INRIA & LSV)
