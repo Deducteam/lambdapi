@@ -1,8 +1,8 @@
 Contributors
 ============
 
-Rodolphe Lepigre (INRIA & LSV)
-Frédéric Blanqui (INRIA & LSV)
-Emilio Gallego (Mines ParisTech)
-Franck Slama (INRIA & LSV)
-Aristomenis-Dionysios Papadopoulos (LSV)
+ - Aristomenis-Dionysios Papadopoulos (LSV)
+ - Franck Slama (INRIA & LSV)
+ - Emilio Gallego (Mines ParisTech)
+ - Frédéric Blanqui (INRIA & LSV)
+ - Rodolphe Lepigre (INRIA & LSV)
