@@ -1,7 +1,9 @@
 (** Confluence checking.
 
-    This module allows the translation of a signature in the TPDB format (used
-    in the confluence competition. *)
+    This module allows the translation of a signature in the HRS format used
+    in the confluence competition, see Confluence Problems:
+    http://cops.uibk.ac.at/
+ *)
 
 open Extra
 open Timed
@@ -13,12 +15,12 @@ let log_conf = new_logger 'c' "conf" "informations for the confluence checker"
 let log_conf = log_conf.logger
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
-    is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
+    is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
   
-(** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
+(** [print_term oc t] outputs TPDB format corresponding to the term [t], to
     the channel [oc]. *)
 let print_term : bool -> term pp = fun lhs ->
   let rec pp oc t =

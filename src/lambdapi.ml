@@ -8,9 +8,14 @@ open Console
 (* NOTE only standard [Pervasives] references here. *)
 
 (** [confluence_checker] holds a possible confluence checking command. When it
-    is given, the command should accept TPDB format on its input and the first
+    is given, the command should accept HRS format on its input and the first
     line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option ref = ref None
+
+(** [termination_checker] holds a possible termination checking command. When it
+    is given, the command should accept TPDB format on its input and the first
+    line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+let termination_checker : string option ref = ref None
 
 (** Available modes for handling input files. *)
 type execution_mode =
@@ -43,15 +48,23 @@ let handle_file : string -> unit = fun fname ->
       | Some(i) -> try with_timeout i compile mp with Timeout ->
                      fatal_no_pos "Compilation timed out for [%s]." fname
     in
-    (* Possibly check the confluence. *)
-    match !confluence_checker with
-    | None      -> ()
-    | Some(cmd) ->
-    let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
-    match Confluence.check cmd sign with
-    | Some(true ) -> ()
-    | Some(false) -> fatal_no_pos "The rewrite system is not confluent."
-    | None        -> fatal_no_pos "The rewrite system may not be confluent."
+    (* Possibly check the confluence or termination. *)
+    (* [external_checker chk fn kw] verifies if an external checker has been
+       plugged in the variable [chk], if it is the case, it applies the function
+      [fn] to the checker and the signature, and raise an error which contains
+      the keyword [kw]. *)
+    let external_checker chk fn kw =
+      match !chk with
+      | None      -> ()
+      | Some(cmd) ->
+         let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
+         match fn cmd sign with
+         | Some(true ) -> ()
+         | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
+         | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+    in
+    external_checker confluence_checker Confluence.check "confluent";
+    external_checker termination_checker Termination.check "terminating"
   with
   | Fatal(None,    msg) -> exit_with "%s" msg
   | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
@@ -95,6 +108,9 @@ let spec =
     ; ( "--confluence"
       , Arg.String (fun cmd -> confluence_checker := Some(cmd))
       , "<cmd> Runs the given confluence checker." )
+    ; ( "--termination"
+      , Arg.String (fun cmd -> termination_checker := Some(cmd))
+      , "<cmd> Runs the given termination checker." )
     ; ( "--debug"
       , Arg.String (set_debug true)
       , "<str> Sets the given debugging flags." ^ debug_flags ) ]
