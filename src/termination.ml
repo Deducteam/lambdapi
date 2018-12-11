@@ -10,7 +10,7 @@ open Timed
 open Console
 open Terms
 
-(** Logging function for the confluence checker interface. *)
+(** Logging function for the termination checker interface. *)
 let log_conf = new_logger 'n' "norm" "informations for the termination checker"
 let log_conf = log_conf.logger
 
@@ -19,6 +19,21 @@ let log_conf = log_conf.logger
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
+
+type symb_status = Object_level | Basic_type | Type_cstr
+  
+(** [status s] returns [Type_cstr] if [s] has a type of the form
+    T1 -> ... -> Tn -> [TYPE] with n > 0, [Basic_type] if [s] has type [TYPE]
+    and [Object_level] otherwise. *)
+let status : sym -> symb_status = fun s ->
+  (* the argument [b] of [is_arrow_kind] is a boolean saying if we have already
+     gone under a product *)
+  let rec is_arrow_kind : Terms.term -> bool -> symb_status = fun t b ->
+    match t with
+    | Prod(_,b) -> is_arrow_kind (snd (Bindlib.unbind b)) true
+    | Type      -> if b then Type_cstr else Basic_type
+    | _         -> Object_level
+  in is_arrow_kind !(s.sym_type) false
   
 (** [print_term oc p] outputs XTC format corresponding to the term [t], to
     the channel [oc].*)
@@ -31,10 +46,8 @@ let rec print_term : term pp = fun oc t ->
   | TEnv(_,_)    -> assert false
   | Wild         -> assert false
   | Kind         -> assert false
-  (* We do not print TYPE, in order to have backward compatibility with
-       provers not dealing with dependent types. *)
+  (* [TYPE] and products are necessarily at type level *)
   | Type         -> assert false
-  (* Products are necessarily at type level *)
   | Prod(_,_)    -> assert false
   (* Printing of atoms. *)
   | Vari(x)      -> out "<var>v_%s</var>@." (Bindlib.name_of x)
@@ -60,13 +73,11 @@ and print_type : term pp = fun oc t ->
   | TEnv(_,_)    -> assert false
   | Wild         -> assert false
   | Kind         -> assert false
-  (* We do not print TYPE, in order to have backward compatibility with
-       provers not dealing with dependent types. *)
-  | Type         -> out "<basic>TYPE</basic>@."
   (* Variables are necessarily at object level *)
   | Vari(_)      -> assert false
   | Patt(_,_,_)  -> assert false
   (* Printing of atoms. *)
+  | Type         -> out "<TYPE>@."
   | Symb(s,_)    -> out "<basic>%a</basic>@." print_sym s
   | Appl(t,u)    -> out "<application>@.%a%a</application>@."
                       print_type t print_term u
@@ -78,12 +89,14 @@ and print_type : term pp = fun oc t ->
   | Prod(a,b)    ->
      if Bindlib.binder_constant b
      then
-       out "<arrow>@.%a%a</arrow>@." print_type a
+       out "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
+         print_type a
          print_type (snd (Bindlib.unbind b))
      else
        let (x, b) = Bindlib.unbind b in
-       out "<arrow>@.<var>v_%s</var>@.%a%a</arrow>"
-         (Bindlib.name_of x) print_type a print_type b
+       out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
+       out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
+         print_type a print_type b
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
@@ -106,7 +119,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     in
     List.iter (fun (_, sign) -> iter_symbols sign) deps
   in
-  (* Print the prelude. *)
+  (* Print the prelude and the postlude. *)
   let prelude =
     [ "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
     ; "<?xml-stylesheet href=\"xtc2tpdb.xsl\" type=\"text/xsl\"?>"
@@ -123,31 +136,85 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     ; "</metainformation>"
     ; "</problem>" ]
   in  
+  (* Print the object level rewrite rules. *)
+  let print_object_rules : sym -> unit = fun s ->
+    if status s = Object_level
+    then (
+      match !(s.sym_def) with
+      | Some(d) ->
+         Format.fprintf oc
+           "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
+           print_sym s;
+         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term d
+      | None    -> List.iter (print_rule oc s) !(s.sym_rules)
+    ) else ()
+  in
+  (* Print the type level rewrite rules. *)
+  let print_type_rules : sym -> unit = fun s ->
+    if status s != Object_level
+    then (
+      match !(s.sym_def) with
+      | Some(d) ->
+         Format.fprintf oc
+           "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
+           print_sym s;
+         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term d
+      | None    -> List.iter (print_rule oc s) !(s.sym_rules)
+    ) else ()
+  in
+  (* Print the symbol declarations at object level. *)
+  let print_symbol : sym -> unit = fun s ->
+    if status s = Object_level
+    then (
+      Format.fprintf oc "<funcDeclaration>@.<name>%a</name>@." print_sym s;
+      Format.fprintf oc
+        "<typeDeclaration>@.<type>@.%a</type>@." print_type !(s.sym_type);
+      Format.fprintf oc "</typeDeclaration>@.</funcDeclaration>@."
+    )
+  in
+  (* Print the type constructor declarations. *)
+  let print_type_cstr : sym -> unit = fun s ->
+    (* We don't declare type constant which do not take arguments for
+       compatibility issue with simply-typed higher order category of the
+       competition. *)
+    if status s = Type_cstr
+    then (
+      Format.fprintf oc "<typeConstructorDeclaration>@.<name>%a</name>@."
+        print_sym s;
+      Format.fprintf oc
+        "<typeDeclaration>@.<type>@.%a</type>@." print_type !(s.sym_type);
+      Format.fprintf oc "</typeDeclaration>@.</typeConstructorDeclaration>@."
+    )
+  in
   List.iter (Format.fprintf oc "%s@.") prelude;
-  (* Print the rewriting rules. *)
-  let print_rules s =
-    match !(s.sym_def) with
-    | Some(d) ->
-       Format.fprintf oc
-         "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
-         print_sym s;
-       Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term d
-    | None    -> List.iter (print_rule oc s) !(s.sym_rules)
-  in
   Format.fprintf oc "<rules>@.";
-  iter_symbols print_rules;
+  iter_symbols print_object_rules;
   Format.fprintf oc "</rules>@.";
-  (* Print the symbol declarations. *)
-  let print_symbol s =
-    Format.fprintf oc "<funcDeclaration>@.<name>%a</name>@." print_sym s;
-    Format.fprintf oc
-      "<typeDeclaration>@.<type>@.%a</type>@." print_type !(s.sym_type);
-    Format.fprintf oc "</typeDeclaration>@.<funcDeclaration>@."
-  in
+  let type_rule_presence = ref false in
+  iter_symbols
+    (fun s ->
+      if status s != Object_level && !(s.sym_def) != None
+         && !(s.sym_rules) != []
+      then type_rule_presence := true);
+  if !type_rule_presence
+  then (
+    Format.fprintf oc "<typeLevelRules>@.";
+    iter_symbols print_type_rules;
+    Format.fprintf oc "</typeLevelRules>@."
+  );
   Format.fprintf oc "<higherOrderSignature>@.";
   Format.fprintf oc "<functionSymbolTypeInfo>@.";
   iter_symbols print_symbol;
   Format.fprintf oc "</functionSymbolTypeInfo>@.";
+  let type_cstr_presence = ref false in
+  iter_symbols
+    (fun s -> if status s = Type_cstr then type_cstr_presence := true);
+  if !type_cstr_presence
+  then (
+    Format.fprintf oc "<typeConstructorTypeInfo>@.";
+    iter_symbols print_type_cstr;
+    Format.fprintf oc "</typeConstructorTypeInfo>@."
+  );
   Format.fprintf oc "</higherOrderSignature>@.";
   List.iter (Format.fprintf oc "%s@.") postlude
   
@@ -199,6 +266,6 @@ let check : string -> Sign.t -> bool option = fun cmd sign ->
   | (Unix.WSTOPPED  i, _         ) ->
       fatal_no_pos "The termination checker was stopped by signal [%i]." i
 
-(* NOTE the simplest, valid terminating checking command is ["echo MAYBE"]. The
-   command ["cat > out.txt; echo MAYBE"] can conveniently be used to write the
-   generated XTC problem to the file ["out.txt"] for debugging purposes. *)
+(* NOTE the simplest, valid termination checking command is ["echo MAYBE"]. The
+   command ["cat > out.xml; echo MAYBE"] can conveniently be used to write the
+   generated XTC problem to the file ["out.xml"] for debugging purposes. *)
