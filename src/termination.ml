@@ -13,7 +13,7 @@ open Terms
 (** Logging function for the termination checker interface. *)
 let log_conf = new_logger 'n' "norm" "informations for the termination checker"
 let log_conf = log_conf.logger
-
+             
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
@@ -37,7 +37,7 @@ let status : sym -> symb_status = fun s ->
   
 (** [print_term oc p] outputs XTC format corresponding to the term [t], to
     the channel [oc].*)
-let rec print_term : term pp = fun oc t ->
+let rec print_term : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
@@ -51,20 +51,20 @@ let rec print_term : term pp = fun oc t ->
   | Prod(_,_)    -> assert false
   (* Printing of atoms. *)
   | Vari(x)      -> out "<var>v_%s</var>@." (Bindlib.name_of x)
-  | Symb(s,_)    -> out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
-  | Patt(i,n,ts) ->
-     if ts = [||] then out "<var>&%s</var>@." n else
-       print_term oc
-         (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
+  | Symb(sy,_)    -> out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym sy
+  | Patt(j,n,ts) ->
+     if ts = [||] then out "<var>%s_%i_%s</var>@." s i n else
+       print_term i s oc
+         (Array.fold_left (fun t u -> Appl(t,u)) (Patt(j,n,[||])) ts)
   | Appl(t,u)    -> out "<application>@.%a%a</application>@."
-                      print_term t print_term u
+                      (print_term i s) t (print_term i s) u
   (* Abstractions and products are only printed at priority [`Func]. *)
   | Abst(a,t)    ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
-       (Bindlib.name_of x) print_type a print_term t
+       (Bindlib.name_of x) (print_type i s) a (print_term i s) t
 
-and print_type : term pp = fun oc t ->
+and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
@@ -77,36 +77,87 @@ and print_type : term pp = fun oc t ->
   | Vari(_)      -> assert false
   | Patt(_,_,_)  -> assert false
   (* Printing of atoms. *)
-  | Type         -> out "<TYPE>@."
+  | Type         -> out "<TYPE/>@."
   | Symb(s,_)    -> out "<basic>%a</basic>@." print_sym s
   | Appl(t,u)    -> out "<application>@.%a%a</application>@."
-                      print_type t print_term u
+                      (print_type i s) t (print_term i s) u
   (* Abstractions and products are only printed at priority [`Func]. *)
   | Abst(a,t)    ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
-       (Bindlib.name_of x) print_type a print_type t
+       (Bindlib.name_of x) (print_type i s) a (print_type i s) t
   | Prod(a,b)    ->
      if Bindlib.binder_constant b
      then
        out "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
-         print_type a
-         print_type (snd (Bindlib.unbind b))
+         (print_type i s) a
+         (print_type i s) (snd (Bindlib.unbind b))
      else
        let (x, b) = Bindlib.unbind b in
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
-         print_type a print_type b
+         (print_type i s) a (print_type i s) b
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
-let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
+let print_rule : Format.formatter -> int -> sym -> rule -> unit =
+  fun oc i s r ->
   (* Print the rewriting rule. *)
   let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
-  Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." print_term lhs;
+  Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
   let rhs = Basics.term_of_rhs r in
-  Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term rhs
+  Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
 
+let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
+  let rule_ctx : tvar option array = Array.make r.arity None in
+  let var_list : tvar list ref = ref [] in
+  let rec subst_patt v t =
+    match unfold t with
+    | Type
+    | Kind
+    | TEnv (_, _)
+    | Meta (_, _)
+    | TRef _
+    | Wild
+    | Prod (_, _)
+    | Vari _              -> assert false
+    | Symb (s, p)         -> Symb(s, p)
+    | Abst (t1, b)        ->
+       let (x,t2) = Bindlib.unbind b in
+       Abst(
+           subst_patt v t1,
+           Bindlib.unbox (Bindlib.bind_var x (lift (subst_patt v t2)))
+         )
+    | Appl (t1, t2)        -> Appl(subst_patt v t1, subst_patt v t2)
+    | Patt (None, x, a)    ->
+       let v_i = Bindlib.new_var mkfree x in
+       var_list := v_i :: !var_list;
+       Array.fold_left (fun acc t -> Appl(acc,t))
+         (Vari(v_i)) a
+    | Patt (Some(i), x, a) ->
+       if v.(i) = None
+       then
+         (let v_i = Bindlib.new_var mkfree x in
+         var_list := v_i :: !var_list;
+         v.(i) <- Some(v_i));
+       let v_i =
+         match v.(i) with
+         |Some(vi) -> vi
+         |None -> assert false
+       in
+       Array.fold_left (fun acc t -> Appl(acc,t)) (Vari(v_i)) a
+  in
+  let lhs =
+    List.fold_left
+      (fun t h -> Appl(t,subst_patt rule_ctx h))
+      (Symb(s,Nothing)) r.lhs
+  in
+  let ctx =
+    List.fold_left (fun l x -> (x,Meta(fresh_meta Type 0,[||]))::l) [] !var_list
+  in
+  ignore (Solve.infer ctx lhs);
+  List.map (fun (v,ty) -> Bindlib.name_of v,ty) ctx
+  
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
 let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
@@ -145,8 +196,10 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
          Format.fprintf oc
            "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
            print_sym s;
-         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term d
-      | None    -> List.iter (print_rule oc s) !(s.sym_rules)
+         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
+      | None    ->
+         let c = ref 0 in
+         List.iter (fun x -> incr c; print_rule oc !c s x) !(s.sym_rules)
     ) else ()
   in
   (* Print the type level rewrite rules. *)
@@ -158,9 +211,28 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
          Format.fprintf oc
            "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
            print_sym s;
-         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." print_term d
-      | None    -> List.iter (print_rule oc s) !(s.sym_rules)
+         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
+      | None    ->
+         let c = ref 0 in
+         List.iter (incr c; print_rule oc !c s) !(s.sym_rules)
     ) else ()
+  in
+  (* Print the variable declarations *)
+  let print_vars : sym -> unit = fun s ->
+    let c = ref 0 in
+    List.iter
+      (fun r ->
+        incr c;
+        List.iter
+          (fun (x,ty) ->
+            Format.fprintf oc
+              "<varDeclaration>@.<var>%s_%i_%s</var>@." s.sym_name !c x;
+            Format.fprintf oc
+              "<type>@.%a</type>@.</varDeclaration>@." (print_type !c s.sym_name) ty
+          )
+          (get_vars s r)
+      )
+      !(s.sym_rules)
   in
   (* Print the symbol declarations at object level. *)
   let print_symbol : sym -> unit = fun s ->
@@ -168,7 +240,8 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     then (
       Format.fprintf oc "<funcDeclaration>@.<name>%a</name>@." print_sym s;
       Format.fprintf oc
-        "<typeDeclaration>@.<type>@.%a</type>@." print_type !(s.sym_type);
+        "<typeDeclaration>@.<type>@.%a</type>@."
+        (print_type 0 s.sym_name) !(s.sym_type);
       Format.fprintf oc "</typeDeclaration>@.</funcDeclaration>@."
     )
   in
@@ -182,7 +255,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
       Format.fprintf oc "<typeConstructorDeclaration>@.<name>%a</name>@."
         print_sym s;
       Format.fprintf oc
-        "<typeDeclaration>@.<type>@.%a</type>@." print_type !(s.sym_type);
+        "<typeDeclaration>@.<type>@.%a</type>@." (print_type 0 s.sym_name) !(s.sym_type);
       Format.fprintf oc "</typeDeclaration>@.</typeConstructorDeclaration>@."
     )
   in
@@ -203,6 +276,9 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     Format.fprintf oc "</typeLevelRules>@."
   );
   Format.fprintf oc "<higherOrderSignature>@.";
+  Format.fprintf oc "<variableTypeInfo>@.";
+  iter_symbols print_vars;
+  Format.fprintf oc "</variableTypeInfo>@.";
   Format.fprintf oc "<functionSymbolTypeInfo>@.";
   iter_symbols print_symbol;
   Format.fprintf oc "</functionSymbolTypeInfo>@.";
