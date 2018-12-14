@@ -35,30 +35,39 @@ let status : sym -> symb_status = fun s ->
   in is_arrow_kind !(s.sym_type) false
   
 (** [print_term oc p] outputs XTC format corresponding to the term [t], to
-    the channel [oc].*)
+    the channel [oc]. *)
 let rec print_term : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
-  | Meta(_,_)    -> assert false
-  | TRef(_)      -> assert false
-  | TEnv(_,_)    -> assert false
-  | Wild         -> assert false
-  | Kind         -> assert false
+  | Meta(_,_)               -> assert false
+  | TRef(_)                 -> assert false
+  | TEnv(_,_)               -> assert false
+  | Wild                    -> assert false
+  | Kind                    -> assert false
   (* [TYPE] and products are necessarily at type level *)
-  | Type         -> assert false
-  | Prod(_,_)    -> assert false
+  | Type                    -> assert false
+  | Prod(_,_)               -> assert false
   (* Printing of atoms. *)
-  | Vari(x)      -> out "<var>v_%s</var>@." (Bindlib.name_of x)
-  | Symb(sy,_)    -> out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym sy
-  | Patt(j,n,ts) ->
+  | Vari(x)                 -> out "<var>v_%s</var>@." (Bindlib.name_of x)
+  | Symb(sy,_)              ->
+     out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym sy
+  | Patt(j,n,ts)            ->
      if ts = [||] then out "<var>%s_%i_%s</var>@." s i n else
        print_term i s oc
          (Array.fold_left (fun t u -> Appl(t,u)) (Patt(j,n,[||])) ts)
-  | Appl(t,u)    -> out "<application>@.%a%a</application>@."
-                      (print_term i s) t (print_term i s) u
+  | Appl(Symb(sy,_),_) as t ->
+     let args = snd (Basics.get_args t) in
+     out "<funapp>@.<name>%a</name>@.%a</funapp>@."
+       print_sym sy
+       (fun oc l ->
+         List.iter
+           (fun x -> Format.fprintf oc "<arg>%a</arg>@." (print_term i s) x) l
+       ) args
+  | Appl(t,u)               -> out "<application>@.%a%a</application>@."
+                              (print_term i s) t (print_term i s) u
   (* Abstractions and products are only printed at priority [`Func]. *)
-  | Abst(a,t)    ->
+  | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_term i s) t
@@ -67,25 +76,33 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
-  | Meta(_,_)    -> assert false
-  | TRef(_)      -> assert false
-  | TEnv(_,_)    -> assert false
-  | Wild         -> assert false
-  | Kind         -> assert false
+  | Meta(_,_)               -> assert false
+  | TRef(_)                 -> assert false
+  | TEnv(_,_)               -> assert false
+  | Wild                    -> assert false
+  | Kind                    -> assert false
   (* Variables are necessarily at object level *)
-  | Vari(_)      -> assert false
-  | Patt(_,_,_)  -> assert false
+  | Vari(_)                 -> assert false
+  | Patt(_,_,_)             -> assert false
   (* Printing of atoms. *)
-  | Type         -> out "<TYPE/>@."
-  | Symb(s,_)    -> out "<basic>%a</basic>@." print_sym s
-  | Appl(t,u)    -> out "<application>@.%a%a</application>@."
+  | Type                    -> out "<TYPE/>@."
+  | Symb(s,_)               -> out "<basic>%a</basic>@." print_sym s
+  | Appl(Symb(sy,_),_) as t ->
+     let args = snd (Basics.get_args t) in
+     out "<funapp>@.<name>%a</name>@.%a</funapp>@."
+       print_sym sy
+       (fun oc l ->
+         List.iter
+           (fun x -> Format.fprintf oc "<arg>%a</arg>@." (print_term i s) x) l
+       ) args
+  | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                       (print_type i s) t (print_term i s) u
   (* Abstractions and products are only printed at priority [`Func]. *)
-  | Abst(a,t)    ->
+  | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_type i s) t
-  | Prod(a,b)    ->
+  | Prod(a,b)               ->
      if Bindlib.binder_constant b
      then
        out "<arrow>@.<type>@.%a</type>@.<type>@.%a</type>@.</arrow>@."
@@ -106,12 +123,27 @@ let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
-
+  
+(** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
+let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
+  fun oc i s r ->
+  (* Print the type level rewriting rule. *)
+  let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
+  Format.fprintf oc "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
+    (print_type i s.sym_name) lhs;
+  let rhs = Basics.term_of_rhs r in
+  Format.fprintf oc "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
+    (print_type i s.sym_name) rhs
+  
+(** [get_vars s r] returns the list of variable of used in the rule [r],
+    in the form of a couple containing the name of the variable and its type,
+    inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
-  let rule_ctx : tvar option array = Array.make r.arity None in
+  (*check_rule s r;*)
+  let rule_ctx : tvar option array = Array.make (Array.length r.ctxt) None in
   let var_list : tvar list ref = ref [] in
   let rec subst_patt v t =
-    match unfold t with
+    match t with
     | Type
     | Kind
     | TEnv (_, _)
@@ -137,8 +169,8 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
        if v.(i) = None
        then
          (let v_i = Bindlib.new_var mkfree x in
-         var_list := v_i :: !var_list;
-         v.(i) <- Some(v_i));
+          var_list := v_i :: !var_list;
+          v.(i) <- Some(v_i));
        let v_i =
          match v.(i) with
          |Some(vi) -> vi
@@ -148,15 +180,15 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
   in
   let lhs =
     List.fold_left
-      (fun t h -> Appl(t,subst_patt rule_ctx h))
+      (fun t h -> Appl(t,subst_patt rule_ctx (unfold h)))
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
     List.fold_left (fun l x -> (x,Meta(fresh_meta Type 0,[||]))::l) [] !var_list
   in
-  ignore (Solve.infer ctx lhs);
-  List.map (fun (v,ty) -> Bindlib.name_of v,ty) ctx
-  
+  let (_,l) = Typing.infer ctx lhs in
+  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
+
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
 let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
@@ -210,10 +242,11 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
          Format.fprintf oc
            "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
            print_sym s;
-         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
+         Format.fprintf oc
+           "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
       | None    ->
          let c = ref 0 in
-         List.iter (incr c; print_rule oc !c s) !(s.sym_rules)
+         List.iter (incr c; print_tl_rule oc !c s) !(s.sym_rules)
     ) else ()
   in
   (* Print the variable declarations *)
@@ -227,7 +260,8 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
             Format.fprintf oc
               "<varDeclaration>@.<var>%s_%i_%s</var>@." s.sym_name !c x;
             Format.fprintf oc
-              "<type>@.%a</type>@.</varDeclaration>@." (print_type !c s.sym_name) ty
+              "<type>@.%a</type>@.</varDeclaration>@."
+              (print_type !c s.sym_name) ty
           )
           (get_vars s r)
       )
