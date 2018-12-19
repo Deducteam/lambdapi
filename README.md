@@ -38,7 +38,7 @@ Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0
+opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 ppx_inline_test
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.
