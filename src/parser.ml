@@ -326,8 +326,9 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
-  | x:ident                            -> (x, None   )
-  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a))
+  | x:ident                            -> (x, None,    false)
+  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)
 
 let term = term PFunc
 

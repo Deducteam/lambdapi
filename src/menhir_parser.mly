@@ -61,8 +61,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_Abst(xs,t)    ->
           begin
             match xs with
-            | [(_, Some(a))] -> fatal a.pos "Annotation in legacy pattern."
-            | [(x, None   )] -> compute_arities (x.elt::env) t
+            | [(_, Some(a), _)] -> fatal a.pos "Annotation in legacy pattern."
+            | [(x, None,    _)] -> compute_arities (x.elt::env) t
             | _              -> fatal h.pos "Invalid legacy pattern lambda."
           end
       | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
@@ -101,18 +101,18 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Prod(xs,b)    ->
         let (x,a) =
           match xs with
-          | [(x, Some(a))] -> (x, build env a)
+          | [(x, Some(a), _)] -> (x, build env a)
           | _              -> assert false (* Unreachable. *)
         in
-        Pos.make t.pos (P_Prod([(x, Some(a))], build (x.elt::env) b))
+        Pos.make t.pos (P_Prod([(x, Some(a), false)], build (x.elt::env) b))
     | P_Impl(a,b)     -> Pos.make t.pos (P_Impl(build env a, build env b))
     | P_Abst(xs,u)    ->
         let (x,a) =
           match xs with
-          | [(x, ao)] -> (x, Option.map (build env) ao)
+          | [(x, ao, _)] -> (x, Option.map (build env) ao)
           | _         -> assert false (* Unreachable. *)
         in
-        Pos.make t.pos (P_Abst([(x,a)], build (x.elt::env) u))
+        Pos.make t.pos (P_Abst([(x,a,false)], build (x.elt::env) u))
     | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
     | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
     | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
@@ -244,7 +244,7 @@ eval_config:
   | L_SQB s1=ID COMMA s2=ID R_SQB { build_config s1 (Some s2) }
 
 param:
-  | L_PAR id=ID COLON te=term R_PAR { (make_pos $loc(id) id, Some(te)) }
+  | L_PAR id=ID COLON te=term R_PAR { (make_pos $loc(id) id, Some(te), false) }
 
 context_item:
   | x=ID ao=option(COLON a=term { a }) { (make_pos $loc(x) x, ao) }
@@ -268,18 +268,18 @@ aterm:
 term:
   | t=aterm { t }
   | x=ID COLON a=aterm ARROW b=term {
-      make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a))], b))
+      make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a), false)], b))
     }
   | L_PAR x=ID COLON a=aterm R_PAR ARROW b=term {
-      make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a))], b))
+      make_pos $loc (P_Prod([(make_pos $loc(x) x, Some(a), false)], b))
     }
   | a=term ARROW b=term {
       make_pos $loc (P_Impl(a, b))
     }
   | x=ID FARROW t=term {
-      make_pos $loc (P_Abst([(make_pos $loc(x) x, None)], t))
+      make_pos $loc (P_Abst([(make_pos $loc(x) x, None, false)], t))
     }
   | x=ID COLON a=aterm FARROW t=term {
-      make_pos $loc (P_Abst([(make_pos $loc(x) x, Some(a))], t))
+      make_pos $loc (P_Abst([(make_pos $loc(x) x, Some(a), false)], t))
     }
 %%

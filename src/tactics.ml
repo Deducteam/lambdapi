@@ -76,7 +76,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_intro(xs)     ->
       (* Scoping a sequence of abstraction in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
-      let xs = List.map (fun x -> (x, None)) xs in
+      let xs = List.map (fun x -> (x, None, false)) xs in
       let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
       let t = fst (Scope.scope_term StrMap.empty ss env t) in
       (* Refine using the built term. *)

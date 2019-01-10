@@ -204,7 +204,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let rec scope_abst env xs =
           match xs with
           | []        -> scope env t
-          | (x,a)::xs ->
+          | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
               let t = scope_abst (Env.add x.elt v a env) xs in
@@ -217,7 +217,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let rec scope_prod env xs =
           match xs with
           | []        -> scope env b
-          | (x,a)::xs ->
+          | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
               let b = scope_prod (Env.add x.elt v a env) xs in
@@ -227,7 +227,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([(x,None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = get_builtin t.pos ss "0"  in
@@ -285,9 +285,9 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
   and arg_patt_vars acc xs =
     match xs with
-    | []                 -> acc
-    | (_, None   ) :: xs -> arg_patt_vars acc xs
-    | (_, Some(a)) :: xs -> arg_patt_vars (patt_vars acc a) xs
+    | []                       -> acc
+    | (_, None,    _   ) :: xs -> arg_patt_vars acc xs
+    | (_, Some(a), _) :: xs    -> arg_patt_vars (patt_vars acc a) xs
   in patt_vars ([],[])
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting

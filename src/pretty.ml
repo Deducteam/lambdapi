@@ -63,10 +63,12 @@ let rec pp_p_term : p_term pp = fun oc t ->
   in
   pp_toplevel oc t
 
-and pp_p_arg : p_arg pp = fun oc (id,ao) ->
-  match ao with
-  | None    -> Format.pp_print_string oc id.elt
-  | Some(a) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
+and pp_p_arg : p_arg pp = fun oc (id,ao,b) ->
+  match (ao,b) with
+  | (None, false)    -> Format.pp_print_string oc id.elt
+  | (None, true)     -> Format.fprintf oc "{%s}" id.elt
+  | (Some(a), false) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
+  | (Some(a), true)  -> Format.fprintf oc "{%s : %a}" id.elt pp_p_term a
 
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)
