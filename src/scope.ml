@@ -5,6 +5,7 @@ open Console
 open Extra
 open Files
 open Pos
+open Basics
 open Syntax
 open Terms
 open Env
@@ -118,6 +119,40 @@ type mode =
   (** Right-hand side mode. The constructor carries the environment for higher
       order variables that will be bound in the representation of the RHS. *)
 
+(* splitFunArgs t decomposes the term [t] (which is expected to be an application),
+  into the function symbol and a list of its actual arguments. It is implemented 
+  as a tail-recursive function. *)
+let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
+  let rec splitFunArgs_aux : p_term -> (p_term list) -> (p_term * (p_term list)) = fun t args ->
+    match t.elt with
+    | P_Appl(u,v) -> splitFunArgs_aux u (v::args)
+    | _           -> (t, args)
+  in
+  splitFunArgs_aux t []
+
+(** [getParams t] returns a list representing the formal parameters of [t],
+  and fails gracefully if [t] is not a function *)
+let getParams : p_term -> p_arg list = fun t ->
+  match t.elt with
+  | P_Abst(args,e) -> args
+  | P_Vari(id)     -> assert false (* FIXME : we will need to use a table of functions *)
+  | _              -> assert false
+
+(** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
+    [args] and with the insertion of "_" for the implicit arguments, following the information 
+    provided by the formal parameters [param] *)
+let addImplicitArgs : p_term list -> p_arg list -> p_term list = fun args param ->
+  let rec addImplicitArgs_aux : p_term list -> p_arg list -> p_term list -> p_term list = 
+    fun args param fullArgs ->
+    match (param,args) with
+    | ((id,optType,isImplicit)::ps, arg1::args') -> 
+      if isImplicit then 
+        addImplicitArgs_aux args ps ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
+      else
+        addImplicitArgs_aux args' ps (arg1::fullArgs) (* We did use the first concrete argument *)
+    | (_, _) -> List.rev fullArgs (* We reverse the argument that has been build in the opposite order *)
+  in addImplicitArgs_aux args param []
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
@@ -195,7 +230,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
-    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
+    | (P_Appl(t,u)     , _        ) -> 
+          let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
+          let params = getParams f in (* get the formal parameters of f *)
+          let fullArgs = addImplicitArgs args params in (* adds the implicit arguments *)
+          add_args (scope env f) (map (fun x -> scope env x) fullArgs)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
