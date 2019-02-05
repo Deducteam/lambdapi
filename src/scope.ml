@@ -132,20 +132,32 @@ let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
 
 (** [getParams t] returns a list representing the formal parameters of [t],
   and fails gracefully if [t] is not a function *)
-let getParams : p_term -> p_arg list = fun t ->
+let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
   match t.elt with
-  | P_Abst(args,e) -> args
-  | P_Vari(id)     -> assert false (* FIXME : we will need to use a table of functions *)
+  | P_Abst(args,e) -> map (fun x -> match x with (a,b,c) -> c) args
+  | P_Vari(id)     -> 
+    let t' = try !((fst (StrMap.find (snd id.elt) ss.in_scope)).sym_def)
+    with Not_found ->
+      fatal t.pos "Unbound symbol [%s]." (snd id.elt)
+    in
+      (
+      match t' with
+      | Some(def) -> (match def with
+                      | Abst(args,e) -> args
+                      | _              -> assert false (* TODO : fail gracefully : it's not a function *)
+                      )
+      | None -> fatal t.pos "No definition associated to [%s]." (snd id.elt)
+      )
   | _              -> assert false
 
 (** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
     [args] and with the insertion of "_" for the implicit arguments, following the information 
     provided by the formal parameters [param] *)
-let addImplicitArgs : p_term list -> p_arg list -> p_term list = fun args param ->
-  let rec addImplicitArgs_aux : p_term list -> p_arg list -> p_term list -> p_term list = 
+let addImplicitArgs : p_term list -> bool list -> p_term list = fun args param ->
+  let rec addImplicitArgs_aux : p_term list -> bool list -> p_term list -> p_term list = 
     fun args param fullArgs ->
     match (param,args) with
-    | ((id,optType,isImplicit)::ps, arg1::args') -> 
+    | (isImplicit::ps, arg1::args') -> 
       if isImplicit then 
         addImplicitArgs_aux args ps ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
       else
@@ -232,7 +244,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParams f in (* get the formal parameters of f *)
+          let params = getParams env f in (* get the formal parameters of f *)
           let fullArgs = addImplicitArgs args params in (* adds the implicit arguments *)
           add_args (scope env f) (map (fun x -> scope env x) fullArgs)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
