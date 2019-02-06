@@ -14,6 +14,11 @@ open Scope
 type proof_data =
   Proof.t * p_tactic list * (sig_state -> Proof.t -> sig_state)
 
+(** [!require mp] can be called to require the compilation of the module (that
+    corresponds to) [mp]. The reference is set in the [Compile] module. *)
+let require : (Files.module_path -> unit) Pervasives.ref =
+  Pervasives.ref (fun _ -> ())
+
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
     module state. On success, an updated module state is returned, and [Fatal]
     is raised in case of an error. *)
@@ -35,7 +40,11 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_require_open    ->
             let sign =
               try PathMap.find p !(Sign.loaded)
-              with Not_found -> assert false (* Cannot happen. *)
+              with Not_found -> (* assert false (* Cannot happen. *) *)
+                (* FIXME temporary fix for lp-lsp. *)
+                Pervasives.(!require p);
+                try PathMap.find p !(Sign.loaded)
+                with Not_found -> assert false (* Cannot happen. *)
             in
             open_sign ss sign
         | P_require_as(id)  ->
