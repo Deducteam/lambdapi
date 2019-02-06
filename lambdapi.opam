@@ -1,10 +1,10 @@
-synopsis: "Implementation of the λΠ-calculus modulo rewriting"
+synopsis: "Proof assistant based on the λΠ-calculus modulo rewriting"
 description:
 """
-Lambdapi is an implementation of the λΠ-calculus modulo rewriting, that is
-mostly compatible with Dedukti (https://github.com/Deducteam/Dedukti).
+Proof assistant based on the λΠ-calculus modulo rewriting,
+mostly compatible with Dedukti.
 
-This package contains both the `lambdapi` checker and the `lp-lsp`
+This package contains both the `lambdapi` proof assistant and the `lp-lsp`
 Language Server Protocol helper for IDEs to check lambdapi files.
 """
 opam-version: "2.0"
