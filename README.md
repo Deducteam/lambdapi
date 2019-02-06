@@ -30,7 +30,7 @@ List of dependencies:
  - earley 2.0.0 (https://github.com/rlepigre/ocaml-earley),
  - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
  - menhir
- - yojson
+ - yojson (>= 1.6.0)
  - cmdliner
  - ppx\_inline\_test
 
