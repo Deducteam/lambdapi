@@ -131,32 +131,37 @@ let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
 
 (** [getParams t] returns a list representing the formal parameters of [t],
   and fails gracefully if [t] is not a function *)
-let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
+let getParamsImplicitness : sig_state -> env -> p_term -> bool list = fun ss _ t ->
   match t.elt with
   | P_Abst(args,_) -> List.map (fun x -> match x with (_,_,c) -> c) args
   | P_Vari(id)     -> 
     (try !((fst (StrMap.find (snd id.elt) ss.in_scope)).sym_implicits)
-    with Not_found ->
-      (try !((fst (StrMap.find (snd id.elt) env)).sym_implicits)
-      with Not_found ->  t.pos "Unbound symbol [%s]." (snd id.elt))
-  | _              -> []
+      with Not_found -> 
+        (try !((fst (StrMap.find (snd id.elt) ss.builtins)).sym_implicits)
+          with Not_found -> print_string "Not found ! \n"; []))
+  | P_Patt(_,_)    -> print_string "Pattern ! \n"; []
+  | _              -> assert false (* Should not happen. *)
 
 (** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
     [args] and with the insertion of "_" for the implicit arguments, following the information 
     provided by the formal parameters [param] *)
-let addImplicitArgs : p_term list -> bool list -> p_term list = fun args param ->
-  let rec addImplicitArgs_aux : p_term list -> bool list -> p_term list -> p_term list = 
-    fun args param fullArgs ->
-    (* If we don't have implicitness information (as for a rule for instance), we put all the concrete args *)
-    if (param = []) then args else
-      match (param,args) with
-      | (isImplicit::ps, arg1::args') -> 
-        if isImplicit then 
-          addImplicitArgs_aux args ps ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
-        else
-          addImplicitArgs_aux args' ps (arg1::fullArgs) (* We did use the first concrete argument *)
-      | (_, _) -> List.rev fullArgs (* We reverse the argument that has been build in the opposite order *)
-  in addImplicitArgs_aux args param []
+let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args ->
+  let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
+    fun param args fullArgs ->
+    match (param,args) with
+    | (isImplicit::ps, arg1::args') -> 
+      if isImplicit then 
+        addImplicitArgs_aux ps args ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
+      else
+        addImplicitArgs_aux ps args' (arg1::fullArgs) (* We did use the first concrete argument *)
+    | ([], _::_) -> print_string "info:not enough formal parameters. \n"; (List.rev args) @ fullArgs
+    | (_, _)     -> fullArgs
+  in
+    (* If we don't have implicitness information (as for a rewrite rule for instance), 
+       we put all the given concrete args *) 
+    if (param = []) then args 
+    (* We reverse the arguments as they've been built in the opposite order *)
+    else List.rev (addImplicitArgs_aux param args [])
 
 (** [add_arg_tbox t args] builds the application of t to a list
     arguments [args] *)
@@ -246,8 +251,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParamsImplicitness ss f in (* get the formal parameters of f *)
-          let fullArgs = addImplicitArgs args params in (* adds the implicit arguments *)
+          let params = getParamsImplicitness ss env f in (* get the formal parameters of f *)
+          let fullArgs = addImplicitArgs params args in (* adds the implicit arguments *)
           add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
