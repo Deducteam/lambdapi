@@ -73,7 +73,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
       (* We check that [a] is typable by a sort. *)
       Solve.sort_type Ctxt.empty a;
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature m x a in
+      let s = Sign.add_symbol ss.signature m x a [] in
       out 3 "(symb) %s.\n" s.sym_name;
       {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
   | P_rules(rs)                ->
@@ -123,7 +123,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
           fatal x.pos "We have %s ≔ %a." x.elt pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature Defin x a in
+      let implicits = List.map (fun (_,_,z) -> z) xs in
+      let s = Sign.add_symbol ss.signature Defin x a implicits in
       out 3 "(symb) %s (definition).\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
@@ -148,7 +149,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             (* If the proof is finished, display a warning. *)
             if Proof.finished st then wrn cmd.pos "You should add QED.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature Const x a in
+            let s = Sign.add_symbol ss.signature Const x a [] in
             out 3 "(symb) %s (admit).\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -160,7 +161,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             if not (Proof.finished st) then
               fatal cmd.pos "The proof is not finished.";
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature Const x a in
+            let s = Sign.add_symbol ss.signature Const x a [] in
             out 3 "(symb) %s (QED).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       end

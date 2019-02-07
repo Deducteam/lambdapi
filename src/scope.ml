@@ -5,7 +5,6 @@ open Console
 open Extra
 open Files
 open Pos
-open Basics
 open Syntax
 open Terms
 open Env
@@ -134,21 +133,13 @@ let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
   and fails gracefully if [t] is not a function *)
 let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
   match t.elt with
-  | P_Abst(args,e) -> map (fun x -> match x with (a,b,c) -> c) args
+  | P_Abst(args,_) -> List.map (fun x -> match x with (_,_,c) -> c) args
   | P_Vari(id)     -> 
-    let t' = try !((fst (StrMap.find (snd id.elt) ss.in_scope)).sym_def)
+    (try !((fst (StrMap.find (snd id.elt) ss.in_scope)).sym_implicits)
     with Not_found ->
-      fatal t.pos "Unbound symbol [%s]." (snd id.elt)
-    in
-      (
-      match t' with
-      | Some(def) -> (match def with
-                      | Abst(args,e) -> args
-                      | _              -> assert false (* TODO : fail gracefully : it's not a function *)
-                      )
-      | None -> fatal t.pos "No definition associated to [%s]." (snd id.elt)
-      )
-  | _              -> assert false
+      (try !((fst (StrMap.find (snd id.elt) env)).sym_implicits)
+      with Not_found ->  t.pos "Unbound symbol [%s]." (snd id.elt))
+  | _              -> []
 
 (** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
     [args] and with the insertion of "_" for the implicit arguments, following the information 
@@ -156,14 +147,25 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
 let addImplicitArgs : p_term list -> bool list -> p_term list = fun args param ->
   let rec addImplicitArgs_aux : p_term list -> bool list -> p_term list -> p_term list = 
     fun args param fullArgs ->
-    match (param,args) with
-    | (isImplicit::ps, arg1::args') -> 
-      if isImplicit then 
-        addImplicitArgs_aux args ps ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
-      else
-        addImplicitArgs_aux args' ps (arg1::fullArgs) (* We did use the first concrete argument *)
-    | (_, _) -> List.rev fullArgs (* We reverse the argument that has been build in the opposite order *)
+    (* If we don't have implicitness information (as for a rule for instance), we put all the concrete args *)
+    if (param = []) then args else
+      match (param,args) with
+      | (isImplicit::ps, arg1::args') -> 
+        if isImplicit then 
+          addImplicitArgs_aux args ps ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
+        else
+          addImplicitArgs_aux args' ps (arg1::fullArgs) (* We did use the first concrete argument *)
+      | (_, _) -> List.rev fullArgs (* We reverse the argument that has been build in the opposite order *)
   in addImplicitArgs_aux args param []
+
+(** [add_arg_tbox t args] builds the application of t to a list
+    arguments [args] *)
+let add_arg_tbox : tbox -> tbox list -> tbox = fun t args ->
+  let rec add_arg_tbox_aux t args =
+    match args with
+    | []      -> t
+    | u::args -> add_arg_tbox_aux (_Appl t u) args
+  in add_arg_tbox_aux t args
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -244,9 +246,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParams env f in (* get the formal parameters of f *)
+          let params = getParamsImplicitness ss f in (* get the formal parameters of f *)
           let fullArgs = addImplicitArgs args params in (* adds the implicit arguments *)
-          add_args (scope env f) (map (fun x -> scope env x) fullArgs)
+          add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
