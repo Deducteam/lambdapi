@@ -16,7 +16,7 @@ authors: [
   "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
   "Frédéric Blanqui <frederic.blanqui@inria.fr>"
   "Emilio Jesús Gallego Arias <e@x80.org>" ]
-license: "CeCILL"
+license: "CeCILL 2.1"
 doc: "https://deducteam.github.io/lambdapi/"
 
 depends: [
