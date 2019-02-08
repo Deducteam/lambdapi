@@ -9,7 +9,7 @@ git clone https://github.com/Deducteam/lambdapi.git
 cd lambdapi
 make && make install
 ```
-
+<!--------------------------------------------------------------------------->
 What is Lambdapi?
 -----------------
 
@@ -45,8 +45,8 @@ Here is a list of new features brought by `lambdapi`:
  - support for unicode (UTF-8) and (user-defined) infix operators,
  - automatic resolution of dependencies,
  - a simpler, more reliable and fully documented implementation,
- - more reliable operations on binders tanks to the Bindlib library,
- - a general notion of metavariables, useful for implicit arguments.
+ - more reliable operations on binders thanks to the Bindlib library,
+ - a general notion of metavariables, useful for implicit arguments and tactics.
 
 ### An experimental proof system
 
@@ -62,6 +62,7 @@ power of rewriting will be a significant advantage of `lambdapi` over  systems
 like Coq. That is something that we would like to clarify (in the near future)
 thanks to `lambdapi`.
 
+<!--------------------------------------------------------------------------->
 Command line flags and tools
 ----------------------------
 
@@ -83,13 +84,13 @@ independently (in the order they are given). Note that the program immediately
 stops on the first failure, without going to the next file (if any).
 
 **Important note:** the paths given on the command-line for input files should
-be relative to the current directory. Moreover, they should not start with the
-`./` current directory marker, and they should not contains `..`.  This is due
-to the fact that the directory structure is significant  (more details on that
-will be given later).
+be relative to the current directory. Moreover, they should neither start with
+the `./` current directory marker, nor contain `..`.  This is due to the fact
+that the directory structure is significant (more details on that will be
+given later).
 
 Command line flags can be used to control the behaviour of `lambdapi`. You can
-used `lambdapi --help` to get a short description of the available flags.  The
+use `lambdapi --help` to get a short description of the available flags.  The
 available options are described in details below.
 
 #### Mode selection
@@ -128,7 +129,7 @@ Confluence checking (and also termination) must be established for each of the
 considered rewriting systems contained in `lambdapi` files. By default,  these
 checks are not performed, and they must be explicitly requested.
 
-We provide an interface to external confluence checkers using the TPDB format.
+We provide an interface to external confluence checkers using the TRS format.
 The `--confluence <cmd>` flag specifies the confluence-checking command to  be
 used. The command is expected to behave as follows:
  - take the problem description (in `.trs` format) on its standard input,
@@ -151,7 +152,7 @@ lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 
 #### Termination checking
 
-For now, there is not support for termination checking.
+For now, there is no support for termination checking.
 
 #### Debugging flags
 
@@ -160,7 +161,7 @@ The following flags may be useful for debugging:
    the string `<str>`. Details on available character flags are obtained using
    the `--help` flag.
  - `--timeout <int>` gives up type-checking after the given number of seconds.
-   Note that the timeout is reset between each files.  The given parameter is
+   Note that the timeout is reset between each file.  The given parameter is
    expected to be a natural number.
  - `--toolong <flt>` gives a warning for each command (i.e., file item) taking
    more than the given number of seconds to be checked. The given parameter is
@@ -179,10 +180,9 @@ is currently used by the implementation of the LSP server (next section).
 ### Lambdapi LSP server
 
 The `lambdapi` LSP server, called `lp-lsp`, implements an interface to editors
-supporting the LSP standard. Limitations in the LSP protocol may require us to
-consider a non-standard extension for the proof mode. For now,  we support the
-`emacs` editor through the `eglot` plugin for interactive proof,  and also the
-`Atom` editor with a custom plugin.
+supporting the [LSP](https://github.com/Microsoft/language-server-protocol)
+protocol. For now,  we support the `emacs` editor through the `eglot` package,
+and also the `Atom` editor with a custom plugin.
 
 See the file [lp-lsp/README.md](lp-lsp/README.md) for more details.
 
@@ -196,7 +196,7 @@ See the file [lp-lsp/README.md](lp-lsp/README.md) for more details.
 
 ### Vim mode
 
-The `Vim` mode can optionally (and automatically) installed using the  command
+The `Vim` mode can be installed using the  command
 `make install_vim` in the `lambdapi` repository. It does not yet have built-in
 support for the LSP server.
 
@@ -208,38 +208,44 @@ most certainly disappear in the near future (in favor of `VS Code`).
 See [atom-dedukti](https://github.com/Deducteam/atom-dedukti) for instructions
 related to the `Atom` editor.
 
+<!--------------------------------------------------------------------------->
 Compilation and module system
 -----------------------------
 
 <!-- TODO -->
 
+<!--------------------------------------------------------------------------->
 Syntax of Lambdapi
 ------------------
 
 <!-- TODO -->
 
+<!--------------------------------------------------------------------------->
 Interactive proof system
 ------------------------
 
 <!-- TODO -->
 
+<!--------------------------------------------------------------------------->
 Compatibility with Dedukti
 --------------------------
 
 <!-- TODO -->
 
+<!--------------------------------------------------------------------------->
 Development guidelines
 ----------------------
 
 Inside the repository, `lambdapi` can be compiled with the `make` command,  or
 (equivalently) the `dune build` command. The generated binary files are put in
 the `_build/install/default/bin` directory. This folder is automatically added
-to the `PATH` when running command with `dune exec --`. As an example, you can
+to the `PATH` when running a command with `dune exec --`. As an example, you can
 run `dune exec -- lambdapi --help` to call `lambdapi` with the `--help`  flag.
 
 **Remark:** the `--` dune flag is necessary when calling `lambapi` with flags.
-If it is not give, flags are feed to the `dune` command instead.
+If it is not given, flags are fed to the `dune` command instead.
 
+<!--------------------------------------------------------------------------->
 Repository organization
 -----------------------
 
@@ -253,9 +259,9 @@ The root directory of the repository contains several folders:
  - `tests` contains test files (mostly from Dedukti),
  - `tools` contains miscellaneous utility scripts.
 
-<!-- TODO -->
-
-### Profiling tools
+<!--------------------------------------------------------------------------->
+Profiling tools
+---------------
 
 This document explains the use of standard profiling tools for the development
 of `lambdapi`.
