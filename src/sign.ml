@@ -170,7 +170,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym = fun sign 
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_implicits = ref implicits; sym_rules = ref [] ; sym_mode = mode }
+    ; sym_def = ref None ; sym_implicits = implicits; sym_rules = ref [] ; sym_mode = mode }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 

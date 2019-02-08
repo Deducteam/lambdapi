@@ -81,7 +81,7 @@ type term =
   (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
-  ; sym_implicits : bool list ref
+  ; sym_implicits : bool list
   (** Implicitness of arguments for a function def *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
@@ -227,7 +227,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     ; sym_type  = ref !(m.meta_type)
     ; sym_path  = []
     ; sym_def   = ref None
-    ; sym_implicits = ref []
+    ; sym_implicits = []
     ; sym_rules = ref []
     ; sym_mode  = Const }
   in

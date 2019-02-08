@@ -106,7 +106,7 @@ let _ =
   (* Parse command line arguments while accumulating all files. *)
   let usage = Printf.sprintf "Usage: %s [OPTIONS] [FILES]" Sys.argv.(0) in
   let files = ref [] in
-  print_string "This is my work in progress for lambdapi";
+  print_string "This a work in progress for adding implicit arguments to lambdapi \n";
   Arg.parse spec (fun s -> files := s :: !files) usage;
   (* Compile each file separately. *)
   List.iter handle_file (List.rev !files)

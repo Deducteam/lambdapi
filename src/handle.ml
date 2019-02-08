@@ -65,6 +65,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
+      let implicits = Scope.getParamsImplicitness ss a in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)
@@ -73,7 +74,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
       (* We check that [a] is typable by a sort. *)
       Solve.sort_type Ctxt.empty a;
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature m x a [] in
+      let s = Sign.add_symbol ss.signature m x a implicits in
       out 3 "(symb) %s.\n" s.sym_name;
       {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
   | P_rules(rs)                ->
