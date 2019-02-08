@@ -13,9 +13,9 @@ type term =
   | Vari of term Bindlib.var
   (** Free variable. *)
   | Type
-  (** "Type" constant. *)
+  (** "TYPE" constant. *)
   | Kind
-  (** "Kind" constant. *)
+  (** "KIND" constant. *)
   | Symb of sym * pp_hint
   (** Symbol (static or definable). *)
   | Prod of term * (term, term) Bindlib.binder
@@ -42,14 +42,14 @@ type term =
   | Alias     of string (** Use the given alias as qualifier.  *)
   | Binary    of string (** Show as the given binary operator. *)
 
-(** Representation of an higher-order term. *)
+(** Representation of a term enviroment. *)
  and term_env =
   | TE_Vari of term_env Bindlib.var
-  (** Free higher-oder term variable (for printing only). *)
+  (** Free term environment variable (for printing only). *)
   | TE_Some of (term, term) Bindlib.mbinder
-  (** Higher-order term to instantiate the RHS of rewriting rules. *)
+  (** Term enviroment to instantiate the RHS of rewriting rules. *)
   | TE_None
-  (** Dummy higher-order term (initial value in RHS environment). *)
+  (** Dummy term environment (initial value in RHS environment). *)
 
 (** The {!const:Patt(i,s,ar)} constructor represents a pattern variable, which
     may only appear in the LHS (left hand side or pattern) of rewriting rules.
@@ -62,14 +62,15 @@ type term =
     [i] (of type {!type:int option}) gives the index (if any) of the slot that
     is reserved for the matched term in the environment of the RHS (right hand
     side or action) of the rewriting rule. When [i] is {!const:None}, then the
-    variable is not bound in the RHS. When it is {!const:Some(i)}, then either
+    variable is not bound in the RHS. When it is {!const:Some(_)}, then either
     it is bound in the RHS, or it appears non-linearly in the LHS.
 
     The {!const:TEnv(te,ar)} constructor corresponds to a form of metavariable
     [te], with an associated environment [ar]. When it is used in the RHS of a
     rewriting rule, the metavariable [te] must be bound. When a rewriting rule
     applies, the metavariables that are bound in the RHS are substituted using
-    an environment that was constructed during the matching of the LHS. *)
+    an environment that was constructed during the matching of the LHS. See
+    comments on the type [rule] for more explanations. *)
 
 (** Representation of a constant or function symbol. *)
  and sym =
@@ -158,15 +159,13 @@ type term =
 
 (** A metavariable is represented using a multiple binder, and it can hence be
     instantiated with an open term, provided that its free variables appear in
-    the attached environment [ar] in terms of the form {!const:Meta(m,ar}. The
-    environment [ar] should only contain (distinct) free variables, as for the
-    {!const:Patt(i,s,ar)} constructor. *)
+    the attached environment [ar] in terms of the form {!const:Meta(m,ar}. *)
 
 (** {2 Functions related to the handling of metavariables} *)
 
 (** [unfold t] repeatedly unfolds the definition of the top level metavariable
     of [t] until a significant {!type:term} constructor is found. Note that it
-    may an uninstantiated metavariable or any other form of term. However, the
+    may be an uninstantiated metavariable or any other term. However, the
     returned term cannot be an instantiated metavariable. In the case where no
     unfolding is required, the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
@@ -186,7 +185,7 @@ let rec unfold : term -> term = fun t ->
       end
   | _                    -> t
 
-(** Note that the {!val:unfold} function should (almost always) be used before
+(** Note that the {!val:unfold} function should (almost) always be used before
     matching over a value of type {!type:term}. *)
 
 (** [unset m] returns [true] if [m] is not instanciated. *)
@@ -215,10 +214,10 @@ let meta_name : meta -> string = fun m ->
   | Some(n) -> "?" ^ n
   | None    -> "?" ^ string_of_int m.meta_key
 
-(** [term_of_meta m e] returns a term representing the application of a  fresh
-    symbol (named and typed after [m]) to the terms of [e].  The preduced term
-    has thus the same type as [Meta(m,e)], and it can be used for checking its
-    type instead of that of [Meta(m,e)] directly. *)
+(** [term_of_meta m ar] returns a term representing the application of a  fresh
+    symbol (named and typed after [m]) to the terms of [ar].  The produced term
+    has thus the same type as [Meta(m,ar)], and it can be used for checking its
+    type instead of that of [Meta(m,ar)] directly. *)
 let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name  = Printf.sprintf "[%s]" (meta_name m)
@@ -231,8 +230,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
 (* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
-   as otherwise we would need to polute the typing context with variables that
-   created metavariables should not be allowed to use. *)
+   as otherwise we would polute the typing context with variables that
+   generated metavariables must not use. *)
 
 (** {2 Type synonyms and basic functions (related to [Bindlib])} *)
 
@@ -343,6 +342,6 @@ let rec lift : term -> tbox = fun t ->
   | TRef(r)     -> _TRef r
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-    metavariable has been removed (collapsed), and the name of bound variables
+    metavariable has been removed (collapsed), and the names of bound variables
     have been updated. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
