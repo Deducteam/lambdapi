@@ -81,7 +81,7 @@ let binops : binop Prefix.t = Prefix.init ()
 let binop = Prefix.grammar binops
 
 (** [get_binops mp] loads the binary operators associated to module path [mp].
-    Note that this requires the module to be loaded (i.e., compile). *)
+    Note that this requires the module to be loaded (i.e., compiled). *)
 let get_binops : module_path -> unit = fun mp ->
   let sign =
     try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
@@ -317,8 +317,8 @@ let parser term @(p : prio) =
    level [PBinO]. The left operand is parsed first, together with the operator
    to obtain the corresponding priority and associativity parameters.  We then
    check whether the (binary operator) priority level [pl] of the left operand
-   satifies the conditions, and reject it earley if it does not. We then parse
-   the right operand in a second step, and also check whether is satisfied the
+   satifies the conditions, and reject it if it does not. We then parse
+   the right operand in a second step, and also check whether it satisfies the
    required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)

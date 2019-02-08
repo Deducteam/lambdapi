@@ -113,7 +113,7 @@ type term =
   ; arity : int
   (** Required number of arguments to be applicable. *)
   ; ctxt  : (string * int) array
-  (** Bound higher-order variables names and arities. *) }
+  (** Bound term-environment variable names and arities. *) }
 
 (** A rewriting rule is formed of a LHS (left hand side), which is the pattern
     that should be matched for the rule to apply, and a RHS (right hand side),
