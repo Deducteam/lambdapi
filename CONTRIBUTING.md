@@ -45,7 +45,7 @@ match ... with
 ```
 
 When the action of a pattern does not fit on one line, it sould be indented
-by two unites (that is, four characters).
+by two units (that is, four characters).
 ```OCaml
 | A(x) ->
 >>>>let y = ... in
