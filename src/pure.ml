@@ -39,21 +39,12 @@ let parse_text : string -> string -> Command.t list = fun fname s ->
 
 type command_state = Time.t * Scope.sig_state
 
-type proof_state =
-  { pst_time      : Time.t
-  ; pst_sig_state : Scope.sig_state
-  ; pst_p_state   : Proof.t
-  ; pst_stmt_pos  : Pos.popt
-  ; pst_term_pos  : Pos.popt
-  ; pst_finalize  : Scope.sig_state -> Proof.t -> Scope.sig_state }
-
-let get_statement_pos : proof_state -> Pos.popt = fun s -> s.pst_stmt_pos
-
-let get_terminator_pos : proof_state -> Pos.popt = fun s -> s.pst_term_pos
+type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state
+type proof_state = Time.t * Scope.sig_state * Proof.t * proof_finalizer
 
 type command_result =
   | Cmd_OK    of command_state
-  | Cmd_Proof of proof_state * Tactic.t list
+  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -78,28 +69,21 @@ let handle_command : command_state -> Command.t -> command_result =
     match pst with
     | None       -> Cmd_OK(t, ss)
     | Some(data) ->
-        let pst =
-          { pst_time = t ; pst_sig_state = ss
-          ; pst_p_state = data.pdata_p_state
-          ; pst_stmt_pos = data.pdata_stmt_pos
-          ; pst_term_pos = data.pdata_term_pos
-          ; pst_finalize = data.pdata_finalize }
-        in
-        Cmd_Proof(pst, data.pdata_tactics)
+        let pst = (t, ss, data.pdata_p_state, data.pdata_finalize) in
+        let ts = data.pdata_tactics in
+        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_term_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
-  let (ss, p) = (s.pst_sig_state, s.pst_p_state) in
+  let (_, ss, p, finalize) = s in
   try
     let p = Tactics.handle_tactic ss p t in
-    Tac_OK({s with pst_time = Time.save () ; pst_p_state = p})
+    Tac_OK(Time.save (), ss, p, finalize)
   with Fatal(p,m) -> Tac_Error(p,m)
 
 let end_proof : proof_state -> command_result = fun s ->
-  try
-    let ss = s.pst_finalize s.pst_sig_state s.pst_p_state in
-    Cmd_OK(Time.save (), ss)
-  with Fatal(p,m) -> Cmd_Error(p,m)
+  let (_, ss, p, finalize) = s in
+  try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : command_state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   Time.restore (fst s);

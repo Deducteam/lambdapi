@@ -64,7 +64,7 @@ let process_cmd _file (st,dg) node =
     (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
     let ok_diag = cmd_loc, 4, "OK", None in
     st, ok_diag :: dg
-  | Cmd_Proof (pst, tlist) ->
+  | Cmd_Proof (pst, tlist, _, _) -> (* FIXME use positions. *)
     let pst, dg_proof = process_proof pst tlist in
     (* Fixme: this throws and exception and it should not *)
     let st, dg_proof =
@@ -76,7 +76,7 @@ let process_cmd _file (st,dg) node =
           (* We don't add the diagnostic as it shadows the internal
              ones; we should refine the loc to the qed *)
           st, dg_proof
-      | Cmd_Proof(_,_)     -> assert false (* Cannot happen. *)
+      | Cmd_Proof(_,_,_,_) -> assert false (* Cannot happen. *)
     in
     st, dg_proof @ dg
   | Cmd_Error(_loc, msg) ->

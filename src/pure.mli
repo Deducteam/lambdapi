@@ -30,17 +30,14 @@ type command_state
 (** Representation of the state when in a proof. *)
 type proof_state
 
-(** Given a proof state, gives the position of the statement of the proof. *)
-val get_statement_pos : proof_state -> Pos.popt
-
-(** Given a proof state, gives the position of the proof terminator (QED). *)
-val get_terminator_pos : proof_state -> Pos.popt
-
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of command_state               (** Command is done.  *)
-  | Cmd_Proof of proof_state * Tactic.t list (** Enter proof mode. *)
-  | Cmd_Error of Pos.popt option * string    (** Error report.     *)
+  | Cmd_OK    of command_state
+  (** Command is done. *)
+  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  (** Enter proof mode (positions are for statement and qed). *)
+  | Cmd_Error of Pos.popt option * string
+  (** Error report. *)
 
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
