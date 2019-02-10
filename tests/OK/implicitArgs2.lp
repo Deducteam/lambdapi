@@ -28,8 +28,9 @@ symbol const idF : ∀(Typ:U), T Typ ⇒ T Typ
 // but it's beyong the usage of implicit arguments for now
 
 // Question :
-// Why it also fails to work if we declare zero to live in (T Nat) instead of N ?
-// Perhaps the unification can't even deal with (T x = T y). So first, improve unification to make this work
+// Why is it also failing to work if we declare zero to live in (T Nat) instead of N ?
+// Perhaps the unification can't even deal with (T x = T y). If that's the case then first we need to improve the 
+// unification to make this work
 
 
 
