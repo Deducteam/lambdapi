@@ -60,7 +60,7 @@ let do_shutdown ofmt ~id =
   LIO.send_json ofmt msg
 
 let doc_table : (string, _) Hashtbl.t = Hashtbl.create 39
-let completed_table : (string, Pure.state) Hashtbl.t = Hashtbl.create 39
+let completed_table : (string, Pure.command_state) Hashtbl.t = Hashtbl.create 39
 
 (* Notification handling; reply is optional / asynchronous *)
 let do_check_text ofmt ~doc =
