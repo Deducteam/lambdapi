@@ -1,4 +1,9 @@
-(** Pretty-printing. *)
+(** Pretty-printing for the core AST.
+
+    The functions of this module are used for printing terms and other objects
+    defined in the {!module:Terms} module.  This is mainly used for displaying
+    log messages, and feedback in case of success or error while type-checking
+    terms or testing convertibility. *)
 
 open Extra
 open Terms
