@@ -44,8 +44,8 @@ match ... with
 | B(x,y) -> ...
 ```
 
-When the action of a patter does not fit on one line, it sould be indented
-by two unite (that is, four characters).
+When the action of a pattern does not fit on one line, it sould be indented
+by two units (that is, four characters).
 ```OCaml
 | A(x) ->
 >>>>let y = ... in

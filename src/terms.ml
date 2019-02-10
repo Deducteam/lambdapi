@@ -1,77 +1,55 @@
 (** Term representation.
 
-    This module defines the main abstract syntax tree representation for terms
-    (including types), which relies on the {!module:Bindlib} library. *)
+    This module contains the definition of the core abstract syntax tree (AST)
+    of the language, together with smart constructors and low level operation.
+    The representation strongly relies on the {!module:Bindlib} library, which
+    provides a convenient abstraction to work with binders. *)
 
 open Extra
 open Timed
 
-(** {2 Term and rewriting rules representation} *)
+(** {2 Term (and symbol) representation} *)
 
-(** Representation of a term (or type). *)
+(** Representation of a term (or types) in a general sense. Values of the type
+    are also used, for example, in the representation of patterns or rewriting
+    rules. Specific constructors are included for such applications,  and they
+    are considered invalid in unrelated code. *)
 type term =
   | Vari of term Bindlib.var
   (** Free variable. *)
   | Type
-  (** "Type" constant. *)
+  (** "TYPE" constant. *)
   | Kind
-  (** "Kind" constant. *)
+  (** "KIND" constant. *)
   | Symb of sym * pp_hint
-  (** Symbol (static or definable). *)
+  (** User-defined symbol. *)
   | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
   | Abst of term * (term, term) Bindlib.binder
-  (** Abstraction. *)
+  (** Abstraction (with domain type). *)
   | Appl of term * term
   (** Application. *)
   | Meta of meta * term array
-  (** Metavariable with its environment. *)
+  (** Metavariable (only used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable (used in the LHS of rewriting rules). *)
+  (** Pattern variable (only used in the LHS of rewriting rules). *)
   | TEnv of term_env * term array
-  (** Term environment (used in the RHS of rewriting rules). *)
+  (** Term environment (only used in the RHS of rewriting rules). *)
   | Wild
-  (** Wildcard term (corresponding to "_" in patterns). *)
+  (** Wildcard pattern (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
-  (** Reference cell (used for surface matching). *)
+  (** Reference cell (only used for surface matching). *)
 
-(** Printing hint for symbols. *)
- and pp_hint =
-  | Nothing             (** Just print the name of the symbol. *)
-  | Qualified           (** Fully qualify the symbol name.     *)
-  | Alias     of string (** Use the given alias as qualifier.  *)
-  | Binary    of string (** Show as the given binary operator. *)
+(** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
+    a different representation depending on the application. For instance, the
+    {!const:Wild} constructor is only used when matching a pattern (e.g.,  for
+    the "rewrite" tactic). In the LHS of rewriting rules (see {!type:rule}), a
+    wildcard is syntactic sugar for a fresh, unused variable, represented with
+    the {!const:Patt} constructor. *)
 
-(** Representation of an higher-order term. *)
- and term_env =
-  | TE_Vari of term_env Bindlib.var
-  (** Free higher-oder term variable (for printing only). *)
-  | TE_Some of (term, term) Bindlib.mbinder
-  (** Higher-order term to instantiate the RHS of rewriting rules. *)
-  | TE_None
-  (** Dummy higher-order term (initial value in RHS environment). *)
-
-(** The {!const:Patt(i,s,ar)} constructor represents a pattern variable, which
-    may only appear in the LHS (left hand side or pattern) of rewriting rules.
-    It is identified by a {!type:string} name [s] (unique in a rewriting rule)
-    and it carries an environment [ar] that should contain a set of (distinct)
-    free variables (i.e., terms of the form {!const:Vari(x)}). They correspond
-    to the only free variables that may appear in a matched term. Note that we
-    must use the type {!type:term array} so that the variable may be bound. In
-    particular, the type {!type:tvar array} would not be suitable. The element
-    [i] (of type {!type:int option}) gives the index (if any) of the slot that
-    is reserved for the matched term in the environment of the RHS (right hand
-    side or action) of the rewriting rule. When [i] is {!const:None}, then the
-    variable is not bound in the RHS. When it is {!const:Some(i)}, then either
-    it is bound in the RHS, or it appears non-linearly in the LHS.
-
-    The {!const:TEnv(te,ar)} constructor corresponds to a form of metavariable
-    [te], with an associated environment [ar]. When it is used in the RHS of a
-    rewriting rule, the metavariable [te] must be bound. When a rewriting rule
-    applies, the metavariables that are bound in the RHS are substituted using
-    an environment that was constructed during the matching of the LHS. *)
-
-(** Representation of a constant or function symbol. *)
+(** Representation of a user-defined symbol. Symbols carry a "mode" indicating
+    whether they may be given rewriting rules or a definition. Invariants must
+    be enforced for "mode" consistency (see {!type:sym_mode}).  *)
  and sym =
   { sym_name  : string
   (** Name of the symbol. *)
@@ -86,64 +64,130 @@ type term =
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
-(** Possible symbol modes. *)
+(** {b NOTE} the {!recfield:sym_type} field contains a (timed) reference for a
+    technical reason related to the writing of signatures as binary files  (in
+    relation to {!val:Sign.link} and {!val:Sign.unlink}). This is necessary to
+    ensure that two identical symbols are always physically equal, even across
+    signatures. It should NOT be otherwise mutated. *)
+
+(** Possible modes for a symbol. It is given at the declaration of the symbol,
+    and it cannot be changed subsequently. *)
  and sym_mode =
-  | Const (** Constant symbol (no rewriting rule).          *)
-  | Defin (** Symbol has a definition (or rewriting rules). *)
-  | Injec (** Same as [Defin], but is assumed injective.    *)
+  | Const
+  (** The symbol is constant: it has no definition and no rewriting rule. *)
+  | Defin
+  (** The symbol may have a definition or rewriting rules (but NOT both). *)
+  | Injec
+  (** Same as [Defin], but the symbol is considered to be injective. *)
 
-(** The {!recfield:sym_type} field contains a reference for a technical reason
-    related to the representation of signatures as binary files (see functions
-    {!val:Sign.link} and {!val:Sign.unlink}). This is necessary to ensure that
-    two identical symbols are always physically equal, even across signatures.
-    It should not be mutated for any other reason.
+(** {b NOTE} the value of the {!rec_field:sym_mode} field of symbols restricts
+    the value of their {!rec_field:sym_def} and {!rec_field:sym_rules} fields.
+    It is forbidden for a symbol to be given rewriting rules (or a definition)
+    if its mode is [Const]. Moreover, a symbol should not be given at the same
+    time a definition (i.e., {!rec_field:sym_def} is not [None]) and rewriting
+    rules (i.e., {!rec_field:sym_rules} is non-empty). *)
 
-    The rewriting rules associated to a symbol are stored in the symbol itself
-    (in the {!recfield:sym_rules}). Note that a symbol should not be given any
-    reduction rule if it is marked as constant (i.e., if {!recfield:sym_const}
-    has value [true]), or if it has a definition. *)
+(** Pretty-printing hint for a symbol. One hint is attached to each occurrence
+    of a symbol, depending on the corresponding concrete (source code) syntax.
+    The aim of hints is to preserve as much as possible the syntax used by the
+    user in the concrete (source file) syntax. *)
+ and pp_hint =
+  | Nothing
+  (** Just print the name of the symbol. *)
+  | Qualified
+  (** Fully qualify the symbol name. *)
+  | Alias  of string
+  (** Use the given alias as qualifier. *)
+  | Binary of string
+  (** Show as the given binary operator. *)
 
-(** Representation of a rewriting rule. *)
+(** {2 Representation of rewriting rules} *)
+
+(** Representation of a rewriting rule. A rewriting rule is mainly formed of a
+    LHS (left hand side),  which is the pattern that should be matched for the
+    rule to apply, and a RHS (right hand side) giving the action to perform if
+    the rule applies. More explanations are give below. *)
  and rule =
   { lhs   : term list
-  (** Left  hand side.  *)
+  (** Left hand side (or LHS). *)
   ; rhs   : (term_env, term) Bindlib.mbinder
-  (** Right hand side.  *)
+  (** Right hand side (or RHS). *)
   ; arity : int
   (** Required number of arguments to be applicable. *)
   ; ctxt  : (string * int) array
-  (** Bound higher-order variables names and arities. *) }
+  (** Name and arity of the pattern variables bound in the RHS. *) }
 
-(** A rewriting rule is formed of a LHS (left hand side), which is the pattern
-    that should be matched for the rule to apply, and a RHS (right hand side),
-    which gives the action to perform if the rule applies.
+(** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
+    (on which the rule is defined) applied to a list of pattern arguments. The
+    list of arguments is given in {!recfield:lhs},  but the head symbol itself
+    does not need to be stored in the rule, as rules are stored in symbols. In
+    the pattern arguments of a LHS,  the {!const:Patt}[(i,s,env)]  constructor
+    is used to  represent pattern variables.  Pattern variables are identified
+    by a {!type:string} name [s] (unique in a rewriting rule),  and it carries
+    an environment [env] that should only contain distinct variables (terms of
+    the form {!const:Vari}[(x)]). They correspond to the set of variables that
+    may appear free in a matched term.  The {!type:int option} [i] corresponds
+    to the index (if any) of the slot that is reserved for the matched term in
+    the environment of the RHS during matching. When [i] is {!const:None} then
+    the variable is not bound in the RHS. If it is {!const:Some}[(_)] then the
+    variables is bound in the RHS, or it appears non-linearly in the LHS. *)
+    
+(** {b NOTE} that the environment carried by the {!const:Patt} constructor has
+    type {!type:term array} so that the variable may be bound.  In particular,
+    the type {!type:tvar array} would NOT be suitable. *)
 
-    The LHS (or pattern) of a rewriting rule is always formed of a head symbol
-    (on which the rule is defined) applied to a list of arguments. The list of
-    arguments is given in {!recfield:lhs}, but the head symbol itself does not
-    need to be stored in the rule (rules are contained in symbols). In a rule,
-    the {!recfield:arity} field gives the number of arguments contained in the
-    LHS. In other words, [r.arity] is always equal to [List.length r.lhs], and
-    it gives the minimal number of arguments that is required to match the LHS
-    of the rule.
+(** {b NOTE} that the value of the {!recfield:arity} field of a rewriting rule
+    gives the number of arguments contained in its LHS. As a consequence,  the
+    value of [r.arity] is always equal to [List.length r.lhs] and it gives the
+    minimal number of arguments required to match the LHS of the rule. *)
 
-    The RHS (or action) or a rewriting rule is represented by a term, in which
-    metavariables of type {!type:term_env} are bound. These metavariables must
-    be substituted with an environment of type {!type:term_env array} (that is
-    constructed when matching the LHS) to effectively apply the rule.
+(** The RHS (or action) or a rewriting rule is represented by a term, in which
+    (higher-order) variables representing a "terms with environments" (see the
+    {!type:term_env} type) are bound. To effectively apply the rewriting rule,
+    these  bound variables must be substituted using "terms with environments"
+    that are constructed when matching the LHS of the rule. *)
 
-    During evaluation, we will only try to apply rewriting rules when reducing
-    the application of a symbol [s] to a list of argument [ts]. At this point,
-    [s.sym_rules] contains every rule [r] that may potentially apply. To check
-    if [r] applies, one must match the elements of [r.lhs] with those of [ts],
-    while building an environment [ar] of type {!type:term_env array}. In this
-    process, a pattern of the form {!const:Patt(Some(i),s,ar)} matched against
-    a term [u] intuitively results in [ar.(i)] being set to [u]. If every term
-    can be matched against the corresponding pattern, the environment [ar] can
-    then be substituted in [r.rhs] with [Bindlib.msubst r.rhs ar] to build the
-    result of the application of the rewriting rule. *)
+(** Representation of a "term with environment", which intuitively corresponds
+    to a term with bound variables (or a "higher-order" term) represented with
+    the {!const:TE_Some} constructor.  The other constructors are included for
+    technical reasons due to the fact that "terms with environments" are bound
+    in the RHS of rewriting rules. *)
+ and term_env =
+  | TE_Vari of term_env Bindlib.var
+  (** Free "term with environment" variable (used to build a RHS). *)
+  | TE_Some of (term, term) Bindlib.mbinder
+  (** Actual "term with environment" (used to instantiate a RHS). *)
+  | TE_None
+  (** Dummy term environment (used during matching). *)
 
-(** Representation of a metavariable for unification. *)
+(** The {!const:TEnv}[(te,env)] constructor intuitively represents a term [te]
+    with free variables together with an explicit environment [env]. Note that
+    the binding of the environment actually occurs in [te],  in the case where
+    it corresponds to a {!const:TE_Some}[b] constructor. Indeed, [te] contains
+    a multiple binder [b] that binding all every free variables of the term at
+    once.  We can then effectively apply the substitution by substituting  [b]
+    with the environment [env]. *)
+    
+(** During evaluation, we only try to apply rewriting rules when we reduce the
+    application of a symbol [s] to a list of argument [ts]. At this point, the
+    symbol [s] contains  every rule [r] that can potentially be applied in its
+    {!recfield:sym_rules} field. To check if a rule [r] applies,  we match the
+    elements of [r.lhs] with those of [ts] while building an environment [env]
+    of type {!type:term_env array}. During this process, a pattern of the form
+    {!const:Patt}[(Some i,s,e)] matched against a term [u] intuitively results
+    in [env.(i)] being set to [u]. If all terms of [ts] can be matched against
+    corresponding patterns, then environment [env] is fully constructed and it
+    can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
+    the result of the application of the rule. *)
+
+(** {2 Metavariables and related functions} *)
+
+(** Representation of a metavariable,  which corresponds to a place-holder for
+    a (yet unknown) term which free variables are bound by an environment. The
+    substitution of the free variables with the environment is suspended until
+    the metavariable is instantiated (i.e., set to a particular term).  When a
+    metavariable [m] is instantiated,  the suspended substitution is  unlocked
+    and terms of the form {!const:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int
   (** Unique key of the metavariable. *)
@@ -156,19 +200,11 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** A metavariable is represented using a multiple binder, and it can hence be
-    instantiated with an open term, provided that its free variables appear in
-    the attached environment [ar] in terms of the form {!const:Meta(m,ar}. The
-    environment [ar] should only contain (distinct) free variables, as for the
-    {!const:Patt(i,s,ar)} constructor. *)
-
-(** {2 Functions related to the handling of metavariables} *)
-
-(** [unfold t] repeatedly unfolds the definition of the top level metavariable
-    of [t] until a significant {!type:term} constructor is found. Note that it
-    may an uninstantiated metavariable or any other form of term. However, the
-    returned term cannot be an instantiated metavariable. In the case where no
-    unfolding is required, the returned term is physically equal to [t]. *)
+(** [unfold t] repeatedly unfolds the definition of the surface constructor of
+    [t], until a significant {!type:term} constructor is found.  The term that
+    is returned cannot be an instantiated metavariable or term environment nor
+    a reference cell ({!const:TRef} constructor). If no unfolding is required,
+    the returned term is physically equal to [t]. *)
 let rec unfold : term -> term = fun t ->
   match t with
   | Meta(m, ar)          ->
@@ -186,25 +222,24 @@ let rec unfold : term -> term = fun t ->
       end
   | _                    -> t
 
-(** Note that the {!val:unfold} function should (almost always) be used before
-    matching over a value of type {!type:term}. *)
+(** {b NOTE} that {!val:unfold} must (almost) always be called before matching
+    over a value of type {!type:term}. *)
 
-(** [unset m] returns [true] if [m] is not instanciated. *)
+(** [unset m] returns [true] if [m] is not instantiated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [get_key ()] returns a fresh metavariable key. *)
-let get_key : unit -> int =
+(** [fresh_meta a n] creates a new metavariable of type [a] and arity [n]. *)
+let fresh_meta : ?name:string -> term -> int -> meta =
   let counter = Pervasives.ref (-1) in
-  (fun () -> Pervasives.(incr counter; !counter))
+  let fresh_meta ?name a n =
+   { meta_key =  Pervasives.(incr counter; !counter) ; meta_name = name
+   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None}
+  in fresh_meta
 
-(** [fresh_meta a n] returns a new metavariable of type [a] and arity [n]. *)
-let fresh_meta : ?name:string -> term -> int -> meta = fun ?name a n ->
-  { meta_key = get_key () ; meta_name = name ; meta_type = ref a
-  ; meta_arity = n ; meta_value = ref None}
-
-(** [set_meta m v] sets the value of the metavariable [m] to [v]. *)
+(** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
+    specific check is performed, so this function may lead to cyclic terms. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  m.meta_type := Kind; m.meta_value := Some(v)
+  m.meta_type := Kind (* to save memory *); m.meta_value := Some(v)
 
 (** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
 let internal : meta -> bool = fun m -> m.meta_name = None
@@ -215,26 +250,22 @@ let meta_name : meta -> string = fun m ->
   | Some(n) -> "?" ^ n
   | None    -> "?" ^ string_of_int m.meta_key
 
-(** [term_of_meta m e] returns a term representing the application of a  fresh
-    symbol (named and typed after [m]) to the terms of [e].  The preduced term
-    has thus the same type as [Meta(m,e)], and it can be used for checking its
-    type instead of that of [Meta(m,e)] directly. *)
+(** [term_of_meta m env] constructs the application of a dummy symbol with the
+    same type as [m], to the element of the environment [env].  The idea is to
+    obtain a term that has the same type as {!const:Meta}[(m,env)] but that is
+    simpler to type-check. *)
 let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
-    { sym_name  = Printf.sprintf "[%s]" (meta_name m)
-    ; sym_type  = ref !(m.meta_type)
-    ; sym_path  = []
-    ; sym_def   = ref None
-    ; sym_rules = ref []
-    ; sym_mode  = Const }
+    { sym_name = Printf.sprintf "[%s]" (meta_name m)
+    ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
+    ; sym_rules = ref [] ; sym_mode = Const }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
-(* NOTE [term_of_meta] must rely on a fresh symbol instead of a fresh variable
-   as otherwise we would need to polute the typing context with variables that
-   created metavariables should not be allowed to use. *)
+(** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
+    variable to avoid polluting the context. *)
 
-(** {2 Type synonyms and basic functions (related to [Bindlib])} *)
+(** {2 Smart constructors and Bindlib infrastructure} *)
 
 (** A short name for the binding of a term in a term. *)
 type tbinder = (term, term) Bindlib.binder
@@ -256,9 +287,6 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 
 (** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
-
-let unbind b = let (_,b) = Bindlib.unbind b in b
-let unbind2 b1 b2 = let (_,b1,b2) = Bindlib.unbind2 b1 b2 in (b1,b2)
 
 (** {2 Smart constructors and lifting (related to [Bindlib])} *)
 
@@ -343,6 +371,8 @@ let rec lift : term -> tbox = fun t ->
   | TRef(r)     -> _TRef r
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
-    metavariable has been removed (collapsed), and the name of bound variables
-    have been updated. *)
+    metavariable,  instantiated term environment,  and reference cell has been
+    eliminated using {!val:unfold}. Another effect of the function is that the
+    the names of bound variables updated.  This is useful to avoid any form of
+    "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
