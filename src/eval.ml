@@ -155,7 +155,9 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq_modulo l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq_modulo l
     | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> eq_modulo ((a1,a2)::(unbind2 b1 b2)::l)
+    | (Abst(a1,b1), Abst(a2,b2)) ->
+        let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
+        eq_modulo ((a1,a2)::(b1,b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)

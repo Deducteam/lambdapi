@@ -1,9 +1,9 @@
-Lambdapi- Implementation of the λΠ-calculus modulo rewriting
-============================================================
+Lambdapi - Proof assistant based on the λΠ-calculus modulo rewriting
+====================================================================
 
-Lambdapi is an implementation of the λΠ-calculus modulo rewriting, which
-is the system of Dedukti (https://github.com/Deducteam/Dedukti). More details
-are given in the [user manual](USER_MANUAL.md)
+Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
+mostly compatible with the proof checker Dedukti.
+More details are given in the [user manual](USER_MANUAL.md)
 
 Installation via Opam
 ---------------------
@@ -22,13 +22,13 @@ MacOS. It might also be possible to make it work on Windows with Cygwyn or
 with "bash on Windows".
 
 List of dependencies:
- - GNU make,
- - OCaml (at least 4.04.1),
- - Dune (at least 1.2.0),
- - odoc (for documentation only),
- - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib),
- - earley 2.0.0 (https://github.com/rlepigre/ocaml-earley),
- - timed 1.0 (https://github.com/rlepigre/ocaml-timed).
+ - GNU make
+ - OCaml (>= 4.04.1)
+ - Dune (>= 1.2.0)
+ - odoc (for documentation only)
+ - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib)
+ - earley 2.0.0 (https://github.com/rlepigre/ocaml-earley)
+ - timed 1.0 (https://github.com/rlepigre/ocaml-timed)
  - menhir
  - yojson (>= 1.6.0)
  - cmdliner

@@ -13,10 +13,8 @@
 open Core
 module LSP = Lsp_base
 
-type ast = Syntax.p_cmd Pos.loc
-
 type doc_node = {
-  ast  : ast;
+  ast  : Syntax.command;
   exec : bool;
 }
 
@@ -28,7 +26,7 @@ type doc = {
   uri : string;
   version: int;
   text : string;
-  root : Pure.state;
+  root : Pure.command_state;
   nodes : doc_node list;
 }
 
@@ -36,20 +34,23 @@ let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
 (* XXX: Imperative problem *)
-let process_cmd _file (st,dg) node =
-  let open Pos  in
+let process_cmd _file (s,dg) node =
   let open Pure in
   (* let open Timed in *)
   (* XXX: Capture output *)
   (* Console.out_fmt := lp_fmt;
    * Console.err_fmt := lp_fmt; *)
-  match handle_command st node with
-  | OK st ->
-    (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
-    let ok_diag = node.pos, 4, "OK", None in
-    st, ok_diag :: dg
-  | Error (_loc, msg) ->
-    st, (node.pos, 1, msg, None) :: dg
+  match handle_command s node with
+  | Cmd_OK(s) ->
+      (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
+      let ok_diag = (Command.get_pos node), 4, "OK", None in
+      (s, ok_diag :: dg)
+  | Cmd_Proof(_) ->
+      (* FIXME *)
+      let msg = "proofs temporarilly broken in LSP server" in
+      (s, ((Command.get_pos node), 1, msg, None) :: dg)
+  | Cmd_Error(_loc, msg) ->
+      (s, ((Command.get_pos node), 1, msg, None) :: dg)
 
 let new_doc ~uri ~version ~text =
   { uri;
