@@ -95,9 +95,11 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
     Tac_OK({s with pst_time = Time.save () ; pst_p_state = p})
   with Fatal(p,m) -> Tac_Error(p,m)
 
-let end_proof : proof_state -> command_state = fun s ->
-  let ss = s.pst_finalize s.pst_sig_state s.pst_p_state in
-  (Time.save (), ss)
+let end_proof : proof_state -> command_result = fun s ->
+  try
+    let ss = s.pst_finalize s.pst_sig_state s.pst_p_state in
+    Cmd_OK(Time.save (), ss)
+  with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : command_state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   Time.restore (fst s);

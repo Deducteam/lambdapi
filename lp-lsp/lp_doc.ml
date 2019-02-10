@@ -68,14 +68,15 @@ let process_cmd _file (st,dg) node =
     let pst, dg_proof = process_proof pst tlist in
     (* Fixme: this throws and exception and it should not *)
     let st, dg_proof =
-      try end_proof pst, dg_proof
-      with
-      | Core.Console.Fatal(loc,msg) ->
-        let loc = option_default loc cmd_loc in
-        let _pg = (loc, 1, msg, None) in
-        (* We don't add the diagnostic as it shadows the internal
-           ones; we should refine the loc to the qed *)
-        st, dg_proof
+      match end_proof pst with
+      | Cmd_OK st          -> (st, dg_proof)
+      | Cmd_Error(loc,msg) ->
+          let loc = option_default loc cmd_loc in
+          let _pg = (loc, 1, msg, None) in
+          (* We don't add the diagnostic as it shadows the internal
+             ones; we should refine the loc to the qed *)
+          st, dg_proof
+      | Cmd_Proof(_,_)     -> assert false (* Cannot happen. *)
     in
     st, dg_proof @ dg
   | Cmd_Error(_loc, msg) ->
