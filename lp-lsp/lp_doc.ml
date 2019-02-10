@@ -30,27 +30,56 @@ type doc = {
   nodes : doc_node list;
 }
 
+let option_default o1 d =
+  match o1 with | None -> d | Some x -> x
+
 let mk_error ~doc pos msg =
   LSP.mk_diagnostics ~uri:doc.uri ~version:doc.version [pos, 1, msg, None]
 
+let process_pstep (pstate, diags) tac =
+  let open Pure in
+  let tac_loc = Tactic.get_pos tac in
+  match handle_tactic pstate tac with
+  | Tac_OK pstate ->
+    (* Fixme *)
+    let goals = None in
+    pstate, (tac_loc, 4, "OK", goals) :: diags
+  | Tac_Error(loc,msg) ->
+    let loc = option_default loc tac_loc in
+    pstate, (loc, 1, msg, None) :: diags
+
+let process_proof pstate tacs =
+  List.fold_left process_pstep (pstate,[]) tacs
+
 (* XXX: Imperative problem *)
-let process_cmd _file (s,dg) node =
+let process_cmd _file (st,dg) node =
   let open Pure in
   (* let open Timed in *)
   (* XXX: Capture output *)
   (* Console.out_fmt := lp_fmt;
    * Console.err_fmt := lp_fmt; *)
-  match handle_command s node with
-  | Cmd_OK(s) ->
-      (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
-      let ok_diag = (Command.get_pos node), 4, "OK", None in
-      (s, ok_diag :: dg)
-  | Cmd_Proof(_) ->
-      (* FIXME *)
-      let msg = "proofs temporarilly broken in LSP server" in
-      (s, ((Command.get_pos node), 1, msg, None) :: dg)
+  let cmd_loc = Command.get_pos node in
+  match handle_command st node with
+  | Cmd_OK st ->
+    (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
+    let ok_diag = cmd_loc, 4, "OK", None in
+    st, ok_diag :: dg
+  | Cmd_Proof (pst, tlist) ->
+    let pst, dg_proof = process_proof pst tlist in
+    (* Fixme: this throws and exception and it should not *)
+    let st, dg_proof =
+      try end_proof pst, dg_proof
+      with
+      | Core.Console.Fatal(loc,msg) ->
+        let loc = option_default loc cmd_loc in
+        let _pg = (loc, 1, msg, None) in
+        (* We don't add the diagnostic as it shadows the internal
+           ones; we should refine the loc to the qed *)
+        st, dg_proof
+    in
+    st, dg_proof @ dg
   | Cmd_Error(_loc, msg) ->
-      (s, ((Command.get_pos node), 1, msg, None) :: dg)
+    st, (Command.get_pos node, 1, msg, None) :: dg
 
 let new_doc ~uri ~version ~text =
   { uri;
