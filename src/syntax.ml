@@ -22,12 +22,22 @@ type priority = float
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
+type implicitness =
+  | ImplicitAsDeclared
+  | FullyExplicit
+
+let eq_implicitness : implicitness -> implicitness -> bool = fun imp1 imp2 ->
+  match (imp1, imp2) with
+  | (ImplicitAsDeclared, ImplicitAsDeclared) -> true
+  | (FullyExplicit,      FullyExplicit)      -> true
+  | _                                        -> false
+
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux Pos.loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Vari of qident
+  | P_Vari of qident * implicitness
   (** Variable (empty module path) or symbol (arbitrary module path). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
@@ -171,8 +181,8 @@ let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-  | (P_Vari(q1)          , P_Vari(q2)          ) ->
-      eq_qident q1 q2
+  | (P_Vari(q1, imp1)    , P_Vari(q2, imp2)    ) ->
+      eq_qident q1 q2 && eq_implicitness imp1 imp2
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
       eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2

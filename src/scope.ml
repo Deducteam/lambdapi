@@ -134,6 +134,7 @@ let boolList_to_string : bool list -> string = fun l ->
   let rec boolList_to_string_aux : bool list -> string = fun l ->
   match l with
   | [] -> "] \n"
+  | h::[] -> (string_of_bool h) ^"] \n"
   | h::t -> (string_of_bool h) ^ "; " ^ (boolList_to_string_aux t)
   in "[" ^ boolList_to_string_aux l
 
@@ -147,7 +148,8 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
         (* print_string "debug : P_Abst found! \n"; *)
         List.map (fun x -> match x with (_,_,i) -> i) args
       end
-  | P_Vari(id)      -> 
+  | P_Vari(id, imp) -> if imp=FullyExplicit then [] 
+    else
     begin
       (* print_string "debug : P_Vari found! \n"; *)
       match (StrMap.find_opt (snd id.elt) ss.in_scope) with
@@ -190,8 +192,8 @@ let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args -
                     (List.rev args) @ fullArgs
     | (_, _)     -> fullArgs
   in
-    (* If we don't have implicitness information (as for a rewrite rule for instance), 
-       we directly put all the given concrete args *) 
+    (* If we don't have implicitness information (as for a fully explicit identifier like "@f"), 
+       we directly put only the given concrete args *) 
     if (param = []) then args 
     (* We reverse the arguments as they've been built in the opposite order *)
     else List.rev (addImplicitArgs_aux param args [])
@@ -232,7 +234,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
-    | (P_Vari(qid)     , _        ) -> find_qid ss env qid
+    | (P_Vari(qid, _)  , _        ) -> find_qid ss env qid
     | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
     | (P_Wild          , M_LHS(_) ) ->
         let xs = List.map (fun (_,(x,_)) -> _Vari x) env in

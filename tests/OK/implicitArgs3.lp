@@ -33,7 +33,6 @@ definition l1F : T (Vect (s zero)) ≔ consF zero nil true
 definition l1  : T (Vect (s zero)) ≔ cons nil true
 // It works.
 
-
-
-
+// Same as l1 but fully explicit
+definition l2 : T (Vect (s zero)) ≔ @cons zero nil true
 
