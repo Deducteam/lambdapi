@@ -51,8 +51,8 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       let handle ss c =
         let (ss, p) = Handle.handle_cmd ss c in
         match p with
-        | None                 -> ss
-        | Some(st,ts,finalize) ->
+        | None                     -> ss
+        | Some(_,st,ts,finalize,_) ->
             let st = List.fold_left (Tactics.handle_tactic ss) st ts in
             finalize ss st
       in

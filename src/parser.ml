@@ -389,7 +389,11 @@ let parser config =
       Prefix.add binops s binop;
       P_config_binop(binop)
 
-let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
+let parser statement =
+  _theorem_ s:ident ":" a:term _proof_ -> Pos.in_pos _loc (s,a)
+
+let parser proof =
+  ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
 
 let parser assert_must_fail =
   | _assert_    -> false
@@ -413,8 +417,8 @@ let parser cmd =
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(false,s,al,ao,t)
-  | _theorem_ s:ident ":" a:term (ts,e):proof
-      -> P_theorem(s,a,ts,e)
+  | st:statement (ts,e):proof
+      -> P_theorem(st,ts,e)
   | mf:assert_must_fail a:assertion
       -> P_assert(mf,a)
   | _set_ c:config

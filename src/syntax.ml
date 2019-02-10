@@ -8,7 +8,7 @@ open Pos
 type ident = strloc
 
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = (module_path * string) Pos.loc
+type qident = (module_path * string) loc
 
 (** Representation of the associativity of an infix operator. *)
 type assoc =
@@ -23,7 +23,7 @@ type priority = float
 type binop = string * assoc * priority * qident
 
 (** Parser-level (located) term representation. *)
-type p_term = p_term_aux Pos.loc
+type p_term = p_term_aux loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
@@ -66,7 +66,7 @@ type symtag =
   (** The symbol is injective. *)
 
 (** Parser-level rewriting rule representation. *)
-type p_rule = (p_patt * p_term) Pos.loc
+type p_rule = (p_patt * p_term) loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
@@ -99,7 +99,7 @@ type p_tactic_aux =
   (** Print the current goal. *)
   | P_tac_proofterm
   (** Print the current proof term (possibly containing open goals). *)
-type p_tactic = p_tactic_aux Pos.loc
+type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
 type p_proof_end =
@@ -148,7 +148,7 @@ type p_cmd =
   (** Rewriting rule declarations. *)
   | P_definition of bool * ident * p_arg list * p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem    of ident * p_type * p_tactic list * p_proof_end
+  | P_theorem    of (ident * p_type) loc * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_assert     of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
@@ -160,7 +160,7 @@ type p_cmd =
   (** Normalisation command. *)
 
 (** Parser-level representation of a single (located) command. *)
-type command = p_cmd Pos.loc
+type command = p_cmd loc
 
 (** Top level AST returned by the parser. *)
 type ast = command list
@@ -203,7 +203,7 @@ let eq_require_mode : require_mode eq = fun r1 r2 ->
   | (P_require_as(id1), P_require_as(id2)) -> id1.elt = id2.elt
   | (_                , _                ) -> false
 
-let eq_p_rw_patt : p_rw_patt Pos.loc eq = fun r1 r2 ->
+let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
   | (P_rw_Term(t1)                , P_rw_Term(t2)                )
   | (P_rw_InTerm(t1)              , P_rw_InTerm(t2)              ) ->
@@ -259,8 +259,10 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
   | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->
       b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
-  | (P_theorem(s1,a1,ts1,e1)     , P_theorem(s2,a2,ts2,e2)     ) ->
-      eq_ident s1 s2 && eq_p_term a1 a2 && e1 = e2
+  | (P_theorem(st1,ts1,e1)       , P_theorem(st2,ts2,e2)       ) ->
+      let (s1,a1) = st1.elt in
+      let (s2,a2) = st2.elt in
+      eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
       && List.equal eq_p_tactic ts1 ts2
   | (P_assert(mf1,a1)            , P_assert(mf2,a2)            ) ->
       mf1 = mf2 && eq_p_assertion a1 a2

@@ -12,7 +12,11 @@ open Syntax
 open Scope
 
 type proof_data =
-  Proof.t * p_tactic list * (sig_state -> Proof.t -> sig_state)
+  Pos.popt * (* Position of the current proof's statement. *)
+  Proof.t *  (* Proof state of the proof. *)
+  p_tactic list * (* Tactics forming the proof. *)
+  (sig_state -> Proof.t -> sig_state) * (* Finalization function. *)
+  Pos.popt (* Position of the proof terminator (i.e., QED). *)
 
 (** [!require mp] can be called to require the compilation of the module (that
     corresponds to) [mp]. The reference is set in the [Compile] module. *)
@@ -133,8 +137,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
-  | P_theorem(x, a, ts, pe)    ->
+  | P_theorem(stmt, ts, pe)    ->
       (* Scoping the type (statement) of the theorem, check sort. *)
+      let (x,a) = stmt.elt in
       let a = fst (scope_basic ss a) in
       Solve.sort_type Ctxt.empty a;
       (* We check that [x] is not already used. *)
@@ -144,7 +149,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let st = Proof.init ss.builtins x a in
       (* Build proof checking data. *)
       let finalize ss st =
-        match pe with
+        match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)
             wrn cmd.pos "Proof aborted."; ss
@@ -165,7 +170,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             out 3 "(symb) %s (QED).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in
-      (ss, Some(st, ts, finalize))
+      (ss, Some(stmt.pos, st, ts, finalize, pe.pos))
   | P_assert(must_fail, asrt)  ->
       let result =
         match asrt with
