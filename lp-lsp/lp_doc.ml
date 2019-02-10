@@ -46,7 +46,9 @@ let process_cmd _file (s,dg) node =
       let ok_diag = (Command.get_pos node), 4, "OK", None in
       (s, ok_diag :: dg)
   | Cmd_Proof(_) ->
-      assert false (* FIXME *)
+      (* FIXME *)
+      let msg = "proofs temporarilly broken in LSP server" in
+      (s, ((Command.get_pos node), 1, msg, None) :: dg)
   | Cmd_Error(_loc, msg) ->
       (s, ((Command.get_pos node), 1, msg, None) :: dg)
 
