@@ -51,10 +51,11 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       let handle ss c =
         let (ss, p) = Handle.handle_cmd ss c in
         match p with
-        | None                     -> ss
-        | Some(_,st,ts,finalize,_) ->
+        | None       -> ss
+        | Some(data) ->
+            let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
             let st = List.fold_left (Tactics.handle_tactic ss) st ts in
-            finalize ss st
+            data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));
       if Pervasives.(!gen_obj) then Sign.write sign obj;

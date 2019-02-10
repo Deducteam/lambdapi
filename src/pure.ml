@@ -67,8 +67,10 @@ let handle_command : command_state -> Command.t -> command_result =
     let (ss, pst) = Handle.handle_cmd ss cmd in
     let t = Time.save () in
     match pst with
-    | None                    -> Cmd_OK(t, ss)
-    | Some(_,p,ts,finalize,_) -> Cmd_Proof((t,ss,p,finalize), ts)
+    | None       -> Cmd_OK(t, ss)
+    | Some(data) ->
+        let ts = data.pdata_tactics in
+        Cmd_Proof((t,ss,data.pdata_p_state,data.pdata_finalize), ts)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->

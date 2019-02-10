@@ -12,11 +12,11 @@ open Syntax
 open Scope
 
 type proof_data =
-  Pos.popt * (* Position of the current proof's statement. *)
-  Proof.t *  (* Proof state of the proof. *)
-  p_tactic list * (* Tactics forming the proof. *)
-  (sig_state -> Proof.t -> sig_state) * (* Finalization function. *)
-  Pos.popt (* Position of the proof terminator (i.e., QED). *)
+  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
+  ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
+  ; pdata_tactics  : p_tactic list (* Tactics for the proof.         *)
+  ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
+  ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
 (** [!require mp] can be called to require the compilation of the module (that
     corresponds to) [mp]. The reference is set in the [Compile] module. *)
@@ -170,7 +170,11 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             out 3 "(symb) %s (QED).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in
-      (ss, Some(stmt.pos, st, ts, finalize, pe.pos))
+      let data =
+        { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
+        ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
+      in
+      (ss, Some(data))
   | P_assert(must_fail, asrt)  ->
       let result =
         match asrt with
