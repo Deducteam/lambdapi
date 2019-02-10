@@ -317,7 +317,7 @@ let parser term @(p : prio) =
    level [PBinO]. The left operand is parsed first, together with the operator
    to obtain the corresponding priority and associativity parameters.  We then
    check whether the (binary operator) priority level [pl] of the left operand
-   satifies the conditions, and reject it if it does not. We then parse
+   satifies the conditions, and reject it early if it does not.  We then parse
    the right operand in a second step, and also check whether it satisfies the
    required condition before accepting the parse tree. *)
 
