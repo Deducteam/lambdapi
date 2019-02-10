@@ -30,6 +30,12 @@ type command_state
 (** Representation of the state when in a proof. *)
 type proof_state
 
+(** Given a proof state, gives the position of the statement of the proof. *)
+val get_statement_pos : proof_state -> Pos.popt
+
+(** Given a proof state, gives the position of the proof terminator (QED). *)
+val get_terminator_pos : proof_state -> Pos.popt
+
 (** Result type of the [handle_command] function. *)
 type command_result =
   | Cmd_OK    of command_state               (** Command is done.  *)
