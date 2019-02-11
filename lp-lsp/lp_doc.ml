@@ -66,7 +66,6 @@ let process_cmd _file (st,dg) node =
     st, ok_diag :: dg
   | Cmd_Proof (pst, tlist, _, _) -> (* FIXME use positions. *)
     let pst, dg_proof = process_proof pst tlist in
-    (* Fixme: this throws and exception and it should not *)
     let st, dg_proof =
       match end_proof pst with
       | Cmd_OK st          -> (st, dg_proof)

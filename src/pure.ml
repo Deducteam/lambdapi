@@ -42,6 +42,9 @@ type command_state = Time.t * Scope.sig_state
 type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state
 type proof_state = Time.t * Scope.sig_state * Proof.t * proof_finalizer
 
+let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_) ->
+  p.proof_goals
+
 type command_result =
   | Cmd_OK    of command_state
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt

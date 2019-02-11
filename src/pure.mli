@@ -30,6 +30,9 @@ type command_state
 (** Representation of the state when in a proof. *)
 type proof_state
 
+(** [current_goals s] returns the list of open goals for proof state [s]. *)
+val current_goals : proof_state -> Proof.Goal.t list
+
 (** Result type of the [handle_command] function. *)
 type command_result =
   | Cmd_OK    of command_state
