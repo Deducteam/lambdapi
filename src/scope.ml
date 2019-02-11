@@ -314,7 +314,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
-  (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
+  (* We scope the LHS and add indexes in the environment for meta-variables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in

@@ -18,7 +18,7 @@ let add : string -> tvar -> tbox -> env -> env = fun n x a env ->
 
 (** [find n env] returns the Bindlib variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
-let find : string -> env -> tvar = fun n env -> 
+let find : string -> env -> tvar = fun n env ->
   fst (List.assoc n env)
 
 (** [prod_of_env env t] builds a sequence of product types whose  domains  are

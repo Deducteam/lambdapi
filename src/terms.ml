@@ -131,7 +131,7 @@ type term =
     the environment of the RHS during matching. When [i] is {!const:None} then
     the variable is not bound in the RHS. If it is {!const:Some}[(_)] then the
     variables is bound in the RHS, or it appears non-linearly in the LHS. *)
-    
+
 (** {b NOTE} that the environment carried by the {!const:Patt} constructor has
     type {!type:term array} so that the variable may be bound.  In particular,
     the type {!type:tvar array} would NOT be suitable. *)
@@ -167,7 +167,7 @@ type term =
     a multiple binder [b] that binding all every free variables of the term at
     once.  We can then effectively apply the substitution by substituting  [b]
     with the environment [env]. *)
-    
+
 (** During evaluation, we only try to apply rewriting rules when we reduce the
     application of a symbol [s] to a list of argument [ts]. At this point, the
     symbol [s] contains  every rule [r] that can potentially be applied in its
