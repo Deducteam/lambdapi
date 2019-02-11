@@ -114,7 +114,7 @@ type term =
   (** Right hand side (or RHS). *)
   ; arity : int
   (** Required number of arguments to be applicable. *)
-  ; ctxt  : (string * int) array
+  ; vars  : (string * int) array
   (** Name and arity of the pattern variables bound in the RHS. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol

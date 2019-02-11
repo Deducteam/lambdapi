@@ -335,9 +335,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
-  let ctxt = Array.of_list pvs in
+  let vars = Array.of_list pvs in
   (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; ctxt})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; vars})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

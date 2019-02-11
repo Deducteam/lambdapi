@@ -165,4 +165,4 @@ let term_of_rhs : rule -> term = fun r ->
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
-  Bindlib.msubst r.rhs (Array.mapi fn r.ctxt)
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
