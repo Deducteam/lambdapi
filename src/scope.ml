@@ -251,7 +251,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
 let scope_term : metamap -> sig_state -> env -> p_term
     -> term * metamap = fun m ss env t ->
   let m = Pervasives.ref m in
-  let t = scope (M_Term(m)) ss env t in  
+  let t = scope (M_Term(m)) ss env t in
   (Bindlib.unbox t, Pervasives.(!m))
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
