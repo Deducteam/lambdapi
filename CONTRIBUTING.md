@@ -13,6 +13,7 @@ In the interest of code source uniformity, we ask that:
  - there should be *no trailing spaces* at the end of lines,
  - lines length should be limited to *78 characters* (excluding newline).
 
+You should at the very least run `make sanity_check` before comiting anything.
 
 Type annotations and interface
 ------------------------------
