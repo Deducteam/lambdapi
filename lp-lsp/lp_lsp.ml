@@ -50,7 +50,7 @@ let do_initialize ofmt ~id _params =
        `Assoc [
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
-        ; "hoverProvider", `Bool true
+        ; "hoverProvider", `Bool false
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg

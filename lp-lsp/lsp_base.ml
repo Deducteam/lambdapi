@@ -27,28 +27,27 @@ let parse_uri str =
 let mk_reply ~id ~result = `Assoc [ "jsonrpc", `String "2.0"; "id",     `Int id;   "result", result ]
 let mk_event m p   = `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
-(*
 let json_of_goal g =
   let pr_hyp (s,(_,t)) =
     `Assoc ["hname", `String s;
             "htype", `String (Format.asprintf "%a" Print.pp_term (Bindlib.unbox t))] in
-  let open Proofs in
-  let j_env = List.map pr_hyp g.g_hyps in
+  let open Proof in
+  let g_meta = Goal.get_meta g in
+  let hyp, typ = Goal.get_type g in
+  let j_env = List.map pr_hyp hyp in
   `Assoc [
-    "gid", `Int g.g_meta.meta_key
+    "gid", `Int g_meta.meta_key
   ; "hyps", `List j_env
-  ; "type", `String (Format.asprintf "%a" Print.pp_term g.g_type)]
+  ; "type", `String (Format.asprintf "%a" Print.pp_term typ)]
 
-let json_of_thm thm =
-  let open Proofs in
-  match thm with
+let json_of_thm goals =
+  match goals with
   | None ->
     `Null
-  | Some thm ->
+  | Some goals ->
     `Assoc [
-      "goals", `List List.(map json_of_goal thm.t_goals)
+      "goals", `List List.(map json_of_goal goals)
     ]
-*)
 
 let mk_range (p : Pos.pos) : J.t =
   let open Pos in
@@ -59,10 +58,10 @@ let mk_range (p : Pos.pos) : J.t =
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
 (* let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (thm : Proofs.theorem option)) : J.json = *)
-let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (_thm : unit option)) : J.t =
-  (* let goal = json_of_thm thm in *)
+let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (goals : _ option)) : J.t =
+  let goals = json_of_thm goals in
   let range = mk_range p in
-  `Assoc ((* mk_extra ["goal_info", goal] @ *)
+  `Assoc (mk_extra ["goal_info", goals] @
           ["range", range;
            "severity", `Int lvl;
            "message",  `String msg;
