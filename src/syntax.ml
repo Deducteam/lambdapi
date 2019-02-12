@@ -48,6 +48,7 @@ and p_term_aux =
   | P_NLit of int
   (** Natural number literal. *)
   | P_BinO of p_term * binop * p_term
+  (** Binary operator. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
