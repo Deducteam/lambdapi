@@ -183,12 +183,24 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
               wrn t.pos "Pattern variable not bound in the RHS.";
             None
         in
+        (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
-          | Vari(x) -> Bindlib.box_var x
-          | _       -> fatal t.pos "Not a variable."
+          | Vari(x) -> x
+          | _       ->
+             fatal t.pos "Pattern variables can be applied \
+                          to distinct bound variables only."
         in
-        _Patt i id.elt (Array.map scope_var ts)
+        let vs = Array.map scope_var ts in
+        (* Check that [vs] are distinct variables. *)
+        for i=1 to Array.length vs - 1 do
+          for j=0 to i-1 do
+            if Bindlib.eq_vars vs.(i) vs.(j) then
+              fatal t.pos "Pattern variables can be applied \
+                           to distinct bound variables only."
+          done
+        done;
+        _Patt i id.elt (Array.map Bindlib.box_var vs)
     | (P_Patt(id,ts)   , M_RHS(m) ) ->
         let x =
           try List.assoc id.elt m with Not_found ->
