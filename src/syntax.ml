@@ -172,6 +172,9 @@ let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
+let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
+  n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
+
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
   | (P_Iden(q1)          , P_Iden(q2)          ) ->
@@ -188,6 +191,10 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (P_LLet(x1,xs1,t1,u1), P_LLet(x2,xs2,t2,u2)) ->
       eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
       && List.equal eq_p_arg xs1 xs2
+  | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)    ) ->
+      eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
+  | (P_Wrap(t1)          , P_Wrap(t2)          ) ->
+      eq_p_term t1 t2
   | (t1                  ,                   t2) ->
       t1 = t2
 
