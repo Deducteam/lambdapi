@@ -152,7 +152,7 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
     else
     begin
       (* print_string "debug : P_Vari found! \n"; *)
-      match (StrMap.find_opt (snd id.elt) ss.in_scope) with
+      match StrMap.find_opt (snd id.elt) ss.in_scope with
       | Some(res) -> let implicits = (fst res).sym_implicits in
                       begin
                         (* print_string "debug : found it in in_scope ! \n"; *)
@@ -160,7 +160,7 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
                         implicits
                       end
       | None      -> 
-        (match (StrMap.find_opt (snd id.elt) ss.builtins) with
+        (match StrMap.find_opt (snd id.elt) ss.builtins with
         | Some(res) -> (* print_string "debug : found it in builtins ! \n"; *) 
                        (fst res).sym_implicits
         | None -> (* print_string "debug : not found ! \n"; *)
