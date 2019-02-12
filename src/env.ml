@@ -2,7 +2,7 @@
 
 open Terms
 
-(** Type of an environment,  used to associate variable names to corresponding
+(** Type of an environment,  used to associate names to corresponding
     Bindlib variables and types. *)
 type env = (string * (tvar * tbox)) list
 
