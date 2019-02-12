@@ -254,7 +254,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
   | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Vari(qid))
+      when p >= PAtom -> in_pos _loc (P_Iden(qid))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild

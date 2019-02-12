@@ -146,7 +146,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
-    | (P_Vari(qid)     , _        ) -> find_qid ss env qid
+    | (P_Iden(qid)     , _        ) -> find_qid ss env qid
     | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
     | (P_Wild          , M_LHS(_) ) ->
         let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
@@ -276,7 +276,7 @@ let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars acc t =
     match t.elt with
     | P_Type           -> acc
-    | P_Vari(_)        -> acc
+    | P_Iden(_)        -> acc
     | P_Wild           -> acc
     | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
     | P_Patt(id,ts)    ->

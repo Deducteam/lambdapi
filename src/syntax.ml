@@ -27,7 +27,7 @@ type p_term = p_term_aux loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Vari of qident
+  | P_Iden of qident
   (** Variable (empty module path) or symbol (arbitrary module path). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
@@ -171,7 +171,7 @@ let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-  | (P_Vari(q1)          , P_Vari(q2)          ) ->
+  | (P_Iden(q1)          , P_Iden(q2)          ) ->
       eq_qident q1 q2
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
