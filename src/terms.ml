@@ -28,20 +28,20 @@ type term =
   | Abst of term * (term, term) Bindlib.binder
   (** Abstraction (with domain type). *)
   | Appl of term * term
-  (** Application. *)
+  (** Term application. *)
   | Meta of meta * term array
-  (** Metavariable (only used by unification and for proof goals). *)
+  (** Metavariable application (used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable (only used in the LHS of rewriting rules). *)
+  (** Pattern variable application (only used in the LHS of rewriting rules). *)
   | TEnv of term_env * term array
   (** Term environment (only used in the RHS of rewriting rules). *)
   | Wild
-  (** Wildcard pattern (only used for surface matching, never in a LHS). *)
+  (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
-    a different representation depending on the application. For instance, the
+    a different representation depending on the application. The
     {!const:Wild} constructor is only used when matching a pattern (e.g.,  for
     the "rewrite" tactic). In the LHS of rewriting rules (see {!type:rule}), a
     wildcard is syntactic sugar for a fresh, unused variable, represented with

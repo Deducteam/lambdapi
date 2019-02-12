@@ -110,13 +110,14 @@ type mode =
   (** Standard scoping mode for terms,  holding a map of defined metavariables
       that can be updated with new metavariable on scoping. *)
   | M_Patt
-  (** Scoping as a rewriting pattern. *)
+  (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list
-  (** Left-hand side mode, used for scoping patterns.  The constructor carries
-      a map associating an index to every (real) pattern variable. *)
+  (** Scoping mode for rewriting rule left-hand sides. The constructor
+      carries a map associating an index to every free variable. *)
   | M_RHS  of (string * tevar) list
-  (** Right-hand side mode. The constructor carries the environment for higher
-      order variables that will be bound in the representation of the RHS. *)
+  (** Scoping mode for rewriting rule righ-hand sides. The constructor
+      carries the environment for variables that will be bound in the
+      representation of the RHS. *)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
