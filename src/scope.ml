@@ -254,6 +254,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let (s, _) = find_sym true ss qid in
         let s = _Symb s (Binary(op)) in
         _Appl (_Appl s (scope env l)) (scope env r)
+    | (P_Wrap(t)      , _         ) -> scope env t
   in
   scope env t
 
@@ -296,6 +297,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
     | P_NLit(_)        -> acc
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
+    | P_Wrap(t)        -> patt_vars acc t
   and arg_patt_vars acc xs =
     match xs with
     | []                 -> acc

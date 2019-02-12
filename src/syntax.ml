@@ -49,6 +49,8 @@ and p_term_aux =
   (** Natural number literal. *)
   | P_BinO of p_term * binop * p_term
   (** Binary operator. *)
+  | P_Wrap of p_term
+  (** Parentheses (only necessary to handle binary operators. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
