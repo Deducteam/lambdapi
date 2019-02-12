@@ -372,9 +372,9 @@ let parser assertion =
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
 let parser assoc =
-  | EMPTY -> Assoc_none
-  | "l"   -> Assoc_left
-  | "r"   -> Assoc_right
+  | EMPTY   -> Assoc_none
+  | "left"  -> Assoc_left
+  | "right" -> Assoc_right
 
 (** [config] pases a single configuration option. *)
 let parser config =

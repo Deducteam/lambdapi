@@ -316,7 +316,7 @@ and  add (succ &n) &m → succ (add &n &m)
 The `definition` command is used to immediately define a new symbol, for it to
 be equal to some (closed) term.
 ```
-definition plus_two : Nat ⇒ Nat ≔ λn.add n (succ (succ zero))
+definition plus_two : Nat ⇒ Nat ≔ λn,add n (succ (succ zero))
 definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
 definition plus_two (n : Nat) ≔ add n (succ (succ zero))
 definition plus_two n ≔ add n (succ (succ zero))
@@ -364,13 +364,13 @@ set builtin "+1" ≔ succ
 The following code defines infix symbols for addition and multiplication. Both
 are associative to the left, and they have priority levels `6` and `7`.
 ```
-set infixl 6 "+" ≔ add
-set infixl 7 "×" ≔ mul
+set infix left 6 "+" ≔ add
+set infix left 7 "×" ≔ mul
 ```
-The modifier `infix`, `infixr` and `infixl` can be used to specify whether the
-defined symbol is non-associative, associative to the right, or associative to 
-the left. The priority levels are floating point numbers, hence a priority can
-(almost) always be inserted in between two different levels.
+The modifier `infix`, `infix right` and `infix left` can be used to specify
+whether the defined symbol is non-associative, associative to the right,
+or associative to the left. The priority levels are floating point numbers,
+hence a priority can (almost) always be inserted between two different levels.
 
 **Important limitation:** no check is done on the syntax of the symbol that is
 defined. As a consequence, it is very easy to break the system by redefining a
