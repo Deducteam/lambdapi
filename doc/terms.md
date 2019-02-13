@@ -3,7 +3,7 @@ Syntax of terms
 
 /!\ PAGE UNDER DEVELOPMENT /!\
 
-The BNF grammar of lambdapi can be found in [syntax.bnf](../syntax.bnf).
+The BNF grammar of `lambdapi` is in [syntax.bnf](../syntax.bnf).
 
 A user-defined term can be either:
 
@@ -25,4 +25,6 @@ A user-defined term can be either:
  * a `let f (x y:A) z = t` construction
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
+
+ * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal.
  
