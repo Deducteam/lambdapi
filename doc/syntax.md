@@ -10,7 +10,7 @@ start of a new command or at the end of the file.
 
 ### Lexical conventions
 
-<!-- TODO -- >
+<!-- TODO -->
 
 ### The `require` command
 
