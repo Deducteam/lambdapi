@@ -13,7 +13,7 @@ stops on the first failure, without going to the next file (if any).
 be relative to the current directory. Moreover, they should neither start with
 the `./` current directory marker, nor contain partent directory markers `..`.
 This is due to the fact that the directory structure is significant due to the
-treatment of [modules](modules.md).
+treatment of [modules](module.md).
 
 Command line flags can be used to control the behaviour of `lambdapi`. You can
 use `lambdapi --help` to get a short description of the available flags.  The
