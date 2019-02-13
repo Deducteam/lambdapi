@@ -16,7 +16,7 @@ A user-defined term can be either:
    - a bound variable
    - a metavariable or goal
 
-  Convention: an identifier starting with a capital letter for types and predicates, and a small letter for constructors, functions and proofs.
+  Convention: identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
   
  * an anonymous function `λ(x y:A) z,t` mapping `x`, `y` and `z` (of type `A` for `x` and `y`) to `t`
 
@@ -24,5 +24,5 @@ A user-defined term can be either:
 
  * a `let f (x y:A) z = t` construction
 
- * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix
+ * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
  
