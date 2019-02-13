@@ -25,14 +25,16 @@ Table of contents
 
  - [Syntax of proof tactics](sections/tactics.md)
  
- - [Compatibility with Dedukti](sections/dedukti.md)
- 
  - [API](sections/api.md)
 
  - [Structure of directories and files](sections/structure.md)
+
+ - [Implementation choices](sections/implementation.md)
  
  - [Contributing](CONTRIBUTING.md)
  
  - [Compiling and profiling](sections/devel.md)
+
+ - [Compatibility with Dedukti](sections/dedukti.md)
 
  - [Bibliographic references](sections/biblio.md)
