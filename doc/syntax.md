@@ -98,7 +98,7 @@ the debugging flag `s`.
 ```
 set verbose 1
 set debug +ts
-set debut -s
+set debug -s
 ```
 
 The following code sets the definition of built-in symbols. They are used, for
