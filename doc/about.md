@@ -1,7 +1,8 @@
 What is Lambdapi?
 -----------------
 
-The `lambdapi` system is several things!
+The `lambdapi` system is several things! It is intended to replace [Dedukti](https://deducteam.github.io/) in a near future. It extends `Dedukti` with new features, especially interactive proof development.
+
 
 ### A logical framework
 
@@ -15,10 +16,9 @@ it allows the encoding of the theories behind Coq or HOL.
 
 ### A tool for interoperability of proof systems
 
-The ability to encode several rather different systems make of `lambdapi` (and
-its predecessor `Dedukti`) an ideal target for proof interoperability. Indeed,
-one can for example export a proof written in Matita (an implementation of the
-calculus of inductive constructions) to the OpenTheory format (shared  between 
+The ability to encode several rather different systems make of `lambdapi` an ideal target for proof interoperability. Indeed,
+one can for example export a proof written in [Matita](http://matita.cs.unibo.it/) (an implementation of the
+calculus of inductive constructions) to the [OpenTheory](http://www.gilith.com/opentheory/) format (shared  between 
 several implementations of HOL).
 
 ### An interactive proof system
@@ -44,7 +44,7 @@ aimed at exploring (and experimenting with)  the many possibilities offered by
 rewriting, and the associated notion of conversion. In particular, it leads to
 simple proofs, where many details are delegated to the conversion rule.
 
-Although the language may resemble Coq at a surface level, it is fundamentally
+Although the language may resemble [Coq](http://coq.inria.fr) at a surface level, it is fundamentally
 different in the way mathematics can be encoded. It is yet unclear whether the
 power of rewriting will be a significant advantage of `lambdapi` over  systems
 like Coq. That is something that we would like to clarify (in the near future)

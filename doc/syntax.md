@@ -1,6 +1,8 @@
 Syntax of Lambdapi
 ------------------
 
+UNDER DEVELOPMENT
+
 In this section, we will illustrate the syntax of Lambdapi using examples. The
 first thing to note is that Lambdapi files are formed of a list of commands. A
 command starts with a particular, reserved keyword.  And it ends either at the

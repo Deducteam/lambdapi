@@ -1,7 +1,7 @@
 Compatibility with Dedukti
 --------------------------
 
-One of the aims of Lambdapi is to remain compatible with Dedukti. Currently, a
+One of the aims of Lambdapi is to remain compatible with [Dedukti](https://deducteam.github.io/). Currently, a
 second parser is included in Lambdapi in order to support the legacy syntax of
 Dedukti. It should be extended whenever the syntax of Dedukti is extended, but
 such changes should be discouraged.

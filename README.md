@@ -17,6 +17,8 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting
  
  - [API](doc/api.md)
 
+ - [Structure of directories and files](doc/structure.md)
+ 
  - [Contributing](CONTRIBUTING.md)
  
  - [Compiling and profiling](doc/devel.md)

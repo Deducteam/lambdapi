@@ -1,18 +1,6 @@
 Command line flags and tools
 ----------------------------
 
-The installation of `lambdapi` gives you:
- - a main executable named `lambdapi` in your `PATH`,
- - an OCaml library called `lambdapi`,
- - an LSP-compatible server called `lp-lsp` in your `PATH`,
- - a `lambdapi` mode for `Vim` (optional),
- - a `lambdapi` mode for `emacs` (optional).
-
-The options `--help` or `-help` give you a list of available flags
-with a minimal documentation.
-
-### Main Lambdapi program
-
 The `lambdapi` executable is the main program. It can be used to process files
 written in the `lambdapi` syntax (with the ".lp" extension), and files written
 in the legacy (Dedukti) syntax (with the ".dk" extension).
@@ -25,7 +13,7 @@ stops on the first failure, without going to the next file (if any).
 be relative to the current directory. Moreover, they should neither start with
 the `./` current directory marker, nor contain partent directory markers `..`.
 This is due to the fact that the directory structure is significant due to the
-treatment of modules (more details on that will be given later).
+treatment of [modules](doc/modules.md).
 
 Command line flags can be used to control the behaviour of `lambdapi`. You can
 use `lambdapi --help` to get a short description of the available flags.  The
