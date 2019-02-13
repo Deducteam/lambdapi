@@ -12,4 +12,4 @@ supporting the [LSP](https://github.com/Microsoft/language-server-protocol)
 protocol. For now,  we support the `emacs` editor through the `eglot` package,
 and also the `Atom` editor with a custom plugin.
 
-See the file [lp-lsp/README.md](lp-lsp/README.md) for more details.
+See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.

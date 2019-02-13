@@ -4,7 +4,7 @@ The `emacs` mode can be optionally installed using `make install_emacs` in the
 `lambdapi` repository.  Support for the LSP server is enabled by default,  but
 it requires the `eglot` plugin to be installed.
 
-See the file [lp-lsp/README.md](lp-lsp/README.md) for more details.
+See the file [../../lp-lsp/README.md](lp-lsp/README.md) for more details.
 
 ### Vim mode
 
