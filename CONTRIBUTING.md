@@ -70,7 +70,7 @@ Directories and files
  * `proofs/`: examples of Lambdapi files with proofs
 
  * `tools/`:
-   - `deps.ml`:
+   - `deps.ml`: computes `require` commands for converting an old Dedukti file into a Lambdapi file
    - `lambdapi.tex`: listings setup for including Lambdapi code in Latex
    - `sanity_check.sh`: script checking some style guidelines below (called by `make sanity_check`)
 
