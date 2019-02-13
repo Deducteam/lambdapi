@@ -3,7 +3,7 @@ Syntax of terms
 
 /!\ PAGE UNDER DEVELOPMENT /!\
 
-The BNF grammar of lambdapi can be found in [syntax.bnf].
+The BNF grammar of lambdapi can be found in [syntax.bnf](syntax.nf).
 
 A user-defined term can be either:
 
