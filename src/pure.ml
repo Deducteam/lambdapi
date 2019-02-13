@@ -42,9 +42,12 @@ type command_state = Time.t * Scope.sig_state
 type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state
 type proof_state = Time.t * Scope.sig_state * Proof.t * proof_finalizer
 
+let current_goals : proof_state -> Proof.Goal.t list = fun (_,_,p,_) ->
+  p.proof_goals
+
 type command_result =
   | Cmd_OK    of command_state
-  | Cmd_Proof of proof_state * Tactic.t list
+  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   | Cmd_Error of Pos.popt option * string
 
 type tactic_result =
@@ -67,8 +70,11 @@ let handle_command : command_state -> Command.t -> command_result =
     let (ss, pst) = Handle.handle_cmd ss cmd in
     let t = Time.save () in
     match pst with
-    | None                -> Cmd_OK(t, ss)
-    | Some(p,ts,finalize) -> Cmd_Proof((t,ss,p,finalize), ts)
+    | None       -> Cmd_OK(t, ss)
+    | Some(data) ->
+        let pst = (t, ss, data.pdata_p_state, data.pdata_finalize) in
+        let ts = data.pdata_tactics in
+        Cmd_Proof(pst, ts, data.pdata_stmt_pos, data.pdata_term_pos)
   with Fatal(p,m) -> Cmd_Error(p,m)
 
 let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
@@ -78,10 +84,9 @@ let handle_tactic : proof_state -> Tactic.t -> tactic_result = fun s t ->
     Tac_OK(Time.save (), ss, p, finalize)
   with Fatal(p,m) -> Tac_Error(p,m)
 
-let end_proof : proof_state -> command_state = fun s ->
+let end_proof : proof_state -> command_result = fun s ->
   let (_, ss, p, finalize) = s in
-  let ss = finalize ss p in
-  (Time.save (), ss)
+  try Cmd_OK(Time.save (), finalize ss p) with Fatal(p,m) -> Cmd_Error(p,m)
 
 let get_symbols : command_state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   Time.restore (fst s);

@@ -30,11 +30,17 @@ type command_state
 (** Representation of the state when in a proof. *)
 type proof_state
 
+(** [current_goals s] returns the list of open goals for proof state [s]. *)
+val current_goals : proof_state -> Proof.Goal.t list
+
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of command_state               (** Command is done.  *)
-  | Cmd_Proof of proof_state * Tactic.t list (** Enter proof mode. *)
-  | Cmd_Error of Pos.popt option * string    (** Error report.     *)
+  | Cmd_OK    of command_state
+  (** Command is done. *)
+  | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
+  (** Enter proof mode (positions are for statement and qed). *)
+  | Cmd_Error of Pos.popt option * string
+  (** Error report. *)
 
 (** Result type of the [handle_tactic] function. *)
 type tactic_result =
@@ -56,10 +62,11 @@ val handle_command : command_state -> Command.t -> command_result
     a new proof state (with [Tac_OK]) or an error (with [Tac_Error]). *)
 val handle_tactic : proof_state -> Tactic.t -> tactic_result
 
-(** [end_proof st] finalises the proof which state is [st],  returning a state
-    at the command level.  This function must be called when all  the  tactics
-    have been handled with [handle_tactic]. *)
-val end_proof : proof_state -> command_state
+(** [end_proof st] finalises the proof which state is [st], returning a result
+    at the command level for the whole theorem. This function should be called
+    when all the tactics have been handled with [handle_tactic]. Note that the
+    value returned by this function cannot be {!const:Cmd_Proof}. *)
+val end_proof : proof_state -> command_result
 
 (** [get_symbols st] returns all the symbols defined in the signature at state
     [st]. This can be used for displaying the type of symbols. *)

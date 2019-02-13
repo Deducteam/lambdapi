@@ -28,15 +28,15 @@ type term =
   | Abst of term * (term, term) Bindlib.binder
   (** Abstraction (with domain type). *)
   | Appl of term * term
-  (** Application. *)
+  (** Term application. *)
   | Meta of meta * term array
-  (** Metavariable (only used by unification and for proof goals). *)
+  (** Metavariable application (used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable (only used in the LHS of rewriting rules). *)
+  (** Pattern variable application (only used in a rewriting rules LHS). *)
   | TEnv of term_env * term array
-  (** Term environment (only used in the RHS of rewriting rules). *)
+  (** Term environment (only used in a rewriting rules RHS). *)
   | Wild
-  (** Wildcard pattern (only used for surface matching, never in a LHS). *)
+  (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
 
@@ -116,7 +116,7 @@ type term =
   (** Right hand side (or RHS). *)
   ; arity : int
   (** Required number of arguments to be applicable. *)
-  ; ctxt  : (string * int) array
+  ; vars  : (string * int) array
   (** Name and arity of the pattern variables bound in the RHS. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
@@ -133,7 +133,7 @@ type term =
     the environment of the RHS during matching. When [i] is {!const:None} then
     the variable is not bound in the RHS. If it is {!const:Some}[(_)] then the
     variables is bound in the RHS, or it appears non-linearly in the LHS. *)
-    
+
 (** {b NOTE} that the environment carried by the {!const:Patt} constructor has
     type {!type:term array} so that the variable may be bound.  In particular,
     the type {!type:tvar array} would NOT be suitable. *)
@@ -169,7 +169,7 @@ type term =
     a multiple binder [b] that binding all every free variables of the term at
     once.  We can then effectively apply the substitution by substituting  [b]
     with the environment [env]. *)
-    
+
 (** During evaluation, we only try to apply rewriting rules when we reduce the
     application of a symbol [s] to a list of argument [ts]. At this point, the
     symbol [s] contains  every rule [r] that can potentially be applied in its
@@ -350,7 +350,7 @@ let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
-    effect of gathering its free variables, making them available for binding.
+    effect of gathering its free variables,  making them available for binding.
     Bound variable names are automatically updated in the process. *)
 let rec lift : term -> tbox = fun t ->
   let lift_term_env te =

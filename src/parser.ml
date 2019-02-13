@@ -119,8 +119,6 @@ let _assertnot_  = KW.create "assertnot"
 let _const_      = KW.create "const"
 let _inj_        = KW.create "injective"
 let _TYPE_       = KW.create "TYPE"
-let _pos_        = KW.create "pos"
-let _neg_        = KW.create "neg"
 let _proof_      = KW.create "proof"
 let _refine_     = KW.create "refine"
 let _intro_      = KW.create "intro"
@@ -255,10 +253,10 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
   | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Vari(qid, ImplicitAsDeclared))
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, ImplicitAsDeclared))
   (* Fully explicit Variable (or possibly qualified symbol) *)
   | "@" qid:qident
-      when p >= PAtom -> in_pos _loc (P_Vari(qid, FullyExplicit))  
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, FullyExplicit))  
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -270,7 +268,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc (P_Patt(p, Array.of_list e))
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
-      when p >= PAtom -> t
+      when p >= PAtom -> in_pos _loc (P_Wrap(t))
   (* Application. *)
   | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
@@ -377,9 +375,9 @@ let parser assertion =
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
 let parser assoc =
-  | EMPTY -> Assoc_none
-  | "l"   -> Assoc_left
-  | "r"   -> Assoc_right
+  | EMPTY   -> Assoc_none
+  | "left"  -> Assoc_left
+  | "right" -> Assoc_right
 
 (** [config] pases a single configuration option. *)
 let parser config =
@@ -394,7 +392,11 @@ let parser config =
       Prefix.add binops s binop;
       P_config_binop(binop)
 
-let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
+let parser statement =
+  _theorem_ s:ident ":" a:term _proof_ -> Pos.in_pos _loc (s,a)
+
+let parser proof =
+  ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
 
 let parser assert_must_fail =
   | _assert_    -> false
@@ -418,8 +420,8 @@ let parser cmd =
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(false,s,al,ao,t)
-  | _theorem_ s:ident ":" a:term (ts,e):proof
-      -> P_theorem(s,a,ts,e)
+  | st:statement (ts,e):proof
+      -> P_theorem(st,ts,e)
   | mf:assert_must_fail a:assertion
       -> P_assert(mf,a)
   | _set_ c:config

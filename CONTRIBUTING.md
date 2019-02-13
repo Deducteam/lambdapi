@@ -1,7 +1,8 @@
 Contributing to Lambdapi
 ========================
 
-Here are a few guidelines for contributions.
+Contributions to `lambdapi` are very welcome!
+Here are some guidelines for contributing to this project.
 
 
 General style and indentation
@@ -12,6 +13,8 @@ In the interest of code source uniformity, we ask that:
  - one indentation unit is equal to two spaces,
  - there should be *no trailing spaces* at the end of lines,
  - lines length should be limited to *78 characters* (excluding newline).
+
+You should at the very least run `make sanity_check` before comiting anything.
 
 
 Type annotations and interface

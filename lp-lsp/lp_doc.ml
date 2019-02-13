@@ -41,8 +41,7 @@ let process_pstep (pstate, diags) tac =
   let tac_loc = Tactic.get_pos tac in
   match handle_tactic pstate tac with
   | Tac_OK pstate ->
-    (* Fixme *)
-    let goals = None in
+    let goals = Some (current_goals pstate) in
     pstate, (tac_loc, 4, "OK", goals) :: diags
   | Tac_Error(loc,msg) ->
     let loc = option_default loc tac_loc in
@@ -61,25 +60,32 @@ let process_cmd _file (st,dg) node =
   let cmd_loc = Command.get_pos node in
   match handle_command st node with
   | Cmd_OK st ->
-    (* let ok_diag = node.pos, 4, "OK", !Proofs.theorem in *)
     let ok_diag = cmd_loc, 4, "OK", None in
     st, ok_diag :: dg
-  | Cmd_Proof (pst, tlist) ->
+
+  | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
     let pst, dg_proof = process_proof pst tlist in
-    (* Fixme: this throws and exception and it should not *)
+    let dg_proof =
+      let goals = Some (current_goals pst) in
+      (thm_loc, 4, "OK", goals) :: dg_proof
+    in
     let st, dg_proof =
-      try end_proof pst, dg_proof
-      with
-      | Core.Console.Fatal(loc,msg) ->
-        let loc = option_default loc cmd_loc in
-        let _pg = (loc, 1, msg, None) in
-        (* We don't add the diagnostic as it shadows the internal
-           ones; we should refine the loc to the qed *)
-        st, dg_proof
+      match end_proof pst with
+      | Cmd_OK st          ->
+        let pg = qed_loc, 4, "OK", None in
+        st, pg :: dg_proof
+      | Cmd_Error(_loc,msg) ->
+        let pg = qed_loc, 1, msg, None in
+        st, pg :: dg_proof
+      | Cmd_Proof _ ->
+        Lsp_io.log_error "process_cmd" "closing proof is nested";
+        assert false
     in
     st, dg_proof @ dg
-  | Cmd_Error(_loc, msg) ->
-    st, (Command.get_pos node, 1, msg, None) :: dg
+
+  | Cmd_Error(loc, msg) ->
+    let loc = option_default loc Command.(get_pos node) in
+    st, (loc, 1, msg, None) :: dg
 
 let new_doc ~uri ~version ~text =
   { uri;
