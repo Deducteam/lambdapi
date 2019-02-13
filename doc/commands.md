@@ -3,7 +3,7 @@ Syntax of commands
 
 /!\ PAGE UNDER DEVELOPMENT /!\
 
-The BNF grammar of lambdapi can be found in [syntax.bnf](../syntax.bnf).
+The BNF grammar of `lambdapi` is in [syntax.bnf](../syntax.bnf).
 
 In this section, we will illustrate the syntax of Lambdapi using examples. The
 first thing to note is that Lambdapi files are formed of a list of commands. A
