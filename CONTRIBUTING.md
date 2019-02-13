@@ -7,74 +7,74 @@ Here are a few guidelines for contributing to this project.
 Directories and files
 ---------------------
 
- * `src`: source code of Lambdapi
+ * `src/`: source code of Lambdapi
 
    + utilities:
    
-     - extra: standard library extension
-     - files: filenames and paths management
-     - console: output and debugging utilities
+     - `extra.ml`: standard library extension
+     - `files.ml`: filenames and paths management
+     - `console.ml`: output and debugging utilities
 
    + file, command and tactic handling:
    
-     - lambdapi: main file
-     - compile: file parsing and compiling (.lpo files)
-     - handle: command handling
-     - tactics: tactic handling
-     - rewrite: rewrite tactic
-     - proof: proof state
+     - `lambdapi.ml`: main file
+     - `compile.ml`: file parsing and compiling (.lpo files)
+     - `handle.ml`: command handling
+     - `tactics.ml`: tactic handling
+     - `rewrite.ml`: rewrite tactic
+     - `proof.ml`: proof state
 
    + terms, signatures, rewriting, unification and type-checking:
    
-     - terms: internal representation of terms
-     - basics: basic operations on terms
-     - print: pretty printing of terms
-     - eval: rewriting engine
-     - solve: unification algorithm
-     - ctxt: typing contexts (maps variable -> type)
-     - typing: type-checking algorithm
-     - sign: signatures/theories (sets of symbols and rules)
+     - `terms.ml`: internal representation of terms
+     - `basics.ml`: basic operations on terms
+     - `print.ml`: pretty printing of terms
+     - `eval.ml`: rewriting engine
+     - `solve.ml`: unification algorithm
+     - `ctxt.ml`: typing contexts (maps variable -> type)
+     - `typing.ml`: type-checking algorithm
+     - `sign.ml`: signatures/theories (sets of symbols and rules)
 
    + parsing and scoping:
    
-     - pos: source file position management
-     - syntax: abstract syntax
-     - parser: parser (convert the concrete syntax into the abstract syntax)
-     - env: maps identifier -> variable (and type)
-     - scope: convert the abstract syntax into terms
-     - pretty: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
+     - `pos.ml`: source file position management
+     - `syntax.ml`: abstract syntax
+     - `parser.ml`: parser (convert the concrete syntax into the abstract syntax)
+     - `env.ml`: maps identifier -> variable (and type)
+     - `scope.ml`: convert the abstract syntax into terms
+     - `pretty.ml`: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
 
    + legacy parser:
    
-     - legacy_lexer: lexer for the old Dedukti syntax
-     - legacy_parser: interface of the parser for the old Dedukti syntax
-     - menhir_parser: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
+     - `legacy_lexer.ml`: lexer for the old Dedukti syntax
+     - `legacy_parser.ml`: interface of the parser for the old Dedukti syntax
+     - `menhir_parser.ml`: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
 
    + property checking:
    
-     - sr: algorithm for checking subject reduction
-     - confluence: call confluence checker by converting signatures into a TRS file
+     - `sr.ml`: algorithm for checking subject reduction
+     - `confluence.ml`: call confluence checker by converting signatures into a TRS file
 
    + interface to editors:
    
-     - pure: interface to the LSP server
+     - `pure.ml` and `pure.mli`: interface to the LSP server
 
- * lp-lsp: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
+ * `lp-lsp/`: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
 
- * tests: unit tests
-   - OK: tests that should succeed
-   - KO: tests that should fail
+ * `tests/`: unit tests
+   - `OK/`: tests that should succeed
+   - `KO/`: tests that should fail
 
- * examples: examples of Dedukti or Lambdapi files with no proofs
+ * `examples/`: examples of Dedukti or Lambdapi files with no proofs
 
- * proofs: examples of Lambdapi files with proofs
+ * `proofs/`: examples of Lambdapi files with proofs
 
- * tools:
-   - deps.ml:
-   - lambdapi.tex: listings setup for including Lambdapi code in Latex
-   - sanity_check.sh: script checking some style guidelines below (called by `make sanity_check`)
+ * `tools/`:
+   - `deps.ml`:
+   - `lambdapi.tex`: listings setup for including Lambdapi code in Latex
+   - `sanity_check.sh`: script checking some style guidelines below (called by `make sanity_check`)
 
- * libraries: libraries of Dedukti files (see GNUmakefile)
+ * `libraries/`: libraries of Dedukti files (see GNUmakefile)
 
 
 General style and indentation
