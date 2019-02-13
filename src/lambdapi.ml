@@ -77,13 +77,13 @@ let spec =
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
-    ; ( "--toolong"
+    ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
     ; ( "--verbose"
       , Arg.Int (Timed.(:=) verbose)
       , "<int> Set the verbosity level" ^ verbose_values )
-    ; ( "--justparse"
+    ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
     ; ( "--beautify"
