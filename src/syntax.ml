@@ -292,3 +292,14 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
+
+(* splitFunArgs t decomposes the parser term [t] (which is expected to be an application),
+  into the function symbol and a list of its actual arguments. It is implemented 
+  as a tail-recursive function. *)
+  let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
+  let rec splitFunArgs_aux : p_term -> (p_term list) -> (p_term * (p_term list)) = fun t args ->
+    match t.elt with
+    | P_Appl(u,v) -> splitFunArgs_aux u (v::args)
+    | _           -> (t, args)
+  in
+  splitFunArgs_aux t []

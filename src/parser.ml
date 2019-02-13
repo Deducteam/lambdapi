@@ -328,9 +328,12 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
-  | x:ident                            -> (x, None,    false)
-  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a), false) (* This argument is not implicit *)
-  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)  (* This argument is implicit *)
+  (* Non implicit argument *)
+  | x:ident                            -> (x, None,    false) 
+  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  (* Implicit argument *)
+  | "{" x:ident "}"                    -> (x, None,    true)
+  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)  
 
 let term = term PFunc
 

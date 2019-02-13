@@ -119,57 +119,24 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(* splitFunArgs t decomposes the parser term [t] (which is expected to be an application),
-  into the function symbol and a list of its actual arguments. It is implemented 
-  as a tail-recursive function. *)
-let splitFunArgs : p_term -> (p_term * (p_term list)) = fun t ->
-  let rec splitFunArgs_aux : p_term -> (p_term list) -> (p_term * (p_term list)) = fun t args ->
-    match t.elt with
-    | P_Appl(u,v) -> splitFunArgs_aux u (v::args)
-    | _           -> (t, args)
-  in
-  splitFunArgs_aux t []
-
-(* Just for debugging *)
-let boolList_to_string : bool list -> string = fun l ->
-  let rec boolList_to_string_aux : bool list -> string = fun l ->
-  match l with
-  | [] -> "] \n"
-  | h::[] -> (string_of_bool h) ^"] \n"
-  | h::t -> (string_of_bool h) ^ "; " ^ (boolList_to_string_aux t)
-  in "[" ^ boolList_to_string_aux l
-
 (** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
     a parser term [t] *)
 let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
   match t.elt with
-  | P_Prod(args, _) -> List.map (fun x -> match x with (_,_,i) -> i) args
-  | P_Abst(args,_)  -> 
-      begin
-        (* print_string "debug : P_Abst found! \n"; *)
-        List.map (fun x -> match x with (_,_,i) -> i) args
-      end
-  | P_Iden(id, imp) -> if imp=FullyExplicit then [] 
-    else
-    begin
-      (* print_string "debug : P_Iden found! \n"; *)
-      match StrMap.find_opt (snd id.elt) ss.in_scope with
-      | Some(res) -> let implicits = (fst res).sym_implicits in
-                      begin
-                        (* print_string "debug : found it in in_scope ! \n"; *)
-                        (* print_string (boolList_to_string implicits); *)
-                        implicits
-                      end
-      | None      -> 
-        (match StrMap.find_opt (snd id.elt) ss.builtins with
-        | Some(res) -> (* print_string "debug : found it in builtins ! \n"; *) 
-                       (fst res).sym_implicits
-        | None -> (* print_string "debug : not found ! \n"; *)
-                     [])
-    end
-  | P_Patt(_,_)     -> (* print_string "debug : Pattern ! \n"; *)
-                       [] (* TO DO : see if we want to have implicits for patterns as well, but I don't think so *)
-  | _               -> []
+  | P_Prod(args, _) 
+  | P_Abst(args, _)                -> 
+      List.map (fun x -> match x with (_,_,i) -> i) args
+  | P_Iden(_, FullyExplicit)       -> []
+  | P_Iden(id, ImplicitAsDeclared) -> 
+      (match StrMap.find_opt (snd id.elt) ss.in_scope with
+      | Some(f, _) -> f.sym_implicits
+      | None       -> 
+          (match StrMap.find_opt (snd id.elt) ss.builtins with
+          | Some(f, _) -> f.sym_implicits
+          | None       -> [])) (* not found *)
+  | P_Patt(_,_)                    -> [] (* TO DO : see if we want to have 
+                    implicits for patterns as well, but I don't think so *)
+  | _                              -> []
 
 (** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
     [args] and with the insertion of "_" for the implicit arguments, following the information 
@@ -177,21 +144,20 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
 let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args ->
   let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
     fun param args fullArgs ->
-    match (param,args) with
-    | (isImplicit::ps, arg1::args') -> 
-      if isImplicit then
-        begin
-          (* print_string "debug : I found an implicit ! \n"; *)
-          addImplicitArgs_aux ps args ((none P_Wild)::fullArgs) (* We did not use the first concrete argument *)
-        end
-      else
-        begin
-          (* print_string "debug : it's not an implicit. \n"; *)
-          addImplicitArgs_aux ps args' (arg1::fullArgs)         (* We did use the first concrete argument *)
-        end
-    | ([], _::_) -> (* print_string "debug : not enough formal parameters. \n"; *)
-                    (List.rev args) @ fullArgs
-    | (_, _)     -> fullArgs
+    match param,args with
+    (* The next parameter is implicit, so we do not consume the next 
+       available concrete argument *)
+    | (true::ps, _::_)         -> addImplicitArgs_aux ps args ((none P_Wild)::fullArgs)
+    (* The next parameter is not implicit, so we consume the next available 
+       concrete argument arg1 *)
+    | (false::ps, arg1::args') -> addImplicitArgs_aux ps args' (arg1::fullArgs)
+    (* Not enough formal parameters, we reverse the remaining arguments 
+       and append fullArgs (built in reverse order) to the result *)
+    | ([], _::_)               -> List.rev_append args fullArgs
+    (* We've  used all the concrete arguments, we return the accumulator regardless of
+       still having some sormal parameters *)
+    | ((_::_), [])
+    | ([],     [])             -> fullArgs
   in
     (* If we don't have implicitness information (as for a fully explicit identifier like "@f"), 
        we directly put only the given concrete args *) 
@@ -299,7 +265,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParamsImplicitness ss f in (* get the formal parameters of f *)
+          let params = getParamsImplicitness ss f in    (* get the formal parameters of f *)
           let fullArgs = addImplicitArgs params args in (* adds the implicit arguments *)
           add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
