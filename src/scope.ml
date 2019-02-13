@@ -71,9 +71,10 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
       end
   | _                                -> (* Fully-qualified symbol. *)
       begin
-        (* Check that the signature was required. *)
-        if not (PathMap.mem mp !(st.signature.sign_deps)) then
-          fatal pos "No module [%a] required." Files.pp_path mp;
+        (* Check that the signature was required (or is the current one). *)
+        if mp <> st.signature.sign_path then
+          if not (PathMap.mem mp !(st.signature.sign_deps)) then
+            fatal pos "No module [%a] required." Files.pp_path mp;
         (* The signature must have been loaded. *)
         let sign =
           try PathMap.find mp Timed.(!Sign.loaded)
