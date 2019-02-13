@@ -25,7 +25,7 @@ module Tactic = struct
 end
 
 (** Exception raised by [parse_text] on error. *)
-exception Parse_error of Pos.pos * string
+exception Parse_error of Pos.popt option * string
 
 let parse_text : string -> string -> Command.t list = fun fname s ->
   let old_syntax = Filename.check_suffix fname Files.legacy_src_extension in
@@ -33,9 +33,7 @@ let parse_text : string -> string -> Command.t list = fun fname s ->
     if old_syntax then Legacy_parser.parse_string fname s
     else Parser.parse_string fname s
   with
-  | Fatal(Some(Some(pos)), msg) -> raise (Parse_error(pos, msg))
-  | Fatal(_              , _  ) -> assert false (* Should not produce. *)
-
+  | Fatal(pos, msg) -> raise (Parse_error(pos, msg))
 
 type command_state = Time.t * Scope.sig_state
 

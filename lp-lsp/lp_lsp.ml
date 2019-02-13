@@ -155,6 +155,15 @@ let do_hover ofmt ~id params =
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
 
+let protect_dispatch p f x =
+  try f x
+  with
+  | exn ->
+    let bt = Printexc.get_backtrace () in
+    LIO.log_error ("[error] {"^p^"}") Printexc.(to_string exn);
+    LIO.log_error "[BT]" bt;
+    F.pp_print_flush !LIO.debug_fmt ()
+
 (* XXX: We could split requests and notifications but with the OCaml
    theading model there is not a lot of difference yet; something to
    think for the future. *)
@@ -165,23 +174,32 @@ let dispatch_message ofmt dict =
   (* Requests *)
   | "initialize" ->
     do_initialize ofmt ~id params
+
   | "shutdown" ->
     do_shutdown ofmt ~id
 
   (* Symbols in the document *)
   | "textDocument/documentSymbol" ->
-    do_symbols ofmt ~id params
+    (* XXX to investigate *)
+    protect_dispatch "do_symbols"
+      (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
     do_hover ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->
-    do_open ofmt params
+    protect_dispatch "didOpen"
+      (do_open ofmt) params
+
   | "textDocument/didChange" ->
-    do_change ofmt params
+    protect_dispatch "didChange"
+      (do_change ofmt) params
+
   | "textDocument/didClose" ->
-    do_close ofmt params
+    protect_dispatch "didClose"
+      (do_close ofmt) params
+
   | "exit" ->
     exit 0
 
