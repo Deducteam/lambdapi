@@ -7,43 +7,57 @@ Here are a few guidelines for contributing to this project.
 Directories and files
 ---------------------
 
- * src: source code of Lambdapi
+ * `src`: source code of Lambdapi
 
-   - extra: standard library extension
-   - files: filenames and paths management
-   - console: output and debugging utilities
-  
-   - lambdapi: main file
-   - compile: file parsing and compiling (.lpo files)
-   - handle: command handling
-   - tactics: tactic handling
-   - rewrite: rewrite tactic
-   - proof: proof state
-  
-   - terms: internal representation of terms
-   - basics: basic operations on terms
-   - print: pretty printing of terms
-   - eval: rewriting engine
-   - solve: unification algorithm
-   - ctxt: typing contexts (maps variable -> type)
-   - typing: type-checking algorithm
-   - sign: signatures/theories (sets of symbols and rules)
+   + utilities:
+   
+     - extra: standard library extension
+     - files: filenames and paths management
+     - console: output and debugging utilities
 
-   - pos: source file position management
-   - syntax: abstract syntax
-   - parser: parser (convert the concrete syntax into the abstract syntax)
-   - env: maps identifier -> variable (and type)
-   - scope: convert the abstract syntax into terms
-   - pretty: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
+   + file, command and tactic handling:
+   
+     - lambdapi: main file
+     - compile: file parsing and compiling (.lpo files)
+     - handle: command handling
+     - tactics: tactic handling
+     - rewrite: rewrite tactic
+     - proof: proof state
 
-   - legacy_lexer: lexer for the old Dedukti syntax
-   - legacy_parser: interface of the parser for the old Dedukti syntax
-   - menhir_parser: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
-  
-   - sr: algorithm for checking subject reduction
-   - confluence: call confluence checker by converting signatures into a TRS file
-  
-   - pure: interface to the LSP server
+   + terms, signatures, rewriting, unification and type-checking:
+   
+     - terms: internal representation of terms
+     - basics: basic operations on terms
+     - print: pretty printing of terms
+     - eval: rewriting engine
+     - solve: unification algorithm
+     - ctxt: typing contexts (maps variable -> type)
+     - typing: type-checking algorithm
+     - sign: signatures/theories (sets of symbols and rules)
+
+   + parsing and scoping:
+   
+     - pos: source file position management
+     - syntax: abstract syntax
+     - parser: parser (convert the concrete syntax into the abstract syntax)
+     - env: maps identifier -> variable (and type)
+     - scope: convert the abstract syntax into terms
+     - pretty: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
+
+   + legacy parser:
+   
+     - legacy_lexer: lexer for the old Dedukti syntax
+     - legacy_parser: interface of the parser for the old Dedukti syntax
+     - menhir_parser: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
+
+   + property checking:
+   
+     - sr: algorithm for checking subject reduction
+     - confluence: call confluence checker by converting signatures into a TRS file
+
+   + interface to editors:
+   
+     - pure: interface to the LSP server
 
  * lp-lsp: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
 
