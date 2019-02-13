@@ -65,7 +65,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       (* Open the module. *)
       (open_sign ss sign, None)
-  | P_symbol(ts, x, a)         ->
+  | P_symbol(ts, x, xs, a)         ->
       (* We first build the symbol declaration mode from the tags. *)
       let m =
         match ts with
@@ -74,6 +74,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)

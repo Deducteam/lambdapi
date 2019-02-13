@@ -145,7 +145,7 @@ type p_cmd =
   (** Require statement. *)
   | P_open       of module_path
   (** Open statement. *)
-  | P_symbol     of symtag list * ident * p_type
+  | P_symbol     of symtag list * ident * p_arg list * p_type
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
@@ -262,8 +262,9 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
       m1 = m2 && eq_require_mode r1 r2
   | (P_open(m1)                  , P_open(m2)                  ) ->
       m1 = m2
-  | (P_symbol(l1,s1,a1)          , P_symbol(l2,s2,a2)          ) ->
-      l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+  | (P_symbol(l1,s1,al1,a1)      , P_symbol(l2,s2,al2,a2)      ) ->
+     l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+     && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
   | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->

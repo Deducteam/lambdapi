@@ -409,8 +409,8 @@ let parser cmd =
       -> !require p; P_require(p,m)
   | _open_ p:path
       -> get_binops p; P_open(p)
-  | _symbol_ l:symtag* s:ident ":" a:term
-      -> P_symbol(l,s,a)
+  | _symbol_ l:symtag* s:ident al:arg* ":" a:term
+      -> P_symbol(l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
