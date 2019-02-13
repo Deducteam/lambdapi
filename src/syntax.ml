@@ -181,13 +181,8 @@ let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-<<<<<<< HEAD
-  | (P_Vari(q1, imp1)    , P_Vari(q2, imp2)    ) ->
+  | (P_Iden(q1, imp1)    , P_Iden(q2, imp2)    ) ->
       eq_qident q1 q2 && imp1 = imp2
-=======
-  | (P_Iden(q1)          , P_Iden(q2)          ) ->
-      eq_qident q1 q2
->>>>>>> 9a851c535a02445e6860e7e58da440a4cdaab06e
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
       eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2

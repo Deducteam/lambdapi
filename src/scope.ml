@@ -149,10 +149,10 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
         (* print_string "debug : P_Abst found! \n"; *)
         List.map (fun x -> match x with (_,_,i) -> i) args
       end
-  | P_Vari(id, imp) -> if imp=FullyExplicit then [] 
+  | P_Iden(id, imp) -> if imp=FullyExplicit then [] 
     else
     begin
-      (* print_string "debug : P_Vari found! \n"; *)
+      (* print_string "debug : P_Iden found! \n"; *)
       match StrMap.find_opt (snd id.elt) ss.in_scope with
       | Some(res) -> let implicits = (fst res).sym_implicits in
                       begin
