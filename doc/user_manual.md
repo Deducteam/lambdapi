@@ -3,12 +3,7 @@ Lambdapi user manual
 
 This document explains several of the concepts behind `lambdapi` and serves as
 a user documentation. Installation instructions can be found in the repository
-(see [README.md](README.md)). Here is a rough summary:
-```bash
-git clone https://github.com/Deducteam/lambdapi.git
-cd lambdapi
-make && make install
-```
+(see [README.md](../README.md)).
 
 The installation of `lambdapi` gives you:
  - a main executable named `lambdapi` in your `PATH`,
@@ -20,20 +15,20 @@ The installation of `lambdapi` gives you:
 Table of contents
 -----------------
 
- - [What is Lambdapi?](about)
+ - [What is Lambdapi?](about.md)
 
- - [Command line options](options)
+ - [Command line options](options.md)
 
- - [User interfaces](ui)
+ - [User interfaces](ui.md)
 
- - [Module system](module)
+ - [Module system](module.md)
 
- - [Syntax](syntax)
+ - [Syntax](syntax.md)
 
- - [Compatibility with Dedukti](dedukti)
+ - [Compatibility with Dedukti](dedukti.md)
  
- - [API](api)
+ - [API](api.md)
 
- - [Contributing](../CONTRIBUTING)
+ - [Contributing](../CONTRIBUTING.md)
  
  - [Compiling and profiling](devel.md)
