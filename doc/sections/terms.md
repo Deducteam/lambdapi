@@ -1,9 +1,7 @@
 Syntax of terms
 ---------------
 
-/!\ PAGE UNDER DEVELOPMENT /!\
-
-The BNF grammar of `lambdapi` is in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
 
 A user-defined term can be either:
 

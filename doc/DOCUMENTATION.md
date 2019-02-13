@@ -24,8 +24,6 @@ Table of contents
  - [Syntax of commands](sections/commands.md)
 
  - [Syntax of proof tactics](sections/tactics.md)
-
- - [Theoretical grounds](sections/theory.md)
  
  - [Compatibility with Dedukti](sections/dedukti.md)
  
@@ -36,3 +34,5 @@ Table of contents
  - [Contributing](CONTRIBUTING.md)
  
  - [Compiling and profiling](sections/devel.md)
+
+ - [Bibliographic references](sections/biblio.md)
