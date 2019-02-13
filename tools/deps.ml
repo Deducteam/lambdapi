@@ -1,3 +1,11 @@
+(** Simple (and very naive) tool to generate all the #REQUIRE statements for a
+    given legacy syntax file.
+
+    Example use: "ocaml deps.ml file.dk modname", where "modname" simply gives
+    the module name corresponding to "file.dk" (in this case, "file"). This is
+    used to support old files for which module name was not constrained by the
+    name of the source file. *)
+
 module M = Set.Make(String)
 
 let fold_lines : ('a -> string -> 'a) -> 'a -> string -> 'a =
