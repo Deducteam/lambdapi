@@ -11,8 +11,14 @@ Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting
 
  - [Module system](doc/module.md)
 
- - [Syntax](doc/syntax.md)
+ - [Syntax of terms](doc/terms.md)
 
+ - [Syntax of commands](doc/commands.md)
+
+ - [Syntax of proof tactics](doc/tactics.md)
+
+ - [Theoretical grounds](doc/theory.md)
+ 
  - [Compatibility with Dedukti](doc/dedukti.md)
  
  - [API](doc/api.md)

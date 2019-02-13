@@ -1,7 +1,9 @@
-Syntax of Lambdapi
+Syntax of commands
 ------------------
 
-UNDER DEVELOPMENT
+/!\ PAGE UNDER DEVELOPMENT /!\
+
+The BNF grammar of lambdapi can be found in [syntax.bnf].
 
 In this section, we will illustrate the syntax of Lambdapi using examples. The
 first thing to note is that Lambdapi files are formed of a list of commands. A
