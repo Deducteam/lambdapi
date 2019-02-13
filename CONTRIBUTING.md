@@ -7,60 +7,60 @@ Here are a few guidelines for contributing to this project.
 Directories and files
 ---------------------
 
-src: source code of Lambdapi
+ * src: source code of Lambdapi
 
-  extra: standard library extension
-  files: filenames and paths management
-  console: output and debugging utilities
+   - extra: standard library extension
+   - files: filenames and paths management
+   - console: output and debugging utilities
   
-  lambdapi: main file
-  compile: file parsing and compiling (.lpo files)
-  handle: command handling
-  tactics: tactic handling
-  rewrite: rewrite tactic
-  proof: proof state
+   - lambdapi: main file
+   - compile: file parsing and compiling (.lpo files)
+   - handle: command handling
+   - tactics: tactic handling
+   - rewrite: rewrite tactic
+   - proof: proof state
   
-  terms: internal representation of terms
-  basics: basic operations on terms
-  print: pretty printing of terms
-  eval: rewriting engine
-  solve: unification algorithm
-  ctxt: typing contexts (maps variable -> type)
-  typing: type-checking algorithm
-  sign: signatures/theories (sets of symbols and rules)
+   - terms: internal representation of terms
+   - basics: basic operations on terms
+   - print: pretty printing of terms
+   - eval: rewriting engine
+   - solve: unification algorithm
+   - ctxt: typing contexts (maps variable -> type)
+   - typing: type-checking algorithm
+   - sign: signatures/theories (sets of symbols and rules)
 
-  pos: source file position management
-  syntax: abstract syntax
-  parser: parser (convert the concrete syntax into the abstract syntax)
-  env: maps identifier -> variable (and type)
-  scope: convert the abstract syntax into terms
-  pretty: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
+   - pos: source file position management
+   - syntax: abstract syntax
+   - parser: parser (convert the concrete syntax into the abstract syntax)
+   - env: maps identifier -> variable (and type)
+   - scope: convert the abstract syntax into terms
+   - pretty: pretty print the abstract syntax (used to convert old Dedukti files into Lambdapi files)
 
-  legacy_lexer: lexer for the old Dedukti syntax
-  legacy_parser: interface of the parser for the old Dedukti syntax
-  menhir_parser: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
+   - legacy_lexer: lexer for the old Dedukti syntax
+   - legacy_parser: interface of the parser for the old Dedukti syntax
+   - menhir_parser: parser using Menhir (http://gallium.inria.fr/~fpottier/menhir/)
   
-  sr: algorithm for checking subject reduction
-  confluence: call confluence checker by converting signatures into a TRS file
+   - sr: algorithm for checking subject reduction
+   - confluence: call confluence checker by converting signatures into a TRS file
   
-  pure: interface to the LSP server
+   - pure: interface to the LSP server
 
-lp-lsp: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
+ * lp-lsp: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
 
-tests: unit tests
-  OK: tests that should succeed
-  KO: tests that should fail
+ * tests: unit tests
+   - OK: tests that should succeed
+   - KO: tests that should fail
 
-examples: examples of Dedukti or Lambdapi files with no proofs
+ * examples: examples of Dedukti or Lambdapi files with no proofs
 
-proofs: examples of Lambdapi files with proofs
+ * proofs: examples of Lambdapi files with proofs
 
-tools:
-  deps.ml:
-  lambdapi.tex: listings setup for including Lambdapi code in Latex
-  sanity_check.sh: script checking some style guidelines below (called by `make sanity_check`)
+ * tools:
+   - deps.ml:
+   - lambdapi.tex: listings setup for including Lambdapi code in Latex
+   - sanity_check.sh: script checking some style guidelines below (called by `make sanity_check`)
 
-libraries: libraries of Dedukti files (see GNUmakefile)
+ * libraries: libraries of Dedukti files (see GNUmakefile)
 
 
 General style and indentation
