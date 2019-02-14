@@ -65,7 +65,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       (* Open the module. *)
       (open_sign ss sign, None)
-  | P_symbol(ts, x, a)         ->
+  | P_symbol(ts, x, xs, a)     ->
       (* We first build the symbol declaration mode from the tags. *)
       let m =
         match ts with
@@ -74,6 +74,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)
@@ -138,8 +140,10 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_theorem(stmt, ts, pe)    ->
+      let (x,xs,a) = stmt.elt in
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* Scoping the type (statement) of the theorem, check sort. *)
-      let (x,a) = stmt.elt in
       let a = fst (scope_basic ss a) in
       Solve.sort_type Ctxt.empty a;
       (* We check that [x] is not already used. *)

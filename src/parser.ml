@@ -389,7 +389,7 @@ let parser config =
       P_config_binop(binop)
 
 let parser statement =
-  _theorem_ s:ident ":" a:term _proof_ -> Pos.in_pos _loc (s,a)
+  _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
 
 let parser proof =
   ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
@@ -418,8 +418,8 @@ let parser cmd =
   | _open_ p:path
       -> get_binops _loc p;
          P_open(p)
-  | _symbol_ l:symtag* s:ident ":" a:term
-      -> P_symbol(l,s,a)
+  | _symbol_ l:symtag* s:ident al:arg* ":" a:term
+      -> P_symbol(l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
