@@ -15,8 +15,13 @@ The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
 ## Using with VSCode
 
+There is an extension for VSCode derived from VSCoq. To install do:
+
+$ cd editors/vscode-lp/
 $ npm install
-$ ln -s `pwd`/vscode-lp/ ~/.vscode/extensions/
+$ ln -s `pwd` ~/.vscode/extensions/
+
+You need a recent enough VSCode (>= 1.31)
 
 ## Using with Emacs
 
