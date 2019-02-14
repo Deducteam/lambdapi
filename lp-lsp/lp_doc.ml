@@ -98,6 +98,15 @@ let new_doc ~uri ~version ~text =
 (* XXX: Save on close. *)
 let close_doc _modname = ()
 
+let dummy_loc =
+  Lazy.from_val
+    Pos.{ fname = None
+        ; start_line = 1
+        ; start_col = 1
+        ; end_line = 2
+        ; end_col = 2
+        }
+
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
@@ -109,4 +118,9 @@ let check_text ~doc =
         | Some pos -> (pos,lvl,msg,goal) :: acc
       ) [] diag
   with
-  | Pure.Parse_error(loc, msg) -> doc.root, mk_error ~doc loc msg
+  | Pure.Parse_error(Some(Some(loc)), msg) ->
+    doc.root, mk_error ~doc loc msg
+  | Pure.Parse_error(_, msg) ->
+    let loc = dummy_loc in
+    doc.root, mk_error ~doc loc msg
+

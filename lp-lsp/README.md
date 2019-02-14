@@ -13,6 +13,11 @@ dune build
 
 The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
+## Using with VSCode
+
+$ npm install
+$ ln -s `pwd`/vscode-lp/ ~/.vscode/extensions/
+
 ## Using with Emacs
 
 `lp-lsp` will work out of the box with emacs and eglot, to do so,
