@@ -17,7 +17,7 @@ The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
 There is an extension for VSCode derived from VSCoq. To install do:
 
-$ cd editors/vscode-lp/
+$ cd editors/code/
 $ npm install
 $ ln -s `pwd` ~/.vscode/extensions/
 
