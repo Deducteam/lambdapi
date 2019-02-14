@@ -59,9 +59,9 @@ module Goal :
 
 (** Representation of the state of the proof of a theorem. *)
 type proof =
-  { proof_name     : Pos.strloc  (** Name of the proved theorem.          *)
+  { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
-  ; proof_goals    : Goal.t list (** Open goals (focused is first).       *)
+  ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
   ; proof_builtins : builtins    (** Signature state, for builtins.       *) }
 
 and builtins = (sym * pp_hint) StrMap.t
