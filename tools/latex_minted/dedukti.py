@@ -1,11 +1,10 @@
-# This file should be added in your LaTeX project. Then, one can use
 # Requirements: pygmentize >= 2.2.0 (pygmentize -V)
+
+# This file should be added in your LaTeX project. Then, one can use:
 # \usepackage{minted}
 # \begin{minted}{dedukti.py:DeduktiLexer -x}
 #   ...
 # \end{minted}
-
-
 
 import re
 
@@ -55,8 +54,6 @@ class DeduktiLexer(RegexLexer):
              r'(:=|:)',
              bygroups(Keyword, Text, Name.Function, Text, Operator.Word)),
             (r'(%s)' % '|'.join(keywords), Keyword),
-#            (r'(%s)([^\W][\w0-9\'\?]*)(\s\s*)(:=|:)' % '|'.join(keywords),
-#             bygroups(Keyword, Name.Function, Text, Operator.Word)),
             (r'(^[^\W][\?\w0-9]*)(\s*)(:|:=)', bygroups(Name.Function, Text, Operator.Word)),
             (r'(%s)' % '|'.join(command), String.Symbol),
             (r'"', String.Double, 'string'),
