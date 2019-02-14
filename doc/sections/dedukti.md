@@ -18,4 +18,5 @@ using the `--beautify` command line flag (see the related section).
 
 Note that Lambdapi is able to type-check all the generated libraries that were
 aimed at Dedukti (with minor modifications).  Translation scripts are provided
-in the `libraries` folder and performance comparisons are given in `PERFS.md`.
+in the `libraries` folder and performance comparisons are given in
+[PERFS.md](../PERFS.md).

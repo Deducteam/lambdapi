@@ -1,7 +1,7 @@
 Theoretical grounds
 -------------------
 
-`lambdapi` is an implementation of the λΠ-calculus modulo rewriting.
+Lambdapi is an implementation of the λΠ-calculus modulo rewriting.
 
 The λΠ-calculus is also known as λP or LF. In the λΠ-calculus modulo rewriting, the conversion typing rule includes user rewriting rules defining function and predicate symbols.
 

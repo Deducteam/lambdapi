@@ -13,7 +13,7 @@ stops on the first failure, without going to the next file (if any).
 be relative to the current directory. Moreover, they should neither start with
 the `./` current directory marker, nor contain partent directory markers `..`.
 This is due to the fact that the directory structure is significant due to the
-treatment of [modules](doc/modules.md).
+treatment of [modules](module.md).
 
 Command line flags can be used to control the behaviour of `lambdapi`. You can
 use `lambdapi --help` to get a short description of the available flags.  The
@@ -24,7 +24,7 @@ available options are described in details below.
 The `lambdapi` program may run in three different modes. The standard mode (it
 is selected by default) parses, type-checks and handles the given files. Other
 modes are selected with one of the following flags:
- - `--justparse` enables the parsing mode: the files are parsed and `lambdapi`
+ - `--just-parse` enables the parsing mode: the files are parsed and `lambdapi`
    only fails in case of parse error (variable scopes are not checked). In any
    case, the compilation of dependencies may be triggered in order to retrieve
    user-defined notations.
@@ -83,12 +83,12 @@ For now, there is no support for termination checking.
 #### Debugging flags
 
 The following flags may be useful for debugging:
- - `--debug <str>` enables the debugging modes specified by every character of
-   the string `<str>`. Details on available character flags are obtained using
+ - `--debug <flags>` enables the debugging modes specified by every character of
+   `<flags>`. Details on available character flags are obtained using
    the `--help` flag.
  - `--timeout <int>` gives up type-checking after the given number of seconds.
    Note that the timeout is reset between each file, and that the parameter of
    the command is expected to be a natural number.
- - `--toolong <flt>` gives a warning for each command (i.e., file item) taking
+ - `--too-long <float>` gives a warning for each command (i.e., file item) taking
    more than the given number of seconds to be checked. The given parameter is
    expected to be a floating point number.

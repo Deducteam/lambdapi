@@ -1,0 +1,43 @@
+{
+  "name": "vscode-lp",
+  "version": "0.0.0",
+  "publisher": "MINES ParisTech / INRIA",
+  "engines": {
+    "vscode": "^1.30.0"
+  },
+  "activationEvents": [
+    "onLanguage:lp"
+  ],
+  "main": "./src/client",
+  "contributes": {
+    "languages": [
+      {
+        "id": "lp",
+        "aliases": [
+          "Dedukti",
+          "Lambdapi"
+        ],
+        "extensions": [
+          ".lp"
+        ],
+        "configuration": "./lp.configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "lp",
+        "scopeName": "source.lp",
+        "path": "./syntaxes/lp.tmLanguage"
+      }
+    ],
+    "commands": [
+      {
+        "command": "vscode-lp.restart",
+        "title": "Start or restart the LP language server"
+      }
+    ]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^4.1.4"
+  }
+}
