@@ -1,9 +1,9 @@
-Lambdapi - λΠ-calculus modulo rewriting
-=======================================
+Lambdapi, a proof assistant based on the λΠ-calculus modulo rewriting
+=====================================================================
 
 Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
 mostly compatible with the proof checker Dedukti. More details are given
-in the [documentation](doc/DOCUMENTATION.md)
+in the [documentation](doc/DOCUMENTATION.md).
 
 Installation via Opam
 ---------------------
