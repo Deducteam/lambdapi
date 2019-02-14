@@ -65,7 +65,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       (* Open the module. *)
       (open_sign ss sign, None)
-  | P_symbol(ts, x, xs, a)         ->
+  | P_symbol(ts, x, xs, a)     ->
       (* We first build the symbol declaration mode from the tags. *)
       let m =
         match ts with
