@@ -140,6 +140,8 @@ type require_mode =
   (** Require the module and aliases it with the given indentifier. *)
 
 (** Parser-level representation of a single command. *)
+type p_statement = (ident * p_arg list * p_type) loc
+
 type p_cmd =
   | P_require    of module_path * require_mode
   (** Require statement. *)
@@ -151,8 +153,7 @@ type p_cmd =
   (** Rewriting rule declarations. *)
   | P_definition of bool * ident * p_arg list * p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem
-    of (ident * p_arg list * p_type) loc * p_tactic list * p_proof_end loc
+  | P_theorem    of p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_assert     of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
@@ -264,8 +265,8 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
   | (P_open(m1)                  , P_open(m2)                  ) ->
       m1 = m2
   | (P_symbol(l1,s1,al1,a1)      , P_symbol(l2,s2,al2,a2)      ) ->
-     l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
-     && List.equal eq_p_arg al1 al2
+      l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+      && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
   | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->
