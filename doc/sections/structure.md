@@ -65,7 +65,7 @@ Structure of directories and files
 
  * `tools/`:
    - `deps.ml`: computes `require` commands for converting an old Dedukti file into a Lambdapi file
-   - `lambdapi.tex`: listings setup for including Lambdapi code in Latex
+   - `listings.tex`: setup of the LaTeX package [listings](https://www.ctan.org/pkg/listings) for including Lambdapi code into a LaTeX document
    - `sanity_check.sh`: script checking some style guidelines below (called by `make sanity_check`)
 
  * `libraries/`: libraries of Dedukti files (see GNUmakefile)
