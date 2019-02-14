@@ -34,8 +34,8 @@ let parse_text : string -> string -> Command.t list = fun fname s ->
     else Parser.parse_string fname s
   with
   | Fatal(Some(Some(pos)), msg) -> raise (Parse_error(pos, msg))
-  | Fatal(_              , _  ) -> assert false (* Should not produce. *)
-
+  | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
+  | Fatal(None           , _  ) -> assert false (* Should not produce. *)
 
 type command_state = Time.t * Scope.sig_state
 

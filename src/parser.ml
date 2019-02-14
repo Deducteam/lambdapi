@@ -80,12 +80,13 @@ let binops : binop Prefix.t = Prefix.init ()
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
 
-(** [get_binops mp] loads the binary operators associated to module path [mp].
-    Note that this requires the module to be loaded (i.e., compiled). *)
-let get_binops : module_path -> unit = fun mp ->
+(** [get_binops loc p] loads the binary operators associated to module [p] and
+    report possible errors at location [loc].  This operation requires the [p]
+    to be loaded (i.e., compiled). *)
+let get_binops : Pos.pos -> module_path -> unit = fun loc p ->
   let sign =
-    try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
-      fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
+    try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
+      fatal (Some(loc)) "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
@@ -397,18 +398,26 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
-(** [!require mp] can be called to require the compilation of the module (that
-    corresponds to) [mp]. The reference is set in the [Compile] module. *)
+(** [require] is set in [Compile] module (avoids cyclic dependencies). *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
+
+(** [do_require loc mp] can be used to require the compilation of module [mp],
+    and reporting possible exceptions at position [loc]. *)
+let do_require : Pos.pos -> module_path -> unit = fun loc p ->
+  try !require p with Fatal(_, msg) -> raise (Fatal(Some(Some(loc)), msg))
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> !require p; if m = P_require_open then get_binops p; P_require(p,m)
+      -> do_require _loc p;
+         if m = P_require_open then get_binops _loc p;
+         P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> !require p; P_require(p,m)
+      -> do_require _loc p;
+         P_require(p,m)
   | _open_ p:path
-      -> get_binops p; P_open(p)
+      -> get_binops _loc p;
+         P_open(p)
   | _symbol_ l:symtag* s:ident ":" a:term
       -> P_symbol(l,s,a)
   | _rule_ r:rule rs:{_:_and_ rule}*

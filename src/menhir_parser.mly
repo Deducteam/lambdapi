@@ -234,7 +234,7 @@ line:
       make_pos $loc (P_assert(mf, P_assert_conv(t,u)))
     }
   | r=REQUIRE    DOT {
-      Pervasives.(!(Parser.require)) r;
+      Parser.do_require (locate (fst $loc) (snd $loc)) r;
       make_pos $loc (P_require(r, P_require_default))
     }
   | EOF {
