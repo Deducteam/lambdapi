@@ -18,7 +18,7 @@ unit_tests:
 doc:
 	@dune build @doc
 
-#### Unit tests ##############################################################
+#### Unit tests and sanity check #############################################
 
 LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
@@ -86,6 +86,10 @@ real_tests: bin
 		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
+.PHONY: sanity_check
+sanity_check: tools/sanity_check.sh
+	@./$<
+
 #### Library tests ###########################################################
 
 .PHONY: matita
@@ -139,7 +143,7 @@ distclean: clean
 	@cd libraries && ./dklib.sh clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
-	@find . -type f -name "*.dko" -exec rm {} \;
+	@find . -type f -name "*.lpo" -exec rm {} \;
 
 .PHONY: fullclean
 fullclean: distclean
@@ -197,12 +201,10 @@ OPAM_LP_VER=$(shell dune-release log -t)
 # Prior to build:
 # - dune-release log edit && dune-release tag commit [or edit by yourself]
 # - dune-release tag                                 [or git tag]
-lsp_release:
+repos_release:
 	rm -rf _build
 	dune-release distrib
 	dune-release publish distrib
-#	dune-release opam pkg -p lambdapi
-#	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
-	dune-release opam pkg -p lambdapi-lsp
-	cp -a _build/lambdapi-lsp.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi-lsp/
-	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi-lsp] new version $(OPAM_LP_VER)"
+	dune-release opam pkg -p lambdapi
+	cp -a _build/lambdapi.$(OPAM_LP_VER) $(OPAM_REPO)/packages/lambdapi/
+	cd $(OPAM_REPO) && git add -A && git commit -a -m "[lambdapi] new version $(OPAM_LP_VER)"

@@ -5,6 +5,7 @@ open Timed
 open Console
 open Files
 open Terms
+open Syntax
 open Pos
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
@@ -13,7 +14,8 @@ type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : (sym * pp_hint) StrMap.t ref }
+  ; sign_builtins : (sym * pp_hint) StrMap.t ref
+  ; sign_binops   : (sym * binop) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -22,8 +24,8 @@ type t =
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
-  { sign_path ; sign_symbols = ref StrMap.empty
-  ; sign_deps = ref PathMap.empty ; sign_builtins = ref StrMap.empty }
+  { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
+  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -108,7 +110,8 @@ let link : t -> unit = fun sign ->
   in
   PathMap.iter gn !(sign.sign_deps);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins)
+  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins);
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -116,7 +119,10 @@ let link : t -> unit = fun sign ->
     Note however that [unlink] processes [sign] in place, which means that the
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
-  let unlink_sym s = s.sym_type := Kind; s.sym_rules := [] in
+  let unlink_sym s =
+    if s.sym_path <> sign.sign_path then
+      (s.sym_type := Kind; s.sym_rules := [])
+  in
   let rec unlink_term t =
     let unlink_binder b = unlink_term (snd (Bindlib.unbind b)) in
     let unlink_term_env t =
@@ -128,7 +134,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> if s.sym_path <> sign.sign_path then unlink_sym s
+    | Symb(s,_)    -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | Appl(t,u)    -> unlink_term t; unlink_term u
@@ -150,12 +156,18 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins)
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins);
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
 (** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
+  (* Check for metavariables in the symbol type. *)
+  let nb = List.length (Basics.get_metas a) in
+  if nb > 0 then
+    fatal s.pos "The type symbol [%s] contains [%i] metavariables" s.elt nb;
+  (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_rules = ref [] ; sym_mode = mode }
@@ -182,12 +194,57 @@ let write : t -> string -> unit = fun sign fname ->
     with an error message. *)
 let read : string -> t = fun fname ->
   let ic = open_in fname in
-  try
-    let sign = Marshal.from_channel ic in
-    close_in ic; sign
-  with Failure _ ->
-    close_in ic;
-    fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+  let sign =
+    try
+      let sign = Marshal.from_channel ic in
+      close_in ic; sign
+    with Failure _ ->
+      close_in ic;
+      fatal_no_pos "File [%s] is incompatible with current binary...\n" fname
+  in
+  (* Timed references need reset after unmarshaling (see [Timed] doc). *)
+  let reset_timed_refs sign =
+    unsafe_reset sign.sign_symbols;
+    unsafe_reset sign.sign_deps;
+    unsafe_reset sign.sign_builtins;
+    unsafe_reset sign.sign_binops;
+    let rec reset_term t =
+      let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
+      match unfold t with
+      | Vari(_)     -> ()
+      | Type        -> ()
+      | Kind        -> ()
+      | Symb(s,_)   -> shallow_reset_sym s
+      | Prod(a,b)   -> reset_term a; reset_binder b
+      | Abst(a,t)   -> reset_term a; reset_binder t
+      | Appl(t,u)   -> reset_term t; reset_term u
+      | Meta(_,_)   -> assert false
+      | Patt(_,_,m) -> Array.iter reset_term m
+      | TEnv(_,m)   -> Array.iter reset_term m
+      | Wild        -> ()
+      | TRef(r)     -> unsafe_reset r; Option.iter reset_term !r
+    and reset_rule r =
+      List.iter reset_term r.lhs;
+      reset_term (snd (Bindlib.unmbind r.rhs))
+    and shallow_reset_sym s =
+      unsafe_reset s.sym_type;
+      unsafe_reset s.sym_def;
+      unsafe_reset s.sym_rules
+    in
+    let reset_sym s =
+      shallow_reset_sym s;
+      reset_term !(s.sym_type);
+      Option.iter reset_term !(s.sym_def);
+      List.iter reset_rule !(s.sym_rules)
+    in
+    StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
+    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_binops);
+    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_builtins);
+    let fn (_,r) = reset_rule r in
+    PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
+    sign
+  in
+  reset_timed_refs sign
 
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
@@ -206,9 +263,14 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
-    signature [sign]). *)
+    signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
+
+(** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
+    If [op] was previously bound, the previous binding is discarded. *)
+let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
+  sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

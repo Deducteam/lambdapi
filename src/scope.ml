@@ -71,10 +71,14 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
       end
   | _                                -> (* Fully-qualified symbol. *)
       begin
-        (* Check that the signature exists. *)
+        (* Check that the signature was required (or is the current one). *)
+        if mp <> st.signature.sign_path then
+          if not (PathMap.mem mp !(st.signature.sign_deps)) then
+            fatal pos "No module [%a] required." Files.pp_path mp;
+        (* The signature must have been loaded. *)
         let sign =
-          try PathMap.find mp Timed.(!Sign.loaded) with Not_found ->
-          fatal pos "No module [%a] loaded." Files.pp_path mp
+          try PathMap.find mp Timed.(!Sign.loaded)
+          with Not_found -> assert false (* Should not happen. *)
         in
         (* Look for the symbol. *)
         try (Sign.find sign s, Qualified) with Not_found ->
@@ -107,13 +111,14 @@ type mode =
   (** Standard scoping mode for terms,  holding a map of defined metavariables
       that can be updated with new metavariable on scoping. *)
   | M_Patt
-  (** Scoping as a rewriting pattern. *)
+  (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list
-  (** Left-hand side mode, used for scoping patterns.  The constructor carries
-      a map associating an index to every (real) pattern variable. *)
+  (** Scoping mode for rewriting rule left-hand sides. The constructor
+      carries a map associating an index to every free variable. *)
   | M_RHS  of (string * tevar) list
-  (** Right-hand side mode. The constructor carries the environment for higher
-      order variables that will be bound in the representation of the RHS. *)
+  (** Scoping mode for rewriting rule righ-hand sides. The constructor
+      carries the environment for variables that will be bound in the
+      representation of the RHS. *)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -142,7 +147,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
-    | (P_Vari(qid)     , _        ) -> find_qid ss env qid
+    | (P_Iden(qid)     , _        ) -> find_qid ss env qid
     | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
     | (P_Wild          , M_LHS(_) ) ->
         let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
@@ -179,12 +184,24 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
               wrn t.pos "Pattern variable not bound in the RHS.";
             None
         in
+        (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
-          | Vari(x) -> Bindlib.box_var x
-          | _       -> fatal t.pos "Not a variable."
+          | Vari(x) -> x
+          | _       ->
+             fatal t.pos "Pattern variables can be applied \
+                          to distinct bound variables only."
         in
-        _Patt i id.elt (Array.map scope_var ts)
+        let vs = Array.map scope_var ts in
+        (* Check that [vs] are distinct variables. *)
+        for i=1 to Array.length vs - 1 do
+          for j=0 to i-1 do
+            if Bindlib.eq_vars vs.(i) vs.(j) then
+              fatal t.pos "Pattern variables can be applied \
+                           to distinct bound variables only."
+          done
+        done;
+        _Patt i id.elt (Array.map Bindlib.box_var vs)
     | (P_Patt(id,ts)   , M_RHS(m) ) ->
         let x =
           try List.assoc id.elt m with Not_found ->
@@ -233,6 +250,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
+    | (P_BinO(l,b,r)  , _         ) ->
+        let (op,_,_,qid) = b in
+        let (s, _) = find_sym true ss qid in
+        let s = _Symb s (Binary(op)) in
+        _Appl (_Appl s (scope env l)) (scope env r)
+    | (P_Wrap(t)      , _         ) -> scope env t
   in
   scope env t
 
@@ -243,7 +266,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
 let scope_term : metamap -> sig_state -> env -> p_term
     -> term * metamap = fun m ss env t ->
   let m = Pervasives.ref m in
-  let t = scope (M_Term(m)) ss env t in  
+  let t = scope (M_Term(m)) ss env t in
   (Bindlib.unbox t, Pervasives.(!m))
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
@@ -255,7 +278,7 @@ let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars acc t =
     match t.elt with
     | P_Type           -> acc
-    | P_Vari(_)        -> acc
+    | P_Iden(_)        -> acc
     | P_Wild           -> acc
     | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
     | P_Patt(id,ts)    ->
@@ -274,6 +297,8 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
     | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
     | P_NLit(_)        -> acc
+    | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
+    | P_Wrap(t)        -> patt_vars acc t
   and arg_patt_vars acc xs =
     match xs with
     | []                 -> acc
@@ -305,7 +330,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
-  (* We scope the LHS and add indexes in the enviroment for meta-variables. *)
+  (* We scope the LHS and add indexes in the environment for metavariables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
@@ -326,9 +351,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
-  let ctxt = Array.of_list pvs in
+  let vars = Array.of_list pvs in
   (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; ctxt})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; vars})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)

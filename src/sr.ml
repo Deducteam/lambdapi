@@ -6,7 +6,8 @@ open Terms
 open Print
 
 (** Logging function for typing. *)
-let log_subj = new_logger 'j' "subj" "debugging information for SR"
+let log_subj =
+  new_logger 'j' "subj" "debugging information for subject-reduction"
 let log_subj = log_subj.logger
 
 (** Representation of a substitution. *)
@@ -45,10 +46,9 @@ let build_meta_type : int -> term = fun k ->
   Meta(m,[||])
 *)
 
-(** [build_meta_type k] builds the type [x_1:t_1 -> .. -> x_k:t_k ->
-    t_{k+1}] where [x1,..,x_k] are fresh variables, [t_i =
-    M_i[x_1,..,x_{i-1}]], [M_i] is a new metavariable of arity [i-1]
-    and type [x_1:t_1 -> .. -> x_{i-1}:t_{i-1} -> Type]. *)
+(** [build_meta_type k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), B” where
+    “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
+    new metavar of arity “i-1” and type “∀(x₁:A₂) ⋯ (x(i-1):A(i-1), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k>=0);
   let vs = Bindlib.new_mvar mkfree (Array.make k "x") in

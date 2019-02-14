@@ -10,6 +10,13 @@ open Terms
 let to_tvars : term array -> tvar array =
   Array.map (function Vari(x) -> x | _ -> assert false)
 
+(** [count_products a] returns the number of consecutive products at the  head
+    of the term [a]. *)
+let rec count_products : term -> int = fun t ->
+  match unfold t with
+  | Prod(_,b) -> 1 + count_products (snd (Bindlib.unbind b))
+  | _         -> 0
+
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an {!constr:Appl} node. *)
@@ -47,7 +54,8 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
+    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
+                                    eq ((a1,a2)::(b1,b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
@@ -143,7 +151,7 @@ let distinct_vars : term array -> bool = fun ar ->
   in
   distinct_vars [] (Array.length ar - 1)
 
-(** {6 Conversion of a rule into a "pair" of terms} *)
+(** {2 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term.  The bound higher-order variables of the original RHS are
@@ -157,4 +165,4 @@ let term_of_rhs : rule -> term = fun r ->
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
-  Bindlib.msubst r.rhs (Array.mapi fn r.ctxt)
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)

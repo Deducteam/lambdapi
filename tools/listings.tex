@@ -1,0 +1,86 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{xcolor}
+\definecolor{green}{RGB}{0,130,0}
+\definecolor{lightgrey}{RGB}{240,240,240}
+
+\usepackage{listings}
+\lstdefinelanguage{Dedukti}
+{
+  alsoletter={=->:\#\*},
+  keywords={symbol,rule,infix},
+  delim=[s][\color{brown}]{\[}{\]},
+  comment=[n]{(;}{;)},
+  string=[b]{"},
+  stringstyle=\color{orange},
+  commentstyle=\color{red},
+  showstringspaces=false
+}
+\lstset{basicstyle={\ttfamily\small\upshape},keywordstyle=\color{blue}}
+\lstset{backgroundcolor=\color{lightgrey},language={Dedukti}}
+
+\usepackage{amssymb}
+\newcommand\bB{\mathbb{B}} % 𝔹
+\newcommand\bN{\mathbb{N}} % ℕ
+\newcommand\bL{\mathbb{L}} % 𝕃
+
+\newcommand\A\Rightarrow % ⇒
+\newcommand\ra\rightarrow % →
+\newcommand\all\forall % ∀
+
+\title{Setup of the {\tt listings} package for including {\tt lambdapi} code}
+\author{Lambdapi development team}
+\date{14 February 2019}
+
+\begin{document}
+
+\maketitle
+
+\small
+\begin{lstlisting}[mathescape=true]
+symbol Set:TYPE     symbol arrow:Set$\A$Set$\A$Set
+
+symbol El:Set$\A$TYPE
+  rule El (arrow a b) $\ra$ El a $\A$ El b
+
+symbol $\bB$:TYPE      symbol true:$\bB$    symbol false:$\bB$
+symbol $\bN$:TYPE      symbol 0:$\bN$       symbol s:$\bN$$\A$$\bN$
+
+symbol infix +:$\bN$$\A$$\bN$$\A$$\bN$
+  rule     0 + q $\ra$ q
+  rule (s p) + q $\ra$ s (p + q)
+
+symbol $\bL$:Set$\A$$\bN$$\A$TYPE
+  symbol nil: $\all$a,$\bL$ a 0
+  symbol cons:$\all$a,El a $\A$ $\all$p,$\bL$ a p $\A$ $\bL$ a (s p)
+
+symbol app:$\all$a p,$\bL$ a p $\A$ $\all$q,$\bL$ a q $\A$ $\bL$ a (p+q)
+  rule app a _ (nil _)        q m $\ra$ m
+  rule app a _ (cons _ x p l) q m
+       $\ra$ cons a x (p+q) (app a p l q m)
+
+symbol len_fil:$\all$a,(El a $\A$ $\bB$) $\A$ $\all$p,$\bL$ a p $\A$ $\bN$
+symbol len_fil_aux:$\bB$ $\A$ $\all$a,(El a $\A$ $\bB$) $\A$ $\all$p,$\bL$ a p $\A$ $\bN$
+  rule len_fil a f _ (nil _)         $\ra$ 0
+  rule len_fil a f _ (cons _ x p l)
+       $\ra$ len_fil_aux (f x) a f p l
+  rule len_fil a f _ (app _ p l q m)
+       $\ra$ (len_fil a f p l) + (len_fil a f q m)
+  rule len_fil_aux true  a f p l $\ra$ s (len_fil a f p l)
+  rule len_fil_aux false a f p l $\ra$ len_fil a f p l
+
+symbol fil:$\all$a f p l,$\bL$ a (len_fil a f p l)
+symbol fil_aux:$\all$b a f,El a $\A$ $\all$p l,$\bL$ a (len_fil_aux b a f p l)
+  rule fil a f _ (nil _)         $\ra$ nil a
+  rule fil a f _ (cons _ x p l)  $\ra$ fil_aux (f x) a f x p l
+  rule fil a f _ (app _ p l q m)
+       $\ra$ app a (len_fil a f p l) (fil a f p l)
+                (len_fil a f q m) (fil a f q m)
+  rule fil_aux false a f x p l $\ra$ fil a f p l
+  rule fil_aux true  a f x p l
+       $\ra$ cons a x (len_fil a f p l) (fil a f p l)
+\end{lstlisting}
+
+\end{document}

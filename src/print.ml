@@ -1,4 +1,9 @@
-(** Pretty-printing. *)
+(** Pretty-printing for the core AST.
+
+    The functions of this module are used for printing terms and other objects
+    defined in the {!module:Terms} module.  This is mainly used for displaying
+    log messages, and feedback in case of success or error while type-checking
+    terms or testing convertibility. *)
 
 open Extra
 open Terms
@@ -10,6 +15,7 @@ let pp_symbol : pp_hint -> sym pp = fun h oc s ->
   | Nothing   -> Format.pp_print_string oc s.sym_name
   | Qualified -> Format.fprintf oc "%a.%s" Files.pp_path s.sym_path s.sym_name
   | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
+  | Binary(o) -> Format.fprintf oc "(%s)" o
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->

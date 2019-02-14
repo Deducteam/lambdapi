@@ -59,9 +59,9 @@ module Goal :
 
 (** Representation of the state of the proof of a theorem. *)
 type proof =
-  { proof_name     : Pos.strloc  (** Name of the proved theorem.          *)
+  { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
-  ; proof_goals    : Goal.t list (** Open goals (focused is first).       *)
+  ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
   ; proof_builtins : builtins    (** Signature state, for builtins.       *) }
 
 and builtins = (sym * pp_hint) StrMap.t
@@ -80,33 +80,35 @@ let init : builtins -> Pos.strloc -> term -> t = fun proof_builtins name a ->
 (** [finished ps] tells whether the proof represented by [ps] is finished. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
+(** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
+let pp_goals : _ pp = fun oc gl ->
+  let open Print in
+  match gl with
+  | []    -> Format.fprintf oc " No more goals...\n"
+  | g::gs ->
+    let (hyps, a) = Goal.get_type g in
+    let print_hyp (s,(_,t)) =
+      Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
+    in
+    List.iter print_hyp hyps;
+    Format.fprintf oc " ----------------------------------------\n";
+    Format.fprintf oc "  %a\n" pp a;
+    if gs <> [] then
+      begin
+        let g_meta = Goal.get_meta g in
+        let (_, g_type) = Goal.get_type g in
+        Format.fprintf oc "\n";
+        Format.fprintf oc " >0< %a : %a\n" pp_meta g_meta pp g_type;
+        let print_goal i g =
+          let m = Goal.get_meta g in
+          let (_, a) = Goal.get_type g in
+          Format.fprintf oc " (%i) %a : %a\n" (i+1) pp_meta m pp a
+        in
+        List.iteri print_goal gs
+      end
+
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
 let pp : t pp = fun oc ps ->
   Format.fprintf oc "== Current theorem ======================\n";
-  let open Print in
-  begin
-    match ps.proof_goals with
-    | []    -> Format.fprintf oc " No more goals...\n"
-    | g::gs ->
-        let (hyps, a) = Goal.get_type g in
-        let print_hyp (s,(_,t)) =
-          Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
-        in
-        List.iter print_hyp hyps;
-        Format.fprintf oc " ----------------------------------------\n";
-        Format.fprintf oc "  %a\n" pp a;
-        if gs <> [] then
-          begin
-            let g_meta = Goal.get_meta g in
-            let (_, g_type) = Goal.get_type g in
-            Format.fprintf oc "\n";
-            Format.fprintf oc " >0< %a : %a\n" pp_meta g_meta pp g_type;
-            let print_goal i g =
-              let m = Goal.get_meta g in
-              let (_, a) = Goal.get_type g in
-              Format.fprintf oc " (%i) %a : %a\n" (i+1) pp_meta m pp a
-            in
-            List.iteri print_goal gs
-          end
-  end;
+  pp_goals oc ps.proof_goals;
   Format.fprintf oc "==========================================\n"
