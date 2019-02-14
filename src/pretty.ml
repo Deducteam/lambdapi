@@ -145,8 +145,10 @@ let pp_command : command pp = fun oc cmd ->
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(st,ts,e)              ->
-      let (s,a) = st.elt in
-      out "@[<hov 2>theorem %s :@ @[<2>%a@]@]@." s.elt pp_p_term a;
+      let (s,args,a) = st.elt in
+      out "@[<hov 2>theorem %s" s.elt;
+      List.iter (out " %a" pp_p_arg) args;
+      out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt

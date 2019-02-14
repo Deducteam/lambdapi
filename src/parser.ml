@@ -389,7 +389,7 @@ let parser config =
       P_config_binop(binop)
 
 let parser statement =
-  _theorem_ s:ident ":" a:term _proof_ -> Pos.in_pos _loc (s,a)
+  _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
 
 let parser proof =
   ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)

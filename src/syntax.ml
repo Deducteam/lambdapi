@@ -151,7 +151,8 @@ type p_cmd =
   (** Rewriting rule declarations. *)
   | P_definition of bool * ident * p_arg list * p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem    of (ident * p_type) loc * p_tactic list * p_proof_end loc
+  | P_theorem
+    of (ident * p_arg list * p_type) loc * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_assert     of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
@@ -271,10 +272,10 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
       b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
   | (P_theorem(st1,ts1,e1)       , P_theorem(st2,ts2,e2)       ) ->
-      let (s1,a1) = st1.elt in
-      let (s2,a2) = st2.elt in
+      let (s1,l1,a1) = st1.elt in
+      let (s2,l2,a2) = st2.elt in
       eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
-      && List.equal eq_p_tactic ts1 ts2
+      && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
   | (P_assert(mf1,a1)            , P_assert(mf2,a2)            ) ->
       mf1 = mf2 && eq_p_assertion a1 a2
   | (P_set(c1)                   , P_set(c2)                   ) ->
