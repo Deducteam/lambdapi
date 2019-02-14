@@ -118,9 +118,5 @@ let check_text ~doc =
         | Some pos -> (pos,lvl,msg,goal) :: acc
       ) [] diag
   with
-  | Pure.Parse_error(Some(Some(loc)), msg) ->
+  | Pure.Parse_error(loc, msg) ->
     doc.root, mk_error ~doc loc msg
-  | Pure.Parse_error(_, msg) ->
-    let loc = dummy_loc in
-    doc.root, mk_error ~doc loc msg
-

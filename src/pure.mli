@@ -18,7 +18,7 @@ module Tactic : sig
 end
 
 (** Exception raised by [parse_text]. *)
-exception Parse_error of Pos.popt option * string
+exception Parse_error of Pos.pos * string
 
 (** [parse_text fname contents] runs the parser on the string [contents] as if
     it were a file named [fname]. This function may raise [Parse_error]. *)
