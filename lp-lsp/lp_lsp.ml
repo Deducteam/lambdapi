@@ -25,6 +25,12 @@ end
 module List = struct
   include List
   let assoc_opt n d = try Some List.(assoc n d) with | Not_found -> None
+  let find_opt f l = try Some List.(find f l) with | Not_found -> None
+end
+
+module Option = struct
+  let iter f x = match x with | None -> () | Some x -> f x
+  let map f x = match x with | None -> None | Some x -> Some (f x)
 end
 
 let    int_field name dict = U.to_int    List.(assoc name dict)
@@ -50,7 +56,7 @@ let do_initialize ofmt ~id _params =
        `Assoc [
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
-        ; "hoverProvider", `Bool false
+        ; "hoverProvider", `Bool true
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -60,12 +66,13 @@ let do_shutdown ofmt ~id =
   LIO.send_json ofmt msg
 
 let doc_table : (string, _) Hashtbl.t = Hashtbl.create 39
-let completed_table : (string, Pure.command_state) Hashtbl.t = Hashtbl.create 39
+let completed_table : (string, Lp_doc.t) Hashtbl.t = Hashtbl.create 39
 
 (* Notification handling; reply is optional / asynchronous *)
 let do_check_text ofmt ~doc =
-  let final_st, diags = Lp_doc.check_text ~doc in
-  Hashtbl.replace completed_table doc.uri final_st;
+  let doc, diags = Lp_doc.check_text ~doc in
+  Hashtbl.replace doc_table doc.uri doc;
+  Hashtbl.replace completed_table doc.uri doc;
   LIO.send_json ofmt @@ diags
 
 let do_change ofmt ~doc change =
@@ -132,8 +139,8 @@ let kind_of_type tm =
     12                         (* Function *)
 
 let do_symbols ofmt ~id params =
-  let file, _, final_st = grab_doc params in
-  let sym = Pure.get_symbols final_st in
+  let file, _, doc = grab_doc params in
+  let sym = Pure.get_symbols doc.final in
   let sym = Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
       (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
@@ -149,11 +156,44 @@ let get_docTextPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   file, line, character
 
+let in_range ?loc (line, pos) =
+  match loc with
+  | None -> false
+  | Some loc ->
+    let { Pos.start_line ; start_col ; end_line ; end_col ; _ } = Lazy.force loc in
+    start_line - 1 < line && line < end_line - 1 ||
+    (start_line - 1 = line && start_col <= pos) ||
+    (end_line - 1 = line && pos <= end_col)
+
+let get_goals ~doc ~line ~pos =
+  let open Lp_doc in
+  let node =
+    List.find_opt (fun { ast; _ } ->
+        let loc = Pure.Command.get_pos ast in
+        let res = in_range ?loc (line,pos) in
+                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
+        LIO.log_error "get_goals" ("call: "^ls);
+        res
+      ) doc.Lp_doc.nodes in
+  Option.map
+    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node
+
 let do_hover ofmt ~id params =
-  let _ = get_docTextPosition params in
-  let result = `Assoc [ "contents", `String "hover XXX"] in
-  let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg
+  let uri, line, pos = get_docTextPosition params in
+  let doc = Hashtbl.find completed_table uri in
+  get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
+      let result = `Assoc [ "contents", `String goals] in
+      let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg)
+
+let protect_dispatch p f x =
+  try f x
+  with
+  | exn ->
+    let bt = Printexc.get_backtrace () in
+    LIO.log_error ("[error] {"^p^"}") Printexc.(to_string exn);
+    LIO.log_error "[BT]" bt;
+    F.pp_print_flush !LIO.debug_fmt ()
 
 (* XXX: We could split requests and notifications but with the OCaml
    theading model there is not a lot of difference yet; something to
@@ -165,23 +205,32 @@ let dispatch_message ofmt dict =
   (* Requests *)
   | "initialize" ->
     do_initialize ofmt ~id params
+
   | "shutdown" ->
     do_shutdown ofmt ~id
 
   (* Symbols in the document *)
   | "textDocument/documentSymbol" ->
-    do_symbols ofmt ~id params
+    (* XXX to investigate *)
+    protect_dispatch "do_symbols"
+      (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
     do_hover ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->
-    do_open ofmt params
+    protect_dispatch "didOpen"
+      (do_open ofmt) params
+
   | "textDocument/didChange" ->
-    do_change ofmt params
+    protect_dispatch "didChange"
+      (do_change ofmt) params
+
   | "textDocument/didClose" ->
-    do_close ofmt params
+    protect_dispatch "didClose"
+      (do_close ofmt) params
+
   | "exit" ->
     exit 0
 

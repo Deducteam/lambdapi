@@ -6,7 +6,8 @@ open Terms
 open Print
 
 (** Logging function for typing. *)
-let log_subj = new_logger 'j' "subj" "debugging information for SR"
+let log_subj =
+  new_logger 'j' "subj" "debugging information for subject-reduction"
 let log_subj = log_subj.logger
 
 (** Representation of a substitution. *)

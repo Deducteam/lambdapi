@@ -1,9 +1,7 @@
 Syntax of terms
 ---------------
 
-/!\ PAGE UNDER DEVELOPMENT /!\
-
-The BNF grammar of lambdapi can be found in [syntax.bnf](../syntax.bnf).
+The BNF grammar of Lambdapi is in [syntax.bnf](../syntax.bnf).
 
 A user-defined term can be either:
 
@@ -22,7 +20,14 @@ A user-defined term can be either:
 
  * a dependent product `∀(x y:A) z,T`
 
+ * a non-dependent product `A ⇒ T` (syntactic sugar for `∀x:A,T` with `x` not occurring in `T`)
+
  * a `let f (x y:A) z = t` construction
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
- 
+
+ * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal.
+
+ * an integer between 0 and 2^30-1 if the builtins "0" and "+1" are defined
+
+Subterms can be parenthesized to avoid ambiguities.

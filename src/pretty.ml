@@ -136,9 +136,10 @@ let pp_command : command pp = fun oc cmd ->
       out "require %a as %s" pp_path m i.elt
   | P_open(m)                       ->
       out "open %a" pp_path m
-  | P_symbol(tags,s,a)              ->
-      out "@[<hov 2>symbol%a %s :@ @[%a@]@]"
-        pp_symtags tags s.elt pp_p_term a
+  | P_symbol(tags,s,args,a)         ->
+      out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
+      List.iter (out " %a" pp_p_arg) args;
+      out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(_,s,args,ao,t)     ->
@@ -147,8 +148,10 @@ let pp_command : command pp = fun oc cmd ->
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(st,ts,e)              ->
-      let (s,a) = st.elt in
-      out "@[<hov 2>theorem %s :@ @[<2>%a@]@]@." s.elt pp_p_term a;
+      let (s,args,a) = st.elt in
+      out "@[<hov 2>theorem %s" s.elt;
+      List.iter (out " %a" pp_p_arg) args;
+      out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt

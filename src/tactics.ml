@@ -99,7 +99,12 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         | 0 -> fst (Scope.scope_term StrMap.empty ss env t)
         | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
       in
-      handle_refine (add_wilds t nb)
+      let res = (add_wilds t nb) in
+      print_string "----------------------------------- \n";
+      print_string "Apply led to refine on this term : \n";
+      (Format.printf "%a" Print.pp_term res);
+      print_string "----------------------------------- \n";
+      handle_refine res
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
