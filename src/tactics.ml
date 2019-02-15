@@ -101,9 +101,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       in
       let res = (add_wilds t nb) in
       print_string "----------------------------------- \n";
-      print_string "Apply led to refine on this term : \n";
-      (Format.printf "%a" Print.pp_term res);
-      print_string "----------------------------------- \n";
+      print_string "scoped = ";
+       (Format.printf "%a" Print.pp_term res);
+      print_endline "\n ----------------------------------- \n";
       handle_refine res
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})

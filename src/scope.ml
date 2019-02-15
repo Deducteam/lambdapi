@@ -120,13 +120,9 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
-    a parser term [t] *)
-let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
+(** [getImplicitOfIden ss t] *)
+let getImplicitsOfIden : sig_state -> p_term -> bool list = fun ss t ->
   match t.elt with
-  | P_Prod(args, _) 
-  | P_Abst(args, _)                -> 
-      List.map (fun x -> match x with (_,_,i) -> i) args
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) -> 
       (match StrMap.find_opt (snd id.elt) ss.in_scope with
@@ -135,9 +131,14 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
           (match StrMap.find_opt (snd id.elt) ss.builtins with
           | Some(f, _) -> f.sym_implicits
           | None       -> [])) (* not found *)
-  | P_Patt(_,_)                    -> [] (* TO DO : see if we want to have 
-                    implicits for patterns as well, but I don't think so *)
   | _                              -> []
+
+(** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
+    a parser term [t] *)
+let getParamsImplicitnessOfType : p_term -> bool list = fun t ->
+  match t.elt with
+  | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
+  | _                 -> []
 
 (** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
     [args] and with the insertion of "_" for the implicit arguments, following the information 
@@ -173,7 +174,8 @@ let add_arg_tbox : tbox -> tbox list -> tbox = fun t args ->
     match args with
     | []      -> t
     | u::args -> add_arg_tbox_aux (_Appl t u) args
-  in add_arg_tbox_aux t args
+  in print_string ("nb args total = " ^ (string_of_int (List.length args)) ^ "\n");
+     add_arg_tbox_aux t args
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -266,9 +268,21 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParamsImplicitness ss f in    (* get the formal parameters of f *)
+          let params = getImplicitsOfIden ss f in          (* get the formal parameters of f *)
           let fullArgs = addImplicitArgs params args in (* adds the implicit arguments *)
-          add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs)
+          print_string "We will do a adda_arg ! \n";
+          let res = add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs) in
+          print_string (string_of_int (List.length args));
+          print_string (string_of_int (List.length fullArgs));
+          (* let oldRes = _Appl (scope env t) (scope env u) in *)
+
+          print_string "Result with my work = ";
+          Format.printf "%a" Print.pp_term (Bindlib.unbox res);
+(*           print_endline "\n Previous result was = ";
+          Format.printf "%a" Print.pp_term (Bindlib.unbox oldRes); *)
+          print_endline "\n";
+          res
+
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
