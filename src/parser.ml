@@ -80,12 +80,13 @@ let binops : binop Prefix.t = Prefix.init ()
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
 
-(** [get_binops mp] loads the binary operators associated to module path [mp].
-    Note that this requires the module to be loaded (i.e., compile). *)
-let get_binops : module_path -> unit = fun mp ->
+(** [get_binops loc p] loads the binary operators associated to module [p] and
+    report possible errors at location [loc].  This operation requires the [p]
+    to be loaded (i.e., compiled). *)
+let get_binops : Pos.pos -> module_path -> unit = fun loc p ->
   let sign =
-    try PathMap.find mp Timed.(!(Sign.loaded)) with Not_found ->
-      fatal_no_pos "Module [%a] not loaded (used for binops)." pp_path mp
+    try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
+      fatal (Some(loc)) "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
@@ -119,8 +120,6 @@ let _assertnot_  = KW.create "assertnot"
 let _const_      = KW.create "const"
 let _inj_        = KW.create "injective"
 let _TYPE_       = KW.create "TYPE"
-let _pos_        = KW.create "pos"
-let _neg_        = KW.create "neg"
 let _proof_      = KW.create "proof"
 let _refine_     = KW.create "refine"
 let _intro_      = KW.create "intro"
@@ -254,7 +253,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
   | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Vari(qid))
+      when p >= PAtom -> in_pos _loc (P_Iden(qid))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -266,7 +265,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc (P_Patt(p, Array.of_list e))
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
-      when p >= PAtom -> t
+      when p >= PAtom -> in_pos _loc (P_Wrap(t))
   (* Application. *)
   | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
@@ -317,8 +316,8 @@ let parser term @(p : prio) =
    level [PBinO]. The left operand is parsed first, together with the operator
    to obtain the corresponding priority and associativity parameters.  We then
    check whether the (binary operator) priority level [pl] of the left operand
-   satifies the conditions, and reject it earley if it does not. We then parse
-   the right operand in a second step, and also check whether is satisfied the
+   satifies the conditions, and reject it early if it does not.  We then parse
+   the right operand in a second step, and also check whether it satisfies the
    required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
@@ -372,9 +371,9 @@ let parser assertion =
   | t:term "≡" u:term -> P_assert_conv(t,u)
 
 let parser assoc =
-  | EMPTY -> Assoc_none
-  | "l"   -> Assoc_left
-  | "r"   -> Assoc_right
+  | EMPTY   -> Assoc_none
+  | "left"  -> Assoc_left
+  | "right" -> Assoc_right
 
 (** [config] pases a single configuration option. *)
 let parser config =
@@ -389,32 +388,44 @@ let parser config =
       Prefix.add binops s binop;
       P_config_binop(binop)
 
-let parser proof = _proof_ ts:tactic* e:proof_end -> (ts,e)
+let parser statement =
+  _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
+
+let parser proof =
+  ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
 
 let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
-(** [!require mp] can be called to require the compilation of the module (that
-    corresponds to) [mp]. The reference is set in the [Compile] module. *)
+(** [require] is set in [Compile] module (avoids cyclic dependencies). *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
+
+(** [do_require loc mp] can be used to require the compilation of module [mp],
+    and reporting possible exceptions at position [loc]. *)
+let do_require : Pos.pos -> module_path -> unit = fun loc p ->
+  try !require p with Fatal(_, msg) -> raise (Fatal(Some(Some(loc)), msg))
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> !require p; if m = P_require_open then get_binops p; P_require(p,m)
+      -> do_require _loc p;
+         if m = P_require_open then get_binops _loc p;
+         P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> !require p; P_require(p,m)
+      -> do_require _loc p;
+         P_require(p,m)
   | _open_ p:path
-      -> get_binops p; P_open(p)
-  | _symbol_ l:symtag* s:ident ":" a:term
-      -> P_symbol(l,s,a)
+      -> get_binops _loc p;
+         P_open(p)
+  | _symbol_ l:symtag* s:ident al:arg* ":" a:term
+      -> P_symbol(l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(false,s,al,ao,t)
-  | _theorem_ s:ident ":" a:term (ts,e):proof
-      -> P_theorem(s,a,ts,e)
+  | st:statement (ts,e):proof
+      -> P_theorem(st,ts,e)
   | mf:assert_must_fail a:assertion
       -> P_assert(mf,a)
   | _set_ c:config

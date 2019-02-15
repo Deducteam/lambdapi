@@ -61,9 +61,10 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
       let s = infer_aux conv (Ctxt.add x a ctx) b in
       (* We check that [s] is a sort. *)
       begin
-        match unfold s with
+        let s = unfold s in
+        match s with
         | Type | Kind -> s
-        | s           -> conv s Type; Type
+        | _           -> conv s Type; Type
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>

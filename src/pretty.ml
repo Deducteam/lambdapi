@@ -1,4 +1,9 @@
-(** Pretty-printing the parser-level AST. *)
+(** Pretty-printing the parser-level AST.
+
+    This module defines functions that allow printing elements of syntax found
+    in the parser-level abstract syntax. This is used, for example, to print a
+    file in the Lambdapi syntax, given the AST obtained when parsing a file in
+    the legacy (Dedukti) syntax. *)
 
 open Extra
 open Files
@@ -34,7 +39,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
     let pp_func = pp PFunc in
     match (t.elt, p) with
     | (P_Type            , _    ) -> out "TYPE"
-    | (P_Vari(qid)       , _    ) -> out "%a" pp_qident qid
+    | (P_Iden(qid)       , _    ) -> out "%a" pp_qident qid
     | (P_Wild            , _    ) -> out "_"
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar
@@ -50,6 +55,8 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_BinO(t,b,u)     , _    ) ->
         let (b, _, _, _) = b in
         out "(%a %s %a)" pp_atom t b pp_atom u
+    (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
+    | (P_Wrap(t)         , _    ) -> out "%a" (pp p) t
     | (_                 , _    ) -> out "(%a)" pp_func t
   in
   let rec pp_toplevel _ t =
@@ -126,9 +133,10 @@ let pp_command : command pp = fun oc cmd ->
       out "require %a as %s" pp_path m i.elt
   | P_open(m)                       ->
       out "open %a" pp_path m
-  | P_symbol(tags,s,a)              ->
-      out "@[<hov 2>symbol%a %s :@ @[%a@]@]"
-        pp_symtags tags s.elt pp_p_term a
+  | P_symbol(tags,s,args,a)         ->
+      out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
+      List.iter (out " %a" pp_p_arg) args;
+      out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(_,s,args,ao,t)     ->
@@ -136,11 +144,14 @@ let pp_command : command pp = fun oc cmd ->
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
-  | P_theorem(s,a,ts,e)             ->
-      out "@[<hov 2>theorem %s :@ @[<2>%a@]@]@." s.elt pp_p_term a;
+  | P_theorem(st,ts,e)              ->
+      let (s,args,a) = st.elt in
+      out "@[<hov 2>theorem %s" s.elt;
+      List.iter (out " %a" pp_p_arg) args;
+      out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
-      out "%a" pp_p_proof_end e
+      out "%a" pp_p_proof_end e.elt
   | P_assert(true , asrt)           ->
       out "assertnot %a" pp_p_assertion asrt
   | P_assert(false, asrt)           ->

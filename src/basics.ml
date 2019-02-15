@@ -54,7 +54,8 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> eq ((a1,a2)::(unbind2 b1 b2)::l)
+    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
+                                    eq ((a1,a2)::(b1,b2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
         eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
@@ -164,4 +165,4 @@ let term_of_rhs : rule -> term = fun r ->
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
-  Bindlib.msubst r.rhs (Array.mapi fn r.ctxt)
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)

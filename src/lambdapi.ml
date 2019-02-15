@@ -88,31 +88,31 @@ let spec =
   let spec = Arg.align
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
-      , Printf.sprintf " Produce object files (%S extension)." obj_extension )
-    ; ( "--toolong"
+      , Printf.sprintf " Produce object files (%S extension)" obj_extension )
+    ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
-      , "<flt> Duration considered too long for a command." )
+      , "<float> Duration considered too long for a command" )
     ; ( "--verbose"
       , Arg.Int (Timed.(:=) verbose)
-      , "<int> Set the verbosity level." ^ verbose_values )
-    ; ( "--justparse"
+      , "<int> Set the verbosity level" ^ verbose_values )
+    ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
-      , " Only parse the input files (no type-checking)." )
+      , " Only parse the input files (no type-checking)" )
     ; ( "--beautify"
       , Arg.Unit (fun _ -> mode := Beautify)
-      , " Parse the input files and pretty-print them (in the new syntax)." )
+      , " Parse input files and pretty-print them (in the new syntax)" )
     ; ( "--timeout"
       , Arg.Int set_timeout
-      , "<int> Use a timeout of the given number of seconds." )
+      , "<int> Use a timeout of the given number of seconds" )
     ; ( "--confluence"
       , Arg.String (fun cmd -> confluence_checker := Some(cmd))
-      , "<cmd> Runs the given confluence checker." )
+      , "<cmd> Runs the given confluence checker" )
     ; ( "--termination"
       , Arg.String (fun cmd -> termination_checker := Some(cmd))
-      , "<cmd> Runs the given termination checker." )
+      , "<cmd> Runs the given termination checker" )
     ; ( "--debug"
       , Arg.String (set_debug true)
-      , "<str> Sets the given debugging flags." ^ debug_flags ) ]
+      , "<flags> Sets the given debugging flags" ^ debug_flags ) ]
   in
   List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2) spec
 

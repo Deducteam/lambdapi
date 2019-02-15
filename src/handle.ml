@@ -11,6 +11,13 @@ open Files
 open Syntax
 open Scope
 
+type proof_data =
+  { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
+  ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
+  ; pdata_tactics  : p_tactic list (* Tactics for the proof.         *)
+  ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
+  ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
+
 (** [!require mp] can be called to require the compilation of the module (that
     corresponds to) [mp]. The reference is set in the [Compile] module. *)
 let require : (Files.module_path -> unit) Pervasives.ref =
@@ -19,7 +26,8 @@ let require : (Files.module_path -> unit) Pervasives.ref =
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
     module state. On success, an updated module state is returned, and [Fatal]
     is raised in case of an error. *)
-let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
+let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
+    fun ss cmd ->
   let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in
   match cmd.elt with
   | P_require(p, m)            ->
@@ -30,7 +38,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
       ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
       (*compile false p;*)
       (* Open or alias if necessary. *)
-      begin
+      let ss =
         match m with
         | P_require_default -> ss
         | P_require_open    ->
@@ -46,7 +54,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         | P_require_as(id)  ->
             let aliases = StrMap.add id.elt p ss.aliases in
             {ss with aliases}
-      end
+      in
+      (ss, None)
   | P_open(m)                  ->
       (* Obtain the signature corresponding to [m]. *)
       let sign =
@@ -55,8 +64,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         fatal cmd.pos "Module [%a] has not been required." pp_path m
       in
       (* Open the module. *)
-      open_sign ss sign
-  | P_symbol(ts, x, a)         ->
+      (open_sign ss sign, None)
+  | P_symbol(ts, x, xs, a)     ->
       (* We first build the symbol declaration mode from the tags. *)
       let m =
         match ts with
@@ -65,6 +74,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)
@@ -75,7 +86,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature m x a in
       out 3 "(symb) %s.\n" s.sym_name;
-      {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
+      ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
@@ -90,7 +101,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt);
         Sign.add_rule ss.signature s r.elt
       in
-      List.iter add_rule rs; ss
+      List.iter add_rule rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
@@ -127,24 +138,26 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
       out 3 "(symb) %s (definition).\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
-      {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
-  | P_theorem(x, a, ts, pe)    ->
+      ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
+  | P_theorem(stmt, ts, pe)    ->
+      let (x,xs,a) = stmt.elt in
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* Scoping the type (statement) of the theorem, check sort. *)
       let a = fst (scope_basic ss a) in
       Solve.sort_type Ctxt.empty a;
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
-      (* Act according to the ending state. *)
-      begin
-        match pe with
+      (* Initialize proof state. *)
+      let st = Proof.init ss.builtins x a in
+      (* Build proof checking data. *)
+      let finalize ss st =
+        match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)
             wrn cmd.pos "Proof aborted."; ss
         | P_proof_admit ->
-            (* Initialize the proof and plan the tactics. *)
-            let st = Proof.init ss.builtins x a in
-            let st = List.fold_left (Tactics.handle_tactic ss) st ts in
             (* If the proof is finished, display a warning. *)
             if Proof.finished st then wrn cmd.pos "You should add QED.";
             (* Add a symbol corresponding to the proof, with a warning. *)
@@ -153,9 +166,6 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
         | P_proof_QED   ->
-            (* Initialize the proof and plan the tactics. *)
-            let st = Proof.init ss.builtins x a in
-            let st = List.fold_left (Tactics.handle_tactic ss) st ts in
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
               fatal cmd.pos "The proof is not finished.";
@@ -163,7 +173,12 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             let s = Sign.add_symbol ss.signature Const x a in
             out 3 "(symb) %s (QED).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
-      end
+      in
+      let data =
+        { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
+        ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
+      in
+      (ss, Some(data))
   | P_assert(must_fail, asrt)  ->
       let result =
         match asrt with
@@ -177,9 +192,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             let u = fst (scope_basic ss u) in
             Eval.eq_modulo t u
       in
-      if result = must_fail then fatal cmd.pos "Assertion failed."; ss
+      if result = must_fail then fatal cmd.pos "Assertion failed."; (ss, None)
   | P_set(cfg)                 ->
-      begin
+      let ss =
         match cfg with
         | P_config_debug(e,s)     ->
             (* Just update the option, state not modified. *)
@@ -197,7 +212,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
             (* Define the binary operator [s]. *)
             let (sym, _) = find_sym false ss qid in
             Sign.add_binop ss.signature s (sym, binop); ss
-      end
+      in
+      (ss, None)
   | P_infer(t, cfg)            ->
       (* Infer the type of [t]. *)
       let t_pos = t.pos in
@@ -207,7 +223,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         | Some(a) -> Eval.eval cfg a
         | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
       in
-      out 3 "(infr) %a : %a\n" pp t pp a; ss
+      out 3 "(infr) %a : %a\n" pp t pp a; (ss, None)
   | P_normalize(t, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t_pos = t.pos in
@@ -217,7 +233,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state = fun ss cmd ->
         | Some(_) -> Eval.eval cfg t
         | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
       in
-      out 3 "(eval) %a\n" pp v; ss
+      out 3 "(eval) %a\n" pp v; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -227,7 +243,8 @@ let too_long = Pervasives.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
+let handle_cmd : sig_state -> command -> sig_state * proof_data option =
+    fun ss cmd ->
   try
     let (tm, ss) = time (handle_cmd_aux ss) cmd in
     if Pervasives.(tm >= !too_long) then
@@ -238,5 +255,5 @@ let handle_cmd : sig_state -> command -> sig_state = fun ss cmd ->
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | e                           ->
-      fatal cmd.pos "Uncaught exception [%s]." (Printexc.to_string e)
+  | e                           -> let e = Printexc.to_string e in
+                                   fatal cmd.pos "Uncaught exception [%s]." e

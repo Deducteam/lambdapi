@@ -1,0 +1,83 @@
+\documentclass{article}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{xcolor}
+\definecolor{green}{RGB}{0,130,0}
+\definecolor{lightgrey}{RGB}{240,240,240}
+
+\usepackage{amssymb}
+
+\usepackage{listings}
+\lstdefinelanguage{Dedukti}
+{
+  inputencoding=utf8,
+  extendedchars=true,
+  literate={⇒}{$\Rightarrow$}1 {→}{$\rightarrow$}1 {∀}{$\forall$}1
+           {𝔹}{$\mathbb{B}$}1 {ℕ}{$\mathbb{N}$}1 {𝕃}{$\mathbb{L}$}1,
+  alsoletter={=->:\#\*},
+  keywords={symbol,rule,infix},
+  delim=[s][\color{brown}]{\[}{\]},
+  comment=[n]{(;}{;)},
+  string=[b]{"},
+  stringstyle=\color{orange},
+  commentstyle=\color{red},
+  showstringspaces=false,
+}
+\lstset{basicstyle={\ttfamily\small\upshape},keywordstyle=\color{blue}}
+\lstset{backgroundcolor=\color{lightgrey},language={Dedukti}}
+
+\title{Setup of the {\tt listings} package for including {\tt lambdapi} code}
+\author{Lambdapi development team}
+\date{14 February 2019}
+
+\begin{document}
+
+\maketitle
+
+\small
+\begin{lstlisting}[mathescape=true]
+symbol Set:TYPE     symbol arrow:Set⇒Set⇒Set
+
+symbol El:Set⇒TYPE
+  rule El (arrow a b) → El a ⇒ El b
+
+symbol 𝔹:TYPE      symbol true:𝔹    symbol false:𝔹
+symbol ℕ:TYPE      symbol 0:ℕ       symbol s:ℕ⇒ℕ
+
+symbol infix +:ℕ⇒ℕ⇒ℕ
+  rule     0 + q → q
+  rule (s p) + q → s (p + q)
+
+symbol 𝕃:Set⇒ℕ⇒TYPE
+  symbol nil: ∀a,𝕃 a 0
+  symbol cons:∀a,El a ⇒ ∀p,𝕃 a p ⇒ 𝕃 a (s p)
+
+symbol app:∀a p,𝕃 a p ⇒ ∀q,𝕃 a q ⇒ 𝕃 a (p+q)
+  rule app a _ (nil _)        q m → m
+  rule app a _ (cons _ x p l) q m
+       → cons a x (p+q) (app a p l q m)
+
+symbol len_fil:∀a,(El a ⇒ 𝔹) ⇒ ∀p,𝕃 a p ⇒ ℕ
+symbol len_fil_aux:𝔹 ⇒ ∀a,(El a ⇒ 𝔹) ⇒ ∀p,𝕃 a p ⇒ ℕ
+  rule len_fil a f _ (nil _)         → 0
+  rule len_fil a f _ (cons _ x p l)
+       → len_fil_aux (f x) a f p l
+  rule len_fil a f _ (app _ p l q m)
+       → (len_fil a f p l) + (len_fil a f q m)
+  rule len_fil_aux true  a f p l → s (len_fil a f p l)
+  rule len_fil_aux false a f p l → len_fil a f p l
+
+symbol fil:∀a f p l,𝕃 a (len_fil a f p l)
+symbol fil_aux:∀b a f,El a ⇒ ∀p l,𝕃 a (len_fil_aux b a f p l)
+  rule fil a f _ (nil _)         → nil a
+  rule fil a f _ (cons _ x p l)  → fil_aux (f x) a f x p l
+  rule fil a f _ (app _ p l q m)
+       → app a (len_fil a f p l) (fil a f p l)
+                (len_fil a f q m) (fil a f q m)
+  rule fil_aux false a f x p l → fil a f p l
+  rule fil_aux true  a f x p l
+       → cons a x (len_fil a f p l) (fil a f p l)
+\end{lstlisting}
+
+\end{document}

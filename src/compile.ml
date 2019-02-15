@@ -48,7 +48,16 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       let sign = Sign.create path in
       let sig_st = Scope.empty_sig_state sign in
       loaded := PathMap.add path sign !loaded;
-      ignore (List.fold_left Handle.handle_cmd sig_st (parse_file src));
+      let handle ss c =
+        let (ss, p) = Handle.handle_cmd ss c in
+        match p with
+        | None       -> ss
+        | Some(data) ->
+            let (st,ts) = (data.pdata_p_state, data.pdata_tactics) in
+            let st = List.fold_left (Tactics.handle_tactic ss) st ts in
+            data.pdata_finalize ss st
+      in
+      ignore (List.fold_left handle sig_st (parse_file src));
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

@@ -45,7 +45,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     begin
       match h.elt with
       | P_Appl(_,_)      -> assert false (* Cannot happen. *)
-      | P_Vari(x)        ->
+      | P_Iden(x)        ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
@@ -70,6 +70,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
       | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
+      | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -84,7 +85,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rec build env t =
     let (h, lts) = get_args t in
     match h.elt with
-    | P_Vari({elt = ([],x); _}) when is_pat_var env x ->
+    | P_Iden({elt = ([],x); _}) when is_pat_var env x ->
        let lts = List.map (fun (p,t) -> p,build env t) lts in
        let n =
          try Hashtbl.find arity x with Not_found ->
@@ -95,7 +96,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
        add_args (Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1))) lts2
     | _                                               ->
     match t.elt with
-    | P_Vari(_)
+    | P_Iden(_)
     | P_Type
     | P_Wild          -> t
     | P_Prod(xs,b)    ->
@@ -119,6 +120,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
     | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
     | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
+    | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in
@@ -182,14 +184,13 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 
 line:
   | s=ID ps=param* COLON a=term DOT {
-      let a = if ps = [] then a else make_pos $loc(a) (P_Prod(ps,a)) in
-      make_pos $loc (P_symbol([Sym_const], make_pos $loc(s) s, a))
+      make_pos $loc (P_symbol([Sym_const], make_pos $loc(s) s, ps, a))
     }
   | KW_DEF s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([], make_pos $loc(s) s, a))
+      make_pos $loc (P_symbol([], make_pos $loc(s) s, [], a))
     }
   | KW_INJ s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_inj], make_pos $loc(s) s, a))
+      make_pos $loc (P_symbol([Sym_inj], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
       make_pos $loc (P_definition(false, make_pos $loc(s) s, [], Some(a), t))
@@ -232,7 +233,7 @@ line:
       make_pos $loc (P_assert(mf, P_assert_conv(t,u)))
     }
   | r=REQUIRE    DOT {
-      Pervasives.(!(Parser.require)) r;
+      Parser.do_require (locate (fst $loc) (snd $loc)) r;
       make_pos $loc (P_require(r, P_require_default))
     }
   | EOF {
@@ -255,8 +256,8 @@ rule:
     }
 
 sterm:
-  | qid=QID            { make_pos $loc (P_Vari(make_pos $loc qid)) }
-  | id=ID              { make_pos $loc (P_Vari(make_pos $loc ([], id))) }
+  | qid=QID            { make_pos $loc (P_Iden(make_pos $loc qid)) }
+  | id=ID              { make_pos $loc (P_Iden(make_pos $loc ([], id))) }
   | WILD               { make_pos $loc P_Wild }
   | TYPE               { make_pos $loc P_Type }
   | L_PAR t=term R_PAR { t }

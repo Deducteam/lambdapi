@@ -18,7 +18,7 @@ unit_tests:
 doc:
 	@dune build @doc
 
-#### Unit tests ##############################################################
+#### Unit tests and sanity check #############################################
 
 LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
@@ -85,6 +85,10 @@ real_tests: bin
 	  || { printf "\033[31mKO\033[0m $$file\n" \
 		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
+
+.PHONY: sanity_check
+sanity_check: tools/sanity_check.sh
+	@./$<
 
 #### Library tests ###########################################################
 
