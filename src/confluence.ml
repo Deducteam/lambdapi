@@ -6,7 +6,7 @@
 open Extra
 open Timed
 open Console
-open Terms
+open Terms 
 
 (** Logging function for the confluence checker interface. *)
 let log_conf = new_logger 'c' "conf" "informations for the confluence checker"
