@@ -48,19 +48,15 @@ let handle_file : string -> unit = fun fname ->
       | Some(i) -> try with_timeout i compile mp with Timeout ->
                      fatal_no_pos "Compilation timed out for [%s]." fname
     in
-    (* [external_checker chk fn kw] verifies if an external checker has been
-       plugged in the variable [chk], if it is the case, it applies the function
-      [fn] to the checker and the signature, and raise an error which contains
-      the keyword [kw]. *)
     let external_checker chk fn kw =
-      match !chk with
-      | None      -> ()
-      | Some(cmd) ->
-         let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
+      let run cmd =
+        let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
          match fn cmd sign with
          | Some(true ) -> ()
          | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
          | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+      in
+      Option.iter run !chk
     in
     external_checker confluence_checker Confluence.check "confluent";
     external_checker termination_checker Termination.check "terminating"

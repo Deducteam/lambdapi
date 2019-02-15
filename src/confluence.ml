@@ -1,9 +1,7 @@
 (** Confluence checking.
 
     This module allows the translation of a signature in the HRS format used
-    in the confluence competition, see Confluence Problems:
-    http://cops.uibk.ac.at/
- *)
+    in the confluence competition, (see http://cops.uibk.ac.at/). *)
 
 open Extra
 open Timed
