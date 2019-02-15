@@ -348,7 +348,7 @@ let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
-    effect of gathering its free variables,  making them available for binding.
+    effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
 let rec lift : term -> tbox = fun t ->
   let lift_term_env te =

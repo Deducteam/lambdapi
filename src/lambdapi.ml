@@ -12,11 +12,12 @@ open Console
     line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option ref = ref None
 
-(** [termination_checker] holds a possible termination checking command. When it
-    is given, the command should accept TPDB format on its input and the first
-    line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+(** [termination_checker] holds a possible termination checking command. When
+    it is given, the command should accept TPDB format on its input and the
+    first line of its output yould contain either ["YES"], ["NO"] or
+    ["MAYBE"]. *)
 let termination_checker : string option ref = ref None
-                                           
+
 (** Available modes for handling input files. *)
 type execution_mode =
   | Normal    (** Type-checking (default mode).     *)

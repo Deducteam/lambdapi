@@ -10,9 +10,10 @@ open Console
 open Terms
 
 (** Logging function for the termination checker interface. *)
-let log_conf = new_logger 'n' "norm" "informations for the termination checker"
+let log_conf =
+  new_logger 'n' "norm" "informations for the termination checker"
 let log_conf = log_conf.logger
-             
+
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
@@ -20,20 +21,20 @@ let print_sym : sym pp = fun oc s ->
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
 
 type symb_status = Object_level | Basic_type | Type_cstr
-  
+
 (** [status s] returns [Type_cstr] if [s] has a type of the form
     T1 -> ... -> Tn -> [TYPE] with n > 0, [Basic_type] if [s] has type [TYPE]
     and [Object_level] otherwise. *)
 let status : sym -> symb_status = fun s ->
-  (* the argument [b] of [is_arrow_kind] is a boolean saying if we have already
-     gone under a product *)
+  (* the argument [b] of [is_arrow_kind] is a boolean saying if we have
+     already gone under a product *)
   let rec is_arrow_kind : Terms.term -> bool -> symb_status = fun t b ->
     match t with
     | Prod(_,b) -> is_arrow_kind (snd (Bindlib.unbind b)) true
     | Type      -> if b then Type_cstr else Basic_type
     | _         -> Object_level
   in is_arrow_kind !(s.sym_type) false
-  
+
 (** [print_term oc p] outputs XTC format corresponding to the term [t], to
     the channel [oc]. *)
 let rec print_term : int -> string -> term pp = fun i s oc t ->
@@ -71,7 +72,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_term i s) t
-     
+
 and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
@@ -113,7 +114,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
-       
+
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
@@ -123,7 +124,7 @@ let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
-  
+
 (** [print_tl_rule] is identical to [print_rule] but for type-level rule  *)
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
@@ -134,7 +135,7 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
     (print_type i s.sym_name) rhs
-  
+
 (** [get_vars s r] returns the list of variable of used in the rule [r],
     in the form of a couple containing the name of the variable and its type,
     inferred by the solver. *)
@@ -184,7 +185,8 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
-    List.fold_left (fun l x -> (x,Meta(fresh_meta Type 0,[||]))::l) [] !var_list
+    let aux l x = (x,Meta(fresh_meta Type 0,[||]))::l in
+    List.fold_left aux [] !var_list
   in
   let (_,l) = Typing.infer ctx lhs in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
@@ -217,7 +219,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     ; "<originalfilename>Produced from a Dedukti file</originalfilename>"
     ; "</metainformation>"
     ; "</problem>" ]
-  in  
+  in
   (* Print the object level rewrite rules. *)
   let print_object_rules : sym -> unit = fun s ->
     if status s = Object_level
@@ -227,7 +229,8 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
          Format.fprintf oc
            "<rule>@.<lhs>@.<funapp>@.<name>%a</name>@.</funapp>@.</lhs>@."
            print_sym s;
-         Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
+         Format.fprintf oc
+           "<rhs>@.%a</rhs>@.</rule>@." (print_term 0 s.sym_name) d
       | None    ->
          let c = ref 0 in
          List.iter (fun x -> incr c; print_rule oc !c s x) !(s.sym_rules)
@@ -288,7 +291,8 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
       Format.fprintf oc "<typeConstructorDeclaration>@.<name>%a</name>@."
         print_sym s;
       Format.fprintf oc
-        "<typeDeclaration>@.<type>@.%a</type>@." (print_type 0 s.sym_name) !(s.sym_type);
+        "<typeDeclaration>@.<type>@.%a</type>@."
+        (print_type 0 s.sym_name) !(s.sym_type);
       Format.fprintf oc "</typeDeclaration>@.</typeConstructorDeclaration>@."
     )
   in
@@ -326,15 +330,15 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   );
   Format.fprintf oc "</higherOrderSignature>@.";
   List.iter (Format.fprintf oc "%s@.") postlude
-  
-(** [check cmd sign] runs the termination checker specified by command [cmd] on
-    the rewrite system of signature [sign]. The return value is [Some true] in
-    the case where the system is terminating.  It is [Some false] if the  system
-    is not terminating, and it is [None] if the tool cannot conclude.  Note that
-    it is assumed that [cmd] corresponds to a command that accepts XTC format
-    on its standard output, and outputs either ["YES"], ["NO"] or ["MAYBE"] as
-    the first line of its standard output. The exception [Fatal] may be raised
-    if [cmd] does not behave as expected. *)
+
+(** [check cmd sign] runs the termination checker specified by command [cmd]
+    on the rewrite system of signature [sign]. The return value is [Some true]
+    in the case where the system is terminating.  It is [Some false] if the
+    system is not terminating, and it is [None] if the tool cannot conclude.
+    Note that it is assumed that [cmd] corresponds to a command that accepts
+    XTC format on its standard output, and outputs either ["YES"], ["NO"] or
+    ["MAYBE"] as the first line of its standard output. The exception [Fatal]
+    may be raised if [cmd] does not behave as expected. *)
 let check : string -> Sign.t -> bool option = fun cmd sign ->
   (* Run the command. *)
   if !log_enabled then log_conf "Running command [%s]" cmd;
@@ -373,6 +377,7 @@ let check : string -> Sign.t -> bool option = fun cmd sign ->
       fatal_no_pos "The termination checker was killed by signal [%i]." i
   | (Unix.WSTOPPED  i, _         ) ->
       fatal_no_pos "The termination checker was stopped by signal [%i]." i
-(* NOTE the simplest, valid termination checking command is ["echo MAYBE"]. The
-   command ["cat > out.xml; echo MAYBE"] can conveniently be used to write the
-   generated XTC problem to the file ["out.xml"] for debugging purposes. *)
+(* NOTE the simplest, valid termination checking command is ["echo MAYBE"].
+   The command ["cat > out.xml; echo MAYBE"] can conveniently be used to write
+   the generated XTC problem to the file ["out.xml"] for debugging purposes.
+*)
