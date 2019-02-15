@@ -1,6 +1,6 @@
 (** Confluence checking.
 
-    This module allows the translation of a signature in the HRS format used
+    This module allows the translation of a signature into the HRS format used
     in the confluence competition, (see http://cops.uibk.ac.at/). *)
 
 open Extra

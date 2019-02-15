@@ -8,15 +8,16 @@ open Console
 (* NOTE only standard [Pervasives] references here. *)
 
 (** [confluence_checker] holds a possible confluence checking command. When it
-    is given, the command should accept HRS format on its input and the first
-    line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+    is given,  the command should accept HRS format on its input and the first
+    line of its output should contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option ref = ref None
 
-(** [termination_checker] holds a possible termination checking command. When it
-    is given, the command should accept TPDB format on its input and the first
-    line of its output yould contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+(** [termination_checker] holds a possible termination checking command, using
+    a similar mechanism as for [confluence_checker]. The command should accept
+    TPDB format on its input,  and the first line of its output should contain
+    either ["YES"], ["NO"] or ["MAYBE"]. *)
 let termination_checker : string option ref = ref None
-                                           
+
 (** Available modes for handling input files. *)
 type execution_mode =
   | Normal    (** Type-checking (default mode).     *)
@@ -51,10 +52,10 @@ let handle_file : string -> unit = fun fname ->
     let external_checker chk fn kw =
       let run cmd =
         let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
-         match fn cmd sign with
-         | Some(true ) -> ()
-         | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
-         | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+          match fn cmd sign with
+          | Some(true ) -> ()
+          | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
+          | None        -> fatal_no_pos "The rewrite system may not be %s." kw
       in
       Option.iter run !chk
     in
