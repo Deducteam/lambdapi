@@ -33,6 +33,7 @@ before_install:
 
 script:
   - make $TEST_TARGETS
+  - if [[ `make sanity_check` != "" ]]; then echo "Sanity check failed"; exit 1; fi
 
 notifications:
   email:
