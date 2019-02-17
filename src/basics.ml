@@ -166,3 +166,13 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+
+(** [initList n f] builds a list with n elements where each element
+    is given by the function f, in increasing order, ie, it builds
+    [f 0; f 1; ...; f (n-1)] *)
+let initList : int -> (int -> 'a) -> 'a list = fun n f ->
+  let rec initList_aux : int -> ('a list) -> 'a list = fun i acc ->
+    if i>=n then acc
+    else initList_aux (i+1) ((f i)::acc)
+  in List.rev (initList_aux 0 [])

@@ -8,6 +8,7 @@ open Pos
 open Syntax
 open Terms
 open Env
+open Print
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
@@ -122,19 +123,25 @@ type mode =
 
 (** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
     a parser term [t] *)
-let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
+let getParamsImplicitness : sig_state -> env -> p_term -> bool list = fun ss env t ->
   match t.elt with
   | P_Prod(args, _) 
   | P_Abst(args, _)                -> 
       List.map (fun x -> match x with (_,_,i) -> i) args
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) -> 
-      (match StrMap.find_opt (snd id.elt) ss.in_scope with
-      | Some(f, _) -> f.sym_implicits
-      | None       -> 
-          (match StrMap.find_opt (snd id.elt) ss.builtins with
+      (match List.assoc_opt (snd id.elt) env with
+      | Some (_,tb) -> let idType = Bindlib.unbox tb in
+                       let nbArgs = Basics.count_products idType in
+                         (* print_string ("I FOUND IT IN THE ENV WITH " ^ (string_of_int nbArgs) ^ " ARGUMENTS ! \n"); *)
+                         Basics.initList nbArgs (fun _ -> false) 
+      | None -> 
+          (match StrMap.find_opt (snd id.elt) ss.in_scope with
           | Some(f, _) -> f.sym_implicits
-          | None       -> [])) (* not found *)
+          | None       -> 
+              (match StrMap.find_opt (snd id.elt) ss.builtins with
+              | Some(f, _) -> f.sym_implicits
+              | None       -> [] ))) (* not found anywhere *)
   | P_Patt(_,_)                    -> [] (* TO DO : see if we want to have 
                     implicits for patterns as well, but I don't think so *)
   | _                              -> []
@@ -143,7 +150,7 @@ let getParamsImplicitness : sig_state -> p_term -> bool list = fun ss t ->
     [args] and with the insertion of "_" for the implicit arguments, following the information 
     provided by the formal parameters [param] *)
 let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args ->
-  let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
+(*   let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
     fun param args fullArgs ->
     match param,args with
     (* The next parameter is implicit, so we do not consume the next 
@@ -159,12 +166,13 @@ let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args -
        still having some sormal parameters *)
     | ((_::_), [])
     | ([],     [])             -> fullArgs
-  in
+  in *)
     (* If we don't have implicitness information (as for a fully explicit identifier like "@f"), 
        we directly put only the given concrete args *) 
     if (param = []) then args 
     (* We reverse the arguments as they've been built in the opposite order *)
-    else List.rev (addImplicitArgs_aux param args [])
+    else args
+    (* else List.rev (addImplicitArgs_aux param args []) *)
 
 (** [add_arg_tbox t args] builds the application of t to a list
     of arguments [args] where everything is a tbox *)
@@ -266,9 +274,24 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
     | (P_Appl(t,u)     , _        ) -> 
           let (f, args) = splitFunArgs (none (P_Appl(t,u))) in
-          let params = getParamsImplicitness ss f in    (* get the formal parameters of f *)
+          let params = getParamsImplicitness ss env f in    (* get the formal parameters of f *)
           let fullArgs = addImplicitArgs params args in (* adds the implicit arguments *)
-          add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs)
+
+          print_string "ARGS BEFORE = ";
+          print_string (string_of_int (List.length args));
+          print_string "\n ARGS AFTER = ";
+          print_string (string_of_int (List.length fullArgs));
+
+
+          let res = add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs) in
+          let oldRes = _Appl (scope env t) (scope env u) in
+          print_string "FIRST = ";
+          pp_term Format.std_formatter (Bindlib.unbox res);
+          print_string "\n SECOND = ";
+          pp_term Format.std_formatter (Bindlib.unbox oldRes);
+          print_string "\n";
+          res
+          
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)

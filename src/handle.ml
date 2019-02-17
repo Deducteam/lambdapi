@@ -74,7 +74,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
-      let implicits = Scope.getParamsImplicitness ss a in
+      let implicits = Scope.getParamsImplicitness ss Env.empty a in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)
