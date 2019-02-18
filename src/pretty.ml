@@ -115,6 +115,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
+  | P_tac_why3               -> out "why3"
 
 let pp_p_assertion : p_assertion pp = fun oc asrt ->
   let out fmt = Format.fprintf oc fmt in

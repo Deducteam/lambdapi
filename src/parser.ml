@@ -136,6 +136,7 @@ let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
+let _why3_       = KW.create "why3"
 
 (** Natural number literal. *)
 let nat_lit =
@@ -358,6 +359,7 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
+  | _why3_                      -> Pos.in_pos _loc P_tac_why3
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =

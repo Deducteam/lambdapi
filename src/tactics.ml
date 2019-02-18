@@ -114,3 +114,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.reflexivity ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ps)
+  | P_tac_why3          ->
+      (* get the goal to prove *)
+      let (_, trm) = Proof.Goal.get_type g in
+      (* print the goal *)
+      Console.out 1 "%a" Print.pp (unfold trm);
+      ps

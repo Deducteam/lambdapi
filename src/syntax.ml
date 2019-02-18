@@ -102,6 +102,9 @@ type p_tactic_aux =
   (** Print the current goal. *)
   | P_tac_proofterm
   (** Print the current proof term (possibly containing open goals). *)
+  | P_tac_why3
+  (** Try to solve the current goal with why3. *)
+
 type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
