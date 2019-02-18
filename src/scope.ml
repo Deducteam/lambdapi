@@ -211,29 +211,20 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let vs = Env.vars_of_env env in
           _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
     in
-    let newTelt =  
-      match t.elt with
-      (* | P_Appl(_,_)  as e  *)
-      | P_Iden(_, _) as e   ->
+    let newt =  
+      (match t.elt with
+      | (P_Appl(_, _) as e)
+      | (P_Iden(_, _) as e)   ->
         let (f, args) = splitFunArgs (none e) in
         let params = getParamsImplicitness ss env f in    (* get the formal parameters of f *)
         let fullArgs = addImplicitArgs params args in     (* adds the implicit arguments *)
 
-        print_string "ARGS BEFORE = ";
-        print_string (string_of_int (List.length args));
-        print_string "\n ARGS AFTER = ";
-        print_string (string_of_int (List.length fullArgs));
-
-        let res = add_arg_tbox (scope env f) (List.map (fun x -> scope env x) fullArgs) in
-
-        print_string "\n NEW RES = ";
-        Format.printf "%a" Print.pp_term (Bindlib.unbox res);
-        (* pp_term Format.std_formatter (Bindlib.unbox oldRes); *)
-        print_string "\n";
-        res
-      | x                   -> x
+        out 3 "ARGS BEFORE %d \n" (List.length args);
+        out 3 "ARGS AFTER = %d \n" (List.length fullArgs);
+        add_args_pterm f fullArgs
+      | x                   -> out 3 "HERE!"; none x)
     in 
-    let t = in_pos t.pos newTels in
+    let t = make t.pos newt.elt in
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
