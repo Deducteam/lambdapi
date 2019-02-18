@@ -61,13 +61,26 @@ struct
     List.fold_left (fun acc (elt, _) ->
       if List.length elt > ind then List.nth elt ind :: acc else acc) []
 
-  (** [specialize t m] specializes the matrix [m] when matching against term
-      [t]. *)
-  let specialize : term -> t -> t = fun te m -> m
+  (** [specialize p m] specializes the matrix [m] when matching against pattern
+      [p]. *)
+      (* See the [matching] function of [eval] *)
+  let specialize : term -> t -> t = fun p ->
+    List.filter (fun (l, _) ->
+        match p, List.hd l with
+        | Symb(s, _), Symb(s', _)      -> s = s' (* Equality of records? *)
+        | Abst(_, _), Abst(_, _)       -> failwith "abstraction NYI"
+        | Patt(_, _, _), Patt(_, _, _) -> failwith "pattern NYI"
+        | _ -> failwith "NYI")
 
   (** [default m] computes the default matrix containing what remains to be
       matched. *)
-  let default : t -> t = fun m -> m
+  let default : t -> t = fun m ->
+    List.filter (fun (l, _) ->
+        match List.hd l with
+        | Symb(_, _)    -> false
+        | Abst(_, _)    -> failwith "abstraction NYI"
+        | Patt(_, _, _) -> failwith "patt NYI"
+        | _             -> failwith "NYI _") m
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
