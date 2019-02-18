@@ -100,10 +100,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
       in
       let res = (add_wilds t nb) in
-      out 3 "----------------------------------- \n";
-      out 3 "scoped = ";
-      out 3 "%a" Print.pp_term res;
-      out 3 "\n ----------------------------------- \n";
       handle_refine res
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})

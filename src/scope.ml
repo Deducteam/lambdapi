@@ -120,16 +120,17 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
+(** [getParamsImplicitnessOfId ss env t] returns a list representing the 
+    formal parameters of 
     a parser term [t] *)
-let getParamsImplicitness : sig_state -> env -> p_term -> bool list = fun ss env t ->
+let getParamsImplicitnessOfId : sig_state -> env -> p_term -> bool list = 
+  fun ss env t ->
   match t.elt with
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) -> 
       (match List.assoc_opt (snd id.elt) env with
       | Some (_,tb) -> let idType = Bindlib.unbox tb in
                        let nbArgs = Basics.count_products idType in
-                         (* print_string ("I FOUND IT IN THE ENV WITH " ^ (string_of_int nbArgs) ^ " ARGUMENTS ! \n"); *)
                          Basics.initList nbArgs (fun _ -> false) 
       | None -> 
           (match StrMap.find_opt (snd id.elt) ss.in_scope with
@@ -142,18 +143,18 @@ let getParamsImplicitness : sig_state -> env -> p_term -> bool list = fun ss env
                     implicits for patterns as well, but I don't think so *)
   | _                              -> []
 
-(** [getParamsImplicitness ss t] returns a list representing the formal parameters of 
-    a parser term [t] *)
+(** [getParamsImplicitnessOfType t] returns a list representing the formal parameters of 
+    a parser term [t] seen as a type *)
 let getParamsImplicitnessOfType : p_term -> bool list = fun t ->
   match t.elt with
   | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
   | _                 -> []
 
-(** [addImplicitArgs args param] builds the full arguments list, using the given arguments 
-    [args] and with the insertion of "_" for the implicit arguments, following the information 
-    provided by the formal parameters [param] *)
+(** [addImplicitArgs param args] builds the full arguments list, using the 
+    given arguments [args] and with the insertion of "_" for the implicit 
+    arguments, following the information provided by the formal parameters [param] *)
 let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args ->
-(*   let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
+  let rec addImplicitArgs_aux : bool list -> p_term list -> p_term list -> p_term list = 
     fun param args fullArgs ->
     match param,args with
     (* The next parameter is implicit, so we do not consume the next 
@@ -169,23 +170,13 @@ let addImplicitArgs : bool list -> p_term list -> p_term list = fun param args -
        still having some sormal parameters *)
     | ((_::_), [])
     | ([],     [])             -> fullArgs
-  in *)
+  in
     (* If we don't have implicitness information (as for a fully explicit identifier like "@f"), 
        we directly put only the given concrete args *) 
     if (param = []) then args 
     (* We reverse the arguments as they've been built in the opposite order *)
-    else args
-    (* else List.rev (addImplicitArgs_aux param args []) *)
-
-(** [add_arg_tbox t args] builds the application of t to a list
-    of arguments [args] where everything is a tbox *)
-let add_arg_tbox : tbox -> tbox list -> tbox = fun t args ->
-  let rec add_arg_tbox_aux t args =
-    match args with
-    | []      -> t
-    | u::args -> add_arg_tbox_aux (_Appl t u) args
-  in print_string ("nb args total = " ^ (string_of_int (List.length args)) ^ "\n");
-     add_arg_tbox_aux t args
+    else
+      List.rev (addImplicitArgs_aux param args [])
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -216,13 +207,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | (P_Appl(_, _) as e)
       | (P_Iden(_, _) as e)   ->
         let (f, args) = splitFunArgs (none e) in
-        let params = getParamsImplicitness ss env f in    (* get the formal parameters of f *)
+        let params = getParamsImplicitnessOfId ss env f in    (* get the formal parameters of f *)
         let fullArgs = addImplicitArgs params args in     (* adds the implicit arguments *)
-
-        out 3 "ARGS BEFORE %d \n" (List.length args);
-        out 3 "ARGS AFTER = %d \n" (List.length fullArgs);
-        add_args_pterm f fullArgs
-      | x                   -> out 3 "HERE!"; none x)
+          add_args_pterm f fullArgs
+      | x                   -> none x
+      )
     in 
     let t = make t.pos newt.elt in
     match (t.elt, md) with
