@@ -41,13 +41,14 @@ let is_sig : term list -> bool = fun r ->
 
 module Pattmat =
 struct
-  (** Type of a matrix of patterns.  The type is changed (from rule list) as the
-      matrix is made to be shrunk; keeping the rule list type would be
-      deceitful semantically. *)
-  type t = (term list * action) list
+  (** Type used to describe a line of a matrix (either a column or a row). *)
+  type line = term list
 
-  (** Type used to describe a column of a matrix. *)
-  type column = term list
+  (** Type of a matrix of patterns.  The type is changed (from rule list) as
+      the matrix is made to be shrunk; keeping the rule list type would be
+      deceitful semantically.  Each line is a row having an attached
+      action. *)
+  type t = (line * action) list
 
   (** [make r] creates  the  initial pattern  matrix from a  list of rewriting
       rules. *)
@@ -64,11 +65,11 @@ struct
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
   *)
-  let cmp : column -> column -> int = fun c d -> 0
+  let cmp : line -> line -> int = fun c d -> 0
 
   (** [pick_best m] returns the best column of matrix [m] according to a
       heuristic. *)
-  let pick_best : t -> column = fun m -> []
+  let pick_best : t -> line = fun m -> []
 
   (** [filter_on_cons m] returns the list of indexes of columns which contain
       at least one constructor. *)
@@ -99,7 +100,6 @@ let rec grow : Pattmat.t -> t = fun m ->
                                   else [Pattmat.default m]) in
     Node(None, children)
 (* TODO
-   + what about vars and metavars -> this seem to concern
-     the tree walk and matching the pattern, not the growing of
-     the tree
+   + what about vars and metavars -> this seem to concern the tree walk and
+     matching the pattern, not the growth of the tree
 *)
