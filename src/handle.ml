@@ -74,7 +74,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
-      let implicits = Scope.getParamsImplicitnessOfType a in
+      let implicits = Scope.get_params_implicitness_of_type a in
       (* Desugaring of arguments of [a]. *)
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* We scope the type of the declaration. *)

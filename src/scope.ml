@@ -120,10 +120,10 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [getParamsImplicitnessOfId ss env t] returns a list representing the 
+(** [get_params_implicitness_of_id ss env t] returns a list representing the 
     formal parameters of 
     a parser term [t] *)
-let getParamsImplicitnessOfId : sig_state -> env -> p_term -> bool list = 
+let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list = 
   fun ss env t ->
   match t.elt with
   | P_Iden(_, FullyExplicit)       -> []
@@ -132,7 +132,7 @@ let getParamsImplicitnessOfId : sig_state -> env -> p_term -> bool list =
       (match List.assoc_opt (snd id.elt) env with
       | Some (_,tb) -> let idType = Bindlib.unbox tb in
                        let nbArgs = Basics.count_products idType in
-                         Basics.initList nbArgs (fun _ -> false) 
+                         Basics.init_list nbArgs (fun _ -> false) 
       | None -> 
           (* If that did not work, than we look in the scope *)
           (match StrMap.find_opt (snd id.elt) ss.in_scope with
@@ -145,30 +145,30 @@ let getParamsImplicitnessOfId : sig_state -> env -> p_term -> bool list =
               | None       -> [] ))) 
   | _                              -> []
 
-(** [getParamsImplicitnessOfType t] returns a list representing the formal 
+(** [get_params_implicitness_of_type t] returns a list representing the formal 
     parameters of a parser term [t] seen as a type *)
-let getParamsImplicitnessOfType : p_term -> bool list = fun t ->
+let get_params_implicitness_of_type : p_term -> bool list = fun t ->
   match t.elt with
   | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
   | _                 -> []
 
-(** [addImplicitArgs params args] builds the full arguments list, using the 
+(** [add_implicit_args params args] builds the full arguments list, using the 
     given arguments [args] and with the insertion of "_" for the implicits, 
     following the information provided by the formal parameters [param].
     Its implementation is tail-recursive. *)
-let addImplicitArgs : bool list -> p_term list -> p_term list = 
+let add_implicit_args : bool list -> p_term list -> p_term list = 
   fun params args ->
-  let rec addImplicitArgs_aux : 
+  let rec add_implicit_args_aux : 
     bool list -> p_term list -> p_term list -> p_term list = 
     fun params args fullArgs ->
     match params,args with
     (* The next parameter is implicit, so we do not consume the next 
        available concrete argument *)
-    | (true::ps, _::_)         -> addImplicitArgs_aux ps args 
+    | (true::ps, _::_)         -> add_implicit_args_aux ps args 
                                       ((none P_Wild)::fullArgs)
     (* The next parameter is not implicit, so we consume the next available 
        concrete argument arg1 *)
-    | (false::ps, arg1::args') -> addImplicitArgs_aux ps args' 
+    | (false::ps, arg1::args') -> add_implicit_args_aux ps args' 
                                       (arg1::fullArgs)
     (* Not enough formal parameters, we reverse the remaining arguments 
        and append fullArgs (built in reverse order) to the result *)
@@ -184,7 +184,7 @@ let addImplicitArgs : bool list -> p_term list -> p_term list =
     if (params = []) then args 
     (* We reverse the arguments as they've been built in the opposite order *)
     else
-      List.rev (addImplicitArgs_aux params args [])
+      List.rev (add_implicit_args_aux params args [])
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
@@ -196,16 +196,16 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let c = Pervasives.ref (-1) in
     fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
   in
-  let addImplicits : p_term -> p_term = fun t ->
+  let add_implicits : p_term -> p_term = fun t ->
     match t.elt with
       | (P_Appl(_, _) as e)
       | (P_Iden(_, _) as e)   ->
         (* split the function symbol and its given arguments *)
-        let (f, args) = splitFunArgs (none e) in
+        let (f, args) = split_fun_args (none e) in
         (* get the formal parameters of f *)
-        let params = getParamsImplicitnessOfId ss env f in
+        let params = get_params_implicitness_of_id ss env f in
         (* adds the implicit arguments *)
-        let fullArgs = addImplicitArgs params args in
+        let fullArgs = add_implicit_args params args in
           add_args_pterm f fullArgs
       | x                   -> none x
   in
@@ -336,7 +336,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Appl (_Appl s (scope env l)) (scope env r)
     | (P_Wrap(t)      , _         ) -> scope env t
   in
-  scope env (addImplicits t)
+  scope env (add_implicits t)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
