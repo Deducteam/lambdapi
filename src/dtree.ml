@@ -110,8 +110,9 @@ struct
           | None -> acc) [] indexes in
     Array.of_list remaining
 
-  (** [select m i] keeps the columns of [m] whose index are in i. *)
-  let select : t -> int array -> t = fun m indexes -> m
+  (** [select m i] keeps the columns of [m] whose index are in [i]. *)
+  let select : t -> int array -> t = fun m ->
+    Array.fold_left (fun acc elt -> List.nth m elt :: acc) []
 end
 
 (** [grow m]  creates a pattern matching tree from the pattern matching matrix
