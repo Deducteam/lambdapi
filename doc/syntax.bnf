@@ -133,12 +133,12 @@ reserved "_"
   | "require" "open"? <path>
   | "open" <path>
   // Define a new symbol
-  | "symbol" <symtag>* <ident> ":" <type>
+  | "symbol" <symtag>* <ident> <arg>* ":" <type>
   // Define a new rewriting rule
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem
   | "definition" <ident> <arg>* {":" <type>}? "≔" <term>
-  | "theorem" <ident> ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  | "theorem" <ident> <arg>* ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
   // Assertion
   | "assert" <assertion>
   | "assertnot" <assertion>

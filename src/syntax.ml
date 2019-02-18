@@ -144,18 +144,20 @@ type require_mode =
   (** Require the module and aliases it with the given indentifier. *)
 
 (** Parser-level representation of a single command. *)
+type p_statement = (ident * p_arg list * p_type) loc
+
 type p_cmd =
   | P_require    of module_path * require_mode
   (** Require statement. *)
   | P_open       of module_path
   (** Open statement. *)
-  | P_symbol     of symtag list * ident * p_type
+  | P_symbol     of symtag list * ident * p_arg list * p_type
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
   | P_definition of bool * ident * p_arg list * p_type option * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem    of (ident * p_type) loc * p_tactic list * p_proof_end loc
+  | P_theorem    of p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_assert     of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
@@ -266,18 +268,19 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
       m1 = m2 && eq_require_mode r1 r2
   | (P_open(m1)                  , P_open(m2)                  ) ->
       m1 = m2
-  | (P_symbol(l1,s1,a1)          , P_symbol(l2,s2,a2)          ) ->
+  | (P_symbol(l1,s1,al1,a1)      , P_symbol(l2,s2,al2,a2)      ) ->
       l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
+      && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
   | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->
       b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
   | (P_theorem(st1,ts1,e1)       , P_theorem(st2,ts2,e2)       ) ->
-      let (s1,a1) = st1.elt in
-      let (s2,a2) = st2.elt in
+      let (s1,l1,a1) = st1.elt in
+      let (s2,l2,a2) = st2.elt in
       eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
-      && List.equal eq_p_tactic ts1 ts2
+      && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
   | (P_assert(mf1,a1)            , P_assert(mf2,a2)            ) ->
       mf1 = mf2 && eq_p_assertion a1 a2
   | (P_set(c1)                   , P_set(c2)                   ) ->

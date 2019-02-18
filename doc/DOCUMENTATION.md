@@ -38,3 +38,6 @@ Table of contents
  - [Compatibility with Dedukti](sections/dedukti.md)
 
  - [Bibliographic references](sections/biblio.md)
+
+ - [Including Lambdapi code into a Latex document](sections/latex.md)
+ 

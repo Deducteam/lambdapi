@@ -1,4 +1,4 @@
-# Requirements: pygmentize >= 2.2.0 (pygmentize -V)
+# Requirements: pygmentize -V >= 2.2.0 (http://pygments.org/)
 
 # This file should be added in your LaTeX project. Then, one can use:
 # \usepackage{minted}
