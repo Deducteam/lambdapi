@@ -78,12 +78,12 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun m -> 0
 
-  (** [filter_on_cons m] returns the list of indexes of columns which contain
-      at least one constructor. *)
-  let filter_on_cons : t -> int list = fun m -> []
+  (** [discard_patt_free m] returns the list of indexes of columns containing
+      terms that can be matched against. *)
+  let discard_patt_free : t -> int array = fun m -> [||]
 
   (** [select m i] keeps the columns of [m] whose index are in i. *)
-  let select : t -> int list -> t = fun m indexes -> m
+  let select : t -> int array -> t = fun m indexes -> m
 end
 
 (** [grow m]  creates a pattern matching tree from the pattern matching matrix
@@ -98,9 +98,10 @@ let rec grow : Pattmat.t -> t = fun m ->
       Leaf(snd @@ List.hd m) else
       (* Pick a column in the matrix and pattern match on the constructors in
          it to grow the tree. *)
-    let cols = Pattmat.filter_on_cons m in
-    let selected_i = Pattmat.pick_best (Pattmat.select m cols) in
-    let swap = if selected_i = 0 then None else Some selected_i in
+    let kept_cols = Pattmat.discard_patt_free m in
+    let sel_in_partial = Pattmat.pick_best (Pattmat.select m kept_cols) in
+    let swap = if kept_cols.(sel_in_partial) = 0
+      then None else Some kept_cols.(sel_in_partial) in
     let selected_c = match swap with
       | None   -> Pattmat.get_col 0 m
       | Some i -> Pattmat.get_col i m in
