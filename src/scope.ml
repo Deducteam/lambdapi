@@ -188,6 +188,16 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let c = Pervasives.ref (-1) in
     fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
   in
+  let addImplicits : p_term -> p_term = fun t ->
+    match t.elt with
+      | (P_Appl(_, _) as e)
+      | (P_Iden(_, _) as e)   ->
+        let (f, args) = splitFunArgs (none e) in
+        let params = getParamsImplicitnessOfId ss env f in    (* get the formal parameters of f *)
+        let fullArgs = addImplicitArgs params args in     (* adds the implicit arguments *)
+          add_args_pterm f fullArgs
+      | x                   -> none x
+  in
   let rec scope : env -> p_term -> tbox = fun env t ->
     let scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
       match (a, md) with
@@ -201,19 +211,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* We build a metavariable that may use the variables of [env]. *)
           let vs = Env.vars_of_env env in
           _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
-    in
-    let newt =  
-      (match t.elt with
-      | (P_Appl(_, _) as e)
-      | (P_Iden(_, _) as e)   ->
-        let (f, args) = splitFunArgs (none e) in
-        let params = getParamsImplicitnessOfId ss env f in    (* get the formal parameters of f *)
-        let fullArgs = addImplicitArgs params args in     (* adds the implicit arguments *)
-          add_args_pterm f fullArgs
-      | x                   -> none x
-      )
     in 
-    let t = make t.pos newt.elt in
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
@@ -327,7 +325,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Appl (_Appl s (scope env l)) (scope env r)
     | (P_Wrap(t)      , _         ) -> scope env t
   in
-  scope env t
+  scope env (addImplicits t)
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
