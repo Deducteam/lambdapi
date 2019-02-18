@@ -92,8 +92,23 @@ struct
   let pick_best : t -> int = fun m -> 0
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
-      terms that can be matched against. *)
-  let discard_patt_free : t -> int array = fun m -> [||]
+      terms that can be matched against (discard pattern-free columns). *)
+  let discard_patt_free : t -> int array = fun m ->
+    let rec matchable : line -> bool = function
+      | [] -> false
+      | x :: xs ->
+        begin
+          match x with
+          | Symb(_, _) | Abst(_, _) | Patt(_, _, _) -> true
+          | _ -> matchable xs
+        end in
+    let indexes = List.mapi (fun i (e, _) ->
+        if matchable e then Some i else None) m in
+    let remaining =
+      List.fold_left (fun acc elt -> match elt with
+          | Some i -> i :: acc
+          | None -> acc) [] indexes in
+    Array.of_list remaining
 
   (** [select m i] keeps the columns of [m] whose index are in i. *)
   let select : t -> int array -> t = fun m indexes -> m
