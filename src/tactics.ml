@@ -117,6 +117,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_why3          ->
       (* get the goal to prove *)
       let (_, trm) = Proof.Goal.get_type g in
-      (* print the goal *)
-      Console.out 1 "%a" Print.pp (unfold trm);
+      (* print the goal in why3 language *)
+      Why3_prop.t_goal (unfold trm);
       ps
