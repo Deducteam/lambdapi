@@ -1,5 +1,5 @@
 open Terms
-open Timed
+(* open Timed *)
 open Extra
 
 (* TODO
@@ -21,24 +21,45 @@ type t = Leaf of action
        | Node of int option * t list
        | Fail
 
-(** [is_sig s] returns whether the list of symbols [s] contains a
-    signature. *)
-let is_sig : term list -> bool = fun r ->
-  let symofterms = List.map
-      (fun s -> match s with Symb(s', _) -> s' | _ -> assert false)
-      (List.filter (fun x -> match x with
-      | Symb(_, _) -> true | _ -> false) r) in
-  let op_sym = List.map_find (fun x -> match x with
-      | Symb(s, _) -> Some s
-      | _          -> None) r in
-  let a_sym = match op_sym with
-    | Some s -> s
-    | None -> failwith "no symbol found" in
-  let sign = Files.PathMap.find a_sym.sym_path !Sign.loaded in
-  let sign_sym = StrMap.map fst !(sign.sign_symbols) in
-  let count = StrMap.fold (fun _ s acc ->
-      if List.mem s symofterms then succ acc else acc) sign_sym 0 in
-  count = StrMap.cardinal sign_sym
+
+(** [to_dot n t] creates a dot graphviz file [n].dot for tree [t]. *)
+let to_dot : string -> t -> unit = fun fname tree ->
+  let ochan = open_out (fname ^ ".dot") in
+  let nodecount = ref 0 in
+  Printf.fprintf ochan "graph {\n";
+  let rec write_tree : int -> t -> unit = fun father_l tree ->
+    match tree with
+    | Leaf(_) -> ()
+    | Node(_, c) ->
+      begin
+        incr nodecount ;
+        List.iter (fun _ ->
+            Printf.fprintf ochan "\t %d -- %d\n" father_l !nodecount) c ;
+        List.iter (fun e -> write_tree !nodecount e) c ;
+      end
+    | Fail -> () in
+  write_tree 0 tree ;
+  Printf.fprintf ochan "}\n" ;
+  close_out ochan
+
+(* (\** [is_sig s] returns whether the list of symbols [s] contains a
+ *     signature. *\)
+ * let is_sig : term list -> bool = fun r ->
+ *   let symofterms = List.map
+ *       (fun s -> match s with Symb(s', _) -> s' | _ -> assert false)
+ *       (List.filter (fun x -> match x with
+ *       | Symb(_, _) -> true | _ -> false) r) in
+ *   let op_sym = List.map_find (fun x -> match x with
+ *       | Symb(s, _) -> Some s
+ *       | _          -> None) r in
+ *   let a_sym = match op_sym with
+ *     | Some s -> s
+ *     | None -> failwith "no symbol found" in
+ *   let sign = Files.PathMap.find a_sym.sym_path !Sign.loaded in
+ *   let sign_sym = StrMap.map fst !(sign.sign_symbols) in
+ *   let count = StrMap.fold (fun _ s acc ->
+ *       if List.mem s symofterms then succ acc else acc) sign_sym 0 in
+ *   count = StrMap.cardinal sign_sym *)
 
 module Pattmat =
 struct
@@ -85,35 +106,47 @@ struct
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
   *)
-  let cmp : line -> line -> int = fun c d -> 0
+  let cmp : line -> line -> int = fun _ _ -> 0
 
   (** [pick_best m] returns the index of the best column of matrix [m]
       according to a heuristic. *)
-  let pick_best : t -> int = fun m -> 0
+  let pick_best : t -> int = fun _ -> 0
+
+  (** [pattern_free l] returns whether a line contains patterns or not.
+      Typically, a line full of wildcards is pattern free. *)
+  let rec pattern_free : line -> bool = function
+    | [] -> true
+    | x :: xs ->
+      begin
+        match x with
+        | Symb(_, _) | Abst(_, _) | Patt(_, _, _) -> false
+        | _                                       -> pattern_free xs
+      end
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
   let discard_patt_free : t -> int array = fun m ->
-    let rec matchable : line -> bool = function
-      | [] -> false
-      | x :: xs ->
-        begin
-          match x with
-          | Symb(_, _) | Abst(_, _) | Patt(_, _, _) -> true
-          | _ -> matchable xs
-        end in
     let indexes = List.mapi (fun i (e, _) ->
-        if matchable e then Some i else None) m in
+        if not (pattern_free e) then Some i else None) m in
     let remaining =
       List.fold_left (fun acc elt -> match elt with
           | Some i -> i :: acc
           | None -> acc) [] indexes in
+    assert ((List.length remaining) > 0) ;
     Array.of_list remaining
 
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
   let select : t -> int array -> t = fun m ->
     Array.fold_left (fun acc elt -> List.nth m elt :: acc) []
 end
+
+let print_arr_int arr =
+  Printf.printf "[" ;
+  let rec loop = function
+    | [] -> Printf.printf "]\n"
+    | x :: xs -> Printf.printf "; %d" x ; loop xs
+  in
+  loop ( Array.to_list arr )
 
 (** [grow m]  creates a pattern matching tree from the pattern matching matrix
     [m].  Counterpart of the compilation_scheme in Maranget's article. *)
@@ -123,7 +156,7 @@ let rec grow : Pattmat.t -> t = fun m ->
     (* Look at the first line, if it contains only wildcards, then
        execute the associated action. *)
     let fline = fst @@ List.hd m in
-    if fline = List.map (fun _ -> Wild) fline then
+    if Pattmat.pattern_free fline then
       Leaf(snd @@ List.hd m) else
       (* Pick a column in the matrix and pattern match on the constructors in
          it to grow the tree. *)
@@ -138,9 +171,7 @@ let rec grow : Pattmat.t -> t = fun m ->
         | Symb(_, _) -> true
         | _          -> false) selected_c in
     let ms = List.map (fun s -> Pattmat.specialize s m) syms in
-    let children = List.map grow (ms @ if is_sig syms
-                                  then []
-                                  else [Pattmat.default m]) in
+    let children = List.map grow (ms @ [Pattmat.default m]) in
     Node(swap, children)
 (* TODO
    + what about vars and metavars -> this seem to concern the tree walk and
