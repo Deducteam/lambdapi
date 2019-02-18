@@ -3,9 +3,10 @@ open Timed
 open Extra
 
 (* TODO
-   define more clearly what is a constructor and what is not, i.e.  clarify
-   what will the 'switches' be in the tree (in other word, what characterises
-   a branch).
+   + define more clearly what is a constructor and what is not, i.e.  clarify
+     what will the 'switches' be in the tree (in other word, what
+     characterises a branch).
+   + each rule has its arity
 *)
 
 (** Type of the leaves of the tree.  See {!file:terms.ml}, {!recfield:rhs}. *)
@@ -54,6 +55,12 @@ struct
       rules. *)
   let make : rule list -> t = List.map (fun r -> r.lhs, r.rhs)
 
+  (** [get_col n m] retrieves column [n] of matrix [m].  There is some
+      processing because all rows do not have the same length. *)
+  let get_col : int -> t -> line = fun ind ->
+    List.fold_left (fun acc (elt, _) ->
+      if List.length elt > ind then List.nth elt ind :: acc else acc) []
+
   (** [specialize t m] specializes the matrix [m] when matching against term
       [t]. *)
   let specialize : term -> t -> t = fun te m -> m
@@ -67,9 +74,9 @@ struct
   *)
   let cmp : line -> line -> int = fun c d -> 0
 
-  (** [pick_best m] returns the best column of matrix [m] according to a
-      heuristic. *)
-  let pick_best : t -> line = fun m -> []
+  (** [pick_best m] returns the index of the best column of matrix [m]
+      according to a heuristic. *)
+  let pick_best : t -> int = fun m -> 0
 
   (** [filter_on_cons m] returns the list of indexes of columns which contain
       at least one constructor. *)
@@ -82,23 +89,29 @@ end
 (** [grow m]  creates a pattern matching tree from the pattern matching matrix
     [m].  Counterpart of the compilation_scheme in Maranget's article. *)
 let rec grow : Pattmat.t -> t = fun m ->
-  if List.length m = 0 then Fail else
+  if List.length m = 0 then (* If matrix is empty *)
+    Fail else
+    (* Look at the first line, if it contains only wildcards, then
+       execute the associated action. *)
     let fline = fst @@ List.hd m in
     if fline = List.map (fun _ -> Wild) fline then
       Leaf(snd @@ List.hd m) else
+      (* Pick a column in the matrix and pattern match on the constructors in
+         it to grow the tree. *)
     let cols = Pattmat.filter_on_cons m in
-    let selected = Pattmat.pick_best (Pattmat.select m cols) in
+    let selected_i = Pattmat.pick_best (Pattmat.select m cols) in
+    let swap = if selected_i = 0 then None else Some selected_i in
+    let selected_c = match swap with
+      | None   -> Pattmat.get_col 0 m
+      | Some i -> Pattmat.get_col i m in
     let syms = List.filter (fun x -> match x with
         | Symb(_, _) -> true
-        | _          -> false) selected in
-    let rec specmats : term list -> Pattmat.t list = function
-      | []    -> []
-      | s::ss -> Pattmat.specialize s m::specmats ss in
-    let ms = specmats syms in
+        | _          -> false) selected_c in
+    let ms = List.map (fun s -> Pattmat.specialize s m) syms in
     let children = List.map grow (ms @ if is_sig syms
                                   then []
                                   else [Pattmat.default m]) in
-    Node(None, children)
+    Node(swap, children)
 (* TODO
    + what about vars and metavars -> this seem to concern the tree walk and
      matching the pattern, not the growth of the tree
