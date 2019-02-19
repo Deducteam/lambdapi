@@ -61,8 +61,9 @@ symbol const not        : Prop ⇒ Prop
 
 // Axioms of Classical Natural Deduction 
 
-// Definition of not
-rule P (not &a)         → P &a ⇒ P bot
+// Intro and Elimination of not
+symbol not_elim         : ∀ (p : Prop), P (not p) ⇒ P p ⇒ P bot
+symbol not_intro        : ∀ (p : Prop), (P p ⇒ P bot) ⇒ P (not p)
 
 // Bot elimation
 symbol bot_elim         : ∀ (p : Prop), P bot ⇒ P p
@@ -81,7 +82,7 @@ symbol or_intro2        : ∀ (p : Prop) (q : Prop), P q ⇒ P (or p q)
 symbol or_elim          : ∀ (p : Prop) (q : Prop) (c : Prop), P (or p q) ⇒ (P p ⇒ P c) ⇒ (P q ⇒ P c) ⇒ P c 
 
 // Intro and Elimination of imp
-symbol imp_intro        : ∀ (p : Prop) (q : Prop), P p ⇒ P q ⇒ P (imp p q)
+symbol imp_intro        : ∀ (p : Prop) (q : Prop), (P p ⇒ P q) ⇒ P (imp p q)
 symbol imp_elim         : ∀ (p : Prop) (q : Prop), P (imp p q) ⇒ P p ⇒ P q
 
 
@@ -94,7 +95,8 @@ proof
     refine pa
     intro pna
     apply bot_elim
-    refine nnp pna
+    apply not_elim (not A) nnp
+    apply pna
 qed
 
 set builtin "P"     ≔ P
