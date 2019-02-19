@@ -131,6 +131,8 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
       (match Basics.assoc_opt (snd id.elt) env with
       | Some (_,tb) -> let idType = Bindlib.unbox tb in
                        let nbArgs = Basics.count_products idType in
+                         (* Currently, there is no implicits for anonymous
+                         functions so we set them all to false *)
                          Basics.init_list nbArgs (fun _ -> false)
       | None ->
           (* If that did not work, than we look in the scope *)
