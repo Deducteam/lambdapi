@@ -145,7 +145,7 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
               | None       -> [] ))) 
   | _                              -> []
 
-(** [get_params_implicitness_of_type t] returns a list representing the formal 
+(** [get_params_implicitness_of_type t] returns a list representing the formal
     parameters of a parser term [t] seen as a type *)
 let get_params_implicitness_of_type : p_term -> bool list = fun t ->
   match t.elt with
@@ -288,7 +288,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
-    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)          
+    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)

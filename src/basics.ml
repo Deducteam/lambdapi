@@ -36,7 +36,7 @@ let add_args : term -> term list -> term = fun t args ->
     | []      -> t
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
-  
+
 (** [eq t u] tests the equality of [t] and [u] modulo α-equivalence. Note that
     the behavious of the function is unspecified when [t] or [u] contain terms
     of the form {!const:Patt(i,s,e)} or {!const:TEnv(te,e)} (in the case where
