@@ -24,7 +24,7 @@ type t = Leaf of action
 
 (** [to_dot n t] creates a dot graphviz file [n].dot for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
-  let ochan = open_out (fname ^ ".dot") in
+  let ochan = open_out (fname ^ ".gv") in
   let nodecount = ref 0 in
   Printf.fprintf ochan "graph {\n";
   let rec write_tree : int -> t -> unit = fun father_l tree ->
@@ -34,7 +34,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       begin
         incr nodecount ;
         List.iter (fun _ ->
-            Printf.fprintf ochan "\t %d -- %d\n" father_l !nodecount) c ;
+            Printf.fprintf ochan "\t %d -- %d;\n" father_l !nodecount) c ;
         List.iter (fun e -> write_tree !nodecount e) c ;
       end
     | Fail -> () in
@@ -85,13 +85,19 @@ struct
   (** [specialize p m] specializes the matrix [m] when matching against pattern
       [p]. *)
       (* See the [matching] function of [eval] *)
-  let specialize : term -> t -> t = fun p ->
-    List.filter (fun (l, _) ->
+  let specialize : term -> t -> t = fun p m ->
+    let filtered = List.filter (fun (l, _) ->
+        (* Removed rules starting with a different constructor*)
         match p, List.hd l with
         | Symb(s, _), Symb(s', _)      -> s = s' (* Equality of records? *)
         | Abst(_, _), Abst(_, _)       -> failwith "abstraction NYI"
         | Patt(_, _, _), Patt(_, _, _) -> failwith "pattern NYI"
-        | _ -> failwith "NYI")
+        | _ -> failwith "NYI") m in
+    let unfolded = List.map (fun (l, a) ->
+        match List.hd l with
+        | Symb(_, _) -> (List.tl l, a) (* Eat the symbol? *)
+        | _ -> failwith "NYI") filtered in
+    unfolded
 
   (** [default m] computes the default matrix containing what remains to be
       matched. *)
