@@ -21,20 +21,22 @@ type t = Leaf of action
        | Node of int option * t list
        | Fail
 
-
-(** [to_dot n t] creates a dot graphviz file [n].dot for tree [t]. *)
+(** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let ochan = open_out (fname ^ ".gv") in
   let nodecount = ref 0 in
   Printf.fprintf ochan "graph {\n";
   let rec write_tree : int -> t -> unit = fun father_l tree ->
     match tree with
-    | Leaf(_) -> ()
-    | Node(_, c) ->
+    | Leaf(_)    -> ()
+    | Node(os, c) ->
       begin
         incr nodecount ;
-        List.iter (fun _ ->
-            Printf.fprintf ochan "\t %d -- %d;\n" father_l !nodecount) c ;
+        let label = match os with
+          | None -> 0
+          | Some i -> i in
+        Printf.fprintf ochan "\t %d -- %d [label=%d];\n"
+          father_l !nodecount label;
         List.iter (fun e -> write_tree !nodecount e) c ;
       end
     | Fail -> () in
