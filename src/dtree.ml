@@ -21,6 +21,22 @@ type t = Leaf of action
        | Node of int option * t list
        | Fail
 
+(** [iter l n f t] is a generic iterator on trees; with function [l] performed
+    on leaves, function [n] performed on nodes, [f] returned in case of
+    {!const:Fail} on tree [t]. *)
+let iter : (action -> 'a) -> (int option -> 'a list -> 'a) ->
+  'a -> t -> 'a = fun do_leaf do_node fail t ->
+  let rec loop = function
+    | Leaf(a)     -> do_leaf a
+    | Fail        -> fail
+    | Node(io, c) -> do_node io (List.map loop c) in
+  loop t
+
+(** [count_nodes t] counts the number of nodes (leaves are not counted) in
+    [t]. *)
+let count_nodes : t -> int =
+  iter (fun _ -> 0) (fun _ c -> 1 + (List.fold_left (+) 0 c)) 0
+
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let ochan = open_out (fname ^ ".gv") in
