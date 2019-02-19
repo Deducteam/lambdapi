@@ -184,3 +184,4 @@ let rec assoc_opt : 'a -> ('a * 'b) list -> 'b option = fun key l ->
   match l with
   | [] -> None
   | (a,b)::l -> if compare a key = 0 then Some b else assoc_opt key l
+

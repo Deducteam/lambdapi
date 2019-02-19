@@ -128,22 +128,22 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) ->
       (* We first look in the environment *)
-      (match Basics.assoc_opt (snd id.elt) env with
-      | Some (_,tb) -> let idType = Bindlib.unbox tb in
-                       let nbArgs = Basics.count_products idType in
-                         (* Currently, there is no implicits for anonymous
-                         functions so we set them all to false *)
-                         Basics.init_list nbArgs (fun _ -> false)
-      | None ->
+      (try let (_,tb) = List.assoc (snd id.elt) env in
+        let idType = Bindlib.unbox tb in
+        let nbArgs = Basics.count_products idType in
+          (* Currently, there is no implicits for anonymous functions so
+             we set them all to explicit (i.e. on false *)
+          Basics.init_list nbArgs (fun _ -> false)
+      with Not_found ->
           (* If that did not work, than we look in the scope *)
-          (match StrMap.find_opt (snd id.elt) ss.in_scope with
-          | Some(f, _) -> f.sym_implicits
-          | None       ->
+          (try let (f, _) = StrMap.find (snd id.elt) ss.in_scope in
+            f.sym_implicits
+          with Not_found ->
               (* If that failed too, we finally look in the builtins *)
-              (match StrMap.find_opt (snd id.elt) ss.builtins with
-              | Some(f, _) -> f.sym_implicits
+              (try let (f, _) = StrMap.find (snd id.elt) ss.builtins in
+                f.sym_implicits
               (* Not found anywhere, so we don't know about implicits *)
-              | None       -> [] )))
+              with Not_found     -> [] )))
   | _                              -> []
 
 (** [get_params_implicitness_of_type t] returns a list representing the formal
