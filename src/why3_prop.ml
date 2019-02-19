@@ -1,57 +1,56 @@
+
 open Terms
+open Why3
 
 (* a type to present the list of why3 constants and lambdapi terms *)
-type cnst_table = (term * string) list
-
-(* count the number of constants (usefull to generate new fresh constants) *)
-let count_predicate = ref 0
-
-(* generate a new why3 constants *)
-let fresh_predicate () : string = 
-    count_predicate := !count_predicate + 1;
-    "y3p_" ^ (string_of_int !count_predicate)
+type cnst_table = (term * Term.lsymbol) list
 
 (** [t_goal g] output the translation of a lamdapi goal [g] into a why3 goal. *)
 let rec t_goal : term -> unit = fun g -> 
     match Basics.get_args g with
-    | (Symb({sym_name="P"; _}, _), [t])     -> let _ = t_prop [] [] t in 
-                                                ()
+    | (Symb({sym_name="P"; _}, _), [t])     -> 
+        let (l_prop, formula) = t_prop [] [] t in
+        let symbols = List.map (fun (_, x) -> x) l_prop in
+        let tsk = Why3task.declare_symbols symbols in
+        let tsk = Why3task.add_goal tsk formula in
+        Console.out 1 "%a@." Pretty.print_task tsk
+                                                
     | _                                     -> failwith "Goal can't be translated"
     
 (** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition [p] with the context [ctxt] into a why3 proposition. *)
-and t_prop : cnst_table -> Ctxt.t -> term -> cnst_table = 
+and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term)= 
     fun l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
     (match s with
     | Symb({sym_name="{|and|}"; _}, _)      -> 
-        let l_prop = t_prop l_prop ctxt (List.nth args 0) in
-        Console.out 1 " /\\ ";
-        t_prop l_prop ctxt (List.nth args 1)
+        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+        l_prop, Term.t_and t1 t2 
     | Symb({sym_name="or"; _}, _)      -> 
-        let l_prop = t_prop l_prop ctxt (List.nth args 0) in
-        Console.out 1 " \\/ ";
-        t_prop l_prop ctxt (List.nth args 1)
+        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+        l_prop, Term.t_or t1 t2 
     | Symb({sym_name="imp"; _}, _)      -> 
-        let l_prop = t_prop l_prop ctxt (List.nth args 0) in
-        Console.out 1 " -> ";
-        t_prop l_prop ctxt (List.nth args 1)
+        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+        l_prop, Term.t_implies t1 t2 
     | Symb({sym_name="equiv"; _}, _)      -> 
-        let l_prop = t_prop l_prop ctxt (List.nth args 0) in
-        Console.out 1 " <-> ";
-        t_prop l_prop ctxt (List.nth args 1)
+        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+        l_prop, Term.t_iff t1 t2 
     | Symb({sym_name="not"; _}, _)      -> 
-        Console.out 1 " not ";
-        t_prop l_prop ctxt (List.nth args 0)
+        let (l_prop, t) = t_prop l_prop ctxt (List.nth args 0) in
+        l_prop, Term.t_not t
     | Symb(_, _)                        ->
         (* if the term [p] is in the list [l_prop] *)
         if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) l_prop then
             (* then find it and return it *)
             let (_, ct) = List.find (fun (lp_t, _) -> Basics.eq lp_t p) l_prop in
-                Console.out 1 "%s" ct;
-                l_prop
+                (l_prop, Term.ps_app ct [])
             else
             (* or generate a new constant in why3 *)
-                let var_name = fresh_predicate () in
-                Console.out 1 "%s" var_name;
-                (p, var_name)::l_prop
+                let new_symbol = Term.create_psymbol (Ident.id_fresh "P") [] in
+                let new_predicate = Term.ps_app new_symbol [] in
+                (p, new_symbol)::l_prop, new_predicate
+                
     | _                                     -> failwith "Proposition can't be translated ");
