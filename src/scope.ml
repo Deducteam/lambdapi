@@ -120,13 +120,18 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [get_params_implicitness ss env t] returns a list representing the
+(** [get_params_implicitness_of_type t] returns a list representing the
+    implicitness of the parameters of a parser term [t] seen as a type *)
+    let get_params_implicitness_of_type : p_term -> bool list = fun t ->
+    match t.elt with
+    | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
+    | _                 -> []
+
+(** [get_params_implicitness_of_id ss env t] returns a list representing the
     formal parameters of a parser term [t] *)
-let get_params_implicitness : sig_state -> env -> p_term -> bool list =
+let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   fun ss env t ->
   match t.elt with
-  | P_Prod(args, _)                ->
-      List.map (fun x -> match x with (_,_,i) -> i) args
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) ->
       (* We first look in the environment *)
@@ -135,9 +140,9 @@ let get_params_implicitness : sig_state -> env -> p_term -> bool list =
         let nbArgs = Basics.count_products idType in
           (* Currently, there is no implicits for anonymous functions so
              we set them all to explicit (i.e. on false *)
-          Basics.init_list nbArgs (fun _ -> false)
+          List.init_list nbArgs (fun _ -> false)
       with Not_found ->
-          (* If that did not work, than we look in the scope *)
+          (* If that did not work, then we look in the scope *)
           (try let (f, _) = StrMap.find (snd id.elt) ss.in_scope in
             f.sym_implicits
           with Not_found ->
@@ -177,7 +182,7 @@ let add_implicit_args : bool list -> p_term list -> p_term list =
     (* If we don't have implicitness information (as for a fully explicit
        identifier like "@f"), then we directly put only the given concrete
        args *)
-    if (params = []) then args
+    if params = [] then args
     (* We reverse the arguments as they've been built in the opposite order *)
     else
       List.rev (add_implicit_args_aux params args [])
@@ -192,19 +197,35 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let c = Pervasives.ref (-1) in
     fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
   in
-  let add_implicits : p_term -> p_term = fun t ->
+  let add_implicits_outermost : p_term -> p_term = fun t ->
     match t.elt with
       | (P_Appl(_, _) as e)
       | (P_Iden(_, _) as e)   ->
         (* split the function symbol and its given arguments *)
         let (f, args) = split_fun_args (none e) in
         (* get the formal parameters of f *)
-        let params = get_params_implicitness ss env f in
+        let params = get_params_implicitness_of_id ss env f in
         (* adds the implicit arguments *)
         let fullArgs = add_implicit_args params args in
           add_args_pterm f fullArgs
       | x                   -> none x
   in
+  (* let add_implicits : p_term -> p_term = fun t ->
+    match t.elt with
+    | P_Appl of p_term * p_term
+    (** Application. *)
+    | P_Impl of p_term * p_term
+    (** Implication. *)
+    | P_Abst of p_arg list * p_term
+    (** Abstraction over several variables. *)
+    | P_Prod of p_arg list * p_term
+    (** Product over several variables. *)
+    | P_LLet of strloc * p_arg list * p_term * p_term
+    (** Local let. *)
+    | P_BinO of p_term * binop * p_term
+    (** Binary operator. *)
+    | P_Wrap of p_term *)
+
   let rec scope : env -> p_term -> tbox = fun env t ->
     let scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
       match (a, md) with
@@ -219,6 +240,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let vs = Env.vars_of_env env in
           _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
     in
+    let t = add_implicits t in
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
@@ -332,7 +354,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Appl (_Appl s (scope env l)) (scope env r)
     | (P_Wrap(t)      , _         ) -> scope env t
   in
-  scope env (add_implicits t)
+  scope env t
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
