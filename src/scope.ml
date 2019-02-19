@@ -128,7 +128,7 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) ->
       (* We first look in the environment *)
-      (match List.assoc_opt (snd id.elt) env with
+      (match Basics.assoc_opt (snd id.elt) env with
       | Some (_,tb) -> let idType = Bindlib.unbox tb in
                        let nbArgs = Basics.count_products idType in
                          Basics.init_list nbArgs (fun _ -> false)
