@@ -158,7 +158,7 @@ let get_params_implicitness_of_type : p_term -> bool list = fun t ->
     Its implementation is tail-recursive. *)
 let add_implicit_args : bool list -> p_term list -> p_term list = 
   fun params args ->
-  let rec add_implicit_args_aux : 
+  let rec add_implicit_args_aux :
     bool list -> p_term list -> p_term list -> p_term list = 
     fun params args fullArgs ->
     match params,args with
