@@ -44,18 +44,30 @@ let to_dot : string -> t -> unit = fun fname tree ->
   Printf.fprintf ochan "graph {\n";
   let rec write_tree : int -> t -> unit = fun father_l tree ->
     match tree with
-    | Leaf(_)    -> ()
+    | Leaf(_)    ->
+      begin
+        incr nodecount ;
+        Printf.fprintf ochan "\t%d -- %d [label=%s];\n" father_l
+          !nodecount "l";
+      end
     | Node(os, c) ->
       begin
         incr nodecount ;
+        let tag = !nodecount in
         let label = match os with
           | None -> 0
           | Some i -> i in
-        Printf.fprintf ochan "\t %d -- %d [label=%d];\n"
+        Printf.fprintf ochan "\t%d -- %d [label=%d];\n"
           father_l !nodecount label;
-        List.iter (fun e -> write_tree !nodecount e) c ;
+        List.iter (fun e -> write_tree tag e) c ;
       end
-    | Fail -> () in
+    | Fail        ->
+      begin
+        incr nodecount ;
+        Printf.fprintf ochan "\t%d -- %d [label=%s];\n" father_l
+          !nodecount "f";
+        end
+  in
   write_tree 0 tree ;
   Printf.fprintf ochan "}\n" ;
   close_out ochan
@@ -196,6 +208,7 @@ let rec grow : Pattmat.t -> t = fun m ->
         | _          -> false) selected_c in
     let ms = List.map (fun s -> Pattmat.specialize s m) syms in
     let children = List.map grow (ms @ [Pattmat.default m]) in
+    Printf.printf "length %d\n" (List.length children);
     Node(swap, children)
 (* TODO
    + what about vars and metavars -> this seem to concern the tree walk and
