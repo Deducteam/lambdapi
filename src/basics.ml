@@ -177,7 +177,7 @@ let init_list : int -> (int -> 'a) -> 'a list = fun n f ->
   in List.rev (init_list_aux 0 [])
 
 (** [assoc_opt key l] returns the value associated with key in the list
-    of pairs l. That is, assoc_opt a [ ...; (key,b); ...] = b
+    of pairs l. That is, assoc_opt key [ ...; (key,b); ...] = b
     if (key,b) is the leftmost binding of [a] in list [l].
     Returns None if there is no value associated with [key] in the list l. *)
 let rec assoc_opt : 'a -> ('a * 'b) list -> 'b option = fun key l ->
