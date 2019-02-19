@@ -121,8 +121,7 @@ type mode =
       representation of the RHS. *)
 
 (** [get_params_implicitness_of_id ss env t] returns a list representing the
-    formal parameters of
-    a parser term [t] *)
+    formal parameters of a parser term [t] *)
 let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   fun ss env t ->
   match t.elt with
