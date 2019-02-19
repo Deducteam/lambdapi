@@ -52,7 +52,50 @@ symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
 symbol const refl  : ∀a x, P (eq a x x)
 symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 
+// Definition of connectors 
+symbol const bot        : Prop
+symbol const imp        : Prop ⇒ Prop ⇒ Prop
+symbol const {|and|}    : Prop ⇒ Prop ⇒ Prop
+symbol const or         : Prop ⇒ Prop ⇒ Prop
+symbol const not        : Prop ⇒ Prop
 
+// Axioms of Classical Natural Deduction 
+
+// Definition of not
+rule P (not &a)         → P &a ⇒ P bot
+
+// Bot elimation
+symbol bot_elim         : ∀ (p : Prop), P bot ⇒ P p
+
+// Excluded middle
+symbol excl_mid         : ∀ (p : Prop), P (or p (not p))
+
+// Intro and Elimination of and
+symbol and_intro        : ∀ (p : Prop) (q : Prop), P p ⇒ P q ⇒ P ({|and|} p q)
+symbol and_elim1        : ∀ (p : Prop) (q : Prop), P ({|and|} p q) ⇒ P p
+symbol and_elim2        : ∀ (p : Prop) (q : Prop), P ({|and|} p q) ⇒ P q
+
+// Intro and Elimination of or
+symbol or_intro1        : ∀ (p : Prop) (q : Prop), P p ⇒ P (or p q)
+symbol or_intro2        : ∀ (p : Prop) (q : Prop), P q ⇒ P (or p q)
+symbol or_elim          : ∀ (p : Prop) (q : Prop) (c : Prop), P (or p q) ⇒ (P p ⇒ P c) ⇒ (P q ⇒ P c) ⇒ P c 
+
+// Intro and Elimination of imp
+symbol imp_intro        : ∀ (p : Prop) (q : Prop), P p ⇒ P q ⇒ P (imp p q)
+symbol imp_elim         : ∀ (p : Prop) (q : Prop), P (imp p q) ⇒ P p ⇒ P q
+
+
+theorem not_elimp : ∀ (A : Prop), P (not (not A)) ⇒ P A
+proof
+    intro A nnp
+    refine or_elim A (not A) A _ _ _
+    refine excl_mid A
+    intro pa
+    refine pa
+    intro pna
+    apply bot_elim
+    refine nnp pna
+qed
 
 set builtin "P"     ≔ P
 set builtin "T"     ≔ T
