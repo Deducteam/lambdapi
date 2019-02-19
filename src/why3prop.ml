@@ -1,3 +1,4 @@
+(** Translation of lambdapi goals to why3 goals in propositional case *)
 
 open Terms
 open Why3
@@ -5,7 +6,7 @@ open Why3
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Term.lsymbol) list
 
-(** [t_goal g] output the translation of a lamdapi goal [g] into a why3 goal. *)
+(** [t_goal g] output the translation of a lamdapi goal [g] into a why3 goal.*)
 let rec t_goal : term -> unit = fun g -> 
     match Basics.get_args g with
     | (Symb({sym_name="P"; _}, _), [t])     -> 
@@ -13,11 +14,12 @@ let rec t_goal : term -> unit = fun g ->
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
-        Console.out 1 "%a@." Pretty.print_task tsk
-                                                
-    | _                                     -> failwith "Goal can't be translated"
+        Console.out 1 "%a@." Pretty.print_task tsk                                        
+    | _                                     -> 
+        failwith "Goal can't be translated"
     
-(** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition [p] with the context [ctxt] into a why3 proposition. *)
+(** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition [p]
+with the context [ctxt] into a why3 proposition. *)
 and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term)= 
     fun l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
@@ -45,12 +47,14 @@ and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term)=
         (* if the term [p] is in the list [l_prop] *)
         if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) l_prop then
             (* then find it and return it *)
-            let (_, ct) = List.find (fun (lp_t, _) -> Basics.eq lp_t p) l_prop in
+            let lp_eq = fun (lp_t, _) -> Basics.eq lp_t p in
+            let (_, ct) = List.find lp_eq l_prop in
                 (l_prop, Term.ps_app ct [])
             else
             (* or generate a new constant in why3 *)
                 let new_symbol = Term.create_psymbol (Ident.id_fresh "P") [] in
                 let new_predicate = Term.ps_app new_symbol [] in
-                (p, new_symbol)::l_prop, new_predicate
-                
-    | _                                     -> failwith "Proposition can't be translated ");
+                (* add the new symbol to the list and return it *)
+                (p, new_symbol)::l_prop, new_predicate   
+    | _                                     -> 
+        failwith "Proposition can't be translated ");
