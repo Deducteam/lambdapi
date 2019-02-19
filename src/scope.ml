@@ -120,11 +120,13 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [get_params_implicitness_of_id ss env t] returns a list representing the
+(** [get_params_implicitness ss env t] returns a list representing the
     formal parameters of a parser term [t] *)
-let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
+let get_params_implicitness : sig_state -> env -> p_term -> bool list =
   fun ss env t ->
   match t.elt with
+  | P_Prod(args, _)                ->
+      List.map (fun x -> match x with (_,_,i) -> i) args
   | P_Iden(_, FullyExplicit)       -> []
   | P_Iden(id, ImplicitAsDeclared) ->
       (* We first look in the environment *)
@@ -145,13 +147,6 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
               (* Not found anywhere, so we don't know about implicits *)
               with Not_found     -> [] )))
   | _                              -> []
-
-(** [get_params_implicitness_of_type t] returns a list representing the formal
-    parameters of a parser term [t] seen as a type *)
-let get_params_implicitness_of_type : p_term -> bool list = fun t ->
-  match t.elt with
-  | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
-  | _                 -> []
 
 (** [add_implicit_args params args] builds the full arguments list, using the
     given arguments [args] and with the insertion of "_" for the implicits,
@@ -204,7 +199,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* split the function symbol and its given arguments *)
         let (f, args) = split_fun_args (none e) in
         (* get the formal parameters of f *)
-        let params = get_params_implicitness_of_id ss env f in
+        let params = get_params_implicitness ss env f in
         (* adds the implicit arguments *)
         let fullArgs = add_implicit_args params args in
           add_args_pterm f fullArgs
