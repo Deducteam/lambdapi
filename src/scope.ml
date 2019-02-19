@@ -120,29 +120,29 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [get_params_implicitness_of_id ss env t] returns a list representing the 
-    formal parameters of 
+(** [get_params_implicitness_of_id ss env t] returns a list representing the
+    formal parameters of
     a parser term [t] *)
-let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list = 
+let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   fun ss env t ->
   match t.elt with
   | P_Iden(_, FullyExplicit)       -> []
-  | P_Iden(id, ImplicitAsDeclared) -> 
+  | P_Iden(id, ImplicitAsDeclared) ->
       (* We first look in the environment *)
       (match List.assoc_opt (snd id.elt) env with
       | Some (_,tb) -> let idType = Bindlib.unbox tb in
                        let nbArgs = Basics.count_products idType in
-                         Basics.init_list nbArgs (fun _ -> false) 
-      | None -> 
+                         Basics.init_list nbArgs (fun _ -> false)
+      | None ->
           (* If that did not work, than we look in the scope *)
           (match StrMap.find_opt (snd id.elt) ss.in_scope with
           | Some(f, _) -> f.sym_implicits
-          | None       -> 
+          | None       ->
               (* If that failed too, we finally look in the builtins *)
               (match StrMap.find_opt (snd id.elt) ss.builtins with
               | Some(f, _) -> f.sym_implicits
               (* Not found anywhere, so we don't know about implicits *)
-              | None       -> [] ))) 
+              | None       -> [] )))
   | _                              -> []
 
 (** [get_params_implicitness_of_type t] returns a list representing the formal
@@ -152,36 +152,36 @@ let get_params_implicitness_of_type : p_term -> bool list = fun t ->
   | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
   | _                 -> []
 
-(** [add_implicit_args params args] builds the full arguments list, using the 
-    given arguments [args] and with the insertion of "_" for the implicits, 
+(** [add_implicit_args params args] builds the full arguments list, using the
+    given arguments [args] and with the insertion of "_" for the implicits,
     following the information provided by the formal parameters [param].
     Its implementation is tail-recursive. *)
-let add_implicit_args : bool list -> p_term list -> p_term list = 
+let add_implicit_args : bool list -> p_term list -> p_term list =
   fun params args ->
   let rec add_implicit_args_aux :
-    bool list -> p_term list -> p_term list -> p_term list = 
+    bool list -> p_term list -> p_term list -> p_term list =
     fun params args fullArgs ->
     match params,args with
-    (* The next parameter is implicit, so we do not consume the next 
+    (* The next parameter is implicit, so we do not consume the next
        available concrete argument *)
-    | (true::ps, _::_)         -> add_implicit_args_aux ps args 
+    | (true::ps, _::_)         -> add_implicit_args_aux ps args
                                       ((none P_Wild)::fullArgs)
-    (* The next parameter is not implicit, so we consume the next available 
+    (* The next parameter is not implicit, so we consume the next available
        concrete argument arg1 *)
-    | (false::ps, arg1::args') -> add_implicit_args_aux ps args' 
+    | (false::ps, arg1::args') -> add_implicit_args_aux ps args'
                                       (arg1::fullArgs)
-    (* Not enough formal parameters, we reverse the remaining arguments 
+    (* Not enough formal parameters, we reverse the remaining arguments
        and append fullArgs (built in reverse order) to the result *)
     | ([], _::_)               -> List.rev_append args fullArgs
-    (* We've  used all the concrete arguments, we return the accumulator 
+    (* We've  used all the concrete arguments, we return the accumulator
       regardless of still having some formal parameters *)
     | ((_::_), [])
     | ([],     [])             -> fullArgs
   in
-    (* If we don't have implicitness information (as for a fully explicit 
-       identifier like "@f"), then we directly put only the given concrete 
-       args *) 
-    if (params = []) then args 
+    (* If we don't have implicitness information (as for a fully explicit
+       identifier like "@f"), then we directly put only the given concrete
+       args *)
+    if (params = []) then args
     (* We reverse the arguments as they've been built in the opposite order *)
     else
       List.rev (add_implicit_args_aux params args [])
@@ -222,7 +222,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* We build a metavariable that may use the variables of [env]. *)
           let vs = Env.vars_of_env env in
           _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
-    in 
+    in
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type

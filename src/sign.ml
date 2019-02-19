@@ -162,7 +162,7 @@ let unlink : t -> unit = fun sign ->
 (** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
-let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym = 
+let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   fun sign mode s a implicits ->
   (* Check for metavariables in the symbol type. *)
   let nb = List.length (Basics.get_metas a) in
@@ -171,7 +171,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_implicits = implicits; sym_rules = ref [] 
+    ; sym_def = ref None ; sym_implicits = implicits; sym_rules = ref []
     ; sym_mode = mode }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym

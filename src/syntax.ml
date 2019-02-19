@@ -297,8 +297,8 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
-(* split_fun_args t decomposes the parser term [t] into the function symbol 
-   and the list of its actual arguments. Its implementation is 
+(* split_fun_args t decomposes the parser term [t] into the function symbol
+   and the list of its actual arguments. Its implementation is
    tail-recursive*)
 let split_fun_args : p_term -> (p_term * (p_term list)) = fun t ->
   let rec split_fun_args_aux : p_term -> p_term list -> p_term * p_term list =
@@ -308,7 +308,7 @@ let split_fun_args : p_term -> (p_term * (p_term list)) = fun t ->
     | x               -> (none x, args)
   in (split_fun_args_aux t [])
 
-(** [add_args_pterm t args] builds the application of the parser-level 
+(** [add_args_pterm t args] builds the application of the parser-level
     term [t] to a list of arguments [args]. *)
 let add_args_pterm : p_term -> p_term list -> p_term = fun t args ->
   let rec add_args_pterm_aux t args =

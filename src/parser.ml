@@ -222,7 +222,7 @@ let parser any_ident =
   | id:escaped_ident -> id
 
 (** Identifier (regular and non-keyword, or escaped). *)
-let parser ident = 
+let parser ident =
   | id:any_ident -> in_pos _loc id
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
@@ -257,7 +257,7 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc (P_Iden(qid, ImplicitAsDeclared))
   (* Fully explicit Variable (or possibly qualified symbol) *)
   | "@" qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid, FullyExplicit))  
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, FullyExplicit))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -330,11 +330,11 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 (** [arg] parses a single function argument. *)
 and parser arg =
   (* Non implicit argument *)
-  | x:ident                            -> (x, None,    false) 
+  | x:ident                            -> (x, None,    false)
   | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a), false)
   (* Implicit argument *)
   | "{" x:ident "}"                    -> (x, None,    true)
-  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)  
+  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)
 
 let term = term PFunc
 
