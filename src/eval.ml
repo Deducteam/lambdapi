@@ -242,7 +242,11 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
   let module Pm = Dtree.Pattmat in
   let rec grow m =
     if List.length m = 0 then (* If matrix is empty *)
-      Dtree.Fail else
+      begin
+        failwith "matching failure" ;
+        (* Dtree.Fail *)
+      end
+    else
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
       let fline = fst @@ List.hd m in
