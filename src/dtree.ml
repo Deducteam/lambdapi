@@ -74,6 +74,25 @@ struct
       action. *)
   type t = (line * action) list
 
+  (** [pp_line l] prints line [l] to stdout. *)
+  let pp_line : line -> unit =
+    let rec loop : term list -> unit = function
+      | []      -> print_endline "]"
+      | x :: xs ->
+        begin
+          print_string ";" ; Print.pp Format.std_formatter x ;
+          loop xs
+        end in
+    loop
+
+  (** [pp m] prints matrix [m] to stdout. *)
+  let pp : t -> unit =
+    Printf.printf "[\n" ;
+    let rec loop : t -> unit = function
+      | []           -> print_endline "]"
+      | (l, _) :: xs -> ( pp_line l ; loop xs ) in
+    loop
+
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = List.map (fun r -> r.lhs, r.rhs)
