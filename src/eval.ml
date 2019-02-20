@@ -250,19 +250,22 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
          execute the associated action. *)
       let fline = fst @@ List.hd m in
       if Pm.pattern_free fline then
-        Dtree.Leaf(snd @@ List.hd m) else
+        Dtree.Leaf(snd @@ List.hd m)
+      else
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
         let kept_cols = Pm.discard_patt_free m in
         let sel_in_partial = Pm.pick_best (Pm.select m kept_cols) in
-        let swap = if kept_cols.(sel_in_partial) = 0
-          then None else Some kept_cols.(sel_in_partial) in
+        let swap = if kept_cols.(sel_in_partial) = 0 then None
+          else Some kept_cols.(sel_in_partial) in
+        (* XXX Perform swap!! *)
         let selected_c = match swap with
           | None   -> Pm.get_col 0 m
           | Some i -> Pm.get_col i m in
         let syms = List.filter (fun x -> match x with
-            | Symb(_, _) -> true
-            | _          -> false) selected_c in
+            | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
+            | _                                            -> false)
+            selected_c in
         let ms = List.map (fun s -> specialize s m) syms in
         let children = List.map grow (ms @ [default m]) in
         Printf.printf "length %d\n" (List.length children);
