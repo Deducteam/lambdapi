@@ -184,6 +184,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true (* should be a matching env t1 t2*)
       (* We should check that bodies depend on the same variables. *)
+      | Appl(_, _), Appl(_, _)         -> true
       | Patt(Some(_), _, _), Patt(Some(_), _, _) -> true
       (* Should be [matching env e.(i) d.(j)] *)
       | _                  , Patt(None, _, [||]) -> true
@@ -195,6 +196,9 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       (* Checks could be done on arity of symb. *)
       | _                  , Abst(_, b)               ->
         let _, t = Bindlib.unbind b in (t :: List.tl l, a)
+      | _                  , Appl(t1, t2)             ->
+        (t1 :: t2 :: List.tl l, a)
+        (* Might need to add wildcard to other lines. *)
       | Patt(None, _, [||]), Patt(None, _, [||]) as ws  ->
         ((fst ws) :: List.tl l, a)
       | Patt(None, _, e)   , Patt(None, _, [||]) as ws ->
@@ -236,7 +240,7 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
          execute the associated action. *)
       let fline = fst @@ List.hd m in
       if Pm.pattern_free fline then
-        Leaf(snd @@ List.hd m) else
+        Dtree.Leaf(snd @@ List.hd m) else
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
         let kept_cols = Pm.discard_patt_free m in
