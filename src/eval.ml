@@ -190,19 +190,19 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | _ -> failwith "suspicious specialization 1") m in
   let unfolded = List.map (fun (l, a) ->
       match p, List.hd l with
-      | _                  , Symb(_, _)                ->
+      | _                  , Symb(_, _)               ->
         (List.tl l, a) (* Eat the symbol? *)
       (* Checks could be done on arity of symb. *)
-      | _                  , Abst(_, b)                ->
+      | _                  , Abst(_, b)               ->
         let _, t = Bindlib.unbind b in (t :: List.tl l, a)
-      | Patt(None, _, [||]), Patt(None, _, [||]) as ws ->
+      | Patt(None, _, [||]), Patt(None, _, [||]) as ws  ->
         ((fst ws) :: List.tl l, a)
       | Patt(None, _, e)   , Patt(None, _, [||]) as ws ->
         let ari = Array.length e in
         (List.init ari (fun _ -> snd ws) @ (List.tl l), a)
-      | _                  , Patt(Some(i), _, _)       ->
+      | _                  , Patt(Some(_), _, _)      ->
         failwith "non linearity not yet implemented"
-      | _                  , x                         ->
+      | _                  , x                        ->
         Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
         let msg = Printf.sprintf "suspicious specialization on %s"
             (Buffer.contents Format.stdbuf) in
@@ -210,16 +210,20 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   unfolded
 
 (** [default m] computes the default matrix containing what remains to be
-    matched. *)
+    matched if no specialization occurred. *)
 and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
   let filtered = List.filter (fun (l, _) ->
       match List.hd l with
-      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> false
-      | Patt(None , _, _)                            -> true
-      | _                                            -> assert false) m in
+      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) -> false
+      | Patt(None , _, _) | Appl(_, _)                -> true
+      | x                                             ->
+        pp Format.err_formatter x ;
+        assert false) m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
       | Patt(None, _, _) -> (List.tl l, a) (* Might be the only case *)
+      | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a)
+      (* might need to add wildcards to other lines *)
       | _                -> assert false) filtered in
   unfolded
 
