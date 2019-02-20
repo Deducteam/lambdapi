@@ -187,11 +187,22 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | Patt(Some(_), _, _), Patt(Some(_), _, _) -> true
       (* Should be [matching env e.(i) d.(j)] *)
       | _                  , Patt(None, _, [||]) -> true
-      | _ -> false) m in
+      | _ -> failwith "suspicious specialization 1") m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
       | Symb(_, _) -> (List.tl l, a) (* Eat the symbol? *)
-      | _          -> failwith "NYI") filtered in
+      (* Checks could be done on arity of symb. *)
+      | Abst(_, b) -> let _, t = Bindlib.unbind b in (t :: List.tl l, a)
+      | Patt(None, _, [||]) ->
+        begin
+          match p with
+          | Patt(None, _, [||]) as w -> (w :: List.tl l, a)
+          | Patt(None, _, e)         ->
+            let ari = Array.length e in
+            (List.init ari (fun _ -> Patt(None, "w", [||])) @ (List.tl l), a)
+          | _                        -> assert false
+        end
+      | _          -> failwith "suspicious normalization 2") filtered in
   unfolded
 
 (** [default m] computes the default matrix containing what remains to be
