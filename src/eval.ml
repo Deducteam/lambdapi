@@ -216,11 +216,11 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
       match List.hd l with
       | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> false
       | Patt(None , _, _)                            -> true
-      | _                                            -> failwith "NYI _") m in
+      | _                                            -> assert false) m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
       | Patt(None, _, _) -> (List.tl l, a) (* Might be the only case *)
-      | _                -> failwith "NYI") filtered in
+      | _                -> assert false) filtered in
   unfolded
 
 and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
