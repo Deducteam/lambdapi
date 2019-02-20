@@ -4,7 +4,7 @@ open Why3
 
 
 (* list of provers' name *)
-let provers_name : (string * string) list ref = 
+let provers_name : (string * string) list ref =
     ref
     [
         "altergo", "Alt-Ergo";
@@ -18,7 +18,7 @@ let get_name : string -> string = fun s ->
     try
         List.assoc s !provers_name
     with
-        Not_found  -> failwith ("Failed to find `" ^ s ^ "` in the list of provers.")
+        Not_found  -> failwith ("Failed to find `" ^ s ^ "`")
 
 (* get why3 config *)
 let config : Whyconf.config = Whyconf.read_config None
@@ -37,8 +37,12 @@ let prover : string -> Whyconf.config_prover = fun prover_name ->
 
 let alt_ergo = prover "Alt-Ergo"
 
-(* build an environment *)
-let env : Env.env ref = ref (Env.create_env (Whyconf.loadpath main))
+(* build an empty environment *)
+let env : Env.env ref = ref (Env.create_env [])
+
+(* init the environment *)
+let init_env () =
+    env := Env.create_env (Whyconf.loadpath main)
 
 (* load a prover *)
 let prover_driver : Whyconf.config_prover -> Driver.driver = fun cp ->
@@ -57,5 +61,5 @@ let rst : Whyconf.config_prover -> Task.task -> Call_provers.prover_result =
         ~command:prv.Whyconf.command (prover_driver prv) tsk)
 
 (* print the prover answer *)
-let test prv tsk = Console.out 1 "Answer : %a@."
+let test prv tsk = Console.out 2 "Prover's answer : %a@."
     Call_provers.print_prover_result (rst prv tsk)

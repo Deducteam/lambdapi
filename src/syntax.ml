@@ -166,6 +166,7 @@ type p_cmd =
   (** Type inference command. *)
   | P_normalize  of p_term * Eval.config
   (** Normalisation command. *)
+  | P_why3_init
 
 (** Parser-level representation of a single (located) command. *)
 type command = p_cmd loc

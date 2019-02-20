@@ -118,5 +118,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* get the goal to prove *)
       let (_, trm) = Proof.Goal.get_type g in
       (* print the response of the prover *)
+      (* TODO : add the goal to the set of axioms if the prover succeed *)
       Why3prop.t_goal (Why3prover.get_name s.elt) (unfold trm);
       ps

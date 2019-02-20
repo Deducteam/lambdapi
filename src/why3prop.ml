@@ -14,6 +14,7 @@ let rec t_goal : string -> term -> unit = fun sp g ->
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
+        (* TODO : match the response of the prover and do an action after *)
         Why3prover.test (Why3prover.prover sp) tsk
     | _                                     ->
         failwith "Goal can't be translated"
