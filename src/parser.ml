@@ -359,7 +359,7 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
-  | _why3_                      -> Pos.in_pos _loc P_tac_why3
+  | _why3_ s:ident             -> Pos.in_pos _loc (P_tac_why3(s))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =

@@ -3,10 +3,27 @@
 open Why3
 
 
-(*  get why3 config *)
+(* list of provers' name *)
+let provers_name : (string * string) list ref = 
+    ref
+    [
+        "altergo", "Alt-Ergo";
+        "AltErgo", "Alt-Ergo";
+        "e"      , "Eprover";
+        "eprover", "Eprover";
+    ]
+
+(* get the real name of a prover *)
+let get_name : string -> string = fun s ->
+    try
+        List.assoc s !provers_name
+    with
+        Not_found  -> failwith ("Failed to find `" ^ s ^ "` in the list of provers.")
+
+(* get why3 config *)
 let config : Whyconf.config = Whyconf.read_config None
 
-(*  get the main config *)
+(* get the main config *)
 let main : Whyconf.main = Whyconf.get_main config
 
 (* get a prover from the config file *)
@@ -21,12 +38,12 @@ let prover : string -> Whyconf.config_prover = fun prover_name ->
 let alt_ergo = prover "Alt-Ergo"
 
 (* build an environment *)
-let env : Env.env = Env.create_env (Whyconf.loadpath main)
+let env : Env.env ref = ref (Env.create_env (Whyconf.loadpath main))
 
 (* load a prover *)
 let prover_driver : Whyconf.config_prover -> Driver.driver = fun cp ->
     try
-        Whyconf.load_driver main env cp.Whyconf.driver []
+        Whyconf.load_driver main !env cp.Whyconf.driver []
     with e ->
         Console.out 1 "Failed to load driver for alt-ergo: %a@."
     Exn_printer.exn_printer e;

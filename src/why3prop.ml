@@ -7,14 +7,14 @@ open Why3
 type cnst_table = (term * Term.lsymbol) list
 
 (** [t_goal g] output the translation of a goal [g] into a why3.*)
-let rec t_goal : term -> unit = fun g ->
+let rec t_goal : string -> term -> unit = fun sp g ->
     match Basics.get_args g with
     | (Symb({sym_name="P"; _}, _), [t])     ->
         let (l_prop, formula) = t_prop [] [] t in
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
-        Why3prover.test (Why3prover.prover "Alt-Ergo") tsk
+        Why3prover.test (Why3prover.prover sp) tsk
     | _                                     ->
         failwith "Goal can't be translated"
 
