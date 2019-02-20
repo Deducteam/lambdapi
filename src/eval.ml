@@ -88,16 +88,14 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     match_args r.lhs stk
   in
   (* EXPE *)
-  begin
-    match !(s.sym_def) with
-    | Some(_) -> ()
-    | None    ->
-      begin
-        let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
-        let tree = compile pama in
-        Dtree.to_dot s.sym_name tree ;
-      end ;
-  end ;
+  if List.length !(s.sym_rules) > 0 then
+    begin
+      Printf.printf "***************************\n" ;
+      Printf.printf "Building tree for symb %s%!" (s.sym_name) ;
+      let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
+      let tree = compile pama in
+      Dtree.to_dot s.sym_name tree ;
+    end ;
   (* EXPE *)
   List.map_find match_rule Timed.(!(s.sym_rules))
 
@@ -241,6 +239,7 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
 and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
   let module Pm = Dtree.Pattmat in
   let rec grow m =
+    Pm.pp m ;
     if List.length m = 0 then (* If matrix is empty *)
       begin
         failwith "matching failure" ;

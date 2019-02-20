@@ -77,20 +77,21 @@ struct
   (** [pp_line l] prints line [l] to stdout. *)
   let pp_line : line -> unit =
     let rec loop : term list -> unit = function
-      | []      -> print_endline "]"
+      | []      -> Printf.printf "]%!"
       | x :: xs ->
         begin
           print_string ";" ; Print.pp Format.std_formatter x ;
+          Printf.printf "%!" ;
           loop xs
         end in
-    loop
+    Printf.printf "[%!" ; loop
 
   (** [pp m] prints matrix [m] to stdout. *)
   let pp : t -> unit =
-    Printf.printf "[\n" ;
+    Printf.printf "[|\n%!" ;
     let rec loop : t -> unit = function
-      | []           -> print_endline "]"
-      | (l, _) :: xs -> ( pp_line l ; loop xs ) in
+      | []           -> Printf.printf "\n|]%!"
+      | (l, _) :: xs -> ( Printf.printf "\n\t%!" ; pp_line l ; loop xs ) in
     loop
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
