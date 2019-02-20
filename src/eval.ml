@@ -189,20 +189,24 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | _                  , Patt(None, _, [||]) -> true
       | _ -> failwith "suspicious specialization 1") m in
   let unfolded = List.map (fun (l, a) ->
-      match List.hd l with
-      | Symb(_, _) -> (List.tl l, a) (* Eat the symbol? *)
+      match p, List.hd l with
+      | _                  , Symb(_, _)                ->
+        (List.tl l, a) (* Eat the symbol? *)
       (* Checks could be done on arity of symb. *)
-      | Abst(_, b) -> let _, t = Bindlib.unbind b in (t :: List.tl l, a)
-      | Patt(None, _, [||]) ->
-        begin
-          match p with
-          | Patt(None, _, [||]) as w -> (w :: List.tl l, a)
-          | Patt(None, _, e)         ->
-            let ari = Array.length e in
-            (List.init ari (fun _ -> Patt(None, "w", [||])) @ (List.tl l), a)
-          | _                        -> assert false
-        end
-      | _          -> failwith "suspicious normalization 2") filtered in
+      | _                  , Abst(_, b)                ->
+        let _, t = Bindlib.unbind b in (t :: List.tl l, a)
+      | Patt(None, _, [||]), Patt(None, _, [||]) as ws ->
+        ((fst ws) :: List.tl l, a)
+      | Patt(None, _, e)   , Patt(None, _, [||]) as ws ->
+        let ari = Array.length e in
+        (List.init ari (fun _ -> snd ws) @ (List.tl l), a)
+      | _                  , Patt(Some(i), _, _)       ->
+        failwith "non linearity not yet implemented"
+      | _                  , x                         ->
+        Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
+        let msg = Printf.sprintf "suspicious specialization on %s"
+            (Buffer.contents Format.stdbuf) in
+        failwith msg) filtered in
   unfolded
 
 (** [default m] computes the default matrix containing what remains to be
