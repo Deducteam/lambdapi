@@ -39,6 +39,6 @@ let rst : Whyconf.config_prover -> Task.task -> Call_provers.prover_result =
         ~limit:Call_provers.empty_limit
         ~command:prv.Whyconf.command (prover_driver prv) tsk)
 
-(* prints Alt-Ergo answer *)
-let test prv tsk = Console.out 1 "@[On task 1, Alt-Ergo answers %a@."
+(* print the prover answer *)
+let test prv tsk = Console.out 1 "Answer : %a@."
     Call_provers.print_prover_result (rst prv tsk)
