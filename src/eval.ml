@@ -87,6 +87,11 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     in
     match_args r.lhs stk
   in
+  (* EXPE *)
+  let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
+  let tree = compile pama in
+  Dtree.to_dot s.sym_name tree ;
+  (* EXPE *)
   List.map_find match_rule Timed.(!(s.sym_rules))
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for
@@ -165,6 +170,65 @@ and eq_modulo : term -> term -> bool = fun a b ->
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
+
+(** [specialize p m] specializes the matrix [m] when matching against pattern
+    [p]. *)
+(* See the [matching] function of [eval] *)
+and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun s m ->
+  let filtered = List.filter (fun (l, _) ->
+      (* Removed rules starting with a different constructor*)
+      match s, List.hd l with
+      | Symb(s, _), Symb(s', _)      -> s = s' (* Equality of records? *)
+      | _,          Patt(None, _, _) -> true
+      | Patt(_, _, _), Patt(_, _, _) -> failwith "pattern NYI"
+      | _ -> failwith "NYI") m in
+  let unfolded = List.map (fun (l, a) ->
+      match List.hd l with
+      | Symb(_, _) -> (List.tl l, a) (* Eat the symbol? *)
+      | _          -> failwith "NYI") filtered in
+  unfolded
+
+(** [default m] computes the default matrix containing what remains to be
+    matched. *)
+and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
+  let filtered = List.filter (fun (l, _) ->
+      match List.hd l with
+      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> false
+      | Patt(None , _, _)                            -> true
+      | _                                            -> failwith "NYI _") m in
+  let unfolded = List.map (fun (l, a) ->
+      match List.hd l with
+      | Patt(None, _, _) -> (List.tl l, a) (* Might be the only case *)
+      | _                -> failwith "NYI") filtered in
+  unfolded
+
+and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
+  let module Pm = Dtree.Pattmat in
+  let rec grow m =
+    if List.length m = 0 then (* If matrix is empty *)
+      Dtree.Fail else
+      (* Look at the first line, if it contains only wildcards, then
+         execute the associated action. *)
+      let fline = fst @@ List.hd m in
+      if Pm.pattern_free fline then
+        Leaf(snd @@ List.hd m) else
+        (* Pick a column in the matrix and pattern match on the constructors in
+           it to grow the tree. *)
+        let kept_cols = Pm.discard_patt_free m in
+        let sel_in_partial = Pm.pick_best (Pm.select m kept_cols) in
+        let swap = if kept_cols.(sel_in_partial) = 0
+          then None else Some kept_cols.(sel_in_partial) in
+        let selected_c = match swap with
+          | None   -> Pm.get_col 0 m
+          | Some i -> Pm.get_col i m in
+        let syms = List.filter (fun x -> match x with
+            | Symb(_, _) -> true
+            | _          -> false) selected_c in
+        let ms = List.map (fun s -> specialize s m) syms in
+        let children = List.map grow (ms @ [default m]) in
+        Printf.printf "length %d\n" (List.length children);
+        Node(swap, children) in
+  grow m
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
