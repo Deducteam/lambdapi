@@ -70,9 +70,7 @@ struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
   type line = term list
 
-  (** Type of a matrix of patterns.  The type is changed (from rule list) as
-      the matrix is made to be shrunk; keeping the rule list type would be
-      deceitful semantically.  Each line is a row having an attached
+  (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
   type t = (line * action) list
 
@@ -85,6 +83,10 @@ struct
   let get_col : int -> t -> line = fun ind ->
     List.fold_left (fun acc (elt, _) ->
       if List.length elt > ind then List.nth elt ind :: acc else acc) []
+
+  (** [select m i] keeps the columns of [m] whose index are in [i]. *)
+  let select : t -> int array -> t = fun m ->
+    Array.fold_left (fun acc elt -> List.nth m elt :: acc) []
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
@@ -103,9 +105,9 @@ struct
       begin
         match x with
         (* Wildcards as Patt(None, _, _). *)
-        | Patt(None, _, _) -> pattern_free xs
+        | Patt(None, _, [||]) -> pattern_free xs
         (* The condition might be too restrictive. *)
-        | _                -> false
+        | _                   -> false
       end
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
@@ -119,10 +121,6 @@ struct
           | None -> acc) [] indexes in
     assert ((List.length remaining) > 0) ;
     Array.of_list remaining
-
-  (** [select m i] keeps the columns of [m] whose index are in [i]. *)
-  let select : t -> int array -> t = fun m ->
-    Array.fold_left (fun acc elt -> List.nth m elt :: acc) []
 end
 
 let print_arr_int arr =
