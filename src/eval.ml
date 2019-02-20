@@ -171,17 +171,23 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [specialize p m] specializes the matrix [m] when matching against pattern
-    [p]. *)
-(* See the [matching] function of [eval] *)
-and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun s m ->
+(** [specialize p m]  specializes the matrix [m] when matching against pattern
+    [p].  A matrix can be specialized by a user defined symbol, an abstraction
+    or a pattern variable.  The specialization always happen on the first
+    column (which is swapped if needed). *)
+and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
-      match s, List.hd l with
-      | Symb(s, _), Symb(s', _)      -> s = s' (* Equality of records? *)
-      | _,          Patt(None, _, _) -> true
-      | Patt(_, _, _), Patt(_, _, _) -> failwith "pattern NYI"
-      | _ -> failwith "NYI") m in
+      match p, List.hd l with
+      | Symb(s, _), Symb(s', _)        -> s = s' (* Equality of records? *)
+      | Abst(_, b1), Abst(_, b2)       ->
+        let _, _, _ = Bindlib.unbind2 b1 b2 in
+        true (* should be a matching env t1 t2*)
+      (* We should check that bodies depend on the same variables. *)
+      | Patt(Some(_), _, _), Patt(Some(_), _, _) -> true
+      (* Should be [matching env e.(i) d.(j)] *)
+      | _                  , Patt(None, _, [||]) -> true
+      | _ -> false) m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
       | Symb(_, _) -> (List.tl l, a) (* Eat the symbol? *)
