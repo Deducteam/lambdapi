@@ -75,24 +75,32 @@ struct
   type t = (line * action) list
 
   (** [pp_line l] prints line [l] to stdout. *)
-  let pp_line : line -> unit =
+  let pp_line : line -> unit = fun l ->
+    let module F = Format in
     let rec loop : term list -> unit = function
-      | []      -> Printf.printf "]%!"
+      | []      -> ()
       | x :: xs ->
         begin
-          print_string ";" ; Print.pp Format.std_formatter x ;
-          Printf.printf "%!" ;
+          F.print_space () ; F.print_string ";" ;
+          Print.pp Format.std_formatter x ;
           loop xs
         end in
-    Printf.printf "[%!" ; loop
+    F.open_box 0 ;
+    F.print_string "[" ; loop l ; F.print_string  "]" ;
+    F.close_box () ; F.print_newline ()
 
   (** [pp m] prints matrix [m] to stdout. *)
-  let pp : t -> unit =
-    Printf.printf "[|\n%!" ;
+  let pp : t -> unit = fun m ->
+    let module F = Format in
     let rec loop : t -> unit = function
-      | []           -> Printf.printf "\n|]%!"
-      | (l, _) :: xs -> ( Printf.printf "\n\t%!" ; pp_line l ; loop xs ) in
-    loop
+      | []           -> ()
+      | (l, _) :: xs ->
+        begin
+          F.print_tab () ; pp_line l ; loop xs
+        end in
+    F.open_box 0 ;
+    F.print_string "[|" ; F.print_cut () ; loop m ; F.print_string "|]" ;
+    F.close_box () ; F.print_newline ()
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
