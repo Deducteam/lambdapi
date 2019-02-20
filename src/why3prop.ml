@@ -6,41 +6,41 @@ open Why3
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Term.lsymbol) list
 
-(** [t_goal g] output the translation of a lamdapi goal [g] into a why3 goal.*)
-let rec t_goal : term -> unit = fun g -> 
+(** [t_goal g] output the translation of a goal [g] into a why3.*)
+let rec t_goal : term -> unit = fun g ->
     match Basics.get_args g with
-    | (Symb({sym_name="P"; _}, _), [t])     -> 
+    | (Symb({sym_name="P"; _}, _), [t])     ->
         let (l_prop, formula) = t_prop [] [] t in
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
-        Console.out 1 "%a@." Pretty.print_task tsk                                        
-    | _                                     -> 
+        Why3prover.test (Why3prover.prover "Alt-Ergo") tsk
+    | _                                     ->
         failwith "Goal can't be translated"
-    
-(** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition [p]
-with the context [ctxt] into a why3 proposition. *)
-and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term)= 
+
+(** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition
+[p] with the context [ctxt] into a why3 proposition. *)
+and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term) =
     fun l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
     (match s with
-    | Symb({sym_name="{|and|}"; _}, _)      -> 
+    | Symb({sym_name="{|and|}"; _}, _)      ->
         let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_and t1 t2 
-    | Symb({sym_name="or"; _}, _)      -> 
+        l_prop, Term.t_and t1 t2
+    | Symb({sym_name="or"; _}, _)      ->
         let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_or t1 t2 
-    | Symb({sym_name="imp"; _}, _)      -> 
+        l_prop, Term.t_or t1 t2
+    | Symb({sym_name="imp"; _}, _)      ->
         let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_implies t1 t2 
-    | Symb({sym_name="equiv"; _}, _)      -> 
+        l_prop, Term.t_implies t1 t2
+    | Symb({sym_name="equiv"; _}, _)      ->
         let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_iff t1 t2 
-    | Symb({sym_name="not"; _}, _)      -> 
+        l_prop, Term.t_iff t1 t2
+    | Symb({sym_name="not"; _}, _)      ->
         let (l_prop, t) = t_prop l_prop ctxt (List.nth args 0) in
         l_prop, Term.t_not t
     | Symb(_, _)                        ->
@@ -52,9 +52,9 @@ and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term)=
                 (l_prop, Term.ps_app ct [])
             else
             (* or generate a new constant in why3 *)
-                let new_symbol = Term.create_psymbol (Ident.id_fresh "P") [] in
-                let new_predicate = Term.ps_app new_symbol [] in
+                let sym = Term.create_psymbol (Ident.id_fresh "P") [] in
+                let new_predicate = Term.ps_app sym [] in
                 (* add the new symbol to the list and return it *)
-                (p, new_symbol)::l_prop, new_predicate   
-    | _                                     -> 
+                (p, sym)::l_prop, new_predicate
+    | _                                     ->
         failwith "Proposition can't be translated ");
