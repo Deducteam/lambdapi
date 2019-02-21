@@ -1,6 +1,6 @@
 (** Temination checking.
 
-    This module allows the translation of a signature in the TPDB format (used
+    This module allows the translation of a signature in the XTC format (used
     in the termination competition). See the "Termination Problem Database":
     http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB *)
 
@@ -10,12 +10,11 @@ open Console
 open Terms
 
 (** Logging function for the termination checker interface. *)
-let log_conf =
+let log_term =
   new_logger 'n' "norm" "informations for the termination checker"
-let log_conf = log_conf.logger
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
-    is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
+    is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
@@ -136,8 +135,8 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   Format.fprintf oc "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
     (print_type i s.sym_name) rhs
 
-(** [get_vars s r] returns the list of variable of used in the rule [r],
-    in the form of a couple containing the name of the variable and its type,
+(** [get_vars s r] returns the list of variables used in the rule [r],
+    in the form of a pair containing the name of the variable and its type,
     inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
   (*check_rule s r;*)
@@ -153,7 +152,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     | Wild
     | Prod (_, _)
     | Vari _              -> assert false
-    | Symb (s, p)         -> Symb(s, p)
+    | Symb (_, _)         -> t
     | Abst (t1, b)        ->
        let (x,t2) = Bindlib.unbind b in
        Abst(
@@ -338,44 +337,9 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     XTC format on its standard output, and outputs either ["YES"], ["NO"] or
     ["MAYBE"] as the first line of its standard output. The exception [Fatal]
     may be raised if [cmd] does not behave as expected. *)
-let check : string -> Sign.t -> bool option = fun cmd sign ->
-  (* Run the command. *)
-  if !log_enabled then log_conf "Running command [%s]" cmd;
-  let (ic, oc, ec) = Unix.open_process_full cmd (Unix.environment ()) in
-  (* Feed it the XTC problem. *)
-  to_XTC (Format.formatter_of_out_channel oc) sign;
-  flush oc; close_out oc;
-  if !log_enabled then log_conf "Wrote the data and closed the pipe.";
-  (* Read the answer (and possible error messages). *)
-  let out = input_lines ic in
-  if !log_enabled && out <> [] then
-    begin
-      log_conf "==== Data written to [stdout] ====";
-      List.iter (log_conf "%s") out;
-      log_conf "==================================";
-    end;
-  let err = input_lines ec in
-  if !log_enabled && err <> [] then
-    begin
-      log_conf "==== Data written to [stderr] ====";
-      List.iter (log_conf "%s") err;
-      log_conf "=================================="
-    end;
-  (* Terminate the process. *)
-  match (Unix.close_process_full (ic, oc, ec), out) with
-  | (Unix.WEXITED 0  , "YES"  ::_) -> Some true
-  | (Unix.WEXITED 0  , "NO"   ::_) -> Some false
-  | (Unix.WEXITED 0  , "MAYBE"::_) -> None
-  | (Unix.WEXITED 0  , []        ) ->
-      fatal_no_pos "The termination checker prodced no output."
-  | (Unix.WEXITED 0  , _         ) ->
-      fatal_no_pos "The termination checker gave an unexpected answer."
-  | (Unix.WEXITED i  , _         ) ->
-      fatal_no_pos "The termination checker returned with code [%i]." i
-  | (Unix.WSIGNALED i, _         ) ->
-      fatal_no_pos "The termination checker was killed by signal [%i]." i
-  | (Unix.WSTOPPED  i, _         ) ->
-      fatal_no_pos "The termination checker was stopped by signal [%i]." i
+let check : string -> Sign.t -> bool option =
+  fun cmd sign ->
+  External_checker.check cmd sign to_XTC log_term "termination"
 (* NOTE the simplest, valid termination checking command is ["echo MAYBE"] and
    ["cat > out.xml; echo MAYBE"] can conveniently be used to write generated
    TPDB output to the file ["out.xml"] for debugging purposes. *)

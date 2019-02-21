@@ -51,7 +51,7 @@ When in default mode, the following flags are available for configuration:
 
 #### Confluence checking
 
-Confluence checking (and also termination) must be established for each of the
+Confluence (and also termination) must be established for each of the
 considered rewriting systems contained in `lambdapi` files. By default,  these
 checks are not performed, and they must be explicitly requested.
 
@@ -78,7 +78,33 @@ lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 
 #### Termination checking
 
-For now, there is no support for termination checking.
+Like confluence, termination must be established for each of the
+considered rewriting systems contained in `lambdapi` files.
+
+We provide an interface to external termination checkers using the XTC format.
+The `--termination <cmd>` flag specifies the termination-checking command to
+be used. The command is expected to behave as follows:
+ - take the problem description (in `.xml` format) on its standard input,
+ - output on its first line either `YES`, `NO` or `MAYBE`.
+
+As an example,  `echo MAYBE` is the simplest possible (valid)
+termination-check that one may use.
+
+As far as we now, `SizeChangeTool` is the only termination checker compatible
+with all `lambdapi` features.
+It can be called in the following way.
+```bash
+lambdapi --termination "path/to/sct.native -nc --stdin=xml" input_file.lp
+```
+
+If the file does not contain type-level rewriting, `Wanda` is also compatible.
+However, `Wanda` does not offer the possibility to give an input in `stdin`.
+
+To generate the `.xml` file corresponding to some `lambdapi` file, one may use
+a dummy termination-checking command as follows.
+```bash
+lambdapi --termination "cat > output.trs; echo MAYBE" input_file.lp
+```
 
 #### Debugging flags
 

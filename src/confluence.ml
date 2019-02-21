@@ -10,7 +10,6 @@ open Terms
 
 (** Logging function for the confluence checker interface. *)
 let log_conf = new_logger 'c' "conf" "informations for the confluence checker"
-let log_conf = log_conf.logger
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
@@ -131,45 +130,9 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
     on its standard output, and outputs either ["YES"], ["NO"] or ["MAYBE"] as
     the first line of its standard output. The exception [Fatal] may be raised
     if [cmd] does not behave as expected. *)
-let check : string -> Sign.t -> bool option = fun cmd sign ->
-  (* Run the command. *)
-  if !log_enabled then log_conf "Running command [%s]" cmd;
-  let (ic, oc, ec) = Unix.open_process_full cmd (Unix.environment ()) in
-  (* Feed it the TPDB problem. *)
-  to_TPDB (Format.formatter_of_out_channel oc) sign;
-  flush oc; close_out oc;
-  if !log_enabled then log_conf "Wrote the data and closed the pipe.";
-  (* Read the answer (and possible error messages). *)
-  let out = input_lines ic in
-  if !log_enabled && out <> [] then
-    begin
-      log_conf "==== Data written to [stdout] ====";
-      List.iter (log_conf "%s") out;
-      log_conf "==================================";
-    end;
-  let err = input_lines ec in
-  if !log_enabled && err <> [] then
-    begin
-      log_conf "==== Data written to [stderr] ====";
-      List.iter (log_conf "%s") err;
-      log_conf "=================================="
-    end;
-  (* Terminate the process. *)
-  match (Unix.close_process_full (ic, oc, ec), out) with
-  | (Unix.WEXITED 0  , "YES"  ::_) -> Some true
-  | (Unix.WEXITED 0  , "NO"   ::_) -> Some false
-  | (Unix.WEXITED 0  , "MAYBE"::_) -> None
-  | (Unix.WEXITED 0  , []        ) ->
-      fatal_no_pos "The confluence checker prodced no output."
-  | (Unix.WEXITED 0  , _         ) ->
-      fatal_no_pos "The confluence checker gave an unexpected answer."
-  | (Unix.WEXITED i  , _         ) ->
-      fatal_no_pos "The confluence checker returned with code [%i]." i
-  | (Unix.WSIGNALED i, _         ) ->
-      fatal_no_pos "The confluence checker was killed by signal [%i]." i
-  | (Unix.WSTOPPED  i, _         ) ->
-      fatal_no_pos "The confluence checker was stopped by signal [%i]." i
-
+let check : string -> Sign.t -> bool option =
+  fun cmd sign ->
+  External_checker.check cmd sign to_TPDB log_conf "confluence"
 (* NOTE the simplest, valid confluence checking command is ["echo MAYBE"]. The
    command ["cat > out.txt; echo MAYBE"] can conveniently be used to write the
    generated TPDB problem to the file ["out.txt"] for debugging purposes. *)
