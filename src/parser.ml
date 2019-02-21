@@ -389,6 +389,8 @@ let parser config =
       let binop = (s, a, p, qid) in
       Prefix.add binops s binop;
       P_config_binop(binop)
+  | "prover_limit" n:nat_lit ->
+      P_config_prover_limit(n)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)

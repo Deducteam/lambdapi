@@ -1,6 +1,7 @@
 (** Calling provers in Why3 *)
 
 open Why3
+open Timed
 
 
 (* list of provers' name *)
@@ -18,6 +19,7 @@ let get_name : string -> string = fun s ->
     with
         Not_found  -> failwith ("Failed to find `" ^ s ^ "`")
 
+let time_limit : int ref = ref 10
 (* get why3 config *)
 let config : Whyconf.config = Whyconf.read_config None
 
@@ -54,9 +56,10 @@ let prover_driver : Whyconf.config_prover -> Driver.driver = fun cp ->
 (* calls a prover with a task *)
 let rst : Whyconf.config_prover -> Task.task -> Call_provers.prover_result =
     fun prv tsk ->
-        Call_provers.wait_on_call (Driver.prove_task
-        ~limit:Call_provers.empty_limit
-        ~command:prv.Whyconf.command (prover_driver prv) tsk)
+      let limit = {Call_provers.empty_limit with limit_time = !time_limit} in
+      Call_provers.wait_on_call (Driver.prove_task
+      ~limit:limit
+      ~command:prv.Whyconf.command (prover_driver prv) tsk)
 
 (* check if the answer of a prover is valid or not *)
 let answer : Call_provers.prover_answer -> bool = fun ans ->

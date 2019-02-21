@@ -1,6 +1,8 @@
 require open proofs.logic
 require open proofs.nat
 
+set prover_limit 2
+
 symbol a : Prop
 symbol b : Prop
 

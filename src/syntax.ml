@@ -133,6 +133,8 @@ type p_config =
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
   (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
+  | P_config_prover_limit of int
+  (** Set the time limit of the prover *)
 
 type require_mode =
   | P_require_default

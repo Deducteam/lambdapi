@@ -174,11 +174,12 @@ let pp_command : command pp = fun oc cmd ->
         | Assoc_right -> "r"
       in
       out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+  | P_set(P_config_prover_limit(n)) ->
+      out "set prover_limit %d" n
   | P_infer(t, _)                   ->
       out "@[<hov 4>infer %a@]" pp_p_term t
   | P_normalize(t, _)               ->
       out "@[<hov 2>normalize@ %a@]" pp_p_term t
-      
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with
   | []    -> ()
