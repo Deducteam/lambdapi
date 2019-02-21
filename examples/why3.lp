@@ -1,6 +1,5 @@
 require open proofs.logic
 require open proofs.nat
-why3init
 
 symbol a : Prop
 symbol b : Prop

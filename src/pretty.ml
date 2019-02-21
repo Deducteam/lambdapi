@@ -178,8 +178,7 @@ let pp_command : command pp = fun oc cmd ->
       out "@[<hov 4>infer %a@]" pp_p_term t
   | P_normalize(t, _)               ->
       out "@[<hov 2>normalize@ %a@]" pp_p_term t
-  | P_why3_init                     ->
-      out "Initializing the Why3 environment"
+      
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with
   | []    -> ()

@@ -137,7 +137,6 @@ let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
 let _why3_       = KW.create "why3"
-let _why3init_   = KW.create "why3init"
 
 (** Natural number literal. *)
 let nat_lit =
@@ -433,8 +432,6 @@ let parser cmd =
       -> P_assert(mf,a)
   | _set_ c:config
       -> P_set(c)
-  | _why3init_
-      -> P_why3_init
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*
