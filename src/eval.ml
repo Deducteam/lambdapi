@@ -23,11 +23,6 @@ type stack_elt = (bool * term) Pervasives.ref
 (* NOTE the stack contain references so that the computation of arguments when
    matching reduction rules may be shared. *)
 
-(*******************************)
-let rec print_int_list : int list -> unit = function
-  | [] -> ()
-  | x :: xs -> Printf.printf " | %d" x ; print_int_list xs
-
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
@@ -189,8 +184,8 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
       match p, List.hd l with
-      | Symb(s, _), Symb(s', _)                   -> s == s'
-      | Abst(_, b1), Abst(_, b2)                  ->
+      | Symb(s, _)          , Symb(s', _)                   -> s == s'
+      | Abst(_, b1)         , Abst(_, b2)                   ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true (* should be a matching env t1 t2*)
       (* We should check that bodies depend on the same variables. *)
@@ -199,38 +194,36 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         (* Match if same arity *)
         Array.length e1 = Array.length e2
       (* A check should be done regarding non linear variables *)
-      | _                  , Patt(None, _, [| |]) -> true
+      | _                   , Patt(None, _, [| |])  -> true
       (* All below ought to be put in catch-all case*)
-      | Symb _, Appl _ -> false
-      | Patt _, Symb _ -> false
-      | Patt _, Appl _ -> false
-      | Symb _, Patt _ -> false
-      | x                  , y ->
-        begin
-          Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
-          pp Format.str_formatter y ;
-          let msg = Printf.sprintf "%s: suspicious specialization-filtering"
-              (Buffer.contents Format.stdbuf) in
-          failwith msg
-        end) m.values in
+      | Symb(_, _)   , Appl(_, _)    -> false
+      | Patt(_, _, _), Symb(_, _)    -> false
+      | Patt(_, _, _), Appl(_, _)    -> false
+      | Symb(_, _)   , Patt(_, _, _) -> false
+      | x            , y             ->
+        Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
+        pp Format.str_formatter y ;
+        let msg = Printf.sprintf "%s: suspicious specialization-filtering"
+            (Buffer.contents Format.stdbuf) in
+        failwith msg) m.values in
   let unfolded = List.map (fun (l, a) ->
       match p, List.hd l with
-      | _                  , Symb(_, _)               ->
+      | _                   , Symb(_, _)                 ->
         (List.tl l, a) (* Eat the symbol? *)
       (* Checks could be done on arity of symb. *)
-      | _                  , Abst(_, b)               ->
+      | _                   , Abst(_, b)                 ->
         let _, t = Bindlib.unbind b in (t :: List.tl l, a)
-      | _                  , Appl(t1, t2)             ->
+      | _                   , Appl(t1, t2)               ->
         (t1 :: t2 :: List.tl l, a)
         (* Might need to add wildcard to other lines. *)
-      | Patt(None, _, [||]), Patt(None, _, [||]) as ws  ->
+      | Patt(None, _, [| |]), Patt(None, _, [| |]) as ws ->
         ((fst ws) :: List.tl l, a)
-      | Patt(None, _, e)   , Patt(None, _, [||]) as ws ->
+      | Patt(None, _, e)    , Patt(None, _, [| |]) as ws ->
         let ari = Array.length e in
         (List.init ari (fun _ -> snd ws) @ (List.tl l), a)
-      | _                  , Patt(Some(_), _, _)      ->
+      | _                   , Patt(Some(_), _, _)        ->
         (List.tl l, a)
-      | _                  , x                        ->
+      | _                   , x                          ->
         Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
         let msg = Printf.sprintf "%s: suspicious specialization unfold"
             (Buffer.contents Format.stdbuf) in
@@ -278,22 +271,17 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
         let kept_cols = Pm.discard_patt_free pm in
-        print_newline () ; print_string "kept: " ;
-        print_int_list (Array.to_list kept_cols) ; print_newline () ;
         let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
-        Printf.printf "%!swap: %d\n" (match swap with None -> 0 | Some i -> i) ;
         (* XXX Perform swap!! *)
         let selected_c = match swap with
           | None   -> Pm.get_col 0 pm
           | Some i -> Pm.get_col i pm in
-        Printf.printf "%!length selected col: %d\n" (List.length selected_c) ;
         let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
             selected_c in
-        Printf.printf "%!length %d\n" (List.length cons) ;
         let ms = List.map (fun s -> specialize s pm) cons and
             defm = default pm in
         let children = List.map grow
