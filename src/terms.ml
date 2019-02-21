@@ -106,7 +106,7 @@ type term =
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
     LHS (left hand side),  which is the pattern that should be matched for the
     rule to apply, and a RHS (right hand side) giving the action to perform if
-    the rule applies. More explanations are give below. *)
+    the rule applies. More explanations are given below. *)
  and rule =
   { lhs   : term list
   (** Left hand side (or LHS). *)
