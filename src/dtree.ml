@@ -128,15 +128,15 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun _ -> 0
 
-  (** [pattern_free l] returns whether a line contains patterns or not.
+  (** [is_pattern_free l] returns whether a line contains patterns or not.
       Typically, a line full of wildcards is pattern free. *)
-  let rec pattern_free : line -> bool = function
+  let rec is_pattern_free : line -> bool = function
     | []      -> true
     | x :: xs ->
       begin
         match x with
         (* Wildcards as Patt(None, _, _). *)
-        | Patt(None, _, [||]) -> pattern_free xs
+        | Patt(None, _, [| |]) -> is_pattern_free xs
         (* The condition might be too restrictive. *)
         | _                   -> false
       end
@@ -144,20 +144,20 @@ struct
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
   let discard_patt_free : t -> int array = fun m ->
-    let indexes = List.mapi (fun i (e, _) ->
-        if not (pattern_free e) then Some i else None) m in
-    let remaining =
-      List.fold_left (fun acc elt -> match elt with
-          | Some i -> i :: acc
-          | None -> acc) [] indexes in
-    assert ((List.length remaining) > 0) ;
-    Array.of_list remaining
+    let ncols = List.fold_left (fun acc (l, _) ->
+        let le = List.length l in
+      if le > acc then le else acc) 0 m in
+    let pattfree = List.init ncols (fun k ->
+        let col = get_col k m in
+        is_pattern_free col) in
+    let indexes = List.mapi (fun k pf ->
+        if pf then None else Some k) pattfree in
+    let remaining = List.filter (function
+        | None    -> false
+        | Some(_) -> true) indexes in
+    let unpacked = List.map (function
+        | Some(k) -> k
+        | None    -> assert false) remaining in
+    assert ((List.length unpacked) > 0) ;
+    Array.of_list unpacked
 end
-
-let print_arr_int arr =
-  Printf.printf "[" ;
-  let rec loop = function
-    | [] -> Printf.printf "]\n"
-    | x :: xs -> Printf.printf "; %d" x ; loop xs
-  in
-  loop ( Array.to_list arr )
