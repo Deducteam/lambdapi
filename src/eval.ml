@@ -253,8 +253,8 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t =
 
 and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
   let module Pm = Dtree.Pattmat in
-  let rec grow : Pm. t -> Dtree.t = fun pm ->
-    let { Pm.origin = _ ; Pm.values = m } = pm in
+  let rec grow : Pm.t -> Dtree.t = fun pm ->
+    let { Pm.origin = o ; Pm.values = m } = pm in
     Pm.pp pm ;
     if Pm.is_empty pm then (* If matrix is empty *)
       begin
@@ -286,7 +286,10 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
             defm = default pm in
         let children = List.map grow
                          (if Pm.is_empty defm then ms else ms @ [defm]) in
-        Node(swap, children) in
+        let swi = match o with
+          | Init | Default -> None
+          | Specialized(t)  -> Some t in
+        Node({ switch = swi ; swap = swap ; children = children }) in
   grow m
 
 let whnf : term -> term = fun t ->

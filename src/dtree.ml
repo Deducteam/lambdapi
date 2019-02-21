@@ -5,29 +5,36 @@ open Extra
 type action = (term_env, term) Bindlib.mbinder
 
 (** Tree type.  Leaves are the targets of the rewriting, i.e. when a leaf is
-    reached,  the  matched  pattern  is  rewrote  to  the  the  leaf.  The
+    reached, the matched pattern is rewrote to the the leaf.  The
     {!const:Node}[(i, t)] constructor allows to perform a switch among the
     subtrees in [t] while the [i] option allows to choose on which term of the
     stack the matching is to be done.  {!const:Fail} is a matching failure. *)
 type t = Leaf of action
-       | Node of int option * t list
+       | Node of node_data
        | Fail
+
+(** Data contained in a node of the tree.  {!recfield:switch} contains the
+    term on which the switch that gave birth to this node has been performed
+    (or none if the node has been obtained by a default matrix);
+    {!recfield:swap} indicates whether the columns of the matrix have been
+    swapped before the switch, with an int indicating the column which has
+    been swapped with the first one (or None if no swap is performed) and
+    {!recfield:children} contains the subtrees. *)
+and node_data = { switch : term option
+                ; swap : int option
+                ; children : t list}
 
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (action -> 'a) -> (int option -> 'a list -> 'a) ->
+let iter : (action -> 'a) -> (term option -> int option -> t list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(a)     -> do_leaf a
-    | Fail        -> fail
-    | Node(io, c) -> do_node io (List.map loop c) in
+    | Leaf(a)                                        -> do_leaf a
+    | Fail                                           -> fail
+    | Node({ switch = s ; swap = p ; children = c }) ->
+      do_node s p (List.map loop c) in
   loop t
-
-(** [count_nodes t] counts the number of nodes (leaves are not counted) in
-    [t]. *)
-let count_nodes : t -> int =
-  iter (fun _ -> 0) (fun _ c -> 1 + (List.fold_left (+) 0 c)) 0
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
@@ -45,15 +52,18 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=%s];" father_l
           !nodecount "l";
       end
-    | Node(os, c) ->
+    | Node(ndata) ->
+      let { switch = t ; swap = _ ; children = c } = ndata in
       begin
         incr nodecount ;
         let tag = !nodecount in
-        let label = match os with
-          | None -> 0
-          | Some i -> i in
-        F.fprintf ppf "@ %d -- %d [label=%d];"
-          father_l !nodecount label;
+        F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
+        begin
+          match t with
+          | Some t' -> Print.pp ppf t'
+          | None    -> F.fprintf ppf "d"
+        end ;
+        F.fprintf ppf "\"];" ;
         List.iter (fun e -> write_tree tag e) c ;
       end
     | Fail        ->
