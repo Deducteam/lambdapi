@@ -4,13 +4,13 @@ open Extra
 (** Type of the leaves of the tree.  See {!file:terms.ml}, {!recfield:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** Tree type.  Leaves are the targets of the rewriting, i.e. when a leaf is
-    reached, the matched pattern is rewrote to the the leaf.  The term option
-    indicates--if the leaf has been obtained by a switch--the term that has
-    been matched before reaching the leaf.  The {!const:Node}[(i, t)]
-    constructor allows to perform a switch among the subtrees in [t] while the
-    [i] option allows to choose on which term of the stack the matching is to
-    be done (referred as a swap).  {!const:Fail} is a matching failure. *)
+(** Tree type.  {!const:Leaf}[(t, a)] are the leaves of the tree holding the
+    targets of the rewriting as an {!type:action}; for [t], see
+    {!recfield:switch} of {!type:node_data}.  The term option evinces--if the
+    leaf has been obtained by a switch--the term that has been matched before
+    reaching the leaf.  The {!const:Node}[n] constructor allows primarily to
+    perform a switch among subtrees recorded in {!recfield:children} of [n].
+    {!const:Fail} is a matching failure. *)
 type t = Leaf of term option * action
        | Node of node_data
        | Fail
