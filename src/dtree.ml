@@ -31,16 +31,18 @@ let count_nodes : t -> int =
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
+  let module F = Format in
   let ochan = open_out (fname ^ ".gv") in
+  let ppf = F.formatter_of_out_channel ochan in
   let nodecount = ref 0 in
-  Printf.fprintf ochan "graph {\n";
+  F.fprintf ppf "graph {@[<v>" ;
   (* We cannot use iter since we need the father to be passed. *)
   let rec write_tree : int -> t -> unit = fun father_l tree ->
     match tree with
     | Leaf(_)    ->
       begin
         incr nodecount ;
-        Printf.fprintf ochan "\t%d -- %d [label=%s];\n" father_l
+        F.fprintf ppf "@ %d -- %d [label=%s];" father_l
           !nodecount "l";
       end
     | Node(os, c) ->
@@ -50,19 +52,19 @@ let to_dot : string -> t -> unit = fun fname tree ->
         let label = match os with
           | None -> 0
           | Some i -> i in
-        Printf.fprintf ochan "\t%d -- %d [label=%d];\n"
+        F.fprintf ppf "@ %d -- %d [label=%d];"
           father_l !nodecount label;
         List.iter (fun e -> write_tree tag e) c ;
       end
     | Fail        ->
       begin
         incr nodecount ;
-        Printf.fprintf ochan "\t%d -- %d [label=%s];\n" father_l
+        F.fprintf ppf "@ %d -- %d [label=%s];" father_l
           !nodecount "f";
         end
   in
   write_tree 0 tree ;
-  Printf.fprintf ochan "}\n" ;
+  F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
 module Pattmat =
