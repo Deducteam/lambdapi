@@ -194,14 +194,17 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true (* should be a matching env t1 t2*)
       (* We should check that bodies depend on the same variables. *)
-      | Appl(_, _), Appl(_, _)                    -> true
-      | Patt(Some(_), _, _), Patt(Some(_), _, _)  -> true
-      (* Should be [matching env e.(i) d.(j)] *)
+      | Appl(_, _), Appl(_, _)                      -> true
+      | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
+        (* Match if same arity *)
+        Array.length e1 = Array.length e2
+      (* A check should be done regarding non linear variables *)
       | _                  , Patt(None, _, [| |]) -> true
       (* All below ought to be put in catch-all case*)
       | Symb _, Appl _ -> false
       | Patt _, Symb _ -> false
       | Patt _, Appl _ -> false
+      | Symb _, Patt _ -> false
       | x                  , y ->
         begin
           Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
@@ -226,7 +229,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         let ari = Array.length e in
         (List.init ari (fun _ -> snd ws) @ (List.tl l), a)
       | _                  , Patt(Some(_), _, _)      ->
-        failwith "non linearity not yet implemented"
+        (List.tl l, a)
       | _                  , x                        ->
         Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
         let msg = Printf.sprintf "%s: suspicious specialization unfold"
