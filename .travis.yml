@@ -30,6 +30,8 @@ before_install:
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
   - opam install dune menhir bindlib.5.0.0 timed.1.0 earley.2.0.0 yojson cmdliner ppx_inline_test why3 $EXTRA_OPAM
+  # For why3 provers [altergo]
+  - opam install alt-ergo
 
 script:
   - make $TEST_TARGETS
