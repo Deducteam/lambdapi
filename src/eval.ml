@@ -198,8 +198,10 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | Patt(Some(_), _, _), Patt(Some(_), _, _)  -> true
       (* Should be [matching env e.(i) d.(j)] *)
       | _                  , Patt(None, _, [| |]) -> true
-      | Symb(_, _), Appl(_, _)                    -> false
-      (* will be put in catch-all case*)
+      (* All below ought to be put in catch-all case*)
+      | Symb _, Appl _ -> false
+      | Patt _, Symb _ -> false
+      | Patt _, Appl _ -> false
       | x                  , y ->
         begin
           Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
