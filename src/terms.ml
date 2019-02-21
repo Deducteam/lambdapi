@@ -130,7 +130,24 @@ type term =
     to the index (if any) of the slot that is reserved for the matched term in
     the environment of the RHS during matching. When [i] is {!const:None} then
     the variable is not bound in the RHS. If it is {!const:Some}[(_)] then the
-    variables is bound in the RHS, or it appears non-linearly in the LHS. *)
+    variables is bound in the RHS, or it appears non-linearly in the LHS.
+
+    For instance, with the rule
+
+      f &X &Y &Y &Z → &X
+
+    - &X is represented by [Patt(Some 0, "X", [||])]
+      because &X occurs in the RHS
+    - &Y is represented by [Patt(Some 1, "Y", [||])]
+      because &Y occurs more than once in the LHS
+    - &Z is represented by [Patt(None, "Z", [||])]
+      because &Z does not occur in the RHS and occurs only once in the LHS
+
+    Then, a term [f t u v w] matches the LHS with a substitution represented
+    by an array of terms [a] of length 2 if:
+    - [a.(0) = t]
+    - [a.(1) = u] and [a.(1) = v]
+*)
 
 (** {b NOTE} that the environment carried by the {!const:Patt} constructor has
     type {!type:term array} so that the variable may be bound.  In particular,
