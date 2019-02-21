@@ -117,7 +117,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_why3(s)       ->
       (* get the goal to prove *)
       let (_, trm) = Proof.Goal.get_type g in
-      (* print the response of the prover *)
-      (* TODO : add the goal to the set of axioms if the prover succeed *)
-      Why3prop.t_goal (Why3prover.get_name s.elt) (unfold trm);
+      let prover_name = Why3prover.get_name s.elt in
+      let proved = Why3prop.t_goal prover_name (unfold trm) in
+      if proved then
+        (* TODO : add the goal to the set of axioms if the prover succeed *)
+        Console.out 2 "%s proved the current goal@." prover_name
+      else
+        Console.out 1 "%s didn't found a proof@." prover_name;
       ps

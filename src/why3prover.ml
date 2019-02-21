@@ -8,8 +8,6 @@ let provers_name : (string * string) list ref =
     ref
     [
         "altergo", "Alt-Ergo";
-        "AltErgo", "Alt-Ergo";
-        "e"      , "Eprover";
         "eprover", "Eprover";
     ]
 
@@ -60,6 +58,17 @@ let rst : Whyconf.config_prover -> Task.task -> Call_provers.prover_result =
         ~limit:Call_provers.empty_limit
         ~command:prv.Whyconf.command (prover_driver prv) tsk)
 
+(* check if the answer of a prover is valid or not *)
+let answer : Call_provers.prover_answer -> bool = fun ans ->
+    match ans with
+    | Call_provers.Valid    -> true
+    | _                     -> false
+
 (* print the prover answer *)
-let test prv tsk = Console.out 2 "Prover's answer : %a@."
-    Call_provers.print_prover_result (rst prv tsk)
+let print_result : Whyconf.config_prover -> Task.task -> unit =
+    fun prv tsk ->
+    match (rst prv tsk).pr_answer with
+    | Call_provers.Valid ->
+        Console.out 2 "Valid@."
+    | _                  ->
+        Console.out 1 "%s didn't found a proof@." prv.prover.prover_name

@@ -236,7 +236,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       out 3 "(eval) %a\n" pp v; (ss, None)
   | P_why3_init                ->
       Why3prover.init_env ();
-      out 3 "Why3 environment is initialized.\n"; (ss, None)
+      out 3 "(init) Why3 environment.\n"; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
