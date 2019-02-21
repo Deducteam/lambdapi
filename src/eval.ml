@@ -266,9 +266,12 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
          execute the associated action. *)
       (* Might be relevant to abstract the following operations in module
          dtree.ml. *)
+      let swi = match o with
+        | Init | Default -> None
+        | Specialized(t) -> Some t in
       let fline = fst @@ List.hd m in
       if Pm.is_pattern_free fline then
-        Dtree.Leaf(snd @@ List.hd m)
+        Dtree.Leaf(swi, snd @@ List.hd m)
       else
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
@@ -290,9 +293,6 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
           List.map grow (if Pm.is_empty defpatts
                          then spepatts
                          else spepatts @ [defpatts]) in
-        let swi = match o with
-          | Init | Default -> None
-          | Specialized(t) -> Some t in
         Node({ switch = swi ; swap = swap ; children = children }) in
   grow patterns
 

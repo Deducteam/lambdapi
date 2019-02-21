@@ -5,11 +5,13 @@ open Extra
 type action = (term_env, term) Bindlib.mbinder
 
 (** Tree type.  Leaves are the targets of the rewriting, i.e. when a leaf is
-    reached, the matched pattern is rewrote to the the leaf.  The
-    {!const:Node}[(i, t)] constructor allows to perform a switch among the
-    subtrees in [t] while the [i] option allows to choose on which term of the
-    stack the matching is to be done.  {!const:Fail} is a matching failure. *)
-type t = Leaf of action
+    reached, the matched pattern is rewrote to the the leaf.  The term option
+    indicates--if the leaf has been obtained by a switch--the term that has
+    been matched before reaching the leaf.  The {!const:Node}[(i, t)]
+    constructor allows to perform a switch among the subtrees in [t] while the
+    [i] option allows to choose on which term of the stack the matching is to
+    be done (referred as a swap).  {!const:Fail} is a matching failure. *)
+type t = Leaf of term option * action
        | Node of node_data
        | Fail
 
@@ -27,10 +29,11 @@ and node_data = { switch : term option
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (action -> 'a) -> (term option -> int option -> t list -> 'a) ->
+let iter : (term option -> action -> 'a) ->
+  (term option -> int option -> t list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(a)                                        -> do_leaf a
+    | Leaf(teo, a)                                   -> do_leaf teo a
     | Fail                                           -> fail
     | Node({ switch = s ; swap = p ; children = c }) ->
       do_node s p (List.map loop c) in
@@ -46,11 +49,15 @@ let to_dot : string -> t -> unit = fun fname tree ->
   (* We cannot use iter since we need the father to be passed. *)
   let rec write_tree : int -> t -> unit = fun father_l tree ->
     match tree with
-    | Leaf(_)    ->
+    | Leaf(t, _)  ->
       begin
         incr nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l
-          !nodecount "l";
+        F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
+        begin
+          match t with
+          | Some t' -> Print.pp ppf t'
+          | None    -> F.fprintf ppf "d"
+        end ; F.fprintf ppf "\"];"
       end
     | Node(ndata) ->
       let { switch = t ; swap = _ ; children = c } = ndata in
