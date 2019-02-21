@@ -106,6 +106,9 @@ struct
       rules. *)
   let of_rules : rule list -> t = List.map (fun r -> r.lhs, r.rhs)
 
+  (** [is_empty m] returns whether matrix [m] is empty. *)
+  let is_empty : t -> bool = fun m -> List.length m = 0
+
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
   let get_col : int -> t -> line = fun ind ->
