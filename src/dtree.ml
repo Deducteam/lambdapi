@@ -116,8 +116,10 @@ struct
       if List.length elt > ind then List.nth elt ind :: acc else acc) []
 
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
-  let select : t -> int array -> t = fun m ->
-    Array.fold_left (fun acc elt -> List.nth m elt :: acc) []
+  let select : t -> int array -> t = fun m indexes ->
+    List.map (fun (l, a) ->
+        (Array.fold_left (fun acc i -> List.nth l i :: acc) [] indexes),
+        a) m
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
