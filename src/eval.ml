@@ -262,13 +262,15 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
         let selected_c = match swap with
           | None   -> Pm.get_col 0 m
           | Some i -> Pm.get_col i m in
-        let syms = List.filter (fun x -> match x with
+        let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
             selected_c in
-        let ms = List.map (fun s -> specialize s m) syms in
-        let children = List.map grow (ms @ [default m]) in
-        Printf.printf "length %d\n" (List.length children);
+        Printf.printf "length %d\n" (List.length cons) ;
+        let ms = List.map (fun s -> specialize s m) cons and
+            defm = default m in
+        let children = List.map grow
+                         (if Pm.is_empty defm then ms else ms @ [defm]) in
         Node(swap, children) in
   grow m
 
