@@ -212,7 +212,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
           let msg = Printf.sprintf "%s: suspicious specialization-filtering"
               (Buffer.contents Format.stdbuf) in
           failwith msg
-        end) m in
+        end) m.values in
   let unfolded = List.map (fun (l, a) ->
       match p, List.hd l with
       | _                  , Symb(_, _)               ->
@@ -235,11 +235,13 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         let msg = Printf.sprintf "%s: suspicious specialization unfold"
             (Buffer.contents Format.stdbuf) in
         failwith msg) filtered in
-  unfolded
+  { origin = Specialized(p)
+  ; values = unfolded }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
+and default : Dtree.Pattmat.t -> Dtree.Pattmat.t =
+  fun { origin = _ ; values = m } ->
   let filtered = List.filter (fun (l, _) ->
       match List.hd l with
       | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) -> false
@@ -253,13 +255,15 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t = fun m ->
       | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a)
       (* might need to add wildcards to other lines *)
       | _                -> assert false) filtered in
-  unfolded
+  { origin = Default
+  ; values = unfolded }
 
 and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
   let module Pm = Dtree.Pattmat in
-  let rec grow m =
-    Pm.pp m ;
-    if List.length m = 0 then (* If matrix is empty *)
+  let rec grow : Pm. t -> Dtree.t = fun pm ->
+    let { Pm.origin = _ ; Pm.values = m } = pm in
+    Pm.pp pm ;
+    if Pm.is_empty pm then (* If matrix is empty *)
       begin
         failwith "matching failure" ;
         (* Dtree.Fail *)
@@ -273,25 +277,25 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
       else
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
-        let kept_cols = Pm.discard_patt_free m in
+        let kept_cols = Pm.discard_patt_free pm in
         print_newline () ; print_string "kept: " ;
         print_int_list (Array.to_list kept_cols) ; print_newline () ;
-        let sel_in_partial = Pm.pick_best (Pm.select m kept_cols) in
+        let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
         Printf.printf "%!swap: %d\n" (match swap with None -> 0 | Some i -> i) ;
         (* XXX Perform swap!! *)
         let selected_c = match swap with
-          | None   -> Pm.get_col 0 m
-          | Some i -> Pm.get_col i m in
+          | None   -> Pm.get_col 0 pm
+          | Some i -> Pm.get_col i pm in
         Printf.printf "%!length selected col: %d\n" (List.length selected_c) ;
         let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
             selected_c in
         Printf.printf "%!length %d\n" (List.length cons) ;
-        let ms = List.map (fun s -> specialize s m) cons and
-            defm = default m in
+        let ms = List.map (fun s -> specialize s pm) cons and
+            defm = default pm in
         let children = List.map grow
                          (if Pm.is_empty defm then ms else ms @ [defm]) in
         Node(swap, children) in
