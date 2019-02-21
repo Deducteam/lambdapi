@@ -60,7 +60,7 @@ type term =
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
   ; sym_implicits : bool list
-  (** Implicitness of arguments for a function def *)
+  (** Implicitness of arguments. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_mode  : sym_mode

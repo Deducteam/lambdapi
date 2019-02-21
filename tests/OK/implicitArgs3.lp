@@ -34,5 +34,5 @@ definition l1  : T (Vect (s zero)) ≔ cons nil true
 // It works.
 
 // Same as l1 but fully explicit
-definition l2 : T (Vect (s zero)) ≔ @cons zero nil true
+//definition l2 : T (Vect (s zero)) ≔ @cons zero nil true
 

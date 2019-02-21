@@ -297,22 +297,40 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
-(* split_fun_args t decomposes the parser term [t] into the function symbol
-   and the list of its actual arguments. Its implementation is
-   tail-recursive*)
-let split_fun_args : p_term -> (p_term * (p_term list)) = fun t ->
-  let rec split_fun_args_aux : p_term -> p_term list -> p_term * p_term list =
+(** split_fun_args_outermost t decomposes the parser term [t] into the
+   function symbol and the list of its actual arguments. It only does it
+   at the outermost level, i.e, without doing it for the arguments
+   themselves. Its implementation is tail-recursive *)
+let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
+  let rec split_fun_args_outermost_aux : p_term -> p_term list -> p_term * p_term list =
     fun t args ->
     match t.elt with
-    | P_Appl(u,v)     -> split_fun_args_aux u (v::args)
+    | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
     | x               -> (none x, args)
-  in (split_fun_args_aux t [])
+  in (split_fun_args_outermost_aux t [])
 
-(** [add_args_pterm t args] builds the application of the parser-level
-    term [t] to a list of arguments [args]. *)
-let add_args_pterm : p_term -> p_term list -> p_term = fun t args ->
-  let rec add_args_pterm_aux t args =
-    match args with
-    | []      -> t
-    | u::args -> add_args_pterm_aux (none (P_Appl(t,u))) args
-  in add_args_pterm_aux t args
+(** Embedding of p_term with telescopes of arguments replacing Appl nodes *)
+type telescopicTerm =
+  | MkT of p_term * (telescopicTerm list)
+
+(* [p_term_to_telescopicTerm t] transforms the p_term [t] to a telescopicTerm *)
+let rec p_term_to_telescopicTerm : p_term -> telescopicTerm = fun t ->
+  let (f, args) = split_fun_args_outermost t in
+    MkT(f, List.map p_term_to_telescopicTerm args)
+
+(** [unsplit_fun_args_outermost t args] builds the application of the
+    parser-level term [t] to a list of arguments [args] *)
+let rec unsplit_fun_args_outermost : p_term -> p_term list -> p_term =
+    fun f args ->
+  match args with
+  | [] -> f
+  | arg1::args' -> unsplit_fun_args_outermost (none (P_Appl(f, arg1))) args'
+
+(** [telescopicTerm_to_p_term t] wraps the telescopicTerm [t] to a p_term *)
+let rec telescopicTerm_to_p_term : telescopicTerm -> p_term = fun tt ->
+  match tt with
+  | MkT(f, args) ->
+      (* First wrap the arguments at the underneath layers *)
+      let argsDone = List.map telescopicTerm_to_p_term args in
+      (* Then wrap the toplevel layer after t *)
+      unsplit_fun_args_outermost f argsDone

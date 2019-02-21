@@ -99,8 +99,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         | 0 -> fst (Scope.scope_term StrMap.empty ss env t)
         | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
       in
-      let res = (add_wilds t nb) in
-      handle_refine res
+      handle_refine (add_wilds t nb)
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->

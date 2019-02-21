@@ -163,7 +163,7 @@ let unlink : t -> unit = fun sign ->
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The created symbol is also returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
-  fun sign mode s a implicits ->
+    fun sign mode s a implicits ->
   (* Check for metavariables in the symbol type. *)
   let nb = List.length (Basics.get_metas a) in
   if nb > 0 then
