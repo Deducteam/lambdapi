@@ -49,7 +49,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | Leaf(_)    ->
       begin
         incr nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=%s];" father_l
+        F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l
           !nodecount "l";
       end
     | Node(ndata) ->
@@ -69,7 +69,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | Fail        ->
       begin
         incr nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=%s];" father_l
+        F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l
           !nodecount "f";
         end
   in

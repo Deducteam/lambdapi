@@ -184,17 +184,16 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
       match p, List.hd l with
-      | Symb(s, _)          , Symb(s', _)                   -> s == s'
-      | Abst(_, b1)         , Abst(_, b2)                   ->
-        let _, _, _ = Bindlib.unbind2 b1 b2 in
-        true (* should be a matching env t1 t2*)
-      (* We should check that bodies depend on the same variables. *)
-      | Appl(_, _), Appl(_, _)                      -> true
-      | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
-        (* Match if same arity *)
-        Array.length e1 = Array.length e2
+      | Symb(s, _)          , Symb(s', _)          -> s == s'
+      | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
+        Array.length e1 = Array.length e2 (* Arity verification *)
       (* A check should be done regarding non linear variables *)
-      | _                   , Patt(None, _, [| |])  -> true
+      | _                   , Patt(None, _, [| |]) -> true
+      | Abst(_, b1)         , Abst(_, b2)          ->
+        let _, _, _ = Bindlib.unbind2 b1 b2 in
+        true
+      (* We should check that bodies depend on the same variables. *)
+      | Appl(_, _)          , Appl(_, _)           -> true
       (* All below ought to be put in catch-all case*)
       | Symb(_, _)   , Appl(_, _)    -> false
       | Patt(_, _, _), Symb(_, _)    -> false
@@ -244,26 +243,29 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t =
         assert false) m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
-      | Patt(None, _, _) -> (List.tl l, a) (* Might be the only case *)
+      | Patt(None, _, _) -> (List.tl l, a)
       | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a)
-      (* might need to add wildcards to other lines *)
       | _                -> assert false) filtered in
   { origin = Default
   ; values = unfolded }
 
-and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
+(** [compile m] returns the decision tree allowing to parse efficiently the
+    pattern matching problem contained in pattern matrix [m]. *)
+and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
   let module Pm = Dtree.Pattmat in
   let rec grow : Pm.t -> Dtree.t = fun pm ->
     let { Pm.origin = o ; Pm.values = m } = pm in
-    Pm.pp pm ;
-    if Pm.is_empty pm then (* If matrix is empty *)
+    (* Pm.pp pm ; *)
+    if Pm.is_empty pm then
       begin
-        failwith "matching failure" ;
+        failwith "matching failure" ; (* For debugging purposes *)
         (* Dtree.Fail *)
       end
     else
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
+      (* Might be relevant to abstract the following operations in module
+         dtree.ml. *)
       let fline = fst @@ List.hd m in
       if Pm.is_pattern_free fline then
         Dtree.Leaf(snd @@ List.hd m)
@@ -282,15 +284,17 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
             selected_c in
-        let ms = List.map (fun s -> specialize s pm) cons and
-            defm = default pm in
-        let children = List.map grow
-                         (if Pm.is_empty defm then ms else ms @ [defm]) in
+        let spepatts = List.map (fun s -> specialize s pm) cons in
+        let defpatts = default pm in
+        let children =
+          List.map grow (if Pm.is_empty defpatts
+                         then spepatts
+                         else spepatts @ [defpatts]) in
         let swi = match o with
           | Init | Default -> None
-          | Specialized(t)  -> Some t in
+          | Specialized(t) -> Some t in
         Node({ switch = swi ; swap = swap ; children = children }) in
-  grow m
+  grow patterns
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
