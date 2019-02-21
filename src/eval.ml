@@ -23,6 +23,11 @@ type stack_elt = (bool * term) Pervasives.ref
 (* NOTE the stack contain references so that the computation of arguments when
    matching reduction rules may be shared. *)
 
+(*******************************)
+let rec print_int_list : int list -> unit = function
+  | [] -> ()
+  | x :: xs -> Printf.printf " | %d" x ; print_int_list xs
+
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
@@ -184,16 +189,25 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
       match p, List.hd l with
-      | Symb(s, _), Symb(s', _)        -> s = s' (* Equality of records? *)
-      | Abst(_, b1), Abst(_, b2)       ->
+      | Symb(s, _), Symb(s', _)                   -> s = s'
+      | Abst(_, b1), Abst(_, b2)                  ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true (* should be a matching env t1 t2*)
       (* We should check that bodies depend on the same variables. *)
-      | Appl(_, _), Appl(_, _)         -> true
-      | Patt(Some(_), _, _), Patt(Some(_), _, _) -> true
+      | Appl(_, _), Appl(_, _)                    -> true
+      | Patt(Some(_), _, _), Patt(Some(_), _, _)  -> true
       (* Should be [matching env e.(i) d.(j)] *)
-      | _                  , Patt(None, _, [||]) -> true
-      | _ -> failwith "suspicious specialization 1") m in
+      | _                  , Patt(None, _, [| |]) -> true
+      | Symb(_, _), Appl(_, _)                    -> false
+      (* will be put in catch-all case*)
+      | x                  , y ->
+        begin
+          Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
+          pp Format.str_formatter y ;
+          let msg = Printf.sprintf "%s: suspicious specialization-filtering"
+              (Buffer.contents Format.stdbuf) in
+          failwith msg
+        end) m in
   let unfolded = List.map (fun (l, a) ->
       match p, List.hd l with
       | _                  , Symb(_, _)               ->
@@ -213,7 +227,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         failwith "non linearity not yet implemented"
       | _                  , x                        ->
         Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
-        let msg = Printf.sprintf "suspicious specialization on %s"
+        let msg = Printf.sprintf "%s: suspicious specialization unfold"
             (Buffer.contents Format.stdbuf) in
         failwith msg) filtered in
   unfolded
@@ -249,19 +263,23 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
       let fline = fst @@ List.hd m in
-      if Pm.pattern_free fline then
+      if Pm.is_pattern_free fline then
         Dtree.Leaf(snd @@ List.hd m)
       else
         (* Pick a column in the matrix and pattern match on the constructors in
            it to grow the tree. *)
         let kept_cols = Pm.discard_patt_free m in
+        print_newline () ; print_string "kept: " ;
+        print_int_list (Array.to_list kept_cols) ; print_newline () ;
         let sel_in_partial = Pm.pick_best (Pm.select m kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
+        Printf.printf "swap: %d\n" (match swap with None -> 0 | Some i -> i) ;
         (* XXX Perform swap!! *)
         let selected_c = match swap with
           | None   -> Pm.get_col 0 m
           | Some i -> Pm.get_col i m in
+        Printf.printf "length selected col: %d\n" (List.length selected_c) ;
         let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
