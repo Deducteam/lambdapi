@@ -132,4 +132,3 @@ proof
 qed
 " in
   List.equal Command.equal c c
-
