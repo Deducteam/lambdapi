@@ -189,7 +189,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
       match p, List.hd l with
-      | Symb(s, _), Symb(s', _)                   -> s = s'
+      | Symb(s, _), Symb(s', _)                   -> s == s'
       | Abst(_, b1), Abst(_, b2)                  ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true (* should be a matching env t1 t2*)
@@ -274,17 +274,17 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun m ->
         let sel_in_partial = Pm.pick_best (Pm.select m kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
-        Printf.printf "swap: %d\n" (match swap with None -> 0 | Some i -> i) ;
+        Printf.printf "%!swap: %d\n" (match swap with None -> 0 | Some i -> i) ;
         (* XXX Perform swap!! *)
         let selected_c = match swap with
           | None   -> Pm.get_col 0 m
           | Some i -> Pm.get_col i m in
-        Printf.printf "length selected col: %d\n" (List.length selected_c) ;
+        Printf.printf "%!length selected col: %d\n" (List.length selected_c) ;
         let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | _                                            -> false)
             selected_c in
-        Printf.printf "length %d\n" (List.length cons) ;
+        Printf.printf "%!length %d\n" (List.length cons) ;
         let ms = List.map (fun s -> specialize s m) cons and
             defm = default m in
         let children = List.map grow
