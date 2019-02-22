@@ -189,7 +189,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
         Array.length e1 = Array.length e2 (* Arity verification *)
       (* A check should be done regarding non linear variables *)
-      | _                   , Patt(None, _, [| |]) -> true
+      | Patt(None, _, [| |]), Patt(None, _, [| |]) -> true
       | Abst(_, b1)         , Abst(_, b2)          ->
         let _, _, _ = Bindlib.unbind2 b1 b2 in
         true
@@ -200,6 +200,8 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | Patt(_, _, _), Symb(_, _)    -> false
       | Patt(_, _, _), Appl(_, _)    -> false
       | Symb(_, _)   , Patt(_, _, _) -> false
+      | Appl(_, _)   , Symb(_, _)    -> false
+      | Appl(_, _)   , Patt(_, _, _) -> false
       | x            , y             ->
         Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
         pp Format.str_formatter y ;
@@ -218,9 +220,9 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         (* Might need to add wildcard to other lines. *)
       | Patt(None, _, [| |]), Patt(None, _, [| |]) as ws ->
         ((fst ws) :: List.tl l, a)
-      | Patt(None, _, e)    , Patt(None, _, [| |]) as ws ->
-        let ari = Array.length e in
-        (List.init ari (fun _ -> snd ws) @ (List.tl l), a)
+      | Patt(None, _, e1)   , Patt(None, _, _) ->
+        let ari = Array.length e1 in
+        (List.init ari (fun _ -> Patt(None, "w", [| |])) @ (List.tl l), a)
       | _                   , Patt(Some(_), _, _)        ->
         (List.tl l, a)
       | _                   , x                          ->
@@ -237,15 +239,15 @@ and default : Dtree.Pattmat.t -> Dtree.Pattmat.t =
   fun { origin = _ ; values = m } ->
   let filtered = List.filter (fun (l, _) ->
       match List.hd l with
-      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) -> false
-      | Patt(None , _, _) | Appl(_, _)                -> true
-      | x                                             ->
+      | Patt(None , _, _)                                          -> true
+      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) | Appl(_, _) -> false
+      | x                                                          ->
         pp Format.err_formatter x ;
         assert false) m in
   let unfolded = List.map (fun (l, a) ->
       match List.hd l with
       | Patt(None, _, _) -> (List.tl l, a)
-      | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a)
+      (* | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a) *)
       | _                -> assert false) filtered in
   { origin = Default
   ; values = unfolded }
@@ -256,7 +258,7 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
   let module Pm = Dtree.Pattmat in
   let rec grow : Pm.t -> Dtree.t = fun pm ->
     let { Pm.origin = o ; Pm.values = m } = pm in
-    (* Pm.pp Format.std_formatter pm ; *)
+    Pm.pp Format.std_formatter pm ;
     if Pm.is_empty pm then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
@@ -280,16 +282,17 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
         let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
-        (* XXX Perform swap!! *)
-        let selected_c = match swap with
-          | None   -> Pm.get_col 0 pm
-          | Some i -> Pm.get_col i pm in
+        let spm = match swap with
+          | None    -> pm
+          | Some(i) -> Pm.swap pm i in
+        let fcol = Pm.get_col 0 spm in
         let cons = List.filter (fun x -> match x with
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
+            | Appl(_, _) -> true
             | _                                            -> false)
-            selected_c in
-        let spepatts = List.map (fun s -> specialize s pm) cons in
-        let defpatts = default pm in
+            fcol in
+        let spepatts = List.map (fun s -> specialize s spm) cons in
+        let defpatts = default spm in
         let children =
           List.map grow (if Pm.is_empty defpatts
                          then spepatts

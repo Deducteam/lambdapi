@@ -78,6 +78,25 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
+(** [nth l i] gives {!const:Some}[(i)]th element of [l] if it exists, None
+    otherwise. *)
+let rec nth : 'a list -> int -> 'a option = fun l i ->
+  match l with
+  | []                 -> None
+  | x :: _  when i = 0 -> Some(x)
+  | _ :: xs when i > 0 -> nth xs (i - 1)
+  | _ (* For linter *) -> assert false
+
+(** [swapf x i] the [i]th element of [x] with the first one. *)
+let swapf : 'a list -> int -> 'a list = fun li ind ->
+  let rec loop : 'a list -> int -> 'a list = fun l i ->
+    match l with
+    | []                    -> assert (i <= 0) ; []
+    | x :: xs when i = ind  -> loop xs (i - 1) @ [x]
+    | x :: xs when i <> ind -> x :: (loop xs (i - 1))
+    | _ (* For linter *)    -> assert false in
+  List.rev (loop li ind)
+
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
@@ -121,12 +140,6 @@ struct
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
   let get_col : int -> t -> line = fun ind { values = valu ; _ } ->
-    let rec nth : 'a list -> int -> 'a option = fun l i ->
-      match l with
-      | []                 -> None
-      | x :: _  when i = 0 -> Some(x)
-      | _ :: xs when i > 0 -> nth xs (i - 1)
-      | _ (* For linter *) -> assert false in
     let opcol = List.fold_left (fun acc (li, _) -> nth li ind :: acc) []
         valu in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
@@ -138,6 +151,10 @@ struct
           (Array.fold_left (fun acc i -> List.nth l i :: acc) [] indexes),
           a) m.values
     ; origin = m.origin }
+
+  (** [swap p i] swaps the first column with the [i]th one. *)
+  let swap : t -> int -> t = fun pm c ->
+    { pm with values = List.map (fun (l, a) -> (swapf l c, a)) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
