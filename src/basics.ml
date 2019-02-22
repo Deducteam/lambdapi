@@ -4,7 +4,7 @@ open Extra
 open Timed
 open Terms
 
-(** [to_tvars ar] extracts and array of {!type:tvar} from an array of terms of
+(** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms of
     the form {!const:Vari(x)}. The function (brutally) fails if any element of
     [ar] does not correspond to a free variable. *)
 let to_tvars : term array -> tvar array =
