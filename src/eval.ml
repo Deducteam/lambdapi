@@ -4,6 +4,7 @@ open Extra
 open Timed
 open Console
 open Terms
+open Basics
 open Print
 
 (** Logging function for evaluation. *)
@@ -106,15 +107,11 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
         let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
         ar.(i) <- TE_Some(b); true
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let fn t = match t with Vari(x) -> x | _ -> assert false in
-        let vars = Array.map fn e in
-        let b = Bindlib.bind_mvar vars (lift (snd Pervasives.(!t))) in
+        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
         ar.(i) <- TE_Some(Bindlib.unbox b); Bindlib.is_closed b
     | Patt(None   ,_,[||]) -> true
     | Patt(None   ,_,e   ) ->
-        let fn t = match t with Vari(x) -> x | _ -> assert false in
-        let vars = Array.map fn e in
-        let b = Bindlib.bind_mvar vars (lift (snd Pervasives.(!t))) in
+        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
         Bindlib.is_closed b
     | _                                 ->
     (* Other cases need the term to be evaluated. *)

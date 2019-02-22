@@ -5,10 +5,24 @@ open Timed
 open Terms
 
 (** [to_tvars ar] extracts and array of {!type:tvar} from an array of terms of
-    the form {!const:Vari(x)}. The function fails if any elements of [ar] does
-    not correspond to a free variable. *)
+    the form {!const:Vari(x)}. The function (brutally) fails if any element of
+    [ar] does not correspond to a free variable. *)
 let to_tvars : term array -> tvar array =
-  Array.map (function Vari(x) -> x | _ -> assert false)
+  Array.map (fun t -> match t with Vari(x) -> x | _ -> assert false)
+
+(** {b NOTE} the {!val:to_tvars} function is useful when working with multiple
+    binders. For example, this is the case when manipulating pattern variables
+    (see {!const:Terms.Patt}) or metatavariables (see {!const:Terms.Meta}). In
+    particular, these constructors must hold an array of terms, and definitely
+    not an array of variables. Indeed, a variable can only be substituted when
+    it is injected in a term (using the {!const:Vari} constructor). *)
+
+(** {b NOTE} the result of {!val:to_tvars} can generally NOT be precomputed. A
+    first reason is that we cannot know in advance what variable identifier is
+    going to arise when working under binders,  for which fresh variables will
+    often be generated. A second reason is that free variables should never be
+    “marshaled” (e.g., by the {!module:Sign} module),  as this would break the
+    freshness invariant of new variables. *)
 
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
