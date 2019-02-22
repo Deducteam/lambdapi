@@ -42,18 +42,22 @@ let iter : (term option -> action -> 'a) ->
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
+  let module P = Print in
   let ochan = open_out (fname ^ ".gv") in
   let ppf = F.formatter_of_out_channel ochan in
   let nodecount = ref 0 in
   F.fprintf ppf "graph {@[<v>" ;
   let pp_opterm : term option pp = fun oc teo -> match teo with
-    | Some(t) -> Print.pp oc t
+    | Some(t) -> P.pp oc t
     | None    -> F.fprintf oc "d" in
   let rec write_tree : int -> t -> unit = fun father_l tree ->
   (* We cannot use iter since we need the father to be passed. *)
     match tree with
-    | Leaf(t, _)  ->
+    | Leaf(t, a)  ->
       incr nodecount ;
+      F.fprintf ppf "@ %d [label=\"" !nodecount ;
+      let _, acte = Bindlib.unmbind a in
+      P.pp ppf acte ; F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf t ; F.fprintf ppf "\"];"
     | Node(ndata) ->
