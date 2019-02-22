@@ -181,9 +181,10 @@ and eq_modulo : term -> term -> bool = fun a b ->
     or a pattern variable.  The specialization always happen on the first
     column (which is swapped if needed). *)
 and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
+  let up = unfold p in
   let filtered = List.filter (fun (l, _) ->
       (* Removed rules starting with a different constructor*)
-      match p, List.hd l with
+      match up, unfold (List.hd l) with
       | Symb(s, _)          , Symb(s', _)          -> s == s'
       | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
         Array.length e1 = Array.length e2 (* Arity verification *)
@@ -206,7 +207,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
             (Buffer.contents Format.stdbuf) in
         failwith msg) m.values in
   let unfolded = List.map (fun (l, a) ->
-      match p, List.hd l with
+      match up, unfold (List.hd l) with
       | _                   , Symb(_, _)                 ->
         (List.tl l, a) (* Eat the symbol? *)
       (* Checks could be done on arity of symb. *)
@@ -227,7 +228,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
         let msg = Printf.sprintf "%s: suspicious specialization unfold"
             (Buffer.contents Format.stdbuf) in
         failwith msg) filtered in
-  { origin = Specialized(p)
+  { origin = Specialized(up)
   ; values = unfolded }
 
 (** [default m] computes the default matrix containing what remains to be
