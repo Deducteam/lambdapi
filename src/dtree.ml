@@ -30,6 +30,21 @@ and node_data = { switch : term option
                 ; swap : int option
                 ; children : t list}
 
+(** {b Example} Given a rewrite system for a symbol [plus] given as (in
+    [plus.dk])
+    - [plus Z (S m)     → S m]
+    - [plus n Z         → n]
+    - [plus (S n) (S m) → S (S m)]
+    A possible tree might be
+    {v
+      +—?–·–Z–·         → n
+      ├–Z–·–S–·–?–·     → S m
+      └–S–·–?–·–S–·–?–· → S (S m)
+    v}
+    with {v · v} being a node (with a label not shown here) and {v –u– v}
+    being an edge with a matching on symbol [u] or a variable or wildcard when
+    [?]. *)
+
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
