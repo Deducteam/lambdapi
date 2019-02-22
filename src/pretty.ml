@@ -115,7 +115,8 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
-  | P_tac_why3(s)            -> out "why3 %a" pp_ident s
+  | P_tac_why3(None)         -> out "why3"
+  | P_tac_why3(Some(s))      -> out "why3 %s" s.elt
 
 let pp_p_assertion : p_assertion pp = fun oc asrt ->
   let out fmt = Format.fprintf oc fmt in
@@ -174,6 +175,8 @@ let pp_command : command pp = fun oc cmd ->
         | Assoc_right -> "r"
       in
       out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+  | P_set(P_config_prover(s))       ->
+      out "set prover %s" s
   | P_set(P_config_prover_limit(n)) ->
       out "set prover_limit %d" n
   | P_infer(t, _)                   ->

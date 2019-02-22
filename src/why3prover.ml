@@ -19,6 +19,8 @@ let get_name : string -> string = fun s ->
     with
         Not_found  -> failwith ("Failed to find `" ^ s ^ "`")
 
+let current_prover : string ref = ref "altergo"
+
 let time_limit : int ref = ref 10
 (* get why3 config *)
 let config : Whyconf.config = Whyconf.read_config None
