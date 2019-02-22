@@ -218,9 +218,7 @@ and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
       | _                   , Appl(t1, t2)               ->
         (t1 :: t2 :: List.tl l, a)
         (* Might need to add wildcard to other lines. *)
-      | Patt(None, _, [| |]), Patt(None, _, [| |]) as ws ->
-        ((fst ws) :: List.tl l, a)
-      | Patt(None, _, e1)   , Patt(None, _, _) ->
+      | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
         let ari = Array.length e1 in
         (List.init ari (fun _ -> Patt(None, "w", [| |])) @ (List.tl l), a)
       | _                   , Patt(Some(_), _, _)        ->
@@ -258,7 +256,7 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
   let module Pm = Dtree.Pattmat in
   let rec grow : Pm.t -> Dtree.t = fun pm ->
     let { Pm.origin = o ; Pm.values = m } = pm in
-    Pm.pp Format.std_formatter pm ;
+    (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
