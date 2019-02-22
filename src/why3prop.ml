@@ -51,7 +51,7 @@ let rec t_goal : Proof.builtins -> string -> term -> bool =
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
-        let result = Why3prover.rst (Why3prover.prover sp) tsk in
+        let result = Why3prover.result (Why3prover.prover sp) tsk in
         Why3prover.answer result.pr_answer
     | _                                                         ->
         failwith "Goal can't be translated"
