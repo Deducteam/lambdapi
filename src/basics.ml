@@ -21,7 +21,7 @@ let to_tvars : term array -> tvar array =
     first reason is that we cannot know in advance what variable identifier is
     going to arise when working under binders,  for which fresh variables will
     often be generated. A second reason is that free variables should never be
-    “marshaled” (e.g., by the {!module:Sign} module),  as this would break the
+    “marshalled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
 (** [count_products a] returns the number of consecutive products at the  head
