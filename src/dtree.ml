@@ -78,15 +78,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
-(** [nth l i] gives {!const:Some}[(i)]th element of [l] if it exists, None
-    otherwise. *)
-let rec nth : 'a list -> int -> 'a option = fun l i ->
-  match l with
-  | []                 -> None
-  | x :: _  when i = 0 -> Some(x)
-  | _ :: xs when i > 0 -> nth xs (i - 1)
-  | _ (* For linter *) -> assert false
-
 (** [swapf x i] the [i]th element of [x] with the first one. *)
 let swapf : 'a list -> int -> 'a list = fun li ind ->
   let rec loop : 'a list -> int -> 'a list = fun l i ->
@@ -140,7 +131,8 @@ struct
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
   let get_col : int -> t -> line = fun ind { values = valu ; _ } ->
-    let opcol = List.fold_left (fun acc (li, _) -> nth li ind :: acc) []
+    let opcol = List.fold_left (fun acc (li, _) ->
+        List.nth_opt li ind :: acc) []
         valu in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
     List.map (function Some(e) -> e | None -> assert false) rem
