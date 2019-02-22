@@ -61,9 +61,12 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf t ; F.fprintf ppf "\"];"
     | Node(ndata) ->
-      let { switch = t ; swap = _ ; children = c } = ndata in
+      let { switch = t ; swap = swa ; children = c } = ndata in
       incr nodecount ;
       let tag = !nodecount in
+      F.fprintf ppf "@ %d [label=\"" tag ;
+      F.fprintf ppf "%d" (match swa with None -> 0 | Some(i) -> i) ;
+      F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
       pp_opterm ppf t ; F.fprintf ppf "\"];" ;
       List.iter (fun e -> write_tree tag e) c ;
