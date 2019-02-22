@@ -46,39 +46,26 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let ppf = F.formatter_of_out_channel ochan in
   let nodecount = ref 0 in
   F.fprintf ppf "graph {@[<v>" ;
-  (* We cannot use iter since we need the father to be passed. *)
+  let pp_opterm : term option pp = fun oc teo -> match teo with
+    | Some(t) -> Print.pp oc t
+    | None    -> F.fprintf oc "d" in
   let rec write_tree : int -> t -> unit = fun father_l tree ->
+  (* We cannot use iter since we need the father to be passed. *)
     match tree with
     | Leaf(t, _)  ->
-      begin
-        incr nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
-        begin
-          match t with
-          | Some t' -> Print.pp ppf t'
-          | None    -> F.fprintf ppf "d"
-        end ; F.fprintf ppf "\"];"
-      end
+      incr nodecount ;
+      F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
+      pp_opterm ppf t ; F.fprintf ppf "\"];"
     | Node(ndata) ->
       let { switch = t ; swap = _ ; children = c } = ndata in
-      begin
-        incr nodecount ;
-        let tag = !nodecount in
-        F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
-        begin
-          match t with
-          | Some t' -> Print.pp ppf t'
-          | None    -> F.fprintf ppf "d"
-        end ;
-        F.fprintf ppf "\"];" ;
-        List.iter (fun e -> write_tree tag e) c ;
-      end
+      incr nodecount ;
+      let tag = !nodecount in
+      F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
+      pp_opterm ppf t ; F.fprintf ppf "\"];" ;
+      List.iter (fun e -> write_tree tag e) c ;
     | Fail        ->
-      begin
-        incr nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l
-          !nodecount "f";
-        end
+      incr nodecount ;
+      F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
   in
   write_tree 0 tree ;
   F.fprintf ppf "@.}@\n@?" ;
