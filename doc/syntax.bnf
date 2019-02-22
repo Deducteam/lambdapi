@@ -118,6 +118,7 @@ reserved "_"
   | "focus" <nat_lit>
   | "print"
   | "proofterm"
+  | "why3" <ident>
 
 // Assertion predicate
 <assertion> ::=
@@ -147,6 +148,7 @@ reserved "_"
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
+  | "set" "prover_limit" <nat_lit>
 
 // Entry point: list of commands.
 <main> ::= <command>*
