@@ -139,7 +139,6 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
     in the form of a pair containing the name of the variable and its type,
     inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
-  (*check_rule s r;*)
   let rule_ctx : tvar option array = Array.make (Array.length r.vars) None in
   let var_list : tvar list ref = ref [] in
   let rec subst_patt v t =
