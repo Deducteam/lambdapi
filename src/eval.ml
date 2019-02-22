@@ -255,7 +255,7 @@ and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
   let module Pm = Dtree.Pattmat in
   let rec grow : Pm.t -> Dtree.t = fun pm ->
     let { Pm.origin = o ; Pm.values = m } = pm in
-    (* Pm.pp pm ; *)
+    (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
         failwith "matching failure" ; (* For debugging purposes *)

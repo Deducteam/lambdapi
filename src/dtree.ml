@@ -104,33 +104,16 @@ struct
   type t = { origin : operation
            ; values : matrix }
 
-  (** [pp_line l] prints line [l] to stdout. *)
-  let pp_line : line -> unit = fun l ->
-    let module F = Format in
-    let rec loop : term list -> unit = function
-      | []      -> ()
-      | x :: xs ->
-        begin
-          F.print_space () ; F.print_string ";" ;
-          Print.pp Format.std_formatter x ;
-          loop xs
-        end in
-    F.open_box 0 ;
-    F.print_string "[" ; loop l ; F.print_string  "]" ;
-    F.close_box () ; F.print_newline ()
+  (** [pp_line o l] prints line [l] to out channel [o]. *)
+  let pp_line : line pp = List.pp Print.pp ";"
 
-  (** [pp m] prints matrix [m] to stdout. *)
-  let pp : t -> unit = fun m ->
+  (** [pp o m] prints matrix [m] to out channel [o]. *)
+  let pp : t pp = fun oc { origin = _ ; values = va } ->
     let module F = Format in
-    let rec loop : matrix -> unit = function
-      | []           -> ()
-      | (l, _) :: xs ->
-        begin
-          F.print_tab () ; pp_line l ; loop xs
-        end in
-    F.open_box 0 ;
-    F.print_string "[|" ; F.print_cut () ; loop m.values ; F.print_string "|]" ;
-    F.close_box () ; F.print_newline ()
+    F.fprintf oc "[|@[<v>@," ;
+    List.pp pp_line "\n  " oc (List.map (fun (l, _) -> l) va) ;
+    (* List.pp does not process Format "@" directives when in sep *)
+    F.fprintf oc "@.|]@,@?"
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
