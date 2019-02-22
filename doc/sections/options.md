@@ -53,7 +53,8 @@ When in default mode, the following flags are available for configuration:
 
 
 Lambdapi provides an option to check the confluence of the set of rewriting
-rules declared in a file by calling external provers using the TRS  format.
+rules declared in a file by calling external provers using the [TRS format]
+(http://project-coco.uibk.ac.at/problems/trs.php).
 The `--confluence <cmd>` flag specifies the confluence-checking command to  be
 used. The command is expected to behave as follows:
  - take the problem description (in `.trs` format) on its standard input,
@@ -79,7 +80,8 @@ lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 #### Termination checking
 
 Lambdapi provides an option to check the termination of the set of rewriting
-rules declared in a file by calling external provers using the XTC format.
+rules declared in a file by calling external provers using the [XTC format]
+(http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/raw-file/tip/xml/xtc.xsd).
 The `--termination <cmd>` flag specifies the termination-checking command to
 be used. The command is expected to behave as follows:
  - take the problem description (in `.xml` format) on its standard input,
