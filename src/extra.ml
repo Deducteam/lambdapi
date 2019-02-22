@@ -104,6 +104,16 @@ module List =
         elements with [eq]. *)
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
+
+    (** [swapf x i] swaps the [i]th element of [x] with the first one. *)
+    let swapf : 'a list -> int -> 'a list = fun li ind ->
+      let rec loop : 'a list -> int -> 'a list = fun l i ->
+        match l with
+        | []                    -> assert (i <= 0) ; []
+        | x :: xs when i = ind  -> loop xs (i - 1) @ [x]
+        | x :: xs when i <> ind -> x :: (loop xs (i - 1))
+        | _ (* For linter *)    -> assert false in
+      List.rev (loop li ind)
   end
 
 module Array =

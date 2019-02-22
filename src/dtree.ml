@@ -78,16 +78,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
-(** [swapf x i] the [i]th element of [x] with the first one. *)
-let swapf : 'a list -> int -> 'a list = fun li ind ->
-  let rec loop : 'a list -> int -> 'a list = fun l i ->
-    match l with
-    | []                    -> assert (i <= 0) ; []
-    | x :: xs when i = ind  -> loop xs (i - 1) @ [x]
-    | x :: xs when i <> ind -> x :: (loop xs (i - 1))
-    | _ (* For linter *)    -> assert false in
-  List.rev (loop li ind)
-
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
@@ -146,7 +136,7 @@ struct
 
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
-    { pm with values = List.map (fun (l, a) -> (swapf l c, a)) pm.values }
+    { pm with values = List.map (fun (l, a) -> (List.swapf l c, a)) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
