@@ -1,3 +1,7 @@
+(** This module provides functions to compile rewrite rules to decision trees
+    in order to pattern match the rules efficiently.  The method is explained
+    in Luc Maranget's {i Compiling Pattern Matching to Good Decision Trees},
+    {{:10.1145/1411304.1411311}DOI}. *)
 open Terms
 open Extra
 
