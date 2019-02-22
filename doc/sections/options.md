@@ -51,11 +51,9 @@ When in default mode, the following flags are available for configuration:
 
 #### Confluence checking
 
-Confluence (and also termination) must be established for each of the
-considered rewriting systems contained in `lambdapi` files. By default,  these
-checks are not performed, and they must be explicitly requested.
 
-We provide an interface to external confluence checkers using the TRS  format.
+Lambdapi provides an option to check the confluence of the set of rewriting
+rules declared in a file by calling external provers using the TRS  format.
 The `--confluence <cmd>` flag specifies the confluence-checking command to  be
 used. The command is expected to behave as follows:
  - take the problem description (in `.trs` format) on its standard input,
@@ -78,10 +76,8 @@ lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 
 #### Termination checking
 
-Like confluence, termination must be established for each of the
-considered rewriting systems contained in `lambdapi` files.
-
-We provide an interface to external termination checkers using the XTC format.
+Lambdapi provides an option to check the termination of the set of rewriting
+rules declared in a file by calling external provers using the XTC format.
 The `--termination <cmd>` flag specifies the termination-checking command to
 be used. The command is expected to behave as follows:
  - take the problem description (in `.xml` format) on its standard input,

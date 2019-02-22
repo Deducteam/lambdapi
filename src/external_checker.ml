@@ -16,8 +16,7 @@ open Console
     ["NO"] or ["MAYBE"] as the first line of its standard output. The
     exception [Fatal] may be raised if [cmd] does not behave as expected.
     [checked_property] is for printing purpose *)
-let check : string -> Sign.t -> (Format.formatter -> Sign.t -> unit) ->
-            logger -> string -> bool option =
+let check : string -> Sign.t -> Sign.t pp -> logger -> string -> bool option =
   fun cmd sign translator logging property ->
   (* Run the command. *)
   if !log_enabled then logging.logger "Running command [%s]" cmd;
