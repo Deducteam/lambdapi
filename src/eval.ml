@@ -18,8 +18,8 @@ let log_eqmd = log_eqmd.logger
     use a references to allow a form of lazy evaluation when matching patterns
     (see {!val:matching}). The boolean tells whether a particular argument has
     already been normalized (to weak head normal form).  Note that an argument
-    (i.e.,  an element of the stack) does not need to be evaluated when mached
-    agains a wildcard or a pattern variable. *)
+    (i.e., an element of the stack) does not need to be evaluated when machted
+    against a wildcard or a pattern variable. *)
 type stack_elt = (bool * term) Pervasives.ref
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
