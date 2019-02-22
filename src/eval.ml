@@ -93,7 +93,7 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
       Printf.printf "***************************\n" ;
       Printf.printf "Building tree for symb %s\n" (s.sym_name) ;
       let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
-      let tree = compile pama in
+      let tree = Dtree.compile pama in
       Dtree.to_dot s.sym_name tree ;
     end ;
   (* EXPE *)
@@ -176,127 +176,6 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [specialize p m]  specializes the matrix [m] when matching against pattern
-    [p].  A matrix can be specialized by a user defined symbol, an abstraction
-    or a pattern variable.  The specialization always happen on the first
-    column (which is swapped if needed). *)
-and specialize : term -> Dtree.Pattmat.t -> Dtree.Pattmat.t = fun p m ->
-  let up = unfold p in
-  let filtered = List.filter (fun (l, _) ->
-      (* Removed rules starting with a different constructor*)
-      match up, unfold (List.hd l) with
-      | Symb(s, _)          , Symb(s', _)          -> s == s'
-      | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
-        Array.length e1 = Array.length e2 (* Arity verification *)
-      (* A check should be done regarding non linear variables *)
-      | Patt(None, _, [| |]), Patt(None, _, [| |]) -> true
-      | Abst(_, b1)         , Abst(_, b2)          ->
-        let _, _, _ = Bindlib.unbind2 b1 b2 in
-        true
-      (* We should check that bodies depend on the same variables. *)
-      | Appl(_, _)          , Appl(_, _)           -> true
-      (* All below ought to be put in catch-all case*)
-      | Symb(_, _)   , Appl(_, _)    -> false
-      | Patt(_, _, _), Symb(_, _)    -> false
-      | Patt(_, _, _), Appl(_, _)    -> false
-      | Symb(_, _)   , Patt(_, _, _) -> false
-      | Appl(_, _)   , Symb(_, _)    -> false
-      | Appl(_, _)   , Patt(_, _, _) -> false
-      | x            , y             ->
-        Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
-        pp Format.str_formatter y ;
-        let msg = Printf.sprintf "%s: suspicious specialization-filtering"
-            (Buffer.contents Format.stdbuf) in
-        failwith msg) m.values in
-  let unfolded = List.map (fun (l, a) ->
-      match up, unfold (List.hd l) with
-      | _                   , Symb(_, _)                 ->
-        (List.tl l, a) (* Eat the symbol? *)
-      (* Checks could be done on arity of symb. *)
-      | _                   , Abst(_, b)                 ->
-        let _, t = Bindlib.unbind b in (t :: List.tl l, a)
-      | _                   , Appl(t1, t2)               ->
-        (t1 :: t2 :: List.tl l, a)
-        (* Might need to add wildcard to other lines. *)
-      | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
-        let ari = Array.length e1 in
-        (List.init ari (fun _ -> Patt(None, "w", [| |])) @ (List.tl l), a)
-      | _                   , Patt(Some(_), _, _)        ->
-        (List.tl l, a)
-      | _                   , x                          ->
-        Buffer.clear Format.stdbuf ; pp Format.str_formatter x ;
-        let msg = Printf.sprintf "%s: suspicious specialization unfold"
-            (Buffer.contents Format.stdbuf) in
-        failwith msg) filtered in
-  { origin = Specialized(up)
-  ; values = unfolded }
-
-(** [default m] computes the default matrix containing what remains to be
-    matched if no specialization occurred. *)
-and default : Dtree.Pattmat.t -> Dtree.Pattmat.t =
-  fun { origin = _ ; values = m } ->
-  let filtered = List.filter (fun (l, _) ->
-      match List.hd l with
-      | Patt(None , _, _)                                          -> true
-      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) | Appl(_, _) -> false
-      | x                                                          ->
-        pp Format.err_formatter x ;
-        assert false) m in
-  let unfolded = List.map (fun (l, a) ->
-      match List.hd l with
-      | Patt(None, _, _) -> (List.tl l, a)
-      (* | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a) *)
-      | _                -> assert false) filtered in
-  { origin = Default
-  ; values = unfolded }
-
-(** [compile m] returns the decision tree allowing to parse efficiently the
-    pattern matching problem contained in pattern matrix [m]. *)
-and compile : Dtree.Pattmat.t -> Dtree.t = fun patterns ->
-  let module Pm = Dtree.Pattmat in
-  let rec grow : Pm.t -> Dtree.t = fun pm ->
-    let { Pm.origin = o ; Pm.values = m } = pm in
-    (* Pm.pp Format.std_formatter pm ; *)
-    if Pm.is_empty pm then
-      begin
-        failwith "matching failure" ; (* For debugging purposes *)
-        (* Dtree.Fail *)
-      end
-    else
-      (* Look at the first line, if it contains only wildcards, then
-         execute the associated action. *)
-      (* Might be relevant to abstract the following operations in module
-         dtree.ml. *)
-      let swi = match o with
-        | Init | Default -> None
-        | Specialized(t) -> Some t in
-      let fline = fst @@ List.hd m in
-      if Pm.is_pattern_free fline then
-        Dtree.Leaf(swi, snd @@ List.hd m)
-      else
-        (* Pick a column in the matrix and pattern match on the constructors in
-           it to grow the tree. *)
-        let kept_cols = Pm.discard_patt_free pm in
-        let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
-        let swap = if kept_cols.(sel_in_partial) = 0 then None
-          else Some kept_cols.(sel_in_partial) in
-        let spm = match swap with
-          | None    -> pm
-          | Some(i) -> Pm.swap pm i in
-        let fcol = Pm.get_col 0 spm in
-        let cons = List.filter (fun x -> match x with
-            | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
-            | Appl(_, _) -> true
-            | _                                            -> false)
-            fcol in
-        let spepatts = List.map (fun s -> specialize s spm) cons in
-        let defpatts = default spm in
-        let children =
-          List.map grow (if Pm.is_empty defpatts
-                         then spepatts
-                         else spepatts @ [defpatts]) in
-        Node({ switch = swi ; swap = swap ; children = children }) in
-  grow patterns
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
