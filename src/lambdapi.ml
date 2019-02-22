@@ -119,7 +119,5 @@ let _ =
   let usage = Printf.sprintf "Usage: %s [OPTIONS] [FILES]" Sys.argv.(0) in
   let files = ref [] in
   Arg.parse spec (fun s -> files := s :: !files) usage;
-  (* Initilizing Why3 environment. *)
-  Why3prover.init_env ();
   (* Compile each file separately. *)
   List.iter handle_file (List.rev !files)

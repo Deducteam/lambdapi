@@ -75,3 +75,6 @@ let print_result : Whyconf.config_prover -> Task.task -> unit =
         Console.out 2 "Valid@."
     | _                  ->
         Console.out 1 "%s didn't found a proof@." prv.prover.prover_name
+
+(* Initilizing Why3 environment. *)
+let _ = init_env ()
