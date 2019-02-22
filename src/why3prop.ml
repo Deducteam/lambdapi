@@ -7,6 +7,14 @@ open Extra
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Term.lsymbol) list
 
+(* number of axioms proved whith the Why3 tactic *)
+let nbr_axioms : int ref = ref 0
+
+(** [get_newname ()] generates a new axiom name. *)
+let get_newname () : string =
+    nbr_axioms := !nbr_axioms + 1;
+    "Why3axiom_" ^ (string_of_int !nbr_axioms)
+
 (* builtins configuration for propositional logic *)
 type prop_config =
   { symb_P     : sym * pp_hint (** Encoding of propositions.        *)

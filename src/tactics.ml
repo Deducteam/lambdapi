@@ -129,7 +129,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* try to prove the goal [trm] with a prover in Why3. *)
       let proved = Why3prop.t_goal ps.proof_builtins prover_why3_name trm in
       if proved then
-        let why3_axiom = Pos.none "Why3Axiom" in
+        let why3_axiom = Pos.none (Why3prop.get_newname ()) in
         let current_sign = ss.signature in
         (* TODO : add the goal to the set of axioms if the prover succeed *)
         let a = Sign.add_symbol current_sign Const why3_axiom trm in
