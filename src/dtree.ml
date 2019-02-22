@@ -39,7 +39,13 @@ let iter : (term option -> action -> 'a) ->
       do_node s p (List.map loop c) in
   loop t
 
-(** [to_dot f t] creates a dot graphviz file [f].gv for tree [t]. *)
+(** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
+    of the tree embodies a pattern matrix.  The label on the node is the
+    column index in the matrix on which the matching is performed to give
+    birth to children nodes.  The label on the edge between a node and its
+    child represents the term matched to generate the next pattern matrix (the
+    one of the child node); and is therefore one of the terms in the column of
+    the pattern matrix whose index is the label of the node. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
   let module P = Print in
@@ -78,6 +84,10 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
+(** Pattern matrices is a way to encode a pattern matching problem.  A line is
+    a candidate instance of the values matched.  Each line is a pattern having
+    an action attached.  This module provides functions to operate on these
+    matrices. *)
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
@@ -90,7 +100,7 @@ struct
                  | Default
                  | Specialized of term
 
-  (** Contains the rewrite rules. *)
+  (** The core data, contains the rewrite rules. *)
   type matrix = (line * action) list
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
