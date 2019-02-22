@@ -35,13 +35,14 @@ and node_data = { switch : term option
     - [plus Z (S m)     → S m]
     - [plus n Z         → n]
     - [plus (S n) (S m) → S (S m)]
+
     A possible tree might be
     {v
-      +—?–·–Z–·         → n
-      ├–Z–·–S–·–?–·     → S m
-      └–S–·–?–·–S–·–?–· → S (S m)
++—?–∘–Z–∘         → n
+├–Z–∘–S–∘–?–∘     → S m
+└–S–∘–?–∘–S–∘–?–∘ → S (S m)
     v}
-    with {v · v} being a node (with a label not shown here) and {v –u– v}
+    with [∘] being a node (with a label not shown here) and [–u–]
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?]. *)
 
