@@ -108,7 +108,7 @@ struct
   let pp_line : line pp = List.pp Print.pp ";"
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { origin = _ ; values = va } ->
+  let pp : t pp = fun oc { values = va ; _ } ->
     let module F = Format in
     F.fprintf oc "[|@[<v>@," ;
     List.pp pp_line "\n  " oc (List.map (fun (l, _) -> l) va) ;
@@ -126,10 +126,17 @@ struct
 
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
-  let get_col : int -> t -> line = fun ind mat ->
-    List.fold_left (fun acc (elt, _) ->
-        if List.length elt > ind then List.nth elt ind :: acc else acc) []
-      mat.values
+  let get_col : int -> t -> line = fun ind { values = valu ; _ } ->
+    let rec nth : 'a list -> int -> 'a option = fun l i ->
+      match l with
+      | []                 -> None
+      | x :: _  when i = 0 -> Some(x)
+      | _ :: xs when i > 0 -> nth xs (i - 1)
+      | _ (* For linter *) -> assert false in
+    let opcol = List.fold_left (fun acc (li, _) -> nth li ind :: acc) []
+        valu in
+    let rem = List.filter (function None -> false | Some(_) -> true) opcol in
+    List.map (function Some(e) -> e | None -> assert false) rem
 
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
   let select : t -> int array -> t = fun m indexes ->
