@@ -104,3 +104,9 @@ set builtin "T"     ≔ T
 set builtin "eq"    ≔ eq
 set builtin "eqind" ≔ eqind
 set builtin "refl"  ≔ refl
+
+set builtin "bot"   ≔ bot
+set builtin "imp"   ≔ imp
+set builtin "and"   ≔ {|and|}
+set builtin "or"    ≔ or
+set builtin "not"   ≔ not

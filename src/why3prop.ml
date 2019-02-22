@@ -2,47 +2,73 @@
 
 open Terms
 open Why3
+open Extra
 
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Term.lsymbol) list
 
-(** [t_goal g] output the translation of a goal [g] into a why3.*)
-let rec t_goal : string -> term -> bool = fun sp g ->
+(* builtins configuration for propositional logic *)
+type prop_config =
+  { symb_P     : sym * pp_hint (** Encoding of propositions.        *)
+  ; symb_T     : sym * pp_hint (** Encoding of types.               *)
+  ; symb_or    : sym * pp_hint (** Disjunction(∨) symbol.           *)
+  ; symb_and   : sym * pp_hint (** Conjunction(∧) symbol.           *)
+  ; symb_imp   : sym * pp_hint (** Implication(⇒) symbol.           *)
+  ; symb_bot   : sym * pp_hint (** Bot(⊥) symbol.                   *)
+  ; symb_not   : sym * pp_hint (** Not(¬) symbol.                   *) }
+
+(** [get_prop_config builtins] set the builtins configuration using
+    [builtins] *)
+let get_prop_config : Proof.builtins -> prop_config = fun builtins ->
+  let find_sym key =
+    try StrMap.find key builtins with Not_found ->
+     Console.fatal_no_pos "Builtin symbol [%s] undefined." key
+  in
+  { symb_P     = find_sym "P"
+  ; symb_T     = find_sym "T"
+  ; symb_or    = find_sym "or"
+  ; symb_and   = find_sym "and"
+  ; symb_imp   = find_sym "imp"
+  ; symb_bot   = find_sym "bot"
+  ; symb_not   = find_sym "not" }
+
+(** [t_goal buitltins sp g] translate and try to prove the lambdapi goal [g]
+    using a prover named [sp] in Why3.*)
+let rec t_goal : Proof.builtins -> string -> term -> bool =
+    fun builtins sp g ->
+    let cfg = get_prop_config builtins in
     match Basics.get_args g with
-    | (Symb({sym_name="P"; _}, _), [t])     ->
-        let (l_prop, formula) = t_prop [] [] t in
+    | (symbol, [t]) when Basics.is_symb (fst cfg.symb_P) symbol ->
+        let (l_prop, formula) = t_prop cfg [] [] t in
         let symbols = List.map (fun (_, x) -> x) l_prop in
         let tsk = Why3task.declare_symbols symbols in
         let tsk = Why3task.add_goal tsk formula in
         let result = Why3prover.rst (Why3prover.prover sp) tsk in
         Why3prover.answer result.pr_answer
-    | _                                     ->
+    | _                                                         ->
         failwith "Goal can't be translated"
 
-(** [t_prop l_prop ctxt p] output the translation of a lambdapi proposition
-[p] with the context [ctxt] into a why3 proposition. *)
-and t_prop : cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term) =
-    fun l_prop ctxt p ->
+(** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
+    context [ctxt] and a config [cfg]. *)
+and t_prop :
+    prop_config -> cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term) =
+    fun cfg l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
     (match s with
-    | Symb({sym_name="{|and|}"; _}, _)      ->
-        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+    | symbol when Basics.is_symb (fst cfg.symb_and) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
         l_prop, Term.t_and t1 t2
-    | Symb({sym_name="or"; _}, _)      ->
-        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+    | symbol when Basics.is_symb (fst cfg.symb_or) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
         l_prop, Term.t_or t1 t2
-    | Symb({sym_name="imp"; _}, _)      ->
-        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
+    | symbol when Basics.is_symb (fst cfg.symb_imp) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
         l_prop, Term.t_implies t1 t2
-    | Symb({sym_name="equiv"; _}, _)      ->
-        let (l_prop, t1) = t_prop l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_iff t1 t2
-    | Symb({sym_name="not"; _}, _)      ->
-        let (l_prop, t) = t_prop l_prop ctxt (List.nth args 0) in
+    | symbol when Basics.is_symb (fst cfg.symb_not) symbol  ->
+        let (l_prop, t) = t_prop cfg l_prop ctxt (List.nth args 0) in
         l_prop, Term.t_not t
     | Symb(_, _)                        ->
         (* if the term [p] is in the list [l_prop] *)

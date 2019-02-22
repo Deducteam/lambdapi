@@ -119,7 +119,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let (_, trm) = Proof.Goal.get_type g in
       let trm = unfold trm in
       let prover_name = Why3prover.get_name s.elt in
-      let proved = Why3prop.t_goal prover_name trm in
+      let proved = Why3prop.t_goal ps.proof_builtins prover_name trm in
       if proved then
         let why3_axiom = Pos.none "Why3Axiom" in
         let current_sign = ss.signature in
