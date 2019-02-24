@@ -76,7 +76,7 @@ Data types and predicates must be given types of the form
 
 We recommend to start types and predicates by a capital letter.
 
-*Modifiers:*
+**Modifiers:**
  - `const`: no rule can be added to the symbol
  - `injective`: the symbol can be considered as injective, that is,
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
@@ -109,9 +109,35 @@ rule diff (λx, sin &F[x]) → λx, diff (λx, &F[x]) x × cos &F[x]
 rule lam (λx, app &F x) → &F // η-reduction
 ```
 
-Pattern variables can be applied to distinct bound variables only.
-
 In left-hand side, λ-expressions must have no type annotations.
+
+Pattern variables can be applied to distinct bound variables only,
+that is, the terms between `[` and `]` must be distinct bound
+variables only.
+
+Lambdapi uses then higher-order pattern-matching, that is, matching
+modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
+η-reduction since no valid instance of `F` can contain `x`.
+
+*Important*: In contrast to languages like OCaml, Coq, Agda, etc. rule
+ left-hand sides can contain defined symbols:
+
+```
+rule add (add x y) z → add x (add y z)
+```
+
+They can overlap:
+
+```
+rule add zero x → x
+rule add x zero → x
+```
+
+And they can be non-linear:
+
+```
+rule minus x x → zero
+```
 
 <!----------------------------------------------------------------------------> 
 ### The `definition` command
