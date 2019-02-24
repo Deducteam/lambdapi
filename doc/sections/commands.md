@@ -48,6 +48,7 @@ require open church.sums
 
 Symbols are declared using the `symbol` command, possibly associated with some
 modifier like `const` or `injective`.
+
 ```
 symbol const Nat : TYPE
 symbol const zero : Nat
@@ -57,26 +58,38 @@ symbol const list : Nat ⇒ TYPE
 symbol const nil : List zero
 symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n) 
 ```
-Note that the command requires a fresh symbol name (it should not have already
-been used in the current module) and a type for the symbol.
-It is possible to put arguments on the left side of the `:` symbol (similarly to a value declaration in OCaml).
-Data types and predicates must be given types of the form `∀x1:T1,..,∀xn:Tn,TYPE`. `T⇒U` is a shorthand for `∀x:T,U` when `x` does not occur in `U`.
+
+The command requires a fresh symbol name (it should not have already been used
+in the current module) and a type for the symbol.
+
+It is possible to put arguments on the left side of the `:` symbol (similarly
+to a value declaration in OCaml).
+
+Data types and predicates must be given types of the form
+`∀x1:T1,..,∀xn:Tn,TYPE`.
+`T⇒U` is a shorthand for `∀x:T,U` when `x` does not occur in `U`.
+
 We recommend to start types and predicates by a capital letter.
 
 Modifiers:
-`const`: no rule can be added to the symbol
-`injective`: the symbol can be considered as injective, that is, if `f t1 .. tn` ≡ `f u1 .. un` then `t1`≡`u1`, ..., `tn`≡`un`. For the moment, the verification is left to the user.
+ - `const`: no rule can be added to the symbol
+ - `injective`: the symbol can be considered as injective, that is,
+ if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
+ For the moment, the verification is left to the user.
 
 <!----------------------------------------------------------------------------> 
 ### The `rule` declaration command
 
 Rewriting rules for definable symbols are declared using the `rule` command.
+
 ```
 rule add zero      &n → &n
 rule add (succ &n) &m → succ (add &n &m)
 ```
+
 Note that rewriting rules can also be defined simultaneously,  using the `and`
 keyword instead of the `rule` keyword for all but the first rule.
+
 ```
 rule add zero      &n → &n
 and  add (succ &n) &m → succ (add &n &m)
@@ -85,11 +98,14 @@ and  add (succ &n) &m → succ (add &n &m)
 Pattern variables need to be prefixed by `&`.
 
 Lambdapi accepts higher-order pattern variables too:
+
 ```
 rule diff (λx, sin &F[x]) → λx, diff (λx, &F[x]) x × cos &F[x]
 rule lam (λx, app &F x) → &F // η-reduction
 ```
+
 Pattern variables can be applied to distinct bound variables only.
+
 In left-hand side, λ-expressions must have no type annotations.
 
 <!----------------------------------------------------------------------------> 
