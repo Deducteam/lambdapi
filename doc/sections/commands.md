@@ -12,6 +12,7 @@ start of a new command or at the end of the file.
 ### Comments
 
 One-line comments are introduced by '//':
+
 ```
 // all this is ignored
 ```
@@ -26,10 +27,12 @@ TODO
 
 The `require` command informs the type-checker that the current module depends
 on some other module, which must hence be compiled.
+
 ```
 require boolean
 require church.list as list
 ```
+
 Note that a required module can optionally be aliased, in which case it can be
 referred to with the provided name.
 
@@ -38,6 +41,7 @@ referred to with the provided name.
 
 The `open` command puts into scope the symbols defined in the given module. It
 can also be combined with the `require` command.
+
 ```
 open booleans
 require open church.sums
@@ -67,11 +71,12 @@ to a value declaration in OCaml).
 
 Data types and predicates must be given types of the form
 `∀x1:T1,..,∀xn:Tn,TYPE`.
+
 `T⇒U` is a shorthand for `∀x:T,U` when `x` does not occur in `U`.
 
 We recommend to start types and predicates by a capital letter.
 
-Modifiers:
+*Modifiers:*
  - `const`: no rule can be added to the symbol
  - `injective`: the symbol can be considered as injective, that is,
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
@@ -113,12 +118,14 @@ In left-hand side, λ-expressions must have no type annotations.
 
 The `definition` command is used to immediately define a new symbol, for it to
 be equal to some (closed) term.
+
 ```
 definition plus_two : Nat ⇒ Nat ≔ λn,add n (succ (succ zero))
 definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
 definition plus_two (n : Nat) ≔ add n (succ (succ zero))
 definition plus_two n ≔ add n (succ (succ zero))
 ```
+
 Note that some type annotations can be omitted, and that it is possible to put
 arguments on the left side of the `≔` symbol (similarly to a value declaration
 in OCaml).
@@ -134,6 +141,7 @@ TODO
 The `assert` and `assertnot` are convenient for checking that the validity, or
 the invalidity, of typing judgments or convertibilities.  This can be used for
 unit testing of Lambdapi, with both positive and negative tests.
+
 ```
 assert zero : Nat
 assert add (succ zero) zero ≡ succ zero
@@ -148,6 +156,7 @@ The `set` command is used to control the behaviour of Lambdapi, and to control
 extension points in its syntax.  For instance,  the following commands set the
 verbosity level to `1`,  enable the debugging flags `t` and `s`,  and disables
 the debugging flag `s`.
+
 ```
 set verbose 1
 set debug +ts
@@ -157,6 +166,7 @@ set debug -s
 The following code sets the definition of built-in symbols. They are used, for
 example, to specify a zero and successor function for unary natural numbers so
 that natural number literals can be automatically translated to their use.
+
 ```
 set builtin "0"  ≔ zero
 set builtin "+1" ≔ succ
@@ -164,10 +174,12 @@ set builtin "+1" ≔ succ
 
 The following code defines infix symbols for addition and multiplication. Both
 are associative to the left, and they have priority levels `6` and `7`.
+
 ```
 set infix left 6 "+" ≔ add
 set infix left 7 "×" ≔ mul
 ```
+
 The modifier `infix`, `infix right` and `infix left` can be used to specify
 whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
