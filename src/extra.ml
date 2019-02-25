@@ -106,14 +106,17 @@ module List =
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
     (** [swap_head x i] swaps the [i]th element of [x] with the first one. *)
-    let swap_head : 'a list -> int -> 'a list = fun li ind ->
-      let rec loop : 'a list -> int -> 'a list = fun l i ->
-        match l with
-        | []                    -> assert (i <= 0) ; []
-        | x :: xs when i = ind  -> loop xs (i - 1) @ [x]
-        | x :: xs when i <> ind -> x :: (loop xs (i - 1))
-        | _ (* For linter *)    -> assert false in
-      List.rev (loop li ind)
+    let swap_head : 'a list -> int -> 'a list = fun li si ->
+      if si = 0 then li
+      else
+        let head, tail = List.hd li, List.tl li in
+        let rec loop : 'a list -> int -> 'a list * 'a = fun l i ->
+          let x, xs = List.hd l, List.tl l in
+          if i = 0 then head :: xs, x
+          else let u, v = loop xs (i - 1) in
+            x :: u, v in
+        let replaced, sith = loop tail (si - 1) in
+        sith :: replaced
   end
 
 module Array =
