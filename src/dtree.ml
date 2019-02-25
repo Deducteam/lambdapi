@@ -212,6 +212,16 @@ struct
     Array.of_list unpacked
 end
 
+(** [deapply t] flattens nested {!cons:Appl} terms, with a non {!cons:Appl}
+    term as first element, and the successive right arguments in the list.
+    For instance, [deapply (Appl(Appl(S, t1), t2), t3)] should yield [[S, t1,
+    t2, t3]] (with [ti] possibly being of the form [ti = Appl(u, v)]). *)
+let deapply : term -> term list = fun te ->
+  let rec flatten : term -> term list = function
+    | Appl(u1, u2) -> u2 :: flatten u1
+    | u            -> [u] in
+  List.rev (flatten te)
+
 (** [specialize p m]  specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
     or a pattern variable.  The specialization always happen on the first
@@ -320,7 +330,7 @@ let compile : Pattmat.t -> t = fun patterns ->
           | None    -> pm
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
-        let cons = List.filter (fun x -> match x with
+        let cons = List.filter (function
             | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
             | Appl(_, _) -> true
             | _                                            -> false)
