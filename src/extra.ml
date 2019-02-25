@@ -105,8 +105,8 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [swapf x i] swaps the [i]th element of [x] with the first one. *)
-    let swapf : 'a list -> int -> 'a list = fun li ind ->
+    (** [swap_head x i] swaps the [i]th element of [x] with the first one. *)
+    let swap_head : 'a list -> int -> 'a list = fun li ind ->
       let rec loop : 'a list -> int -> 'a list = fun l i ->
         match l with
         | []                    -> assert (i <= 0) ; []

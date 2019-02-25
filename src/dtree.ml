@@ -166,7 +166,8 @@ struct
 
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
-    { pm with values = List.map (fun (l, a) -> (List.swapf l c, a)) pm.values }
+    { pm with values = List.map (fun (l, a) ->
+          (List.swap_head l c, a)) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
       d or -1 if c < d; where <, = and > are defined according to a heuristic.
