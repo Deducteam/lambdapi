@@ -1,15 +1,13 @@
 (** Confluence checking.
 
     This module allows the translation of a signature into the HRS format used
-    in the confluence competition, (see http://cops.uibk.ac.at/). *)
+    in the confluence competition.
+
+    @see <http://cops.uibk.ac.at> *)
 
 open Extra
 open Timed
-open Console
 open Terms
-
-(** Logging function for the confluence checker interface. *)
-let log_conf = new_logger 'c' "conf" "informations for the confluence checker"
 
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
     is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
@@ -131,8 +129,4 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
     the first line of its standard output. The exception [Fatal] may be raised
     if [cmd] does not behave as expected. *)
 let check : string -> Sign.t -> bool option =
-  fun cmd sign ->
-  External_checker.check cmd sign to_TPDB log_conf "confluence"
-(* NOTE the simplest, valid confluence checking command is ["echo MAYBE"]. The
-   command ["cat > out.txt; echo MAYBE"] can conveniently be used to write the
-   generated TPDB problem to the file ["out.txt"] for debugging purposes. *)
+  External.run "confluence" to_TPDB
