@@ -222,60 +222,70 @@ let deapply : term -> term list = fun te ->
     | u            -> [u] in
   List.rev (flatten te)
 
-(** [specialize p m]  specializes the matrix [m] when matching against pattern
+(** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
+    kept when specialising the matrix on pattern [p]. *)
+let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
+  let lihd, litl = match li with
+    | x :: xs -> x, xs
+    | []      -> assert false in
+  match unfold pat, unfold lihd with
+  | Appl(u, _)          , Appl(v, _) -> spec_filter u (v :: litl)
+  | Symb(s, _)          , Symb(s', _)          -> s == s'
+  | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
+    Array.length e1 = Array.length e2 (* Arity verification *)
+  (* A check should be done regarding non linear variables *)
+  | Patt(None, _, [| |]), Patt(None, _, [| |]) -> true
+  | Abst(_, b1)         , Abst(_, b2)          ->
+    let _, _, _ = Bindlib.unbind2 b1 b2 in
+    true
+  (* We should check that bodies depend on the same variables. *)
+  (* All below ought to be put in catch-all case*)
+  | Symb(_, _)   , Appl(_, _)    -> false
+  | Patt(_, _, _), Symb(_, _)    -> false
+  | Patt(_, _, _), Appl(_, _)    -> false
+  | Symb(_, _)   , Patt(_, _, _) -> false
+  | x            , y             ->
+    Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
+    Print.pp Format.str_formatter y ;
+    let msg = Printf.sprintf "%s: suspicious specialization-filtering"
+        (Buffer.contents Format.stdbuf) in
+    failwith msg
+
+(** [spec_line p l] specializes the line [l] against pattern [p]*)
+let rec spec_line : term -> Pattmat.line -> Pattmat.line =
+  fun pat li ->
+  let lihd, litl = List.hd li, List.tl li in
+  match unfold pat, unfold lihd with
+  | Appl(ul, _), Appl(vl, vr) -> spec_line ul (vl :: vr :: litl)
+  | _                   , Symb(_, _)                 ->
+    litl (* Eat the symbol? *)
+  (* Checks could be done on arity of symb. *)
+  | _                   , Abst(_, b)                 ->
+    let _, t = Bindlib.unbind b in t :: litl
+  | _                   , Appl(t1, t2)               ->
+    t1 :: t2 :: litl
+  (* Might need to add wildcard to other lines. *)
+  | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
+    let ari = Array.length e1 in
+    List.init ari (fun _ -> Patt(None, "w", [| |])) @ (litl)
+  | _                   , Patt(Some(_), _, _)        ->
+    litl
+  | _                   , x                          ->
+    Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
+    let msg = Printf.sprintf "%s: suspicious specialization unfold"
+        (Buffer.contents Format.stdbuf) in
+    failwith msg
+
+(** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
     or a pattern variable.  The specialization always happen on the first
     column (which is swapped if needed). *)
 let specialize : term -> Pattmat.t -> Pattmat.t = fun p m ->
   let up = unfold p in
-  let filtered = List.filter (fun (l, _) ->
-      (* Removed rules starting with a different constructor*)
-      match up, unfold (List.hd l) with
-      | Symb(s, _)          , Symb(s', _)          -> s == s'
-      | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
-        Array.length e1 = Array.length e2 (* Arity verification *)
-      (* A check should be done regarding non linear variables *)
-      | Patt(None, _, [| |]), Patt(None, _, [| |]) -> true
-      | Abst(_, b1)         , Abst(_, b2)          ->
-        let _, _, _ = Bindlib.unbind2 b1 b2 in
-        true
-      (* We should check that bodies depend on the same variables. *)
-      | Appl(_, _)          , Appl(_, _)           -> true
-      (* All below ought to be put in catch-all case*)
-      | Symb(_, _)   , Appl(_, _)    -> false
-      | Patt(_, _, _), Symb(_, _)    -> false
-      | Patt(_, _, _), Appl(_, _)    -> false
-      | Symb(_, _)   , Patt(_, _, _) -> false
-      | Appl(_, _)   , Symb(_, _)    -> false
-      | Appl(_, _)   , Patt(_, _, _) -> false
-      | x            , y             ->
-        Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
-        Print.pp Format.str_formatter y ;
-        let msg = Printf.sprintf "%s: suspicious specialization-filtering"
-            (Buffer.contents Format.stdbuf) in
-        failwith msg) m.values in
-  let unfolded = List.map (fun (l, a) ->
-      match up, unfold (List.hd l) with
-      | _                   , Symb(_, _)                 ->
-        (List.tl l, a) (* Eat the symbol? *)
-      (* Checks could be done on arity of symb. *)
-      | _                   , Abst(_, b)                 ->
-        let _, t = Bindlib.unbind b in (t :: List.tl l, a)
-      | _                   , Appl(t1, t2)               ->
-        (t1 :: t2 :: List.tl l, a)
-        (* Might need to add wildcard to other lines. *)
-      | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
-        let ari = Array.length e1 in
-        (List.init ari (fun _ -> Patt(None, "w", [| |])) @ (List.tl l), a)
-      | _                   , Patt(Some(_), _, _)        ->
-        (List.tl l, a)
-      | _                   , x                          ->
-        Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
-        let msg = Printf.sprintf "%s: suspicious specialization unfold"
-            (Buffer.contents Format.stdbuf) in
-        failwith msg) filtered in
+  let filtered = List.filter (fun (l, _) -> spec_filter up l) m.values in
+  let newmat = List.map (fun (l, a) -> (spec_line up l, a)) filtered in
   { origin = Specialized(up)
-  ; values = unfolded }
+  ; values = newmat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
