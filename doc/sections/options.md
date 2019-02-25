@@ -51,11 +51,10 @@ When in default mode, the following flags are available for configuration:
 
 #### Confluence checking
 
-Confluence checking (and also termination) must be established for each of the
-considered rewriting systems contained in `lambdapi` files. By default,  these
-checks are not performed, and they must be explicitly requested.
 
-We provide an interface to external confluence checkers using the TRS  format.
+Lambdapi provides an option to check the confluence of the set of rewriting
+rules declared in a file by calling external provers using the [TRS format]
+(http://project-coco.uibk.ac.at/problems/trs.php).
 The `--confluence <cmd>` flag specifies the confluence-checking command to  be
 used. The command is expected to behave as follows:
  - take the problem description (in `.trs` format) on its standard input,
@@ -64,7 +63,9 @@ used. The command is expected to behave as follows:
 As an example,  `echo MAYBE` is the simplest possible (valid) confluence-check
 that one may use.
 
-For now, only the `CSI^ho` confluence checker has been tested with `lambdapi`.
+For now, only the [`CSI^ho` confluence checker]
+(http://cl-informatik.uibk.ac.at/software/csi/ho/) has been tested with
+`lambdapi`.
 It can be called in the following way.
 ```bash
 lambdapi --confluence "path/to/csiho.sh --ext trs --stdin" input_file.lp
@@ -78,7 +79,34 @@ lambdapi --confluence "cat > output.trs; echo MAYBE" input_file.lp
 
 #### Termination checking
 
-For now, there is no support for termination checking.
+Lambdapi provides an option to check the termination of the set of rewriting
+rules declared in a file by calling external provers using the [XTC format]
+(http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/raw-file/tip/xml/xtc.xsd).
+The `--termination <cmd>` flag specifies the termination-checking command to
+be used. The command is expected to behave as follows:
+ - take the problem description (in `.xml` format) on its standard input,
+ - output on its first line either `YES`, `NO` or `MAYBE`.
+
+As an example,  `echo MAYBE` is the simplest possible (valid)
+termination-check that one may use.
+
+As far as we now, [`SizeChangeTool`]
+(https://github.com/Deducteam/SizeChangeTool) is the only termination checker
+compatible with all `lambdapi` features.
+It can be called in the following way.
+```bash
+lambdapi --termination "path/to/sct.native -nc --stdin=xml" input_file.lp
+```
+
+If the file does not contain type-level rewriting, [`Wanda`]
+(http://wandahot.sourceforge.net/) is also compatible.
+However, it does not offer the possibility to give an input in `stdin`.
+
+To generate the `.xml` file corresponding to some `lambdapi` file, one may use
+a dummy termination-checking command as follows.
+```bash
+lambdapi --termination "cat > output.trs; echo MAYBE" input_file.lp
+```
 
 #### Debugging flags
 
