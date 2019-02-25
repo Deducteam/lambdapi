@@ -42,16 +42,18 @@ definition l2 : T (Vect (s zero)) ≔ @cons zero true nil
 // It works.
 
 symbol append : ∀ (n:T Nat) (m:T Nat), T (Vect n) ⇒ T (Vect m) ⇒ T (Vect (n+m))
-// Unfortunately, we can't use implicit in rules at the moment
+// Unfortunately, we can't use implicits in rules at the moment
 rule append zero    &m nil                   &v2  → &v2
 rule append (s &pn) &m (@cons (s &pn) &h &t) &v2  → @cons (&pn+&m) &h (append &pn &m &t &v2)
 
 
-// TEST IMPLICIT ARGUMENTS FOR DEFINITION
+// TEST IMPLICIT ARGUMENTS FOR A DEFINITION
 // definition id_Vect : ∀{n:T Nat}, T (Vect n) ⇒ T(Vect n) ≔ λx, x
-// Doesn't work yet
+// Doesn't work yet, because we need to typecheck (λx, x) against
+// T (Vect n) ⇒ T(Vect n) and not against ∀{n:T Nat}, T (Vect n) ⇒ T(Vect n)
+// It shouldn't be too hard to add this behaviour
 
-// TEST IMPLICIT ARGUMENTS FOR THEOREM
+// TEST IMPLICIT ARGUMENTS FOR A THEOREM
 //Theorem append_assoc : ∀{n1:T Nat} {n2:T Nat} {n3:T Nat}
 //                        (v1:T (Vect n1)) (v2:T (Vect n2)) (v3:T (Vect n3)),
 //  append n1 (n2+n3) v1 (append v2 v3) = append (n1+n2) (append n1 n2 v1 v2) v3
