@@ -165,19 +165,20 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             wrn cmd.pos "Proof aborted."; ss
         | P_proof_admit ->
             (* If the proof is finished, display a warning. *)
-            if Proof.finished st then wrn cmd.pos "You should add QED.";
+            if Proof.finished st then
+              wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
             let s = Sign.add_symbol ss.signature Const x a implicits in
             out 3 "(symb) %s (admit).\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
-        | P_proof_QED   ->
+        | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
               fatal cmd.pos "The proof is not finished.";
             (* Add a symbol corresponding to the proof. *)
             let s = Sign.add_symbol ss.signature Const x a implicits in
-            out 3 "(symb) %s (QED).\n" s.sym_name;
+            out 3 "(symb) %s (qed).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in
       let data =

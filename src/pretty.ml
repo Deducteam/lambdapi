@@ -87,7 +87,7 @@ let pp_p_rule : p_rule pp = fun oc r ->
 
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
-  | P_proof_QED   -> Format.pp_print_string oc "qed"
+  | P_proof_qed   -> Format.pp_print_string oc "qed"
   | P_proof_admit -> Format.pp_print_string oc "admit"
   | P_proof_abort -> Format.pp_print_string oc "abort"
 

@@ -4,6 +4,7 @@ open Extra
 open Timed
 open Console
 open Terms
+open Basics
 open Print
 
 (** Logging function for evaluation. *)
@@ -14,14 +15,16 @@ let log_eval = log_eval.logger
 let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
 let log_eqmd = log_eqmd.logger
 
-(** Representation of a stack for the abstract machine used for evaluation. *)
-type stack = (bool * term) Pervasives.ref list
-
-(** Representation of a single stack element. *)
+(** Representation of a single stack element (see {!type:stack}). Note that we
+    use a references to allow a form of lazy evaluation when matching patterns
+    (see {!val:matching}). The boolean tells whether a particular argument has
+    already been normalized (to weak head normal form).  Note that an argument
+    (i.e., an element of the stack) does not need to be evaluated when machted
+    against a wildcard or a pattern variable. *)
 type stack_elt = (bool * term) Pervasives.ref
 
-(* NOTE the stack contain references so that the computation of arguments when
-   matching reduction rules may be shared. *)
+(** Representation of a stack for the abstract machine used for evaluation. *)
+type stack = stack_elt list
 
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
@@ -104,15 +107,11 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
         let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
         ar.(i) <- TE_Some(b); true
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let fn t = match t with Vari(x) -> x | _ -> assert false in
-        let vars = Array.map fn e in
-        let b = Bindlib.bind_mvar vars (lift (snd Pervasives.(!t))) in
+        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
         ar.(i) <- TE_Some(Bindlib.unbox b); Bindlib.is_closed b
-    | Patt(None,_,[||]) -> true
-    | Patt(None,_,e   ) ->
-        let fn t = match t with Vari(x) -> x | _ -> assert false in
-        let vars = Array.map fn e in
-        let b = Bindlib.bind_mvar vars (lift (snd Pervasives.(!t))) in
+    | Patt(None   ,_,[||]) -> true
+    | Patt(None   ,_,e   ) ->
+        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
         Bindlib.is_closed b
     | _                                 ->
     (* Other cases need the term to be evaluated. *)

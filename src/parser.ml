@@ -368,7 +368,7 @@ let parser tactic =
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
-  | _qed_   -> P_proof_QED
+  | _qed_   -> P_proof_qed
   | _admit_ -> P_proof_admit
   | _abort_ -> P_proof_abort
 

@@ -31,7 +31,7 @@ Table of contents
 
  - [Implementation choices](sections/implementation.md)
  
- - [Contributing](CONTRIBUTING.md)
+ - [Contributing](../CONTRIBUTING.md)
  
  - [Compiling and profiling](sections/devel.md)
 
