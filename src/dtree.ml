@@ -106,7 +106,13 @@ let to_dot : string -> t -> unit = fun fname tree ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
   in
-  write_tree 0 tree ;
+  begin
+    match tree with
+    (* First step must be done to avoid drawing a top node. *)
+    | Node({ switch = _ ; swap = _ ; children = c }) ->
+      List.iter (write_tree 0) c
+    | _                                              -> assert false
+  end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
