@@ -312,16 +312,15 @@ let default : Pattmat.t -> Pattmat.t =
   fun { origin = _ ; values = m } ->
   let filtered = List.filter (fun (l, _) ->
       match List.hd l with
-      | Patt(None , _, _)                                          -> true
-      | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _) | Appl(_, _) -> false
-      | x                                                          ->
+      | Patt(_ , _, _)                       -> true
+      | Symb(_, _) | Abst(_, _) | Appl(_, _) -> false
+      | x                                    ->
         Print.pp Format.err_formatter x ;
         assert false) m in
   let unfolded = List.map (fun (l, a) ->
-      match List.hd l with
-      | Patt(None, _, _) -> (List.tl l, a)
-      (* | Appl(t1, t2)     -> (t1 :: t2 :: List.tl l, a) *)
-      | _                -> assert false) filtered in
+      match unfold (List.hd l) with
+      | Patt(_, _, _) -> (List.tl l, a)
+      | _             -> assert false) filtered in
   { origin = Default
   ; values = unfolded }
 
@@ -368,6 +367,6 @@ let compile : Pattmat.t -> t = fun patterns ->
         let children =
           List.map grow (if Pm.is_empty defpatts
                          then spepatts
-                         else spepatts @ [(* defpatts *)]) in
+                         else spepatts @ [defpatts]) in
         Node({ switch = swi ; swap = swap ; children = children }) in
   grow patterns
