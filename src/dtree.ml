@@ -19,6 +19,8 @@ type t = Leaf of term option * action
        | Node of node_data
        | Fail
 
+(* XXX term option or Pattmat.operation? *)
+
 (** Data contained in a node of the tree.  {!recfield:switch} contains the
     term on which the switch that gave birth to this node has been performed
     (or none if the node has been obtained by a default matrix);
@@ -37,6 +39,7 @@ and node_data = { switch : term option
     - [plus (S n) (S m) → S (S m)]
 
     A possible tree might be
+    FIXIT
     {v
 +—?–∘–Z–∘         → n
 ├–Z–∘–S–∘–?–∘     → S m
@@ -65,7 +68,9 @@ let iter : (term option -> action -> 'a) ->
     birth to children nodes.  The label on the edge between a node and its
     child represents the term matched to generate the next pattern matrix (the
     one of the child node); and is therefore one of the terms in the column of
-    the pattern matrix whose index is the label of the node. *)
+    the pattern matrix whose index is the label of the node.  The first [d]
+    edge is due to the initialization matrix (with {!recfield:origin} [=]
+    {!cons:Init}). *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
   let module P = Print in
@@ -185,9 +190,9 @@ struct
     | x :: xs ->
       begin
         match x with
-        (* Wildcards as Patt(None, _, _). *)
         | Patt(None, _, [| |]) -> is_pattern_free xs
-        (* The condition might be too restrictive. *)
+        | Appl(u, _)           -> is_pattern_free (u :: xs)
+        (* ^ Should be useless *)
         | _                   -> false
       end
 
@@ -240,12 +245,11 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
     | x :: xs -> x, xs
     | []      -> assert false in
   match unfold pat, unfold lihd with
-  | Appl(u, _)          , Appl(v, _)            -> spec_filter u (v :: litl)
-  (* ^ Verify there are as many Appl *)
   | _                   , Patt(_, _, _)         -> true
-  (* ^ To be changed (non linearity) *)
-  (* ^ Accept when line begins by wildcard *)
+  (* ^ Any pattern matches the wildcards *)
   | Symb(s, _)          , Symb(s', _)           -> s == s'
+  | Appl(u, _)          , Appl(v, _)            -> spec_filter u (v :: litl)
+  (* ^ Verify there are as many Appl (same arity of leftmost terms)*)
   (* | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
    *   Array.length e1 = Array.length e2 (\* Arity verification *\) *)
   (* A check should be done regarding non linear variables *)
@@ -257,7 +261,6 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   | Symb(_, _)   , Appl(_, _)    -> false
   | Patt(_, _, _), Symb(_, _)    -> false
   | Patt(_, _, _), Appl(_, _)    -> false
-  (* | Symb(_, _)   , Patt(_, _, _) -> false *)
   | Appl(_, _)   , Symb(_, _)    -> false
   | x            , y             ->
     Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
@@ -267,37 +270,35 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
     failwith msg
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term -> Pattmat.line -> Pattmat.line =
-  fun pat li ->
+let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
-  match unfold pat, unfold lihd with
-  | Appl(ul, _)         , Appl(vl, vr)        ->
-  (* ^ Same nested structure since it has been filtered *)
-    spec_line ul (vl :: vr :: litl)
-  | Appl(ul, _)         , Patt(_, _, _)       ->
-    let arity = 1 + appl_left_depth ul in
+  match unfold lihd with
+  | Symb(_, _) -> litl
+  | Appl(u, v) ->
+  (* ^ Nested structure verified in filter *)
+    let upat = unfold (appl_leftmost pat) in
+    spec_line upat (u :: v :: litl)
+  | Patt(_, _, _) ->
+    let arity = appl_left_depth pat in
     List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-  | _                   , Symb(_, _)          ->
-    litl (* Eat the symbol? *)
-  (* Checks could be done on arity of symb. *)
-  | _                   , Abst(_, b)          ->
-    let _, t = Bindlib.unbind b in t :: litl
-  (* Might need to add wildcard to other lines. *)
-  | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
-    let ari = Array.length e1 in
-    List.init ari (fun _ -> Patt(None, "w", [| |])) @ litl
-  | _                   , Patt(Some(_), _, _) ->
-    litl
-  | _                   , x                   ->
-    Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
-    let msg = Printf.sprintf "%s: suspicious specialization unfold"
-        (Buffer.contents Format.stdbuf) in
-    failwith msg
+  | Abst(_, b) ->
+      let _, t = Bindlib.unbind b in t :: litl
+  | _ -> (* Cases that require the pattern *)
+    match unfold pat, unfold lihd with
+    | _                   , x                   ->
+      Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
+      let msg = Printf.sprintf "%s: suspicious specialization unfold"
+          (Buffer.contents Format.stdbuf) in
+      failwith msg
 
 (** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
     or a pattern variable.  The specialization always happen on the first
-    column (which is swapped if needed). *)
+    column (which is swapped if needed).  We allow specialization by
+    {!cons:Appl} as it allows to check the number of successive applications.
+    In case an {!cons:Appl} is given as pattern [p], only terms having the
+    same number of applications and having the same leftmost {e non}
+    {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pattmat.t -> Pattmat.t = fun p m ->
   let up = unfold p in
   let filtered = List.filter (fun (l, _) -> spec_filter up l) m.values in
@@ -368,6 +369,6 @@ let compile : Pattmat.t -> t = fun patterns ->
         let children =
           List.map grow (if Pm.is_empty defpatts
                          then spepatts
-                         else spepatts @ [defpatts]) in
+                         else spepatts @ [(* defpatts *)]) in
         Node({ switch = swi ; swap = swap ; children = children }) in
   grow patterns
