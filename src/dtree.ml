@@ -360,9 +360,8 @@ let compile : Pattmat.t -> t = fun patterns ->
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
         let cons = List.filter (function
-            | Symb(_, _) | Abst(_, _) | Patt(Some(_), _, _)-> true
-            | Appl(_, _) -> true
-            | _                                            -> false)
+            | Symb(_, _) | Abst(_, _) | Appl(_, _)-> true
+            | _                                   -> false)
             fcol in
         let spepatts = List.map (fun s -> specialize s spm) cons in
         let defpatts = default spm in
