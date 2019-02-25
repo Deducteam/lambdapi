@@ -298,8 +298,8 @@ let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
    at the outermost level, i.e, without doing it for the arguments
    themselves. Its implementation is tail-recursive *)
 let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
-  let rec split_fun_args_outermost_aux : p_term -> p_term list -> p_term * p_term list =
-    fun t args ->
+  let rec split_fun_args_outermost_aux :
+    p_term -> p_term list -> p_term * p_term list = fun t args ->
     match t.elt with
     | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
     | x               -> (none x, args)
