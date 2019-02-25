@@ -22,16 +22,12 @@ type priority = float
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
-type implicitness =
-  | ImplicitAsDeclared
-  | FullyExplicit
-
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Iden of qident * implicitness
+  | P_Iden of qident * bool
   (** Variable (empty module path) or symbol (arbitrary module path). *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
@@ -313,9 +309,12 @@ let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
 type telescopicTerm =
   | MkT of p_term * (telescopicTerm list)
 
-(* [p_term_to_telescopicTerm t] transforms the p_term [t] to a telescopicTerm *)
+(* [p_term_to_telescopicTerm t] transforms the parser-level term [t] to
+    a telescopicTerm *)
 let rec p_term_to_telescopicTerm : p_term -> telescopicTerm = fun t ->
+  (* First transform the outermost layer *)
   let (f, args) = split_fun_args_outermost t in
+    (* Then transform the underneath layers *)
     MkT(f, List.map p_term_to_telescopicTerm args)
 
 (** [unsplit_fun_args_outermost t args] builds the application of the
@@ -332,5 +331,5 @@ let rec telescopicTerm_to_p_term : telescopicTerm -> p_term = fun tt ->
   | MkT(f, args) ->
       (* First wrap the arguments at the underneath layers *)
       let argsDone = List.map telescopicTerm_to_p_term args in
-      (* Then wrap the toplevel layer after t *)
+      (* Then wrap the toplevel layer *)
       unsplit_fun_args_outermost f argsDone

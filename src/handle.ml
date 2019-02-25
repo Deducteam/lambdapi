@@ -104,6 +104,10 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       List.iter add_rule rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
+      let implicits = match ao with
+        | Some a -> Scope.get_params_implicitness_of_type a
+        | None   -> []
+      in
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
       let t = fst (scope_basic ss t) in
@@ -135,7 +139,6 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
           fatal x.pos "We have %s ≔ %a." x.elt pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let implicits = List.map (fun (_,_,z) -> z) xs in
       let s = Sign.add_symbol ss.signature Defin x a implicits in
       out 3 "(symb) %s (definition).\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
@@ -143,6 +146,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_theorem(stmt, ts, pe)    ->
       let (x,xs,a) = stmt.elt in
+      let implicits = Scope.get_params_implicitness_of_type a in
       (* Desugaring of arguments of [a]. *)
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* Scoping the type (statement) of the theorem, check sort. *)
@@ -163,7 +167,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             (* If the proof is finished, display a warning. *)
             if Proof.finished st then wrn cmd.pos "You should add QED.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature Const x a [] in
+            let s = Sign.add_symbol ss.signature Const x a implicits in
             out 3 "(symb) %s (admit).\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -172,7 +176,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             if not (Proof.finished st) then
               fatal cmd.pos "The proof is not finished.";
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature Const x a [] in
+            let s = Sign.add_symbol ss.signature Const x a implicits in
             out 3 "(symb) %s (QED).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in

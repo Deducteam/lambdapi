@@ -39,8 +39,8 @@ let rec pp_p_term : p_term pp = fun oc t ->
     let pp_func = pp PFunc in
     match (t.elt, p) with
     | (P_Type            , _    ) -> out "TYPE"
-    | (P_Iden(qid, ImplicitAsDeclared)  , _    ) -> out "%a" pp_qident qid
-    | (P_Iden(qid, FullyExplicit)       , _    ) -> out "@%a" pp_qident qid
+    | (P_Iden(qid, false), _    ) -> out "%a" pp_qident qid
+    | (P_Iden(qid, true) , _    ) -> out "@%a" pp_qident qid
     | (P_Wild            , _    ) -> out "_"
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar

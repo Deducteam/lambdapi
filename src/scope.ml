@@ -132,8 +132,10 @@ type mode =
 let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
   fun ss env t ->
   match t.elt with
-  | P_Iden(_, FullyExplicit)       -> []
-  | P_Iden(id, ImplicitAsDeclared) ->
+  (* If the "fully explicit" tag is set to true, there's no implicits *)
+  | P_Iden(_, true)     -> []
+  (* Otherwise it's implicit as declared *)
+  | P_Iden(id, false)   ->
       (* We first look in the environment *)
       (try let (_,_) = List.assoc (snd id.elt) env in []
       with Not_found ->
@@ -146,7 +148,7 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
                 f.sym_implicits
               (* Not found anywhere, so we don't know about implicits *)
               with Not_found     -> [] )))
-  | _                              -> []
+  | _                   -> []
 
 (** [add_implicit_args params args] builds the full arguments list, using the
     given arguments [args] and with the insertion of "_" for the implicits,
@@ -182,7 +184,8 @@ let add_implicit_args : bool list -> telescopicTerm list -> telescopicTerm list 
     else
       List.rev (add_implicit_args_aux params args [])
 
-(** Adds implicits to telescopic terms *)
+(** [add_implicits_tt ss env t] builds a telescopic term corresponding
+    to [t] where wildcards have been added for the implicits arguments *)
 let rec add_implicits_tt : sig_state -> env -> telescopicTerm -> telescopicTerm =
     fun ss env tt ->
     match tt with
@@ -191,18 +194,20 @@ let rec add_implicits_tt : sig_state -> env -> telescopicTerm -> telescopicTerm 
         let fullArgs = add_implicit_args params args in
           MkT(f, List.map (add_implicits_tt ss env) fullArgs)
 
-(** Adds implicits to p_terms *)
+(** [add_implicits ss env t] builds a parser-level term corresponding
+    to [t] where wildcards have been added for the implicits arguments *)
 let add_implicits : sig_state -> env -> p_term -> p_term = fun ss env t ->
   match t.elt with
   | P_Appl(_, _)
   | P_Iden(_, _)   ->
-      (* split all function symbols and their given arguments *)
+      (* split all function symbols and their given arguments by transforming
+         the p_term to a telescopicTerm *)
       let tt = p_term_to_telescopicTerm t in
-      (* add implicits arguments everywhere (i.e. for the arguments as well) *)
+      (* add implicit arguments everywhere (i.e. for the arguments as well) *)
       let ttfull = add_implicits_tt ss env tt in
       (* Wrap the result back into a p_term *)
       telescopicTerm_to_p_term ttfull
-  | x              -> none x
+  | _              -> t
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode

@@ -256,8 +256,8 @@ rule:
     }
 
 sterm:
-  | qid=QID            { make_pos $loc (P_Iden(make_pos $loc qid, ImplicitAsDeclared)) }
-  | id=ID              { make_pos $loc (P_Iden(make_pos $loc ([], id), ImplicitAsDeclared)) }
+  | qid=QID            { make_pos $loc (P_Iden(make_pos $loc qid, false)) }
+  | id=ID              { make_pos $loc (P_Iden(make_pos $loc ([], id), false)) }
   | WILD               { make_pos $loc P_Wild }
   | TYPE               { make_pos $loc P_Type }
   | L_PAR t=term R_PAR { t }

@@ -222,8 +222,7 @@ let parser any_ident =
   | id:escaped_ident -> id
 
 (** Identifier (regular and non-keyword, or escaped). *)
-let parser ident =
-  | id:any_ident -> in_pos _loc id
+let parser ident = id:any_ident -> in_pos _loc id
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
 let parser meta =
@@ -254,10 +253,10 @@ let parser term @(p : prio) =
       when p >= PAtom -> in_pos _loc P_Type
   (* Variable (or possibly qualified symbol). *)
   | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid, ImplicitAsDeclared))
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, false))
   (* Fully explicit Variable (or possibly qualified symbol) *)
   | "@" qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid, FullyExplicit))
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, true))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
