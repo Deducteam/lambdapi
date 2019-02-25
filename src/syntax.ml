@@ -305,13 +305,14 @@ let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
     | x               -> (none x, args)
   in (split_fun_args_outermost_aux t [])
 
-(** Embedding of p_term with telescopes of arguments replacing Appl nodes *)
-type telescopicTerm =
-  | MkT of p_term * (telescopicTerm list)
+(** telescopit terms, i.e. embedding of p_term with telescopes of arguments
+    replacing Appl nodes *)
+type telesTerm =
+  | MkT of p_term * (telesTerm list)
 
 (* [p_term_to_telescopicTerm t] transforms the parser-level term [t] to
     a telescopicTerm *)
-let rec p_term_to_telescopicTerm : p_term -> telescopicTerm = fun t ->
+let rec p_term_to_telescopicTerm : p_term -> telesTerm = fun t ->
   (* First transform the outermost layer *)
   let (f, args) = split_fun_args_outermost t in
     (* Then transform the underneath layers *)
@@ -326,7 +327,7 @@ let rec unsplit_fun_args_outermost : p_term -> p_term list -> p_term =
   | arg1::args' -> unsplit_fun_args_outermost (none (P_Appl(f, arg1))) args'
 
 (** [telescopicTerm_to_p_term t] wraps the telescopicTerm [t] to a p_term *)
-let rec telescopicTerm_to_p_term : telescopicTerm -> p_term = fun tt ->
+let rec telescopicTerm_to_p_term : telesTerm -> p_term = fun tt ->
   match tt with
   | MkT(f, args) ->
       (* First wrap the arguments at the underneath layers *)

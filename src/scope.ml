@@ -154,11 +154,11 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
     given arguments [args] and with the insertion of "_" for the implicits,
     following the information provided by the formal parameters [param].
     Its implementation is tail-recursive. *)
-let add_implicit_args : bool list -> telescopicTerm list -> telescopicTerm list =
-  fun params args ->
+let add_implicit_args : bool list -> telesTerm list -> telesTerm list =
+    fun params args ->
   let rec add_implicit_args_aux :
-    bool list -> telescopicTerm list -> telescopicTerm list -> telescopicTerm list =
-    fun params args fullArgs ->
+    bool list -> telesTerm list -> telesTerm list -> telesTerm list =
+        fun params args fullArgs ->
     match params,args with
     (* The next parameter is implicit, so we do not consume the next
        available concrete argument *)
@@ -186,7 +186,7 @@ let add_implicit_args : bool list -> telescopicTerm list -> telescopicTerm list 
 
 (** [add_implicits_tt ss env t] builds a telescopic term corresponding
     to [t] where wildcards have been added for the implicits arguments *)
-let rec add_implicits_tt : sig_state -> env -> telescopicTerm -> telescopicTerm =
+let rec add_implicits_tt : sig_state -> env -> telesTerm -> telesTerm =
     fun ss env tt ->
     match tt with
     | MkT(f, args) ->
