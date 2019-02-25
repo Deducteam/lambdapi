@@ -169,9 +169,9 @@ struct
     { pm with values = List.map (fun (l, a) ->
           (List.swap_head l c, a)) pm.values }
 
-  (** [cmp c d] compares columns [c] and [d] returning:  +1 if c > d, 0 if c =
-      d or -1 if c < d; where <, = and > are defined according to a heuristic.
-  *)
+  (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if [c
+      = d] or -1 if [c < d]; where [<], [=] and [>] are defined according to a
+      heuristic.  *)
   let cmp : line -> line -> int = fun _ _ -> 0
 
   (** [pick_best m] returns the index of the best column of matrix [m]
