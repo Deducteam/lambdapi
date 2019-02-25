@@ -222,6 +222,11 @@ let deapply : term -> term list = fun te ->
     | u            -> [u] in
   List.rev (flatten te)
 
+(** [appl_leftmost t] returns the leftmost non {!cons:Appl} term of [t]. *)
+let rec appl_leftmost : term -> term = function
+  | Appl(u, _) -> appl_leftmost u
+  | u          -> u
+
 (** [appl_left_depth t] returns the number of successive {!cons:Appl} on the
     left of the expression. *)
 let rec appl_left_depth : term -> int = function
@@ -237,11 +242,12 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   match unfold pat, unfold lihd with
   | Appl(u, _)          , Appl(v, _)            -> spec_filter u (v :: litl)
   (* ^ Verify there are as many Appl *)
-  | _                   , Patt (None, _, [| |]) -> true
+  | _                   , Patt(_, _, _)         -> true
+  (* ^ To be changed (non linearity) *)
   (* ^ Accept when line begins by wildcard *)
   | Symb(s, _)          , Symb(s', _)           -> s == s'
-  | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
-    Array.length e1 = Array.length e2 (* Arity verification *)
+  (* | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
+   *   Array.length e1 = Array.length e2 (\* Arity verification *\) *)
   (* A check should be done regarding non linear variables *)
   | Abst(_, b1)         , Abst(_, b2)           ->
     let _, _, _ = Bindlib.unbind2 b1 b2 in
@@ -251,7 +257,8 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   | Symb(_, _)   , Appl(_, _)    -> false
   | Patt(_, _, _), Symb(_, _)    -> false
   | Patt(_, _, _), Appl(_, _)    -> false
-  | Symb(_, _)   , Patt(_, _, _) -> false
+  (* | Symb(_, _)   , Patt(_, _, _) -> false *)
+  | Appl(_, _)   , Symb(_, _)    -> false
   | x            , y             ->
     Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
     Print.pp Format.str_formatter y ;
@@ -267,7 +274,7 @@ let rec spec_line : term -> Pattmat.line -> Pattmat.line =
   | Appl(ul, _)         , Appl(vl, vr)        ->
   (* ^ Same nested structure since it has been filtered *)
     spec_line ul (vl :: vr :: litl)
-  | Appl(ul, _)        , Patt(None, _, [| |]) ->
+  | Appl(ul, _)         , Patt(_, _, _)       ->
     let arity = 1 + appl_left_depth ul in
     List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
   | _                   , Symb(_, _)          ->
@@ -295,7 +302,7 @@ let specialize : term -> Pattmat.t -> Pattmat.t = fun p m ->
   let up = unfold p in
   let filtered = List.filter (fun (l, _) -> spec_filter up l) m.values in
   let newmat = List.map (fun (l, a) -> (spec_line up l, a)) filtered in
-  { origin = Specialized(up)
+  { origin = Specialized(appl_leftmost up)
   ; values = newmat }
 
 (** [default m] computes the default matrix containing what remains to be
