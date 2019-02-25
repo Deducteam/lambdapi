@@ -39,21 +39,22 @@ and node_data = { switch : term option
     - [plus (S n) (S m) → S (S m)]
 
     A possible tree might be
-    FIXIT
     {v
-+—?–∘–Z–∘         → n
-├–Z–∘–S–∘–?–∘     → S m
-└–S–∘–?–∘–S–∘–?–∘ → S (S m)
++–?–∘–Z–∘     → n
+├–Z–∘–Z–∘     → n
+|   └–S–∘–?–∘ → S m
+└–S–∘–Z–∘     → n
+    └–S–∘–?–∘ → S (S m)
     v}
     with [∘] being a node (with a label not shown here) and [–u–]
     being an edge with a matching on symbol [u] or a variable or wildcard when
-    [?]. *)
+    [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
 let iter : (term option -> action -> 'a) ->
-  (term option -> int option -> t list -> 'a) ->
+  (term option -> int option -> 'a list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
     | Leaf(teo, a)                                   -> do_leaf teo a
@@ -174,9 +175,9 @@ struct
     { pm with values = List.map (fun (l, a) ->
           (List.swap_head l c, a)) pm.values }
 
-  (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if [c
-      = d] or -1 if [c < d]; where [<], [=] and [>] are defined according to a
-      heuristic.  *)
+  (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
+      [c = d] or -1 if [c < d]; where [<], [=] and [>] are defined according
+      to a heuristic.  *)
   let cmp : line -> line -> int = fun _ _ -> 0
 
   (** [pick_best m] returns the index of the best column of matrix [m]
@@ -216,16 +217,6 @@ struct
     assert ((List.length unpacked) > 0) ;
     Array.of_list unpacked
 end
-
-(** [deapply t] flattens nested {!cons:Appl} terms, with a non {!cons:Appl}
-    term as first element, and the successive right arguments in the list.
-    For instance, [deapply (Appl(Appl(S, t1), t2), t3)] should yield [[S, t1,
-    t2, t3]] (with [ti] possibly being of the form [ti = Appl(u, v)]). *)
-let deapply : term -> term list = fun te ->
-  let rec flatten : term -> term list = function
-    | Appl(u1, u2) -> u2 :: flatten u1
-    | u            -> [u] in
-  List.rev (flatten te)
 
 (** [appl_leftmost t] returns the leftmost non {!cons:Appl} term of [t]. *)
 let rec appl_leftmost : term -> term = function
