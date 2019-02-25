@@ -222,20 +222,28 @@ let deapply : term -> term list = fun te ->
     | u            -> [u] in
   List.rev (flatten te)
 
+(** [appl_left_depth t] returns the number of successive {!cons:Appl} on the
+    left of the expression. *)
+let rec appl_left_depth : term -> int = function
+  | Appl(u, _) -> 1 + appl_left_depth u
+  | _          -> 0
+
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
-    kept when specialising the matrix on pattern [p]. *)
+    kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   let lihd, litl = match li with
     | x :: xs -> x, xs
     | []      -> assert false in
   match unfold pat, unfold lihd with
-  | Appl(u, _)          , Appl(v, _) -> spec_filter u (v :: litl)
-  | Symb(s, _)          , Symb(s', _)          -> s == s'
-  | Patt (Some _, _, e1), Patt (Some _, _, e2) ->
+  | Appl(u, _)          , Appl(v, _)            -> spec_filter u (v :: litl)
+  (* ^ Verify there are as many Appl *)
+  | _                   , Patt (None, _, [| |]) -> true
+  (* ^ Accept when line begins by wildcard *)
+  | Symb(s, _)          , Symb(s', _)           -> s == s'
+  | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
     Array.length e1 = Array.length e2 (* Arity verification *)
   (* A check should be done regarding non linear variables *)
-  | Patt(None, _, [| |]), Patt(None, _, [| |]) -> true
-  | Abst(_, b1)         , Abst(_, b2)          ->
+  | Abst(_, b1)         , Abst(_, b2)           ->
     let _, _, _ = Bindlib.unbind2 b1 b2 in
     true
   (* We should check that bodies depend on the same variables. *)
@@ -251,26 +259,29 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
         (Buffer.contents Format.stdbuf) in
     failwith msg
 
-(** [spec_line p l] specializes the line [l] against pattern [p]*)
+(** [spec_line p l] specializes the line [l] against pattern [p]. *)
 let rec spec_line : term -> Pattmat.line -> Pattmat.line =
   fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match unfold pat, unfold lihd with
-  | Appl(ul, _), Appl(vl, vr) -> spec_line ul (vl :: vr :: litl)
-  | _                   , Symb(_, _)                 ->
+  | Appl(ul, _)         , Appl(vl, vr)        ->
+  (* ^ Same nested structure since it has been filtered *)
+    spec_line ul (vl :: vr :: litl)
+  | Appl(ul, _)        , Patt(None, _, [| |]) ->
+    let arity = 1 + appl_left_depth ul in
+    List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
+  | _                   , Symb(_, _)          ->
     litl (* Eat the symbol? *)
   (* Checks could be done on arity of symb. *)
-  | _                   , Abst(_, b)                 ->
+  | _                   , Abst(_, b)          ->
     let _, t = Bindlib.unbind b in t :: litl
-  | _                   , Appl(t1, t2)               ->
-    t1 :: t2 :: litl
   (* Might need to add wildcard to other lines. *)
   | Patt(Some(_), _, e1)   , Patt(None, _, _) ->
     let ari = Array.length e1 in
-    List.init ari (fun _ -> Patt(None, "w", [| |])) @ (litl)
-  | _                   , Patt(Some(_), _, _)        ->
+    List.init ari (fun _ -> Patt(None, "w", [| |])) @ litl
+  | _                   , Patt(Some(_), _, _) ->
     litl
-  | _                   , x                          ->
+  | _                   , x                   ->
     Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
     let msg = Printf.sprintf "%s: suspicious specialization unfold"
         (Buffer.contents Format.stdbuf) in
