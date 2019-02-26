@@ -90,16 +90,6 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     in
     match_args r.lhs stk
   in
-  (* EXPE *)
-  if List.length !(s.sym_rules) > 0 then
-    begin
-      let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
-      let tree = Dtree.compile pama in
-      match tree with
-      | Node({ children = _ ; _ }) -> Dtree.to_dot s.sym_name tree
-      | _ -> ()
-    end ;
-  (* EXPE *)
   List.map_find match_rule Timed.(!(s.sym_rules))
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for

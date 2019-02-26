@@ -254,6 +254,16 @@ let read : string -> t = fun fname ->
     its dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
+  (* EXPE *)
+  if List.length !(sym.sym_rules) > 0 then
+    begin
+      let pama = Dtree.Pattmat.of_rules Timed.(!(sym.sym_rules)) in
+      let tree = Dtree.compile pama in
+      match tree with
+      | Node({ children = _ ; _ }) -> Dtree.to_dot sym.sym_name tree
+      | _ -> ()
+    end ;
+  (* EXPE *)
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
