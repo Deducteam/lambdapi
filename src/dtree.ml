@@ -231,9 +231,9 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
    *   Array.length e1 = Array.length e2 (\* Arity verification *\) *)
   (* A check should be done regarding non linear variables *)
   | Abst(_, b1)         , Abst(_, b2)           ->
-    let _, _, _ = Bindlib.unbind2 b1 b2 in
-    true
-  (* We should check that bodies depend on the same variables. *)
+    let _, u, v = Bindlib.unbind2 b1 b2 in
+    spec_filter u (v :: litl)
+  | Vari(x)             , Vari(y)                -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
   | Symb(_, _)   , Appl(_, _)    -> false
   | Patt(_, _, _), Symb(_, _)    -> false
@@ -250,16 +250,17 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
 let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match unfold lihd with
-  | Symb(_, _) -> litl
-  | Appl(u, v) ->
+  | Symb(_, _)    -> litl
+  | Appl(u, v)    ->
   (* ^ Nested structure verified in filter *)
     let upat = unfold (appl_leftmost pat) in
     spec_line upat (u :: v :: litl)
   | Patt(_, _, _) ->
     let arity = appl_left_depth pat in
     List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-  | Abst(_, b) ->
+  | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
+  | Vari(_)       -> litl
   | _ -> (* Cases that require the pattern *)
     match unfold pat, unfold lihd with
     | _                   , x                   ->
@@ -291,6 +292,7 @@ let default : Pattmat.t -> Pattmat.t =
       match List.hd l with
       | Patt(_ , _, _)                       -> true
       | Symb(_, _) | Abst(_, _) | Appl(_, _) -> false
+      | Vari(_)                              -> false
       | x                                    ->
         Print.pp Format.err_formatter x ;
         assert false) m in
