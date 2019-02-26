@@ -258,15 +258,17 @@ let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
   (* ^ Nested structure verified in filter *)
     let upat = unfold (appl_leftmost pat) in
     spec_line upat (u :: v :: litl)
-  | Patt(_, _, _) ->
-    let arity = appl_left_depth pat in
-    List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
   | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
   | Vari(_)       -> litl
   | _ -> (* Cases that require the pattern *)
-    match unfold pat, unfold lihd with
-    | _                   , x                   ->
+    match unfold lihd, unfold pat with
+    | Patt(_, _, _), Appl(_, _) ->
+       let arity = appl_left_depth pat in
+       List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
+    | Patt(_, _, _), Abst(_, b) ->
+       let _, t = Bindlib.unbind b in t :: litl
+    | x            , _          ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
       let msg = Printf.sprintf "%s: suspicious specialization unfold"
           (Buffer.contents Format.stdbuf) in
