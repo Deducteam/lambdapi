@@ -90,6 +90,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     (* First step must be done to avoid drawing a top node. *)
     | Node({ switch = _ ; swap = _ ; children = c }) ->
       List.iter (write_tree 0) c
+    | Leaf(_, _)                                     -> write_tree 0 tree
     | _                                              -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;

@@ -256,15 +256,12 @@ let read : string -> t = fun fname ->
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   (* EXPE *)
-  if List.length !(sym.sym_rules) > 0 then
-    begin
-      let pama = Dtree.Pattmat.of_rules Timed.(!(sym.sym_rules)) in
-      let tree = Dtree.compile pama in
-      sym.sym_tree := tree ;
-      match tree with
-      | Node({ children = _ ; _ }) -> Dtree.to_dot sym.sym_name !(sym.sym_tree)
-      | _ -> ()
-    end ;
+  begin
+    let pama = Dtree.Pattmat.of_rules Timed.(!(sym.sym_rules)) in
+    let tree = Dtree.compile pama in
+    sym.sym_tree := tree ;
+    Dtree.to_dot sym.sym_name !(sym.sym_tree)
+  end ;
   (* EXPE *)
   if sym.sym_path <> sign.sign_path then
     let m =
