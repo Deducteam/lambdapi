@@ -327,8 +327,8 @@ let compile : Pattmat.t -> t = fun patterns ->
       if Pm.is_pattern_free fline then
         Leaf(swi, snd @@ List.hd m)
       else
-        (* Pick a column in the matrix and pattern match on the constructors in
-           it to grow the tree. *)
+        (* Pick a column in the matrix and pattern match on the constructors
+           in it to grow the tree. *)
         let kept_cols = Pm.discard_patt_free pm in
         let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
