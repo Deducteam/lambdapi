@@ -58,7 +58,7 @@ let rec t_goal : Proof.builtins -> string -> term -> bool =
 (** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
     context [ctxt] and a config [cfg]. *)
 and t_prop :
-    prop_config -> cnst_table -> Ctxt.t -> term -> 
+    prop_config -> cnst_table -> Ctxt.t -> term ->
     cnst_table * Why3.Term.term =
     fun cfg l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
