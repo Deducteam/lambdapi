@@ -239,8 +239,11 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   | Patt(_, _, _), Symb(_, _)    -> false
   | Patt(_, _, _), Appl(_, _)    -> false
   | Appl(_, _)   , Symb(_, _)    -> false
+  | Appl(_, _)   , Abst(_, _)    -> false
+  | Abst(_, _)   , Appl(_, _)    -> false
   | x            , y             ->
     Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
+    Format.fprintf Format.str_formatter "|" ;
     Print.pp Format.str_formatter y ;
     let msg = Printf.sprintf "%s: suspicious specialization-filtering"
         (Buffer.contents Format.stdbuf) in
@@ -303,6 +306,12 @@ let default : Pattmat.t -> Pattmat.t =
   { origin = Default
   ; values = unfolded }
 
+(** [is_cons t] returns whether [t] can be considered as a constructor. *)
+let rec is_cons : term -> bool = function
+  | Symb(_, _) | Abst(_, _) -> true
+  | Appl(u, _)              -> is_cons u
+  | _                       -> false
+
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pattmat.t -> t = fun patterns ->
@@ -337,10 +346,7 @@ let compile : Pattmat.t -> t = fun patterns ->
           | None    -> pm
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
-        let cons = List.filter (function
-            | Symb(_, _) | Abst(_, _) | Appl(_, _)-> true
-            | _                                   -> false)
-            fcol in
+        let cons = List.filter is_cons fcol in
         let spepatts = List.map (fun s -> specialize s spm) cons in
         let defpatts = default spm in
         let children =
