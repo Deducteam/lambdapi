@@ -61,6 +61,8 @@ type term =
   (** Definition of the symbol. *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
+  ; sym_tree : tree ref
+  (** Tree for rule selection. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
@@ -116,6 +118,28 @@ type term =
   (** Required number of arguments to be applicable. *)
   ; vars  : (string * int) array
   (** Name and arity of the pattern variables bound in the RHS. *) }
+
+(** Tree type.  {!const:Leaf}[(t, a)] are the leaves of the tree holding the
+    targets of the rewriting as an {!type:action}; for [t], see
+    {!recfield:switch} of {!type:node_data}.  The term option evinces--if the
+    leaf has been obtained by a switch--the term that has been matched before
+    reaching the leaf.  The {!const:Node}[n] constructor allows primarily to
+    perform a switch among subtrees recorded in {!recfield:children} of [n].
+    {!const:Fail} is a matching failure. *)
+ and tree = Leaf of term option * (term_env, term) Bindlib.mbinder
+          | Node of node_data
+          | Fail
+
+(** Data contained in a node of the tree.  {!recfield:switch} contains the
+    term on which the switch that gave birth to this node has been performed
+    (or none if the node has been obtained by a default matrix);
+    {!recfield:swap} indicates whether the columns of the matrix have been
+    swapped before the switch, with an int indicating the column which has
+    been swapped with the first one (or None if no swap is performed) and
+    {!recfield:children} contains the subtrees. *)
+ and node_data = { switch : term option
+                 ; swap : int option
+                 ; children : tree list}
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -272,7 +296,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_rules = ref [] ; sym_mode = Const }
+    ; sym_rules = ref [] ; sym_mode = Const ; sym_tree = ref Fail }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 

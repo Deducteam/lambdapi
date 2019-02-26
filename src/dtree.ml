@@ -5,32 +5,11 @@
 open Terms
 open Extra
 
+(** See {!type:tree} in {!module:Terms}. *)
+type t = tree
+
 (** Type of the leaves of the tree.  See {!file:terms.ml}, {!recfield:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
-
-(** Tree type.  {!const:Leaf}[(t, a)] are the leaves of the tree holding the
-    targets of the rewriting as an {!type:action}; for [t], see
-    {!recfield:switch} of {!type:node_data}.  The term option evinces--if the
-    leaf has been obtained by a switch--the term that has been matched before
-    reaching the leaf.  The {!const:Node}[n] constructor allows primarily to
-    perform a switch among subtrees recorded in {!recfield:children} of [n].
-    {!const:Fail} is a matching failure. *)
-type t = Leaf of term option * action
-       | Node of node_data
-       | Fail
-
-(* XXX term option or Pattmat.operation? *)
-
-(** Data contained in a node of the tree.  {!recfield:switch} contains the
-    term on which the switch that gave birth to this node has been performed
-    (or none if the node has been obtained by a default matrix);
-    {!recfield:swap} indicates whether the columns of the matrix have been
-    swapped before the switch, with an int indicating the column which has
-    been swapped with the first one (or None if no swap is performed) and
-    {!recfield:children} contains the subtrees. *)
-and node_data = { switch : term option
-                ; swap : int option
-                ; children : t list}
 
 (** {b Example} Given a rewrite system for a symbol [plus] given as (in
     [plus.dk])

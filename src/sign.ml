@@ -170,7 +170,8 @@ let add_symbol : t -> sym_mode -> strloc -> term -> sym = fun sign mode s a ->
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_rules = ref [] ; sym_mode = mode }
+    ; sym_def = ref None ; sym_rules = ref [] ; sym_tree = ref Fail
+    ; sym_mode = mode }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -259,8 +260,9 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     begin
       let pama = Dtree.Pattmat.of_rules Timed.(!(sym.sym_rules)) in
       let tree = Dtree.compile pama in
+      sym.sym_tree := tree ;
       match tree with
-      | Node({ children = _ ; _ }) -> Dtree.to_dot sym.sym_name tree
+      | Node({ children = _ ; _ }) -> Dtree.to_dot sym.sym_name !(sym.sym_tree)
       | _ -> ()
     end ;
   (* EXPE *)
