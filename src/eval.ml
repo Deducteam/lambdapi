@@ -165,7 +165,6 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-
 let whnf : term -> term = fun t ->
   let t = unfold t in
   Pervasives.(steps := 0);
