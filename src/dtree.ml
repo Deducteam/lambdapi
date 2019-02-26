@@ -177,10 +177,10 @@ struct
     | x :: xs ->
       begin
         match x with
-        | Patt(None, _, [| |]) -> is_pattern_free xs
-        | Appl(u, _)           -> is_pattern_free (u :: xs)
+        | Patt(_, _, _) -> is_pattern_free xs
+        | Appl(u, _)    -> is_pattern_free (u :: xs)
         (* ^ Should be useless *)
-        | _                   -> false
+        | _             -> false
       end
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
