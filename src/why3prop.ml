@@ -1,11 +1,10 @@
 (** Translation of lambdapi goals to why3 goals in propositional case *)
 
 open Terms
-open Why3
 open Extra
 
 (* a type to present the list of why3 constants and lambdapi terms *)
-type cnst_table = (term * Term.lsymbol) list
+type cnst_table = (term * Why3.Term.lsymbol) list
 
 (* number of axioms proved whith the Why3 tactic *)
 let nbr_axioms : int ref = ref 0
@@ -59,36 +58,38 @@ let rec t_goal : Proof.builtins -> string -> term -> bool =
 (** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
     context [ctxt] and a config [cfg]. *)
 and t_prop :
-    prop_config -> cnst_table -> Ctxt.t -> term -> (cnst_table * Term.term) =
+    prop_config -> cnst_table -> Ctxt.t -> term -> 
+    cnst_table * Why3.Term.term =
     fun cfg l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
     (match s with
     | symbol when Basics.is_symb (fst cfg.symb_and) symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_and t1 t2
+        l_prop, Why3.Term.t_and t1 t2
     | symbol when Basics.is_symb (fst cfg.symb_or) symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_or t1 t2
+        l_prop, Why3.Term.t_or t1 t2
     | symbol when Basics.is_symb (fst cfg.symb_imp) symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
-        l_prop, Term.t_implies t1 t2
+        l_prop, Why3.Term.t_implies t1 t2
     | symbol when Basics.is_symb (fst cfg.symb_not) symbol  ->
         let (l_prop, t) = t_prop cfg l_prop ctxt (List.nth args 0) in
-        l_prop, Term.t_not t
+        l_prop, Why3.Term.t_not t
     | Symb(_, _)                        ->
         (* if the term [p] is in the list [l_prop] *)
         if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) l_prop then
             (* then find it and return it *)
             let lp_eq = fun (lp_t, _) -> Basics.eq lp_t p in
             let (_, ct) = List.find lp_eq l_prop in
-                (l_prop, Term.ps_app ct [])
+                (l_prop, Why3.Term.ps_app ct [])
             else
             (* or generate a new constant in why3 *)
-                let sym = Term.create_psymbol (Ident.id_fresh "P") [] in
-                let new_predicate = Term.ps_app sym [] in
+                let new_symbol = Why3.Ident.id_fresh "P" in
+                let sym = Why3.Term.create_psymbol new_symbol [] in
+                let new_predicate = Why3.Term.ps_app sym [] in
                 (* add the new symbol to the list and return it *)
                 (p, sym)::l_prop, new_predicate
     | _                                     ->
