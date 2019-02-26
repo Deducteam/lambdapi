@@ -93,11 +93,11 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
   (* EXPE *)
   if List.length !(s.sym_rules) > 0 then
     begin
-      Printf.printf "***************************\n" ;
-      Printf.printf "Building tree for symb %s\n" (s.sym_name) ;
       let pama = Dtree.Pattmat.of_rules Timed.(!(s.sym_rules)) in
       let tree = Dtree.compile pama in
-      Dtree.to_dot s.sym_name tree ;
+      match tree with
+      | Node({ children = _ ; _ }) -> Dtree.to_dot s.sym_name tree
+      | _ -> ()
     end ;
   (* EXPE *)
   List.map_find match_rule Timed.(!(s.sym_rules))
