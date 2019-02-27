@@ -230,26 +230,29 @@ let rec appl_left_depth : term -> int = function
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
-let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
+let rec spec_filter : term_env array -> term -> Pm.line -> bool =
+  fun ar pat li ->
   (* Might be relevant to reduce the function to [term -> term -> bool] with
      [spec_filter p t] testing pattern [p] against head of line [t] *)
   let lihd, litl = match li with
     | x :: xs -> x, xs
     | []      -> assert false in
   match unfold pat, unfold lihd with
-  | _                   , Patt(_, _, _)         -> true
-  (* ^ Any pattern matches the wildcards *)
-  | Symb(s, _)          , Symb(s', _)           -> s == s'
-  | Appl(u1, u2)        , Appl(v1, v2)          ->
-    spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
+  | _           , Patt(Some(i), _, [| |]) when ar.(i) = TE_None -> true
+  (* ^ Wildcard or linear var appearing in rhs *)
+  | p           , Patt(Some(i), _, e) when ar.(i) <> TE_None     ->
+  (* ^ Non linear var *)
+    let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
+    let ihead = Bindlib.msubst b e in
+    spec_filter ar p (ihead :: litl)
+  | Symb(s, _)  , Symb(s', _)                                   -> s == s'
+  | Appl(u1, u2), Appl(v1, v2)                                  ->
+    spec_filter ar u1 (v1 :: litl) && spec_filter ar u2 (v2 :: litl)
   (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
        left arg of Appl is performed in [matching], so we perform it here. *)
-  (* | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
-   *   Array.length e1 = Array.length e2 (\* Arity verification *\) *)
-  (* A check should be done regarding non linear variables *)
   | Abst(_, b1)         , Abst(_, b2)           ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
-    spec_filter u (v :: litl)
+    spec_filter ar u (v :: litl)
   | Vari(x)             , Vari(y)                -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
   | Symb(_, _)   , Appl(_, _)    -> false
@@ -267,26 +270,32 @@ let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
     failwith msg
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
+let rec spec_line : term_env array -> term -> Pm.line -> Pm.line =
+  fun ar pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match unfold lihd with
   | Symb(_, _)    -> litl
   | Appl(u, v)    ->
   (* ^ Nested structure verified in filter *)
     let upat = unfold (appl_leftmost pat) in
-    spec_line upat (u :: v :: litl)
+    spec_line ar upat (u :: v :: litl)
   | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
   | Vari(_)       -> litl
   | _ -> (* Cases that require the pattern *)
     match unfold lihd, unfold pat with
-    | Patt(_, _, _), Appl(_, _) ->
-       let arity = appl_left_depth pat in
-       List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-    | Patt(_, _, _), Abst(_, b) ->
-       let _, t = Bindlib.unbind b in t :: litl
-    | Patt(_, _, _), _          -> litl
-    | x            , y          ->
+    | Patt(None, _, [| |]), Appl(_, _)                          ->
+    (* ^ Wildcard *)
+      let arity = appl_left_depth pat in
+      List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
+    | Patt(Some(i), _, [| |]), Appl(_, _) when ar.(i) = TE_None ->
+    (* ^ Variable appearing in right hand side *)
+      let arity = appl_left_depth pat in
+      List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
+    | Patt(_, _, _)       , Abst(_, b)                          ->
+      let _, t = Bindlib.unbind b in t :: litl
+    | Patt(_, _, _)       , _                                   -> litl
+    | x                   , y                                   ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
       Format.fprintf Format.str_formatter "|" ;
       Print.pp Format.str_formatter y ;
@@ -304,10 +313,10 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let up = unfold p in
-  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
-      spec_filter up l) m.values in
+  let filtered = List.filter (fun { Pm.lhs = l ; env = e ; _ } ->
+      spec_filter e up l) m.values in
   let newmat = List.map (fun rul ->
-      { rul with Pm.lhs = spec_line up rul.Pm.lhs }) filtered in
+      { rul with Pm.lhs = spec_line rul.Pm.env up rul.Pm.lhs }) filtered in
   { origin = Specialized(appl_leftmost up)
   ; values = newmat }
 
