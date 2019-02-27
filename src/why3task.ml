@@ -11,6 +11,8 @@ let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
     let goal = Why3.Decl.create_prsymbol new_goal in
     Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal f
 
+(** [add_hypothesis tsk (axiom_name, axiom_term)] add the axiom [axiom_term]
+    named [axiom_name] to the Why3 task [tsk]. *)
 let add_hypothesis :
     Why3.Task.task -> string * Why3.Term.term -> Why3.Task.task =
     fun tsk (axiom_name, axiom_term) ->
@@ -18,6 +20,8 @@ let add_hypothesis :
     let axiom = Why3.Decl.create_prsymbol new_axiom in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom axiom_term
 
+(** [declare_axioms l tsk] add all axioms that [l] contains to the Why3 task
+    [tsk]. *)
 let declare_axioms :
     (string * Why3.Term.term) list -> Why3.Task.task -> Why3.Task.task =
     fun l tsk ->
