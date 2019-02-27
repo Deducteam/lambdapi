@@ -106,9 +106,9 @@ struct
   type line = term list
 
   (** A redefinition of the rule type. *)
-  type rule = { data : line
-              (** The left hand side of a rule. *)
-              ; action : action
+  type rule = { lhs : line
+              (** Left hand side of a rule. *)
+              ; rhs : action
               (** Right hand side of a rule. *)
               ; env : term_env array
               (** Used to pattern match variables. *)}
@@ -135,7 +135,7 @@ struct
   let pp : t pp = fun oc { values = va ; _ } ->
     let module F = Format in
     F.fprintf oc "[|@[<v>@," ;
-    List.pp pp_line "\n  " oc (List.map (fun { data = l ; _ } -> l) va) ;
+    List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) va) ;
     (* List.pp does not process Format "@" directives when in sep *)
     F.fprintf oc "@.|]@,@?"
 
@@ -143,7 +143,7 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
-          { data = r. lhs ; action = r.rhs
+          { lhs = r.Terms.lhs ; rhs = r.Terms.rhs
           ; env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None }) rs
     ; origin = Init }
 
@@ -153,7 +153,7 @@ struct
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
   let get_col : int -> t -> line = fun ind { values = valu ; _ } ->
-    let opcol = List.fold_left (fun acc { data = li ; _ } ->
+    let opcol = List.fold_left (fun acc { lhs = li ; _ } ->
         List.nth_opt li ind :: acc) []
         valu in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
@@ -163,14 +163,14 @@ struct
   let select : t -> int array -> t = fun m indexes ->
     { values = List.map (fun rul ->
           { rul with
-            data = Array.fold_left (fun acc i -> List.nth rul.data i :: acc)
+            lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
                 [] indexes }) m.values
     ; origin = m.origin }
 
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
     { pm with values = List.map (fun rul ->
-          { rul with data = List.swap_head rul.data c }) pm.values }
+          { rul with lhs = List.swap_head rul.lhs c }) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
       [c = d] or -1 if [c < d]; where [<], [=] and [>] are defined according
@@ -197,7 +197,7 @@ struct
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
   let discard_patt_free : t -> int array = fun m ->
-    let ncols = List.fold_left (fun acc { data = l ; _ } ->
+    let ncols = List.fold_left (fun acc { lhs = l ; _ } ->
         let le = List.length l in
       if le > acc then le else acc) 0 m.values in
     let pattfree = List.init ncols (fun k ->
@@ -215,6 +215,8 @@ struct
     Array.of_list unpacked
 end
 
+module Pm = Pattmat
+
 (** [appl_leftmost t] returns the leftmost non {!cons:Appl} term of [t]. *)
 let rec appl_leftmost : term -> term = function
   | Appl(u, _) -> appl_leftmost u
@@ -228,7 +230,7 @@ let rec appl_left_depth : term -> int = function
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
-let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
+let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
   (* Might be relevant to reduce the function to [term -> term -> bool] with
      [spec_filter p t] testing pattern [p] against head of line [t] *)
   let lihd, litl = match li with
@@ -265,7 +267,7 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
     failwith msg
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
+let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match unfold lihd with
   | Symb(_, _)    -> litl
@@ -300,20 +302,20 @@ let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
     In case an {!cons:Appl} is given as pattern [p], only terms having the
     same number of applications and having the same leftmost {e non}
     {!cons:Appl} are considered as constructors. *)
-let specialize : term -> Pattmat.t -> Pattmat.t = fun p m ->
+let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let up = unfold p in
-  let filtered = List.filter (fun { Pattmat.data = l ; _ } ->
+  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter up l) m.values in
   let newmat = List.map (fun rul ->
-      { rul with Pattmat.data = spec_line up Pattmat.(rul.data) }) filtered in
+      { rul with Pm.lhs = spec_line up rul.Pm.lhs }) filtered in
   { origin = Specialized(appl_leftmost up)
   ; values = newmat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Pattmat.t -> Pattmat.t =
+let default : Pm.t -> Pm.t =
   fun { origin = _ ; values = m } ->
-  let filtered = List.filter (fun { Pattmat.data = l ; _ } ->
+  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       match List.hd l with
       | Patt(_ , _, _)                       -> true
       | Symb(_, _) | Abst(_, _) | Appl(_, _) -> false
@@ -322,9 +324,9 @@ let default : Pattmat.t -> Pattmat.t =
         Print.pp Format.err_formatter x ;
         assert false) m in
   let unfolded = List.map (fun rul ->
-      match unfold (List.hd rul.Pattmat.data) with
+      match unfold (List.hd rul.Pm.lhs) with
       | Patt(_, _, _) ->
-        { rul with Pattmat.data = List.tl rul.Pattmat.data }
+        { rul with Pm.lhs = List.tl rul.Pm.lhs }
       | _             -> assert false) filtered in
   { origin = Default
   ; values = unfolded }
@@ -337,8 +339,7 @@ let rec is_cons : term -> bool = function
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let compile : Pattmat.t -> t = fun patterns ->
-  let module Pm = Pattmat in
+let compile : Pm.t -> t = fun patterns ->
   let rec grow : Pm.t -> t = fun pm ->
     let { Pm.origin = o ; Pm.values = m } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
@@ -353,9 +354,9 @@ let compile : Pattmat.t -> t = fun patterns ->
       let swi = match o with
         | Init | Default -> None
         | Specialized(t) -> Some t in
-      let fline = (List.hd m).Pm.data in
+      let fline = (List.hd m).Pm.lhs in
       if Pm.is_pattern_free fline then
-        Leaf(swi, (List.hd m).Pm.action)
+        Leaf(swi, (List.hd m).Pm.rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
