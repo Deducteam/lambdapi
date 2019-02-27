@@ -105,15 +105,6 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [assoc_opt key l] returns the value associated with key in the list
-      of pairs l. That is, assoc_opt key [ ...; (key,b); ...] = b
-      if (key,b) is the leftmost binding of [a] in list [l].
-      Returns None if there is no value associated with [key] in l. *)
-    let rec assoc_opt : 'a -> ('a * 'b) list -> 'b option = fun key l ->
-    match l with
-    | [] -> None
-    | (a,b)::l -> if compare a key = 0 then Some b else assoc_opt key l
-
   end
 
 module Array =
