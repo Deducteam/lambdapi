@@ -218,6 +218,8 @@ let rec appl_left_depth : term -> int = function
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
+  (* Might be relevant to reduce the function to [term -> term -> bool] with
+     [spec_filter p t] testing pattern [p] against head of line [t] *)
   let lihd, litl = match li with
     | x :: xs -> x, xs
     | []      -> assert false in
@@ -225,8 +227,10 @@ let rec spec_filter : term -> Pattmat.line -> bool = fun pat li ->
   | _                   , Patt(_, _, _)         -> true
   (* ^ Any pattern matches the wildcards *)
   | Symb(s, _)          , Symb(s', _)           -> s == s'
-  | Appl(u, _)          , Appl(v, _)            -> spec_filter u (v :: litl)
-  (* ^ Verify there are as many Appl (same arity of leftmost terms)*)
+  | Appl(u1, u2)        , Appl(v1, v2)          ->
+    spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
+  (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
+       left arg of Appl is performed in [matching], so we perform it here. *)
   (* | Patt (Some _, _, e1), Patt (Some _, _, e2)  ->
    *   Array.length e1 = Array.length e2 (\* Arity verification *\) *)
   (* A check should be done regarding non linear variables *)
@@ -268,8 +272,11 @@ let rec spec_line : term -> Pattmat.line -> Pattmat.line = fun pat li ->
        List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
     | Patt(_, _, _), Abst(_, b) ->
        let _, t = Bindlib.unbind b in t :: litl
-    | x            , _          ->
+    | Patt(_, _, _), _          -> litl
+    | x            , y          ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
+      Format.fprintf Format.str_formatter "|" ;
+      Print.pp Format.str_formatter y ;
       let msg = Printf.sprintf "%s: suspicious specialization unfold"
           (Buffer.contents Format.stdbuf) in
       failwith msg
@@ -329,8 +336,6 @@ let compile : Pattmat.t -> t = fun patterns ->
     else
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
-      (* Might be relevant to abstract the following operations in module
-         dtree.ml. *)
       let swi = match o with
         | Init | Default -> None
         | Specialized(t) -> Some t in
