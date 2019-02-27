@@ -124,35 +124,35 @@ type term =
     of the rule--being the pattern to be matched for the rule to apply--is
     spread across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is
     reached, the target is rewrote to the content of the leaf. *)
- and tree = Leaf of term option * (term_env, term) Bindlib.mbinder
-          (** Hold the targets of rewriting, right hand side of a rule.  In a
-              {!cons:Leaf}[(t, a)], [t] contains the term--if a switch has
-              been performed-- which has been matched to arrive to the leaf or
-              {!cons:None} if we arrived on the leaf via a default case. [a]
-              is the right hand side of the rule, or the action to perform if
-              the rule applies. *)
-          | Node of node_data
-          (** Nodes allow to perform switches, a switch being the matching of
-              a pattern.  Briefly, a {!cons:Node} contains one subtree per
-              possible switch, plus possibly a default case. *)
-          | Fail
+ and tree =
+    Leaf of term option * (term_env, term) Bindlib.mbinder
+  (** Hold the targets of rewriting, right hand side of a rule.  In a
+      {!cons:Leaf}[(t, a)], [t] contains the term--if a switch has been
+      performed-- which has been matched to arrive to the leaf or {!cons:None}
+      if we arrived on the leaf via a default case. [a] is the right hand side
+      of the rule, or the action to perform if the rule applies. *)
+  | Node of node_data
+  (** Nodes allow to perform switches, a switch being the matching of a
+      pattern.  Briefly, a {!cons:Node} contains one subtree per possible
+      switch, plus possibly a default case. *)
+  | Fail
 
 (** Data contained in a node of the tree.  {!recfield:switch} contains the
     term on which the switch that gave birth to this node has been performed.
     {!recfield:swap} indicates whether the columns of the matrix have been
     swapped before the switch and {!recfield:children} contains the
     subtrees. *)
- and node_data = { switch : term option
-                 (** {!cons:None} if node comes from a default case,
-                     {!cons:Some}[(t)] if it comes from a switch on term
-                     [t]. *)
-                 ; swap : int option
-                 (** Indicates which column of the pattern matrix has been
-                     chosen to perform the switch.
-                     XXX remove the option *)
-                 ; children : tree list
-                 (** Subtrees resulting from either specialisation on terms or
-                     default case. *) }
+ and node_data =
+  { switch : term option
+  (** {!cons:None} if node comes from a default case, {!cons:Some}[(t)] if it
+      comes from a switch on term [t]. *)
+  ; swap : int option
+  (** Indicates which column of the pattern matrix has been chosen to perform
+      the switch.
+      XXX remove the option *)
+  ; children : tree list
+   (** Subtrees resulting from either specialisation on terms or default
+       case. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
