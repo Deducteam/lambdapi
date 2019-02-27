@@ -181,18 +181,41 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun _ -> 0
 
-  (** [is_pattern_free l] returns whether a line contains patterns or not.
-      Typically, a line full of wildcards is pattern free. *)
-  let rec is_pattern_free : line -> bool = function
-    | []      -> true
-    | x :: xs ->
-      begin
-        match x with
-        | Patt(_, _, _) -> is_pattern_free xs
-        | Appl(u, _)    -> is_pattern_free (u :: xs)
-        (* ^ Should be useless *)
-        | _             -> false
-      end
+  (** [is_pattern e t] returns whether a term [t] is considered as a pattern
+      wrt the environment [e] attached to the rule containing [t]. *)
+  let rec is_pattern : term_env array -> term -> bool = fun ar te ->
+    match te with
+    | Patt(None, _, [| |])                          -> false
+    (* ^ Wildcard *)
+    | Patt(Some(i), _, [| |]) when ar.(i) = TE_None -> false
+    (* ^ Linear pattern used in rhs *)
+    | Patt(_, _, _)                                 -> false
+    | Appl(u, _)                                    -> is_pattern ar u
+    (* ^ Should be useless *)
+    | _                                             -> true
+
+  (** [exhausted r] returns whether rule [r] can be further pattern matched or
+      if it is ready to yield the action.  A rule is exhausted when its left
+      hand side is composed only of wildcards. *)
+  let exhausted : rule -> bool = fun { lhs = lh ; env = en ; _ }->
+    let rec loop = function
+      | []                          -> true
+      | x :: _ when is_pattern en x -> false
+      | _ :: xs                     -> loop xs in
+    loop lh
+
+  (** [can_switch_on p k] returns whether a switch can be carried out on
+      column [k] in matrix [p] *)
+  let can_switch_on : t -> int -> bool = fun { values = valu ; _ } k ->
+    let rec loop : rule list -> bool = function
+      | []      -> true
+      | r :: rs ->
+        begin
+          match List.nth_opt r.lhs k with
+          | None    -> loop rs
+          | Some(t) -> is_pattern r.env t
+        end in
+    loop valu
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
@@ -200,11 +223,10 @@ struct
     let ncols = List.fold_left (fun acc { lhs = l ; _ } ->
         let le = List.length l in
       if le > acc then le else acc) 0 m.values in
-    let pattfree = List.init ncols (fun k ->
-        let col = get_col k m in
-        is_pattern_free col) in
-    let indexes = List.mapi (fun k pf ->
-        if pf then None else Some k) pattfree in
+    let switchable = List.init ncols (fun k ->
+        can_switch_on m k) in
+    let indexes = List.mapi (fun k cm ->
+        if cm then Some(k) else None) switchable in
     let remaining = List.filter (function
         | None    -> false
         | Some(_) -> true) indexes in
@@ -239,7 +261,9 @@ let rec spec_filter : term_env array -> term -> Pm.line -> bool =
     | []      -> assert false in
   match unfold pat, unfold lihd with
   | _           , Patt(Some(i), _, [| |]) when ar.(i) = TE_None -> true
-  (* ^ Wildcard or linear var appearing in rhs *)
+  (* ^ Linear var appearing in rhs *)
+  | _           , Patt(None, _, [| |])                          -> true
+  (* ^ Wildcard or linear var not appearing in rhs *)
   | p           , Patt(Some(i), _, e) when ar.(i) <> TE_None     ->
   (* ^ Non linear var *)
     let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
@@ -363,8 +387,7 @@ let compile : Pm.t -> t = fun patterns ->
       let swi = match o with
         | Init | Default -> None
         | Specialized(t) -> Some t in
-      let fline = (List.hd m).Pm.lhs in
-      if Pm.is_pattern_free fline then
+      if Pm.exhausted (List.hd m) then
         Leaf(swi, (List.hd m).Pm.rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
