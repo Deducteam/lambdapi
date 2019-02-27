@@ -159,11 +159,12 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
-(** [add_symbol sign mode name a] creates a fresh symbol with the name  [name]
+(** [add_symbol sign mode name a impl] creates a fresh symbol with name [name]
     (which should not already be used in [sign]) and with the type [a], in the
-    signature [sign]. The created symbol is also returned. *)
+    signature [sign]. The list [impl] tells whether the first arguments of the
+    symbol are set to be implicit. The created symbol is returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
-    fun sign mode s a implicits ->
+    fun sign sym_mode s a sym_implicits ->
   (* Check for metavariables in the symbol type. *)
   let nb = List.length (Basics.get_metas a) in
   if nb > 0 then
@@ -171,8 +172,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_implicits = implicits; sym_rules = ref []
-    ; sym_mode = mode }
+    ; sym_def = ref None ; sym_implicits ; sym_rules = ref [] ; sym_mode }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 

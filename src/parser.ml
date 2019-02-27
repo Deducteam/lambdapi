@@ -251,12 +251,9 @@ let parser term @(p : prio) =
   (* TYPE constant. *)
   | _TYPE_
       when p >= PAtom -> in_pos _loc P_Type
-  (* Variable (or possibly qualified symbol). *)
-  | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid, false))
-  (* Fully explicit Variable (or possibly qualified symbol) *)
-  | "@" qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid, true))
+  (* Variable (or possibly explicitly applied and qualified symbol). *)
+  | expl:{"@" -> true}?[false] qid:qident
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, expl))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -328,12 +325,12 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
-  (* Non implicit argument *)
-  | x:ident                            -> (x, None,    false)
-  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a), false)
-  (* Implicit argument *)
-  | "{" x:ident "}"                    -> (x, None,    true)
-  | "{" x:ident ":" a:(term PFunc) "}" -> (x, Some(a), true)
+  (* Explicit argument without type annotation. *)
+  | x:ident                               -> (x, None,    false)
+  (* Explicit argument with type annotation. *)
+  | "(" x:ident    ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  (* Implicit argument (with possible type annotation). *)
+  | "{" x:ident a:{":" (term PFunc)}? "}" -> (x, a      , true )
 
 let term = term PFunc
 

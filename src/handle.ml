@@ -74,9 +74,10 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
-      let implicits = Scope.get_params_implicitness_of_type a in
       (* Desugaring of arguments of [a]. *)
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+      (* Obtaining the implicitness of arguments. *)
+      let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
       let a = fst (scope_basic ss a) in
       (* We check that [x] is not already used. *)
@@ -85,7 +86,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* We check that [a] is typable by a sort. *)
       Solve.sort_type Ctxt.empty a;
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature m x a implicits in
+      let s = Sign.add_symbol ss.signature m x a impl in
       out 3 "(symb) %s.\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
@@ -104,16 +105,17 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       List.iter add_rule rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
-      let implicits = match ao with
-        | Some a -> Scope.get_params_implicitness_of_type a
-        | None   -> []
-      in
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
       let t = fst (scope_basic ss t) in
-      (* Desugaring of arguments and scoping of [ao] (if not [None]). *)
-      let fn a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
-      let ao = Option.map fn ao in
+      (* Desugaring of arguments and computation of argument impliciteness. *)
+      let (ao, impl) =
+        match ao with
+        | None    -> (None, List.map (fun (_,_,impl) -> impl) xs)
+        | Some(a) ->
+            let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
+            (Some(a), Scope.get_implicitness a)
+      in
       let ao = Option.map (fun a -> fst (scope_basic ss a)) ao in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -139,16 +141,17 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
           fatal x.pos "We have %s ≔ %a." x.elt pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature Defin x a implicits in
+      let s = Sign.add_symbol ss.signature Defin x a impl in
       out 3 "(symb) %s (definition).\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_theorem(stmt, ts, pe)    ->
       let (x,xs,a) = stmt.elt in
-      let implicits = Scope.get_params_implicitness_of_type a in
       (* Desugaring of arguments of [a]. *)
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+      (* Obtaining the implicitness of arguments. *)
+      let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem, check sort. *)
       let a = fst (scope_basic ss a) in
       Solve.sort_type Ctxt.empty a;
@@ -168,7 +171,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature Const x a implicits in
+            let s = Sign.add_symbol ss.signature Const x a impl in
             out 3 "(symb) %s (admit).\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -177,7 +180,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             if not (Proof.finished st) then
               fatal cmd.pos "The proof is not finished.";
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature Const x a implicits in
+            let s = Sign.add_symbol ss.signature Const x a impl in
             out 3 "(symb) %s (qed).\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in

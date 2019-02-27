@@ -104,7 +104,6 @@ module List =
         elements with [eq]. *)
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
-
   end
 
 module Array =

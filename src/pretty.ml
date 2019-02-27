@@ -40,7 +40,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
     match (t.elt, p) with
     | (P_Type            , _    ) -> out "TYPE"
     | (P_Iden(qid, false), _    ) -> out "%a" pp_qident qid
-    | (P_Iden(qid, true) , _    ) -> out "@%a" pp_qident qid
+    | (P_Iden(qid, true ), _    ) -> out "@%a" pp_qident qid
     | (P_Wild            , _    ) -> out "_"
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar
@@ -73,10 +73,10 @@ let rec pp_p_term : p_term pp = fun oc t ->
 
 and pp_p_arg : p_arg pp = fun oc (id,ao,b) ->
   match (ao,b) with
-  | (None, false)    -> Format.pp_print_string oc id.elt
-  | (None, true)     -> Format.fprintf oc "{%s}" id.elt
+  | (None   , false) -> Format.fprintf oc "%s" id.elt
+  | (None   , true ) -> Format.fprintf oc "{%s}" id.elt
   | (Some(a), false) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
-  | (Some(a), true)  -> Format.fprintf oc "{%s : %a}" id.elt pp_p_term a
+  | (Some(a), true ) -> Format.fprintf oc "{%s : %a}" id.elt pp_p_term a
 
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)

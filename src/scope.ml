@@ -120,12 +120,13 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [get_params_implicitness_of_type t] returns a list representing the
+(** [get_implicitness t] returns a list representing the
     implicitness of the parameters of a parser term [t] seen as a type *)
-let get_params_implicitness_of_type : p_term -> bool list = fun t ->
+let rec get_implicitness : p_term -> bool list = fun t ->
   match t.elt with
-  | P_Prod(args, _)   -> List.map (fun x -> match x with (_,_,i) -> i) args
-  | _                 -> []
+  | P_Prod(xs,t) -> List.map (fun (_,_,impl) -> impl) xs @ get_implicitness t
+  | P_Wrap(t)    -> get_implicitness t
+  | _            -> []
 
 (** [get_params_implicitness_of_id ss env t] returns a list representing the
     formal parameters of a parser term [t] *)
@@ -187,11 +188,11 @@ let add_implicit_args : bool list -> p_term list -> p_term list =
 (** [add_implicits ss env t] builds a parser-level term corresponding
     to [t] where wildcards have been added for the implicits arguments *)
 let rec add_implicits : sig_state -> env -> p_term -> p_term = fun ss env t ->
-  let (f, args) = split_fun_args_outermost t in
+  let (f, args) = Syntax.get_args t in
   let params = get_params_implicitness_of_id ss env f in
   let fullArgs = add_implicit_args params args in
   let fullArgsImplic = List.map (fun x -> add_implicits ss env x) fullArgs in
-  Syntax.build_appl f fullArgsImplic
+  List.fold_left (fun f a -> Pos.none (P_Appl(f,a))) f fullArgsImplic
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode

@@ -58,8 +58,8 @@ and p_type = p_term
 (** Synonym of [p_term] for semantic hints. *)
 and p_patt = p_term
 
-(** Parser-level representation of a function argument. *)
-(*  the boolean tells whether this argument is implicit *)
+(** Parser-level representation of a function argument. The boolean is true if
+    the argument is marked as implicit (i.e., between curly braces). *)
 and p_arg = ident * p_type option * bool
 
 (** Representation of a symbol tag. *)
@@ -180,8 +180,8 @@ let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-  | (P_Iden(q1, imp1)    , P_Iden(q2, imp2)    ) ->
-      eq_qident q1 q2 && imp1 = imp2
+  | (P_Iden(q1,b1)       , P_Iden(q2,b2)       ) ->
+      eq_qident q1 q2 && b1 = b2
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
       eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
@@ -202,7 +202,7 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       t1 = t2
 
 and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
-  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2 && b1=b2
+  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
@@ -293,26 +293,13 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
-(** [split_fun_args_outermost t] decomposes the parser term [t] into the
-    function symbol and the list of its actual arguments. It only does it
-    at the outermost level, i.e, without doing it for the arguments
-    themselves. Its implementation is tail-recursive *)
-let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
-  let rec split_fun_args_outermost_aux :
-      p_term -> p_term list -> p_term * p_term list = fun t args ->
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments. *)
+let get_args : p_term -> p_term * p_term list =
+  let rec get_args args t =
     match t.elt with
-    | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
-(* Careful, it looks like we need to treat P_Wrap to have nested implicits! *)
-    | P_Wrap(u)       -> split_fun_args_outermost_aux u args
-    | _               -> (t, args)
-  in (split_fun_args_outermost_aux t [])
-
-(** [build_appl f l] builds the multi application of [f] and each
-    of the elements of the list [l] *)
-let build_appl : p_term -> p_term list -> p_term = fun f args ->
-  let rec build_appl_aux : p_term -> p_term list -> p_term = fun f args ->
-    match args with
-    | [] -> f
-    | a1::args -> build_appl_aux (Pos.make f.pos (P_Appl(f,a1))) args
-  in
-  build_appl_aux f args
+    | P_Appl(t,u) -> get_args (u::args) t
+    | P_Wrap(t)   -> get_args args t
+    | _           -> (t, args)
+  in get_args []

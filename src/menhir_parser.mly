@@ -44,8 +44,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)      -> assert false (* Cannot happen. *)
-      | P_Iden(x, _)     ->
+      | P_Appl(_,_)     -> assert false (* Cannot happen. *)
+      | P_Iden(x,_)     ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
