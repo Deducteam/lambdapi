@@ -116,7 +116,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.symmetry ps)
   | P_tac_why3(s)       ->
       (* get the goal to prove *)
-      let (_, trm) = Proof.Goal.get_type g in
+      let (hypothesis, trm) = Proof.Goal.get_type g in
       let trm = unfold trm in
       (* get the default or the indicated name of the prover. *)
       let prover_name =
@@ -125,16 +125,17 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         | Some(name)    -> name.elt
       in
       (* get the real name of the prover in Why3. *)
-      let prover_why3_name = Why3prover.get_name prover_name in
+      let prover_why3 = Why3prover.get_name prover_name in
       (* try to prove the goal [trm] with a prover in Why3. *)
-      let proved = Why3prop.t_goal ps.proof_builtins prover_why3_name trm in
+      let proved =
+        Why3prop.t_goal ps.proof_builtins prover_why3 (hypothesis, trm) in
       if proved then
         let why3_axiom = Pos.none (Why3prop.get_newname ()) in
         let current_sign = ss.signature in
         (* TODO : add the goal to the set of axioms if the prover succeed *)
         let a = Sign.add_symbol current_sign Const why3_axiom trm in
-        Console.out 2 "%s proved the current goal@." prover_why3_name;
+        Console.out 2 "%s proved the current goal@." prover_why3;
         handle_refine (Symb(a, Nothing))
       else
-        (Console.out 1 "%s didn't found a proof@." prover_why3_name;
+        (Console.out 1 "%s didn't found a proof@." prover_why3;
       ps)

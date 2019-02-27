@@ -5,9 +5,9 @@ set prover altergo
 set prover_limit 2
 
 symbol a : Prop
-symbol b : Prop
 
-theorem nat_sym : P(imp ({|and|} a b) a)
+theorem test_gamma : P a ⇒ P a
 proof
+    intro proof_a
     why3
 qed
