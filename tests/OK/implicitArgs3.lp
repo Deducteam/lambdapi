@@ -29,6 +29,7 @@ symbol const Vect : T Nat ⇒ U
 
 symbol nil : T (Vect zero)
 
+// The nat is declared to be implicit
 symbol const cons : ∀{n:T Nat}, T Bool ⇒ T (Vect n) ⇒ T (Vect (s n))
 
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
@@ -36,25 +37,22 @@ symbol const cons : ∀{n:T Nat}, T Bool ⇒ T (Vect n) ⇒ T (Vect (s n))
 definition l1  : T (Vect (s zero)) ≔ cons true nil
 // It works.
 
+// TEST NESTED IMPLICIT ARGUMENTS FOR A DEFINITION, WITHOUT THE @ MARKER
+definition l2 : T (Vect (s (s zero))) ≔ cons true (cons false nil)
+// It works
+
 // TEST IMPLICIT ARGUMENTS FOR A DEFINITION, WITH THE @ MARKER
 // Same as l1 but fully explicit
-definition l2 : T (Vect (s zero)) ≔ @cons zero true nil
+definition l3 : T (Vect (s zero)) ≔ @cons zero true nil
+// It works.
+
+// TEST NESTED IMPLICIT ARGUMENTS FOR A DEFINITION, WITH THE @ MARKER
+// Same as l2 but fully explicit
+definition l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false nil)
 // It works.
 
 symbol append : ∀ (n:T Nat) (m:T Nat), T (Vect n) ⇒ T (Vect m) ⇒ T (Vect (n+m))
-// Unfortunately, we can't use implicits in rules at the moment
-rule append zero    &m nil                   &v2  → &v2
-rule append (s &pn) &m (@cons (s &pn) &h &t) &v2  → @cons (&pn+&m) &h (append &pn &m &t &v2)
-
-
-// TEST IMPLICIT ARGUMENTS FOR A DEFINITION
-// definition id_Vect : ∀{n:T Nat}, T (Vect n) ⇒ T(Vect n) ≔ λx, x
-// Doesn't work yet, because we need to typecheck (λx, x) against
-// T (Vect n) ⇒ T(Vect n) and not against ∀{n:T Nat}, T (Vect n) ⇒ T(Vect n)
-// It shouldn't be too hard to add this behaviour
-
-// TEST IMPLICIT ARGUMENTS FOR A THEOREM
-//Theorem append_assoc : ∀{n1:T Nat} {n2:T Nat} {n3:T Nat}
-//                        (v1:T (Vect n1)) (v2:T (Vect n2)) (v3:T (Vect n3)),
-//  append n1 (n2+n3) v1 (append v2 v3) = append (n1+n2) (append n1 n2 v1 v2) v3
+// Works, but unfortunately, we can't use implicits in RHS of rewrite rules at the moment
+rule append zero    &m nil           &v2  → &v2
+rule append (s &pn) &m (cons &h &t)  &v2  → @cons (&pn+&m) &h (@append &pn &m &t &v2)
 

@@ -293,30 +293,11 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
-(** split_fun_args_outermost t decomposes the parser term [t] into the
-   function symbol and the list of its actual arguments. It only does it
-   at the outermost level, i.e, without doing it for the arguments
-   themselves. Its implementation is tail-recursive *)
-let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
-  let rec split_fun_args_outermost_aux :
-    p_term -> p_term list -> p_term * p_term list = fun t args ->
-    match t.elt with
-    | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
-    | x               -> (none x, args)
-  in (split_fun_args_outermost_aux t [])
-
+(*
 (** telescopit terms, i.e. embedding of p_term with telescopes of arguments
     replacing Appl nodes *)
 type telesTerm =
   | MkT of p_term * (telesTerm list)
-
-(* [p_term_to_telescopicTerm t] transforms the parser-level term [t] to
-    a telescopicTerm *)
-let rec p_term_to_telescopicTerm : p_term -> telesTerm = fun t ->
-  (* First transform the outermost layer *)
-  let (f, args) = split_fun_args_outermost t in
-    (* Then transform the underneath layers *)
-    MkT(f, List.map p_term_to_telescopicTerm args)
 
 (** [unsplit_fun_args_outermost t args] builds the application of the
     parser-level term [t] to a list of arguments [args] *)
@@ -334,3 +315,12 @@ let rec telescopicTerm_to_p_term : telesTerm -> p_term = fun tt ->
       let argsDone = List.map telescopicTerm_to_p_term args in
       (* Then wrap the toplevel layer *)
       unsplit_fun_args_outermost f argsDone
+*)
+
+let wrap : p_term -> p_term list -> p_term = fun f args ->
+  let rec wrap_aux : p_term -> p_term list -> p_term = fun f args ->
+    match args with
+    | [] -> f
+    | a1::args -> wrap_aux (Pos.make f.pos (P_Appl(f,a1))) args
+  in
+  wrap_aux f args
