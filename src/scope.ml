@@ -148,7 +148,7 @@ let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
                 f.sym_implicits
               (* Not found anywhere, so we don't know about implicits *)
               with Not_found     -> [] )))
-  | _                   -> print_string "oops!"; []
+  | _                    -> []
 
 (** [add_implicit_args params args] builds the full arguments list, using the
     given arguments [args] and with the insertion of "_" for the implicits,
@@ -184,79 +184,14 @@ let add_implicit_args : bool list -> p_term list -> p_term list =
     else
       List.rev (add_implicit_args_aux params args [])
 
-(** [add_implicits_tt ss env t] builds a telescopic term corresponding
-    to [t] where wildcards have been added for the implicits arguments *)
-(* let rec add_implicits_tt : sig_state -> env -> telesTerm -> telesTerm =
-    fun ss env tt ->
-    (* print_string "INSIDE add_implicits_tt! \n"; *)
-    match tt with
-    | MkT(f, args) ->
-        let params = get_params_implicitness_of_id ss env f in
-        let fullArgs = add_implicit_args params args in
-          MkT(f, List.map (add_implicits_tt ss env) fullArgs)
-
 (** [add_implicits ss env t] builds a parser-level term corresponding
     to [t] where wildcards have been added for the implicits arguments *)
-let add_implicits : sig_state -> env -> p_term -> p_term = fun ss env t ->
-  print_string "INSIDE add_implicits ! \n";
-  match t.elt with
-  | P_Appl(_, _)
-  | P_Iden(_, _)   ->
-      (* split all function symbols and their given arguments by transforming
-         the p_term to a telescopicTerm *)
-      let tt = p_term_to_telescopicTerm t in
-      Console.out 1 "%a" Pretty.print_telescopicTerm tt;
-      (* add implicit arguments everywhere (i.e. for the arguments as well) *)
-      let ttfull = add_implicits_tt ss env tt in
-      Console.out 1 "%a" Pretty.print_telescopicTerm ttfull;
-      (* Wrap the result back into a p_term *)
-      let res = telescopicTerm_to_p_term ttfull in
-      Console.out 1 "%a" Pretty.pp_p_term res;
-      res
-  | _                         -> t
-*)
-
-let print_cstr : p_term -> unit = fun t ->
-  match t.elt with
-  | P_Type                    -> print_string "P_Type \n"
-  | P_Iden(_, _)              -> print_string "P_Iden \n"
-  | P_Wild                    -> print_string "P_Wild \n"
-  | P_Meta(_, _)              -> print_string "P_Meta \n"
-  | P_Patt(_, _)              -> print_string "P_Patt \n"
-  | P_Appl(_, _)              -> print_string "P_Appl \n"
-  | P_Impl(_, _)              -> print_string "P_Impl \n"
-  | P_Abst(_, _)              -> print_string "P_Abst \n"
-  | P_Prod(_, _)              -> print_string "P_Prod \n"
-  | P_LLet(_, _, _, _)        -> print_string "P_LLet \n"
-  | P_NLit(_)                 -> print_string "P_NLit \n"
-  | P_BinO(_, _, _)           -> print_string "P_BinO \n"
-  | P_Wrap(_)                 -> print_string "P_Wrap \n"
-
-(** split_fun_args_outermost t decomposes the parser term [t] into the
-   function symbol and the list of its actual arguments. It only does it
-   at the outermost level, i.e, without doing it for the arguments
-   themselves. Its implementation is tail-recursive *)
-let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
-   let rec split_fun_args_outermost_aux :
-     p_term -> p_term list -> p_term * p_term list = fun t args ->
-     match t.elt with
-     | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
-     (* Careful, it looks like we need to treat P_Wrap to have nested implicits! *)
-     | P_Wrap(u)       -> split_fun_args_outermost_aux u args
-     | _               -> (t, args)
-   in (split_fun_args_outermost_aux t [])
-
 let rec add_implicits : sig_state -> env -> p_term -> p_term = fun ss env t ->
   let (f, args) = split_fun_args_outermost t in
   let params = get_params_implicitness_of_id ss env f in
   let fullArgs = add_implicit_args params args in
-  let fullArgs' = List.map (fun x -> add_implicits ss env x) fullArgs in
-  List.iter (fun x -> Console.out 1 "%a, " Pretty.pp_p_term x) fullArgs';
-  print_string "done \n";
-  let res = Syntax.wrap f fullArgs' in
-  (* Console.out 1 "%a \n" Pretty.pp_p_term res; *)
-  res
-
+  let fullArgsImplic = List.map (fun x -> add_implicits ss env x) fullArgs in
+  Syntax.build_appl f fullArgsImplic
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode

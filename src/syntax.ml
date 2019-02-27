@@ -293,34 +293,26 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
-(*
-(** telescopit terms, i.e. embedding of p_term with telescopes of arguments
-    replacing Appl nodes *)
-type telesTerm =
-  | MkT of p_term * (telesTerm list)
+(** [split_fun_args_outermost t] decomposes the parser term [t] into the
+    function symbol and the list of its actual arguments. It only does it
+    at the outermost level, i.e, without doing it for the arguments
+    themselves. Its implementation is tail-recursive *)
+let split_fun_args_outermost : p_term -> (p_term * (p_term list)) = fun t ->
+  let rec split_fun_args_outermost_aux :
+      p_term -> p_term list -> p_term * p_term list = fun t args ->
+    match t.elt with
+    | P_Appl(u,v)     -> split_fun_args_outermost_aux u (v::args)
+(* Careful, it looks like we need to treat P_Wrap to have nested implicits! *)
+    | P_Wrap(u)       -> split_fun_args_outermost_aux u args
+    | _               -> (t, args)
+  in (split_fun_args_outermost_aux t [])
 
-(** [unsplit_fun_args_outermost t args] builds the application of the
-    parser-level term [t] to a list of arguments [args] *)
-let rec unsplit_fun_args_outermost : p_term -> p_term list -> p_term =
-    fun f args ->
-  match args with
-  | [] -> f
-  | arg1::args' -> unsplit_fun_args_outermost (none (P_Appl(f, arg1))) args'
-
-(** [telescopicTerm_to_p_term t] wraps the telescopicTerm [t] to a p_term *)
-let rec telescopicTerm_to_p_term : telesTerm -> p_term = fun tt ->
-  match tt with
-  | MkT(f, args) ->
-      (* First wrap the arguments at the underneath layers *)
-      let argsDone = List.map telescopicTerm_to_p_term args in
-      (* Then wrap the toplevel layer *)
-      unsplit_fun_args_outermost f argsDone
-*)
-
-let wrap : p_term -> p_term list -> p_term = fun f args ->
-  let rec wrap_aux : p_term -> p_term list -> p_term = fun f args ->
+(** [build_appl f l] builds the multi application of [f] and each
+    of the elements of the list [l] *)
+let build_appl : p_term -> p_term list -> p_term = fun f args ->
+  let rec build_appl_aux : p_term -> p_term list -> p_term = fun f args ->
     match args with
     | [] -> f
-    | a1::args -> wrap_aux (Pos.make f.pos (P_Appl(f,a1))) args
+    | a1::args -> build_appl_aux (Pos.make f.pos (P_Appl(f,a1))) args
   in
-  wrap_aux f args
+  build_appl_aux f args
