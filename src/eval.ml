@@ -165,6 +165,29 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
+(** [tree_walk t s] tries to match stack [s] against tree [t] *)
+and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
+  let rec walk : Dtree.t -> stack -> (Dtree.action * stack) option =
+    fun tree stk ->
+    match tree with
+      | Leaf(_, a)                             -> Some(a, stk)
+      | Node({ swap = io ; children = ch ; _ }) ->
+        let nstk = match io with
+          | Some(i) -> List.swap_head stk i
+          | None    -> stk in
+        let stkhd = List.hd nstk in
+        if not (fst Pervasives.(!stkhd))
+        then Pervasives.(stkhd := (true, whnf (snd !stkhd))) ;
+        let favourite = List.assoc_opt Pervasives.(Some(snd !stkhd)) ch in
+        begin
+          match favourite with
+          | Some(tr) -> walk tr (List.tl nstk)
+          | None     -> None
+        end
+      | Fail       -> None in
+  let _ = walk itree istk in
+  None
+
 let whnf : term -> term = fun t ->
   let t = unfold t in
   Pervasives.(steps := 0);
