@@ -150,9 +150,11 @@ type term =
   (** Indicates which column of the pattern matrix has been chosen to perform
       the switch.
       XXX remove the option *)
-  ; children : tree list
-   (** Subtrees resulting from either specialisation on terms or default
-       case. *) }
+  ; children : (term option * tree) list
+  (** Subtrees resulting from either specialisation on terms or default case.
+      First element is {!cons:None} if child is result of a default case or
+      {!cons:Some}[(t)] if it results from specialisation on [t]. *) }
+(* TODO remove switch field, redundant with new [children] type *)
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The

@@ -33,13 +33,13 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
 let iter : (term option -> action -> 'a) ->
-  (term option -> int option -> 'a list -> 'a) ->
+  (term option -> int option -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
     | Leaf(teo, a)                                   -> do_leaf teo a
     | Fail                                           -> fail
-    | Node({ switch = s ; swap = p ; children = c }) ->
-      do_node s p (List.map loop c) in
+    | Node({ switch = s ; swap = p ; children = ch }) ->
+      do_node s p (List.map (fun (teo, c) -> (teo, loop c)) ch) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -72,7 +72,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf t ; F.fprintf ppf "\"];"
     | Node(ndata) ->
-      let { switch = t ; swap = swa ; children = c } = ndata in
+      let { switch = t ; swap = swa ; children = ch } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       F.fprintf ppf "@ %d [label=\"" tag ;
@@ -80,7 +80,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
       pp_opterm ppf t ; F.fprintf ppf "\"];" ;
-      List.iter (fun e -> write_tree tag e) c ;
+      List.iter (fun (_, e) -> write_tree tag e) ch ;
     | Fail        ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
@@ -88,8 +88,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ switch = _ ; swap = _ ; children = c }) ->
-      List.iter (write_tree 0) c
+    | Node({ switch = _ ; swap = _ ; children = ch }) ->
+      List.iter (fun (_, c) -> write_tree 0 c) ch
     | Leaf(_, _)                                     -> write_tree 0 tree
     | _                                              -> assert false
   end ;
@@ -401,11 +401,12 @@ let compile : Pm.t -> t = fun patterns ->
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
         let cons = List.filter is_cons fcol in
-        let spepatts = List.map (fun s -> specialize s spm) cons in
-        let defpatts = default spm in
+        let spepatts = List.map (fun s -> (Some(s), specialize s spm))
+            cons in
+        let defpatts = (None, default spm) in
         let children =
-          List.map grow (if Pm.is_empty defpatts
-                         then spepatts
-                         else spepatts @ [defpatts]) in
+          List.map (fun (c, p) -> (c, grow p))
+            (spepatts @ (if Pm.is_empty (snd defpatts)
+                         then [] else [defpatts])) in
         Node({ switch = swi ; swap = swap ; children = children }) in
   grow patterns
