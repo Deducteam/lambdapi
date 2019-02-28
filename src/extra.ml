@@ -117,6 +117,12 @@ module List =
             x :: u, v in
         let replaced, sith = loop tail (si - 1) in
         sith :: replaced
+
+    (** [extremum c l] finds the max of list [l] with compare function [c].
+        For a max function, [c] is [(>)].  *)
+    let extremum : ('a -> 'a -> bool) -> 'a list -> 'a = fun cmp li ->
+      List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
+        (List.hd li) li
   end
 
 module Array =

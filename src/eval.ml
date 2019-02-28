@@ -174,10 +174,14 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
+  let depth = Dtree.iter (fun _ _ -> 1) (fun _ _ chd ->
+      let _, d = List.split chd in 1 + (List.extremum (>) d)) 0 itree in
+  let _ = Array.make depth TE_None in
+  (* Use above env in the tree walk *)
   let rec walk : Dtree.t -> stack -> (Dtree.action * stack) option =
     fun tree stk ->
     match tree with
-      | Leaf(_, a)                             -> Some(a, stk)
+      | Leaf(_, a)                              -> Some(a, stk)
       | Node({ swap = io ; children = ch ; _ }) ->
         let nstk = match io with
           | Some(i) -> List.swap_head stk i
@@ -193,7 +197,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           | Some(tr) -> walk tr (List.tl nstk)
           | None     -> None
         end
-      | Fail       -> None in
+      | Fail                                    -> None in
   let final = walk itree istk in
   (* Works only if no variable *)
   Option.map (fun (ac, stk) -> (snd (Bindlib.unmbind ac), stk)) final
