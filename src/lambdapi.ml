@@ -86,6 +86,9 @@ let spec =
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
+    ; ( "--trees"
+      , Arg.Set Eval.with_trees
+      , " Whether to use trees for pattern matching" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
