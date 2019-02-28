@@ -185,8 +185,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           | None     -> None
         end
       | Fail       -> None in
-  let _ = walk itree istk in
-  None
+  let final = walk itree istk in
+  (* Works only if no variable *)
+  Option.map (fun (ac, stk) -> (snd (Bindlib.unmbind ac), stk)) final
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
