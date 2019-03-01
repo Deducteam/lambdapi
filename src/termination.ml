@@ -1,21 +1,17 @@
 (** Temination checking.
 
-    This module allows the translation of a signature in the TPDB format (used
-    in the termination competition). See the "Termination Problem Database":
-    http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB *)
+    This module allows the translation of a signature to the XTC format, which
+    is used for the termination competition.  More details can be found on the
+    “Termination Problem Database”'s website.
+
+    @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB> *)
 
 open Extra
 open Timed
-open Console
 open Terms
 
-(** Logging function for the termination checker interface. *)
-let log_conf =
-  new_logger 'n' "norm" "informations for the termination checker"
-let log_conf = log_conf.logger
-
 (** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
-    is prefixed by ["c_"], and moduls are separated with ["_"], not ["."]. *)
+    is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
 let print_sym : sym pp = fun oc s ->
   let print_path = List.pp Format.pp_print_string "_" in
   Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
@@ -66,7 +62,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
            (fun x -> Format.fprintf oc "<arg>%a</arg>@." (print_term i s) x) l
        ) args
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
-                              (print_term i s) t (print_term i s) u
+                                 (print_term i s) t (print_term i s) u
   (* Abstractions and products are only printed at priority [`Func]. *)
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
@@ -136,11 +132,10 @@ let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   Format.fprintf oc "<TLrhs>@.%a</TLrhs>@.</typeLevelRule>@."
     (print_type i s.sym_name) rhs
 
-(** [get_vars s r] returns the list of variable of used in the rule [r],
-    in the form of a couple containing the name of the variable and its type,
+(** [get_vars s r] returns the list of variables used in the rule [r],
+    in the form of a pair containing the name of the variable and its type,
     inferred by the solver. *)
 let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
-  (*check_rule s r;*)
   let rule_ctx : tvar option array = Array.make (Array.length r.vars) None in
   let var_list : tvar list ref = ref [] in
   let rec subst_patt v t =
@@ -153,7 +148,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     | Wild
     | Prod (_, _)
     | Vari _              -> assert false
-    | Symb (s, p)         -> Symb(s, p)
+    | Symb (_, _)         -> t
     | Abst (t1, b)        ->
        let (x,t2) = Bindlib.unbind b in
        Abst(
@@ -222,8 +217,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   in
   (* Print the object level rewrite rules. *)
   let print_object_rules : sym -> unit = fun s ->
-    if status s = Object_level
-    then (
+    if status s = Object_level then
       match !(s.sym_def) with
       | Some(d) ->
          Format.fprintf oc
@@ -234,12 +228,10 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
       | None    ->
          let c = ref 0 in
          List.iter (fun x -> incr c; print_rule oc !c s x) !(s.sym_rules)
-    ) else ()
   in
   (* Print the type level rewrite rules. *)
   let print_type_rules : sym -> unit = fun s ->
-    if status s != Object_level
-    then (
+    if status s != Object_level then
       match !(s.sym_def) with
       | Some(d) ->
          Format.fprintf oc
@@ -250,7 +242,6 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
       | None    ->
          let c = ref 0 in
          List.iter (incr c; print_tl_rule oc !c s) !(s.sym_rules)
-    ) else ()
   in
   (* Print the variable declarations *)
   let print_vars : sym -> unit = fun s ->
@@ -272,8 +263,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   in
   (* Print the symbol declarations at object level. *)
   let print_symbol : sym -> unit = fun s ->
-    if status s = Object_level
-    then (
+    if status s = Object_level then (
       Format.fprintf oc "<funcDeclaration>@.<name>%a</name>@." print_sym s;
       Format.fprintf oc
         "<typeDeclaration>@.<type>@.%a</type>@."
@@ -286,8 +276,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
     (* We don't declare type constant which do not take arguments for
        compatibility issue with simply-typed higher order category of the
        competition. *)
-    if status s = Type_cstr
-    then (
+    if status s = Type_cstr then (
       Format.fprintf oc "<typeConstructorDeclaration>@.<name>%a</name>@."
         print_sym s;
       Format.fprintf oc "<typeDeclaration>@.<type>@.%a</type>@."
@@ -305,8 +294,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
       if status s != Object_level && !(s.sym_def) != None
          && !(s.sym_rules) != []
       then type_rule_presence := true);
-  if !type_rule_presence
-  then (
+  if !type_rule_presence then (
     Format.fprintf oc "<typeLevelRules>@.";
     iter_symbols print_type_rules;
     Format.fprintf oc "</typeLevelRules>@."
@@ -321,8 +309,7 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   let type_cstr_presence = ref false in
   iter_symbols
     (fun s -> if status s = Type_cstr then type_cstr_presence := true);
-  if !type_cstr_presence
-  then (
+  if !type_cstr_presence then (
     Format.fprintf oc "<typeConstructorTypeInfo>@.";
     iter_symbols print_type_cstr;
     Format.fprintf oc "</typeConstructorTypeInfo>@."
@@ -330,52 +317,13 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   Format.fprintf oc "</higherOrderSignature>@.";
   List.iter (Format.fprintf oc "%s@.") postlude
 
-(** [check cmd sign] runs the termination checker specified by command [cmd]
-    on the rewrite system of signature [sign]. The return value is [Some true]
-    in the case where the system is terminating. It is [Some false] if the
-    system is not terminating, and it is [None] if the tool cannot conclude.
-    Note that it is assumed that [cmd] corresponds to a command that accepts
-    XTC format on its standard output, and outputs either ["YES"], ["NO"] or
-    ["MAYBE"] as the first line of its standard output. The exception [Fatal]
-    may be raised if [cmd] does not behave as expected. *)
-let check : string -> Sign.t -> bool option = fun cmd sign ->
-  (* Run the command. *)
-  if !log_enabled then log_conf "Running command [%s]" cmd;
-  let (ic, oc, ec) = Unix.open_process_full cmd (Unix.environment ()) in
-  (* Feed it the XTC problem. *)
-  to_XTC (Format.formatter_of_out_channel oc) sign;
-  flush oc; close_out oc;
-  if !log_enabled then log_conf "Wrote the data and closed the pipe.";
-  (* Read the answer (and possible error messages). *)
-  let out = input_lines ic in
-  if !log_enabled && out <> [] then
-    begin
-      log_conf "==== Data written to [stdout] ====";
-      List.iter (log_conf "%s") out;
-      log_conf "==================================";
-    end;
-  let err = input_lines ec in
-  if !log_enabled && err <> [] then
-    begin
-      log_conf "==== Data written to [stderr] ====";
-      List.iter (log_conf "%s") err;
-      log_conf "=================================="
-    end;
-  (* Terminate the process. *)
-  match (Unix.close_process_full (ic, oc, ec), out) with
-  | (Unix.WEXITED 0  , "YES"  ::_) -> Some true
-  | (Unix.WEXITED 0  , "NO"   ::_) -> Some false
-  | (Unix.WEXITED 0  , "MAYBE"::_) -> None
-  | (Unix.WEXITED 0  , []        ) ->
-      fatal_no_pos "The termination checker prodced no output."
-  | (Unix.WEXITED 0  , _         ) ->
-      fatal_no_pos "The termination checker gave an unexpected answer."
-  | (Unix.WEXITED i  , _         ) ->
-      fatal_no_pos "The termination checker returned with code [%i]." i
-  | (Unix.WSIGNALED i, _         ) ->
-      fatal_no_pos "The termination checker was killed by signal [%i]." i
-  | (Unix.WSTOPPED  i, _         ) ->
-      fatal_no_pos "The termination checker was stopped by signal [%i]." i
-(* NOTE the simplest, valid termination checking command is ["echo MAYBE"] and
-   ["cat > out.xml; echo MAYBE"] can conveniently be used to write generated
-   TPDB output to the file ["out.xml"] for debugging purposes. *)
+(** [check cmd sign] runs the external termination checker specified by (Unix)
+    command [cmd] on the rewrite system of signature [sign].  The return value
+    is [Some true] if the system is found to be terminating, [Some false] when
+    it is found to be non-terminating, and [None] if the tool cannot conclude.
+    The command [cmd] is assumed to accept XTC format on its  standard  input,
+    and it should output either ["YES"], ["NO"] or ["MAYBE"] as the first line
+    of its standard output.  The exception [Fatal] may be raised if [cmd] does
+    not behave in the expected way. *)
+let check : string -> Sign.t -> bool option =
+  External.run "termination" to_XTC
