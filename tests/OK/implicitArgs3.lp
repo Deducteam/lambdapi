@@ -54,5 +54,6 @@ definition l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false 
 symbol append : ∀ (n:T Nat) (m:T Nat), T (Vect n) ⇒ T (Vect m) ⇒ T (Vect (n+m))
 // Works, but unfortunately, we can't use implicits in RHS of rewrite rules at the moment
 rule append zero    &m nil           &v2  → &v2
-rule append (s &pn) &m (cons &h &t)  &v2  → @cons (&pn+&m) &h (@append &pn &m &t &v2)
+rule append (s &pn) &m (cons &h &t)  &v2  → @cons (&pn+&m) &h (append &pn &m &t &v2)
 
+rule append (s &pn) &m (cons &h &t)  &v2  → cons {&pn+&m} &h (append &pn &m &t &v2)
