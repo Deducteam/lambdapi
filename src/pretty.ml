@@ -58,6 +58,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
         out "(%a %s %a)" pp_atom t b pp_atom u
     (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
     | (P_Wrap(t)         , _    ) -> out "%a" (pp p) t
+    | (P_Expl(t)         , _    ) -> out "{%a}" pp_func t
     | (_                 , _    ) -> out "(%a)" pp_func t
   in
   let rec pp_toplevel _ t =

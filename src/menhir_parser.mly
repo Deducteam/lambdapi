@@ -71,6 +71,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
       | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
       | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
       | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
+      | P_Expl(_)       -> fatal h.pos "Explicit argument in legacy rule."
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -121,6 +122,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
     | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
     | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
+    | P_Expl(_)       -> fatal h.pos "Explicit argument in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in

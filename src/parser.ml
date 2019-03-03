@@ -266,6 +266,9 @@ let parser term @(p : prio) =
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> in_pos _loc (P_Wrap(t))
+  (* Explicitly given argument. *)
+  | "{" t:(term PFunc) "}"
+      when p >= PAtom -> in_pos _loc (P_Expl(t))
   (* Application. *)
   | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))

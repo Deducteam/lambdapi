@@ -154,28 +154,36 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let (h, args) = Syntax.get_args t in
     (* Check whether application is marked as explicit in the head symbol. *)
     let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
-    (* Scope the head and the arguments. *)
+    (* Scope the head and obtain the implicitness of arguments. *)
     let h = scope_head env h in
-    let args = List.map (scope env) args in
-    (* Obtain the implicitness of arguments. *)
     let impl =
       if not (Bindlib.is_closed h) || expl then [] else
       match Bindlib.unbox h with
       | Symb(s,_) -> s.sym_implicits
       | _         -> []
     in
-    (* Insert wildcards for implicit arguments. *)
-    let rec add_impl impl args =
-      let new_meta () = scope_head env (Pos.none P_Wild) in
+    (* Scope and insert the (implicit) arguments. *)
+    let appl_p_term t u = _Appl t (scope env u) in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
+    let rec add_impl h impl args =
       match (impl, args) with
-      | ([]         , _      ) -> args
-      | (false::impl, a::args) -> a :: add_impl impl args
-      | (true ::impl, _      ) -> new_meta () :: add_impl impl args
-      | (_          , []     ) -> []
+      | ([]         , _      ) -> List.fold_left appl_p_term h args
+      | (true ::impl, []     ) -> add_impl (appl_meta h) impl []
+      | (true ::impl, a::args) ->
+          begin
+            match a.elt with
+            | P_Expl(a) -> add_impl (appl_p_term h a) impl args
+            | _         -> add_impl (appl_meta h) impl (a::args)
+          end
+      | (false::impl, a::args) ->
+          begin
+            match a.elt with
+            | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
+            | _         -> add_impl (appl_p_term h a) impl args
+          end
+      | (false::_   , []     ) -> h
     in
-    let args = add_impl impl args in
-    (* Construct the application. *)
-    List.fold_left _Appl h args
+    add_impl h impl args
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
     match (a, md) with
@@ -309,6 +317,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         List.fold_left _Appl s (add_impl impl (List.map (scope env) [l; r]))
     | (P_Wrap(t)      , _         ) -> scope env t
+    | (P_Expl(_)      , _         ) ->
+        fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
 
@@ -352,6 +362,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_NLit(_)        -> acc
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)        -> patt_vars acc t
+    | P_Expl(t)        -> patt_vars acc t
   and arg_patt_vars acc xs =
     match xs with
     | []                       -> acc
