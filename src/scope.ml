@@ -131,7 +131,7 @@ let get_implicitness : p_term -> bool list = fun t ->
     | _            -> []
   in
   let impl = get_impl t in
-  (* Minimization of the data. *)
+  (* Minimization of the data: the list does not end with [false]. *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   List.rev (rem_false (List.rev impl))
 
@@ -167,27 +167,27 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | _                                           -> []
     in
     (* Scope and insert the (implicit) arguments. *)
+    add_impl env h impl args
+  (* Build the application of [h] to [args], inserting implicit arguments. *)
+  and add_impl env h impl args =
     let appl_p_term t u = _Appl t (scope env u) in
     let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
-    let rec add_impl h impl args =
-      match (impl, args) with
-      | ([]         , _      ) -> List.fold_left appl_p_term h args
-      | (true ::impl, []     ) -> add_impl (appl_meta h) impl []
-      | (true ::impl, a::args) ->
-          begin
-            match a.elt with
-            | P_Expl(a) -> add_impl (appl_p_term h a) impl args
-            | _         -> add_impl (appl_meta h) impl (a::args)
-          end
-      | (false::impl, a::args) ->
-          begin
-            match a.elt with
-            | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
-            | _         -> add_impl (appl_p_term h a) impl args
-          end
-      | (false::_   , []     ) -> h
-    in
-    add_impl h impl args
+    match (impl, args) with
+    | ([]         , _      ) -> List.fold_left appl_p_term h args
+    | (true ::impl, []     ) -> add_impl env (appl_meta h) impl []
+    | (true ::impl, a::args) ->
+        begin
+          match a.elt with
+          | P_Expl(a) -> add_impl env (appl_p_term h a) impl args
+          | _         -> add_impl env (appl_meta h) impl (a::args)
+        end
+    | (false::impl, a::args) ->
+        begin
+          match a.elt with
+          | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
+          | _         -> add_impl env (appl_p_term h a) impl args
+        end
+    | (false::_   , []     ) -> h (* FIXME error here? *)
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
     match (a, md) with
@@ -311,15 +311,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let (s, _) = find_sym true ss qid in
           (_Symb s (Binary(op)), s.sym_implicits)
         in
-        let rec add_impl impl args =
-          let new_meta () = scope_head env (Pos.none P_Wild) in
-          match (impl, args) with
-          | ([]         , _      ) -> args
-          | (false::impl, a::args) -> a :: add_impl impl args
-          | (true ::impl, _      ) -> new_meta () :: add_impl impl args
-          | (_          , []     ) -> []
-        in
-        List.fold_left _Appl s (add_impl impl (List.map (scope env) [l; r]))
+        add_impl env s impl [l; r]
     | (P_Wrap(t)      , _         ) -> scope env t
     | (P_Expl(_)      , _         ) ->
         fatal t.pos "Explicit argument not allowed here."
