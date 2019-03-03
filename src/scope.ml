@@ -120,112 +120,81 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
-(** [get_implicitness t] returns a list representing the
-    implicitness of the parameters of a parser term [t] seen as a type *)
-let rec get_implicitness : p_term -> bool list = fun t ->
-  match t.elt with
-  | P_Prod(xs,t) -> List.map (fun (_,_,impl) -> impl) xs @ get_implicitness t
-  | P_Wrap(t)    -> get_implicitness t
-  | _            -> []
-
-(** [get_params_implicitness_of_id ss env t] returns a list representing the
-    formal parameters of a parser term [t] *)
-let get_params_implicitness_of_id : sig_state -> env -> p_term -> bool list =
-  fun ss env t ->
-  match t.elt with
-  (* If the "fully explicit" tag is set to true, there's no implicits *)
-  | P_Iden(_, true)     -> []
-  (* Otherwise it's implicit as declared *)
-  | P_Iden(id, false)   ->
-      (* We first look in the environment *)
-      (try let (_,_) = List.assoc (snd id.elt) env in []
-      with Not_found ->
-          (* If that did not work, then we look in the scope *)
-          (try let (f, _) = StrMap.find (snd id.elt) ss.in_scope in
-            f.sym_implicits
-          with Not_found ->
-              (* If that failed too, we finally look in the builtins *)
-              (try let (f, _) = StrMap.find (snd id.elt) ss.builtins in
-                f.sym_implicits
-              (* Not found anywhere, so we don't know about implicits *)
-              with Not_found     -> [] )))
-  | _                    -> []
-
-(** [add_implicit_args params args] builds the full arguments list, using the
-    given arguments [args] and with the insertion of "_" for the implicits,
-    following the information provided by the formal parameters [param].
-    Its implementation is tail-recursive. *)
-let add_implicit_args : bool list -> p_term list -> p_term list =
-    fun params args ->
-  let rec add_implicit_args_aux :
-    bool list -> p_term list -> p_term list -> p_term list =
-        fun params args fullArgs ->
-    match params,args with
-    (* The next parameter is implicit, so we do not consume the next
-       available concrete argument *)
-    | (true::ps, _::_)         -> add_implicit_args_aux ps args
-                                      ((none P_Wild)::fullArgs)
-    (* The next parameter is not implicit, so we consume the next available
-       concrete argument arg1 *)
-    | (false::ps, arg1::args') -> add_implicit_args_aux ps args'
-                                      ((arg1)::fullArgs)
-    (* Not enough formal parameters, we reverse the remaining arguments
-       and append fullArgs (built in reverse order) to the result *)
-    | ([], _::_)               -> List.rev_append args fullArgs
-    (* We've  used all the concrete arguments, we return the accumulator
-      regardless of still having some formal parameters *)
-    | ((_::_), [])
-    | ([],     [])             -> fullArgs
+(** [get_implicitness t] gives the specified implicitness of the parameters of
+    a symbol having the (parser-level) type [t]. *)
+let get_implicitness : p_term -> bool list = fun t ->
+  let rec get_impl t =
+    match t.elt with
+    | P_Prod(xs,t) -> List.map (fun (_,_,impl) -> impl) xs @ get_impl t
+    | P_Impl(_,t)  -> false :: get_impl t
+    | P_Wrap(t)    -> get_impl t
+    | _            -> []
   in
-    (* If we don't have implicitness information (as for a fully explicit
-       identifier like "@f"), then we directly put only the given concrete
-       args *)
-    if params = [] then args
-    (* We reverse the arguments as they've been built in the opposite order *)
-    else
-      List.rev (add_implicit_args_aux params args [])
-
-(** [add_implicits ss env t] builds a parser-level term corresponding
-    to [t] where wildcards have been added for the implicits arguments *)
-let rec add_implicits : sig_state -> env -> p_term -> p_term = fun ss env t ->
-  let (f, args) = Syntax.get_args t in
-  let params = get_params_implicitness_of_id ss env f in
-  let fullArgs = add_implicit_args params args in
-  let fullArgsImplic = List.map (fun x -> add_implicits ss env x) fullArgs in
-  List.fold_left (fun f a -> Pos.none (P_Appl(f,a))) f fullArgsImplic
+  let impl = get_impl t in
+  (* Minimization of the data. *)
+  let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
+  List.rev (rem_false (List.rev impl))
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
-  (* Unique name generation for wildcards in LHS. *)
-  let fresh : unit -> string =
+  (* Unique pattern variable generation for wildcards in a LHS. *)
+  let fresh_patt : env -> tbox =
     let c = Pervasives.ref (-1) in
-    fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
+    fun env ->
+      let name = Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c) in
+      let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
+      _Patt None name (Array.of_list xs)
   in
+  (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
-    let scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
-      match (a, md) with
-      | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
-      | (None   , M_LHS(_)) ->
-          let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-          _Patt None (fresh ()) (Array.of_list xs)
-      | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
-      | (Some(a), _       ) -> scope env a
-      | (None   , _       ) ->
-          (* We build a metavariable that may use the variables of [env]. *)
-          let vs = Env.vars_of_env env in
-          _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
+    (* Extract the spine. *)
+    let (h, args) = Syntax.get_args t in
+    (* Check whether application is marked as explicit in the head symbol. *)
+    let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
+    (* Scope the head and the arguments. *)
+    let h = scope_head env h in
+    let args = List.map (scope env) args in
+    (* Obtain the implicitness of arguments. *)
+    let impl =
+      if not (Bindlib.is_closed h) || expl then [] else
+      match Bindlib.unbox h with
+      | Symb(s,_) -> s.sym_implicits
+      | _         -> []
     in
+    (* Insert wildcards for implicit arguments. *)
+    let rec add_impl impl args =
+      let new_meta () = scope_head env (Pos.none P_Wild) in
+      match (impl, args) with
+      | ([]         , _      ) -> args
+      | (false::impl, a::args) -> a :: add_impl impl args
+      | (true ::impl, _      ) -> new_meta () :: add_impl impl args
+      | (_          , []     ) -> []
+    in
+    let args = add_impl impl args in
+    (* Construct the application. *)
+    List.fold_left _Appl h args
+  (* Scoping function for the domain of functions or products. *)
+  and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
+    match (a, md) with
+    | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
+    | (None   , M_LHS(_)) -> fresh_patt env
+    | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
+    | (Some(a), _       ) -> scope env a
+    | (None   , _       ) ->
+        (* We build a metavariable that may use the variables of [env]. *)
+        let vs = Env.vars_of_env env in
+        _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
+  (* Scoping function for head terms. *)
+  and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
     | (P_Iden(qid, _)  , _        ) -> find_qid ss env qid
     | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
-    | (P_Wild          , M_LHS(_) ) ->
-        let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-        _Patt None (fresh ()) (Array.of_list xs)
+    | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , M_Term(_)) ->
         (* We build a metavariable that may use the variables of [env]. *)
@@ -283,7 +252,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
-    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
+    | (P_Appl(_,_)     , _        ) -> assert false (* Unreachable. *)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
@@ -291,7 +260,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Abst(xs,t)    , _        ) ->
         let rec scope_abst env xs =
           match xs with
-          | []        -> scope env t
+          | []          -> scope env t
           | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
@@ -304,7 +273,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _        ) ->
         let rec scope_prod env xs =
           match xs with
-          | []        -> scope env b
+          | []          -> scope env b
           | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
@@ -331,7 +300,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Appl (_Appl s (scope env l)) (scope env r)
     | (P_Wrap(t)      , _         ) -> scope env t
   in
-  scope env (add_implicits ss env t)
+  scope env t
 
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
