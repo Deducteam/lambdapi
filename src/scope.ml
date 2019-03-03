@@ -294,10 +294,20 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         unsugar_nat_lit sym_z n
     | (P_BinO(l,b,r)  , _         ) ->
-        let (op,_,_,qid) = b in
-        let (s, _) = find_sym true ss qid in
-        let s = _Symb s (Binary(op)) in
-        _Appl (_Appl s (scope env l)) (scope env r)
+        let (s, impl) =
+          let (op,_,_,qid) = b in
+          let (s, _) = find_sym true ss qid in
+          (_Symb s (Binary(op)), s.sym_implicits)
+        in
+        let rec add_impl impl args =
+          let new_meta () = scope_head env (Pos.none P_Wild) in
+          match (impl, args) with
+          | ([]         , _      ) -> args
+          | (false::impl, a::args) -> a :: add_impl impl args
+          | (true ::impl, _      ) -> new_meta () :: add_impl impl args
+          | (_          , []     ) -> []
+        in
+        List.fold_left _Appl s (add_impl impl (List.map (scope env) [l; r]))
     | (P_Wrap(t)      , _         ) -> scope env t
   in
   scope env t
