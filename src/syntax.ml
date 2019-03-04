@@ -28,7 +28,7 @@ and p_term_aux =
   | P_Type
   (** TYPE constant. *)
   | P_Iden of qident * bool
-  (** Variable (empty module path) or symbol (arbitrary module path). *)
+  (** Variable or (explicitly applied, qualified) symbol. *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
   | P_Meta of strloc * p_term array
@@ -53,6 +53,10 @@ and p_term_aux =
   (** Parentheses (only necessary to handle binary operators. *)
   | P_Expl of p_term
   (** Explicitly given argument. *)
+
+(** {b NOTE} the boolean parameter of the {!const:P_Iden} constructor tells if
+    the corresponding symbol is explicitly applied (value [true]) or not. This
+    flag hence indicates whether the symbol has been prefixed with ["@"]. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term

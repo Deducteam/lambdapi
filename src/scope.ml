@@ -131,7 +131,7 @@ let get_implicitness : p_term -> bool list = fun t ->
     | _            -> []
   in
   let impl = get_impl t in
-  (* Minimization of the data: the list does not end with [false]. *)
+  (* We minimize the list to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   List.rev (rem_false (List.rev impl))
 
@@ -160,11 +160,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with
-      | Symb(s,_) when expl && s.sym_implicits = [] ->
+      | Symb(s,_) when expl && s.sym_impl = [] ->
           fatal t.pos "Explicit application of symbol with no implicits."
-      | _         when expl                         -> []
-      | Symb(s,_)                                   -> s.sym_implicits
-      | _                                           -> []
+      | _         when expl                    -> []
+      | Symb(s,_)                              -> s.sym_impl
+      | _                                      -> []
     in
     (* Scope and insert the (implicit) arguments. *)
     add_impl env h impl args
@@ -309,7 +309,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let (s, impl) =
           let (op,_,_,qid) = b in
           let (s, _) = find_sym true ss qid in
-          (_Symb s (Binary(op)), s.sym_implicits)
+          (_Symb s (Binary(op)), s.sym_impl)
         in
         add_impl env s impl [l; r]
     | (P_Wrap(t)      , _         ) -> scope env t

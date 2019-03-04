@@ -164,7 +164,7 @@ let unlink : t -> unit = fun sign ->
     signature [sign]. The list [impl] tells whether the first arguments of the
     symbol are set to be implicit. The created symbol is returned. *)
 let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
-    fun sign sym_mode s a sym_implicits ->
+    fun sign sym_mode s a sym_impl ->
   (* Check for metavariables in the symbol type. *)
   let nb = List.length (Basics.get_metas a) in
   if nb > 0 then
@@ -172,7 +172,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_implicits ; sym_rules = ref [] ; sym_mode }
+    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
