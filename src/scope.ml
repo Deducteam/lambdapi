@@ -158,13 +158,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let h = scope_head env h in
     let impl =
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
-      if not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with
-      | Symb(s,_) when expl && s.sym_impl = [] ->
-          fatal t.pos "Explicit application of symbol with no implicits."
-      | _         when expl                    -> []
-      | Symb(s,_)                              -> s.sym_impl
-      | _                                      -> []
+      if expl || not (Bindlib.is_closed h) then [] else
+      match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
     (* Scope and insert the (implicit) arguments. *)
     add_impl env h impl args
