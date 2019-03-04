@@ -62,7 +62,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           begin
             match xs with
             | [(_, Some(a), _)] -> fatal a.pos "Annotation in legacy pattern."
-            | [(x, None,    _)] -> compute_arities (x.elt::env) t
+            | [(x, None   , _)] -> compute_arities (x.elt::env) t
             | _                 -> fatal h.pos "Invalid legacy pattern lambda."
           end
       | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
@@ -112,7 +112,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
         let (x,a) =
           match xs with
           | [(x, ao, _)] -> (x, Option.map (build env) ao)
-          | _         -> assert false (* Unreachable. *)
+          | _            -> assert false (* Unreachable. *)
         in
         Pos.make t.pos (P_Abst([(x,a,false)], build (x.elt::env) u))
     | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
