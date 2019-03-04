@@ -28,7 +28,7 @@ and p_term_aux =
   | P_Type
   (** TYPE constant. *)
   | P_Iden of qident * bool
-  (** Variable or (explicitly applied, qualified) symbol. *)
+  (** Variable or (qualified, explicitly applied) symbol. *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
   | P_Meta of strloc * p_term array
