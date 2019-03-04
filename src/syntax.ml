@@ -27,8 +27,8 @@ type p_term = p_term_aux loc
 and p_term_aux =
   | P_Type
   (** TYPE constant. *)
-  | P_Iden of qident
-  (** Variable (empty module path) or symbol (arbitrary module path). *)
+  | P_Iden of qident * bool
+  (** Variable or (explicitly applied, qualified) symbol. *)
   | P_Wild
   (** Wildcard (place-holder for terms). *)
   | P_Meta of strloc * p_term array
@@ -51,6 +51,12 @@ and p_term_aux =
   (** Binary operator. *)
   | P_Wrap of p_term
   (** Parentheses (only necessary to handle binary operators. *)
+  | P_Expl of p_term
+  (** Explicitly given argument. *)
+
+(** {b NOTE} the boolean parameter of the {!const:P_Iden} constructor tells if
+    the corresponding symbol is explicitly applied (value [true]) or not. This
+    flag hence indicates whether the symbol has been prefixed with ["@"]. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
@@ -58,8 +64,9 @@ and p_type = p_term
 (** Synonym of [p_term] for semantic hints. *)
 and p_patt = p_term
 
-(** Parser-level representation of a function argument. *)
-and p_arg = ident * p_type option
+(** Parser-level representation of a function argument. The boolean is true if
+    the argument is marked as implicit (i.e., between curly braces). *)
+and p_arg = ident * p_type option * bool
 
 (** Representation of a symbol tag. *)
 type symtag =
@@ -179,8 +186,8 @@ let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-  | (P_Iden(q1)          , P_Iden(q2)          ) ->
-      eq_qident q1 q2
+  | (P_Iden(q1,b1)       , P_Iden(q2,b2)       ) ->
+      eq_qident q1 q2 && b1 = b2
   | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      )
   | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
       eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
@@ -197,11 +204,13 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | (P_Wrap(t1)          , P_Wrap(t2)          ) ->
       eq_p_term t1 t2
+  | (P_Expl(t1)          , P_Expl(t2)          ) ->
+      eq_p_term t1 t2
   | (t1                  ,                   t2) ->
       t1 = t2
 
-and eq_p_arg : p_arg eq = fun (x1,ao1) (x2,ao2) ->
-  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2
+and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
+  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
@@ -291,3 +300,14 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
 (** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
     are compared up to source code positions. *)
 let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
+
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments. *)
+let get_args : p_term -> p_term * p_term list =
+  let rec get_args args t =
+    match t.elt with
+    | P_Appl(t,u) -> get_args (u::args) t
+    | P_Wrap(t)   -> get_args args t
+    | _           -> (t, args)
+  in get_args []

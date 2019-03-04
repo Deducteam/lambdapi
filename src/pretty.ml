@@ -39,7 +39,8 @@ let rec pp_p_term : p_term pp = fun oc t ->
     let pp_func = pp PFunc in
     match (t.elt, p) with
     | (P_Type            , _    ) -> out "TYPE"
-    | (P_Iden(qid)       , _    ) -> out "%a" pp_qident qid
+    | (P_Iden(qid, false), _    ) -> out "%a" pp_qident qid
+    | (P_Iden(qid, true ), _    ) -> out "@%a" pp_qident qid
     | (P_Wild            , _    ) -> out "_"
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
     | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar
@@ -57,6 +58,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
         out "(%a %s %a)" pp_atom t b pp_atom u
     (* We print minimal parentheses, and ignore the [Wrap] constructor. *)
     | (P_Wrap(t)         , _    ) -> out "%a" (pp p) t
+    | (P_Expl(t)         , _    ) -> out "{%a}" pp_func t
     | (_                 , _    ) -> out "(%a)" pp_func t
   in
   let rec pp_toplevel _ t =
@@ -70,10 +72,12 @@ let rec pp_p_term : p_term pp = fun oc t ->
   in
   pp_toplevel oc t
 
-and pp_p_arg : p_arg pp = fun oc (id,ao) ->
-  match ao with
-  | None    -> Format.pp_print_string oc id.elt
-  | Some(a) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
+and pp_p_arg : p_arg pp = fun oc (id,ao,b) ->
+  match (ao,b) with
+  | (None   , false) -> Format.fprintf oc "%s" id.elt
+  | (None   , true ) -> Format.fprintf oc "{%s}" id.elt
+  | (Some(a), false) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
+  | (Some(a), true ) -> Format.fprintf oc "{%s : %a}" id.elt pp_p_term a
 
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)

@@ -67,11 +67,12 @@ reserved "_"
 // Term (including patterns and everything)
 <term> ::=
   | "TYPE"
-  | <qident>
+  | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
   | "&" - <ident> {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
+  | "{" <term> "}"
   | <term> <term>
   | <type> "⇒" <type>
   | "∀" <arg>+ "," <type>
@@ -86,10 +87,11 @@ reserved "_"
 // Synonym for patterns
 <patt> ::= <term>
 
-// Argument (of abstraction, product, ...)
+// Argument (of abstraction, product, ...), may be marked implicit
 <arg> ::=
   | <ident>
-  | "(" <ident>+ ":" <type> ")"
+  | "{" <ident> {":" <type>}? "}"
+  | "(" <ident> ":" <type> ")"
 
 // Rewriting rule
 <rule> ::=

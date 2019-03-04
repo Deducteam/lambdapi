@@ -120,38 +120,92 @@ type mode =
       carries the environment for variables that will be bound in the
       representation of the RHS. *)
 
+(** [get_implicitness t] gives the specified implicitness of the parameters of
+    a symbol having the (parser-level) type [t]. *)
+let get_implicitness : p_term -> bool list = fun t ->
+  let rec get_impl t =
+    match t.elt with
+    | P_Prod(xs,t) -> List.map (fun (_,_,impl) -> impl) xs @ get_impl t
+    | P_Impl(_,t)  -> false :: get_impl t
+    | P_Wrap(t)    -> get_impl t
+    | _            -> []
+  in
+  get_impl t
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
-  (* Unique name generation for wildcards in LHS. *)
-  let fresh : unit -> string =
+  (* Unique pattern variable generation for wildcards in a LHS. *)
+  let fresh_patt : env -> tbox =
     let c = Pervasives.ref (-1) in
-    fun () -> Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c)
+    fun env ->
+      let name = Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c) in
+      let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
+      _Patt None name (Array.of_list xs)
   in
+  (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
-    let scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
-      match (a, md) with
-      | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
-      | (None   , M_LHS(_)) ->
-          let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-          _Patt None (fresh ()) (Array.of_list xs)
-      | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
-      | (Some(a), _       ) -> scope env a
-      | (None   , _       ) ->
-          (* We build a metavariable that may use the variables of [env]. *)
-          let vs = Env.vars_of_env env in
-          _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
+    (* Extract the spine. *)
+    let (h, args) = Syntax.get_args t in
+    (* Check whether application is marked as explicit in the head symbol. *)
+    let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
+    (* Scope the head and obtain the implicitness of arguments. *)
+    let h = scope_head env h in
+    let impl =
+      (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
+      if expl || not (Bindlib.is_closed h) then [] else
+      match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
+    (* Scope and insert the (implicit) arguments. *)
+    add_impl env t.pos h impl args
+  (* Build the application of [h] to [args], inserting implicit arguments. *)
+  and add_impl env loc h impl args =
+    let appl_p_term t u = _Appl t (scope env u) in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
+    match (impl, args) with
+    (* The remaining arguments are all explicit. *)
+    | ([]         , _      ) -> List.fold_left appl_p_term h args
+    (* Only implicit arguments remain. *)
+    | (true ::impl, []     ) -> add_impl env loc (appl_meta h) impl []
+    (* The first argument is implicit (could be [a] if made explicit). *)
+    | (true ::impl, a::args) ->
+        begin
+          match a.elt with
+          | P_Expl(a) -> add_impl env loc (appl_p_term h a) impl args
+          | _         -> add_impl env loc (appl_meta h) impl (a::args)
+        end
+    (* The first argument [a] is explicit. *)
+    | (false::impl, a::args) ->
+        begin
+          match a.elt with
+          | P_Expl(_) -> fatal a.pos "Unexpected explicit argument."
+          | _         -> add_impl env loc (appl_p_term h a) impl args
+        end
+    (* The application is too "partial" to insert all implicit arguments. *)
+    | (false::_   , []     ) ->
+        (* NOTE this could be improved with more general implicits. *)
+        fatal loc "More arguments are required to instantiate implicits."
+  (* Scoping function for the domain of functions or products. *)
+  and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
+    match (a, md) with
+    | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
+    | (None   , M_LHS(_)) -> fresh_patt env
+    | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
+    | (Some(a), _       ) -> scope env a
+    | (None   , _       ) ->
+        (* We build a metavariable that may use the variables of [env]. *)
+        let vs = Env.vars_of_env env in
+        _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
+  (* Scoping function for head terms. *)
+  and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
-    | (P_Iden(qid)     , _        ) -> find_qid ss env qid
+    | (P_Iden(qid,_)   , _        ) -> find_qid ss env qid
     | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
-    | (P_Wild          , M_LHS(_) ) ->
-        let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-        _Patt None (fresh ()) (Array.of_list xs)
+    | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , M_Term(_)) ->
         (* We build a metavariable that may use the variables of [env]. *)
@@ -209,7 +263,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
-    | (P_Appl(t,u)     , _        ) -> _Appl (scope env t) (scope env u)
+    | (P_Appl(_,_)     , _        ) -> assert false (* Unreachable. *)
     | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
@@ -217,8 +271,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Abst(xs,t)    , _        ) ->
         let rec scope_abst env xs =
           match xs with
-          | []        -> scope env t
-          | (x,a)::xs ->
+          | []          -> scope env t
+          | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
               let t = scope_abst (Env.add x.elt v a env) xs in
@@ -230,8 +284,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _        ) ->
         let rec scope_prod env xs =
           match xs with
-          | []        -> scope env b
-          | (x,a)::xs ->
+          | []          -> scope env b
+          | (x,a,_)::xs ->
               let v = Bindlib.new_var mkfree x.elt in
               let a = scope_domain x.pos env a in
               let b = scope_prod (Env.add x.elt v a env) xs in
@@ -241,7 +295,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([(x,None)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([(x,None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = get_builtin t.pos ss "0"  in
@@ -251,11 +305,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         in
         unsugar_nat_lit sym_z n
     | (P_BinO(l,b,r)  , _         ) ->
-        let (op,_,_,qid) = b in
-        let (s, _) = find_sym true ss qid in
-        let s = _Symb s (Binary(op)) in
-        _Appl (_Appl s (scope env l)) (scope env r)
+        let (s, impl) =
+          let (op,_,_,qid) = b in
+          let (s, _) = find_sym true ss qid in
+          (_Symb s (Binary(op)), s.sym_impl)
+        in
+        add_impl env t.pos s impl [l; r]
     | (P_Wrap(t)      , _         ) -> scope env t
+    | (P_Expl(_)      , _         ) ->
+        fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
 
@@ -299,11 +357,12 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_NLit(_)        -> acc
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)        -> patt_vars acc t
+    | P_Expl(t)        -> patt_vars acc t
   and arg_patt_vars acc xs =
     match xs with
-    | []                 -> acc
-    | (_, None   ) :: xs -> arg_patt_vars acc xs
-    | (_, Some(a)) :: xs -> arg_patt_vars (patt_vars acc a) xs
+    | []                       -> acc
+    | (_, None,    _   ) :: xs -> arg_patt_vars acc xs
+    | (_, Some(a), _) :: xs    -> arg_patt_vars (patt_vars acc a) xs
   in patt_vars ([],[])
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
