@@ -137,7 +137,7 @@ struct
           { lhs = r.Terms.lhs ; rhs = r.Terms.rhs }) rs }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
-  let is_empty : t -> bool = fun m -> List.length m.values = 0
+  let is_empty : t -> bool = fun m -> m.values = []
 
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
@@ -181,12 +181,12 @@ struct
   (** [exhausted r] returns whether rule [r] can be further pattern matched or
       if it is ready to yield the action.  A rule is exhausted when its left
       hand side is composed only of wildcards. *)
-  let exhausted : rule -> bool = fun { lhs = lh ; _ }->
+  let exhausted : rule -> bool = fun { lhs ; _ }->
     let rec loop = function
       | []                       -> true
       | x :: _ when is_pattern x -> false
       | _ :: xs                  -> loop xs in
-    loop lh
+    loop lhs
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
