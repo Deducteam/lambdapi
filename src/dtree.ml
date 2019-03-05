@@ -242,7 +242,7 @@ let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
   let lihd, litl = match li with
     | x :: xs -> x, xs
     | []      -> assert false in
-  match unfold pat, unfold lihd with
+  match pat, lihd with
   | _           , Patt(None, _, [| |])    -> true
   (* ^ Wildcard or linear var not appearing in rhs *)
   | _           , Patt(Some(_), _, [| |]) -> true
@@ -274,17 +274,17 @@ let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
 let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
-  match unfold lihd with
+  match lihd with
   | Symb(_, _)    -> litl
   | Appl(u, v)    ->
   (* ^ Nested structure verified in filter *)
-    let upat = unfold (appl_leftmost pat) in
+    let upat = appl_leftmost pat in
     spec_line upat (u :: v :: litl)
   | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
   | Vari(_)       -> litl
   | _ -> (* Cases that require the pattern *)
-    match unfold lihd, unfold pat with
+    match lihd, pat with
     | Patt(_, _, [| |]), Appl(_, _)    ->
     (* ^ Wildcard *)
       let arity = appl_left_depth pat in
@@ -309,7 +309,7 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     same number of applications and having the same leftmost {e non}
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
-  let up = unfold p in
+  let up = p in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter up l) m.values in
   let newmat = List.map (fun rul ->
@@ -329,7 +329,7 @@ let default : Pm.t -> Pm.t =
         Print.pp Format.err_formatter x ;
         assert false) m in
   let unfolded = List.map (fun rul ->
-      match unfold (List.hd rul.Pm.lhs) with
+      match List.hd rul.Pm.lhs with
       | Patt(_, _, _) ->
         { rul with Pm.lhs = List.tl rul.Pm.lhs }
       | _             -> assert false) filtered in
