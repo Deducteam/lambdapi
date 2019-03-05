@@ -181,6 +181,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       | Leaf(a)                                 -> Some(a, stk)
       | Node({ swap = io ; children = ch ; _ }) ->
         let nstk = match io with
+          (* XXX Optimise this using an array for stack *)
           | Some(i) -> List.swap_head stk i
           | None    -> stk in
         let stkhd = List.hd nstk in

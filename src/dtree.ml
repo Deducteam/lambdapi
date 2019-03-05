@@ -109,9 +109,7 @@ struct
   type rule = { lhs : line
               (** Left hand side of a rule. *)
               ; rhs : action
-              (** Right hand side of a rule. *)
-              ; env : term_env array
-              (** Used to pattern match variables. *)}
+              (** Right hand side of a rule. *) }
 
   (** The core data, contains the rewrite rules. *)
   type matrix = rule list
@@ -136,8 +134,7 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
-          { lhs = r.Terms.lhs ; rhs = r.Terms.rhs
-          ; env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None }) rs }
+          { lhs = r.Terms.lhs ; rhs = r.Terms.rhs }) rs }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> List.length m.values = 0
@@ -172,27 +169,23 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun _ -> 0
 
-  (** [is_pattern e t] returns whether a term [t] is considered as a pattern
-      wrt the environment [e] attached to the rule containing [t]. *)
-  let rec is_pattern : term_env array -> term -> bool = fun ar te ->
-    match te with
-    | Patt(None, _, [| |])                          -> false
+  (** [is_pattern t] returns whether a term [t] is considered as a pattern *)
+  let rec is_pattern : term -> bool = function
+    | Patt(None, _, [| |]) -> false
     (* ^ Wildcard *)
-    | Patt(Some(i), _, [| |]) when ar.(i) = TE_None -> false
-    (* ^ Linear pattern used in rhs *)
-    | Patt(_, _, _)                                 -> false
-    | Appl(u, _)                                    -> is_pattern ar u
+    | Patt(_, _, _)       -> false
+    | Appl(u, _)          -> is_pattern u
     (* ^ Should be useless *)
-    | _                                             -> true
+    | _                   -> true
 
   (** [exhausted r] returns whether rule [r] can be further pattern matched or
       if it is ready to yield the action.  A rule is exhausted when its left
       hand side is composed only of wildcards. *)
-  let exhausted : rule -> bool = fun { lhs = lh ; env = en ; _ }->
+  let exhausted : rule -> bool = fun { lhs = lh ; _ }->
     let rec loop = function
-      | []                          -> true
-      | x :: _ when is_pattern en x -> false
-      | _ :: xs                     -> loop xs in
+      | []                       -> true
+      | x :: _ when is_pattern x -> false
+      | _ :: xs                  -> loop xs in
     loop lh
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
@@ -204,7 +197,7 @@ struct
         begin
           match List.nth_opt r.lhs k with
           | None    -> loop rs
-          | Some(t) -> is_pattern r.env t
+          | Some(t) -> is_pattern t
         end in
     loop valu
 
@@ -243,32 +236,26 @@ let rec appl_left_depth : term -> int = function
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
-let rec spec_filter : term_env array -> term -> Pm.line -> bool =
-  fun ar pat li ->
+let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
   (* Might be relevant to reduce the function to [term -> term -> bool] with
      [spec_filter p t] testing pattern [p] against head of line [t] *)
   let lihd, litl = match li with
     | x :: xs -> x, xs
     | []      -> assert false in
   match unfold pat, unfold lihd with
-  | _           , Patt(Some(i), _, [| |]) when ar.(i) = TE_None -> true
-  (* ^ Linear var appearing in rhs *)
-  | _           , Patt(None, _, [| |])                          -> true
+  | _           , Patt(None, _, [| |])    -> true
   (* ^ Wildcard or linear var not appearing in rhs *)
-  | p           , Patt(Some(i), _, e) when ar.(i) <> TE_None     ->
-  (* ^ Non linear var *)
-    let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
-    let ihead = Bindlib.msubst b e in
-    spec_filter ar p (ihead :: litl)
-  | Symb(s, _)  , Symb(s', _)                                   -> s == s'
-  | Appl(u1, u2), Appl(v1, v2)                                  ->
-    spec_filter ar u1 (v1 :: litl) && spec_filter ar u2 (v2 :: litl)
+  | _           , Patt(Some(_), _, [| |]) -> true
+  (* ^ Linear var appearing in rhs *)
+  | Symb(s, _)  , Symb(s', _)            -> s == s'
+  | Appl(u1, u2), Appl(v1, v2)           ->
+    spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
   (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
        left arg of Appl is performed in [matching], so we perform it here. *)
-  | Abst(_, b1)         , Abst(_, b2)           ->
+  | Abst(_, b1)         , Abst(_, b2)    ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
-    spec_filter ar u (v :: litl)
-  | Vari(x)             , Vari(y)                -> Bindlib.eq_vars x y
+    spec_filter u (v :: litl)
+  | Vari(x)             , Vari(y)        -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
   | Symb(_, _)   , Appl(_, _)    -> false
   | Patt(_, _, _), Symb(_, _)    -> false
@@ -285,32 +272,27 @@ let rec spec_filter : term_env array -> term -> Pm.line -> bool =
     failwith msg
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term_env array -> term -> Pm.line -> Pm.line =
-  fun ar pat li ->
+let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match unfold lihd with
   | Symb(_, _)    -> litl
   | Appl(u, v)    ->
   (* ^ Nested structure verified in filter *)
     let upat = unfold (appl_leftmost pat) in
-    spec_line ar upat (u :: v :: litl)
+    spec_line upat (u :: v :: litl)
   | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
   | Vari(_)       -> litl
   | _ -> (* Cases that require the pattern *)
     match unfold lihd, unfold pat with
-    | Patt(None, _, [| |]), Appl(_, _)                          ->
+    | Patt(_, _, [| |]), Appl(_, _)    ->
     (* ^ Wildcard *)
       let arity = appl_left_depth pat in
       List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-    | Patt(Some(i), _, [| |]), Appl(_, _) when ar.(i) = TE_None ->
-    (* ^ Variable appearing in right hand side *)
-      let arity = appl_left_depth pat in
-      List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-    | Patt(_, _, _)       , Abst(_, b)                          ->
+    | Patt(_, _, _)       , Abst(_, b) ->
       let _, t = Bindlib.unbind b in t :: litl
-    | Patt(_, _, _)       , _                                   -> litl
-    | x                   , y                                   ->
+    | Patt(_, _, _)       , _          -> litl
+    | x                   , y          ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
       Format.fprintf Format.str_formatter "|" ;
       Print.pp Format.str_formatter y ;
@@ -328,10 +310,10 @@ let rec spec_line : term_env array -> term -> Pm.line -> Pm.line =
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let up = unfold p in
-  let filtered = List.filter (fun { Pm.lhs = l ; env = e ; _ } ->
-      spec_filter e up l) m.values in
+  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
+      spec_filter up l) m.values in
   let newmat = List.map (fun rul ->
-      { rul with Pm.lhs = spec_line rul.Pm.env up rul.Pm.lhs }) filtered in
+      { rul with Pm.lhs = spec_line up rul.Pm.lhs }) filtered in
   { values = newmat }
 
 (** [default m] computes the default matrix containing what remains to be
