@@ -32,14 +32,13 @@ type action = (term_env, term) Bindlib.mbinder
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (term option -> action -> 'a) ->
-  (term option -> int option -> (term option * 'a) list -> 'a) ->
+let iter : (action -> 'a) -> (int option -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(teo, a)                                   -> do_leaf teo a
-    | Fail                                           -> fail
-    | Node({ switch = s ; swap = p ; children = ch }) ->
-      do_node s p (List.map (fun (teo, c) -> (teo, loop c)) ch) in
+    | Leaf(a)                            -> do_leaf a
+    | Fail                               -> fail
+    | Node({ swap = p ; children = ch }) ->
+      do_node p (List.map (fun (teo, c) -> (teo, loop c)) ch) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -65,7 +64,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     fun father_l swon tree ->
   (* We cannot use iter since we need the father to be passed. *)
     match tree with
-    | Leaf(_, a)  ->
+    | Leaf(a)  ->
       incr nodecount ;
       F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
@@ -91,7 +90,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     (* First step must be done to avoid drawing a top node. *)
     | Node({ swap = _ ; children = ch ; _ }) ->
       List.iter (fun (sw, c) -> write_tree 0 sw c) ch
-    | Leaf(_, _)                             -> ()
+    | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
@@ -375,7 +374,7 @@ let rec is_cons : term -> bool = function
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
   let rec grow : Pm.t -> t = fun pm ->
-    let { Pm.origin = o ; Pm.values = m } = pm in
+    let { Pm.origin = _ ; Pm.values = m } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
@@ -385,11 +384,8 @@ let compile : Pm.t -> t = fun patterns ->
     else
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
-      let swi = match o with
-        | Init | Default -> None
-        | Specialized(t) -> Some t in
       if Pm.exhausted (List.hd m) then
-        Leaf(swi, (List.hd m).Pm.rhs)
+        Leaf((List.hd m).Pm.rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
@@ -402,12 +398,12 @@ let compile : Pm.t -> t = fun patterns ->
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
         let cons = List.filter is_cons fcol in
-        let spepatts = List.map (fun s -> (Some(s), specialize s spm))
-            cons in
+        let spepatts = List.map (fun s ->
+          (Some(appl_leftmost s), specialize s spm)) cons in
         let defpatts = (None, default spm) in
         let children =
           List.map (fun (c, p) -> (c, grow p))
             (spepatts @ (if Pm.is_empty (snd defpatts)
                          then [] else [defpatts])) in
-        Node({ switch = swi ; swap = swap ; children = children }) in
+        Node({ swap = swap ; children = children }) in
   grow patterns
