@@ -120,13 +120,13 @@ type term =
   (** Name and arity of the pattern variables bound in the RHS. *) }
 
 (** Trees are used to efficiently choose a rewriting rule given a list of
-    terms (beginning with a symbol) to be rewritten.  The left hand has side
-    of the rule--being the pattern to be matched for the rule to apply--is
-    spread across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is
-    reached, the target is rewrote to the content of the leaf. *)
+    terms (beginning with a symbol) to be rewrote.  The left hand has side of
+    the rule--being the pattern to be matched for the rule to apply--is spread
+    across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
+    target is rewrote to the content of the leaf. *)
  and tree =
-    Leaf of (term_env, term) Bindlib.mbinder
-  (** Hold the targets of rewriting, right hand side of a rule.  In a
+   | Leaf of (term_env, term) Bindlib.mbinder
+  (** Hold the targets of rewriting, the right hand side of a rule.  In a
       {!cons:Leaf}[(a)], [a] is the right hand side of the rule, or the action
       to perform if the rule applies. *)
   | Node of node_data
