@@ -82,6 +82,22 @@ We recommend to start types and predicates by a capital letter.
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
  For the moment, the verification is left to the user.
 
+**Implicit arguments**. Some function symbol arguments can be declared
+as implicit meaning that they must not be given by the user
+later. Implicit arguments are replaced by `_` at parsing time,
+generating a fresh metavariables. An argument declared as implicit can
+be explicitly given by enclosing it between curly brackets `{` ... `}`
+though. If a function symbol is prefixed by `@` then the implicit
+arguments mechanism is disabled and all the arguments must be
+explicitly given.
+
+```
+symbol eq {a:U} : T a ⇒ T a ⇒ Prop
+// The first argument of `eq` is declared as implicit and must not be given
+// unless `eq` is prefixed by `@`.
+// Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
+```
+
 <!----------------------------------------------------------------------------> 
 ### The `rule` declaration command
 
@@ -154,7 +170,8 @@ definition plus_two n ≔ add n (succ (succ zero))
 
 Note that some type annotations can be omitted, and that it is possible to put
 arguments on the left side of the `≔` symbol (similarly to a value declaration
-in OCaml).
+in OCaml). Some arguments can be declared as implicit by enclosing them in
+curly brackets.
 
 <!----------------------------------------------------------------------------> 
 ### The `theorem` command

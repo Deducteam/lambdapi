@@ -69,6 +69,9 @@ syntax match Identifier
 " Special symbols.
 syntax match Keyword "("
 syntax match Keyword ")"
+syntax match Keyword "{"
+syntax match Keyword "}"
+syntax match Keyword "@"
 syntax match Keyword "\["
 syntax match Keyword "\]"
 syntax match Keyword ":"

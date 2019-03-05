@@ -59,6 +59,8 @@ type term =
   (** Module in which it is defined. *)
   ; sym_def   : term option ref
   (** Definition of the symbol. *)
+  ; sym_impl  : bool list
+  (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_tree : tree ref
@@ -71,6 +73,13 @@ type term =
     relation to {!val:Sign.link} and {!val:Sign.unlink}). This is necessary to
     ensure that two identical symbols are always physically equal, even across
     signatures. It should NOT be otherwise mutated. *)
+
+(** {b NOTE} we maintain the invariant that {!recfield:sym_impl} should not be
+    terminated by [false]. Indeed, this information would be redundant and may
+    lead to performance losses during scoping.  If a symbol has more arguments
+    than there are booleans in the list,  then the extra arguments must all be
+    explicit. Lastly, note that {!recfield:sym_impl} is empty exaclty when the
+    symbol has no implicit parameters. *)
 
 (** Possible modes for a symbol. It is given at the declaration of the symbol,
     and it cannot be changed subsequently. *)
@@ -304,7 +313,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_rules = ref [] ; sym_mode = Const ; sym_tree = ref Fail }
+    ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
+    ; sym_tree = ref Fail }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
