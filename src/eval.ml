@@ -78,26 +78,23 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
 and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
-  if Pervasives.(!with_trees) then
-    tree_walk !(s.sym_tree) stk
-  else
-    let stk_len = List.length stk in
-    let match_rule r =
-      (* First check that we have enough arguments. *)
-      if r.arity > stk_len then None else
-        (* Substitute the left-hand side of [r] with pattern variables *)
-        let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
-        (* Match each argument of the lhs with the terms in the stack. *)
-        let rec match_args ps ts =
-          match (ps, ts) with
-          | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
-          | (p::ps, t::ts) -> if matching env p t then match_args ps ts
-            else None
-          | (_    , _    ) -> assert false (* cannot happen *)
-        in
-        match_args r.lhs stk
-    in
-    List.map_find match_rule Timed.(!(s.sym_rules))
+  if Pervasives.(!with_trees) then tree_walk !(s.sym_tree) stk else
+  let stk_len = List.length stk in
+  let match_rule r =
+    (* First check that we have enough arguments. *)
+    if r.arity > stk_len then None else
+      (* Substitute the left-hand side of [r] with pattern variables *)
+      let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
+      (* Match each argument of the lhs with the terms in the stack. *)
+      let rec match_args ps ts =
+        match (ps, ts) with
+        | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
+        | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
+        | (_    , _    ) -> assert false (* cannot happen *)
+      in
+      match_args r.lhs stk
+  in
+  List.map_find match_rule Timed.(!(s.sym_rules))
 
 (** [matching ar p t] checks that term [t] matches pattern [p]. The values for
     pattern variables (using the [ITag] node) are stored in [ar], at the index
