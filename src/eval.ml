@@ -7,7 +7,7 @@ open Terms
 open Basics
 open Print
 
-(** [trees] contains whether trees are used for pattern matching. *)
+(** [with_trees] contains whether trees are used for pattern matching. *)
 let with_trees : bool Pervasives.ref = Pervasives.ref false
 
 (** Logging function for evaluation. *)

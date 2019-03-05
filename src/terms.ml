@@ -127,11 +127,8 @@ type term =
  and tree =
     Leaf of (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, right hand side of a rule.  In a
-      {!cons:Leaf}[(t, a)], [t] contains the term--if a switch has been
-      performed-- which has been matched to arrive to the leaf or {!cons:None}
-      if we arrived on the leaf via a default case. [a] is the right hand side
-      of the rule, or the action to perform if the rule applies.
-      XXX Remove term option from doc *)
+      {!cons:Leaf}[(a)], [a] is the right hand side of the rule, or the action
+      to perform if the rule applies. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible
@@ -146,13 +143,11 @@ type term =
  and node_data =
   { swap : int option
   (** Indicates which column of the pattern matrix has been chosen to perform
-      the switch.
-      XXX remove the option *)
+      the switch. *)
   ; children : (term option * tree) list
   (** Subtrees resulting from either specialisation on terms or default case.
       First element is {!cons:None} if child is result of a default case or
       {!cons:Some}[(t)] if it results from specialisation on [t]. *) }
-(* TODO remove switch field, redundant with new [children] type *)
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
