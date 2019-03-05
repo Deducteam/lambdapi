@@ -223,17 +223,6 @@ end
 
 module Pm = Pattmat
 
-(** [appl_leftmost t] returns the leftmost non {!cons:Appl} term of [t]. *)
-let rec appl_leftmost : term -> term = function
-  | Appl(u, _) -> appl_leftmost u
-  | u          -> u
-
-(** [appl_left_depth t] returns the number of successive {!cons:Appl} on the
-    left of the expression. *)
-let rec appl_left_depth : term -> int = function
-  | Appl(u, _) -> 1 + appl_left_depth u
-  | _          -> 0
-
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
@@ -278,7 +267,7 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   | Symb(_, _)    -> litl
   | Appl(u, v)    ->
   (* ^ Nested structure verified in filter *)
-    let upat = appl_leftmost pat in
+    let upat = fst @@ Basics.get_args pat in
     spec_line upat (u :: v :: litl)
   | Abst(_, b)    ->
       let _, t = Bindlib.unbind b in t :: litl
@@ -287,7 +276,7 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     match lihd, pat with
     | Patt(_, _, [| |]), Appl(_, _)    ->
     (* ^ Wildcard *)
-      let arity = appl_left_depth pat in
+      let arity = List.length @@ snd @@ Basics.get_args pat in
       List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
     | Patt(_, _, _)       , Abst(_, b) ->
       let _, t = Bindlib.unbind b in t :: litl
@@ -370,7 +359,7 @@ let compile : Pm.t -> t = fun patterns ->
         let fcol = Pm.get_col 0 spm in
         let cons = List.filter is_cons fcol in
         let spepatts = List.map (fun s ->
-          (Some(appl_leftmost s), specialize s spm)) cons in
+          (Some(fst @@ Basics.get_args s), specialize s spm)) cons in
         let defpatts = (None, default spm) in
         let children =
           List.map (fun (c, p) -> (c, grow p))
