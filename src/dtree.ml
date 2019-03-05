@@ -61,26 +61,27 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_opterm : term option pp = fun oc teo -> match teo with
     | Some(t) -> P.pp oc t
     | None    -> F.fprintf oc "d" in
-  let rec write_tree : int -> t -> unit = fun father_l tree ->
+  let rec write_tree : int -> term option -> t -> unit =
+    fun father_l swon tree ->
   (* We cannot use iter since we need the father to be passed. *)
     match tree with
-    | Leaf(t, a)  ->
+    | Leaf(_, a)  ->
       incr nodecount ;
       F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
       P.pp ppf acte ; F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
-      pp_opterm ppf t ; F.fprintf ppf "\"];"
+      pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata) ->
-      let { switch = t ; swap = swa ; children = ch } = ndata in
+      let { swap = swa ; children = ch ; _ } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       F.fprintf ppf "@ %d [label=\"" tag ;
       F.fprintf ppf "%d" (match swa with None -> 0 | Some(i) -> i) ;
       F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
-      pp_opterm ppf t ; F.fprintf ppf "\"];" ;
-      List.iter (fun (_, e) -> write_tree tag e) ch ;
+      pp_opterm ppf swon ; F.fprintf ppf "\"];" ;
+      List.iter (fun (s, e) -> write_tree tag s e) ch ;
     | Fail        ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
@@ -88,10 +89,10 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ switch = _ ; swap = _ ; children = ch }) ->
-      List.iter (fun (_, c) -> write_tree 0 c) ch
-    | Leaf(_, _)                                     -> write_tree 0 tree
-    | _                                              -> assert false
+    | Node({ swap = _ ; children = ch ; _ }) ->
+      List.iter (fun (sw, c) -> write_tree 0 sw c) ch
+    | Leaf(_, _)                             -> ()
+    | _                                      -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
