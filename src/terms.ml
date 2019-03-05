@@ -125,7 +125,7 @@ type term =
     across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
     target is rewrote to the content of the leaf. *)
  and tree =
-   | Leaf of (term_env, term) Bindlib.mbinder
+  | Leaf of (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, the right hand side of a rule.  In a
       {!cons:Leaf}[(a)], [a] is the right hand side of the rule, or the action
       to perform if the rule applies. *)

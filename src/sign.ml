@@ -257,7 +257,7 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   (* EXPE *)
   begin
-    let pama = Dtree.Pattmat.of_rules Timed.(!(sym.sym_rules)) in
+    let pama = Dtree.Pattmat.of_rules !(sym.sym_rules) in
     let tree = Dtree.compile pama in
     sym.sym_tree := tree ;
     Dtree.to_dot sym.sym_name !(sym.sym_tree)
