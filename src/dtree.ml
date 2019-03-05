@@ -72,15 +72,15 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata) ->
-      let { swap = swa ; children = ch ; _ } = ndata in
+      let { swap ; children ; _ } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       F.fprintf ppf "@ %d [label=\"" tag ;
-      F.fprintf ppf "%d" (match swa with None -> 0 | Some(i) -> i) ;
+      F.fprintf ppf "%d" (match swap with None -> 0 | Some(i) -> i) ;
       F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];" ;
-      List.iter (fun (s, e) -> write_tree tag s e) ch ;
+      List.iter (fun (s, e) -> write_tree tag s e) children ;
     | Fail        ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
@@ -123,10 +123,10 @@ struct
   let pp_line : line pp = List.pp Print.pp ";"
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { values = va ; _ } ->
+  let pp : t pp = fun oc { values ; _ } ->
     let module F = Format in
     F.fprintf oc "[|@[<v>@," ;
-    List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) va) ;
+    List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
     (* List.pp does not process Format "@" directives when in sep *)
     F.fprintf oc "@.|]@,@?"
 
@@ -141,10 +141,10 @@ struct
 
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
-  let get_col : int -> t -> line = fun ind { values = valu ; _ } ->
+  let get_col : int -> t -> line = fun ind { values ; _ } ->
     let opcol = List.fold_left (fun acc { lhs = li ; _ } ->
         List.nth_opt li ind :: acc) []
-        valu in
+        values in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
     List.map (function Some(e) -> e | None -> assert false) rem
 
@@ -170,7 +170,7 @@ struct
   let pick_best : t -> int = fun _ -> 0
 
   (** [is_pattern t] returns whether a term [t] is considered as a pattern *)
-  let rec is_pattern : term -> bool = function
+  let is_pattern : term -> bool = function
     | Patt(_, _, _) -> false
     | _             -> true
 
@@ -186,7 +186,7 @@ struct
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
-  let can_switch_on : t -> int -> bool = fun { values = valu ; _ } k ->
+  let can_switch_on : t -> int -> bool = fun { values ; _ } k ->
     let rec loop : rule list -> bool = function
       | []      -> true
       | r :: rs ->
@@ -195,13 +195,13 @@ struct
           | None    -> loop rs
           | Some(t) -> is_pattern t
         end in
-    loop valu
+    loop values
 
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
   let discard_patt_free : t -> int array = fun m ->
-    let ncols = List.fold_left (fun acc { lhs = l ; _ } ->
-        let le = List.length l in
+    let ncols = List.fold_left (fun acc { lhs ; _ } ->
+        let le = List.length lhs in
       if le > acc then le else acc) 0 m.values in
     let switchable = List.init ncols (fun k ->
         can_switch_on m k) in
