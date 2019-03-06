@@ -47,7 +47,8 @@ Structure of directories and files
    + property checking:
    
      - `sr.ml`: algorithm for checking subject reduction
-     - `confluence.ml`: call confluence checker by converting signatures into a TRS file
+     - `confluence.ml`: call a confluence checker by converting signatures into a TRS file
+     - `termination.ml`: call a termination checker by converting signatures into an XTC file
 
    + interface to editors:
    
