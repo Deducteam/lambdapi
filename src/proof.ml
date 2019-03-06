@@ -14,17 +14,13 @@ module Goal :
     (** [of_meta m] create a goal from the metavariable [m]. *)
     val of_meta : meta -> t
 
-    (** [of_meta_decomposed m] is similar to [of_meta m] but it decomposes the
-        type of [m] for [goal_hyps] and [goal_type]. *)
-    val of_meta_decomposed : meta -> t
-
     (** [get_meta g] returns the metavariable associated to goal [g]. *)
     val get_meta : t -> meta
 
     (** [get_type g] returns the environment and expected type of the goal. *)
     val get_type : t -> Env.t * term
 
-    (** [simpl g] simlifies the given goal, evaluating its type to SNF. *)
+    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
   end =
   struct
@@ -33,10 +29,7 @@ module Goal :
       ; goal_hyps : Env.t (* Precomputed scope for a suitable term. *)
       ; goal_type : term  (* Precomputed type for a suitable term.  *) }
 
-    let of_meta : meta -> t = fun goal_meta ->
-      {goal_meta; goal_hyps = []; goal_type = !(goal_meta.meta_type)}
-
-    let of_meta_decomposed : meta -> t = fun m ->
+    let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
         let rec aux n t acc =
           if n = 0 then (acc, t) else
@@ -57,8 +50,8 @@ module Goal :
     let simpl : t -> t = fun g -> {g with goal_type = Eval.snf g.goal_type}
   end
 
-(** Representation of the state of the proof of a theorem. *)
-type proof =
+(** Representation of the proof state of a theorem. *)
+type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
   ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
@@ -67,7 +60,7 @@ type proof =
 and builtins = (sym * pp_hint) StrMap.t
 
 (** Short synonym for qualified use. *)
-type t = proof
+type t = proof_state
 
 (** [init builtins name a] returns an initial proof state for a theorem  named
     [name], which statement is represented by the type [a]. Builtin symbols of
