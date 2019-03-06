@@ -25,8 +25,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       Console.out 1 "%a" Proof.pp ps; ps
   | P_tac_proofterm     ->
       (* Just print the current proof term. *)
-      let t = Eval.snf (Meta(Proof.(ps.proof_term), [||])) in
-      let name = Proof.(ps.proof_name).elt in
+      let t = Meta(ps.Proof.proof_term, [||]) in
+      let name = ps.Proof.proof_name.elt in
       Console.out 1 "Proof term for [%s]: [%a]\n" name Print.pp t; ps
   | P_tac_focus(i)      ->
       (* Put the [i]-th goal in focus (if possible). *)
@@ -40,12 +40,12 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | _                   ->
   (* Other tactics need to act on the goal / goals. *)
   let (g, gs) =
-    match Proof.(ps.proof_goals) with
+    match ps.Proof.proof_goals with
     | []    -> fatal tac.pos "There is nothing left to prove.";
     | g::gs -> (g, gs)
   in
   let handle_refine : term -> Proof.t = fun t ->
-    (* Obtaining the goals environment and type. *)
+    (* Obtaining the goal environment and type. *)
     let (env, a) = Proof.Goal.get_type g in
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
@@ -56,7 +56,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
     if not (Solve.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
-    let vs = Array.of_list (List.map (fun (_,(x,_)) -> x) env) in
+    let vs = Array.of_list (List.map (fun (_,(v,_)) -> v) env) in
     m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas t in
