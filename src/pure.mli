@@ -47,7 +47,7 @@ type tactic_result =
   | Tac_OK    of proof_state
   | Tac_Error of Pos.popt option * string
 
-(** [initial_state path] returns an initial state for a signature having module
+(** [initial_state path] returns an initial state for a signature with  module
     path [path]. The resulting state can be used by [handle_command]. *)
 val initial_state : Files.module_path -> command_state
 
