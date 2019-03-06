@@ -80,7 +80,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* We check that no metavariable remains. *)
       if Basics.has_metas a then
         begin
-          fatal_msg "The type of [%s] contains unsolved metavariables.\n" x.elt;
+          fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
       (* We build the symbol declaration mode from the tags. *)
@@ -144,7 +144,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       if Basics.has_metas t || Basics.has_metas a then
         begin
           fatal_msg "The definition of [%s] or its type \
-                     contain unsolved metavariables.\n" x.elt;
+                     have unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp t pp a
         end;
       (* Actually add the symbol to the signature. *)
@@ -169,7 +169,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas a then
         begin
-          fatal_msg "The type of [%s] contains unsolved metavariables.\n" x.elt;
+          fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
       (* Initialize proof state. *)
