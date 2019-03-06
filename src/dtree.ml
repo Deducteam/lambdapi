@@ -94,8 +94,11 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap = _ ; children = ch ; push }) ->
-       if push then F.fprintf ppf "@ 0 [shape=\"box\"]" ;
+    | Node({ swap ; children = ch ; push }) ->
+       F.fprintf ppf "@ 0 [label=\"%d\""
+         (match swap with None -> 0 | Some(i) -> i) ;
+       if push then F.fprintf ppf " shape=\"box\"" ;
+       F.fprintf ppf "]" ;
       List.iter (fun (sw, c) -> write_tree 0 sw c) ch
     | Leaf(_)                                -> ()
     | _                                      -> assert false
