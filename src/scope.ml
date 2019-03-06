@@ -195,9 +195,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
     | (Some(a), _       ) -> scope env a
     | (None   , _       ) ->
-        (* We build a metavariable that may use the variables of [env]. *)
-        let vs = Env.vars_of_env env in
-        _Meta (fresh_meta (prod_of_env env _Type) (Array.length vs)) vs
+       (* We create a new metavariable [m] of type [TYPE] for the missing
+          domain. *)
+       let vs = Env.vars_of_env env in
+       let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+       _Meta m vs
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -208,28 +210,26 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , M_Term(_)) ->
-        (* We build a metavariable that may use the variables of [env]. *)
-        let xs = Env.vars_of_env env in
-        let a =
-          let m = fresh_meta (prod_of_env env _Type) (Array.length xs) in
-          prod_of_env env (_Meta m xs)
-        in
-        _Meta (fresh_meta a (List.length env)) xs
+       (* We create a new metavariable [m1] of type [TYPE] and a new
+          metavariable [m2] of type [m1]. [P_Wild] is interpreted by [m2]. *)
+        let vs = Env.vars_of_env env in
+        let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+        let a = prod_of_env env (_Meta m1 vs) in
+        let m2 = fresh_meta a (Array.length vs) in
+        _Meta m2 vs
     | (P_Meta(id,ts)   , M_Term(m)) ->
-        let v =
+       let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
-          (* Otherwise we create a new metavariable. *)
-          let a =
-            let vs = Env.vars_of_env env in
-            let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
-            prod_of_env env (_Meta m vs)
-          in
-          let v = fresh_meta ~name:id.elt a (List.length env) in
-          Pervasives.(m := StrMap.add id.elt v !m); v
+          (* Otherwise we create a new metavariable [m1] of type [TYPE]
+             and a new metavariable [m2] of name [id] and type [m1]. *)
+          let vs = Env.vars_of_env env in
+          let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+          let a = prod_of_env env (_Meta m1 vs) in
+          let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
+          Pervasives.(m := StrMap.add id.elt m2 !m); m2
         in
-        (* The environment of the metavariable is build from [ts]. *)
-        _Meta v (Array.map (scope env) ts)
+        _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _        ) -> fatal t.pos "Not allowed in a rule."
     | (P_Patt(id,ts)   , M_LHS(m) ) ->
         let i =
@@ -321,8 +321,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope_term : metamap -> sig_state -> env -> p_term
-    -> term * metamap = fun m ss env t ->
+let scope_term : metamap -> sig_state -> env -> p_term -> term * metamap
+  = fun m ss env t ->
   let m = Pervasives.ref m in
   let t = scope (M_Term(m)) ss env t in
   (Bindlib.unbox t, Pervasives.(!m))

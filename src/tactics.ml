@@ -62,14 +62,15 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     let new_goals = List.map Proof.Goal.of_meta_decomposed metas in
     Proof.({ps with proof_goals = new_goals @ gs})
   in
+  let scope_basic ss env t = fst (Scope.scope_term StrMap.empty ss env t) in
   match tac.elt with
   | P_tac_print
   | P_tac_proofterm
   | P_tac_focus(_)      -> assert false (* Handled above. *)
   | P_tac_refine(t)     ->
       (* Scoping the term in the goal's environment. *)
-      let env = fst (Proof.Goal.get_type g) in
-      let t = fst (Scope.scope_term StrMap.empty ss env t) in
+      let env, _ = Proof.Goal.get_type g in
+      let t = scope_basic ss env t in
       (* Refine using the given term. *)
       handle_refine t
   | P_tac_intro(xs)     ->
@@ -77,13 +78,13 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let env = fst (Proof.Goal.get_type g) in
       let xs = List.map (fun x -> (x, None, false)) xs in
       let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
-      let t = fst (Scope.scope_term StrMap.empty ss env t) in
+      let t = scope_basic ss env t in
       (* Refine using the built term. *)
       handle_refine t
   | P_tac_apply(t)      ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
-      let t0 = fst (Scope.scope_term StrMap.empty ss env t) in
+      let t0 = scope_basic ss env t in
       (* Infer the type of [t0] and count the number of products. *)
       (* NOTE there is room for improvement here. *)
       let nb =
@@ -95,7 +96,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* NOTE it is scoping that handles wildcards as metavariables. *)
       let rec add_wilds t n =
         match n with
-        | 0 -> fst (Scope.scope_term StrMap.empty ss env t)
+        | 0 -> scope_basic ss env t
         | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
       in
       handle_refine (add_wilds t nb)
@@ -104,7 +105,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_rewrite(po,t) ->
       (* Scoping the term in the goal's environment. *)
       let env = fst (Proof.Goal.get_type g) in
-      let t = fst (Scope.scope_term StrMap.empty ss env t) in
+      let t = scope_basic ss env t in
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)

@@ -28,7 +28,7 @@ let require : (Files.module_path -> unit) Pervasives.ref =
     [Fatal] is raised in case of an error. *)
 let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
     fun ss cmd ->
-  let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in
+  let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
   match cmd.elt with
   | P_require(p, m)            ->
       (* Check that the module has not already been required. *)
@@ -74,7 +74,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
-      let a = fst (scope_basic ss a) in
+      let a = scope_basic ss a in
       (* We check that [a] is typable by a sort. *)
       Solve.sort_type Ctxt.empty a;
       (* We check that no metavariable remains. *)
@@ -116,7 +116,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-      let t = fst (scope_basic ss t) in
+      let t = scope_basic ss t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
       let (ao, impl) =
         match ao with
@@ -125,7 +125,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map (fun a -> fst (scope_basic ss a)) ao in
+      let ao = Option.map (scope_basic ss) ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)
@@ -163,7 +163,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = fst (scope_basic ss a) in
+      let a = scope_basic ss a in
       (* Check that [a] is typable and that its type is a sort. *)
       Solve.sort_type Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
@@ -207,13 +207,13 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let result =
         match asrt with
         | P_assert_typing(t,a) ->
-            let t = fst (scope_basic ss t) in
-            let a = fst (scope_basic ss a) in
+            let t = scope_basic ss t in
+            let a = scope_basic ss a in
             Solve.sort_type Ctxt.empty a;
             (try Solve.check Ctxt.empty t a with _ -> false)
         | P_assert_conv(t,u)   ->
-            let t = fst (scope_basic ss t) in
-            let u = fst (scope_basic ss u) in
+            let t = scope_basic ss t in
+            let u = scope_basic ss u in
             Eval.eq_modulo t u
       in
       if result = must_fail then fatal cmd.pos "Assertion failed."; (ss, None)
@@ -241,7 +241,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
   | P_infer(t, cfg)            ->
       (* Infer the type of [t]. *)
       let t_pos = t.pos in
-      let t = fst (scope_basic ss t) in
+      let t = scope_basic ss t in
       let a =
         match Solve.infer [] t with
         | Some(a) -> Eval.eval cfg a
@@ -251,7 +251,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
   | P_normalize(t, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t_pos = t.pos in
-      let t = fst (scope_basic ss t) in
+      let t = scope_basic ss t in
       let v =
         match Solve.infer [] t with
         | Some(_) -> Eval.eval cfg t
