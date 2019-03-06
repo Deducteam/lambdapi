@@ -1,7 +1,6 @@
 (** Toplevel commands. *)
 
 open Extra
-open Timed
 open Console
 open Terms
 open Print
@@ -57,7 +56,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     if not (Solve.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     let vs = Array.of_list (List.map (fun (_,(v,_)) -> v) env) in
-    m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
+    set_meta m (Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas t in
     let new_goals = List.map Proof.Goal.of_meta_decomposed metas in
