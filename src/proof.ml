@@ -14,10 +14,6 @@ module Goal :
     (** [of_meta m] create a goal from the metavariable [m]. *)
     val of_meta : meta -> t
 
-    (** [of_meta_decomposed m] is similar to [of_meta m] but it decomposes the
-        type of [m] for [goal_hyps] and [goal_type]. *)
-    val of_meta_decomposed : meta -> t
-
     (** [get_meta g] returns the metavariable associated to goal [g]. *)
     val get_meta : t -> meta
 
@@ -33,10 +29,7 @@ module Goal :
       ; goal_hyps : Env.t (* Precomputed scope for a suitable term. *)
       ; goal_type : term  (* Precomputed type for a suitable term.  *) }
 
-    let of_meta : meta -> t = fun goal_meta ->
-      {goal_meta; goal_hyps = []; goal_type = !(goal_meta.meta_type)}
-
-    let of_meta_decomposed : meta -> t = fun m ->
+    let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
         let rec aux n t acc =
           if n = 0 then (acc, t) else

@@ -59,7 +59,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas t in
-    let new_goals = List.map Proof.Goal.of_meta_decomposed metas in
+    let new_goals = List.map Proof.Goal.of_meta metas in
     Proof.({ps with proof_goals = new_goals @ gs})
   in
   let scope_basic ss env t = fst (Scope.scope_term StrMap.empty ss env t) in
