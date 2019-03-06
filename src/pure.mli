@@ -1,4 +1,4 @@
-(** Interface to LSP *)
+(** Interface to LSP. *)
 
 (* Lambdapi core *)
 open Core
