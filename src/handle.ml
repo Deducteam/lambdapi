@@ -166,6 +166,12 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let a = fst (scope_basic ss a) in
       (* Check that [a] is typable and that its type is a sort. *)
       Solve.sort_type Ctxt.empty a;
+      (* We check that no metavariable remains in [a]. *)
+      if Basics.has_metas a then
+        begin
+          fatal_msg "The type of [%s] contains unsolved metavariables.\n" x.elt;
+          fatal x.pos "We have %s : %a." x.elt pp a
+        end;
       (* Initialize proof state. *)
       let st = Proof.init ss.builtins x a in
       (* Build proof checking data. *)
