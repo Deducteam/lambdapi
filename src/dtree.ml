@@ -96,6 +96,26 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
+(** Represents the position of a subterm in a term. *)
+module Position =
+struct
+  (** Each element of the list is a level in the tree of the term. *)
+  type t = int list
+
+  (** Initial position. *)
+  let init = [0]
+
+  (** [succ p] returns the successor of position [p].  For instance, if [p =
+      [1 ; 1]], [succ p = [2 ; 1]]. *)
+  let succ = function
+    | [] -> assert false
+    | x :: xs -> succ x :: xs
+
+  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
+      [prefix 1 3.4] is [1.3.4]. *)
+  let prefix : t -> t -> t = fun p q -> q @ p
+end
+
 (** Pattern matrices is a way to encode a pattern matching problem.  A line is
     a candidate instance of the values matched.  Each line is a pattern having
     an action attached.  This module provides functions to operate on these
@@ -103,7 +123,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
-  type line = term list
+  type line = (term * Position.t) list
 
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
@@ -120,7 +140,7 @@ struct
   type t = { values : matrix }
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
-  let pp_line : line pp = List.pp Print.pp ";"
+  let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc (List.map (fst) l)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { values ; _ } ->
@@ -134,7 +154,8 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
-          { lhs = r.Terms.lhs ; rhs = r.Terms.rhs }) rs }
+      let term_pos = List.mapi (fun i te -> te, [i]) r.Terms.lhs in
+      { lhs = term_pos ; rhs = r.Terms.rhs }) rs }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.values = []
@@ -151,9 +172,9 @@ struct
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
   let select : t -> int array -> t = fun m indexes ->
     { values = List.map (fun rul ->
-          { rul with
-            lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
-                [] indexes }) m.values }
+      { rul with
+        lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
+          [] indexes }) m.values }
 
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
@@ -179,9 +200,9 @@ struct
       hand side is composed only of wildcards. *)
   let exhausted : rule -> bool = fun { lhs ; _ }->
     let rec loop = function
-      | []                       -> true
-      | x :: _ when is_pattern x -> false
-      | _ :: xs                  -> loop xs in
+      | []                            -> true
+      | (x, _) :: _ when is_pattern x -> false
+      | _ :: xs                       -> loop xs in
     loop lhs
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
@@ -192,8 +213,8 @@ struct
       | r :: rs ->
         begin
           match List.nth_opt r.lhs k with
-          | None    -> loop rs
-          | Some(t) -> is_pattern t
+          | None       -> loop rs
+          | Some(t, _) -> is_pattern t
         end in
     loop values
 
@@ -221,7 +242,7 @@ module Pm = Pattmat
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
-let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
+let rec spec_filter : term -> term list -> bool = fun pat li ->
   (* Might be relevant to reduce the function to [term -> term -> bool] with
      [spec_filter p t] testing pattern [p] against head of line [t] *)
   let lihd, litl = match li with
@@ -260,24 +281,28 @@ let rec spec_filter : term -> Pm.line -> bool = fun pat li ->
 let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   let lihd, litl = List.hd li, List.tl li in
   match lihd with
-  | Symb(_, _)    -> litl
-  | Appl(u, v)    ->
+  | Symb(_, _), _ -> litl
+  | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
-    spec_line upat (u :: v :: litl)
-  | Abst(_, b)    ->
-      let _, t = Bindlib.unbind b in t :: litl
-  | Vari(_)       -> litl
+    let np = Position.prefix p Position.init in
+    spec_line upat ((u, np) :: (v, Position.succ np) :: litl)
+  | Abst(_, b), p ->
+     let np = Position.prefix p Position.init in
+     let _, t = Bindlib.unbind b in (t, np) :: litl
+  | Vari(_), _    -> litl
   | _ -> (* Cases that require the pattern *)
     match lihd, pat with
-    | Patt(_, _, [| |]), Appl(_, _)    ->
+    | (Patt(_, _, [| |]), p), Appl(_, _) ->
     (* ^ Wildcard *)
       let arity = List.length @@ snd @@ Basics.get_args pat in
-      List.init arity (fun _ -> Patt(None, "w", [| |])) @ litl
-    | Patt(_, _, _)       , Abst(_, b) ->
-      let _, t = Bindlib.unbind b in t :: litl
-    | Patt(_, _, _)       , _          -> litl
-    | x                   , y          ->
+      List.init arity (fun i ->
+        Patt(None, "w", [| |]), Position.prefix p [i]) @ litl
+    | (Patt(_, _, _), p)    , Abst(_, b) ->
+       let _, t = Bindlib.unbind b in
+       (t, Position.prefix p Position.init) :: litl
+    | (Patt(_, _, _), _)    , _          -> litl
+    | (x, _)                , y          ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
       Format.fprintf Format.str_formatter "|" ;
       Print.pp Format.str_formatter y ;
@@ -294,19 +319,17 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     same number of applications and having the same leftmost {e non}
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
-  let up = p in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
-      spec_filter up l) m.values in
+      spec_filter p (List.map fst l)) m.values in
   let newmat = List.map (fun rul ->
-      { rul with Pm.lhs = spec_line up rul.Pm.lhs }) filtered in
+      { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
   { values = newmat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Pm.t -> Pm.t =
-  fun { values = m } ->
+let default : Pm.t -> Pm.t = fun { values = m } ->
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
-      match List.hd l with
+      match fst @@ List.hd l with
       | Patt(_ , _, _)                       -> true
       | Symb(_, _) | Abst(_, _) | Appl(_, _) -> false
       | Vari(_)                              -> false
@@ -315,7 +338,7 @@ let default : Pm.t -> Pm.t =
         assert false) m in
   let unfolded = List.map (fun rul ->
       match List.hd rul.Pm.lhs with
-      | Patt(_, _, _) ->
+      | Patt(_, _, _), _ ->
         { rul with Pm.lhs = List.tl rul.Pm.lhs }
       | _             -> assert false) filtered in
   { values = unfolded }
@@ -353,7 +376,7 @@ let compile : Pm.t -> t = fun patterns ->
           | None    -> pm
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
-        let cons = List.filter is_cons fcol in
+        let cons = List.filter is_cons (List.map fst fcol) in
         let spepatts = List.map (fun s ->
           (Some(fst @@ Basics.get_args s), specialize s spm)) cons in
         let defpatts = (None, default spm) in
