@@ -24,7 +24,7 @@ module Goal :
     (** [get_type g] returns the environment and expected type of the goal. *)
     val get_type : t -> Env.t * term
 
-    (** [simpl g] simlifies the given goal, evaluating its type to SNF. *)
+    (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
   end =
   struct
@@ -57,8 +57,8 @@ module Goal :
     let simpl : t -> t = fun g -> {g with goal_type = Eval.snf g.goal_type}
   end
 
-(** Representation of the state of the proof of a theorem. *)
-type proof =
+(** Representation of the proof state of a theorem. *)
+type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
   ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
@@ -67,7 +67,7 @@ type proof =
 and builtins = (sym * pp_hint) StrMap.t
 
 (** Short synonym for qualified use. *)
-type t = proof
+type t = proof_state
 
 (** [init builtins name a] returns an initial proof state for a theorem  named
     [name], which statement is represented by the type [a]. Builtin symbols of
