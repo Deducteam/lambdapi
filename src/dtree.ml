@@ -60,10 +60,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "graph {@[<v>" ;
   let pp_opterm : term option pp = fun oc teo -> match teo with
     | Some(t) -> P.pp oc t
-    | None    -> F.fprintf oc "d" in
+    | None    -> F.fprintf oc "*" in
   let rec write_tree : int -> term option -> t -> unit =
     fun father_l swon tree ->
-  (* We cannot use iter since we need the father to be passed. *)
     match tree with
     | Leaf(_, a)  ->
       incr nodecount ;
@@ -73,14 +72,20 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata) ->
-      let { swap ; children ; _ } = ndata in
+      let { swap ; children ; push } = ndata in
       incr nodecount ;
       let tag = !nodecount in
-      F.fprintf ppf "@ %d [label=\"" tag ;
-      F.fprintf ppf "%d" (match swap with None -> 0 | Some(i) -> i) ;
-      F.fprintf ppf "\"]" ;
-      F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
-      pp_opterm ppf swon ; F.fprintf ppf "\"];" ;
+      begin (* Create node *)
+        F.fprintf ppf "@ %d [label=\"" tag ;
+        F.fprintf ppf "%d" (match swap with None -> 0 | Some(i) -> i) ;
+        F.fprintf ppf "\"" ;
+        if push then F.fprintf ppf " shape=\"box\"" ;
+        F.fprintf ppf "]"
+      end ;
+      begin (* Create edge *)
+        F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
+        pp_opterm ppf swon ; F.fprintf ppf "\"];"
+      end ;
       List.iter (fun (s, e) -> write_tree tag s e) children ;
     | Fail        ->
       incr nodecount ;
@@ -89,7 +94,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap = _ ; children = ch ; _ }) ->
+    | Node({ swap = _ ; children = ch ; push }) ->
+       if push then F.fprintf ppf "@ 0 [shape=\"box\"]" ;
       List.iter (fun (sw, c) -> write_tree 0 sw c) ch
     | Leaf(_)                                -> ()
     | _                                      -> assert false
