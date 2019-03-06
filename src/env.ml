@@ -1,9 +1,9 @@
-(** Environment for variables. *)
+(** Scoping environment for variables. *)
 
 open Terms
 
-(** Type of an environment,  used to associate names to corresponding
-    Bindlib variables and types. *)
+(** Type of an environment,  used in scoping to associate names
+    to corresponding Bindlib variables and types. *)
 type env = (string * (tvar * tbox)) list
 
 type t = env
