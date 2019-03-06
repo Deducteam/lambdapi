@@ -211,10 +211,17 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             let a = fst (scope_basic ss a) in
             Solve.sort_type Ctxt.empty a;
             (try Solve.check Ctxt.empty t a with _ -> false)
-        | P_assert_conv(t,u)   ->
-            let t = fst (scope_basic ss t) in
-            let u = fst (scope_basic ss u) in
-            Eval.eq_modulo t u
+        | P_assert_conv(a,b)   ->
+            let t = fst (scope_basic ss a) in
+            let u = fst (scope_basic ss b) in
+            match (Solve.infer [] t, Solve.infer [] u) with
+            | (Some(a), Some(b)) ->
+                if Eval.eq_modulo a b then Eval.eq_modulo t u else
+                fatal cmd.pos "Infered types not convertible (in assertion)."
+            | (None   , _      ) ->
+                fatal a.pos "Type cannot be infered (in assertion)."
+            | (_      , None   ) ->
+                fatal b.pos "Type cannot be infered (in assertion)."
       in
       if result = must_fail then fatal cmd.pos "Assertion failed."; (ss, None)
   | P_set(cfg)                 ->
