@@ -74,8 +74,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Refine using the given term. *)
       handle_refine t
   | P_tac_intro(xs)     ->
-      (* Scoping a sequence of abstraction in the goal's environment. *)
-      let env = fst (Proof.Goal.get_type g) in
+      (* Scoping a sequence of abstractions in the goal's environment. *)
+      let env, _ = Proof.Goal.get_type g in
       let xs = List.map (fun x -> (x, None, false)) xs in
       let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
       let t = scope_basic ss env t in
@@ -83,7 +83,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine t
   | P_tac_apply(t)      ->
       (* Scoping the term in the goal's environment. *)
-      let env = fst (Proof.Goal.get_type g) in
+      let env, _ = Proof.Goal.get_type g in
       let t0 = scope_basic ss env t in
       (* Infer the type of [t0] and count the number of products. *)
       (* NOTE there is room for improvement here. *)
@@ -104,7 +104,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
       (* Scoping the term in the goal's environment. *)
-      let env = fst (Proof.Goal.get_type g) in
+      let env, _ = Proof.Goal.get_type g in
       let t = scope_basic ss env t in
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (Scope.scope_rw_patt ss env) po in
