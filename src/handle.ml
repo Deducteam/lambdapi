@@ -24,8 +24,8 @@ let require : (Files.module_path -> unit) Pervasives.ref =
   Pervasives.ref (fun _ -> ())
 
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
-    module state. On success, an updated module state is returned, and [Fatal]
-    is raised in case of an error. *)
+    signature state. On success, an updated signature state is returned, and
+    [Fatal] is raised in case of an error. *)
 let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
     fun ss cmd ->
   let scope_basic ss t = Scope.scope_term StrMap.empty ss Env.empty t in

@@ -33,7 +33,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [get_builtin loc st key] extracts the builtin symbol associated mapped  to
+(** [get_builtin loc st key] extracts the builtin symbol associated to
     [key] in the signature state [st]. If it does not exist, [Fatal] is raised
     using the position [loc] in the associated error message. *)
 let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
@@ -108,8 +108,8 @@ type metamap = meta StrMap.t
     hold specific information for the given mode. *)
 type mode =
   | M_Term of metamap Pervasives.ref
-  (** Standard scoping mode for terms,  holding a map of defined metavariables
-      that can be updated with new metavariable on scoping. *)
+  (** Standard scoping mode for terms,  holding a map of metavariables
+      that can be updated with new metavariables on scoping. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list
