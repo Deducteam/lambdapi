@@ -47,11 +47,11 @@ type tactic_result =
   | Tac_OK    of proof_state
   | Tac_Error of Pos.popt option * string
 
-(** [initial_state path] returns a initial state for a signature having module
+(** [initial_state path] returns an initial state for a signature having module
     path [path]. The resulting state can be used by [handle_command]. *)
 val initial_state : Files.module_path -> command_state
 
-(** [handle_command st cmd] evaluated the command [cmd] in state [st],  giving
+(** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding
     to the [Cmd_OK] constructor,  the command starts a proof (corresponding to
     the [Cmd_Proof] constructor), or the command fails (corresponding  to  the
