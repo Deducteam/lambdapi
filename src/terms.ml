@@ -4,7 +4,8 @@
     of the language, together with smart constructors and low level operation.
     The representation strongly relies on the {!module:Bindlib} library, which
     provides a convenient abstraction to work with binders.
-    See https://rlepigre.github.io/ocaml-bindlib/ for details on Bindlib. *)
+
+    @see <https://rlepigre.github.io/ocaml-bindlib/> *)
 
 open Extra
 open Timed

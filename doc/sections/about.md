@@ -18,7 +18,7 @@ it allows the encoding of the theories behind Coq or HOL.
 
 The ability to encode several rather different systems make of Lambdapi an ideal target for proof interoperability. Indeed,
 one can for example export a proof written in [Matita](http://matita.cs.unibo.it/) (an implementation of the
-calculus of inductive constructions) to the [OpenTheory](http://www.gilith.com/opentheory/) format (shared  between 
+calculus of inductive constructions) to the [OpenTheory](http://www.gilith.com/opentheory/) format (shared  between
 several implementations of HOL).
 
 ### An interactive proof system

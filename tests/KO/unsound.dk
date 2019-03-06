@@ -11,8 +11,8 @@ A:Type.
 g:X->Nat.
 f:Nat->X.
 
-def l1 := x:Nat => g (f x). 
-def l2 := y:A => l1 y. 
+def l1 := x:Nat => g (f x).
+def l2 := y:A => l1 y.
 def ap := l2 false.
 
 
