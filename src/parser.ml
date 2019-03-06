@@ -136,6 +136,8 @@ let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
+let _type_       = KW.create "type"
+let _compute_    = KW.create "compute"
 
 (** Natural number literal. *)
 let nat_lit =
@@ -437,6 +439,10 @@ let parser cmd =
       -> P_assert(mf,a)
   | _set_ c:config
       -> P_set(c)
+  | _type_ t:term
+      -> P_infer(t, Eval.{strategy = NONE; steps = None})
+  | _compute_ t:term
+      -> P_normalize(t, Eval.{strategy = SNF; steps = None})
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

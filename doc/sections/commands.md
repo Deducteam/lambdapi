@@ -179,6 +179,34 @@ curly brackets.
 TODO
 
 <!----------------------------------------------------------------------------> 
+### The `type` command
+
+The `type` command returns the type of a term.
+
+```
+symbol N : TYPE
+symbol z : N
+symbol s : N⇒N
+type N⇒N // returns TYPE
+type s z // returns N
+```
+
+<!----------------------------------------------------------------------------> 
+### The `compute` command
+
+The `compute` command computes the normal form of a term.
+
+```
+symbol N : TYPE
+symbol z : N
+symbol s : N⇒N
+symbol add : N⇒N⇒N
+rule add z &x → &x
+and add (s &x) &y → add &x (s &y)
+compute add (s (s z)) (s (s z)) // returns s (s (s (s z)))
+```
+
+<!----------------------------------------------------------------------------> 
 ### The `assert` and `assertnot` commands
 
 The `assert` and `assertnot` are convenient for checking that the validity, or

@@ -31,6 +31,8 @@ reserved "admit"
 reserved "abort"
 reserved "set"
 reserved "_"
+reserved "type"
+reserved "compute"
 
 // Identifier
 <ident> ::=
@@ -149,6 +151,10 @@ reserved "_"
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
+  // Get the type of a term
+  | "type" <term>
+  // Get the normal form of a term
+  | "compute" <term>
 
 // Entry point: list of commands.
 <main> ::= <command>*

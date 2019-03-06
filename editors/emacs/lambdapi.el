@@ -17,7 +17,7 @@
     "require" "open" "as" "let" "in" "symbol" "const" "injective" "rule" "and"
     "definition" "theorem" "assert" "assertnot" "set" "proof" "qed" "admit"
     "abort" "focus" "print" "proofterm" "refine" "apply" "simpl" "intro"
-    "rewrite" "reflexivity" "symmetry"
+    "rewrite" "reflexivity" "symmetry" "type" "compute"
   )) "\\>") 'font-lock-keyword-face))
   "Keyword highlighting for the LambdaPi mode.")
 
