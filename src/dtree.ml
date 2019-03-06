@@ -32,13 +32,14 @@ type action = (term_env, term) Bindlib.mbinder
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (action -> 'a) -> (int option -> (term option * 'a) list -> 'a) ->
+let iter : (int array -> action -> 'a) ->
+  (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(a)                            -> do_leaf a
-    | Fail                               -> fail
-    | Node({ swap = p ; children = ch }) ->
-      do_node p (List.map (fun (teo, c) -> (teo, loop c)) ch) in
+    | Leaf(pa, a)                                    -> do_leaf pa a
+    | Fail                                           -> fail
+    | Node({ swap = p ; push = pu ; children = ch }) ->
+      do_node p pu (List.map (fun (teo, c) -> (teo, loop c)) ch) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -64,7 +65,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     fun father_l swon tree ->
   (* We cannot use iter since we need the father to be passed. *)
     match tree with
-    | Leaf(a)  ->
+    | Leaf(_, a)  ->
       incr nodecount ;
       F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
@@ -137,7 +138,11 @@ struct
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action.
       XXX keep record? *)
-  type t = { values : matrix }
+  type t = { values : matrix
+           (** The rules. *)
+           ; var_catalogue : Position.t list
+           (** Contains positions of terms that can be used as variables in
+               {!recfield:rhs}. *)}
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
   let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc (List.map (fst) l)
@@ -155,7 +160,8 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
       let term_pos = List.mapi (fun i te -> te, [i]) r.Terms.lhs in
-      { lhs = term_pos ; rhs = r.Terms.rhs }) rs }
+      { lhs = term_pos ; rhs = r.Terms.rhs }) rs
+    ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.values = []
@@ -171,14 +177,15 @@ struct
 
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
   let select : t -> int array -> t = fun m indexes ->
-    { values = List.map (fun rul ->
-      { rul with
-        lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
-          [] indexes }) m.values }
+    { m with
+      values = List.map (fun rul ->
+        { rul with
+          lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
+            [] indexes }) m.values }
 
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
-    { values = List.map (fun rul ->
+    { pm with values = List.map (fun rul ->
       { rul with lhs = List.swap_head rul.lhs c }) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
@@ -236,6 +243,14 @@ struct
         | None    -> assert false) remaining in
     assert ((List.length unpacked) > 0) ;
     Array.of_list unpacked
+
+  (** [update_catalogue c r] updates catalogue of vars [c] with rule [r]. *)
+  let update_catalogue : Position.t list -> rule -> Position.t list =
+    fun varstack rule ->
+      let { lhs ; _ } = rule in
+      match List.hd lhs with
+      | Patt(Some(_), _, _), p -> p :: varstack
+      | _                      -> varstack
 end
 
 module Pm = Pattmat
@@ -323,11 +338,12 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
       spec_filter p (List.map fst l)) m.values in
   let newmat = List.map (fun rul ->
       { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
-  { values = newmat }
+  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue m.values in
+  { values = newmat ; var_catalogue = newstack }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Pm.t -> Pm.t = fun { values = m } ->
+let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       match fst @@ List.hd l with
       | Patt(_ , _, _)                       -> true
@@ -341,7 +357,8 @@ let default : Pm.t -> Pm.t = fun { values = m } ->
       | Patt(_, _, _), _ ->
         { rul with Pm.lhs = List.tl rul.Pm.lhs }
       | _             -> assert false) filtered in
-  { values = unfolded }
+  let newst = List.fold_left Pm.update_catalogue vs m in
+  { values = unfolded ; var_catalogue = newst }
 
 (** [is_cons t] returns whether [t] can be considered as a constructor. *)
 let rec is_cons : term -> bool = function
@@ -353,7 +370,7 @@ let rec is_cons : term -> bool = function
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
   let rec grow : Pm.t -> t = fun pm ->
-    let { Pm.values = m } = pm in
+    let { Pm.values = m ; _ } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
@@ -364,7 +381,8 @@ let compile : Pm.t -> t = fun patterns ->
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
       if Pm.exhausted (List.hd m) then
-        Leaf((List.hd m).Pm.rhs)
+        Leaf([| |], (List.hd m).Pm.rhs)
+      (* XXX change [| |] *)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
@@ -376,6 +394,12 @@ let compile : Pm.t -> t = fun patterns ->
           | None    -> pm
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
+        let push = (* Push if there is a pattern variable in fcol *)
+          let rec loop : term list -> bool = function
+            | []                       -> false
+            | Patt(Some(_), _, _) :: _ -> true
+            | _ :: xs                  -> loop xs in
+          loop (List.map fst fcol) in
         let cons = List.filter is_cons (List.map fst fcol) in
         let spepatts = List.map (fun s ->
           (Some(fst @@ Basics.get_args s), specialize s spm)) cons in
@@ -384,5 +408,6 @@ let compile : Pm.t -> t = fun patterns ->
           List.map (fun (c, p) -> (c, grow p))
             (spepatts @ (if Pm.is_empty (snd defpatts)
                          then [] else [defpatts])) in
-        Node({ swap = swap ; children = children }) in
+        Node({ swap = swap ; children = children
+             ; push = push }) in
   grow patterns

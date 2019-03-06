@@ -134,10 +134,11 @@ type term =
     across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
     target is rewrote to the content of the leaf. *)
  and tree =
-  | Leaf of (term_env, term) Bindlib.mbinder
+  | Leaf of int array * (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, the right hand side of a rule.  In a
       {!cons:Leaf}[(a)], [a] is the right hand side of the rule, or the action
-      to perform if the rule applies. *)
+      to perform if the rule applies.
+      XXX document [int array] *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible
@@ -153,6 +154,8 @@ type term =
   { swap : int option
   (** Indicates which column of the pattern matrix has been chosen to perform
       the switch. *)
+  ; push : bool
+  (** XXX doc *)
   ; children : (term option * tree) list
   (** Subtrees resulting from either specialisation on terms or default case.
       First element is {!cons:None} if child is result of a default case or
