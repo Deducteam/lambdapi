@@ -60,13 +60,30 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Obtain the signature corresponding to [m]. *)
       let sign =
         try PathMap.find m !(Sign.loaded) with Not_found ->
-        (* The signature has nob been required... *)
+        (* The signature has not been required... *)
         fatal cmd.pos "Module [%a] has not been required." pp_path m
       in
       (* Open the module. *)
       (open_sign ss sign, None)
   | P_symbol(ts, x, xs, a)     ->
-      (* We first build the symbol declaration mode from the tags. *)
+      (* We check that [x] is not already used. *)
+      if Sign.mem ss.signature x.elt then
+        fatal x.pos "Symbol [%s] already exists." x.elt;
+      (* Desugaring of arguments of [a]. *)
+      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
+      (* Obtaining the implicitness of arguments. *)
+      let impl = Scope.get_implicitness a in
+      (* We scope the type of the declaration. *)
+      let a = fst (scope_basic ss a) in
+      (* We check that [a] is typable by a sort. *)
+      Solve.sort_type Ctxt.empty a;
+      (* We check that no metavariable remains. *)
+      if Basics.has_metas a then
+        begin
+          fatal_msg "The type of [%s] contains unsolved metavariables.\n" x.elt;
+          fatal x.pos "We have %s : %a." x.elt pp a
+        end;
+      (* We build the symbol declaration mode from the tags. *)
       let m =
         match ts with
         | []              -> Defin
@@ -74,17 +91,6 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
-      (* Desugaring of arguments of [a]. *)
-      let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
-      (* Obtaining the implicitness of arguments. *)
-      let impl = Scope.get_implicitness a in
-      (* We scope the type of the declaration. *)
-      let a = fst (scope_basic ss a) in
-      (* We check that [x] is not already used. *)
-      if Sign.mem ss.signature x.elt then
-        fatal x.pos "Symbol [%s] already exists." x.elt;
-      (* We check that [a] is typable by a sort. *)
-      Solve.sort_type Ctxt.empty a;
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature m x a impl in
       out 3 "(symb) %s.\n" s.sym_name;
@@ -105,6 +111,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       List.iter add_rule rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
+      (* We check that [x] is not already used. *)
+      if Sign.mem ss.signature x.elt then
+        fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
       let t = fst (scope_basic ss t) in
@@ -117,10 +126,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             (Some(a), Scope.get_implicitness a)
       in
       let ao = Option.map (fun a -> fst (scope_basic ss a)) ao in
-      (* We check that [x] is not already used. *)
-      if Sign.mem ss.signature x.elt then
-        fatal x.pos "Symbol [%s] already exists." x.elt;
-      (* We check that [t] has a type [a], and return it. *)
+      (* If a type [a] is given, then we check that [a] is typable by a sort
+         and that [t] has type [a]. Otherwise, we try to infer the type of
+         [t] and return it. *)
       let a =
         match ao with
         | Some(a) ->
@@ -133,12 +141,11 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
       (* We check that no metavariable remains. *)
-      let nb = List.length (Basics.get_metas t) in
-      if nb > 0 then
+      if Basics.has_metas t || Basics.has_metas a then
         begin
-          fatal_msg "The definition of [%s] contains [%i] metavariables.\n"
-            x.elt nb;
-          fatal x.pos "We have %s ≔ %a." x.elt pp t
+          fatal_msg "The definition of [%s] or its type \
+                     contain unsolved metavariables.\n" x.elt;
+          fatal x.pos "We have %s : %a ≔ %a." x.elt pp t pp a
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a impl in
@@ -148,16 +155,17 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_theorem(stmt, ts, pe)    ->
       let (x,xs,a) = stmt.elt in
+      (* We check that [x] is not already used. *)
+      if Sign.mem ss.signature x.elt then
+        fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments of [a]. *)
       let a = if xs = [] then a else Pos.none (P_Prod(xs, a)) in
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
-      (* Scoping the type (statement) of the theorem, check sort. *)
+      (* Scoping the type (statement) of the theorem. *)
       let a = fst (scope_basic ss a) in
+      (* Check that [a] is typable and that its type is a sort. *)
       Solve.sort_type Ctxt.empty a;
-      (* We check that [x] is not already used. *)
-      if Sign.mem ss.signature x.elt then
-        fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Initialize proof state. *)
       let st = Proof.init ss.builtins x a in
       (* Build proof checking data. *)
