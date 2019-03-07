@@ -178,8 +178,8 @@ let infer : Ctxt.t -> term -> term * conv_constrs = fun ctx t ->
 
 (** [check ctx t c] checks that the term [t] has type [c] in the context [ctx]
     and under the returned unification constraints.  The context [ctx] must be
-    well-fomed, and the type [c] well-sorted. The exception [Fatal] is raised
-    in case of error (e.g., when [t] definitely does not have type [c]). *)
+    well-typed, and the type [c] well-sorted. The exception [Fatal] is raised
+    in case of error (e.g., when [t] cannot have type [c]). *)
 let check : Ctxt.t -> term -> term -> conv_constrs = fun ctx t c ->
   let constrs = Pervasives.ref [] in (* Accumulated constraints. *)
   let trivial = Pervasives.ref 0  in (* Number of trivial constraints. *)
