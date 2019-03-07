@@ -11,11 +11,10 @@ type t = tree
 (** Type of the leaves of the tree.  See {!file:terms.ml}, {!recfield:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** {b Example} Given a rewrite system for a symbol [plus] given as (in
-    [plus.dk])
-    - [plus Z (S m)     → S m]
-    - [plus n Z         → n]
-    - [plus (S n) (S m) → S (S m)]
+(** {b Example} Given a rewrite system for a symbol [f] given as
+    - [f Z (S m)     → S m]
+    - [f n Z         → n]
+    - [f (S n) (S m) → S (S m)]
 
     A possible tree might be
     {v
