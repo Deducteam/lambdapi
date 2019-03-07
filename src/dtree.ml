@@ -114,6 +114,13 @@ struct
       position [1.2.2], encoded by [[2 ; 2 ; 1]]. *)
   type t = int list
 
+  (** [compare a b] implements lexicographic order on positions. *)
+  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
+
+  (** [pp o p] output position [p] to channel [o]. *)
+  let pp : t pp = fun oc pos ->
+    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
+
   (** Initial position. *)
   let init = [0]
 
@@ -127,6 +134,9 @@ struct
       [prefix 1 3.4] is [1.3.4]. *)
   let prefix : t -> t -> t = fun p q -> q @ p
 end
+
+(** Sets of positions. *)
+module PMap = Map.Make(Position)
 
 (** Pattern matrices is a way to encode a pattern matching problem.  A line is
     a candidate instance of the values matched.  Each line is a pattern having
@@ -262,25 +272,27 @@ struct
       | Patt(Some(_), _, _), p -> p :: varstack
       | _                      -> varstack
 
-  (** [pos_needed_by r] returns an array containing the positions of variables
-      in left hand side of [r]. *)
-  let pos_needed_by : rule -> Position.t array = fun { lhs ; _ } ->
+  (** [pos_needed_by r] returns a mapping from position of variables into the
+      {!recfield:lhs} of [r] and the slot assigned to each variable in a
+      {!type:term_env}. *)
+  let pos_needed_by : rule -> int PMap.t = fun { lhs ; _ } ->
     let module Po = Position in
-    let rec loop : term list -> Po.t -> Po.t list = fun st po ->
+    let rec loop : term list -> Po.t -> int PMap.t = fun st po ->
       match st with
-      | [] -> []
+      | [] -> PMap.empty
       | x :: xs ->
          begin
            match x with
-           | Patt(Some(_), _, _) -> po :: loop xs (Po.succ po)
+           | Patt(Some(i), _, _) -> PMap.add po i (loop xs (Po.succ po))
            | Appl(_, _)          ->
               let _, args = Basics.get_args x in
               let xpos = loop args Po.init in
-              let nxpos = List.map (Po.prefix po) xpos in
-              nxpos @ loop xs (Po.succ po)
+              let nxpos = PMap.fold (fun xpo slot nmap ->
+                PMap.add (Po.prefix po xpo) slot nmap) PMap.empty xpos in
+              PMap.union (fun _ _ -> assert false) nxpos (loop xs (Po.succ po))
            | _                   -> assert false
          end in
-    Array.of_list @@ loop (List.map fst lhs) Po.init
+    loop (List.map fst lhs) Po.init
 end
 
 module Pm = Pattmat
@@ -399,6 +411,8 @@ let rec is_cons : term -> bool = function
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
+  let _ = List.map (fun rule -> (* Retrieve vars positions *)
+    (ref rule, Pm.pos_needed_by rule)) patterns.Pm.values in
   let rec grow : Pm.t -> t = fun pm ->
     let { Pm.values = m ; _ } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
