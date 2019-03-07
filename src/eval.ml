@@ -171,36 +171,56 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  let depth = Dtree.iter (fun _ _ -> 1) (fun _ _ chd ->
-      let _, d = List.split chd in 1 + (List.extremum (>) d)) 0 itree in
-  let _ = Array.make depth TE_None in
-  let vars : term Stack.t = Stack.create () in
-  (* Use above env in the tree walk *)
-  let rec walk : Dtree.t -> stack -> (int array * Dtree.action * stack) option =
-    fun tree stk ->
+  let vars : term_env Stack.t = Stack.create () in
+  let stk = Array.of_list istk in
+  (* [walk t i] where [i] is the index of the term in the stack to examine *)
+  let rec walk : Dtree.t -> int -> (int array * Dtree.action) option =
+    fun tree ind ->
     match tree with
-      | Leaf(pre_env, a)                           -> Some(pre_env, a, stk)
-      | Node({ swap = io ; children = ch ; push }) ->
-        let nstk = match io with
-          (* XXX Optimize this using an array for stack *)
-          | Some(i) -> List.swap_head stk i
-          | None    -> stk in
-        let stkhd = List.hd nstk in
-        if not (fst Pervasives.(!stkhd))
-        then Pervasives.(stkhd := (true, whnf (snd !stkhd))) ;
-        if push then Stack.push (snd Pervasives.(!stkhd)) vars ;
+      | Leaf(pre_env, a)                      -> Some(pre_env, a)
+      | Node({ swap = io ; children ; push }) ->
+         (* The main operations are: (i) picking the right term in the terms
+            stack, (ii) filling the stack containing terms to be substituted
+            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
+            correct branch. *)
+         (* (i) *)
+         let examined = (* Examined term in the stack *)
+           (* [skip_seen i] skips already examined term in the stack
+              {!val:stk}. *)
+           let rec skip_seen : int -> int = fun i ->
+             if fst Pervasives.(!(stk.(i))) then i else skip_seen (succ i) in
+           stk.(skip_seen (Option.get io 0 + ind)) in
+         if not (fst Pervasives.(!examined))
+         then Pervasives.(examined := (true, whnf (snd !examined))) ;
         (* ^ This operation ought to be removed since with trees, each element
            of the stack is inspected only once. *)
-        let favourite = List.assoc_opt Pervasives.(Some(snd !stkhd)) ch in
-        begin
-          match favourite with
-          | Some(tr) -> walk tr (List.tl nstk)
-          | None     -> None
-        end
+         (* (ii) *)
+         if push then
+           begin
+             (* Works for variables with no arguments *)
+             let fn _ = snd Pervasives.(!examined) in
+             let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
+             Stack.push (TE_Some(b)) vars
+           end ;
+         (* (iii) *)
+         let matched = List.assoc_opt Pervasives.(Some(snd !examined))
+           children in
+         begin
+           match matched with
+           | Some(tr) -> walk tr (succ ind)
+           | None     -> None
+         end
       | Fail                                    -> None in
-  let final = walk itree istk in
-  (* Works only if no variable *)
-  Option.map (fun (ac, stk) -> (snd (Bindlib.unmbind ac), stk)) final
+  let final = walk itree 0 in
+  (* [f] to be lifted in the option functor *)
+  let f : int array -> Dtree.action -> term * stack=
+    fun positions act ->
+    let st_as_ar = Array.of_seq (Stack.to_seq vars) in
+    let env = Array.map (fun p -> st_as_ar.(p)) positions in
+    Bindlib.msubst act env,
+    Array.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
+      then elt :: acc else acc) [] stk in
+  Option.map (fun (p, a) -> f p a) final
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
