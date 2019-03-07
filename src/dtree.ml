@@ -135,7 +135,7 @@ struct
   let prefix : t -> t -> t = fun p q -> q @ p
 end
 
-(** Sets of positions. *)
+(** Mapping on positions. *)
 module PMap = Map.Make(Position)
 
 (** Pattern matrices is a way to encode a pattern matching problem.  A line is
@@ -411,10 +411,10 @@ let rec is_cons : term -> bool = function
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
-  let _ = List.map (fun rule -> (* Retrieve vars positions *)
-    (ref rule, Pm.pos_needed_by rule)) patterns.Pm.values in
+  let rule2needed_pos = List.map (fun rule -> (* Retrieve vars positions *)
+    (rule.Pm.rhs, Pm.pos_needed_by rule)) patterns.Pm.values in
   let rec grow : Pm.t -> t = fun pm ->
-    let { Pm.values = m ; _ } = pm in
+    let { Pm.values = m ; Pm.var_catalogue = vcat } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
@@ -425,8 +425,17 @@ let compile : Pm.t -> t = fun patterns ->
       (* Look at the first line, if it contains only wildcards, then
          execute the associated action. *)
       if Pm.exhausted (List.hd m) then
-        Leaf([| |], (List.hd m).Pm.rhs)
-      (* XXX change [| |] *)
+        let rhs = (List.hd m).Pm.rhs in
+        let needed_pos2slot = List.assoc rhs rule2needed_pos in
+        let env = Array.init (PMap.cardinal needed_pos2slot)
+          (fun _ -> 0) in
+        List.iteri (fun i p ->
+          let opslot = PMap.find_opt p needed_pos2slot in
+          match opslot with
+          | None     -> ()
+          (* ^ The stack may contain more variables than need for the rule *)
+          | Some(sl) -> env.(sl) <- i) vcat ;
+        Leaf(env, (List.hd m).Pm.rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)

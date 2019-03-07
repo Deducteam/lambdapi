@@ -138,9 +138,11 @@ type term =
  and tree =
   | Leaf of int array * (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, the right hand side of a rule.  In a
-      {!cons:Leaf}[(a)], [a] is the right hand side of the rule, or the action
-      to perform if the rule applies.
-      XXX document [int array] *)
+      {!cons:Leaf}[(e, a)], [a] is the right hand side of the rule, or the
+      action to perform if the rule applies.  The first element of the pair
+      contains at position {i i } the location of the pattern variable whose
+      slot is {i i } in the pattern stack {b XXX ref to pattern stack
+      needed}. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible
