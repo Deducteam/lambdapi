@@ -176,7 +176,15 @@ curly brackets.
 <!---------------------------------------------------------------------------->
 ### The `theorem` command
 
-TODO
+The `theorem` command makes the user enter a new interactive mode. The
+user has to provide a term of some given type. Such a goal is
+materialized by a metavariable of the given type (goals and
+metavariables are synonyms). One can then partially instantiate a goal
+metavariable by using commands specific to this mode called tactics. A
+tactic may generate new goals/metavariables. The proof of the theorem
+is complete only when all generated goals have been solved.
+
+[List of tactics](tactics.md)
 
 <!---------------------------------------------------------------------------->
 ### The `type` command
