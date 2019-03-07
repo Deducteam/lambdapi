@@ -149,7 +149,7 @@ struct
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
               (** Left hand side of a rule. *)
-              ; rhs : action
+              ; rhs : action ref
               (** Right hand side of a rule. *) }
 
   (** The core data, contains the rewrite rules. *)
@@ -179,7 +179,7 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
       let term_pos = List.mapi (fun i te -> te, [i]) r.Terms.lhs in
-      { lhs = term_pos ; rhs = r.Terms.rhs }) rs
+      { lhs = term_pos ; rhs = ref r.Terms.rhs }) rs
     ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -427,7 +427,7 @@ let compile : Pm.t -> t = fun patterns ->
          execute the associated action. *)
       if Pm.exhausted (List.hd m) then
         let rhs = (List.hd m).Pm.rhs in
-        let needed_pos2slot = List.assoc rhs rule2needed_pos in
+        let needed_pos2slot = List.assq rhs rule2needed_pos in
         let env = Array.init (PMap.cardinal needed_pos2slot)
           (fun _ -> 0) in
         List.iteri (fun i p ->
@@ -436,7 +436,7 @@ let compile : Pm.t -> t = fun patterns ->
           | None     -> ()
           (* ^ The stack may contain more variables than need for the rule *)
           | Some(sl) -> env.(sl) <- i) vcat ;
-        Leaf(env, (List.hd m).Pm.rhs)
+        Leaf(env, !((List.hd m).Pm.rhs))
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
