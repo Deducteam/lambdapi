@@ -109,7 +109,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
 (** Represents the position of a subterm in a term. *)
 module Position =
 struct
-  (** Each element of the list is a level in the tree of the term. *)
+  (** Each element of the list is a level in the tree of the term.  For
+      instance, the subterm [x] in the term [Appl(S, Appl(T, x))] has
+      position [1.2.2], encoded by [[2 ; 2 ; 1]]. *)
   type t = int list
 
   (** Initial position. *)
@@ -145,13 +147,12 @@ struct
   type matrix = rule list
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
-      action.
-      XXX keep record? *)
+      action. *)
   type t = { values : matrix
            (** The rules. *)
            ; var_catalogue : Position.t list
-           (** Contains positions of terms that can be used as variables in
-               {!recfield:rhs}. *)}
+           (** Contains positions of terms in {!recfield:lhs} that can be used
+               as variables in {!recfield:rhs}. *)}
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
   let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc (List.map (fst) l)
@@ -260,6 +261,26 @@ struct
       match List.hd lhs with
       | Patt(Some(_), _, _), p -> p :: varstack
       | _                      -> varstack
+
+  (** [pos_needed_by r] returns an array containing the positions of variables
+      in left hand side of [r]. *)
+  let pos_needed_by : rule -> Position.t array = fun { lhs ; _ } ->
+    let module Po = Position in
+    let rec loop : term list -> Po.t -> Po.t list = fun st po ->
+      match st with
+      | [] -> []
+      | x :: xs ->
+         begin
+           match x with
+           | Patt(Some(_), _, _) -> po :: loop xs (Po.succ po)
+           | Appl(_, _)          ->
+              let _, args = Basics.get_args x in
+              let xpos = loop args Po.init in
+              let nxpos = List.map (Po.prefix po) xpos in
+              nxpos @ loop xs (Po.succ po)
+           | _                   -> assert false
+         end in
+    Array.of_list @@ loop (List.map fst lhs) Po.init
 end
 
 module Pm = Pattmat
@@ -277,15 +298,15 @@ let rec spec_filter : term -> term list -> bool = fun pat li ->
   (* ^ Wildcard or linear var not appearing in rhs *)
   | _           , Patt(Some(_), _, [| |]) -> true
   (* ^ Linear var appearing in rhs *)
-  | Symb(s, _)  , Symb(s', _)            -> s == s'
-  | Appl(u1, u2), Appl(v1, v2)           ->
+  | Symb(s, _)  , Symb(s', _)             -> s == s'
+  | Appl(u1, u2), Appl(v1, v2)            ->
     spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
   (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
        left arg of Appl is performed in [matching], so we perform it here. *)
-  | Abst(_, b1)         , Abst(_, b2)    ->
+  | Abst(_, b1)         , Abst(_, b2)     ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
     spec_filter u (v :: litl)
-  | Vari(x)             , Vari(y)        -> Bindlib.eq_vars x y
+  | Vari(x)     , Vari(y)                 -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
   | Symb(_, _)   , Appl(_, _)    -> false
   | Patt(_, _, _), Symb(_, _)    -> false
