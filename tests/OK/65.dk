@@ -53,4 +53,3 @@ def bpi_trans_2 (A : type) (x : term A) (y : term A) (z : term A)
   bpi A x z (trans A x y z xy yz)
     (c : term A => xc : Eq A x c => P c (trans A y x c (sym A x y xy) xc))
     p.
-    

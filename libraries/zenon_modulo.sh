@@ -86,13 +86,13 @@ function check() {
     FILE_GZ="$(basename $1)"
     FILE_DK="$(basename $FILE_GZ .gz)"
     MODNAME="${FILE_DK%%.dk}"
-  
+
     cp ${LIBFILE} ${FILE_GZ}
     gzip -d ${FILE_GZ}
     ocaml ../../../tools/deps.ml ${FILE_DK} ${MODNAME} > ${MODNAME}.aux
     cat ${FILE_DK} | grep -v "^#NAME" >> ${MODNAME}.aux
     mv ${MODNAME}.aux ${FILE_DK}
-  
+
     ${LAMBDAPI} --verbose 0 ${FILE_DK}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"

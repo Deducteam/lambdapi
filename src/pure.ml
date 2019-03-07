@@ -1,4 +1,4 @@
-(** Interface to lp-lsp. *)
+(** Interface to lp-lsp. See pure.mli for comments. *)
 
 open Timed
 

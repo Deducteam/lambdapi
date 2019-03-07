@@ -154,6 +154,11 @@ let get_metas : term -> meta list = fun t ->
   iter_meta (fun m -> Pervasives.(l := m :: !l)) t;
   List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) Pervasives.(!l)
 
+(** [has_metas t] checks that there are metavariables in [t]. *)
+let has_metas : term -> bool = fun t ->
+  let exception Found in
+  try iter_meta (fun _ -> raise Found) t; false with Found -> true
+
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
 let distinct_vars : term array -> bool = fun ar ->
   let rec distinct_vars vars i =

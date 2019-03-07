@@ -50,7 +50,7 @@ and p_term_aux =
   | P_BinO of p_term * binop * p_term
   (** Binary operator. *)
   | P_Wrap of p_term
-  (** Parentheses (only necessary to handle binary operators. *)
+  (** Parentheses. *)
   | P_Expl of p_term
   (** Explicitly given argument. *)
 
