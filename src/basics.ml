@@ -51,10 +51,12 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** [eq t u] tests the equality of [t] and [u] modulo α-equivalence. Note that
-    the behavious of the function is unspecified when [t] or [u] contain terms
-    of the form {!const:Patt(i,s,e)} or {!const:TEnv(te,e)} (in the case where
-    [te] is not of the form {!const:TE_Some(b)}). *)
+(** [eq t u] tests the equality of [t] and [u] modulo α-equivalence.
+   The function will fail if [t] or [u] contain terms of the form
+   {!const:Patt(i,s,e)} or {!const:TEnv(te,e)}. In case [t] is of the
+   form [TRef r] then [r] is set to [u]. Symmetrically, in case [u] is
+   of the form [TRef r] then [r] is set to [t]. Hence, [eq t u]
+   implements non-linear matching: this is used in the rewrite tactic. *)
 let eq : term -> term -> bool = fun a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
