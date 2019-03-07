@@ -174,19 +174,21 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let depth = Dtree.iter (fun _ _ -> 1) (fun _ _ chd ->
       let _, d = List.split chd in 1 + (List.extremum (>) d)) 0 itree in
   let _ = Array.make depth TE_None in
+  let vars : term Stack.t = Stack.create () in
   (* Use above env in the tree walk *)
-  let rec walk : Dtree.t -> stack -> (Dtree.action * stack) option =
+  let rec walk : Dtree.t -> stack -> (int array * Dtree.action * stack) option =
     fun tree stk ->
     match tree with
-      | Leaf(_, a)                              -> Some(a, stk)
-      | Node({ swap = io ; children = ch ; _ }) ->
+      | Leaf(pre_env, a)                           -> Some(pre_env, a, stk)
+      | Node({ swap = io ; children = ch ; push }) ->
         let nstk = match io with
-          (* XXX Optimise this using an array for stack *)
+          (* XXX Optimize this using an array for stack *)
           | Some(i) -> List.swap_head stk i
           | None    -> stk in
         let stkhd = List.hd nstk in
         if not (fst Pervasives.(!stkhd))
         then Pervasives.(stkhd := (true, whnf (snd !stkhd))) ;
+        if push then Stack.push (snd Pervasives.(!stkhd)) vars ;
         (* ^ This operation ought to be removed since with trees, each element
            of the stack is inspected only once. *)
         let favourite = List.assoc_opt Pervasives.(Some(snd !stkhd)) ch in
