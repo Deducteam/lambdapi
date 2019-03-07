@@ -282,6 +282,8 @@ struct
       | x :: xs ->
          begin
            match x with
+           | Patt(None, _, _)
+           | Symb(_, _)          -> loop xs (Po.succ po)
            | Patt(Some(i), _, _) -> PMap.add po i (loop xs (Po.succ po))
            | Appl(_, _)          ->
               let _, args = Basics.get_args x in
