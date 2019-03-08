@@ -535,7 +535,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   let _, g_type = Proof.focus_goal ps in
 
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data pos cfg g_type in
+  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf g_type) in
   if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
