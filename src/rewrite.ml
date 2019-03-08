@@ -52,15 +52,13 @@ let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
     (LHS and RHS). *)
 let get_eq_data : eq_config -> term -> term * term * term = fun cfg a ->
   match get_args a with
-  | (p, [eq]) when is_symb (fst cfg.symb_P) p ->
+  | (p, [t]) when is_symb (fst cfg.symb_P) p ->
       begin
-        match get_args eq with
-        | (e, [a;l;r]) when is_symb (fst cfg.symb_eq) e -> (a, l, r)
-        | _                                             ->
-            fatal_no_pos "Expected an equality type, found [%a]." pp a
+        match get_args t with
+        | (eq, [a;l;r]) when is_symb (fst cfg.symb_eq) eq -> (a, l, r)
+        | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp a
       end
-  | _                                         ->
-      fatal_no_pos "Expected an equality type, found [%a]." pp a
+  | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp a
 
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
@@ -178,13 +176,9 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   let cfg = get_eq_config ps.proof_name ps.proof_builtins in
 
   (* Get the focused goal. *)
-  let g =
-    try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
-      fatal_no_pos "No remaining goals..."
-  in
+  let (g_env, g_type) = Proof.focus_goal ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let (g_env, g_type) = Goal.get_type g in
   let g_ctxt = Ctxt.of_env g_env in
   let t_type =
     match Solve.infer g_ctxt t with
@@ -535,20 +529,14 @@ let reflexivity : Proof.t -> term = fun ps ->
   let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
 
   (* Get the type of the focused goal. *)
-  let g_type =
-    let g =
-      try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
-        fatal_no_pos "No remaining goals..."
-    in
-    snd (Goal.get_type g)
-  in
+  let _, g_type = Proof.focus_goal ps in
 
-  (* Check that the type of [g] is of the form “P (Eq a t t)”. *)
+  (* Check that the type of [g] is of the form “P (eq a t t)”. *)
   let (a, l, r)  = get_eq_data cfg (Eval.whnf g_type) in
   if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
-  add_args (Symb(fst cfg.symb_refl, snd cfg.symb_refl)) [a; l]
+  let s, hint = cfg.symb_refl in add_args (Symb(s, hint)) [a; l]
 
 (** [symmetry ps] attempts to use symmetry of equality on the focused goal. If
     successful,  a new goal is generated,  and the corresponding proof term is
@@ -563,13 +551,7 @@ let symmetry : Proof.t -> term = fun ps ->
   let symb_eqind = Symb(fst cfg.symb_eqind, snd cfg.symb_eqind) in
 
   (* Get the type of the focused goal. *)
-  let (g_env, g_type) =
-    let g =
-      try List.hd Proof.(ps.proof_goals) with Failure(_)  ->
-        fatal_no_pos "No remaining goals..."
-    in
-    Goal.get_type g
-  in
+  let (g_env, g_type) = Proof.focus_goal ps in
 
   (* Check that the type of [g] is of the form “P (Eq a l r)”. *)
   let (a, l, r) = get_eq_data cfg g_type in

@@ -73,6 +73,11 @@ let init : builtins -> Pos.strloc -> term -> t = fun proof_builtins name a ->
 (** [finished ps] tells whether the proof represented by [ps] is finished. *)
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
+(** [focus_goal ps] returns the focused goal or fails if there is none. *)
+let focus_goal : proof_state -> Env.t * term = fun ps ->
+  try Goal.get_type (List.hd ps.proof_goals)
+  with Failure(_)  -> Console.fatal_no_pos "No remaining goals..."
+
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : _ pp = fun oc gl ->
   let open Print in
@@ -83,7 +88,7 @@ let pp_goals : _ pp = fun oc gl ->
     let print_hyp (s,(_,t)) =
       Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
     in
-    List.iter print_hyp hyps;
+    List.iter print_hyp (List.rev hyps);
     Format.fprintf oc " ----------------------------------------\n";
     Format.fprintf oc "  %a\n" pp a;
     if gs <> [] then
