@@ -31,6 +31,8 @@ reserved "admit"
 reserved "abort"
 reserved "set"
 reserved "_"
+reserved "type"
+reserved "compute"
 
 // Identifier
 <ident> ::=
@@ -67,11 +69,12 @@ reserved "_"
 // Term (including patterns and everything)
 <term> ::=
   | "TYPE"
-  | <qident>
+  | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
   | "&" - <ident> {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
+  | "{" <term> "}"
   | <term> <term>
   | <type> "⇒" <type>
   | "∀" <arg>+ "," <type>
@@ -86,10 +89,11 @@ reserved "_"
 // Synonym for patterns
 <patt> ::= <term>
 
-// Argument (of abstraction, product, ...)
+// Argument (of abstraction, product, ...), may be marked implicit
 <arg> ::=
   | <ident>
-  | "(" <ident>+ ":" <type> ")"
+  | "{" <ident> {":" <type>}? "}"
+  | "(" <ident> ":" <type> ")"
 
 // Rewriting rule
 <rule> ::=
@@ -150,6 +154,10 @@ reserved "_"
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "prover" <ident>
   | "set" "prover_limit" <nat_lit>
+  // Get the type of a term
+  | "type" <term>
+  // Get the normal form of a term
+  | "compute" <term>
 
 // Entry point: list of commands.
 <main> ::= <command>*

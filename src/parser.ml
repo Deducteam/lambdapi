@@ -137,6 +137,8 @@ let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
 let _why3_       = KW.create "why3"
+let _type_       = KW.create "type"
+let _compute_    = KW.create "compute"
 
 (** Natural number literal. *)
 let nat_lit =
@@ -252,9 +254,9 @@ let parser term @(p : prio) =
   (* TYPE constant. *)
   | _TYPE_
       when p >= PAtom -> in_pos _loc P_Type
-  (* Variable (or possibly qualified symbol). *)
-  | qid:qident
-      when p >= PAtom -> in_pos _loc (P_Iden(qid))
+  (* Variable (or possibly explicitly applied and qualified symbol). *)
+  | expl:{"@" -> true}?[false] qid:qident
+      when p >= PAtom -> in_pos _loc (P_Iden(qid, expl))
   (* Wildcard. *)
   | _wild_
       when p >= PAtom -> in_pos _loc P_Wild
@@ -267,6 +269,9 @@ let parser term @(p : prio) =
   (* Parentheses. *)
   | "(" t:(term PFunc) ")"
       when p >= PAtom -> in_pos _loc (P_Wrap(t))
+  (* Explicitly given argument. *)
+  | "{" t:(term PFunc) "}"
+      when p >= PAtom -> in_pos _loc (P_Expl(t))
   (* Application. *)
   | t:(term PAppl) u:(term PBinO)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
@@ -274,10 +279,10 @@ let parser term @(p : prio) =
   | a:(term PAppl) "⇒" b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Impl(a,b))
   (* Products. *)
-  | "∀" xs:arg* "," b:(term PFunc)
+  | "∀" xs:arg+ "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
   (* Abstraction. *)
-  | "λ" xs:arg* "," t:(term PFunc)
+  | "λ" xs:arg+ "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
   (* Local let. *)
   | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
@@ -326,8 +331,12 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
-  | x:ident                            -> (x, None   )
-  | "(" x:ident ":" a:(term PFunc) ")" -> (x, Some(a))
+  (* Explicit argument without type annotation. *)
+  | x:ident                               -> (x, None,    false)
+  (* Explicit argument with type annotation. *)
+  | "(" x:ident    ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  (* Implicit argument (with possible type annotation). *)
+  | "{" x:ident a:{":" (term PFunc)}? "}" -> (x, a      , true )
 
 let term = term PFunc
 
@@ -436,6 +445,10 @@ let parser cmd =
       -> P_assert(mf,a)
   | _set_ c:config
       -> P_set(c)
+  | _type_ t:term
+      -> P_infer(t, Eval.{strategy = NONE; steps = None})
+  | _compute_ t:term
+      -> P_normalize(t, Eval.{strategy = SNF; steps = None})
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

@@ -8,7 +8,7 @@ first thing to note is that Lambdapi files are formed of a list of commands. A
 command starts with a particular, reserved keyword.  And it ends either at the
 start of a new command or at the end of the file.
 
-<!----------------------------------------------------------------------------> 
+<!---------------------------------------------------------------------------->
 ### Comments
 
 One-line comments are introduced by '//':
@@ -17,13 +17,13 @@ One-line comments are introduced by '//':
 // all this is ignored
 ```
 
-<!----------------------------------------------------------------------------> 
+<!---------------------------------------------------------------------------->
 ### Lexical conventions
 
 TODO
 
-<!----------------------------------------------------------------------------> 
-### The `require` command
+<!---------------------------------------------------------------------------->
+### `require`
 
 The `require` command informs the type-checker that the current module depends
 on some other module, which must hence be compiled.
@@ -36,8 +36,8 @@ require church.list as list
 Note that a required module can optionally be aliased, in which case it can be
 referred to with the provided name.
 
-<!----------------------------------------------------------------------------> 
-### The `open` command
+<!---------------------------------------------------------------------------->
+### `open`
 
 The `open` command puts into scope the symbols defined in the given module. It
 can also be combined with the `require` command.
@@ -47,8 +47,8 @@ open booleans
 require open church.sums
 ```
 
-<!----------------------------------------------------------------------------> 
-### The `symbol` declaration command
+<!---------------------------------------------------------------------------->
+### `symbol`
 
 Symbols are declared using the `symbol` command, possibly associated with some
 modifier like `const` or `injective`.
@@ -60,7 +60,7 @@ symbol const succ (x:Nat) : Nat
 symbol add : Nat ⇒ Nat ⇒ Nat
 symbol const list : Nat ⇒ TYPE
 symbol const nil : List zero
-symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n) 
+symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
 ```
 
 The command requires a fresh symbol name (it should not have already been used
@@ -82,8 +82,27 @@ We recommend to start types and predicates by a capital letter.
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
  For the moment, the verification is left to the user.
 
-<!----------------------------------------------------------------------------> 
-### The `rule` declaration command
+**Implicit arguments**. Some function symbol arguments can be declared
+as implicit meaning that they must not be given by the user
+later. Implicit arguments are replaced by `_` at parsing time,
+generating a fresh metavariables. An argument declared as implicit can
+be explicitly given by enclosing it between curly brackets `{` ... `}`
+though. If a function symbol is prefixed by `@` then the implicit
+arguments mechanism is disabled and all the arguments must be
+explicitly given.
+
+```
+symbol eq {a:U} : T a ⇒ T a ⇒ Prop
+// The first argument of `eq` is declared as implicit and must not be given
+// unless `eq` is prefixed by `@`.
+// Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
+```
+
+**Infix notation**:
+An infix notation can be declared for some symbol. See the command `set`.
+
+<!---------------------------------------------------------------------------->
+### `rule`
 
 Rewriting rules for definable symbols are declared using the `rule` command.
 
@@ -102,6 +121,7 @@ and  add (succ &n) &m → succ (add &n &m)
 
 Pattern variables need to be prefixed by `&`.
 
+**Higher-order pattern-matching**:
 Lambdapi accepts higher-order pattern variables too:
 
 ```
@@ -119,7 +139,7 @@ Lambdapi uses then higher-order pattern-matching, that is, matching
 modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
 η-reduction since no valid instance of `F` can contain `x`.
 
-*Important*: In contrast to languages like OCaml, Coq, Agda, etc. rule
+**Important**: In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:
 
 ```
@@ -139,8 +159,8 @@ And they can be non-linear:
 rule minus x x → zero
 ```
 
-<!----------------------------------------------------------------------------> 
-### The `definition` command
+<!---------------------------------------------------------------------------->
+### `definition`
 
 The `definition` command is used to immediately define a new symbol, for it to
 be equal to some (closed) term.
@@ -154,15 +174,52 @@ definition plus_two n ≔ add n (succ (succ zero))
 
 Note that some type annotations can be omitted, and that it is possible to put
 arguments on the left side of the `≔` symbol (similarly to a value declaration
-in OCaml).
+in OCaml). Some arguments can be declared as implicit by enclosing them in
+curly brackets.
 
-<!----------------------------------------------------------------------------> 
-### The `theorem` command
+<!---------------------------------------------------------------------------->
+### `theorem`
 
-TODO
+The `theorem` command makes the user enter a new interactive mode. The
+user has to provide a term of some given type. Such a goal is
+materialized by a metavariable of the given type (goals and
+metavariables are synonyms). One can then partially instantiate a goal
+metavariable by using commands specific to this mode called tactics. A
+tactic may generate new goals/metavariables. The proof of the theorem
+is complete only when all generated goals have been solved.
 
-<!----------------------------------------------------------------------------> 
-### The `assert` and `assertnot` commands
+[List of tactics](tactics.md)
+
+<!---------------------------------------------------------------------------->
+### `type`
+
+The `type` command returns the type of a term.
+
+```
+symbol N : TYPE
+symbol z : N
+symbol s : N⇒N
+type N⇒N // returns TYPE
+type s z // returns N
+```
+
+<!---------------------------------------------------------------------------->
+### `compute`
+
+The `compute` command computes the normal form of a term.
+
+```
+symbol N : TYPE
+symbol z : N
+symbol s : N⇒N
+symbol add : N⇒N⇒N
+rule add z &x → &x
+and add (s &x) &y → add &x (s &y)
+compute add (s (s z)) (s (s z)) // returns s (s (s (s z)))
+```
+
+<!---------------------------------------------------------------------------->
+### `assert` and `assertnot`
 
 The `assert` and `assertnot` are convenient for checking that the validity, or
 the invalidity, of typing judgments or convertibilities.  This can be used for
@@ -175,8 +232,8 @@ assertnot zero ≡ succ zero
 assertnot succ : Nat
 ```
 
-<!----------------------------------------------------------------------------> 
-### The `set` command
+<!---------------------------------------------------------------------------->
+### `set`
 
 The `set` command is used to control the behaviour of Lambdapi, and to control
 extension points in its syntax.  For instance,  the following commands set the
@@ -211,6 +268,6 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**Important limitation:** no check is done on the syntax of the symbol that is
+**Warning:** No check is done on the syntax of the symbol that is
 defined. As a consequence, it is very easy to break the system by redefining a
 keyword or a common symbol (e.g., `"("`, `")"` or `"symbol"`).

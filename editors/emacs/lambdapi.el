@@ -17,7 +17,7 @@
     "require" "open" "as" "let" "in" "symbol" "const" "injective" "rule" "and"
     "definition" "theorem" "assert" "assertnot" "set" "proof" "qed" "admit"
     "abort" "focus" "print" "proofterm" "refine" "apply" "simpl" "intro"
-    "rewrite" "reflexivity" "symmetry"
+    "rewrite" "reflexivity" "symmetry" "type" "compute"
   )) "\\>") 'font-lock-keyword-face))
   "Keyword highlighting for the LambdaPi mode.")
 
@@ -28,12 +28,16 @@
   "A transliteration scheme for LambdaPi."
   nil t t t t nil t nil nil nil t)
 (quail-define-rules
-  ("->"   ?→) ("\\to" ?→) ("\\rightarrow" ?→)
-  ("=>"   ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
-  ("!"    ?∀) ("\\forall" ?∀)
+  ("->" ?→) ("\\to" ?→) ("\\rightarrow" ?→)
+  ("=>" ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
+  ("!!" ?∀) ("\\forall" ?∀)
   ("\\\\" ?λ) ("\\lambda" ?λ)
-  (":="   ?≔) ("\\defeq"  ?≔)
-  ("=="   ?≡) ("\\equiv"  ?≡))
+  (":=" ?≔) ("\\defeq"  ?≔)
+  ("==" ?≡) ("\\equiv"  ?≡)
+  ("&&" ?∧) ("\\wedge"  ?∧)
+  ("||" ?∨) ("\\vee"    ?∨)
+  ("~~" ?¬) ("\\not"    ?¬)
+  ("??" ?∃) ("\\exists" ?∃))
 
 ;; Main function creating the mode (lambdapi)
 (define-derived-mode lambdapi-mode fundamental-mode "LambdaPi"

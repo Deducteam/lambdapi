@@ -34,6 +34,7 @@ syntax keyword KeywordOK contained proof qed admit abort
 syntax keyword KeywordOK contained focus print proofterm
 syntax keyword KeywordOK contained refine apply simpl intro
 syntax keyword KeywordOK contained rewrite reflexivity symmetry
+syntax keyword KeywordOK contained type compute
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
@@ -45,6 +46,7 @@ syntax keyword KeywordKO contained proof qed admit abort
 syntax keyword KeywordKO contained focus print proofterm
 syntax keyword KeywordKO contained refine apply simpl intro
 syntax keyword KeywordKO contained rewrite reflexivity symmetry
+syntax keyword KeywordKO contained type compute
 highlight link KeywordKO Error
 
 " Escaped identifiers member.
@@ -69,6 +71,9 @@ syntax match Identifier
 " Special symbols.
 syntax match Keyword "("
 syntax match Keyword ")"
+syntax match Keyword "{"
+syntax match Keyword "}"
+syntax match Keyword "@"
 syntax match Keyword "\["
 syntax match Keyword "\]"
 syntax match Keyword ":"
