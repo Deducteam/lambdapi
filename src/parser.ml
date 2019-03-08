@@ -1,4 +1,7 @@
-(** Parsing functions for the Lambdapi syntax. *)
+(** Parsing functions for the Lambdapi syntax, based on the Earley
+   library. See
+   https://github.com/rlepigre/ocaml-earley/blob/master/README.md for
+   details. *)
 
 open Earley_core
 open Extra
@@ -97,7 +100,7 @@ let blank = Blanks.line_comments "//"
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
-    let id_charset = Charset.from_string "a-zA-Z0-9_"
+    let id_charset = Charset.from_string "a-zA-Z0-9_'"
     let reserved = []
   end)
 
@@ -185,10 +188,10 @@ let alpha =
   in
   Earley.black_box fn alpha false "<alpha>"
 
-(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
+(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_']*"]). *)
 let regular_ident =
   let head_cs = Charset.from_string "a-zA-Z_" in
-  let body_cs = Charset.from_string "a-zA-Z0-9_" in
+  let body_cs = Charset.from_string "a-zA-Z0-9_'" in
   let fn buf pos =
     let nb = ref 1 in
     while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;

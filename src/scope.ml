@@ -211,7 +211,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , M_Term(_)) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
-          metavariable [m2] of type [m1]. [P_Wild] is interpreted by [m2]. *)
+          metavariable [m2] of type [m1], and return [m2]. *)
         let vs = Env.vars_of_env env in
         let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
         let a = prod_of_env env (_Meta m1 vs) in
@@ -222,7 +222,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
-             and a new metavariable [m2] of name [id] and type [m1]. *)
+             and a new metavariable [m2] of name [id] and type [m1], and
+             return [m2]. *)
           let vs = Env.vars_of_env env in
           let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
           let a = prod_of_env env (_Meta m1 vs) in
