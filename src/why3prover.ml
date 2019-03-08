@@ -85,5 +85,11 @@ let print_result : Why3.Whyconf.config_prover -> Why3.Task.task -> unit =
     | _                  ->
         Console.out 1 "%s didn't found a proof@." prv.prover.prover_name
 
+(** [call sp tsk] Call the prover named [sp] with the task [tsk]. *)
+let call : string -> Why3.Task.task -> Why3.Call_provers.prover_result =
+    fun sp tsk ->
+    let prover_why3 = get_name sp in
+    result (prover prover_why3) tsk
+
 (* Initilizing Why3 environment. *)
 let _ = init_env ()

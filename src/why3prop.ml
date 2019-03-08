@@ -39,40 +39,34 @@ let get_prop_config : Proof.builtins -> prop_config = fun builtins ->
   ; symb_bot   = find_sym "bot"
   ; symb_not   = find_sym "not" }
 
-(** [t_goal buitltins sp (hs,g)] translate and try to prove the lambdapi goal
-    [g] with hypothesis [hs] using a prover named [sp] in Why3.*)
-let rec t_goal : Proof.builtins -> string -> (Env.env * term) -> bool =
-    fun builtins sp (hs, g) ->
+(** [translate builtins (hs, g)] translate from lambdapi to Why3 goal [g]
+    using the hypothesis [hs]. *)
+let rec translate : Proof.builtins -> (Env.env * term) ->
+    cnst_table * (string * Why3.Term.term) list * Why3.Term.term =
+    fun builtins  (hs, g) ->
     let cfg = get_prop_config builtins in
-    match Basics.get_args g with
+    let (l_prop, hypothesis) =
+        List.fold_left
+        (fun (l_prop', l_hyp)    (s, (_, h)) ->
+        let (l', hyp) = t_goal cfg l_prop' (Bindlib.unbox h) in
+        (l', (s, hyp)::l_hyp))
+        ([], []) hs in
+
+    let (l_prop, formula) = t_goal cfg l_prop g in
+    (l_prop, hypothesis, formula)
+
+(** [t_goal cfg l_prop trm] translate the lambdapi term [trm] to Why3 term
+    using the configuration [cfg] and the list of Why3 constants in [l_prop].
+    *)
+and t_goal : prop_config -> cnst_table -> term ->
+    cnst_table * Why3.Term.term =
+    fun cfg l_prop trm ->
+    match Basics.get_args trm with
     | (symbol, [t]) when Basics.is_symb (fst cfg.symb_P) symbol ->
-        let (l_prop, hypothesis) =
-            List.fold_left
-            (fun (l_prop', l_hyp) (s, (_, h)) ->
-            let hyp = get_proposition cfg (Bindlib.unbox h) in (* FIX types *)
-            let (l', y3t) = t_prop cfg l_prop' [] hyp in
-            (l', (s, y3t)::l_hyp))
-            ([], []) hs in
         let (l_prop, formula) = t_prop cfg l_prop [] t in
-        List.iter (fun (x, _) -> Console.out 1 "%a\n" Print.pp x) l_prop;
-        let symbols = List.map (fun (_, x) -> x) l_prop in
-        let tsk = Why3task.declare_symbols symbols in
-        let tsk = Why3task.declare_axioms hypothesis tsk in
-        let tsk = Why3task.add_goal tsk formula in
-        let result = Why3prover.result (Why3prover.prover sp) tsk in
-        Why3prover.answer result.pr_answer
+        (l_prop, formula)
     | _                                                         ->
         failwith "Goal can't be translated"
-
-(** [get_proposition cfg pt] return the term [t] if [pt] is of the form [P t]
-    by using the config [cfg] *)
-and get_proposition : prop_config -> term -> term =
-    fun cfg pt ->
-    match Basics.get_args pt with
-    | (symbol, [t]) when Basics.is_symb (fst cfg.symb_P) symbol ->
-        t
-    | _                                                         ->
-        failwith "Proposition can't be translated"
 
 (** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
     context [ctxt] and a config [cfg]. *)

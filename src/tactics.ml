@@ -114,7 +114,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.reflexivity ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry ps)
-  | P_tac_why3(s)       ->
+  | P_tac_why3(s)    ->
       (* get the goal to prove *)
       let (hypothesis, trm) = Proof.Goal.get_type g in
       let trm = unfold trm in
@@ -124,18 +124,23 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         | None          -> !Why3prover.current_prover
         | Some(name)    -> name.elt
       in
-      (* get the real name of the prover in Why3. *)
-      let prover_why3 = Why3prover.get_name prover_name in
-      (* try to prove the goal [trm] with a prover in Why3. *)
-      let proved =
-        Why3prop.t_goal ps.proof_builtins prover_why3 (hypothesis, trm) in
-      if proved then
+      (* translate from lambdapi to why3 terms. *)
+      let (l_prop, hyps, why3term) =
+        Why3prop.translate ps.proof_builtins (hypothesis, trm) in
+      (* create a new task that contains symbols, axioms and the goal. *)
+      let tsk = Why3task.create l_prop hyps why3term in
+      (* call the prover named [prover_name] and get the result. *)
+      let prover_result = Why3prover.call prover_name tsk in
+      (* if the prover succeed to prover the goal. *)
+      if Why3prover.answer prover_result.pr_answer then
+        (* create a new axiom that represents the proved goal. *)
         let why3_axiom = Pos.none (Why3prop.get_newname ()) in
-        let current_sign = ss.signature in
-        (* TODO : add the goal to the set of axioms if the prover succeed *)
-        let a = Sign.add_symbol current_sign Const why3_axiom trm in
-        Console.out 2 "%s proved the current goal@." prover_why3;
+        (* add the axiom to the current signature. *)
+        let a = Sign.add_symbol ss.signature Const why3_axiom trm in
+        (* tell the user that the goal is proved (verbose 2) *)
+        Console.out 2 "%s proved the current goal@." prover_name;
+        (* apply the declared axiom to the current goal *)
         handle_refine (Symb(a, Nothing))
       else
-        (Console.out 1 "%s didn't found a proof@." prover_why3;
+        (Console.out 1 "%s didn't found a proof@." prover_name;
       ps)
