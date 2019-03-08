@@ -28,12 +28,16 @@
   "A transliteration scheme for LambdaPi."
   nil t t t t nil t nil nil nil t)
 (quail-define-rules
-  ("->"   ?→) ("\\to" ?→) ("\\rightarrow" ?→)
-  ("=>"   ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
-  ("!"    ?∀) ("\\forall" ?∀)
-  ("\\"   ?λ) ("\\lambda" ?λ)
-  (":="   ?≔) ("\\defeq"  ?≔)
-  ("=="   ?≡) ("\\equiv"  ?≡))
+  ("->" ?→) ("\\to" ?→) ("\\rightarrow" ?→)
+  ("=>" ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
+  ("!!" ?∀) ("\\forall" ?∀)
+  ("\\\\" ?λ) ("\\lambda" ?λ)
+  (":=" ?≔) ("\\defeq"  ?≔)
+  ("==" ?≡) ("\\equiv"  ?≡)
+  ("&&" ?∧) ("\\wedge"  ?∧)
+  ("||" ?∨) ("\\vee"    ?∨)
+  ("~~" ?¬) ("\\not"    ?¬)
+  ("??" ?∃) ("\\exists" ?∃))
 
 ;; Main function creating the mode (lambdapi)
 (define-derived-mode lambdapi-mode fundamental-mode "LambdaPi"
