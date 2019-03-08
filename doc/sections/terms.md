@@ -20,13 +20,13 @@ A user-defined term can be either:
 
   Convention: identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
 
- * an anonymous function `λ(x y:A) z,t` mapping `x`, `y` and `z` (of type `A` for `x` and `y`) to `t`
+ * an anonymous function `λ(x:A) y z,t` mapping `x`, `y` and `z` (of type `A` for `x`) to `t`
 
- * a dependent product `∀(x y:A) z,T`
+ * a dependent product `∀(x:A) y z,T`
 
  * a non-dependent product `A ⇒ T` (syntactic sugar for `∀x:A,T` with `x` not occurring in `T`)
 
- * a `let f (x y:A) z = t` construction
+ * a `let f (x:A) y z = t` construction
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 

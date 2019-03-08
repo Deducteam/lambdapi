@@ -23,7 +23,7 @@ One-line comments are introduced by '//':
 TODO
 
 <!---------------------------------------------------------------------------->
-### The `require` command
+### `require`
 
 The `require` command informs the type-checker that the current module depends
 on some other module, which must hence be compiled.
@@ -37,7 +37,7 @@ Note that a required module can optionally be aliased, in which case it can be
 referred to with the provided name.
 
 <!---------------------------------------------------------------------------->
-### The `open` command
+### `open`
 
 The `open` command puts into scope the symbols defined in the given module. It
 can also be combined with the `require` command.
@@ -48,7 +48,7 @@ require open church.sums
 ```
 
 <!---------------------------------------------------------------------------->
-### The `symbol` declaration command
+### `symbol`
 
 Symbols are declared using the `symbol` command, possibly associated with some
 modifier like `const` or `injective`.
@@ -98,8 +98,11 @@ symbol eq {a:U} : T a ⇒ T a ⇒ Prop
 // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
 ```
 
+**Infix notation**:
+An infix notation can be declared for some symbol. See the command `set`.
+
 <!---------------------------------------------------------------------------->
-### The `rule` declaration command
+### `rule`
 
 Rewriting rules for definable symbols are declared using the `rule` command.
 
@@ -118,6 +121,7 @@ and  add (succ &n) &m → succ (add &n &m)
 
 Pattern variables need to be prefixed by `&`.
 
+**Higher-order pattern-matching**:
 Lambdapi accepts higher-order pattern variables too:
 
 ```
@@ -135,7 +139,7 @@ Lambdapi uses then higher-order pattern-matching, that is, matching
 modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
 η-reduction since no valid instance of `F` can contain `x`.
 
-*Important*: In contrast to languages like OCaml, Coq, Agda, etc. rule
+**Important**: In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:
 
 ```
@@ -156,7 +160,7 @@ rule minus x x → zero
 ```
 
 <!---------------------------------------------------------------------------->
-### The `definition` command
+### `definition`
 
 The `definition` command is used to immediately define a new symbol, for it to
 be equal to some (closed) term.
@@ -174,7 +178,7 @@ in OCaml). Some arguments can be declared as implicit by enclosing them in
 curly brackets.
 
 <!---------------------------------------------------------------------------->
-### The `theorem` command
+### `theorem`
 
 The `theorem` command makes the user enter a new interactive mode. The
 user has to provide a term of some given type. Such a goal is
@@ -187,7 +191,7 @@ is complete only when all generated goals have been solved.
 [List of tactics](tactics.md)
 
 <!---------------------------------------------------------------------------->
-### The `type` command
+### `type`
 
 The `type` command returns the type of a term.
 
@@ -200,7 +204,7 @@ type s z // returns N
 ```
 
 <!---------------------------------------------------------------------------->
-### The `compute` command
+### `compute`
 
 The `compute` command computes the normal form of a term.
 
@@ -215,7 +219,7 @@ compute add (s (s z)) (s (s z)) // returns s (s (s (s z)))
 ```
 
 <!---------------------------------------------------------------------------->
-### The `assert` and `assertnot` commands
+### `assert` and `assertnot`
 
 The `assert` and `assertnot` are convenient for checking that the validity, or
 the invalidity, of typing judgments or convertibilities.  This can be used for
@@ -229,7 +233,7 @@ assertnot succ : Nat
 ```
 
 <!---------------------------------------------------------------------------->
-### The `set` command
+### `set`
 
 The `set` command is used to control the behaviour of Lambdapi, and to control
 extension points in its syntax.  For instance,  the following commands set the
