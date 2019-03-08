@@ -133,6 +133,8 @@ type p_config =
   (** Sets the verbosity level. *)
   | P_config_debug   of bool * string
   (** Toggles logging functions described by string according to boolean. *)
+  | P_config_flag    of string * bool
+  (** Sets the boolean flag registered under the given name (if any). *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop

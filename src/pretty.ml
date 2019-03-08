@@ -165,6 +165,8 @@ let pp_command : command pp = fun oc cmd ->
       out "set verbose %i" i
   | P_set(P_config_debug(true ,s))  ->
       out "set debug \"+%s\"" s
+  | P_set(P_config_flag(s, b))      ->
+      out "set flag \"%s\" %s" s (if b then "on" else "off")
   | P_set(P_config_debug(false,s))  ->
       out "set debug \"-%s\"" s
   | P_set(P_config_builtin(n,i)  )  ->

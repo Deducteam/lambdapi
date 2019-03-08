@@ -393,6 +393,8 @@ let parser config =
       P_config_verbose(i)
   | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
       P_config_debug(b, s)
+  | "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
+      P_config_flag(s, b)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
