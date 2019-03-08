@@ -192,7 +192,10 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
-              fatal cmd.pos "The proof is not finished.";
+              begin
+                let _ = Tactics.handle_tactic ss st (none P_tac_print) in
+                fatal cmd.pos "The proof is not finished."
+              end;
             (* Add a symbol corresponding to the proof. *)
             let s = Sign.add_symbol ss.signature Const x a impl in
             out 3 "(symb) %s (qed).\n" s.sym_name;
