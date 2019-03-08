@@ -50,15 +50,17 @@ let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
 (** [get_eq_data cfg a] extra data from an equality type [a]. It consists of a
     triple containing the type in which equality is used and the equated terms
     (LHS and RHS). *)
-let get_eq_data : eq_config -> term -> term * term * term = fun cfg a ->
-  match get_args a with
-  | (p, [t]) when is_symb (fst cfg.symb_P) p ->
+let get_eq_data : eq_config -> term -> term * term * term = fun cfg t ->
+  match get_args t with
+  | (p, [u]) when is_symb (fst cfg.symb_P) p ->
       begin
-        match get_args t with
+        let u = Eval.whnf u in
+        match get_args u with
         | (eq, [a;l;r]) when is_symb (fst cfg.symb_eq) eq -> (a, l, r)
-        | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp a
+        | _ ->
+           fatal_no_pos "Expected an equality type, found [%a %a]." pp p pp u
       end
-  | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp a
+  | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp t
 
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
@@ -532,7 +534,7 @@ let reflexivity : Proof.t -> term = fun ps ->
   let _, g_type = Proof.focus_goal ps in
 
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data cfg (Eval.whnf g_type) in
+  let (a, l, r)  = get_eq_data cfg g_type in
   if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
