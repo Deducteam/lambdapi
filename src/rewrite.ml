@@ -50,16 +50,17 @@ let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
 (** [get_eq_data cfg a] extra data from an equality type [a]. It consists of a
     triple containing the type in which equality is used and the equated terms
     (LHS and RHS). *)
-let get_eq_data : eq_config -> term -> term * term * term = fun cfg t ->
+let get_eq_data : popt -> eq_config -> term -> term * term * term =
+  fun pos cfg t ->
   match get_args t with
   | (p, [u]) when is_symb (fst cfg.symb_P) p ->
       begin
         match get_args u with
         | (eq, [a;l;r]) when is_symb (fst cfg.symb_eq) eq -> (a, l, r)
         | _ ->
-           fatal_no_pos "Expected an equality type, found [%a]." pp t
+           fatal pos "Expected an equality type, found [%a]." pp t
       end
-  | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp t
+  | _ -> fatal pos "Expected an equality type, found [%a]." pp t
 
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
@@ -172,7 +173,8 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     equality. Every occurrence of the first instance of the left-hand side  is
     replaced by the right-hand side of the obtained proof. It also handles the
     full set of SSReflect patterns. *)
-let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
+let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
+  fun pos ps p t ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = get_eq_config ps.proof_name ps.proof_builtins in
 
@@ -184,12 +186,12 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
   let t_type =
     match Solve.infer g_ctxt t with
     | Some(a) -> a
-    | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
+    | None    -> fatal pos "Cannot infer the type of [%a]." pp t
   in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
-  let (a, l, r)  = get_eq_data cfg t_type in
+  let (a, l, r)  = get_eq_data pos cfg t_type in
 
   (* Apply [t] to the variables of [vars] to get a witness of the equality. *)
   let t_args = Array.fold_left (fun t x -> Appl(t, Vari(x))) t vars in
@@ -205,7 +207,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     match get_args g_type with
     | (p, [t]) when is_symb (fst cfg.symb_P) p -> t
     | _                                        ->
-        fatal_no_pos "Goal type [%a] is not of the form “P t”." pp g_type
+        fatal pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
 
   (* Obtain the different components depending on the pattern. *)
@@ -217,7 +219,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let sigma =
           match find_subst g_term (vars, l) with
           | Some(sigma) -> sigma
-          | None        -> fatal_no_pos "No subterm of [%a] matches [%a]."
+          | None        -> fatal pos "No subterm of [%a] matches [%a]."
                              pp g_term pp l
         in
         (* Build the required data from that substitution. *)
@@ -231,14 +233,14 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let match_p =
           let p_refs = add_refs p in
           if not (make_pat g_term p_refs) then
-            fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+            fatal pos "No subterm of [%a] matches [%a]." pp g_term pp p;
           p_refs (* [TRef] cells have been instantiated here. *)
         in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
         let sigma =
           match match_pattern (vars,l) match_p with
           | Some(sigma) -> sigma
-          | None        -> fatal_no_pos "No subterm of [%a] matches [%a]."
+          | None        -> fatal pos "No subterm of [%a] matches [%a]."
                              pp match_p pp l
         in
         (* Build the data from the substitution. *)
@@ -252,7 +254,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         let match_p =
           let p_refs = add_refs p in
           if not (make_pat g_term p_refs) then
-            fatal_no_pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+            fatal pos "No subterm of [%a] matches [%a]." pp g_term pp p;
           p_refs (* [TRef] cells have been instantiated here. *)
         in
         (* Build a substitution from a subterm of [match_p] matching [l]. *)
@@ -260,7 +262,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst match_p (vars,l) with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "No subterm of the pattern [%a] matches [%a]."
+              fatal pos "No subterm of the pattern [%a] matches [%a]."
                 pp match_p pp l
         in
         (* Build the data from the substitution. *)
@@ -295,7 +297,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst g_term ([|id|],p_refs) with
           | Some(id_val) -> id_val.(0)
           | None         ->
-              fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+              fatal pos "The pattern [%a] does not match [%a]." pp p pp l
         in
         let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
@@ -307,7 +309,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars,l) id_val with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos
+              fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
                 (Bindlib.name_of id) pp id_val pp p pp l
         in
@@ -350,7 +352,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst g_term ([|id|],p_refs) with
           | Some(id_val) -> id_val
           | None         ->
-              fatal_no_pos "The pattern [%a] does not match [%a]." pp p pp l
+              fatal pos "The pattern [%a] does not match [%a]." pp p pp l
         in
         (* Once we get the value of id, we work with that as our main term
            since this is where s will appear and will be substituted in. *)
@@ -364,7 +366,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
            [id_val]. *)
         let s_refs = add_refs s in
         if not (make_pat id_val s_refs) then
-          fatal_no_pos "The value of [%s], [%a], in [%a] does not match [%a]."
+          fatal pos "The value of [%s], [%a], in [%a] does not match [%a]."
             (Bindlib.name_of id) pp id_val pp p pp s;
         (* Now we must match s, which no longer contains any TRef's
            with the LHS of the lemma,*)
@@ -373,7 +375,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars,l) s with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos "The term [%a] does not match the LHS [%a]"
+              fatal pos "The term [%a] does not match the LHS [%a]"
                 pp s pp l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
@@ -420,7 +422,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
         (* Try to match p[s/id] with a subterm of the goal. *)
         let p_refs = add_refs p_s in
         if not (make_pat g_term p_refs) then
-            fatal_no_pos "No subterm of [%a] matches the pattern [%a]"
+            fatal pos "No subterm of [%a] matches the pattern [%a]"
               pp g_term pp p_s;
         let p = p_refs in
         let pat_refs = add_refs pat in
@@ -440,7 +442,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match match_pattern (vars, l) id_val with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos
+              fatal pos
                 "The value of X, [%a], does not match the LHS, [%a]"
                 pp id_val pp l
         in
@@ -467,7 +469,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst g_term ([|id|],p_refs) with
           | Some(id_val) -> id_val
           | None         ->
-              fatal_no_pos "The pattern [%a] does not match [%a]."
+              fatal pos "The pattern [%a] does not match [%a]."
                 pp p pp g_term
         in
         let id_val = id_val.(0) in
@@ -477,7 +479,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
           match find_subst id_val (vars,l) with
           | Some(sigma) -> sigma
           | None        ->
-              fatal_no_pos
+              fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
                 (Bindlib.name_of id) pp id_val pp p pp l
         in
@@ -525,7 +527,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
 
 (** [reflexivity ps] applies the reflexivity of equality on the focused  goal.
     If successful, the corresponding proof term is returned. *)
-let reflexivity : Proof.t -> term = fun ps ->
+let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
 
@@ -533,8 +535,8 @@ let reflexivity : Proof.t -> term = fun ps ->
   let _, g_type = Proof.focus_goal ps in
 
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data cfg g_type in
-  if not (Eval.eq_modulo l r) then fatal_no_pos "Cannot apply reflexivity.";
+  let (a, l, r)  = get_eq_data pos cfg g_type in
+  if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
   let s, hint = cfg.symb_refl in add_args (Symb(s, hint)) [a; l]
@@ -542,7 +544,7 @@ let reflexivity : Proof.t -> term = fun ps ->
 (** [symmetry ps] attempts to use symmetry of equality on the focused goal. If
     successful,  a new goal is generated,  and the corresponding proof term is
     returned. The proof of symmetry is built from the axioms of equality. *)
-let symmetry : Proof.t -> term = fun ps ->
+let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
   let symb_P = Symb(fst cfg.symb_P, snd cfg.symb_P) in
@@ -555,7 +557,7 @@ let symmetry : Proof.t -> term = fun ps ->
   let (g_env, g_type) = Proof.focus_goal ps in
 
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
-  let (a, l, r) = get_eq_data cfg g_type in
+  let (a, l, r) = get_eq_data pos cfg g_type in
 
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
 

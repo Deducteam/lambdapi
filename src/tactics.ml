@@ -109,8 +109,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)
-      handle_refine (Rewrite.rewrite ps po t)
+      handle_refine (Rewrite.rewrite tac.pos ps po t)
   | P_tac_refl          ->
-      handle_refine (Rewrite.reflexivity ps)
+      handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
-      handle_refine (Rewrite.symmetry ps)
+      handle_refine (Rewrite.symmetry tac.pos ps)
