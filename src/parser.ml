@@ -1,4 +1,7 @@
-(** Parsing functions for the Lambdapi syntax. *)
+(** Parsing functions for the Lambdapi syntax, based on the Earley
+   library. See
+   https://github.com/rlepigre/ocaml-earley/blob/master/README.md for
+   me details. *)
 
 open Earley_core
 open Extra
