@@ -10,6 +10,10 @@
 open Extra
 open Timed
 
+(** A mapping from integers to integers, used to record non contiguous
+    positions. XXX Go to {!module:Extra}? *)
+module IMap = Map.Make(struct type t = int ;; let compare = compare end)
+
 (** {2 Term (and symbol) representation} *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
@@ -136,13 +140,12 @@ type term =
     across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
     target is rewrote to the content of the leaf. *)
  and tree =
-  | Leaf of int array * (term_env, term) Bindlib.mbinder
+  | Leaf of int IMap.t * (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, the right hand side of a rule.  In a
       {!cons:Leaf}[(e, a)], [a] is the right hand side of the rule, or the
       action to perform if the rule applies.  The first element of the pair
-      contains at position {i i } the location of the pattern variable whose
-      slot is {i i } in the pattern stack {b XXX ref to pattern stack
-      needed}. *)
+      maps a position in the term evaluation stack to the slot allocated in
+      the future environment. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible

@@ -171,13 +171,13 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  let vars : term_env Stack.t = Stack.create () in
+  let vars : term Stack.t = Stack.create () in
   let stk = Array.of_list istk in
   (* [walk t i] where [i] is the index of the term in the stack to examine *)
-  let rec walk : Dtree.t -> int -> (int array * Dtree.action) option =
+  let rec walk : Dtree.t -> int -> (int IMap.t * Dtree.action) option =
     fun tree ind ->
     match tree with
-      | Leaf(pre_env, a)                      -> Some(pre_env, a)
+      | Leaf(env_builder, a)                  -> Some(env_builder, a)
       | Node({ swap = io ; children ; push }) ->
          (* The main operations are: (i) picking the right term in the terms
             stack, (ii) filling the stack containing terms to be substituted
@@ -195,13 +195,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         (* ^ This operation ought to be removed since with trees, each element
            of the stack is inspected only once. *)
          (* (ii) *)
-         if push then
-           begin
-             (* Works for variables with no arguments *)
-             let fn _ = snd Pervasives.(!examined) in
-             let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
-             Stack.push (TE_Some(b)) vars
-           end ;
+         if push then Stack.push (snd Pervasives.(!examined)) vars ;
          (* (iii) *)
          let matched = List.assoc_opt Pervasives.(Some(snd !examined))
            children in
@@ -210,13 +204,21 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            | Some(tr) -> walk tr (succ ind)
            | None     -> None
          end
-      | Fail                                    -> None in
+      | Fail                                  -> None in
   let final = walk itree 0 in
   (* [f] to be lifted in the option functor *)
-  let f : int array -> Dtree.action -> term * stack=
-    fun positions act ->
-    let st_as_ar = Array.of_seq (Stack.to_seq vars) in
-    let env = Array.map (fun p -> st_as_ar.(p)) positions in
+  let f : int IMap.t -> Dtree.action -> term * stack = fun env_builder act ->
+    let pre_env = Array.init (IMap.cardinal env_builder)
+      (fun _ -> Patt(None, "", [| |])) in
+    ignore @@
+      Stack.fold (fun p te -> match IMap.find_opt p env_builder with
+      | None     -> succ p
+      | Some(sl) -> pre_env.(sl) <- te ; succ p)
+      0 vars ;
+    let env = Array.map (fun te ->
+      let fn _ = te in
+      let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
+      TE_Some(b)) pre_env in
     Bindlib.msubst act env,
     Array.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
       then elt :: acc else acc) [] stk in

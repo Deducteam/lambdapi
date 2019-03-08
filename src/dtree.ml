@@ -31,7 +31,7 @@ type action = (term_env, term) Bindlib.mbinder
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (int array -> action -> 'a) ->
+let iter : (int IMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
@@ -427,16 +427,16 @@ let compile : Pm.t -> t = fun patterns ->
          execute the associated action. *)
       if Pm.exhausted (List.hd m) then
         let rhs = (List.hd m).Pm.rhs in
-        let needed_pos2slot = List.assq rhs rule2needed_pos in
-        let env = Array.init (PMap.cardinal needed_pos2slot)
-          (fun _ -> 0) in
-        List.iteri (fun i p ->
-          let opslot = PMap.find_opt p needed_pos2slot in
+        let pos2slot = List.assq rhs rule2needed_pos in
+        (* [pre_env] maps future position in the term stack to the slot in the
+           environment. *)
+        let env_builder = snd @@ List.fold_left (fun (i, m) tpos ->
+          let opslot = PMap.find_opt tpos pos2slot in
           match opslot with
-          | None     -> ()
-          (* ^ The stack may contain more variables than need for the rule *)
-          | Some(sl) -> env.(sl) <- i) vcat ;
-        Leaf(env, !((List.hd m).Pm.rhs))
+          | None     -> succ i, m
+          (* ^ The stack may contain more variables than needed for the rule *)
+          | Some(sl) -> succ i, IMap.add i sl m) (0, IMap.empty) vcat in
+        Leaf(env_builder, !((List.hd m).Pm.rhs))
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
