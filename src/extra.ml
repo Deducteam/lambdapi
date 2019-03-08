@@ -84,6 +84,15 @@ module List =
       in
       if k <= 0 then ([], l) else cut [] l k
 
+    (** [remove bs xs] removes the i-th element of [xs] if the i-th
+       element of [bs] is true. *)
+    let rec remove : bool list -> 'a list -> 'a list = fun bs xs ->
+      match bs, xs with
+      | [], _ -> xs
+      | true::bs, _::xs -> remove bs xs
+      | false::bs, x::xs -> x :: remove bs xs
+      | _::_, [] -> []
+
     (** [add_array a1 a2 l] returns a list containing the elements of [l], and
         the (corresponding) elements of [a1] and [a2]. Note that [a1] and [a2]
         should have the same lenght otherwise [Invalid_argument] is raised. *)

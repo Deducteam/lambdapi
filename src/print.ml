@@ -41,6 +41,18 @@ let pp_term : term pp = fun oc t ->
       | TE_Vari(m) -> out oc "%s" (Bindlib.name_of m)
       | _          -> assert false
     in
+    let pp_symb_app oc (h, s, ts) =
+      let ts = List.remove s.sym_impl ts in
+      match h, ts with
+      | Binary(o), [t; u] -> out oc "%a %s %a" pp_atom t o pp_atom u
+      | _ -> out oc "%a%a" (pp_symbol h) s (List.pp pp_atom " ") ts
+    in
+    let hd, ts = Basics.get_args t in
+    match hd with
+    | Symb(s,h) ->
+       if ts = [] || p = `Appl || p = `Func then pp_symb_app oc (h, s, ts)
+       else out oc "(%a)" pp_symb_app (h, s, ts)
+    | _ ->
     match (unfold t, p) with
     (* Atoms are printed inconditonally. *)
     | (Vari(x)    , _    ) -> pp_tvar oc x
