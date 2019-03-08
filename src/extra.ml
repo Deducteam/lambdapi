@@ -36,6 +36,11 @@ module Option =
       | None    -> None
       | Some(e) -> Some(f e)
 
+    let bind : ('a -> 'b t) -> 'a t -> 'b t = fun f o ->
+      match o with
+      | None    -> None
+      | Some(e) -> f e
+
     let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
       match o with
       | None    -> ()

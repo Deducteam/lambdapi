@@ -199,11 +199,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
          (* (iii) *)
          let matched = List.assoc_opt Pervasives.(Some(snd !examined))
            children in
-         begin
-           match matched with
-           | Some(tr) -> walk tr (succ ind)
-           | None     -> None
-         end
+         Option.bind (fun tr -> walk tr (succ ind)) matched
       | Fail                                  -> None in
   let final = walk itree 0 in
   (* [f] to be lifted in the option functor *)
@@ -223,6 +219,15 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
     Array.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
       then elt :: acc else acc) [] stk in
   Option.map (fun (p, a) -> f p a) final
+
+(** {b Note} During the matching with trees, two term stacks are used.
+    - One is of type {!type:stack} and contains the arguments of a symbol that
+      are being matched against the rules of the symbol in order to rewrite
+      those arguments.
+    - The other is created during the matching, of type {!type:term Stack.t}
+      and contains the terms which, in the previous stack, have been matched
+      against a pattern variables in some rule.  The terms in this stack might
+      be substituted in the right hand side of the rule. *)
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
