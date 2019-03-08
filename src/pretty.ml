@@ -72,12 +72,13 @@ let rec pp_p_term : p_term pp = fun oc t ->
   in
   pp_toplevel oc t
 
-and pp_p_arg : p_arg pp = fun oc (id,ao,b) ->
+and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
+  let pp_ids = List.pp (fun oc id -> Format.pp_print_string oc id.elt) " " in
   match (ao,b) with
-  | (None   , false) -> Format.fprintf oc "%s" id.elt
-  | (None   , true ) -> Format.fprintf oc "{%s}" id.elt
-  | (Some(a), false) -> Format.fprintf oc "(%s : %a)" id.elt pp_p_term a
-  | (Some(a), true ) -> Format.fprintf oc "{%s : %a}" id.elt pp_p_term a
+  | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
+  | (None   , true ) -> Format.fprintf oc "{%a}" pp_ids ids
+  | (Some(a), false) -> Format.fprintf oc "(%a : %a)" pp_ids ids pp_p_term a
+  | (Some(a), true ) -> Format.fprintf oc "{%a : %a}" pp_ids ids pp_p_term a
 
 and pp_p_args : p_arg list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_p_arg)

@@ -109,4 +109,4 @@ let pp_goals : _ pp = fun oc gl ->
 let pp : t pp = fun oc ps ->
   Format.fprintf oc "== Current theorem ======================\n";
   pp_goals oc ps.proof_goals;
-  Format.fprintf oc "==========================================\n"
+  Format.fprintf oc "=========================================\n"
