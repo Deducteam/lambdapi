@@ -1,4 +1,4 @@
-(** Implementation of the REWRITE tactic. *)
+(** Implementation of the rewrite tactic. *)
 
 open Timed
 open Extra
@@ -13,7 +13,10 @@ open Print
 let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
 let log_rewr = log_rewr.logger
 
-(** Rewrite pattern. *)
+(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
+   Reflection Extension for the Coq system", by Georges Gonthier,
+   Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
+   http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
 type rw_patt =
   | RW_Term           of term
   | RW_InTerm         of term
