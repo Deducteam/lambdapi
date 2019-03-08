@@ -54,11 +54,10 @@ let get_eq_data : eq_config -> term -> term * term * term = fun cfg t ->
   match get_args t with
   | (p, [u]) when is_symb (fst cfg.symb_P) p ->
       begin
-        let u = Eval.whnf u in
         match get_args u with
         | (eq, [a;l;r]) when is_symb (fst cfg.symb_eq) eq -> (a, l, r)
         | _ ->
-           fatal_no_pos "Expected an equality type, found [%a %a]." pp p pp u
+           fatal_no_pos "Expected an equality type, found [%a]." pp t
       end
   | _ -> fatal_no_pos "Expected an equality type, found [%a]." pp t
 
@@ -81,7 +80,7 @@ let rec add_refs : term -> term = fun t ->
     products. These variables may appear free in the returned term. *)
 let break_prod : term -> term * tvar array = fun a ->
   let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
-    match unfold a with
+    match Eval.whnf a with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
     | a         -> (a, Array.of_list (List.rev vs))
   in aux a []
@@ -188,7 +187,7 @@ let rewrite : Proof.t -> rw_patt option -> term -> term = fun ps p t ->
     | None    -> fatal_no_pos "Cannot infer the type of [%a]." pp t
   in
 
-  (* Check that the type of [t] is of the form “P (Eq a l r)”. *)
+  (* Check that the type of [t] is of the form “P (eq a l r)”. *)
   let (t_type, vars) = break_prod t_type in
   let (a, l, r)  = get_eq_data cfg t_type in
 
@@ -555,7 +554,7 @@ let symmetry : Proof.t -> term = fun ps ->
   (* Get the type of the focused goal. *)
   let (g_env, g_type) = Proof.focus_goal ps in
 
-  (* Check that the type of [g] is of the form “P (Eq a l r)”. *)
+  (* Check that the type of [g] is of the form “P (eq a l r)”. *)
   let (a, l, r) = get_eq_data cfg g_type in
 
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
