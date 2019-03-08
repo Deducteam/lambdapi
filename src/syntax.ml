@@ -66,7 +66,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident * p_type option * bool
+and p_arg = ident list * p_type option * bool
 
 (** Representation of a symbol tag. *)
 type symtag =
@@ -210,7 +210,8 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       t1 = t2
 
 and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
-  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2 && b1 = b2
+  List.equal (fun x1 x2 -> x1.elt = x2.elt) x1 x2
+  && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
