@@ -188,7 +188,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            (* [skip_seen i] skips already examined term in the stack
               {!val:stk}. *)
            let rec skip_seen : int -> int = fun i ->
-             if fst Pervasives.(!(stk.(i))) then i else skip_seen (succ i) in
+             if fst Pervasives.(!(stk.(i))) then skip_seen (succ i) else i in
            stk.(skip_seen (Option.get io 0 + ind)) in
          if not (fst Pervasives.(!examined))
          then Pervasives.(examined := (true, whnf (snd !examined))) ;
