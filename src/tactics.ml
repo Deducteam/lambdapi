@@ -121,7 +121,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* get the default or the indicated name of the prover. *)
       let prover_name =
         match s with
-        | None          -> !Why3prover.current_prover
+        | None          -> Timed.(!Why3prover.current_prover)
         | Some(name)    -> name.elt
       in
       (* translate from lambdapi to why3 terms. *)
@@ -136,7 +136,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         (* create a new axiom that represents the proved goal. *)
         let why3_axiom = Pos.none (Why3prop.get_newname ()) in
         (* add the axiom to the current signature. *)
-        let a = Sign.add_symbol ss.signature Const why3_axiom trm in
+        let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
         (* tell the user that the goal is proved (verbose 2) *)
         Console.out 2 "%s proved the current goal@." prover_name;
         (* apply the declared axiom to the current goal *)

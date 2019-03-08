@@ -3,6 +3,8 @@
 open Terms
 open Extra
 
+exception NoTranslation
+
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Why3.Term.lsymbol) list
 
@@ -66,7 +68,7 @@ and t_goal : prop_config -> cnst_table -> term ->
         let (l_prop, formula) = t_prop cfg l_prop [] t in
         (l_prop, formula)
     | _                                                         ->
-        failwith "Goal can't be translated"
+        raise NoTranslation
 
 (** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
     context [ctxt] and a config [cfg]. *)
