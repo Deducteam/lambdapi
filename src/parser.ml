@@ -278,13 +278,13 @@ let parser term @(p : prio) =
   | a:(term PAppl) "⇒" b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Impl(a,b))
   (* Products. *)
-  | "∀" xs:arg+ "," b:(term PFunc)
+  | "∀" xs:one_or_more_args "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
   (* Abstraction. *)
-  | "λ" xs:arg+ "," t:(term PFunc)
+  | "λ" xs:one_or_more_args "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
+  | _let_ x:ident a:zero_or_more_args "=" t:(term PFunc) _in_ u:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
   (* Natural number literal. *)
   | n:nat_lit
@@ -328,14 +328,21 @@ let parser term @(p : prio) =
 (** [env] is a parser for a metavariable environment. *)
 and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 
-(** [arg] parses a single function argument. *)
-and parser arg =
+(** [zero_or_more_args] parses a possibly empty list of arguments. *)
+and parser zero_or_more_args =
+  | EMPTY -> []
+  | xs:one_or_more_args -> xs
+
+(** [one_or_more_args] parses a non-empty list of arguments. *)
+and parser one_or_more_args =
   (* Explicit argument without type annotation. *)
-  | x:ident                               -> (x, None,    false)
+  | i:ident xs:zero_or_more_args -> (i, None, false) :: xs
   (* Explicit argument with type annotation. *)
-  | "(" x:ident    ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  | "(" is:ident+ ":" a:(term PFunc) ")" xs:zero_or_more_args ->
+     List.map (fun i -> (i, Some(a), false)) is @ xs
   (* Implicit argument (with possible type annotation). *)
-  | "{" x:ident a:{":" (term PFunc)}? "}" -> (x, a      , true )
+  | "{" is:ident+ a:{":" (term PFunc)}? "}" xs:zero_or_more_args ->
+     List.map (fun i -> (i, a, true)) is @ xs
 
 let term = term PFunc
 
@@ -398,7 +405,8 @@ let parser config =
       P_config_binop(binop)
 
 let parser statement =
-  _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
+  _theorem_ s:ident al:zero_or_more_args ":" a:term _proof_ ->
+                       Pos.in_pos _loc (s,al,a)
 
 let parser proof =
   ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
@@ -427,11 +435,11 @@ let parser cmd =
   | _open_ p:path
       -> get_binops _loc p;
          P_open(p)
-  | _symbol_ l:symtag* s:ident al:arg* ":" a:term
+  | _symbol_ l:symtag* s:ident al:zero_or_more_args ":" a:term
       -> P_symbol(l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+  | _definition_ s:ident al:zero_or_more_args ao:{":" term}? "≔" t:term
       -> P_definition(false,s,al,ao,t)
   | st:statement (ts,e):proof
       -> P_theorem(st,ts,e)
