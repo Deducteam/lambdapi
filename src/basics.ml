@@ -176,7 +176,7 @@ let distinct_vars : term array -> bool = fun ar ->
   in
   distinct_vars [] (Array.length ar - 1)
 
-(** {2 Conversion of a rule into a "pair" of terms} *)
+(** {3 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
     [r] into a term.  The bound higher-order variables of the original RHS are
