@@ -12,6 +12,9 @@ open Terms
 (** Flag controling the printing of the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
 
+(** Flag controling the printing of implicit arguments. *)
+let print_implicis : bool ref = Console.register_flag "print_implicits" true
+
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
 let pp_symbol : pp_hint -> sym pp = fun h oc s ->
@@ -33,7 +36,20 @@ let pp_meta : meta pp = fun oc m ->
 let pp_term : term pp = fun oc t ->
   let out = Format.fprintf in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    match Basics.get_args t with
+    let (h, args) = Basics.get_args t in
+    let args =
+      if !print_implicis then args else
+      let impl =  match h with Symb(s,_) -> s.sym_impl | _ -> [] in
+      let rec filter_impl impl args =
+        match (impl, args) with
+        | ([]         , _      ) -> args
+        | (true ::impl, _::args) -> filter_impl impl args
+        | (false::impl, a::args) -> a :: filter_impl impl args
+        | (_          , []     ) -> args
+      in
+      filter_impl impl args
+    in
+    match (h, args) with
     | (Symb(_,Binary(o)), [l;r]) ->
         if p = `Atom then out oc "(";
         (* Can be improved by looking at symbol priority. *)
