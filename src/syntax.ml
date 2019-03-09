@@ -54,9 +54,9 @@ and p_term_aux =
   | P_Expl of p_term
   (** Explicitly given argument. *)
 
-(** {b NOTE} the boolean parameter of the {!const:P_Iden} constructor tells if
-    the corresponding symbol is explicitly applied (value [true]) or not. This
-    flag hence indicates whether the symbol has been prefixed with ["@"]. *)
+(** {b NOTE} the boolean parameter of {!constructor:P_Iden} tells whether  the
+    corresponding symbol is explicitly applied (value [true]) or not. The flag
+    hence indicates whether the symbol has been prefixed with ["@"]. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term

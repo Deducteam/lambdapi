@@ -4,18 +4,18 @@ open Extra
 open Timed
 open Terms
 
-(** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms of
-    the form {!const:Vari(x)}. The function (brutally) fails if any element of
-    [ar] does not correspond to a free variable. *)
+(** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
+    the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
+    does not correspond to a free variable. *)
 let to_tvars : term array -> tvar array =
   Array.map (fun t -> match t with Vari(x) -> x | _ -> assert false)
 
 (** {b NOTE} the {!val:to_tvars} function is useful when working with multiple
     binders. For example, this is the case when manipulating pattern variables
-    (see {!const:Terms.Patt}) or metatavariables (see {!const:Terms.Meta}). In
-    particular, these constructors must hold an array of terms, and definitely
-    not an array of variables. Indeed, a variable can only be substituted when
-    it is injected in a term (using the {!const:Vari} constructor). *)
+    ([Patt] constructor) or metatavariables ([Meta] constructor).  Remark that
+    it is Importantly for these constructors to hold an array of terms, rather
+    than an array of variables:  a variable can only be substituted when if it
+    is injected in a term (using the [Vari] constructor). *)
 
 (** {b NOTE} the result of {!val:to_tvars} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
@@ -33,7 +33,7 @@ let rec count_products : term -> int = fun t ->
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
-    [h] in [t]. The returned [h] cannot be an {!constr:Appl} node. *)
+    [h] in [t]. The returned [h] cannot be an [Appl] node. *)
 let get_args : term -> term * term list = fun t ->
   let rec get_args acc t =
     match unfold t with
@@ -51,12 +51,14 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** [eq t u] tests the equality of [t] and [u] modulo α-equivalence.
-   The function will fail if [t] or [u] contain terms of the form
-   {!const:Patt(i,s,e)} or {!const:TEnv(te,e)}. In case [t] is of the
-   form [TRef r] then [r] is set to [u]. Symmetrically, in case [u] is
-   of the form [TRef r] then [r] is set to [t]. Hence, [eq t u]
-   implements non-linear matching: this is used in the rewrite tactic. *)
+(** [eq t u] tests the equality of [t] and [u] (up to α-equivalence). It fails
+    if [t] or [u] contain terms of the form [Patt(i,s,e)] or [TEnv(te,e)].  In
+    the process, subterms of the form [TRef(r)] in [t] and [u] may be set with
+    the corresponding value to enforce equality. In other words,  [eq t u] can
+    be used to implement non-linear matching (see {!module:Rewrite}). When the
+    matching feature is used, one should make sure that [TRef] constructors do
+    not appear both in [t] and in [u] at the same time. Indeed, the references
+    are set naively, without checking occurence. *)
 let eq : term -> term -> bool = fun a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
@@ -126,8 +128,7 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
 
 (** [iter_meta f t] applies the function [f] to every metavariable in the term
     [t]. As for {!val:eq},  the behaviour of this function is unspecified when
-    [t] uses the {!const:Patt} or {!const:TEnv} constructor.  This function is
-    implemented using [iter] as it is critical for performances. *)
+    [t] contains the [Patt] or the [TEnv] constructor. *)
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
@@ -143,9 +144,12 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   | Appl(t,u)  -> iter_meta f t; iter_meta f u
   | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
 
+(** {b NOTE} that {!val:iter_meta} is not implemented using {!val:iter} due to
+    the fact this it is performance-cricical. *)
+
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
-    the {!const:Patt} or {!const:TEnv} constructor. *)
+    the [Patt] or [TEnv] constructor. *)
 let occurs : meta -> term -> bool = fun m t ->
   let fn p = if m == p then raise Exit in
   try iter_meta fn t; false with Exit -> true
