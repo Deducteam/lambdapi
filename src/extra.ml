@@ -171,7 +171,7 @@ module IntMap = Map.Make(Int)
 (* Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
-(** Represents the position of a subterm in a term. *)
+(** Position of a subterm of a term. *)
 module Position =
 struct
   (** Each element of the list is a level in the tree of the term.  For
@@ -189,8 +189,8 @@ struct
   (** Initial position. *)
   let init = [0]
 
-  (** [succ p] returns the successor of position [p].  For instance, if [p =
-      [1 ; 1]], [succ p = [2 ; 1]]. *)
+  (** [succ p] returns the successor of position [p].  For instance, if
+      [p = [1 ; 1]], [succ p = [2 ; 1]]. *)
   let succ = function
     | [] -> assert false
     | x :: xs -> succ x :: xs
