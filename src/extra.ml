@@ -12,8 +12,6 @@ module Int =
     let compare = (-)
   end
 
-module IMap = Map.Make(Int)
-
 module String =
   struct
     include String

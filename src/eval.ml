@@ -174,7 +174,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let vars : term Stack.t = Stack.create () in
   let stk = Array.of_list istk in
   (* [walk t i] where [i] is the index of the term in the stack to examine *)
-  let rec walk : Dtree.t -> int -> (int IMap.t * Dtree.action) option =
+  let rec walk : Dtree.t -> int -> (int IntMap.t * Dtree.action) option =
     fun tree ind ->
     match tree with
       | Leaf(env_builder, a)                  -> Some(env_builder, a)
@@ -184,7 +184,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
             in {!recfield:rhs} (or {!type:action}), (iii) branching on the
             correct branch. *)
          (* (i) *)
-         let examined = (* Examined term in the stack *)
+         let examined = (* Examined term in the input stack *)
            (* [skip_seen i] skips already examined term in the stack
               {!val:stk}. *)
            let rec skip_seen : int -> int = fun i ->
@@ -203,11 +203,11 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       | Fail                                  -> None in
   let final = walk itree 0 in
   (* [f] to be lifted in the option functor *)
-  let f : int IMap.t -> Dtree.action -> term * stack = fun env_builder act ->
-    let pre_env = Array.init (IMap.cardinal env_builder)
+  let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
+    let pre_env = Array.init (IntMap.cardinal env_builder)
       (fun _ -> Patt(None, "", [| |])) in
     ignore @@
-      Stack.fold (fun p te -> match IMap.find_opt p env_builder with
+      Stack.fold (fun p te -> match IntMap.find_opt p env_builder with
       | None     -> succ p
       | Some(sl) -> pre_env.(sl) <- te ; succ p)
       0 vars ;

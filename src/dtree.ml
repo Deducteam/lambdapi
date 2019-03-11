@@ -31,7 +31,7 @@ type action = (term_env, term) Bindlib.mbinder
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (int IMap.t -> action -> 'a) ->
+let iter : (int IntMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
@@ -435,7 +435,7 @@ let compile : Pm.t -> t = fun patterns ->
           match opslot with
           | None     -> succ i, m
           (* ^ The stack may contain more variables than needed for the rule *)
-          | Some(sl) -> succ i, IMap.add i sl m) (0, IMap.empty) vcat in
+          | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat in
         Leaf(env_builder, !((List.hd m).Pm.rhs))
       else
         (* Pick a column in the matrix and pattern match on the constructors
