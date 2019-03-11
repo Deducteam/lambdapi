@@ -3,7 +3,7 @@
 open Terms
 open Extra
 
-exception NoTranslation
+exception NoGoalTranslation
 
 (* a type to present the list of why3 constants and lambdapi terms *)
 type cnst_table = (term * Why3.Term.lsymbol) list
@@ -50,12 +50,21 @@ let rec translate : Proof.builtins -> (Env.env * term) ->
     let (l_prop, hypothesis) =
         List.fold_left
         (fun (l_prop', l_hyp)    (s, (_, h)) ->
-        let (l', hyp) = t_goal cfg l_prop' (Bindlib.unbox h) in
-        (l', (s, hyp)::l_hyp))
+        try
+            let (l', hyp) = t_goal cfg l_prop' (Bindlib.unbox h) in
+            (l', (s, hyp)::l_hyp)
+        with NoGoalTranslation ->
+            (l_prop', l_hyp)
+        )
+
         ([], []) hs in
 
-    let (l_prop, formula) = t_goal cfg l_prop g in
-    (l_prop, hypothesis, formula)
+    try
+        let (l_prop, formula) = t_goal cfg l_prop g in
+        (l_prop, hypothesis, formula)
+    with NoGoalTranslation ->
+        Console.fatal_no_pos "The term [%a] is not of the forme P [_]@."
+        Print.pp g
 
 (** [t_goal cfg l_prop trm] translate the lambdapi term [trm] to Why3 term
     using the configuration [cfg] and the list of Why3 constants in [l_prop].
@@ -65,10 +74,9 @@ and t_goal : prop_config -> cnst_table -> term ->
     fun cfg l_prop trm ->
     match Basics.get_args trm with
     | (symbol, [t]) when Basics.is_symb (fst cfg.symb_P) symbol ->
-        let (l_prop, formula) = t_prop cfg l_prop [] t in
-        (l_prop, formula)
+        t_prop cfg l_prop [] t
     | _                                                         ->
-        raise NoTranslation
+        raise NoGoalTranslation
 
 (** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
     context [ctxt] and a config [cfg]. *)
@@ -77,7 +85,7 @@ and t_prop :
     cnst_table * Why3.Term.term =
     fun cfg l_prop ctxt p ->
     let (s, args) = Basics.get_args p in
-    (match s with
+    match s with
     | symbol when Basics.is_symb (fst cfg.symb_and) symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
         let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
@@ -93,7 +101,7 @@ and t_prop :
     | symbol when Basics.is_symb (fst cfg.symb_not) symbol  ->
         let (l_prop, t) = t_prop cfg l_prop ctxt (List.nth args 0) in
         l_prop, Why3.Term.t_not t
-    | Symb(_, _)                        ->
+    | _                                                     ->
         (* if the term [p] is in the list [l_prop] *)
         if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) l_prop then
             (* then find it and return it *)
@@ -107,5 +115,3 @@ and t_prop :
                 let new_predicate = Why3.Term.ps_app sym [] in
                 (* add the new symbol to the list and return it *)
                 (p, sym)::l_prop, new_predicate
-    | _                                     ->
-        failwith "Proposition can't be translated ");

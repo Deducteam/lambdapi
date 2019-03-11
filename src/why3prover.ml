@@ -27,7 +27,9 @@ let time_limit : int ref = ref 10
 let config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
 (** [main] get only the main section of the Why3 config *)
-let main : Why3.Whyconf.main = Why3.Whyconf.get_main config
+let main : Why3.Whyconf.main =
+        let m = Why3.Whyconf.get_main config in
+        Why3.Whyconf.load_plugins m; m
 
 (** [prover provername] search and return the prover called [prover_name] *)
 let prover : string -> Why3.Whyconf.config_prover = fun prover_name ->

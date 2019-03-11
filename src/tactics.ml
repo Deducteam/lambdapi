@@ -126,7 +126,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       in
       (* translate from lambdapi to why3 terms. *)
       let (l_prop, hyps, why3term) =
-        Why3prop.translate ps.proof_builtins (hypothesis, trm) in
+          Why3prop.translate ps.proof_builtins (hypothesis, trm) in
       (* create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create l_prop hyps why3term in
       (* call the prover named [prover_name] and get the result. *)
@@ -135,12 +135,19 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       if Why3prover.answer prover_result.pr_answer then
         (* create a new axiom that represents the proved goal. *)
         let why3_axiom = Pos.none (Why3prop.get_newname ()) in
+        (* get the meta type of the current goal (with quantified context) *)
+        let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
         (* add the axiom to the current signature. *)
         let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
         (* tell the user that the goal is proved (verbose 2) *)
         Console.out 2 "%s proved the current goal@." prover_name;
-        (* apply the declared axiom to the current goal *)
-        handle_refine (Symb(a, Nothing))
+        (* return the variable terms of each item in the context. *)
+        let free_var = fun (_, (x, _)) -> Terms.mkfree x in
+        let context = List.rev_map free_var hypothesis in
+        (* apply the instance of the axiom with context. *)
+        let instance = Basics.add_args (Symb(a, Nothing)) context in
+        (* apply the declared instance to the current goal. *)
+        handle_refine instance
       else
-        (Console.out 1 "%s didn't found a proof@." prover_name;
+        (Console.wrn None "%s didn't found a proof@." prover_name;
       ps)
