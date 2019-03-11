@@ -5,8 +5,15 @@
     log messages, and feedback in case of success or error while type-checking
     terms or testing convertibility. *)
 
+open Timed
 open Extra
 open Terms
+
+(** Flag controling the printing of the domains of λ-abstractions. *)
+let print_domains : bool ref = Console.register_flag "print_domains" false
+
+(** Flag controling the printing of implicit arguments. *)
+let print_implicis : bool ref = Console.register_flag "print_implicits" true
 
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
@@ -27,43 +34,94 @@ let pp_meta : meta pp = fun oc m ->
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : term pp = fun oc t ->
-  let out oc fmt = Format.fprintf oc fmt in
-  (* NOTE we apply the conventions used in [Parser.expr] for priorities. *)
+  let out = Format.fprintf in
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
-    let pp_func = pp `Func in
-    let pp_appl = pp `Appl in
-    let pp_atom = pp `Atom in
+    let (h, args) = Basics.get_args t in
+    let args =
+      if !print_implicis then args else
+      let impl =  match h with Symb(s,_) -> s.sym_impl | _ -> [] in
+      let rec filter_impl impl args =
+        match (impl, args) with
+        | ([]         , _      ) -> args
+        | (true ::impl, _::args) -> filter_impl impl args
+        | (false::impl, a::args) -> a :: filter_impl impl args
+        | (_          , []     ) -> args
+      in
+      filter_impl impl args
+    in
+    match (h, args) with
+    | (Symb(_,Binary(o)), [l;r]) ->
+        if p = `Atom then out oc "(";
+        (* Can be improved by looking at symbol priority. *)
+        out oc "%a %s %a" (pp `Atom) l o (pp `Atom) r;
+        if p = `Atom then out oc ")";
+    | (h                , []   ) ->
+        pp_head (p <> `Func) oc h
+    | (h                , args ) ->
+        if p = `Atom then out oc "(";
+        pp_head true oc h;
+        List.iter (out oc " %a" (pp `Atom)) args;
+        if p = `Atom then out oc ")"
+  and pp_head wrap oc t =
     let pp_env oc ar =
-      if Array.length ar <> 0 then out oc "[%a]" (Array.pp pp_appl ",") ar
+      if ar <> [||] then out oc "[%a]" (Array.pp (pp `Appl) ",") ar
     in
     let pp_term_env oc te =
       match te with
       | TE_Vari(m) -> out oc "%s" (Bindlib.name_of m)
       | _          -> assert false
     in
-    match (unfold t, p) with
+    match unfold t with
+    (* Application is handled separately, unreachable. *)
+    | Appl(_,_)   -> assert false
+    (* Forbidden cases. *)
+    | Wild        -> assert false
+    | TRef(_)     -> assert false
     (* Atoms are printed inconditonally. *)
-    | (Vari(x)    , _    ) -> pp_tvar oc x
-    | (Type       , _    ) -> out oc "TYPE"
-    | (Kind       , _    ) -> out oc "KIND"
-    | (Symb(s,h)  , _    ) -> pp_symbol h oc s
-    | (Meta(m,e)  , _    ) -> out oc "%a%a" pp_meta m pp_env e
-    | (Patt(_,n,e), _    ) -> out oc "&%s%a" n pp_env e
-    | (TEnv(t,e)  , _    ) -> out oc "&%a%a" pp_term_env t pp_env e
-    (* Applications are printed when priority is above [`Appl]. *)
-    | (Appl(t,u)  , `Appl)
-    | (Appl(t,u)  , `Func) -> out oc "%a %a" pp_appl t pp_atom u
-    (* Abstractions and products are only printed at priority [`Func]. *)
-    | (Abst(a,t)  , `Func) ->
+    | Vari(x)     -> pp_tvar oc x
+    | Type        -> out oc "TYPE"
+    | Kind        -> out oc "KIND"
+    | Symb(s,h)   -> pp_symbol h oc s
+    | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
+    | Patt(_,n,e) -> out oc "&%s%a" n pp_env e
+    | TEnv(t,e)   -> out oc "&%a%a" pp_term_env t pp_env e
+    (* Product and abstraction (only them can be wrapped). *)
+    | Abst(a,t)   ->
+        if wrap then out oc "(";
+        let pp_arg oc (x,a) =
+          if !print_domains then out oc "(%a:%a)" pp_tvar x (pp `Func) a
+          else pp_tvar oc x
+        in
         let (x,t) = Bindlib.unbind t in
-        out oc "λ(%a:%a), %a" pp_tvar x pp_func a pp_func t
-    | (Prod(a,b)  , `Func) ->
+        out oc "λ%a" pp_arg (x,a);
+        let rec pp_absts oc t =
+          match unfold t with
+          | Abst(a,t) -> let (x,t) = Bindlib.unbind t in
+                         out oc " %a%a" pp_arg (x,a) pp_absts t
+          | _         -> out oc ", %a" (pp `Func) t
+        in
+        pp_absts oc t;
+        if wrap then out oc ")"
+    | Prod(a,b)   ->
+        if wrap then out oc "(";
+        let pp_arg oc (x,a) = out oc "(%a:%a)" pp_tvar x (pp `Func) a in
         let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          out oc "∀(%a:%a), %a" pp_tvar x pp_appl a pp_func c
-        else out oc "%a ⇒ %a" pp_appl a pp_func c
-    (* Anything else needs parentheses. *)
-    | (_          , _    ) -> out oc "(%a)" pp_func t
+          begin
+            out oc "∀%a" pp_arg (x,a);
+            let rec pp_prods oc c =
+              match unfold c with
+              | Prod(a,b) when Bindlib.binder_occur b ->
+                  let (x,b) = Bindlib.unbind b in
+                  out oc " %a%a" pp_arg (x,a) pp_prods b
+              | _                                      ->
+                  out oc ", %a" (pp `Func) c
+            in
+            pp_prods oc c
+          end
+        else
+          out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
+        if wrap then out oc ")"
   in
   pp `Func oc (cleanup t)
 
