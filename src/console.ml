@@ -1,6 +1,7 @@
 (** Output and debugging utilities. *)
 
 open Timed
+open Extra
 
 (** Short name for a standard formatter. *)
 type 'a outfmt = ('a, Format.formatter, unit) format
@@ -131,3 +132,20 @@ let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   let fmt = if !log_enabled then mag fmt else fmt ^^ "%!" in
   if lvl > !verbose then Format.ifprintf Pervasives.(!out_fmt) fmt
   else Format.fprintf Pervasives.(!out_fmt) fmt
+
+(** List of registered boolean flags. *)
+let boolean_flags : bool ref StrMap.t Pervasives.ref =
+  Pervasives.ref StrMap.empty
+
+(** [register_flag id d] registers a new boolean flag named [id], with default
+    value of [d]. Note the name should not have been used previously. *)
+let register_flag : string -> bool -> bool ref = fun id default ->
+  if StrMap.mem id Pervasives.(!boolean_flags) then
+    invalid_arg "Console.register_flag: already registered";
+  let r = ref default in
+  Pervasives.(boolean_flags := StrMap.add id r !boolean_flags); r
+
+(** [set_flag id b] sets the value of the flag named [id] to be [b], or raises
+    [Not_found] if no flag with this name was registered. *)
+let set_flag : string -> bool -> unit = fun id b ->
+  StrMap.find id Pervasives.(!boolean_flags) := b

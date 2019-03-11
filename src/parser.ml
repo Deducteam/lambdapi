@@ -1,4 +1,7 @@
-(** Parsing functions for the Lambdapi syntax. *)
+(** Parsing functions for the Lambdapi syntax, based on the Earley
+   library. See
+   https://github.com/rlepigre/ocaml-earley/blob/master/README.md for
+   details. *)
 
 open Earley_core
 open Extra
@@ -97,7 +100,7 @@ let blank = Blanks.line_comments "//"
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
-    let id_charset = Charset.from_string "a-zA-Z0-9_"
+    let id_charset = Charset.from_string "a-zA-Z0-9_'"
     let reserved = []
   end)
 
@@ -186,10 +189,10 @@ let alpha =
   in
   Earley.black_box fn alpha false "<alpha>"
 
-(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_]*"]). *)
+(** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_']*"]). *)
 let regular_ident =
   let head_cs = Charset.from_string "a-zA-Z_" in
-  let body_cs = Charset.from_string "a-zA-Z0-9_" in
+  let body_cs = Charset.from_string "a-zA-Z0-9_'" in
   let fn buf pos =
     let nb = ref 1 in
     while Charset.mem body_cs (Input.get buf (pos + !nb)) do incr nb done;
@@ -332,11 +335,11 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 (** [arg] parses a single function argument. *)
 and parser arg =
   (* Explicit argument without type annotation. *)
-  | x:ident                               -> (x, None,    false)
+  | x:ident                                 -> ([x], None,    false)
   (* Explicit argument with type annotation. *)
-  | "(" x:ident    ":" a:(term PFunc) ")" -> (x, Some(a), false)
+  | "(" xs:ident+    ":" a:(term PFunc) ")" -> (xs , Some(a), false)
   (* Implicit argument (with possible type annotation). *)
-  | "{" x:ident a:{":" (term PFunc)}? "}" -> (x, a      , true )
+  | "{" xs:ident+ a:{":" (term PFunc)}? "}" -> (xs , a      , true )
 
 let term = term PFunc
 
@@ -392,6 +395,8 @@ let parser config =
       P_config_verbose(i)
   | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
       P_config_debug(b, s)
+  | "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
+      P_config_flag(s, b)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->

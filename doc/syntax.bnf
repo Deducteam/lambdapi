@@ -92,8 +92,8 @@ reserved "compute"
 // Argument (of abstraction, product, ...), may be marked implicit
 <arg> ::=
   | <ident>
-  | "{" <ident> {":" <type>}? "}"
-  | "(" <ident> ":" <type> ")"
+  | "{" <ident>+ {":" <type>}? "}"
+  | "(" <ident>+ ":" <type> ")"
 
 // Rewriting rule
 <rule> ::=

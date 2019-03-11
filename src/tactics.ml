@@ -76,8 +76,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_intro(xs)     ->
       (* Scoping a sequence of abstractions in the goal's environment. *)
       let env, _ = Proof.Goal.get_type g in
-      let xs = List.map (fun x -> (x, None, false)) xs in
-      let t = Pos.none (P_Abst(xs, Pos.none P_Wild)) in
+      let t = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
       let t = scope_basic ss env t in
       (* Refine using the built term. *)
       handle_refine t
@@ -109,11 +108,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Scoping the rewrite pattern if given. *)
       let po = Option.map (Scope.scope_rw_patt ss env) po in
       (* Calling rewriting, and refining. *)
-      handle_refine (Rewrite.rewrite ps po t)
+      handle_refine (Rewrite.rewrite tac.pos ps po t)
   | P_tac_refl          ->
-      handle_refine (Rewrite.reflexivity ps)
+      handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
-      handle_refine (Rewrite.symmetry ps)
+    handle_refine (Rewrite.symmetry tac.pos ps)
   | P_tac_why3(s)    ->
       (* get the goal to prove *)
       let (hypothesis, trm) = Proof.Goal.get_type g in
@@ -151,3 +150,4 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       else
         (Console.wrn None "%s didn't found a proof@." prover_name;
       ps)
+

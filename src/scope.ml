@@ -200,6 +200,19 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
        let vs = Env.vars_of_env env in
        let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
        _Meta m vs
+  (* Scoping of a binder (abstraction or product). *)
+  and scope_binder cons env xs t =
+    let rec aux env xs =
+      match xs with
+      | []             -> scope env t
+      | ([]  ,_,_)::xs -> aux env xs
+      | (x::l,d,i)::xs ->
+          let v = Bindlib.new_var mkfree x.elt in
+          let a = scope_domain x.pos env d in
+          let t = aux (Env.add x.elt v a env) ((l,d,i)::xs) in
+          cons a (Bindlib.bind_var v t)
+    in
+    aux env xs
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -211,7 +224,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , M_Term(_)) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
-          metavariable [m2] of type [m1]. [P_Wild] is interpreted by [m2]. *)
+          metavariable [m2] of type [m1], and return [m2]. *)
         let vs = Env.vars_of_env env in
         let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
         let a = prod_of_env env (_Meta m1 vs) in
@@ -222,7 +235,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
-             and a new metavariable [m2] of name [id] and type [m1]. *)
+             and a new metavariable [m2] of name [id] and type [m1], and
+             return [m2]. *)
           let vs = Env.vars_of_env env in
           let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
           let a = prod_of_env env (_Meta m1 vs) in
@@ -268,34 +282,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
     | (P_Abst(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
-    | (P_Abst(xs,t)    , _        ) ->
-        let rec scope_abst env xs =
-          match xs with
-          | []          -> scope env t
-          | (x,a,_)::xs ->
-              let v = Bindlib.new_var mkfree x.elt in
-              let a = scope_domain x.pos env a in
-              let t = scope_abst (Env.add x.elt v a env) xs in
-              _Abst a (Bindlib.bind_var v t)
-        in
-        assert (xs <> []); scope_abst env xs
+    | (P_Abst(xs,t)    , _        ) -> scope_binder _Abst env xs t
     | (P_Prod(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Prod(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
-    | (P_Prod(xs,b)    , _        ) ->
-        let rec scope_prod env xs =
-          match xs with
-          | []          -> scope env b
-          | (x,a,_)::xs ->
-              let v = Bindlib.new_var mkfree x.elt in
-              let a = scope_domain x.pos env a in
-              let b = scope_prod (Env.add x.elt v a env) xs in
-              _Prod a (Bindlib.bind_var v b)
-        in
-        assert (xs <> []); scope_prod env xs
+    | (P_Prod(xs,b)    , _        ) -> scope_binder _Prod env xs b
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([(x,None,false)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([([x],None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = get_builtin t.pos ss "0"  in
