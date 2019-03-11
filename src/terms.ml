@@ -10,10 +10,6 @@
 open Extra
 open Timed
 
-(** A mapping from integers to integers, used to record non contiguous
-    positions. XXX Go to {!module:Extra}? *)
-module IMap = Map.Make(struct type t = int ;; let compare = compare end)
-
 (** {2 Term (and symbol) representation} *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
