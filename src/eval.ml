@@ -171,11 +171,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
+  Printf.printf "Start tree walk\n" ;
   let vars : term Stack.t = Stack.create () in
-  let stk = Array.of_list istk in
-  (* [walk t i] where [i] is the index of the term in the stack to examine *)
-  let rec walk : Dtree.t -> int -> (int IntMap.t * Dtree.action) option =
-    fun tree ind ->
+  (* [walk t s] where [s] is the stack of terms to match. *)
+  let rec walk : Dtree.t -> stack -> (int IntMap.t * Dtree.action) option =
+    fun tree stk ->
     match tree with
       | Leaf(env_builder, a)                  -> Some(env_builder, a)
       | Node({ swap = io ; children ; push }) ->
@@ -184,12 +184,10 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
             in {!recfield:rhs} (or {!type:action}), (iii) branching on the
             correct branch. *)
          (* (i) *)
-         let examined = (* Examined term in the input stack *)
-           (* [skip_seen i] skips already examined term in the stack
-              {!val:stk}. *)
-           let rec skip_seen : int -> int = fun i ->
-             if fst Pervasives.(!(stk.(i))) then skip_seen (succ i) else i in
-           stk.(skip_seen (Option.get io 0 + ind)) in
+         let stk = match io with
+           | None -> stk
+           | Some(i) -> List.bring i stk in
+         let examined = List.hd stk in
          if not (fst Pervasives.(!examined))
          then Pervasives.(examined := (true, whnf (snd !examined))) ;
         (* ^ This operation ought to be removed since with trees, each element
@@ -199,10 +197,12 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
          (* (iii) *)
          let matched = List.assoc_opt Pervasives.(Some(snd !examined))
            children in
-         Option.bind (fun tr -> walk tr (succ ind)) matched
+         Option.bind (fun tr -> walk tr (List.tl stk)) matched
       | Fail                                  -> None in
-  let final = walk itree 0 in
-  (* [f] to be lifted in the option functor *)
+  let final = walk itree istk in
+  Printf.printf "Finished tree walk\n%!" ;
+  (* [f] to be lifted in the option functor, taking as arguments the result of
+     the tree walk *)
   let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
     let pre_env = Array.init (IntMap.cardinal env_builder)
       (fun _ -> Patt(None, "", [| |])) in
@@ -216,8 +216,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
       TE_Some(b)) pre_env in
     Bindlib.msubst act env,
-    Array.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
-      then elt :: acc else acc) [] stk in
+    List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
+      then elt :: acc else acc) [] istk in
   Option.map (fun (p, a) -> f p a) final
 
 (** {b Note} During the matching with trees, two term stacks are used.
