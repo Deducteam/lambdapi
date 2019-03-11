@@ -174,7 +174,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let vars : term Stack.t = Stack.create () in
   (* [walk t s] where [s] is the stack of terms to match. *)
   let rec walk : Dtree.t -> stack ->
-    (int IntMap.t * int PMap.t * Dtree.action) option =
+    (int IntMap.t * int PosMap.t * Dtree.action) option =
     fun tree stk ->
       match tree with
       | Leaf(env_builder, remains, a)         -> Some(env_builder, remains, a)
@@ -216,7 +216,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let final = walk itree istk in
   (* [f] to be lifted in the option functor, taking as arguments the result of
      the tree walk *)
-  let f : int IntMap.t -> int PMap.t -> Dtree.action ->
+  let f : int IntMap.t -> int PosMap.t -> Dtree.action ->
     term * stack = fun env_builder _ act ->
     let pre_env = Array.init (IntMap.cardinal env_builder)
       (fun _ -> Patt(None, "", [| |])) in

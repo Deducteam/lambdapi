@@ -214,7 +214,7 @@ type term =
     rules.  When a {!cons:Leaf} is reached, the target is rewrote to the
     content of the leaf. *)
  and tree =
-  | Leaf of int IntMap.t * int PMap.t * (term_env, term) Bindlib.mbinder
+  | Leaf of int IntMap.t * int PosMap.t * (term_env, term) Bindlib.mbinder
   (** Holds the right hand side of a rule.  In a {!cons:Leaf}[(e, r, a)],
       - [a] is the right hand side of the rule.
       - [e] maps a position in the stack containing terms which stand as

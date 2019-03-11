@@ -200,7 +200,7 @@ struct
   let prefix : t -> t -> t = fun p q -> q @ p
 end
 
-module PMap = Map.Make(Position)
+module PosMap = Map.Make(Position)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)

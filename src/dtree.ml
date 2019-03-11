@@ -42,7 +42,7 @@ end
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (int IntMap.t -> int PMap.t -> action -> 'a) ->
+let iter : (int IntMap.t -> int PosMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
@@ -143,7 +143,8 @@ struct
                as variables in {!recfield:rhs}. *)}
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
-  let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc (List.map (fst) l)
+  let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc
+    (List.map (fst) l)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { values ; _ } ->
@@ -253,23 +254,24 @@ struct
 
   (** [pos_needed_by l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let pos_needed_by : line -> int PMap.t = fun  lhs ->
+  let pos_needed_by : line -> int PosMap.t = fun  lhs ->
     let module Po = Position in
-    let rec loop : term list -> Po.t -> int PMap.t = fun st po ->
+    let rec loop : term list -> Po.t -> int PosMap.t = fun st po ->
       match st with
-      | [] -> PMap.empty
+      | [] -> PosMap.empty
       | x :: xs ->
          begin
            match x with
            | Patt(None, _, _)
            | Symb(_, _)          -> loop xs (Po.succ po)
-           | Patt(Some(i), _, _) -> PMap.add po i (loop xs (Po.succ po))
+           | Patt(Some(i), _, _) -> PosMap.add po i (loop xs (Po.succ po))
            | Appl(_, _)          ->
               let _, args = Basics.get_args x in
               let xpos = loop args Po.init in
-              let nxpos = PMap.fold (fun xpo slot nmap ->
-                PMap.add (Po.prefix po xpo) slot nmap) PMap.empty xpos in
-              PMap.union (fun _ _ -> assert false) nxpos (loop xs (Po.succ po))
+              let nxpos = PosMap.fold (fun xpo slot nmap ->
+                PosMap.add (Po.prefix po xpo) slot nmap) PosMap.empty xpos in
+              PosMap.union (fun _ _ -> assert false) nxpos
+                (loop xs (Po.succ po))
            | _                   -> assert false
          end in
     loop (List.map fst lhs) Po.init
@@ -360,7 +362,8 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
       spec_filter p (List.map fst l)) m.values in
   let newmat = List.map (fun rul ->
       { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
-  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue m.values in
+  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue
+    m.values in
   { values = newmat ; var_catalogue = newstack }
 
 (** [default m] computes the default matrix containing what remains to be
@@ -410,14 +413,15 @@ let compile : Pm.t -> t = fun patterns ->
         (* [env_builder] maps future position in the term stack to the slot in
            the environment. *)
         let env_builder = snd @@ List.fold_left (fun (i, m) tpos ->
-          let opslot = PMap.find_opt tpos pos2slot in
+          let opslot = PosMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ i, m
-          (* ^ The stack may contain more variables than needed for the rule *)
+          (* ^ The stack may contain more variables than needed for the
+             rule *)
           | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat in
         let remain_loc =
-          if (IntMap.cardinal env_builder = PMap.cardinal pos2slot)
-          then PMap.empty else
+          if (IntMap.cardinal env_builder = PosMap.cardinal pos2slot)
+          then PosMap.empty else
             let remains = Position.mark (List.map (fst) (List.hd m).lhs) in
             Pm.pos_needed_by remains in
           Leaf(env_builder, remain_loc, !((List.hd m).Pm.rhs))
