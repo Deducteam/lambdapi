@@ -136,12 +136,13 @@ type term =
     across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
     target is rewrote to the content of the leaf. *)
  and tree =
-  | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
+  | Leaf of int IntMap.t * int PMap.t * (term_env, term) Bindlib.mbinder
   (** Hold the targets of rewriting, the right hand side of a rule.  In a
-      {!cons:Leaf}[(e, a)], [a] is the right hand side of the rule, or the
+      {!cons:Leaf}[(e, r, a)], [a] is the right hand side of the rule, or the
       action to perform if the rule applies.  The first element of the pair
       maps a position in the term evaluation stack to the slot allocated in
-      the future environment. *)
+      the future environment.  The second element of the pair [r] maps
+      position in the remaining stack to variable slot in the envrionement. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible

@@ -28,14 +28,25 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
+(* Redefinition for function [mark] as it uses a not generalizable type, it
+   couldn't be put into extra (and we need Position in {!module:Terms} as
+   well). *)
+module Position =
+struct
+  include Position
+
+  (** [mark l] enriches elements of [l] attaching a position to them. *)
+  let mark : 'a list -> ('a * t) list = List.mapi (fun i e -> (e, [i]))
+end
+
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (int IntMap.t -> action -> 'a) ->
+let iter : (int IntMap.t -> int PMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(pa, a)                                    -> do_leaf pa a
+    | Leaf(pa, re, a)                                -> do_leaf pa re a
     | Fail                                           -> fail
     | Node({ swap = p ; push = pu ; children = ch }) ->
       do_node p pu (List.map (fun (teo, c) -> (teo, loop c)) ch) in
@@ -63,14 +74,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let rec write_tree : int -> term option -> t -> unit =
     fun father_l swon tree ->
     match tree with
-    | Leaf(_, a)  ->
+    | Leaf(_, _, a) ->
       incr nodecount ;
       F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
       P.pp ppf acte ; F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
-    | Node(ndata) ->
+    | Node(ndata)   ->
       let { swap ; children ; push } = ndata in
       incr nodecount ;
       let tag = !nodecount in
@@ -86,7 +97,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         pp_opterm ppf swon ; F.fprintf ppf "\"];"
       end ;
       List.iter (fun (s, e) -> write_tree tag s e) children ;
-    | Fail        ->
+    | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
   in
@@ -104,38 +115,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
-
-(** Represents the position of a subterm in a term. *)
-module Position =
-struct
-  (** Each element of the list is a level in the tree of the term.  For
-      instance, the subterm [x] in the term [Appl(S, Appl(T, x))] has
-      position [1.2.2], encoded by [[2 ; 2 ; 1]]. *)
-  type t = int list
-
-  (** [compare a b] implements lexicographic order on positions. *)
-  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
-
-  (** [pp o p] output position [p] to channel [o]. *)
-  let pp : t pp = fun oc pos ->
-    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
-
-  (** Initial position. *)
-  let init = [0]
-
-  (** [succ p] returns the successor of position [p].  For instance, if [p =
-      [1 ; 1]], [succ p = [2 ; 1]]. *)
-  let succ = function
-    | [] -> assert false
-    | x :: xs -> succ x :: xs
-
-  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
-      [prefix 1 3.4] is [1.3.4]. *)
-  let prefix : t -> t -> t = fun p q -> q @ p
-end
-
-(** Mapping on positions. *)
-module PMap = Map.Make(Position)
 
 (** Pattern matrices is a way to encode a pattern matching problem.  A line is
     a candidate instance of the values matched.  Each line is a pattern having
@@ -178,7 +157,7 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
-      let term_pos = List.mapi (fun i te -> te, [i]) r.Terms.lhs in
+      let term_pos = Position.mark r.Terms.lhs in
       { lhs = term_pos ; rhs = ref r.Terms.rhs }) rs
     ; var_catalogue = [] }
 
@@ -206,6 +185,7 @@ struct
   let swap : t -> int -> t = fun pm c ->
     { pm with values = List.map (fun rul ->
       { rul with lhs = List.swap_head rul.lhs c }) pm.values }
+      (* XXX change with [List.bring]. *)
 
   (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
       [c = d] or -1 if [c < d]; where [<], [=] and [>] are defined according
@@ -271,10 +251,9 @@ struct
       | Patt(Some(_), _, _), p -> p :: varstack
       | _                      -> varstack
 
-  (** [pos_needed_by r] returns a mapping from position of variables into the
-      {!recfield:lhs} of [r] and the slot assigned to each variable in a
-      {!type:term_env}. *)
-  let pos_needed_by : rule -> int PMap.t = fun { lhs ; _ } ->
+  (** [pos_needed_by l] returns a mapping from position of variables into [l]
+      to the slot assigned to each variable in a {!type:term_env}. *)
+  let pos_needed_by : line -> int PMap.t = fun  lhs ->
     let module Po = Position in
     let rec loop : term list -> Po.t -> int PMap.t = fun st po ->
       match st with
@@ -413,7 +392,7 @@ let rec is_cons : term -> bool = function
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
   let rule2needed_pos = List.map (fun rule -> (* Retrieve vars positions *)
-    (rule.Pm.rhs, Pm.pos_needed_by rule)) patterns.Pm.values in
+    (rule.Pm.rhs, Pm.pos_needed_by rule.lhs)) patterns.Pm.values in
   let rec grow : Pm.t -> t = fun pm ->
     let { Pm.values = m ; Pm.var_catalogue = vcat } = pm in
     (* Pm.pp Format.std_formatter pm ; *)
@@ -423,20 +402,25 @@ let compile : Pm.t -> t = fun patterns ->
         (* Dtree.Fail *)
       end
     else
-      (* Look at the first line, if it contains only wildcards, then
-         execute the associated action. *)
       if Pm.exhausted (List.hd m) then
+        (* If there are no pattern that can be matched remaining, retrieve all
+           pattern variables *)
         let rhs = (List.hd m).Pm.rhs in
         let pos2slot = List.assq rhs rule2needed_pos in
-        (* [pre_env] maps future position in the term stack to the slot in the
-           environment. *)
+        (* [env_builder] maps future position in the term stack to the slot in
+           the environment. *)
         let env_builder = snd @@ List.fold_left (fun (i, m) tpos ->
           let opslot = PMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ i, m
           (* ^ The stack may contain more variables than needed for the rule *)
           | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat in
-        Leaf(env_builder, !((List.hd m).Pm.rhs))
+        let remain_loc =
+          if (IntMap.cardinal env_builder = PMap.cardinal pos2slot)
+          then PMap.empty else
+            let remains = Position.mark (List.map (fst) (List.hd m).lhs) in
+            Pm.pos_needed_by remains in
+          Leaf(env_builder, remain_loc, !((List.hd m).Pm.rhs))
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)

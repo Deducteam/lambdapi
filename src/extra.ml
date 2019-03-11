@@ -171,6 +171,37 @@ module IntMap = Map.Make(Int)
 (* Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
+(** Represents the position of a subterm in a term. *)
+module Position =
+struct
+  (** Each element of the list is a level in the tree of the term.  For
+      instance, the subterm [x] in the term [Appl(S, Appl(T, x))] has
+      position [1.2.2], encoded by [[2 ; 2 ; 1]]. *)
+  type t = int list
+
+  (** [compare a b] implements lexicographic order on positions. *)
+  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
+
+  (** [pp o p] output position [p] to channel [o]. *)
+  let pp : t pp = fun oc pos ->
+    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
+
+  (** Initial position. *)
+  let init = [0]
+
+  (** [succ p] returns the successor of position [p].  For instance, if [p =
+      [1 ; 1]], [succ p = [2 ; 1]]. *)
+  let succ = function
+    | [] -> assert false
+    | x :: xs -> succ x :: xs
+
+  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
+      [prefix 1 3.4] is [1.3.4]. *)
+  let prefix : t -> t -> t = fun p q -> q @ p
+end
+
+module PMap = Map.Make(Position)
+
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->

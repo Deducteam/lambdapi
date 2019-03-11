@@ -173,10 +173,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let vars : term Stack.t = Stack.create () in
   (* [walk t s] where [s] is the stack of terms to match. *)
-  let rec walk : Dtree.t -> stack -> (int IntMap.t * Dtree.action) option =
+  let rec walk : Dtree.t -> stack ->
+    (int IntMap.t * int PMap.t * Dtree.action) option =
     fun tree stk ->
       match tree with
-      | Leaf(env_builder, a)                  -> Some(env_builder, a)
+      | Leaf(env_builder, remains, a)         -> Some(env_builder, remains, a)
       | Node({ swap = io ; children ; push }) ->
          List.pp pp " - " Format.std_formatter
            (List.map (fun r -> snd @@ Pervasives.(!r)) stk);
@@ -202,8 +203,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
                (List.tl stk)
           | Symb(_, _) as s ->
              s, List.tl stk
-          | Abst(_, _) -> assert false
-          | _ -> assert false in
+          | Abst(_, _)      -> assert false
+          | _               -> assert false in
         (* (ii) *)
         if push then Stack.push hd  vars ;
         (* (iii) *)
@@ -215,9 +216,12 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let final = walk itree istk in
   (* [f] to be lifted in the option functor, taking as arguments the result of
      the tree walk *)
-  let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
+  let f : int IntMap.t -> int PMap.t -> Dtree.action ->
+    term * stack = fun env_builder _ act ->
     let pre_env = Array.init (IntMap.cardinal env_builder)
       (fun _ -> Patt(None, "", [| |])) in
+    Format.fprintf Format.std_formatter "env_builder: %d\n"
+      (IntMap.cardinal env_builder) ;
     ignore @@
       Stack.fold (fun p te -> match IntMap.find_opt p env_builder with
       | None     -> succ p
@@ -227,10 +231,12 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       let fn _ = te in
       let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
       TE_Some(b)) pre_env in
+    Format.fprintf Format.std_formatter "env/act: %d/%d\n" (Array.length env)
+    (Bindlib.mbinder_arity act) ;
     Bindlib.msubst act env,
     List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
       then elt :: acc else acc) [] istk in
-  Option.map (fun (p, a) -> f p a) final
+  Option.map (fun (p, r, a) -> f p r a) final
 
 (** {b Note} During the matching with trees, two term stacks are used.
     - One is of type {!type:stack} and contains the arguments of a symbol that
