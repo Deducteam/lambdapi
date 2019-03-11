@@ -86,8 +86,8 @@ with the following types and builtin declarations:
 symbol T : U ⇒ TYPE
 symbol Prop : TYPE
 symbol eq {a} : T a ⇒ T a ⇒ Prop
-symbol refl {a} x : P (x = x)
-symbol eqind {a} x y : P (x = y) ⇒ ∀p, P (p y) ⇒ P (p x)
+symbol const refl {a} (x:T a) : P (x = x)
+symbol const eqind {a} x y : P (x = y) ⇒ ∀(p:T a⇒Prop), P (p y) ⇒ P (p x)
 
 set builtin "P"     ≔ P
 set builtin "T"     ≔ T

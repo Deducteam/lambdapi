@@ -54,9 +54,9 @@ and p_term_aux =
   | P_Expl of p_term
   (** Explicitly given argument. *)
 
-(** {b NOTE} the boolean parameter of the {!const:P_Iden} constructor tells if
-    the corresponding symbol is explicitly applied (value [true]) or not. This
-    flag hence indicates whether the symbol has been prefixed with ["@"]. *)
+(** {b NOTE} the boolean parameter of {!constructor:P_Iden} tells whether  the
+    corresponding symbol is explicitly applied (value [true]) or not. The flag
+    hence indicates whether the symbol has been prefixed with ["@"]. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
@@ -66,7 +66,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident * p_type option * bool
+and p_arg = ident list * p_type option * bool
 
 (** Representation of a symbol tag. *)
 type symtag =
@@ -133,6 +133,8 @@ type p_config =
   (** Sets the verbosity level. *)
   | P_config_debug   of bool * string
   (** Toggles logging functions described by string according to boolean. *)
+  | P_config_flag    of string * bool
+  (** Sets the boolean flag registered under the given name (if any). *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
@@ -210,7 +212,8 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       t1 = t2
 
 and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
-  x1.elt = x2.elt && Option.equal eq_p_term ao1 ao2 && b1 = b2
+  List.equal (fun x1 x2 -> x1.elt = x2.elt) x1 x2
+  && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs1, rhs1); _} = r1 in
