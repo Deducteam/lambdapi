@@ -13,7 +13,7 @@ open Terms
 let print_domains : bool ref = Console.register_flag "print_domains" false
 
 (** Flag controling the printing of implicit arguments. *)
-let print_implicis : bool ref = Console.register_flag "print_implicits" true
+let print_implicits : bool ref = Console.register_flag "print_implicits" true
 
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
@@ -38,7 +38,7 @@ let pp_term : term pp = fun oc t ->
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let (h, args) = Basics.get_args t in
     let args =
-      if !print_implicis then args else
+      if !print_implicits then args else
       let impl =  match h with Symb(s,_) -> s.sym_impl | _ -> [] in
       let rec filter_impl impl args =
         match (impl, args) with

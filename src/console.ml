@@ -138,7 +138,7 @@ let boolean_flags : bool ref StrMap.t Pervasives.ref =
   Pervasives.ref StrMap.empty
 
 (** [register_flag id d] registers a new boolean flag named [id], with default
-    value of [d]. Note the the name should not have been used previously. *)
+    value of [d]. Note the name should not have been used previously. *)
 let register_flag : string -> bool -> bool ref = fun id default ->
   if StrMap.mem id Pervasives.(!boolean_flags) then
     invalid_arg "Console.register_flag: already registered";
