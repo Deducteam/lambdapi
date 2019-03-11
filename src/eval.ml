@@ -171,36 +171,48 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  Printf.printf "Start tree walk\n" ;
   let vars : term Stack.t = Stack.create () in
   (* [walk t s] where [s] is the stack of terms to match. *)
   let rec walk : Dtree.t -> stack -> (int IntMap.t * Dtree.action) option =
     fun tree stk ->
-    match tree with
+      match tree with
       | Leaf(env_builder, a)                  -> Some(env_builder, a)
       | Node({ swap = io ; children ; push }) ->
-         (* The main operations are: (i) picking the right term in the terms
-            stack, (ii) filling the stack containing terms to be substituted
-            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
-            correct branch. *)
-         (* (i) *)
-         let stk = match io with
-           | None -> stk
-           | Some(i) -> List.bring i stk in
-         let examined = List.hd stk in
-         if not (fst Pervasives.(!examined))
-         then Pervasives.(examined := (true, whnf (snd !examined))) ;
+         List.pp pp " - " Format.std_formatter
+           (List.map (fun r -> snd @@ Pervasives.(!r)) stk);
+        Format.fprintf Format.std_formatter "\n" ;
+        if stk = [] then None else (* If stack too sort *)
+        (* The main operations are: (i) picking the right term in the terms
+           stack, (ii) filling the stack containing terms to be substituted
+           in {!recfield:rhs} (or {!type:action}), (iii) branching on the
+           correct branch. *)
+        (* (i) *)
+        let stk = match io with
+          | None    -> stk
+          | Some(i) -> List.bring i stk in
+        let examined = List.hd stk in
+        if not (fst Pervasives.(!examined))
+        then Pervasives.(examined := (true, whnf (snd !examined))) ;
         (* ^ This operation ought to be removed since with trees, each element
            of the stack is inspected only once. *)
-         (* (ii) *)
-         if push then Stack.push (snd Pervasives.(!examined)) vars ;
-         (* (iii) *)
-         let matched = List.assoc_opt Pervasives.(Some(snd !examined))
-           children in
-         Option.bind (fun tr -> walk tr (List.tl stk)) matched
+        let hd, tlstk = match snd Pervasives.(!examined) with
+          | Appl(_, _) as a ->
+             let t, la = Basics.get_args a in
+             t, (List.map (fun e -> Pervasives.ref (false, e)) la) @
+               (List.tl stk)
+          | Symb(_, _) as s ->
+             s, List.tl stk
+          | Abst(_, _) -> assert false
+          | _ -> assert false in
+        (* (ii) *)
+        if push then Stack.push hd  vars ;
+        (* (iii) *)
+        let matched = List.assoc_opt (Some(hd))
+          (* Pervasives.(Some(snd !examined)) *)
+          children in
+        Option.bind (fun tr -> walk tr tlstk) matched
       | Fail                                  -> None in
   let final = walk itree istk in
-  Printf.printf "Finished tree walk\n%!" ;
   (* [f] to be lifted in the option functor, taking as arguments the result of
      the tree walk *)
   let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
