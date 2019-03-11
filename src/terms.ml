@@ -129,41 +129,6 @@ type term =
   ; vars  : (string * int) array
   (** Name and arity of the pattern variables bound in the RHS. *) }
 
-(** Trees are used to efficiently choose a rewriting rule given a list of
-    terms (beginning with a symbol) to be rewrote.  The left hand has side of
-    the rule--being the pattern to be matched for the rule to apply--is spread
-    across the {!cons:Node}s of the tree.  When a {!cons:Leaf} is reached, the
-    target is rewrote to the content of the leaf. *)
- and tree =
-  | Leaf of int IntMap.t * int PMap.t * (term_env, term) Bindlib.mbinder
-  (** Hold the targets of rewriting, the right hand side of a rule.  In a
-      {!cons:Leaf}[(e, r, a)], [a] is the right hand side of the rule, or the
-      action to perform if the rule applies.  The first element of the pair
-      maps a position in the term evaluation stack to the slot allocated in
-      the future environment.  The second element of the pair [r] maps
-      position in the remaining stack to variable slot in the envrionement. *)
-  | Node of node_data
-  (** Nodes allow to perform switches, a switch being the matching of a
-      pattern.  Briefly, a {!cons:Node} contains one subtree per possible
-      switch, plus possibly a default case. *)
-  | Fail
-
-(** Data contained in a node of the tree.  {!recfield:switch} contains the
-    term on which the switch that gave birth to this node has been performed.
-    {!recfield:swap} indicates whether the columns of the matrix have been
-    swapped before the switch and {!recfield:children} contains the
-    subtrees. *)
- and node_data =
-  { swap : int option
-  (** Indicates which column of the pattern matrix has been chosen to perform
-      the switch. *)
-  ; push : bool
-  (** XXX doc *)
-  ; children : (term option * tree) list
-  (** Subtrees resulting from either specialisation on terms or default case.
-      First element is {!cons:None} if child is result of a default case or
-      {!cons:Some}[(t)] if it results from specialisation on [t]. *) }
-
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
     list of arguments is given in {!field:lhs},  but the head symbol itself is
@@ -239,6 +204,49 @@ type term =
     corresponding patterns, then environment [env] is fully constructed and it
     can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
     the result of the application of the rule. *)
+
+(** {3 Decision trees for rewriting} *)
+
+(** Trees are used to efficiently choose a rewriting rule given a list of
+    terms (beginning with a symbol) to be rewrote.  The left hand has side of
+    the rule is spread across the {!cons:Node}s of the tree.  Hence,
+    progressing down the tree is equivalent to reducing the set of possible
+    rules.  When a {!cons:Leaf} is reached, the target is rewrote to the
+    content of the leaf. *)
+ and tree =
+  | Leaf of int IntMap.t * int PMap.t * (term_env, term) Bindlib.mbinder
+  (** Holds the right hand side of a rule.  In a {!cons:Leaf}[(e, r, a)],
+      - [a] is the right hand side of the rule.
+      - [e] maps a position in the stack containing terms which stand as
+            pattern variables in some rules to the slot allocated in the
+            {!type:term_env array}.
+      - [r] maps position in the remaining of the input stack to variable slot
+            in the environment; the variables located by this mapping are not
+            relevant regarding rule choice but are needed in the right hand
+            side. *)
+  | Node of node_data
+  (** Nodes allow to perform switches, a switch being the matching of a
+      pattern.  Briefly, a {!cons:Node} contains one subtree per possible
+      switch, plus possibly a default case. *)
+  | Fail
+
+(** Data contained in a node of the tree.  {!recfield:switch} contains the
+    term on which the switch that gave birth to this node has been performed.
+    {!recfield:swap} indicates whether the columns of the matrix have been
+    swapped before the switch and {!recfield:children} contains the
+    subtrees. *)
+ and node_data =
+  { swap : int option
+  (** Indicates on which term of the input stack (counting from the head), the
+      next switch is to be done.
+      XXX remove option?  *)
+  ; push : bool
+    (** Whether to push the current term into the stack containing
+        variables. *)
+  ; children : (term option * tree) list
+  (** Subtrees resulting from either specialisation on terms or default case.
+      First element is {!cons:None} if child is result of a default case or
+      {!cons:Some}[(t)] if it results from specialisation on [t]. *) }
 
 (** {3 Metavariables and related functions} *)
 
