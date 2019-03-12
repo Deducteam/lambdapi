@@ -191,15 +191,16 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let vars : term Stack.t = Stack.create () in
   (* [walk t s] where [s] is the stack of terms to match. *)
   let rec walk : Dtree.t -> stack ->
-    (int IntMap.t * int PosMap.t * Dtree.action) option =
+    (int IntMap.t * int PosMap.t * Dtree.action) option * stack =
     fun tree stk ->
       match tree with
-      | Leaf(env_builder, remains, a)         -> Some(env_builder, remains, a)
+      | Leaf(env_builder, remains, a)         ->
+         Some(env_builder, remains, a), stk
       | Node({ swap = io ; children ; push }) ->
          List.pp pp " - " Format.std_formatter
            (List.map (fun r -> snd @@ Pervasives.(!r)) stk);
         Format.fprintf Format.std_formatter "\n" ;
-        if stk = [] then None else (* If stack too sort *)
+        if stk = [] then None, stk else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
            stack, (ii) filling the stack containing terms to be substituted
            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
@@ -228,28 +229,31 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         let matched = List.assoc_opt (Some(hd))
           (* Pervasives.(Some(snd !examined)) *)
           children in
-        Option.bind (fun tr -> walk tr tlstk) matched
-      | Fail                                  -> None in
-  let final = walk itree istk in
+        Option.bind (fun tr -> fst @@ walk tr tlstk) matched, stk
+      | Fail                                  -> None, stk in
+  let final, fstk = walk itree istk in
+  let te_fstk = List.map (fun r -> snd Pervasives.(!r)) fstk in
+
   (* [f] to be lifted in the option functor, taking as arguments the result of
-     the tree walk *)
+     the tree walk, mainly fills the environment *)
   let f : int IntMap.t -> int PosMap.t -> Dtree.action ->
-    term * stack = fun env_builder _ act ->
-    let pre_env = Array.init (IntMap.cardinal env_builder)
-      (fun _ -> Patt(None, "", [| |])) in
-    Format.fprintf Format.std_formatter "env_builder: %d\n"
-      (IntMap.cardinal env_builder) ;
-    ignore @@
-      Stack.fold (fun p te -> match IntMap.find_opt p env_builder with
-      | None     -> succ p
-      | Some(sl) -> pre_env.(sl) <- te ; succ p)
-      0 vars ;
-    let env = Array.map (fun te ->
-      let fn _ = te in
-      let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree fn in
-      TE_Some(b)) pre_env in
-    Format.fprintf Format.std_formatter "env/act: %d/%d\n" (Array.length env)
-    (Bindlib.mbinder_arity act) ;
+  term * stack = fun env_builder remains_loc act ->
+    (* Get variables from var stack *)
+    let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
+      let opslot = IntMap.find_opt p env_builder in
+      match opslot with
+      | None     -> succ p, acc
+      | Some(sl) -> succ p, IntMap.add sl te acc) (0, IntMap.empty) vars in
+    (* Gather remaining variables in the input stack *)
+    let pre_env = PosMap.fold (fun pos sl acc ->
+      let te = extract te_fstk pos in
+      IntMap.add sl te acc) remains_loc pre_env in
+    (* Create the environment *)
+    let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
+    IntMap.iter (fun sl te ->
+      let inject _ = te in
+      let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
+      env.(sl) <- TE_Some(b)) pre_env ;
     Bindlib.msubst act env,
     List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
       then elt :: acc else acc) [] istk in
