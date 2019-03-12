@@ -110,20 +110,6 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [swap_head x i] swaps the [i]th element of [x] with the first one.
-        XXX remove in favour of [bring] *)
-    let swap_head : 'a list -> int -> 'a list = fun li si ->
-      if si = 0 then li
-      else
-        let head, tail = List.hd li, List.tl li in
-        let rec loop : 'a list -> int -> 'a list * 'a = fun l i ->
-          let x, xs = List.hd l, List.tl l in
-          if i = 0 then head :: xs, x
-          else let u, v = loop xs (i - 1) in
-            x :: u, v in
-        let replaced, sith = loop tail (si - 1) in
-        sith :: replaced
-
     (** [bring i x] brings the [i]th element of [x] at the front. *)
     let bring : int -> 'a list -> 'a list = fun bi li ->
       let rec loop : 'a list -> int -> 'a list * 'a = fun l i ->

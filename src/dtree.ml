@@ -185,8 +185,7 @@ struct
   (** [swap p i] swaps the first column with the [i]th one. *)
   let swap : t -> int -> t = fun pm c ->
     { pm with values = List.map (fun rul ->
-      { rul with lhs = List.swap_head rul.lhs c }) pm.values }
-      (* XXX change with [List.bring]. *)
+      { rul with lhs = List.bring c rul.lhs }) pm.values }
 
   (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
       [c = d] or -1 if [c < d]; where [<], [=] and [>] are defined according
