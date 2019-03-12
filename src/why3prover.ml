@@ -23,7 +23,8 @@ let current_prover : string ref = ref "altergo"
 (** [time_limit] is the time limit of a prover while finding a proof. *)
 let time_limit : int ref = ref 10
 
-(** [config] read the config file of Why3 that is installed in the machine *)
+(** [config] read the config file of Why3 that is installed in the machine
+    the default path is [~/.why3.conf]. *)
 let config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
 (** [main] get only the main section of the Why3 config *)
