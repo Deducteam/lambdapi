@@ -224,7 +224,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           | Abst(_, _)      -> assert false
           | _               -> assert false in
         (* (ii) *)
-        if push then Stack.push hd  vars ;
+        if push then Stack.push hd vars ;
         (* (iii) *)
         let matched = List.assoc_opt (Some(hd))
           (* Pervasives.(Some(snd !examined)) *)

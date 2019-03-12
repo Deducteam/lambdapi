@@ -243,7 +243,9 @@ struct
     assert ((List.length unpacked) > 0) ;
     Array.of_list unpacked
 
-  (** [update_catalogue c r] updates catalogue of vars [c] with rule [r]. *)
+  (** [update_catalogue c r] adds the position of the head of [r] to catalogue
+      [c] if it is a pattern variable. *)
+  (* XXX uniqueness of positions in catalogue?*)
   let update_catalogue : Position.t list -> rule -> Position.t list =
     fun varstack rule ->
       let { lhs ; _ } = rule in
@@ -357,12 +359,13 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     same number of applications and having the same leftmost {e non}
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
+  (* Add the the variables that are consumed by the specialization *)
+  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue
+    m.values in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter p (List.map fst l)) m.values in
   let newmat = List.map (fun rul ->
       { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
-  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue
-    m.values in
   { values = newmat ; var_catalogue = newstack }
 
 (** [default m] computes the default matrix containing what remains to be
