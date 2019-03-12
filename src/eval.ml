@@ -37,6 +37,23 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
+(** [extract x p] extracts the term at position [p] from list of terms [x]. *)
+let extract : term list -> Position.t -> term = fun xs p ->
+  let rec loop xs p acc = match p with
+    | [] -> acc
+    | hdp :: tlp ->
+       let elt = List.nth xs hdp in
+       begin
+         match elt with
+         | Appl(_, _) as a -> let f, args = Basics.get_args a in
+                             loop args tlp f
+         | Abst(_, _)      -> assert false
+         | Symb(_, _)
+         | Patt(_, _, _)   -> assert false
+         | _               -> assert false
+       end in
+  loop xs p (Patt(None, "", [| |]))
+
 (** Evaluation step counter. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
