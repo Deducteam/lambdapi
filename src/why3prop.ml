@@ -48,23 +48,28 @@ let rec translate : Proof.builtins -> (Env.env * term) ->
     fun builtins  (hs, g) ->
     let cfg = get_prop_config builtins in
     let (l_prop, hypothesis) =
-        List.fold_left
-        (fun (l_prop', l_hyp)    (s, (_, h)) ->
-        try
-            let (l', hyp) = t_goal cfg l_prop' (Bindlib.unbox h) in
-            (l', (s, hyp)::l_hyp)
-        with NoGoalTranslation ->
-            (l_prop', l_hyp)
-        )
-
-        ([], []) hs in
-
+        List.fold_left (translate_context cfg) ([], []) hs in
     try
         let (l_prop, formula) = t_goal cfg l_prop g in
         (l_prop, hypothesis, formula)
     with NoGoalTranslation ->
-        Console.fatal_no_pos "The term [%a] is not of the forme P [_]@."
+        Console.fatal_no_pos "The term [%a] is not of the forme [P _]"
         Print.pp g
+
+(** [translate_context cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp))]
+    translate the context [hyp] with the label [hyp_name] and add it in
+    [l_hypothesis] with the why3 constants [l_constants]. *)
+and translate_context :
+    prop_config ->
+    cnst_table * (string * Why3.Term.term) list ->
+    string * (tvar * tbox) ->
+    cnst_table * (string * Why3.Term.term) list =
+    fun cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp)) ->
+    try
+        let (new_why3_l, hyp') = t_goal cfg l_constants (Bindlib.unbox hyp) in
+            (new_why3_l, (hyp_name, hyp')::l_hypothesis)
+    with NoGoalTranslation ->
+            (l_constants, l_hypothesis)
 
 (** [t_goal cfg l_prop trm] translate the lambdapi term [trm] to Why3 term
     using the configuration [cfg] and the list of Why3 constants in [l_prop].
@@ -108,10 +113,10 @@ and t_prop :
             let lp_eq = fun (lp_t, _) -> Basics.eq lp_t p in
             let (_, ct) = List.find lp_eq l_prop in
                 (l_prop, Why3.Term.ps_app ct [])
-            else
-            (* or generate a new constant in why3 *)
-                let new_symbol = Why3.Ident.id_fresh "P" in
-                let sym = Why3.Term.create_psymbol new_symbol [] in
-                let new_predicate = Why3.Term.ps_app sym [] in
-                (* add the new symbol to the list and return it *)
-                (p, sym)::l_prop, new_predicate
+        else
+        (* or generate a new constant in why3 *)
+            let new_symbol = Why3.Ident.id_fresh "P" in
+            let sym = Why3.Term.create_psymbol new_symbol [] in
+            let new_predicate = Why3.Term.ps_app sym [] in
+            (* add the new symbol to the list and return it *)
+            (p, sym)::l_prop, new_predicate
