@@ -18,20 +18,20 @@ let get_newname () : string =
 
 (* builtins configuration for propositional logic *)
 type prop_config =
-  { symb_P     : sym * pp_hint (** Encoding of propositions.        *)
-  ; symb_T     : sym * pp_hint (** Encoding of types.               *)
-  ; symb_or    : sym * pp_hint (** Disjunction(∨) symbol.           *)
-  ; symb_and   : sym * pp_hint (** Conjunction(∧) symbol.           *)
-  ; symb_imp   : sym * pp_hint (** Implication(⇒) symbol.           *)
-  ; symb_bot   : sym * pp_hint (** Bot(⊥) symbol.                   *)
-  ; symb_not   : sym * pp_hint (** Not(¬) symbol.                   *) }
+  { symb_P     : sym (** Encoding of propositions.        *)
+  ; symb_T     : sym (** Encoding of types.               *)
+  ; symb_or    : sym (** Disjunction(∨) symbol.           *)
+  ; symb_and   : sym (** Conjunction(∧) symbol.           *)
+  ; symb_imp   : sym (** Implication(⇒) symbol.           *)
+  ; symb_bot   : sym (** Bot(⊥) symbol.                   *)
+  ; symb_not   : sym (** Not(¬) symbol.                   *) }
 
 (** [get_prop_config pos builtins] set the builtins configuration using
     [builtins] *)
 let get_prop_config :
     Pos.popt -> Proof.builtins -> prop_config = fun pos builtins ->
     let find_sym key =
-        try StrMap.find key builtins with Not_found ->
+        try fst (StrMap.find key builtins) with Not_found ->
         Console.fatal pos "Builtin symbol [%s] undefined." key
     in
     { symb_P     = find_sym "P"
@@ -81,7 +81,7 @@ and t_goal : prop_config -> cnst_table -> term ->
     cnst_table * Why3.Term.term =
     fun cfg l_prop trm ->
     match Basics.get_args trm with
-    | (symbol, [t]) when Basics.is_symb (fst cfg.symb_P) symbol ->
+    | (symbol, [t]) when Basics.is_symb cfg.symb_P symbol ->
         t_prop cfg l_prop [] t
     | _                                                         ->
         raise NoGoalTranslation
@@ -93,19 +93,19 @@ and t_prop :
     cnst_table * Why3.Term.term =
     fun cfg l_prop ctxt p ->
     match Basics.get_args p with
-    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_and) symbol  ->
+    | symbol, [t1; t2] when Basics.is_symb cfg.symb_and symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
         let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_and t1 t2
-    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_or) symbol  ->
+    | symbol, [t1; t2] when Basics.is_symb cfg.symb_or symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
         let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_or t1 t2
-    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_imp) symbol  ->
+    | symbol, [t1; t2] when Basics.is_symb cfg.symb_imp symbol  ->
         let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
         let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_implies t1 t2
-    | symbol, [t] when Basics.is_symb (fst cfg.symb_not) symbol  ->
+    | symbol, [t] when Basics.is_symb cfg.symb_not symbol  ->
         let (l_prop, t) = t_prop cfg l_prop ctxt t in
         l_prop, Why3.Term.t_not t
     | _                                                     ->
