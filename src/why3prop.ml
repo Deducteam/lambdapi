@@ -28,7 +28,7 @@ type prop_config =
 
 (** [get_prop_config builtins] set the builtins configuration using
     [builtins] *)
-let get_prop_config : 
+let get_prop_config :
     Pos.popt -> Proof.builtins -> prop_config = fun pos builtins ->
     let find_sym key =
         try StrMap.find key builtins with Not_found ->

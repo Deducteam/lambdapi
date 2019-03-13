@@ -39,7 +39,7 @@ let init_env () =
 
 (** [prover_driver cp] load the config prover [cp] in the current enironment
     and return the driver of the prover. *)
-let prover_driver : 
+let prover_driver :
     Pos.popt -> Why3.Whyconf.config_prover -> Why3.Driver.driver =
     fun pos cp ->
     try
@@ -68,7 +68,8 @@ let answer : Why3.Call_provers.prover_answer -> bool = fun ans ->
     ans = Why3.Call_provers.Valid
 
 (** [call sp tsk] Call the prover named [sp] with the task [tsk]. *)
-let call : Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
+let call :
+    Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
     fun pos sp tsk -> result pos (prover pos sp) tsk
 
 (* Initilizing Why3 environment. *)
