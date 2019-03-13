@@ -45,13 +45,14 @@ end
 (* XXX possibility to enhance iterator with functions with optional argument,
    would allow to use [iter] for tree walk and [to_dot] *)
 let iter : (int IntMap.t -> action -> 'a) ->
-  (int option -> bool -> (term * 'a) list -> tree option -> 'a) ->
+  (int option -> bool -> (term * 'a) list -> 'a option -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
-    | Node({ swap ; push ; children ; default }) ->
-      do_node swap push (List.map (fun (teo, c) -> (teo, loop c)) children) default in
+    | Node({ swap ; store ; children ; default }) ->
+       do_node swap store (List.map (fun (teo, c) -> (teo, loop c)) children)
+         (Option.map loop default) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
