@@ -12,17 +12,15 @@ let log_type = log_type.logger
 (** Type of a function to be called to check convertibility. *)
 type conv_f = term -> term -> unit
 
-(** [make_prod_domain ctx] builds a metavariable intended as a domain type for
-    a product. It has access to the variables of the context [ctx]. *)
-let make_prod_domain : Ctxt.t -> term = fun ctx ->
-  Ctxt.make_meta ctx (Meta(fresh_meta Type 0, [||]))
-
-(** [make_prod_codomain ctx a] builds a metavariable intended as the  codomain
+(** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
     the context [ctx] and a fresh variables corresponding to the argument. *)
-let make_prod_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
+let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
   let x = Bindlib.new_var mkfree "x" in
-  let b = Ctxt.make_meta ((x,a)::ctx) (Meta(fresh_meta Type 0, [||])) in
+  let m = Meta(fresh_meta Kind 0, [||]) in
+  (* [m] can be instantiated by Type or Kind only (the type of [m] is
+     therefore incorrect when [m] is instantiated by Kind. *)
+  let b = Ctxt.make_meta ((x,a)::ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [infer_aux conv ctx t] infers a type for the term [t] in context [ctx]. In
@@ -89,8 +87,8 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | _         ->
-            let a = make_prod_domain ctx in
-            let b = make_prod_codomain ctx a in
+            let a = Ctxt.make_meta ctx Type in
+            let b = make_meta_codomain ctx a in
             conv c (Prod(a,b)); (a,b)
       in
       (* We then check the type of [u] against the domain type. *)
@@ -131,7 +129,7 @@ and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
           match c with
           | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
           | _         -> (* Generate product type with codomain [a]. *)
-              let b = make_prod_codomain ctx a in
+              let b = make_meta_codomain ctx a in
               conv c (Prod(a,b)); b
         in
         (* We type-check the body with the codomain. *)
