@@ -371,7 +371,7 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
-  | _why3_ s:ident?             -> Pos.in_pos _loc (P_tac_why3(s))
+  | _why3_ s:string_lit?             -> Pos.in_pos _loc (P_tac_why3(s))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
@@ -403,8 +403,8 @@ let parser config =
       let binop = (s, a, p, qid) in
       Prefix.add binops s binop;
       P_config_binop(binop)
-  | "prover" s:ident ->
-      P_config_prover(s.elt)
+  | "prover" s:string_lit ->
+      P_config_prover(s)
   | "prover_limit" n:nat_lit ->
       P_config_prover_limit(n)
 

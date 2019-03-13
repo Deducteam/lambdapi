@@ -121,7 +121,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let prover_name =
         match s with
         | None          -> Timed.(!Why3prover.current_prover)
-        | Some(name)    -> name.elt
+        | Some(name)    -> name
       in
       (* translate from lambdapi to why3 terms. *)
       let (l_prop, hyps, why3term) =

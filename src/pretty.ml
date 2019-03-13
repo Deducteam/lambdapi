@@ -121,7 +121,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
   | P_tac_why3(None)         -> out "why3"
-  | P_tac_why3(Some(s))      -> out "why3 %s" s.elt
+  | P_tac_why3(Some(s))      -> out "why3 %s" s
 
 let pp_p_assertion : p_assertion pp = fun oc asrt ->
   let out fmt = Format.fprintf oc fmt in

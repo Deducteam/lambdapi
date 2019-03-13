@@ -2,22 +2,9 @@
 
 open Timed
 
-(* list of provers' name *)
-let provers_name : (string * string) list ref =
-    ref
-    [
-        "altergo", "Alt-Ergo";
-        "eprover", "Eprover";
-    ]
-
-(** [get_name s] return the real name of a prover in Why3. *)
-let get_name : string -> string = fun s ->
-    try
-        List.assoc s !provers_name
-    with
-        Not_found  -> failwith ("Failed to find `" ^ s ^ "`")
-
-let current_prover : string ref = ref "altergo"
+(** [!current_prover] contains the name of the current prover (can be changed
+    by using the set prover <name> command). *)
+let current_prover : string ref = ref "Alt-Ergo"
 
 (** [time_limit] is the time limit of a prover while finding a proof. *)
 let time_limit : int ref = ref 10
@@ -37,7 +24,8 @@ let prover : string -> Why3.Whyconf.config_prover = fun prover_name ->
     let fp = Why3.Whyconf.parse_filter_prover prover_name in
     let provers = Why3.Whyconf.filter_provers config fp in
     if Why3.Whyconf.Mprover.is_empty provers then
-        failwith (prover_name ^ " is not installed or not configured@.")
+        Console.fatal_no_pos  "[%s] not installed or not configured"
+        prover_name
     else
         snd (Why3.Whyconf.Mprover.max_binding provers)
 
@@ -55,9 +43,9 @@ let prover_driver : Why3.Whyconf.config_prover -> Why3.Driver.driver =
     try
         Why3.Whyconf.load_driver main !env cp.Why3.Whyconf.driver []
     with e ->
-        Console.out 1 "Failed to load driver for alt-ergo: %a@."
-    Why3.Exn_printer.exn_printer e;
-    exit 1
+        Console.fatal_no_pos "Failed to load driver for %s: %a"
+        cp.prover.prover_name
+        Why3.Exn_printer.exn_printer e
 
 (** [result prv tsk] return the result of a prover [prv] with the task
     [tsk]. *)
@@ -74,10 +62,8 @@ let result :
 
 (** [answer ans] check if the answer [ans] of a prover is valid or not. *)
 let answer : Why3.Call_provers.prover_answer -> bool = fun ans ->
-    match ans with
-    | Why3.Call_provers.Valid    -> true
-    | _                     -> false
-
+    ans = Why3.Call_provers.Valid
+    
 (** [print_result prv tsk] print the result of a prover with a task [tsk]. *)
 let print_result : Why3.Whyconf.config_prover -> Why3.Task.task -> unit =
     fun prv tsk ->
@@ -85,13 +71,11 @@ let print_result : Why3.Whyconf.config_prover -> Why3.Task.task -> unit =
     | Why3.Call_provers.Valid ->
         Console.out 2 "Valid@."
     | _                  ->
-        Console.out 1 "%s didn't found a proof@." prv.prover.prover_name
+        Console.wrn None "%s didn't found a proof@." prv.prover.prover_name
 
 (** [call sp tsk] Call the prover named [sp] with the task [tsk]. *)
 let call : string -> Why3.Task.task -> Why3.Call_provers.prover_result =
-    fun sp tsk ->
-    let prover_why3 = get_name sp in
-    result (prover prover_why3) tsk
+    fun sp tsk -> result (prover sp) tsk
 
 (* Initilizing Why3 environment. *)
 let _ = init_env ()

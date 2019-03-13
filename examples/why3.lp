@@ -1,7 +1,7 @@
 require open proofs.logic
 require open proofs.nat
 
-set prover altergo
+set prover "Alt-Ergo"
 set prover_limit 2
 
 
