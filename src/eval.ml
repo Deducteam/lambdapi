@@ -188,15 +188,34 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  (* Could be replaced by an adequate [Dtree.iter]! *)
   let vars : term Stack.t = Stack.create () in
+
+  (* [do_leaf m a] processes the result of [walk] *)
+  let do_leaf : int IntMap.t -> Dtree.action -> term * stack =
+    fun env_builder act ->
+    (* Get variables from var stack *)
+    let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
+      let opslot = IntMap.find_opt p env_builder in
+      match opslot with
+      | None     -> succ p, acc
+      | Some(sl) -> succ p, IntMap.add sl te acc) (0, IntMap.empty) vars in
+    (* Create the environment *)
+    let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
+    IntMap.iter (fun sl te ->
+      let inject _ = te in
+      let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
+      env.(sl) <- TE_Some(b)) pre_env ;
+    Bindlib.msubst act env,
+    List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
+      then elt :: acc else acc) [] istk in
+
   (* [walk t s] where [s] is the stack of terms to match. *)
   let rec walk : Dtree.t -> stack ->
     (int IntMap.t * Dtree.action) option =
     fun tree stk ->
       match tree with
-      | Leaf(env_builder, a)                  ->
-         Some(env_builder, a)
+      | Leaf(env_builder, a)                  -> Some(env_builder, a)
+      | Fail                                  -> None
       | Node({ swap = io ; children ; push }) ->
         if stk = [] then None else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
@@ -226,30 +245,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         (* (iii) *)
         let matched = List.assoc_opt (Some(hd)) children in
         (* Where is the default case? *)
-        Option.bind (fun tr -> walk tr tlstk) matched
-      | Fail                                  -> None in
+        Option.bind (fun tr -> walk tr tlstk) matched in
   let final = walk itree istk in
-
-  (* [f] to be lifted in the option functor, taking as arguments the result of
-     the tree walk, mainly fills the environment, [f] could be done as a
-     [do_leaf] in [iter] *)
-  let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
-    (* Get variables from var stack *)
-    let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
-      let opslot = IntMap.find_opt p env_builder in
-      match opslot with
-      | None     -> succ p, acc
-      | Some(sl) -> succ p, IntMap.add sl te acc) (0, IntMap.empty) vars in
-    (* Create the environment *)
-    let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
-    IntMap.iter (fun sl te ->
-      let inject _ = te in
-      let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
-      env.(sl) <- TE_Some(b)) pre_env ;
-    Bindlib.msubst act env,
-    List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
-      then elt :: acc else acc) [] istk in
-  Option.map (fun (p, a) -> f p a) final
+  Option.map (fun (p, a) -> do_leaf p a) final
 
 (** {b Note} During the matching with trees, two term stacks are used.
     - One is of type {!type:stack} and contains the arguments of a symbol that
