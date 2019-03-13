@@ -431,6 +431,25 @@ let rec is_cons : term -> bool = function
   | Appl(u, _)              -> is_cons u
   | _                       -> false
 
+(** [get_cons l] extracts a list of unique constructors from [l].
+    {!cons:Appl} cases must be handled specifically to compare the head
+    symbol. *)
+let get_cons : term list -> term list = fun telst ->
+  (* membership of terms *)
+  let rec mem : term -> term list -> bool = fun te xs ->
+    match xs with
+    | []       -> false
+    | hd :: tl ->
+       let s = fst (Basics.get_args hd) in
+       if Basics.eq s te then true else mem te tl in
+  let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
+    match notseen with
+    | [] -> List.rev seen
+    | hd :: tl ->
+       let s = fst (Basics.get_args hd) in
+       loop (if mem s seen then seen else hd :: seen) tl in
+  loop [] (List.filter is_cons telst)
+
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
@@ -480,7 +499,7 @@ let compile : Pm.t -> t = fun patterns ->
             | Patt(Some(_), _, _) :: _ -> true
             | _ :: xs                  -> loop xs in
           loop (List.map fst fcol) in
-        let cons = List.filter is_cons (List.map fst fcol) in
+        let cons = get_cons (fst (List.split fcol)) in
         let spepatts = List.map (fun s ->
           (Some(fst @@ Basics.get_args s), specialize s spm)) cons in
         let defpatts = (None, default spm) in
