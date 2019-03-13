@@ -207,7 +207,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(sl) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env, stk)
-      | Node({ swap ; children ; push ; default }) ->
+      | Node({ swap ; children ; store ; default }) ->
         if stk = [] then (* None *) assert false else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
            stack, (ii) filling the stack containing terms to be substituted
@@ -232,7 +232,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           | Abst(_, _)      -> assert false
           | _               -> assert false in
         (* (ii) *)
-        if push then Stack.push hd vars ;
+        if store then vars.(cursor) <- hd ;
         (* (iii) *)
         let matched_on_cons = List.assoc_opt hd children in
         let matched = match matched_on_cons with

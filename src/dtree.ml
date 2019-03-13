@@ -85,14 +85,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata)   ->
-      let { swap ; children ; push ; default } = ndata in
+      let { swap ; children ; store ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       begin (* Create node *)
         F.fprintf ppf "@ %d [label=\"" tag ;
         F.fprintf ppf "%d" (match swap with None -> 0 | Some(i) -> i) ;
         F.fprintf ppf "\"" ;
-        if push then F.fprintf ppf " shape=\"box\"" ;
+        if store then F.fprintf ppf " shape=\"box\"" ;
         F.fprintf ppf "]"
       end ;
       begin (* Create edge *)
@@ -108,10 +108,10 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap ; children = ch ; push ; default }) ->
+    | Node({ swap ; children = ch ; store ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\""
          (match swap with None -> 0 | Some(i) -> i) ;
-       if push then F.fprintf ppf " shape=\"box\"" ;
+       if store then F.fprintf ppf " shape=\"box\"" ;
        F.fprintf ppf "]" ;
        List.iter (fun (sw, c) -> write_tree 0 (Some(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 None tr)
@@ -306,15 +306,16 @@ let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
              | Patt(Some(i), _, _) ->
                 let neb =  IntMap.add (depth + added) i env_builder in
                 let child = loop tl (pred missing) (succ added) neb in
-                Node({ swap = None ; push = true ; children = [] ; default = Some(child) })
+                Node({ swap = None ; store = true ; children = [] ;
+                       default = Some(child) })
              | Appl(_, _) as a     ->
                 let newtl = snd (Basics.get_args a) @ tl in
                 let child = loop newtl missing added env_builder in
-                Node({ swap = None ; push = false ; children = [] ;
+                Node({ swap = None ; store = false ; children = [] ;
                        default = Some(child) })
              | Symb(_, _)          ->
                 let child = loop tl missing added env_builder in
-                Node({ swap = None ; push = false ; children = [] ;
+                Node({ swap = None ; store = false ; children = [] ;
                        default = Some(child) })
              | _                   -> assert false
            end in
@@ -471,13 +472,13 @@ let compile : Pm.t -> t = fun patterns ->
         let pos2slot = List.assq rhs rule2needed_pos in
         (* [env_builder] maps future position in the term stack to the slot in
            the environment. *)
-        let env_builder = snd @@ List.fold_left (fun (i, m) tpos ->
+        let env_builder = snd (List.fold_left (fun (i, m) tpos ->
           let opslot = PosMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ i, m
           (* ^ The stack may contain more variables than needed for the
              rule *)
-          | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat in
+          | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat) in
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
@@ -494,7 +495,7 @@ let compile : Pm.t -> t = fun patterns ->
           | None    -> pm
           | Some(i) -> Pm.swap pm i in
         let fcol = Pm.get_col 0 spm in
-        let push = (* Push if there is a pattern variable in fcol *)
+        let store = (* Store if there is a pattern variable in fcol *)
           let rec loop : term list -> bool = function
             | []                       -> false
             | Patt(Some(_), _, _) :: _ -> true
@@ -506,6 +507,6 @@ let compile : Pm.t -> t = fun patterns ->
         let default = let dm = default spm in
           if Pm.is_empty dm then None else Some(grow dm) in
         let children = List.map (fun (c, p) -> (c, grow p)) spepatts in
-        Node({ swap = swap ; push = push ; children = children
+        Node({ swap = swap ; store = store ; children = children
              ; default = default }) in
   grow patterns
