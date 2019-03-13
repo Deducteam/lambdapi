@@ -53,7 +53,7 @@ let rec translate : Proof.builtins -> (Env.env * term) ->
         let (l_prop, formula) = t_goal cfg l_prop g in
         (l_prop, hypothesis, formula)
     with NoGoalTranslation ->
-        Console.fatal_no_pos "The term [%a] is not of the forme [P _]"
+        Console.fatal_no_pos "The term [%a] is not of the form [P _]"
         Print.pp g
 
 (** [translate_context cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp))]
