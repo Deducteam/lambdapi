@@ -286,15 +286,14 @@ end
 
 module Pm = Pattmat
 
-(** [fetch l m e r] consumes [l] until [m] pattern variables have been found.
-    The environment builder[e] is also enriched.  The tree which allows this
-    consumption is return, with a leaf holding action [r]. *)
-let fetch : Pm.line -> int IntMap.t -> action -> t =
-  fun line env_builder rhs ->
+(** [fetch l d e r] consumes [l] until environment build [e] contains as many
+    elements as the number of variables in [r].  The environment builder[e] is
+    also enriched.  The tree which allows this consumption is returned, with a
+    leaf holding action [r] and the new environment. *)
+let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
+  fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let initial_depth = if env_builder = IntMap.empty then 0 else
-        fst (IntMap.max_binding env_builder) in
     let rec loop : term list -> int -> int -> int IntMap.t -> t =
       fun telst missing added env_builder ->
         if missing = 0 then Leaf(env_builder, rhs) else
@@ -304,19 +303,19 @@ let fetch : Pm.line -> int IntMap.t -> action -> t =
            begin
              match te with
              | Patt(Some(i), _, _) ->
-                let neb =  IntMap.add (initial_depth + added) i env_builder in
+                let neb =  IntMap.add (depth + added) i env_builder in
                 let child = loop tl (pred missing) (succ added) neb in
                 Node({ swap = None ; push = true ; children = [] ; default = Some(child) })
-             | Appl(_, _) as a ->
+             | Appl(_, _) as a     ->
                 let newtl = snd (Basics.get_args a) @ tl in
                 let child = loop newtl missing added env_builder in
                 Node({ swap = None ; push = false ; children = [] ;
                        default = Some(child) })
-             | Symb(_, _) ->
+             | Symb(_, _)          ->
                 let child = loop tl missing added env_builder in
                 Node({ swap = None ; push = false ; children = [] ;
                        default = Some(child) })
-             | _          -> assert false
+             | _                   -> assert false
            end in
     loop terms missing 0 env_builder
 
@@ -481,7 +480,8 @@ let compile : Pm.t -> t = fun patterns ->
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
-        fetch lhs env_builder Pervasives.(!rhs)
+        let depth = List.length vcat in
+        fetch lhs depth env_builder Pervasives.(!rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)

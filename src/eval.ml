@@ -194,6 +194,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
+         assert (IntMap.cardinal env_builder = Bindlib.mbinder_arity act) ;
          let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
            let opslot = IntMap.find_opt p env_builder in
            match opslot with
