@@ -28,25 +28,26 @@ type prop_config =
 
 (** [get_prop_config builtins] set the builtins configuration using
     [builtins] *)
-let get_prop_config : Proof.builtins -> prop_config = fun builtins ->
-  let find_sym key =
-    try StrMap.find key builtins with Not_found ->
-     Console.fatal_no_pos "Builtin symbol [%s] undefined." key
-  in
-  { symb_P     = find_sym "P"
-  ; symb_T     = find_sym "T"
-  ; symb_or    = find_sym "or"
-  ; symb_and   = find_sym "and"
-  ; symb_imp   = find_sym "imp"
-  ; symb_bot   = find_sym "bot"
-  ; symb_not   = find_sym "not" }
+let get_prop_config : 
+    Pos.popt -> Proof.builtins -> prop_config = fun pos builtins ->
+    let find_sym key =
+        try StrMap.find key builtins with Not_found ->
+        Console.fatal pos "Builtin symbol [%s] undefined." key
+    in
+    { symb_P     = find_sym "P"
+    ; symb_T     = find_sym "T"
+    ; symb_or    = find_sym "or"
+    ; symb_and   = find_sym "and"
+    ; symb_imp   = find_sym "imp"
+    ; symb_bot   = find_sym "bot"
+    ; symb_not   = find_sym "not" }
 
 (** [translate builtins (hs, g)] translate from lambdapi to Why3 goal [g]
     using the hypothesis [hs]. *)
 let rec translate : Pos.popt -> Proof.builtins -> (Env.env * term) ->
     cnst_table * (string * Why3.Term.term) list * Why3.Term.term =
     fun pos builtins  (hs, g) ->
-    let cfg = get_prop_config builtins in
+    let cfg = get_prop_config pos builtins in
     let (l_prop, hypothesis) =
         List.fold_left (translate_context cfg) ([], []) hs in
     try
