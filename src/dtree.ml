@@ -431,9 +431,7 @@ let rec is_cons : term -> bool = function
   | Appl(u, _)              -> is_cons u
   | _                       -> false
 
-(** [get_cons l] extracts a list of unique constructors from [l].
-    {!cons:Appl} cases must be handled specifically to compare the head
-    symbol. *)
+(** [get_cons l] extracts a list of unique constructors from [l]. *)
 let get_cons : term list -> term list = fun telst ->
   (* membership of terms *)
   let rec mem : term -> term list -> bool = fun te xs ->
