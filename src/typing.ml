@@ -104,20 +104,19 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
 (** [check_aux conv ctx t c] checks that the term [t] has type [c], in context
     [ctx]. In the process, the [conv] function is used as convertibility test.
     In case of failure, the exception [Fatal] is raised.  Note that we require
-    [ctx] and [c] to be well-formed (with well-sorted types). *)
+    [ctx] and [c] to be well-formed (with well-sorted types).
+
+   [check_aux conv ctx t c] could be reduced to the default case [conv
+   (infer_aux conv ctx t) c]. We however provide some more efficient
+   code when [t] is an abstraction:
+
+   Finished in 3:57.79 at 99% with 3179880Kb of RAM
+
+   Finished in 3:39.76 at 99% with 2720708Kb of RAM
+
+   This avoids to build a product to destructure it just after. *)
 and check_aux : conv_f -> Ctxt.t -> term -> term -> unit = fun conv ctx t c ->
   match unfold t with
-  | Patt(_,_,_) -> assert false (* Forbidden case. *)
-  | TEnv(_,_)   -> assert false (* Forbidden case. *)
-  | Kind        -> assert false (* Forbidden case. *)
-  | Type        ->
-      (* -------------------
-          ctx ⊢ Type ⇐ Kind  *)
-      begin
-        match unfold c with
-        | Kind -> ()
-        | _    -> fatal_no_pos "[Kind] expected, [%a] given." pp c
-      end
   | Abst(a,t)   ->
       (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
          ----------------------------------------------------
