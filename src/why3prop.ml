@@ -92,22 +92,21 @@ and t_prop :
     prop_config -> cnst_table -> Ctxt.t -> term ->
     cnst_table * Why3.Term.term =
     fun cfg l_prop ctxt p ->
-    let (s, args) = Basics.get_args p in
-    match s with
-    | symbol when Basics.is_symb (fst cfg.symb_and) symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
+    match Basics.get_args p with
+    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_and) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_and t1 t2
-    | symbol when Basics.is_symb (fst cfg.symb_or) symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
+    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_or) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_or t1 t2
-    | symbol when Basics.is_symb (fst cfg.symb_imp) symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt (List.nth args 0) in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt (List.nth args 1) in
+    | symbol, [t1; t2] when Basics.is_symb (fst cfg.symb_imp) symbol  ->
+        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
+        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
         l_prop, Why3.Term.t_implies t1 t2
-    | symbol when Basics.is_symb (fst cfg.symb_not) symbol  ->
-        let (l_prop, t) = t_prop cfg l_prop ctxt (List.nth args 0) in
+    | symbol, [t] when Basics.is_symb (fst cfg.symb_not) symbol  ->
+        let (l_prop, t) = t_prop cfg l_prop ctxt t in
         l_prop, Why3.Term.t_not t
     | _                                                     ->
         (* if the term [p] is in the list [l_prop] *)
