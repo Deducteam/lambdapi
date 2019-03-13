@@ -43,9 +43,9 @@ let get_prop_config : Proof.builtins -> prop_config = fun builtins ->
 
 (** [translate builtins (hs, g)] translate from lambdapi to Why3 goal [g]
     using the hypothesis [hs]. *)
-let rec translate : Proof.builtins -> (Env.env * term) ->
+let rec translate : Pos.popt -> Proof.builtins -> (Env.env * term) ->
     cnst_table * (string * Why3.Term.term) list * Why3.Term.term =
-    fun builtins  (hs, g) ->
+    fun pos builtins  (hs, g) ->
     let cfg = get_prop_config builtins in
     let (l_prop, hypothesis) =
         List.fold_left (translate_context cfg) ([], []) hs in
@@ -53,7 +53,7 @@ let rec translate : Proof.builtins -> (Env.env * term) ->
         let (l_prop, formula) = t_goal cfg l_prop g in
         (l_prop, hypothesis, formula)
     with NoGoalTranslation ->
-        Console.fatal_no_pos "The term [%a] is not of the form [P _]"
+        Console.fatal pos "The term [%a] is not of the form [P _]"
         Print.pp g
 
 (** [translate_context cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp))]

@@ -125,11 +125,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       in
       (* translate from lambdapi to why3 terms. *)
       let (l_prop, hyps, why3term) =
-          Why3prop.translate ps.proof_builtins (hypothesis, trm) in
+          Why3prop.translate tac.pos ps.proof_builtins (hypothesis, trm) in
       (* create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create l_prop hyps why3term in
       (* call the prover named [prover_name] and get the result. *)
-      let prover_result = Why3prover.call prover_name tsk in
+      let prover_result = Why3prover.call  tac.pos prover_name tsk in
       (* if the prover succeed to prover the goal. *)
       if Why3prover.answer prover_result.pr_answer then
         (* create a new axiom that represents the proved goal. *)
