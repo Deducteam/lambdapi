@@ -5,7 +5,7 @@ open Extra
 
 exception NoGoalTranslation
 
-(* a type to present the list of why3 constants and lambdapi terms *)
+(* a map from lambdapi terms to Why3 constants *)
 type cnst_table = (term * Why3.Term.lsymbol) list
 
 (* number of axioms proved whith the Why3 tactic *)
@@ -26,7 +26,7 @@ type prop_config =
   ; symb_bot   : sym * pp_hint (** Bot(⊥) symbol.                   *)
   ; symb_not   : sym * pp_hint (** Not(¬) symbol.                   *) }
 
-(** [get_prop_config builtins] set the builtins configuration using
+(** [get_prop_config pos builtins] set the builtins configuration using
     [builtins] *)
 let get_prop_config :
     Pos.popt -> Proof.builtins -> prop_config = fun pos builtins ->
@@ -42,8 +42,10 @@ let get_prop_config :
     ; symb_bot   = find_sym "bot"
     ; symb_not   = find_sym "not" }
 
-(** [translate builtins (hs, g)] translate from lambdapi to Why3 goal [g]
-    using the hypothesis [hs]. *)
+(** [translate pos builtins (hs, g)] translate from lambdapi to Why3 goal [g]
+    using the hypothesis [hs]. The function output the translation of the
+    hypothesis and the goal to Why3 and return also a list of all Why3
+    constants used during the translation. *)
 let rec translate : Pos.popt -> Proof.builtins -> (Env.env * term) ->
     cnst_table * (string * Why3.Term.term) list * Why3.Term.term =
     fun pos builtins  (hs, g) ->

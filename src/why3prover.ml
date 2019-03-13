@@ -18,7 +18,7 @@ let main : Why3.Whyconf.main =
         let m = Why3.Whyconf.get_main config in
         Why3.Whyconf.load_plugins m; m
 
-(** [prover provername] search and return the prover called [prover_name] *)
+(** [prover pos provername] search and return the prover called [prover_name] *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
     fun pos prover_name ->
     (* filters the set of why3 provers *)
@@ -37,7 +37,7 @@ let env : Why3.Env.env ref = ref (Why3.Env.create_env [])
 let init_env () =
     env := Why3.Env.create_env (Why3.Whyconf.loadpath main)
 
-(** [prover_driver cp] load the config prover [cp] in the current enironment
+(** [prover_driver pos cp] load the config prover [cp] in the current enironment
     and return the driver of the prover. *)
 let prover_driver :
     Pos.popt -> Why3.Whyconf.config_prover -> Why3.Driver.driver =
@@ -49,7 +49,7 @@ let prover_driver :
         cp.prover.prover_name
         Why3.Exn_printer.exn_printer e
 
-(** [result prv tsk] return the result of a prover [prv] with the task
+(** [result pos prv tsk] return the result of a prover [prv] with the task
     [tsk]. *)
 let result :
     Pos.popt ->
@@ -67,7 +67,7 @@ let result :
 let answer : Why3.Call_provers.prover_answer -> bool = fun ans ->
     ans = Why3.Call_provers.Valid
 
-(** [call sp tsk] Call the prover named [sp] with the task [tsk]. *)
+(** [call pos sp tsk] Call the prover named [sp] with the task [tsk]. *)
 let call :
     Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
     fun pos sp tsk -> result pos (prover pos sp) tsk
