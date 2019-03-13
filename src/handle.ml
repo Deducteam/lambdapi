@@ -236,6 +236,12 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_config_verbose(i)     ->
             (* Just update the option, state not modified. *)
             Console.verbose := i; ss
+        | P_config_flag(id,b)     ->
+            (* We set the value of the flag, if it exists. *)
+            begin
+              try Console.set_flag id b with Not_found ->
+                wrn cmd.pos "Unknown flag \"%s\"." id
+            end; ss
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             let sym = find_sym false ss qid in

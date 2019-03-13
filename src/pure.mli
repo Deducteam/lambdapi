@@ -65,7 +65,7 @@ val handle_tactic : proof_state -> Tactic.t -> tactic_result
 (** [end_proof st] finalises the proof which state is [st], returning a result
     at the command level for the whole theorem. This function should be called
     when all the tactics have been handled with [handle_tactic]. Note that the
-    value returned by this function cannot be {!const:Cmd_Proof}. *)
+    value returned by this function cannot be {!constructor:Cmd_Proof}. *)
 val end_proof : proof_state -> command_result
 
 (** [get_symbols st] returns all the symbols defined in the signature at state

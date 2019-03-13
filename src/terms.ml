@@ -10,7 +10,7 @@
 open Extra
 open Timed
 
-(** {2 Term (and symbol) representation} *)
+(** {3 Term (and symbol) representation} *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -44,10 +44,10 @@ type term =
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
-    {!const:Wild} constructor is only used when matching a pattern (e.g.,  for
-    the "rewrite" tactic). In the LHS of rewriting rules (see {!type:rule}), a
-    wildcard is syntactic sugar for a fresh, unused variable, represented with
-    the {!const:Patt} constructor. *)
+    {!constructor:Wild} constructor is only used when matching patterns (e.g.,
+    with the "rewrite" tactic). In the LHS of a rewriting {!type:rule}, we use
+    the {!constructor:Patt} constructor to represend wildcards of the concrete
+    syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
@@ -68,18 +68,17 @@ type term =
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
-(** {b NOTE} the {!recfield:sym_type} field contains a (timed) reference for a
-    technical reason related to the writing of signatures as binary files  (in
-    relation to {!val:Sign.link} and {!val:Sign.unlink}). This is necessary to
+(** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
+    reason related to the writing of signatures as binary files  (in  relation
+    to {!val:Sign.link} and {!val:Sign.unlink}).  This is necessary to enforce
     ensure that two identical symbols are always physically equal, even across
     signatures. It should NOT be otherwise mutated. *)
 
-(** {b NOTE} we maintain the invariant that {!recfield:sym_impl} should not be
-    terminated by [false]. Indeed, this information would be redundant and may
-    lead to performance losses during scoping.  If a symbol has more arguments
-    than there are booleans in the list,  then the extra arguments must all be
-    explicit. Lastly, note that {!recfield:sym_impl} is empty exaclty when the
-    symbol has no implicit parameters. *)
+(** {b NOTE} we maintain the invariant that {!field:sym_impl} never ends  with
+    [false]. Indeed, this information would be redundant. If a symbol has more
+    arguments than there are booleans in the list then the extra arguments are
+    all explicit. Finally, note that {!field:sym_impl} is empty if and only if
+    the symbol has no implicit parameters. *)
 
 (** Possible modes for a symbol. It is given at the declaration of the symbol,
     and it cannot be changed subsequently. *)
@@ -91,12 +90,12 @@ type term =
   | Injec
   (** Same as [Defin], but the symbol is considered to be injective. *)
 
-(** {b NOTE} the value of the {!rec_field:sym_mode} field of symbols restricts
-    the value of their {!rec_field:sym_def} and {!rec_field:sym_rules} fields.
-    It is forbidden for a symbol to be given rewriting rules (or a definition)
-    if its mode is [Const]. Moreover, a symbol should not be given at the same
-    time a definition (i.e., {!rec_field:sym_def} is not [None]) and rewriting
-    rules (i.e., {!rec_field:sym_rules} is non-empty). *)
+(** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the
+    value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
+    not allowed to be given rewriting rules (or a definition) when its mode is
+    set to {!constructor:Const}. Moreover, a symbol should not be given at the
+    same time a definition (i.e., {!field:sym_def} different from [None])  and
+    rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
 (** Pretty-printing hint for a symbol. One hint is attached to each occurrence
     of a symbol, depending on the corresponding concrete (source code) syntax.
@@ -112,7 +111,7 @@ type term =
   | Binary of string
   (** Show as the given binary operator. *)
 
-(** {2 Representation of rewriting rules} *)
+(** {3 Representation of rewriting rules} *)
 
 (** Representation of a rewriting rule. A rewriting rule is mainly formed of a
     LHS (left hand side),  which is the pattern that should be matched for the
@@ -130,18 +129,17 @@ type term =
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
-    list of arguments is given in {!recfield:lhs},  but the head symbol itself
-    does not need to be stored in the rule, as rules are stored in symbols. In
-    the pattern arguments of a LHS,  the {!const:Patt}[(i,s,env)]  constructor
-    is used to  represent pattern variables.  Pattern variables are identified
-    by a {!type:string} name [s] (unique in a rewriting rule),  and it carries
+    list of arguments is given in {!field:lhs},  but the head symbol itself is
+    not stored in the rule, since rules are stored in symbols.  In the pattern
+    arguments of a LHS, [Patt(i,s,env)] is used to represent pattern variables
+    that are identified by a name [s] (unique in a rewriting rule). They carry
     an environment [env] that should only contain distinct variables (terms of
-    the form {!const:Vari}[(x)]). They correspond to the set of variables that
-    may appear free in a matched term.  The {!type:int option} [i] corresponds
-    to the index (if any) of the slot that is reserved for the matched term in
-    the environment of the RHS during matching. When [i] is {!const:None} then
-    the variable is not bound in the RHS. If it is {!const:Some}[(_)] then the
-    variables is bound in the RHS, or it appears non-linearly in the LHS.
+    the form [Vari(x)]).  They correspond to the set of all the variables that
+    may appear free in a matched term. The optional integer [i] corresponds to
+    the reserved index (if any) for the matched term in the environment of the
+    RHS during matching. When [i] is [None], then the variable is not bound in
+    the RHS. If it is [Some(_)], then the variables is bound in the RHS, or it
+    appears non-linearly in the LHS.
 
     For instance, with the rule [f &X &Y &Y &Z → &X]:
      - [&X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
@@ -157,11 +155,11 @@ type term =
     by an array of terms (or rather “term environments”) [a] of length 2 if we
     have [a.(0) = t], [a.(1) = u] and [a.(1) = v]. *)
 
-(** {b NOTE} that the environment carried by the {!const:Patt} constructor has
-    type {!type:term array} so that the variable may be bound.  In particular,
-    the type {!type:tvar array} would NOT be suitable. *)
+(** {b NOTE} that the second parameter of the {!constructor:Patt}  constructor
+    holds an array of terms. This is essential for variables binding: using an
+    array of variables would NOT suffice. *)
 
-(** {b NOTE} that the value of the {!recfield:arity} field of a rewriting rule
+(** {b NOTE} that the value of the {!field:arity} field  (of a rewriting rule)
     gives the number of arguments contained in its LHS. As a consequence,  the
     value of [r.arity] is always equal to [List.length r.lhs] and it gives the
     minimal number of arguments required to match the LHS of the rule. *)
@@ -174,9 +172,9 @@ type term =
 
 (** Representation of a "term with environment", which intuitively corresponds
     to a term with bound variables (or a "higher-order" term) represented with
-    the {!const:TE_Some} constructor.  The other constructors are included for
-    technical reasons due to the fact that "terms with environments" are bound
-    in the RHS of rewriting rules. *)
+    the {!constructor:TE_Some} constructor. Other constructors are included so
+    that "terms with environments" can be bound in the RHS of rewriting rules.
+    This is purely technical. *)
  and term_env =
   | TE_Vari of term_env Bindlib.var
   (** Free "term with environment" variable (used to build a RHS). *)
@@ -185,34 +183,34 @@ type term =
   | TE_None
   (** Dummy term environment (used during matching). *)
 
-(** The {!const:TEnv}[(te,env)] constructor intuitively represents a term [te]
-    with free variables together with an explicit environment [env]. Note that
-    the binding of the environment actually occurs in [te],  in the case where
-    it corresponds to a {!const:TE_Some}[b] constructor. Indeed, [te] contains
-    a multiple binder [b] that binding all every free variables of the term at
-    once.  We can then effectively apply the substitution by substituting  [b]
+(** The {!constructor:TEnv}[(te,env)] constructor intuitively corresponds to a
+    term [te] with free variables together with an explicit environment [env].
+    Note that the binding of the environment actually occurs in [te], when the
+    constructor is of the form {!constructor:TE_Some}[(b)]. Indeed, [te] holds
+    a multiple binder [b] that binds every free variables of the term at once.
+    We then apply the substitution by performing a Bindlib substitution of [b]
     with the environment [env]. *)
 
 (** During evaluation, we only try to apply rewriting rules when we reduce the
     application of a symbol [s] to a list of argument [ts]. At this point, the
     symbol [s] contains  every rule [r] that can potentially be applied in its
-    {!recfield:sym_rules} field. To check if a rule [r] applies,  we match the
+    {!field:sym_rules} field.  To check if a rule [r] applies,  we  match  the
     elements of [r.lhs] with those of [ts] while building an environment [env]
     of type {!type:term_env array}. During this process, a pattern of the form
-    {!const:Patt}[(Some i,s,e)] matched against a term [u] intuitively results
+    {!constructor:Patt}[(Some i,s,e)] matched against a term [u] will  results
     in [env.(i)] being set to [u]. If all terms of [ts] can be matched against
     corresponding patterns, then environment [env] is fully constructed and it
     can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
     the result of the application of the rule. *)
 
-(** {2 Metavariables and related functions} *)
+(** {3 Metavariables and related functions} *)
 
 (** Representation of a metavariable,  which corresponds to a place-holder for
     a (yet unknown) term which free variables are bound by an environment. The
     substitution of the free variables with the environment is suspended until
     the metavariable is instantiated (i.e., set to a particular term).  When a
     metavariable [m] is instantiated,  the suspended substitution is  unlocked
-    and terms of the form {!const:Meta}[(m,env)] can be unfolded. *)
+    and terms of the form {!constructor:Meta}[(m,env)] can be unfolded. *)
  and meta =
   { meta_key   : int
   (** Unique key of the metavariable. *)
@@ -228,8 +226,8 @@ type term =
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
     is returned cannot be an instantiated metavariable or term environment nor
-    a reference cell ({!const:TRef} constructor). If no unfolding is required,
-    the returned term is physically equal to [t]. *)
+    a reference cell ({!constructor:TRef} constructor). Note that the returned
+    value is physically equal to [t] if no unfolding was performed. *)
 let rec unfold : term -> term = fun t ->
   match t with
   | Meta(m, ar)          ->
@@ -277,8 +275,8 @@ let meta_name : meta -> string = fun m ->
 
 (** [term_of_meta m env] constructs the application of a dummy symbol with the
     same type as [m], to the element of the environment [env].  The idea is to
-    obtain a term that has the same type as {!const:Meta}[(m,env)] but that is
-    simpler to type-check. *)
+    obtain a term with the same type as {!constructor:Meta}[(m,env)], but that
+    is simpler to type-check. *)
 let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
@@ -290,7 +288,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
 (** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
     variable to avoid polluting the context. *)
 
-(** {2 Smart constructors and Bindlib infrastructure} *)
+(** {3 Smart constructors and Bindlib infrastructure} *)
 
 (** A short name for the binding of a term in a term. *)
 type tbinder = (term, term) Bindlib.binder
@@ -313,7 +311,7 @@ let mkfree : tvar -> term = fun x -> Vari(x)
 (** [te_mkfree x] injects the [Bindlib] variable [x] in a {!type:term_env}. *)
 let te_mkfree : tevar -> term_env = fun x -> TE_Vari(x)
 
-(** {2 Smart constructors and lifting (related to [Bindlib])} *)
+(** {3 Smart constructors and lifting (related to [Bindlib])} *)
 
 (** [_Vari x] injects the free variable [x] into the {!type:tbox} type so that
     it may be available for binding. *)

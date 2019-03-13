@@ -54,9 +54,9 @@ and p_term_aux =
   | P_Expl of p_term
   (** Explicitly given argument. *)
 
-(** {b NOTE} the boolean parameter of the {!const:P_Iden} constructor tells if
-    the corresponding symbol is explicitly applied (value [true]) or not. This
-    flag hence indicates whether the symbol has been prefixed with ["@"]. *)
+(** {b NOTE} the boolean parameter of {!constructor:P_Iden} tells whether  the
+    corresponding symbol is explicitly applied (value [true]) or not. The flag
+    hence indicates whether the symbol has been prefixed with ["@"]. *)
 
 (** Synonym of [p_term] for semantic hints. *)
 and p_type = p_term
@@ -133,6 +133,8 @@ type p_config =
   (** Sets the verbosity level. *)
   | P_config_debug   of bool * string
   (** Toggles logging functions described by string according to boolean. *)
+  | P_config_flag    of string * bool
+  (** Sets the boolean flag registered under the given name (if any). *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
