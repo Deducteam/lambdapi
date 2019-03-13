@@ -133,7 +133,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* if the prover succeed to prover the goal. *)
       if Why3prover.answer prover_result.pr_answer then
         (* create a new axiom that represents the proved goal. *)
-        let why3_axiom = Pos.none (Why3prop.get_newname ()) in
+        let why3_axiom = Pos.make tac.pos (Why3prop.get_newname ()) in
         (* get the meta type of the current goal (with quantified context) *)
         let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
         (* add the axiom to the current signature. *)
