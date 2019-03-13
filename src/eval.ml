@@ -188,19 +188,17 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
+  (* Could be replaced by an adequate [Dtree.iter]! *)
   let vars : term Stack.t = Stack.create () in
   (* [walk t s] where [s] is the stack of terms to match. *)
   let rec walk : Dtree.t -> stack ->
-    (int IntMap.t * int PosMap.t * Dtree.action) option * stack =
+    (int IntMap.t * Dtree.action) option =
     fun tree stk ->
       match tree with
-      | Leaf(env_builder, remains, a)         ->
-         Some(env_builder, remains, a), stk
+      | Leaf(env_builder, a)                  ->
+         Some(env_builder, a)
       | Node({ swap = io ; children ; push }) ->
-         List.pp pp " - " Format.std_formatter
-           (List.map (fun r -> snd @@ Pervasives.(!r)) stk);
-        Format.fprintf Format.std_formatter "\n" ;
-        if stk = [] then None, stk else (* If stack too short *)
+        if stk = [] then None else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
            stack, (ii) filling the stack containing terms to be substituted
            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
@@ -217,8 +215,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         let hd, tlstk = match snd Pervasives.(!examined) with
           | Appl(_, _) as a ->
              let t, la = Basics.get_args a in
-             t, (List.map (fun e -> Pervasives.ref (false, e)) la) @
-               (List.tl stk)
+             let unfolded = List.map (fun e -> Pervasives.ref (false, e)) la in
+             t, unfolded @ (List.tl stk)
           | Symb(_, _) as s ->
              s, List.tl stk
           | Abst(_, _)      -> assert false
@@ -226,28 +224,22 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         (* (ii) *)
         if push then Stack.push hd vars ;
         (* (iii) *)
-        let matched = List.assoc_opt (Some(hd))
-          (* Pervasives.(Some(snd !examined)) *)
-          children in
-        Option.bind (fun tr -> fst @@ walk tr tlstk) matched, stk
-      | Fail                                  -> None, stk in
-  let final, fstk = walk itree istk in
-  let te_fstk = List.map (fun r -> snd Pervasives.(!r)) fstk in
+        let matched = List.assoc_opt (Some(hd)) children in
+        (* Where is the default case? *)
+        Option.bind (fun tr -> walk tr tlstk) matched
+      | Fail                                  -> None in
+  let final = walk itree istk in
 
   (* [f] to be lifted in the option functor, taking as arguments the result of
-     the tree walk, mainly fills the environment *)
-  let f : int IntMap.t -> int PosMap.t -> Dtree.action ->
-  term * stack = fun env_builder remains_loc act ->
+     the tree walk, mainly fills the environment, [f] could be done as a
+     [do_leaf] in [iter] *)
+  let f : int IntMap.t -> Dtree.action -> term * stack = fun env_builder act ->
     (* Get variables from var stack *)
     let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
       let opslot = IntMap.find_opt p env_builder in
       match opslot with
       | None     -> succ p, acc
       | Some(sl) -> succ p, IntMap.add sl te acc) (0, IntMap.empty) vars in
-    (* Gather remaining variables in the input stack *)
-    let pre_env = PosMap.fold (fun pos sl acc ->
-      let te = extract te_fstk pos in
-      IntMap.add sl te acc) remains_loc pre_env in
     (* Create the environment *)
     let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
     IntMap.iter (fun sl te ->
@@ -257,7 +249,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
     Bindlib.msubst act env,
     List.fold_left (fun acc elt -> if not @@ fst Pervasives.(!elt)
       then elt :: acc else acc) [] istk in
-  Option.map (fun (p, r, a) -> f p r a) final
+  Option.map (fun (p, a) -> f p a) final
 
 (** {b Note} During the matching with trees, two term stacks are used.
     - One is of type {!type:stack} and contains the arguments of a symbol that

@@ -42,11 +42,11 @@ end
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-let iter : (int IntMap.t -> int PosMap.t -> action -> 'a) ->
+let iter : (int IntMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(pa, re, a)                                -> do_leaf pa re a
+    | Leaf(pa, a)                                    -> do_leaf pa a
     | Fail                                           -> fail
     | Node({ swap = p ; push = pu ; children = ch }) ->
       do_node p pu (List.map (fun (teo, c) -> (teo, loop c)) ch) in
@@ -74,7 +74,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let rec write_tree : int -> term option -> t -> unit =
     fun father_l swon tree ->
     match tree with
-    | Leaf(_, _, a) ->
+    | Leaf(_, a) ->
       incr nodecount ;
       F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
@@ -280,6 +280,13 @@ end
 
 module Pm = Pattmat
 
+(** [fetch_remaining l a m n] builds a tree to parse the [n] remaining pattern
+    variables in [l], complete mapping [m] and attach action [a] as leaf. *)
+let fetch_remaining : Pm.line -> action -> int IntMap.t -> int -> t =
+  fun lhs rhs env_builder missing ->
+    let _, _, _, _ = lhs, rhs, env_builder, missing in
+    Leaf(env_builder, rhs)
+
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> term list -> bool = fun pat li ->
@@ -408,9 +415,9 @@ let compile : Pm.t -> t = fun patterns ->
       end
     else
       if Pm.exhausted (List.hd m) then
-        (* If there are no pattern that can be matched remaining, retrieve all
-           pattern variables *)
+        (* A rule can be applied *)
         let rhs = (List.hd m).Pm.rhs in
+        let lhs = (List.hd m).Pm.lhs in
         let pos2slot = List.assq rhs rule2needed_pos in
         (* [env_builder] maps future position in the term stack to the slot in
            the environment. *)
@@ -421,12 +428,12 @@ let compile : Pm.t -> t = fun patterns ->
           (* ^ The stack may contain more variables than needed for the
              rule *)
           | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat in
-        let remain_loc =
-          if (IntMap.cardinal env_builder = PosMap.cardinal pos2slot)
-          then PosMap.empty else
-            let remains = Position.mark (List.map (fst) (List.hd m).lhs) in
-            Pm.pos_needed_by remains in
-          Leaf(env_builder, remain_loc, !((List.hd m).Pm.rhs))
+        (* ^ For now, [env_builder] contains only the variables encountered
+           while choosing the rule.  Other pattern variables needed in the
+           rhs, which are still in the [lhs] will now be fetched. *)
+        let missing = (PosMap.cardinal pos2slot) -
+          (IntMap.cardinal env_builder) in
+        fetch_remaining lhs Pervasives.(!rhs) env_builder missing
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)

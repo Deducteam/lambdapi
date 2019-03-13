@@ -214,16 +214,12 @@ type term =
     rules.  When a {!cons:Leaf} is reached, the target is rewrote to the
     content of the leaf. *)
  and tree =
-  | Leaf of int IntMap.t * int PosMap.t * (term_env, term) Bindlib.mbinder
-  (** Holds the right hand side of a rule.  In a {!cons:Leaf}[(e, r, a)],
+  | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
+  (** Holds the right hand side of a rule.  In a {!cons:Leaf}[(e, a)],
       - [a] is the right hand side of the rule.
       - [e] maps a position in the stack containing terms which stand as
             pattern variables in some rules to the slot allocated in the
-            {!type:term_env array}.
-      - [r] maps position in the remaining of the input stack to variable slot
-            in the environment; the variables located by this mapping are not
-            relevant regarding rule choice but are needed in the right hand
-            side. *)
+            {!type:term_env array}. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!cons:Node} contains one subtree per possible
