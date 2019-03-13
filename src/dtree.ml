@@ -46,10 +46,10 @@ let iter : (int IntMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
-    | Leaf(pa, a)                                    -> do_leaf pa a
-    | Fail                                           -> fail
-    | Node({ swap = p ; push = pu ; children = ch }) ->
-      do_node p pu (List.map (fun (teo, c) -> (teo, loop c)) ch) in
+    | Leaf(pa, a)                      -> do_leaf pa a
+    | Fail                             -> fail
+    | Node({ swap ; push ; children }) ->
+      do_node swap push (List.map (fun (teo, c) -> (teo, loop c)) children) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
