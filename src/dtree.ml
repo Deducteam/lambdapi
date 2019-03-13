@@ -45,13 +45,13 @@ end
 (* XXX possibility to enhance iterator with functions with optional argument,
    would allow to use [iter] for tree walk and [to_dot] *)
 let iter : (int IntMap.t -> action -> 'a) ->
-  (int option -> bool -> (term option * 'a) list -> 'a) ->
+  (int option -> bool -> (term * 'a) list -> tree option -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
-    | Node({ swap ; push ; children }) ->
-      do_node swap push (List.map (fun (teo, c) -> (teo, loop c)) children) in
+    | Node({ swap ; push ; children ; default }) ->
+      do_node swap push (List.map (fun (teo, c) -> (teo, loop c)) children) default in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -84,7 +84,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata)   ->
-      let { swap ; children ; push } = ndata in
+      let { swap ; children ; push ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       begin (* Create node *)
@@ -98,7 +98,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
         pp_opterm ppf swon ; F.fprintf ppf "\"];"
       end ;
-      List.iter (fun (s, e) -> write_tree tag s e) children ;
+      List.iter (fun (s, e) -> write_tree tag (Some(s)) e) children ;
+      (match default with None -> () | Some(tr) -> write_tree tag None tr)
     | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
@@ -106,12 +107,13 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap ; children = ch ; push }) ->
+    | Node({ swap ; children = ch ; push ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\""
          (match swap with None -> 0 | Some(i) -> i) ;
        if push then F.fprintf ppf " shape=\"box\"" ;
        F.fprintf ppf "]" ;
-      List.iter (fun (sw, c) -> write_tree 0 sw c) ch
+       List.iter (fun (sw, c) -> write_tree 0 (Some(sw)) c) ch ;
+       (match default with None -> () | Some(tr) -> write_tree 0 None tr)
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
@@ -304,16 +306,16 @@ let fetch : Pm.line -> int IntMap.t -> action -> t =
              | Patt(Some(i), _, _) ->
                 let neb =  IntMap.add (initial_depth + added) i env_builder in
                 let child = loop tl (pred missing) (succ added) neb in
-                Node({ swap = None ; push = true ; children = [(None, child)] })
+                Node({ swap = None ; push = true ; children = [] ; default = Some(child) })
              | Appl(_, _) as a ->
                 let newtl = snd (Basics.get_args a) @ tl in
                 let child = loop newtl missing added env_builder in
-                Node({ swap = None ; push = false ;
-                       children = [(None, child)] })
+                Node({ swap = None ; push = false ; children = [] ;
+                       default = Some(child) })
              | Symb(_, _) ->
                 let child = loop tl missing added env_builder in
-                Node({ swap = None ; push = false ;
-                       children = [(None, child)] })
+                Node({ swap = None ; push = false ; children = [] ;
+                       default = Some(child) })
              | _          -> assert false
            end in
     loop terms missing 0 env_builder
@@ -499,12 +501,10 @@ let compile : Pm.t -> t = fun patterns ->
           loop (List.map fst fcol) in
         let cons = get_cons (fst (List.split fcol)) in
         let spepatts = List.map (fun s ->
-          (Some(fst @@ Basics.get_args s), specialize s spm)) cons in
-        let defpatts = (None, default spm) in
-        let children =
-          List.map (fun (c, p) -> (c, grow p))
-            (spepatts @ (if Pm.is_empty (snd defpatts)
-                         then [] else [defpatts])) in
-        Node({ swap = swap ; children = children
-             ; push = push }) in
+          (fst (Basics.get_args s), specialize s spm)) cons in
+        let default = let dm = default spm in
+          if Pm.is_empty dm then None else Some(grow dm) in
+        let children = List.map (fun (c, p) -> (c, grow p)) spepatts in
+        Node({ swap = swap ; push = push ; children = children
+             ; default = default }) in
   grow patterns

@@ -239,10 +239,13 @@ type term =
   ; push : bool
     (** Whether to push the current term into the stack containing
         variables. *)
-  ; children : (term option * tree) list
+  ; children : (term * tree) list
   (** Subtrees resulting from either specialisation on terms or default case.
       First element is {!cons:None} if child is result of a default case or
-      {!cons:Some}[(t)] if it results from specialisation on [t]. *) }
+      {!cons:Some}[(t)] if it results from specialisation on [t].
+      XXX udpate doc*)
+  ; default : tree option
+  (** XXX doc*)}
 
 (** {3 Metavariables and related functions} *)
 

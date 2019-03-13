@@ -206,14 +206,14 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(sl) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env, stk)
-      | Node({ swap = io ; children ; push }) ->
-        if stk = [] then None else (* If stack too short *)
+      | Node({ swap ; children ; push ; default }) ->
+        if stk = [] then (* None *) assert false else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
            stack, (ii) filling the stack containing terms to be substituted
            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
            correct branch. *)
         (* (i) *)
-        let stk = match io with
+        let stk = match swap with
           | None    -> stk
           | Some(i) -> List.bring i stk in
         let examined = List.hd stk in
@@ -233,8 +233,10 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         (* (ii) *)
         if push then Stack.push hd vars ;
         (* (iii) *)
-        let matched = List.assoc_opt (Some(hd)) children in
-        (* Where is the default case? *)
+        let matched_on_cons = List.assoc_opt hd children in
+        let matched = match matched_on_cons with
+          | Some(_) as s -> s
+          | None         -> default in
         Option.bind (fun tr -> walk tr tlstk) matched in
   walk itree istk
 
