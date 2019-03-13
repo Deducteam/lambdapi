@@ -188,18 +188,27 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  let vars : term Stack.t = Stack.create () in
-  (* [walk t s] where [s] is the stack of terms to match. *)
-  let rec walk : Dtree.t -> stack -> (term * stack) option = fun tree stk ->
+  (* Count maximum number of stored items to initialize variable array *)
+  let capacity = Dtree.iter (fun _ _ -> 0)
+    (fun _ store subr defr ->
+      let maxch = if subr = [] then 0
+        else List.extremum (>) (snd (List.split subr)) in
+      let maxchd = match defr with
+        | None     -> maxch
+        | Some(dr) -> max dr maxch in
+    if store then succ maxchd else maxchd) 0 itree in
+  let vars = Array.init capacity (fun _ -> Patt(None, "", [| |])) in
+
+  (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
+     indicating where to write in the [env] array . *)
+  let rec walk : Dtree.t -> stack -> int -> (term * stack) option =
+    fun tree stk cursor ->
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
          assert (IntMap.cardinal env_builder = Bindlib.mbinder_arity act) ;
-         let pre_env = snd @@ Stack.fold (fun (p, acc) te ->
-           let opslot = IntMap.find_opt p env_builder in
-           match opslot with
-           | None     -> succ p, acc
-           | Some(sl) -> succ p, IntMap.add sl te acc) (0, IntMap.empty) vars in
+        let pre_env = IntMap.fold (fun pos sl pe ->
+          IntMap.add sl vars.(pos) pe) env_builder IntMap.empty in
          (* Create the environment *)
          let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
          IntMap.iter (fun sl te ->
@@ -233,13 +242,14 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           | _               -> assert false in
         (* (ii) *)
         if store then vars.(cursor) <- hd ;
+        let ncurs = if store then succ cursor else cursor in
         (* (iii) *)
         let matched_on_cons = List.assoc_opt hd children in
         let matched = match matched_on_cons with
           | Some(_) as s -> s
           | None         -> default in
-        Option.bind (fun tr -> walk tr tlstk) matched in
-  walk itree istk
+        Option.bind (fun tr -> walk tr tlstk ncurs) matched in
+  walk itree istk 0
 
 (** {b Note} During the matching with trees, two term stacks are used.
     - One is of type {!type:stack} and contains the arguments of a symbol that
