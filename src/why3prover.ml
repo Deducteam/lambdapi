@@ -18,7 +18,8 @@ let main : Why3.Whyconf.main =
         let m = Why3.Whyconf.get_main config in
         Why3.Whyconf.load_plugins m; m
 
-(** [prover pos provername] search and return the prover called [prover_name] *)
+(** [prover pos provername] search and return the prover called [prover_name]
+    *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
     fun pos prover_name ->
     (* filters the set of why3 provers *)
@@ -37,8 +38,8 @@ let env : Why3.Env.env ref = ref (Why3.Env.create_env [])
 let init_env () =
     env := Why3.Env.create_env (Why3.Whyconf.loadpath main)
 
-(** [prover_driver pos cp] load the config prover [cp] in the current enironment
-    and return the driver of the prover. *)
+(** [prover_driver pos cp] load the config prover [cp] in the current
+    enironment and return the driver of the prover. *)
 let prover_driver :
     Pos.popt -> Why3.Whyconf.config_prover -> Why3.Driver.driver =
     fun pos cp ->
