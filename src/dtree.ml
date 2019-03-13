@@ -42,6 +42,8 @@ end
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
+(* XXX possibility to enhance iterator with functions with optional argument,
+   would allow to use [iter] for tree walk and [to_dot] *)
 let iter : (int IntMap.t -> action -> 'a) ->
   (int option -> bool -> (term option * 'a) list -> 'a) ->
   'a -> t -> 'a = fun do_leaf do_node fail t ->
@@ -255,6 +257,8 @@ struct
 
   (** [pos_needed_by l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
+  (* Number of vars expected can be obtained with Bindlib.mbinder_arity, which
+     would allow to stop the search as soon as possible *)
   let pos_needed_by : line -> int PosMap.t = fun  lhs ->
     let module Po = Position in
     let rec loop : term list -> Po.t -> int PosMap.t = fun st po ->
@@ -280,12 +284,39 @@ end
 
 module Pm = Pattmat
 
-(** [fetch_remaining l a m n] builds a tree to parse the [n] remaining pattern
-    variables in [l], complete mapping [m] and attach action [a] as leaf. *)
-let fetch_remaining : Pm.line -> action -> int IntMap.t -> int -> t =
-  fun lhs rhs env_builder missing ->
-    let _, _, _, _ = lhs, rhs, env_builder, missing in
-    Leaf(env_builder, rhs)
+(** [fetch l m e r] consumes [l] until [m] pattern variables have been found.
+    The environment builder[e] is also enriched.  The tree which allows this
+    consumption is return, with a leaf holding action [r]. *)
+let fetch : Pm.line -> int IntMap.t -> action -> t =
+  fun line env_builder rhs ->
+    let terms = fst (List.split line) in
+    let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
+    let initial_depth = if env_builder = IntMap.empty then 0 else
+        fst (IntMap.max_binding env_builder) in
+    let rec loop : term list -> int -> int -> int IntMap.t -> t =
+      fun telst missing added env_builder ->
+        if missing = 0 then Leaf(env_builder, rhs) else
+        match telst with
+        | []       -> raise Not_found
+        | te :: tl ->
+           begin
+             match te with
+             | Patt(Some(i), _, _) ->
+                let neb =  IntMap.add (initial_depth + added) i env_builder in
+                let child = loop tl (pred missing) (succ added) neb in
+                Node({ swap = None ; push = true ; children = [(None, child)] })
+             | Appl(_, _) as a ->
+                let newtl = snd (Basics.get_args a) @ tl in
+                let child = loop newtl missing added env_builder in
+                Node({ swap = None ; push = false ;
+                       children = [(None, child)] })
+             | Symb(_, _) ->
+                let child = loop tl missing added env_builder in
+                Node({ swap = None ; push = false ;
+                       children = [(None, child)] })
+             | _          -> assert false
+           end in
+    loop terms missing 0 env_builder
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
@@ -431,9 +462,7 @@ let compile : Pm.t -> t = fun patterns ->
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
-        let missing = (PosMap.cardinal pos2slot) -
-          (IntMap.cardinal env_builder) in
-        fetch_remaining lhs Pervasives.(!rhs) env_builder missing
+        fetch lhs env_builder Pervasives.(!rhs)
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
