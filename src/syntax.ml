@@ -145,7 +145,7 @@ type p_config =
   | P_config_prover  of string
   (** Set the prover to use inside a proof *)
   | P_config_prover_limit of int
-  (** Set the time limit of the prover *)
+  (** Set the time (in seconds) limit of the prover *)
 
 type require_mode =
   | P_require_default

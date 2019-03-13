@@ -112,7 +112,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
-    handle_refine (Rewrite.symmetry tac.pos ps)
+      handle_refine (Rewrite.symmetry tac.pos ps)
   | P_tac_why3(s)    ->
       (* get the goal to prove *)
       let (hypothesis, trm) = Proof.Goal.get_type g in

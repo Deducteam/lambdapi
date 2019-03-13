@@ -2,7 +2,6 @@
 
 open Timed
 
-
 (* list of provers' name *)
 let provers_name : (string * string) list ref =
     ref
