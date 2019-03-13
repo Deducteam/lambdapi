@@ -2,7 +2,7 @@
 
 (** [declare_symbols l] add the declaration of every symbol in [l] to [tsk] *)
 let declare_symbols : Why3.Term.lsymbol list -> Why3.Task.task = fun l ->
-    List.fold_left (fun a b -> Why3.Task.add_param_decl a b) None l
+    List.fold_left Why3.Task.add_param_decl None l
 
 (** [add_goal tsk f] add a goal with [f] formula in the task [tsk] *)
 let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
@@ -24,8 +24,7 @@ let add_hypothesis :
     [tsk]. *)
 let declare_axioms :
     (string * Why3.Term.term) list -> Why3.Task.task -> Why3.Task.task =
-    fun l tsk ->
-    List.fold_left (fun tsk' (x, term) -> add_hypothesis tsk' (x, term)) tsk l
+    fun l tsk -> List.fold_left add_hypothesis tsk l
 
 (** [create l_prop hypothesis goal] Add all the symbols of [l_prop] in a new
  task and declare [hypothesis] as axioms and [goal] as a Why3 goal. *)
