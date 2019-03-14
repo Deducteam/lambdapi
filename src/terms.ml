@@ -226,11 +226,8 @@ type term =
       switch, plus possibly a default case. *)
   | Fail
 
-(** Data contained in a node of the tree.  {!recfield:switch} contains the
-    term on which the switch that gave birth to this node has been performed.
-    {!recfield:swap} indicates whether the columns of the matrix have been
-    swapped before the switch and {!recfield:children} contains the
-    subtrees. *)
+(** Data contained in a node of a tree.  A node allows to filter the possible
+    rules by branching on a child node. *)
  and node_data =
   { swap : int option
   (** Indicates on which term of the input stack (counting from the head), the
@@ -240,12 +237,13 @@ type term =
   (** Whether to store the current term into the array containing
       variables. *)
   ; children : (term * tree) list
-  (** Subtrees resulting from either specialisation on terms or default case.
-      First element is {!cons:None} if child is result of a default case or
-      {!cons:Some}[(t)] if it results from specialisation on [t].
-      XXX udpate doc*)
+  (** Subtrees that represent the matching of a constructor available in the
+      rules.  For each element of the list [(e, t)], [e] is the constructor
+      matched (here a {!cons:Symb} or an {!cons:Abst}) and [t] is the tree
+      resulting from this match. *)
   ; default : tree option
-  (** XXX doc*)}
+  (** If a wildcard is among the patterns, this subtree is used when the term
+      matched isn't a constructor among the {!recfield:children} terms. *)}
 
 (** {3 Metavariables and related functions} *)
 

@@ -219,9 +219,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       | Node({ swap ; children ; store ; default }) ->
         if stk = [] then (* None *) assert false else (* If stack too short *)
         (* The main operations are: (i) picking the right term in the terms
-           stack, (ii) filling the stack containing terms to be substituted
-           in {!recfield:rhs} (or {!type:action}), (iii) branching on the
-           correct branch. *)
+           stack, (ii) filling the array containing terms to be substituted in
+           {!recfield:rhs} (or {!type:action}), (iii) branching on the correct
+           branch. *)
         (* (i) *)
         let stk = match swap with
           | None    -> stk
@@ -251,14 +251,15 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         Option.bind (fun tr -> walk tr tlstk ncurs) matched in
   walk itree istk 0
 
-(** {b Note} During the matching with trees, two term stacks are used.
-    - One is of type {!type:stack} and contains the arguments of a symbol that
+(** {b Note} During the matching with trees, two structures containing terms
+    are used.
+    - The first of type {!type:stack} contains the arguments of a symbol that
       are being matched against the rules of the symbol in order to rewrite
-      those arguments.
-    - The other is created during the matching, of type {!type:term Stack.t}
-      and contains the terms which, in the previous stack, have been matched
-      against a pattern variables in some rule.  The terms in this stack might
-      be substituted in the right hand side of the rule. *)
+      those arguments to a right hand side.
+    - The other of type {!type:term array} is filled during the matching and
+      contains the terms from the input stack that have been matched against a
+      pattern variable {!cons:Patt} in some lhs.  The terms in this stack
+      might be substituted in the right hand side of the rule. *)
 
 let whnf : term -> term = fun t ->
   let t = unfold t in
