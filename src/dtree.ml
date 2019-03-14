@@ -42,8 +42,6 @@ end
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
-(* XXX possibility to enhance iterator with functions with optional argument,
-   would allow to use [iter] for tree walk and [to_dot] *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
   do_node:(int option -> bool -> (term * 'a) list -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
@@ -350,13 +348,7 @@ let rec spec_filter : term -> term list -> bool = fun pat li ->
   | Appl(_, _)   , Symb(_, _)    -> false
   | Appl(_, _)   , Abst(_, _)    -> false
   | Abst(_, _)   , Appl(_, _)    -> false
-  | x            , y             ->
-    Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
-    Format.fprintf Format.str_formatter "|" ;
-    Print.pp Format.str_formatter y ;
-    let msg = Printf.sprintf "%s: suspicious specialization-filtering"
-        (Buffer.contents Format.stdbuf) in
-    failwith msg
+  | _                            -> assert false
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
 let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
@@ -372,24 +364,18 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
      let np = Subterm.prefix p Subterm.init in
      let _, t = Bindlib.unbind b in (t, np) :: litl
   | Vari(_), _    -> litl
-  | _ -> (* Cases that require the pattern *)
-    match lihd, pat with
-    | (Patt(_, _, [| |]), p), Appl(_, _) ->
-    (* ^ Wildcard *)
-      let arity = List.length @@ snd @@ Basics.get_args pat in
-      List.init arity (fun i ->
-        Patt(None, "w", [| |]), Subterm.prefix p [i]) @ litl
-    | (Patt(_, _, _), p)    , Abst(_, b) ->
-       let _, t = Bindlib.unbind b in
-       (t, Subterm.prefix p Subterm.init) :: litl
-    | (Patt(_, _, _), _)    , _          -> litl
-    | (x, _)                , y          ->
-      Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
-      Format.fprintf Format.str_formatter "|" ;
-      Print.pp Format.str_formatter y ;
-      let msg = Printf.sprintf "%s: suspicious specialization unfold"
-          (Buffer.contents Format.stdbuf) in
-      failwith msg
+  | _             -> (* Cases that require the pattern *)
+  match lihd, pat with
+  | (Patt(_, _, [| |]), p), Appl(_, _) ->
+      (* ^ Wildcard *)
+     let arity = List.length @@ snd @@ Basics.get_args pat in
+     List.init arity (fun i ->
+       Patt(None, "w", [| |]), Subterm.prefix p [i]) @ litl
+  | (Patt(_, _, _), p)    , Abst(_, b) ->
+     let _, t = Bindlib.unbind b in
+     (t, Subterm.prefix p Subterm.init) :: litl
+  | (Patt(_, _, _), _)    , _          -> litl
+  | _                                  -> assert false
 
 (** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
