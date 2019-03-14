@@ -236,8 +236,7 @@ struct
   let discard_patt_free : t -> int array = fun m ->
     let ncols = List.extremum (>)
       (List.map (fun { lhs ; _ } -> List.length lhs) m.values) in
-    let switchable = List.init ncols (fun k ->
-        can_switch_on m k) in
+    let switchable = List.init ncols (can_switch_on m) in
     let indexes = List.mapi (fun k cm ->
         if cm then Some(k) else None) switchable in
     let remaining = List.filter (function
