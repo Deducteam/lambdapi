@@ -105,7 +105,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       (match default with None -> () | Some(tr) -> write_tree tag None tr)
     | Fail          ->
       incr nodecount ;
-      F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "f"
+      F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "!"
   in
   begin
     match tree with
