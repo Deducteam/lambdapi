@@ -63,6 +63,10 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
         match s with
         | Type | Kind -> s
         | _           -> conv s Type; Type
+           (*FIXME? Here, we choose to add the constraint [s = Type] but
+             it could perhaps be the case that [b] and [s] are metavariables
+             and that, in fact, [s] should be set to [Kind] and [b] to some
+             kind, that is, a term of the form [∀y1:U1,..,∀yk:Uk,TYPE]. *)
       end
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
