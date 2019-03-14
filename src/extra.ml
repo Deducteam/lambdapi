@@ -120,11 +120,14 @@ module List =
       let replaced, bith = loop li bi in
       bith :: replaced
 
-    (** [extremum c l] finds the max of list [l] with compare function [c].
+    (** [extremum ?s c l] finds the max of list [l] with compare function [c]
+        with [?s] as default value if given, else the head of [l] is used.
         For a max function, [c] is [(>)].  *)
-    let extremum : ('a -> 'a -> bool) -> 'a list -> 'a = fun cmp li ->
-      List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
-        (List.hd li) li
+    let extremum : ?init:'a -> ('a -> 'a -> bool) -> 'a list -> 'a = fun ?init
+      cmp li ->
+        let start = Option.get init (List.hd li) in
+        List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
+          start li
   end
 
 module Array =
