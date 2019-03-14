@@ -133,8 +133,10 @@ struct
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
               (** Left hand side of a rule. *)
-              ; rhs : action ref
-              (** Right hand side of a rule. *) }
+              ; rhs : action
+              (** Right hand side of a rule. *)
+              ; variables : int SubtMap.t
+              (** Positions of variables subterms in [lhs]. *)}
 
   (** The core data, contains the rewrite rules. *)
   type matrix = rule list
@@ -159,12 +161,40 @@ struct
     (* List.pp does not process Format "@" directives when in sep *)
     F.fprintf oc "@.|]@,@?"
 
+  (** [pos_needed_by l] returns a mapping from position of variables into [l]
+      to the slot assigned to each variable in a {!type:term_env}. *)
+  (* Number of vars expected can be obtained with Bindlib.mbinder_arity, which
+     would allow to stop the search as soon as possible *)
+  let pos_needed_by : line -> int SubtMap.t = fun  lhs ->
+    let module St = Subterm in
+    let rec loop : term list -> St.t -> int SubtMap.t = fun st po ->
+      match st with
+      | [] -> SubtMap.empty
+      | x :: xs ->
+         begin
+           match x with
+           | Patt(None, _, _)
+           | Symb(_, _)          -> loop xs (St.succ po)
+           | Patt(Some(i), _, _) -> SubtMap.add po i (loop xs (St.succ po))
+           | Appl(_, _)          ->
+              let _, args = Basics.get_args x in
+              let xpos = loop args St.init in
+              let nxpos = SubtMap.fold (fun xpo slot nmap ->
+                SubtMap.add (St.prefix po xpo) slot nmap) SubtMap.empty xpos in
+              SubtMap.union (fun _ _ -> assert false) nxpos
+                (loop xs (St.succ po))
+           | _                   -> assert false
+         end in
+    loop (List.map fst lhs) St.init
+
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
-    { values = List.map (fun r ->
+    let r2r : Terms.rule -> rule = fun r ->
       let term_pos = Subterm.mark r.Terms.lhs in
-      { lhs = term_pos ; rhs = ref r.Terms.rhs }) rs
+      { lhs = term_pos ; rhs = r.Terms.rhs
+      ; variables = pos_needed_by term_pos } in
+    { values = List.map r2r rs
     ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -255,32 +285,6 @@ struct
       match List.hd lhs with
       | Patt(Some(_), _, _), p -> p :: varstack
       | _                      -> varstack
-
-  (** [pos_needed_by l] returns a mapping from position of variables into [l]
-      to the slot assigned to each variable in a {!type:term_env}. *)
-  (* Number of vars expected can be obtained with Bindlib.mbinder_arity, which
-     would allow to stop the search as soon as possible *)
-  let pos_needed_by : line -> int SubtMap.t = fun  lhs ->
-    let module St = Subterm in
-    let rec loop : term list -> St.t -> int SubtMap.t = fun st po ->
-      match st with
-      | [] -> SubtMap.empty
-      | x :: xs ->
-         begin
-           match x with
-           | Patt(None, _, _)
-           | Symb(_, _)          -> loop xs (St.succ po)
-           | Patt(Some(i), _, _) -> SubtMap.add po i (loop xs (St.succ po))
-           | Appl(_, _)          ->
-              let _, args = Basics.get_args x in
-              let xpos = loop args St.init in
-              let nxpos = SubtMap.fold (fun xpo slot nmap ->
-                SubtMap.add (St.prefix po xpo) slot nmap) SubtMap.empty xpos in
-              SubtMap.union (fun _ _ -> assert false) nxpos
-                (loop xs (St.succ po))
-           | _                   -> assert false
-         end in
-    loop (List.map fst lhs) St.init
 end
 
 module Pm = Pattmat
@@ -440,11 +444,8 @@ let get_cons : term list -> term list = fun telst ->
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Pm.t -> t = fun patterns ->
-  let rule2needed_pos = List.map (fun rule -> (* Retrieve vars positions *)
-    (rule.Pm.rhs, Pm.pos_needed_by rule.lhs)) patterns.Pm.values in
   let rec grow : Pm.t -> t = fun pm ->
     let { Pm.values = m ; Pm.var_catalogue = vcat } = pm in
-    (* Pm.pp Format.std_formatter pm ; *)
     if Pm.is_empty pm then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
@@ -455,7 +456,7 @@ let compile : Pm.t -> t = fun patterns ->
         (* A rule can be applied *)
         let rhs = (List.hd m).Pm.rhs in
         let lhs = (List.hd m).Pm.lhs in
-        let pos2slot = List.assq rhs rule2needed_pos in
+        let pos2slot = (List.hd m).Pm.variables in
         (* [env_builder] maps future position in the term store to the slot in
            the environment. *)
         let env_builder = snd (List.fold_left (fun (i, m) tpos ->
@@ -470,7 +471,7 @@ let compile : Pm.t -> t = fun patterns ->
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
         let depth = List.length vcat in
-        fetch lhs depth env_builder Pervasives.(!rhs)
+        fetch lhs depth env_builder rhs
       else
         (* Pick a column in the matrix and pattern match on the constructors
            in it to grow the tree. *)
