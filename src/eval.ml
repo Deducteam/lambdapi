@@ -217,7 +217,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           env.(sl) <- TE_Some(b)) pre_env ;
         Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default }) ->
-         if stk = [] then (* None *) assert false else (* If stack too short *)
+         if stk = [] then None else (* If stack too short *)
          (* The main operations are: (i) picking the right term in the terms
             stack, (ii) filling the array containing terms to be substituted
             in {!recfield:rhs} (or {!type:action}), (iii) branching on the
@@ -228,17 +228,15 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            | Some(i) -> List.bring i stk in
          let examined = List.hd stk in
          if not (fst Pervasives.(!examined))
-         then Pervasives.(examined := (true, whnf (snd !examined))) ;
-         (* ^ This operation ought to be removed since with trees, each
-            element of the stack is inspected only once. *)
+         then Pervasives.(examined := (true, unfold (snd !examined))) ;
+         (* ^ Ought to be lightened, as well as [stack] data structure *)
          let hd, tlstk = match snd Pervasives.(!examined) with
            | Appl(_, _) as a ->
               let t, la = Basics.get_args a in
               let unfolded = List.map (fun e -> Pervasives.ref (false, e)) la in
-              t, unfolded @ (List.tl stk)
+              unfold t, unfolded @ (List.tl stk)
            | Symb(_, _) as s ->
-              s, List.tl stk
-           | Abst(_, _)      -> assert false
+              unfold s, List.tl stk
            | _               -> assert false in
          (* (ii) *)
          if store then vars.(cursor) <- hd ;
