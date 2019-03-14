@@ -172,14 +172,15 @@ and eq_modulo : term -> term -> bool = fun a b ->
 (** [tree_walk t s] tries to match stack [s] against tree [t] *)
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   (* Count maximum number of stored items to initialize variable array *)
-  let capacity = Dtree.iter (fun _ _ -> 0)
-    (fun _ store subr defr ->
+  let capacity = Dtree.iter ~do_leaf:(fun _ _ -> 0)
+    ~do_node:(fun _ store subr defr ->
       let maxch = if subr = [] then 0
         else List.extremum (>) (snd (List.split subr)) in
       let maxchd = match defr with
         | None     -> maxch
         | Some(dr) -> max dr maxch in
-    if store then succ maxchd else maxchd) 0 itree in
+      if store then succ maxchd else maxchd)
+    ~fail:0 itree in
   let vars = Array.init capacity (fun _ -> Patt(None, "", [| |])) in
 
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor

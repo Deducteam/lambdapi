@@ -44,9 +44,9 @@ end
     {!const:Fail} on tree [t]. *)
 (* XXX possibility to enhance iterator with functions with optional argument,
    would allow to use [iter] for tree walk and [to_dot] *)
-let iter : (int IntMap.t -> action -> 'a) ->
-  (int option -> bool -> (term * 'a) list -> 'a option -> 'a) ->
-  'a -> t -> 'a = fun do_leaf do_node fail t ->
+let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
+  do_node:(int option -> bool -> (term * 'a) list -> 'a option -> 'a) ->
+  fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
