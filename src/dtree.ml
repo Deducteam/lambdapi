@@ -297,9 +297,9 @@ let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let rec loop : term list -> int -> int -> int IntMap.t -> t =
-      fun telst missing added env_builder ->
-        if missing = 0 then Leaf(env_builder, rhs) else
+    let rec loop : term list -> int -> int IntMap.t -> t = fun telst added
+      env_builder ->
+        if added = missing then Leaf(env_builder, rhs) else
         match telst with
         | []       -> raise Not_found
         | te :: tl ->
@@ -307,21 +307,21 @@ let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
              match te with
              | Patt(Some(i), _, _) ->
                 let neb =  IntMap.add (depth + added) i env_builder in
-                let child = loop tl (pred missing) (succ added) neb in
+                let child = loop tl (succ added) neb in
                 Node({ swap = None ; store = true ; children = [] ;
                        default = Some(child) })
              | Appl(_, _) as a     ->
                 let newtl = snd (Basics.get_args a) @ tl in
-                let child = loop newtl missing added env_builder in
+                let child = loop newtl added env_builder in
                 Node({ swap = None ; store = false ; children = [] ;
                        default = Some(child) })
              | Symb(_, _)          ->
-                let child = loop tl missing added env_builder in
+                let child = loop tl added env_builder in
                 Node({ swap = None ; store = false ; children = [] ;
                        default = Some(child) })
              | _                   -> assert false
            end in
-    loop terms missing 0 env_builder
+    loop terms 0 env_builder
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
