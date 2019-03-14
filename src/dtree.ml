@@ -147,7 +147,8 @@ struct
            (** The rules. *)
            ; var_catalogue : Subterm.t list
            (** Contains positions of terms in {!recfield:lhs} that can be used
-               as variables in {!recfield:rhs}. *)}
+               as variables in any of the {!recfield:rhs} which appeared in
+               the matrix that gave birth to this one. *)}
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
   let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc
@@ -289,40 +290,6 @@ end
 
 module Pm = Pattmat
 
-(** [fetch l d e r] consumes [l] until environment build [e] contains as many
-    elements as the number of variables in [r].  The environment builder[e] is
-    also enriched.  The tree which allows this consumption is returned, with a
-    leaf holding action [r] and the new environment. *)
-let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
-  fun line depth env_builder rhs ->
-    let terms = fst (List.split line) in
-    let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let rec loop : term list -> int -> int IntMap.t -> t = fun telst added
-      env_builder ->
-        if added = missing then Leaf(env_builder, rhs) else
-        match telst with
-        | []       -> raise Not_found
-        | te :: tl ->
-           begin
-             match te with
-             | Patt(Some(i), _, _) ->
-                let neb =  IntMap.add (depth + added) i env_builder in
-                let child = loop tl (succ added) neb in
-                Node({ swap = None ; store = true ; children = [] ;
-                       default = Some(child) })
-             | Appl(_, _) as a     ->
-                let newtl = snd (Basics.get_args a) @ tl in
-                let child = loop newtl added env_builder in
-                Node({ swap = None ; store = false ; children = [] ;
-                       default = Some(child) })
-             | Symb(_, _)          ->
-                let child = loop tl added env_builder in
-                Node({ swap = None ; store = false ; children = [] ;
-                       default = Some(child) })
-             | _                   -> assert false
-           end in
-    loop terms 0 env_builder
-
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> term list -> bool = fun pat li ->
@@ -441,60 +408,126 @@ let get_cons : term list -> term list = fun telst ->
        loop (if mem s seen then seen else hd :: seen) tl in
   loop [] (List.filter is_cons telst)
 
+(** {b Note} The compiling step creates a tree ready to be used for pattern
+    matching.  A tree guides the pattern matching by
+    + accepting constructors and filtering possible rules,
+    + getting the most efficient term to match in the stack,
+    + storing terms from the stack that might be used in the right hand side,
+      because they match a pattern variable {!cons:Patt} in the
+      {!recfield:lhs}.
+
+    The first bullet is ensured using {!val:specialize} and {!val:default}
+    which allow to create new branches.
+
+    Efficiency is managed thanks to heuristics, which are not yet
+    implemented.
+
+    The last is managed by the {!val:env_builder} as follows.  The matching
+    process uses, along with the tree, an array to store terms that may be
+    used in the {!recfield:rhs}.  Terms are stores while parsing if the
+    {!const:Node} as its {!recfield:store} as {!val:true}.  To know when to
+    store variables, each rule is first parsed with {!val:Pm.pos_needed_by}
+    to get the positions of {!const:Patt} in each {!recfield:lhs}.  Once these
+    positions are known, the {!recfield:Pm.var_catalogue} can be built.  A
+    {!recfield:Pm.var_catalogue} contains the accumulation of the positions
+    encountered so far during successive specializations.  Once a rule can be
+    triggered, {!recfield:Pm.var_catalogue} contains, in the order they appear
+    during matching, all the variables to be used for the rule {b that has
+    been inspected}.  There may remain terms that haven't been inspected
+    (because they are not needed to decide which rule to apply), but that are
+    nevertheless needed in the {!recfield:rhs}.  The
+    {!recfield:Pm.var_catalogue} contains useless variables as well: these may
+    have been needed by other rules, when several rules were still candidates.
+    The {!val:env_builder} is then initialized with variables from the
+    catalogue which are essential.  The remaining variables, which will remain
+    in the input stack, are fetched with {!val:fetch}. *)
+
+(** [fetch l d e r] consumes [l] until environment build [e] contains as many
+    elements as the number of variables in [r].  The environment builder[e] is
+    also enriched.  The tree which allows this consumption is returned, with a
+    leaf holding action [r] and the new environment. *)
+let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
+  fun line depth env_builder rhs ->
+    let terms = fst (List.split line) in
+    let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
+    let rec loop : term list -> int -> int IntMap.t -> t = fun telst added
+      env_builder ->
+        if added = missing then Leaf(env_builder, rhs) else
+        match telst with
+        | []       -> raise Not_found
+        | te :: tl ->
+           begin
+             match te with
+             | Patt(Some(i), _, _) ->
+                let neb =  IntMap.add (depth + added) i env_builder in
+                let child = loop tl (succ added) neb in
+                Node({ swap = None ; store = true ; children = [] ;
+                       default = Some(child) })
+             | Appl(_, _) as a     ->
+                let newtl = snd (Basics.get_args a) @ tl in
+                let child = loop newtl added env_builder in
+                Node({ swap = None ; store = false ; children = [] ;
+                       default = Some(child) })
+             | Symb(_, _)          ->
+                let child = loop tl added env_builder in
+                Node({ swap = None ; store = false ; children = [] ;
+                       default = Some(child) })
+             | _                   -> assert false
+           end in
+    loop terms 0 env_builder
+
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let compile : Pm.t -> t = fun patterns ->
-  let rec grow : Pm.t -> t = fun pm ->
-    let { Pm.values = m ; Pm.var_catalogue = vcat } = pm in
-    if Pm.is_empty pm then
-      begin
-        failwith "matching failure" ; (* For debugging purposes *)
-        (* Dtree.Fail *)
-      end
+let rec compile : Pm.t -> t = fun patterns ->
+  let { Pm.values = m ; Pm.var_catalogue = vcat } = patterns in
+  if Pm.is_empty patterns then
+    begin
+      failwith "matching failure" ; (* For debugging purposes *)
+      (* Dtree.Fail *)
+    end
+  else
+    if Pm.exhausted (List.hd m) then
+      (* A rule can be applied *)
+      let rhs = (List.hd m).Pm.rhs in
+      let lhs = (List.hd m).Pm.lhs in
+      let pos2slot = (List.hd m).Pm.variables in
+      (* [env_builder] maps future position in the term store to the slot in
+         the environment. *)
+      let env_builder = snd (List.fold_left (fun (i, m) tpos ->
+        let opslot = SubtMap.find_opt tpos pos2slot in
+        match opslot with
+        | None     -> succ i, m
+        (* ^ The stack may contain more variables than needed for the
+           rule *)
+        | Some(sl) -> succ i, IntMap.add i sl m)
+                               (0, IntMap.empty) (List.rev vcat)) in
+      (* ^ For now, [env_builder] contains only the variables encountered
+         while choosing the rule.  Other pattern variables needed in the rhs,
+         which are still in the [lhs] will now be fetched. *)
+      let depth = List.length vcat in
+      fetch lhs depth env_builder rhs
     else
-      if Pm.exhausted (List.hd m) then
-        (* A rule can be applied *)
-        let rhs = (List.hd m).Pm.rhs in
-        let lhs = (List.hd m).Pm.lhs in
-        let pos2slot = (List.hd m).Pm.variables in
-        (* [env_builder] maps future position in the term store to the slot in
-           the environment. *)
-        let env_builder = snd (List.fold_left (fun (i, m) tpos ->
-          let opslot = SubtMap.find_opt tpos pos2slot in
-          match opslot with
-          | None     -> succ i, m
-          (* ^ The stack may contain more variables than needed for the
-             rule *)
-          | Some(sl) -> succ i, IntMap.add i sl m)
-                                 (0, IntMap.empty) (List.rev vcat)) in
-        (* ^ For now, [env_builder] contains only the variables encountered
-           while choosing the rule.  Other pattern variables needed in the
-           rhs, which are still in the [lhs] will now be fetched. *)
-        let depth = List.length vcat in
-        fetch lhs depth env_builder rhs
-      else
-        (* Pick a column in the matrix and pattern match on the constructors
-           in it to grow the tree. *)
-        let kept_cols = Pm.discard_patt_free pm in
-        let sel_in_partial = Pm.pick_best (Pm.select pm kept_cols) in
-        let swap = if kept_cols.(sel_in_partial) = 0 then None
-          else Some kept_cols.(sel_in_partial) in
-        let spm = match swap with
-          | None    -> pm
-          | Some(i) -> Pm.swap pm i in
-        let fcol = Pm.get_col 0 spm in
-        let store = (* Store if there is a pattern variable in fcol *)
-          let rec loop : term list -> bool = function
-            | []                       -> false
-            | Patt(Some(_), _, _) :: _ -> true
-            | _ :: xs                  -> loop xs in
-          loop (List.map fst fcol) in
-        let cons = get_cons (fst (List.split fcol)) in
-        let spepatts = List.map (fun s ->
-          (fst (Basics.get_args s), specialize s spm)) cons in
-        let default = let dm = default spm in
-          if Pm.is_empty dm then None else Some(grow dm) in
-        let children = List.map (fun (c, p) -> (c, grow p)) spepatts in
-        Node({ swap = swap ; store = store ; children = children
-             ; default = default }) in
-  grow patterns
+      (* Pick a column in the matrix and pattern match on the constructors in
+         it to grow the tree. *)
+      let kept_cols = Pm.discard_patt_free patterns in
+      let sel_in_partial = Pm.pick_best (Pm.select patterns kept_cols) in
+      let swap = if kept_cols.(sel_in_partial) = 0 then None
+        else Some kept_cols.(sel_in_partial) in
+      let spm = match swap with
+        | None    -> patterns
+        | Some(i) -> Pm.swap patterns i in
+      let fcol = Pm.get_col 0 spm in
+      let store = (* Store if there is a pattern variable in fcol *)
+        let rec loop : term list -> bool = function
+          | []                       -> false
+          | Patt(Some(_), _, _) :: _ -> true
+          | _ :: xs                  -> loop xs in
+        loop (List.map fst fcol) in
+      let cons = get_cons (fst (List.split fcol)) in
+      let spepatts = List.map (fun s ->
+        (fst (Basics.get_args s), specialize s spm)) cons in
+      let default = let dm = default spm in
+                    if Pm.is_empty dm then None else Some(compile dm) in
+      let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
+      Node({ swap = swap ; store = store ; children = children
+           ; default = default })
