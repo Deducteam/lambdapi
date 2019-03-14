@@ -210,45 +210,45 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         let pre_env = IntMap.fold (fun pos sl pe ->
           IntMap.add sl vars.(pos) pe) env_builder IntMap.empty in
          (* Create the environment *)
-         let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
-         IntMap.iter (fun sl te ->
-           let inject _ = te in
-           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
-           env.(sl) <- TE_Some(b)) pre_env ;
-         Some(Bindlib.msubst act env, stk)
+        let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
+        IntMap.iter (fun sl te ->
+          let inject _ = te in
+          let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
+          env.(sl) <- TE_Some(b)) pre_env ;
+        Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default }) ->
-        if stk = [] then (* None *) assert false else (* If stack too short *)
-        (* The main operations are: (i) picking the right term in the terms
-           stack, (ii) filling the array containing terms to be substituted in
-           {!recfield:rhs} (or {!type:action}), (iii) branching on the correct
-           branch. *)
-        (* (i) *)
-        let stk = match swap with
-          | None    -> stk
-          | Some(i) -> List.bring i stk in
-        let examined = List.hd stk in
-        if not (fst Pervasives.(!examined))
-        then Pervasives.(examined := (true, whnf (snd !examined))) ;
-        (* ^ This operation ought to be removed since with trees, each element
-           of the stack is inspected only once. *)
-        let hd, tlstk = match snd Pervasives.(!examined) with
-          | Appl(_, _) as a ->
-             let t, la = Basics.get_args a in
-             let unfolded = List.map (fun e -> Pervasives.ref (false, e)) la in
-             t, unfolded @ (List.tl stk)
-          | Symb(_, _) as s ->
-             s, List.tl stk
-          | Abst(_, _)      -> assert false
-          | _               -> assert false in
-        (* (ii) *)
-        if store then vars.(cursor) <- hd ;
-        let ncurs = if store then succ cursor else cursor in
+         if stk = [] then (* None *) assert false else (* If stack too short *)
+         (* The main operations are: (i) picking the right term in the terms
+            stack, (ii) filling the array containing terms to be substituted
+            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
+            correct branch. *)
+         (* (i) *)
+         let stk = match swap with
+           | None    -> stk
+           | Some(i) -> List.bring i stk in
+         let examined = List.hd stk in
+         if not (fst Pervasives.(!examined))
+         then Pervasives.(examined := (true, whnf (snd !examined))) ;
+         (* ^ This operation ought to be removed since with trees, each
+            element of the stack is inspected only once. *)
+         let hd, tlstk = match snd Pervasives.(!examined) with
+           | Appl(_, _) as a ->
+              let t, la = Basics.get_args a in
+              let unfolded = List.map (fun e -> Pervasives.ref (false, e)) la in
+              t, unfolded @ (List.tl stk)
+           | Symb(_, _) as s ->
+              s, List.tl stk
+           | Abst(_, _)      -> assert false
+           | _               -> assert false in
+         (* (ii) *)
+         if store then vars.(cursor) <- hd ;
+         let ncurs = if store then succ cursor else cursor in
         (* (iii) *)
-        let matched_on_cons = List.assoc_opt hd children in
-        let matched = match matched_on_cons with
-          | Some(_) as s -> s
-          | None         -> default in
-        Option.bind (fun tr -> walk tr tlstk ncurs) matched in
+         let matched_on_cons = List.assoc_opt hd children in
+         let matched = match matched_on_cons with
+           | Some(_) as s -> s
+           | None         -> default in
+         Option.bind (fun tr -> walk tr tlstk ncurs) matched in
   walk itree istk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
