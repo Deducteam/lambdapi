@@ -5,10 +5,8 @@ Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
 mostly compatible with the proof checker Dedukti. More details are given
 in the [documentation](doc/DOCUMENTATION.md).
 
-Installation via Opam
+Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
-
-See http://opam.ocaml.org/.
 
 ```bash
 opam install lambdapi
@@ -23,14 +21,14 @@ with "bash on Windows".
 
 List of dependencies:
  - GNU make
- - OCaml (>= 4.04.1)
- - Dune (>= 1.2.0)
+ - ocaml >= 4.04.1
+ - dune >= 1.2.0
  - odoc (for documentation only)
- - bindlib 5.0.0 (https://github.com/rlepigre/ocaml-bindlib)
- - earley 2.0.0 (https://github.com/rlepigre/ocaml-earley)
- - timed 1.0 (https://github.com/rlepigre/ocaml-timed)
+ - [bindlib](https://github.com/rlepigre/ocaml-bindlib) >= 5.0.0
+ - [earley](https://github.com/rlepigre/ocaml-earley) >= 2.0.0
+ - [timed](https://github.com/rlepigre/ocaml-timed) >= 1.0
  - menhir
- - yojson (>= 1.6.0)
+ - yojson >= 1.6.0
  - cmdliner
  - ppx\_inline\_test
 
