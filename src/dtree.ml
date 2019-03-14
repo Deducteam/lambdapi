@@ -74,6 +74,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_opterm : term option pp = fun oc teo -> match teo with
     | Some(t) -> P.pp oc t
     | None    -> F.fprintf oc "*" in
+  (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
+     switch on [u] ({!cons:None} if default). *)
   let rec write_tree : int -> term option -> t -> unit =
     fun father_l swon tree ->
     match tree with
@@ -470,7 +472,7 @@ let compile : Pm.t -> t = fun patterns ->
         let rhs = (List.hd m).Pm.rhs in
         let lhs = (List.hd m).Pm.lhs in
         let pos2slot = List.assq rhs rule2needed_pos in
-        (* [env_builder] maps future position in the term stack to the slot in
+        (* [env_builder] maps future position in the term store to the slot in
            the environment. *)
         let env_builder = snd (List.fold_left (fun (i, m) tpos ->
           let opslot = PosMap.find_opt tpos pos2slot in
@@ -478,7 +480,8 @@ let compile : Pm.t -> t = fun patterns ->
           | None     -> succ i, m
           (* ^ The stack may contain more variables than needed for the
              rule *)
-          | Some(sl) -> succ i, IntMap.add i sl m) (0, IntMap.empty) vcat) in
+          | Some(sl) -> succ i, IntMap.add i sl m)
+                                 (0, IntMap.empty) (List.rev vcat)) in
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
