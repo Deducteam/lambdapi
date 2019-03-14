@@ -234,9 +234,8 @@ struct
   (** [discard_patt_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard pattern-free columns). *)
   let discard_patt_free : t -> int array = fun m ->
-    let ncols = List.fold_left (fun acc { lhs ; _ } ->
-        let le = List.length lhs in
-      if le > acc then le else acc) 0 m.values in
+    let ncols = List.extremum (>)
+      (List.map (fun { lhs ; _ } -> List.length lhs) m.values) in
     let switchable = List.init ncols (fun k ->
         can_switch_on m k) in
     let indexes = List.mapi (fun k cm ->
