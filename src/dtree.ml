@@ -245,7 +245,7 @@ struct
     let unpacked = List.map (function
         | Some(k) -> k
         | None    -> assert false) remaining in
-    assert ((List.length unpacked) > 0) ;
+    assert (List.length unpacked > 0) ;
     Array.of_list unpacked
 
   (** [update_catalogue c r] adds the position of the head of [r] to catalogue
