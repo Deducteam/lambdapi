@@ -157,8 +157,8 @@ module IntMap = Map.Make(Int)
 (* Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
-(** Position of a subterm of a term. *)
-module Position =
+(** Position of a subterm in a term. *)
+module Subterm =
 struct
   (** Each element of the list is a level in the tree of the term.  For
       instance, the subterm [x] in the term [Appl(S, Appl(T, x))] has
@@ -186,7 +186,7 @@ struct
   let prefix : t -> t -> t = fun p q -> q @ p
 end
 
-module PosMap = Map.Make(Position)
+module SubtMap = Map.Make(Subterm)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)

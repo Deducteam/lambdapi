@@ -29,11 +29,11 @@ type action = (term_env, term) Bindlib.mbinder
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
 (* Redefinition for function [mark] as it uses a not generalizable type, it
-   couldn't be put into extra (and we need Position in {!module:Terms} as
+   couldn't be put into extra (and we need Subterm in {!module:Terms} as
    well). *)
-module Position =
+module Subterm =
 struct
-  include Position
+  include Subterm
 
   (** [mark l] enriches elements of [l] attaching a position to them. *)
   let mark : 'a list -> ('a * t) list = List.mapi (fun i e -> (e, [i]))
@@ -130,7 +130,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
-  type line = (term * Position.t) list
+  type line = (term * Subterm.t) list
 
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
@@ -145,7 +145,7 @@ struct
       action. *)
   type t = { values : matrix
            (** The rules. *)
-           ; var_catalogue : Position.t list
+           ; var_catalogue : Subterm.t list
            (** Contains positions of terms in {!recfield:lhs} that can be used
                as variables in {!recfield:rhs}. *)}
 
@@ -165,7 +165,7 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     { values = List.map (fun r ->
-      let term_pos = Position.mark r.Terms.lhs in
+      let term_pos = Subterm.mark r.Terms.lhs in
       { lhs = term_pos ; rhs = ref r.Terms.rhs }) rs
     ; var_catalogue = [] }
 
@@ -253,7 +253,7 @@ struct
   (** [update_catalogue c r] adds the position of the head of [r] to catalogue
       [c] if it is a pattern variable. *)
   (* XXX uniqueness of positions in catalogue?*)
-  let update_catalogue : Position.t list -> rule -> Position.t list =
+  let update_catalogue : Subterm.t list -> rule -> Subterm.t list =
     fun varstack rule ->
       let { lhs ; _ } = rule in
       match List.hd lhs with
@@ -264,27 +264,27 @@ struct
       to the slot assigned to each variable in a {!type:term_env}. *)
   (* Number of vars expected can be obtained with Bindlib.mbinder_arity, which
      would allow to stop the search as soon as possible *)
-  let pos_needed_by : line -> int PosMap.t = fun  lhs ->
-    let module Po = Position in
-    let rec loop : term list -> Po.t -> int PosMap.t = fun st po ->
+  let pos_needed_by : line -> int SubtMap.t = fun  lhs ->
+    let module St = Subterm in
+    let rec loop : term list -> St.t -> int SubtMap.t = fun st po ->
       match st with
-      | [] -> PosMap.empty
+      | [] -> SubtMap.empty
       | x :: xs ->
          begin
            match x with
            | Patt(None, _, _)
-           | Symb(_, _)          -> loop xs (Po.succ po)
-           | Patt(Some(i), _, _) -> PosMap.add po i (loop xs (Po.succ po))
+           | Symb(_, _)          -> loop xs (St.succ po)
+           | Patt(Some(i), _, _) -> SubtMap.add po i (loop xs (St.succ po))
            | Appl(_, _)          ->
               let _, args = Basics.get_args x in
-              let xpos = loop args Po.init in
-              let nxpos = PosMap.fold (fun xpo slot nmap ->
-                PosMap.add (Po.prefix po xpo) slot nmap) PosMap.empty xpos in
-              PosMap.union (fun _ _ -> assert false) nxpos
-                (loop xs (Po.succ po))
+              let xpos = loop args St.init in
+              let nxpos = SubtMap.fold (fun xpo slot nmap ->
+                SubtMap.add (St.prefix po xpo) slot nmap) SubtMap.empty xpos in
+              SubtMap.union (fun _ _ -> assert false) nxpos
+                (loop xs (St.succ po))
            | _                   -> assert false
          end in
-    loop (List.map fst lhs) Po.init
+    loop (List.map fst lhs) St.init
 end
 
 module Pm = Pattmat
@@ -368,10 +368,10 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
-    let np = Position.prefix p Position.init in
-    spec_line upat ((u, np) :: (v, Position.succ np) :: litl)
+    let np = Subterm.prefix p Subterm.init in
+    spec_line upat ((u, np) :: (v, Subterm.succ np) :: litl)
   | Abst(_, b), p ->
-     let np = Position.prefix p Position.init in
+     let np = Subterm.prefix p Subterm.init in
      let _, t = Bindlib.unbind b in (t, np) :: litl
   | Vari(_), _    -> litl
   | _ -> (* Cases that require the pattern *)
@@ -380,10 +380,10 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
     (* ^ Wildcard *)
       let arity = List.length @@ snd @@ Basics.get_args pat in
       List.init arity (fun i ->
-        Patt(None, "w", [| |]), Position.prefix p [i]) @ litl
+        Patt(None, "w", [| |]), Subterm.prefix p [i]) @ litl
     | (Patt(_, _, _), p)    , Abst(_, b) ->
        let _, t = Bindlib.unbind b in
-       (t, Position.prefix p Position.init) :: litl
+       (t, Subterm.prefix p Subterm.init) :: litl
     | (Patt(_, _, _), _)    , _          -> litl
     | (x, _)                , y          ->
       Buffer.clear Format.stdbuf ; Print.pp Format.str_formatter x ;
@@ -475,7 +475,7 @@ let compile : Pm.t -> t = fun patterns ->
         (* [env_builder] maps future position in the term store to the slot in
            the environment. *)
         let env_builder = snd (List.fold_left (fun (i, m) tpos ->
-          let opslot = PosMap.find_opt tpos pos2slot in
+          let opslot = SubtMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ i, m
           (* ^ The stack may contain more variables than needed for the
