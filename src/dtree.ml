@@ -158,28 +158,31 @@ struct
     let module St = Basics.Subterm in
     let module StMap = Basics.SubtMap in
     let nvars = Bindlib.mbinder_arity rhs in
-    let rec loop : int -> term list -> St.t -> int StMap.t = fun found st
-      po -> if found = nvars then StMap.empty else
-        match st with
-        | [] -> StMap.empty
-        | x :: xs ->
-           begin
-             match x with
-             | Patt(None, _, _)
-             | Symb(_, _)          -> loop found xs (St.succ po)
-             | Patt(Some(i), _, _) -> StMap.add po i
-                (loop (succ found) xs (St.succ po))
-             | Appl(_, _) as x     ->
-                let _, args = Basics.get_args x in
-                let xpos = loop found args St.init in
-                let nxpos = StMap.fold (fun xpo slot nmap ->
-                  (* Prefix each key in [xpos] by the current position *)
-                  StMap.add (St.prefix po xpo) slot nmap)
-                  StMap.empty xpos in
-                StMap.union (fun _ _ -> assert false) nxpos
-                  (loop found xs (St.succ po))
-             | _                   -> assert false
-           end in
+    let rec loop found st po =
+      if found = nvars then StMap.empty else
+      match st with
+      | [] -> StMap.empty
+      | x :: xs ->
+         begin
+           match x with
+           | Patt(None, _, _)
+           | Symb(_, _)          -> loop found xs (St.succ po)
+           | Patt(Some(i), _, _) -> StMap.add po i
+              (loop (succ found) xs (St.succ po))
+           | Appl(_, _) as x     -> let _, args = Basics.get_args x in
+                                   deepen found args xs po
+           | Abst(_, b)          -> let _, body = Bindlib.unbind b in
+                                   deepen found [body] xs po
+           | _                   -> assert false
+         end
+    and deepen found args remain po =
+      let xpos = loop found args St.init in
+      let nxpos = StMap.fold (fun xpo slot nmap ->
+        StMap.add (St.prefix po xpo) slot nmap)
+        StMap.empty xpos in
+      StMap.union (fun _ _ -> assert false) nxpos
+        (loop found remain (St.succ po))
+    in
     loop 0 (List.map fst lhs) St.init
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
