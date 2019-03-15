@@ -136,7 +136,8 @@ struct
               ; rhs : action
               (** Right hand side of a rule. *)
               ; variables : int SubtMap.t
-              (** Positions of variables subterms in [lhs]. *)}
+              (** Mapping from positions of variable subterms in [lhs] to a
+                  slot in a term env. *)}
 
   (** The core data, contains the rewrite rules. *)
   type matrix = rule list
@@ -195,8 +196,7 @@ struct
       let term_pos = Subterm.mark r.Terms.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = pos_needed_by term_pos } in
-    { values = List.map r2r rs
-    ; var_catalogue = [] }
+    { values = List.map r2r rs ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.values = []
@@ -205,8 +205,7 @@ struct
       processing because all rows do not have the same length. *)
   let get_col : int -> t -> line = fun ind { values ; _ } ->
     let opcol = List.fold_left (fun acc { lhs = li ; _ } ->
-        List.nth_opt li ind :: acc) []
-        values in
+        List.nth_opt li ind :: acc) [] values in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
     List.map (function Some(e) -> e | None -> assert false) rem
 
@@ -218,15 +217,19 @@ struct
           lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
             [] indexes }) m.values }
 
-  (** [swap p i] swaps the first column with the [i]th one. *)
+  (** [swap p i] brings the [i]th column as 1st column. *)
   let swap : t -> int -> t = fun pm c ->
     { pm with values = List.map (fun rul ->
       { rul with lhs = List.bring c rul.lhs }) pm.values }
 
-  (** [cmp c d] compares columns [c] and [d] returning: +1 if [c > d], 0 if
-      [c = d] or -1 if [c < d]; where [<], [=] and [>] are defined according
-      to a heuristic.  *)
-  let cmp : line -> line -> int = fun _ _ -> 0
+  (** [compare c d] compares columns [c] and [d] returning: a positive integer
+      if [c > d], 0 if [c = d] or a negative integer if [c < d]; where [<],
+      [=] and [>] are defined according to a heuristic.  *)
+  let compare : line -> line -> int = fun _ _ -> 0
+
+  (** [k @> l] is true if [k] is greater or equal than [l] in the sense of
+      {!val:compare}. *)
+  let (@>) : line -> line -> bool = fun l1 l2 -> compare l1 l2 >= 0
 
   (** [pick_best m] returns the index of the best column of matrix [m]
       according to a heuristic. *)
@@ -277,6 +280,30 @@ struct
     assert (List.length unpacked > 0) ;
     Array.of_list unpacked
 
+  (** [is_cons t] returns whether [t] can be considered as a constructor. *)
+  let rec is_cons : term -> bool = function
+    | Symb(_, _) | Abst(_, _) -> true
+    | Appl(u, _)              -> is_cons u
+    | _                       -> false
+
+  (** [get_cons l] extracts a list of unique constructors from [l]. *)
+  let get_cons : term list -> term list = fun telst ->
+  (* membership of terms *)
+    let rec mem : term -> term list -> bool = fun te xs ->
+      match xs with
+      | []       -> false
+      | hd :: tl ->
+         let s = fst (Basics.get_args hd) in
+         if Basics.eq s te then true else mem te tl in
+    let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
+      match notseen with
+      | [] -> List.rev seen
+      | hd :: tl ->
+         let s = fst (Basics.get_args hd) in
+         loop (if mem s seen then seen else hd :: seen) tl in
+    loop [] (List.filter is_cons telst)
+
+
   (** [update_catalogue c r] adds the position of the head of [r] to catalogue
       [c] if it is a pattern variable. *)
   (* XXX uniqueness of positions in catalogue?*)
@@ -308,18 +335,18 @@ let rec spec_filter : term -> term list -> bool = fun pat li ->
     spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
   (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
        left arg of Appl is performed in [matching], so we perform it here. *)
-  | Abst(_, b1)         , Abst(_, b2)     ->
+  | Abst(_, b1) , Abst(_, b2)             ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
     spec_filter u (v :: litl)
   | Vari(x)     , Vari(y)                 -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
-  | Symb(_, _)   , Appl(_, _)    -> false
-  | Patt(_, _, _), Symb(_, _)    -> false
-  | Patt(_, _, _), Appl(_, _)    -> false
-  | Appl(_, _)   , Symb(_, _)    -> false
-  | Appl(_, _)   , Abst(_, _)    -> false
-  | Abst(_, _)   , Appl(_, _)    -> false
-  | _                            -> assert false
+  | Symb(_, _)   , Appl(_, _)
+  | Patt(_, _, _), Symb(_, _)
+  | Patt(_, _, _), Appl(_, _)
+  | Appl(_, _)   , Symb(_, _)
+  | Appl(_, _)   , Abst(_, _)
+  | Abst(_, _)   , Appl(_, _) -> false
+  | _                         -> assert false
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
 let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
@@ -371,12 +398,12 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
 let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       match fst @@ List.hd l with
-      | Patt(_ , _, _)                       -> true
-      | Symb(_, _) | Abst(_, _) | Appl(_, _) -> false
-      | Vari(_)                              -> false
-      | x                                    ->
-        Print.pp Format.err_formatter x ;
-        assert false) m in
+      | Patt(_ , _, _) -> true
+      | Symb(_, _)
+      | Abst(_, _)
+      | Vari(_)
+      | Appl(_, _)     -> false
+      | _              -> assert false) m in
   let unfolded = List.map (fun rul ->
       match List.hd rul.Pm.lhs with
       | Patt(_, _, _), _ ->
@@ -384,29 +411,6 @@ let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
       | _             -> assert false) filtered in
   let newst = List.fold_left Pm.update_catalogue vs m in
   { values = unfolded ; var_catalogue = newst }
-
-(** [is_cons t] returns whether [t] can be considered as a constructor. *)
-let rec is_cons : term -> bool = function
-  | Symb(_, _) | Abst(_, _) -> true
-  | Appl(u, _)              -> is_cons u
-  | _                       -> false
-
-(** [get_cons l] extracts a list of unique constructors from [l]. *)
-let get_cons : term list -> term list = fun telst ->
-  (* membership of terms *)
-  let rec mem : term -> term list -> bool = fun te xs ->
-    match xs with
-    | []       -> false
-    | hd :: tl ->
-       let s = fst (Basics.get_args hd) in
-       if Basics.eq s te then true else mem te tl in
-  let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
-    match notseen with
-    | [] -> List.rev seen
-    | hd :: tl ->
-       let s = fst (Basics.get_args hd) in
-       loop (if mem s seen then seen else hd :: seen) tl in
-  loop [] (List.filter is_cons telst)
 
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
@@ -523,7 +527,7 @@ let rec compile : Pm.t -> t = fun patterns ->
           | Patt(Some(_), _, _) :: _ -> true
           | _ :: xs                  -> loop xs in
         loop (List.map fst fcol) in
-      let cons = get_cons (fst (List.split fcol)) in
+      let cons = Pm.get_cons (fst (List.split fcol)) in
       let spepatts = List.map (fun s ->
         (fst (Basics.get_args s), specialize s spm)) cons in
       let default = let dm = default spm in
