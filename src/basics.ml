@@ -194,7 +194,7 @@ let term_of_rhs : rule -> term = fun r ->
 
 (** {3 Subterm position helper module} *)
 
-(** Position of a subterm in a term. *)
+(** Some tools to encode the position of a subterm in a term. *)
 module Subterm =
 struct
   (** Each element of the list is a level in the tree of the term.  For
@@ -213,8 +213,9 @@ struct
   (** Initial position. *)
   let init = []
 
-  (** [succ p] returns the successor of position [p].  For instance, if
-      [p = [1 ; 1]], [succ p = [2 ; 1]]. *)
+  (** [succ p] returns the successor of position [p].  For instance, if [p =
+      [1 ; 1]], [succ p = [2 ; 1]].  The succ of the initial position is the
+      first subterm of this position. *)
   let succ = function
     | []      -> 0 :: init
     | x :: xs -> succ x :: xs
@@ -229,15 +230,6 @@ struct
   (** [tag l] attaches the positions to a list of terms as if they were the
       subterms of a same term. *)
   let tag : term list -> (term * t) list = List.mapi (fun i e -> (e, i :: init))
-
-  (** [tag_sub t] flattens term [t] and tags the elements.  For instance,
-      [tag_sub Appl(Appl(f, x), y)] yields
-      [[(f, []) ; (x, [1]) ; (y, [2])]]. *)
-  let tag_sub : term -> (term * t) list = function
-    | Appl(_, _) as a -> let s, args = get_args a in
-                        (s, init) :: (tag args)
-    | Abst(_, _)      -> assert false
-    | _               -> assert false
 end
 
 (** Functional map with [Subterm.t] as keys *)
