@@ -117,14 +117,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
 module Pattmat =
 struct
   (** Type used to describe a line of a matrix (either a column or a row). *)
-  type line = (term * Subterm.t) list
+  type line = (term * Basics.Subterm.t) list
 
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
               (** Left hand side of a rule. *)
               ; rhs : action
               (** Right hand side of a rule. *)
-              ; variables : int SubtMap.t
+              ; variables : int Basics.SubtMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)}
 
@@ -135,7 +135,7 @@ struct
       action. *)
   type t = { values : matrix
            (** The rules. *)
-           ; var_catalogue : Subterm.t list
+           ; var_catalogue : Basics.Subterm.t list
            (** Contains positions of terms in {!recfield:lhs} that can be used
                as variables in any of the {!recfield:rhs} which appeared in
                the matrix that gave birth to this one. *)}
@@ -154,37 +154,39 @@ struct
 
   (** [pos_needed_by l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let pos_needed_by : line -> action -> int SubtMap.t = fun lhs rhs ->
-    let module St = Subterm in
+  let pos_needed_by : line -> action -> int Basics.SubtMap.t = fun lhs rhs ->
+    let module St = Basics.Subterm in
+    let module StMap = Basics.SubtMap in
     let nvars = Bindlib.mbinder_arity rhs in
-    let rec loop : int -> term list -> St.t -> int SubtMap.t = fun found st
-      po -> if found = nvars then SubtMap.empty else
+    let rec loop : int -> term list -> St.t -> int StMap.t = fun found st
+      po -> if found = nvars then StMap.empty else
         match st with
-        | [] -> SubtMap.empty
+        | [] -> StMap.empty
         | x :: xs ->
            begin
              match x with
              | Patt(None, _, _)
              | Symb(_, _)          -> loop found xs (St.succ po)
-             | Patt(Some(i), _, _) -> SubtMap.add po i
+             | Patt(Some(i), _, _) -> StMap.add po i
                 (loop (succ found) xs (St.succ po))
-             | Appl(_, _)          ->
+             | Appl(_, _) as x     ->
                 let _, args = Basics.get_args x in
-                let xpos = loop found args (St.sub St.init) in
-                let nxpos = SubtMap.fold (fun xpo slot nmap ->
-                  SubtMap.add (St.prefix po xpo) slot nmap)
-                  SubtMap.empty xpos in
-                SubtMap.union (fun _ _ -> assert false) nxpos
+                let xpos = loop found args St.init in
+                let nxpos = StMap.fold (fun xpo slot nmap ->
+                  (* Prefix each key in [xpos] by the current position *)
+                  StMap.add (St.prefix po xpo) slot nmap)
+                  StMap.empty xpos in
+                StMap.union (fun _ _ -> assert false) nxpos
                   (loop found xs (St.succ po))
              | _                   -> assert false
            end in
-    loop 0 (List.map fst lhs) (St.sub St.init)
+    loop 0 (List.map fst lhs) St.init
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let term_pos = Subterm.tag r.Terms.lhs in
+      let term_pos = Basics.Subterm.tag r.Terms.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = pos_needed_by term_pos r.Terms.rhs } in
     { values = List.map r2r rs ; var_catalogue = [] }
@@ -298,8 +300,8 @@ struct
   (** [update_catalogue c r] adds the position of the head of [r] to catalogue
       [c] if it is a pattern variable. *)
   (* XXX uniqueness of positions in catalogue?*)
-  let update_catalogue : Subterm.t list -> rule -> Subterm.t list =
-    fun varstack rule ->
+  let update_catalogue : Basics.Subterm.t list -> rule ->
+    Basics.Subterm.t list = fun varstack rule ->
       let { lhs ; _ } = rule in
       match List.hd lhs with
       | Patt(Some(_), _, _), p -> p :: varstack
@@ -347,10 +349,10 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
-    let np = Subterm.sub p in
-    spec_line upat ((u, np) :: (v, Subterm.succ np) :: litl)
+    let np = Basics.Subterm.sub p in
+    spec_line upat ((u, np) :: (v, Basics.Subterm.succ np) :: litl)
   | Abst(_, b), p ->
-     let np = Subterm.sub p in
+     let np = Basics.Subterm.sub p in
      let _, t = Bindlib.unbind b in (t, np) :: litl
   | Vari(_), _    -> litl
   | _             -> (* Cases that require the pattern *)
@@ -358,11 +360,12 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   | (Patt(_, _, [| |]), p), Appl(_, _) ->
       (* ^ Wildcard *)
      let arity = List.length @@ snd @@ Basics.get_args pat in
-     List.init arity (fun i ->
-       Patt(None, "w", [| |]), Subterm.prefix p [i]) @ litl
+     let tagged = Basics.Subterm.tag
+       (List.init arity (fun _ -> Patt(None, "", [| |]))) in
+     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged) @ litl
   | (Patt(_, _, _), p)    , Abst(_, b) ->
      let _, t = Bindlib.unbind b in
-     (t, Subterm.prefix p Subterm.init) :: litl
+     (t, Basics.Subterm.prefix p Basics.Subterm.init) :: litl
   | (Patt(_, _, _), _)    , _          -> litl
   | _                                  -> assert false
 
@@ -489,7 +492,7 @@ let rec compile : Pm.t -> t = fun patterns ->
       (* [env_builder] maps future position in the term store to the slot in
          the environment. *)
       let env_builder = snd (List.fold_left (fun (i, m) tpos ->
-        let opslot = SubtMap.find_opt tpos pos2slot in
+        let opslot = Basics.SubtMap.find_opt tpos pos2slot in
         match opslot with
         | None     -> succ i, m
         (* ^ The stack may contain more variables than needed for the

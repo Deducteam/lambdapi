@@ -191,3 +191,54 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** {3 Subterm position helper module} *)
+
+(** Position of a subterm in a term. *)
+module Subterm =
+struct
+  (** Each element of the list is a level in the tree of the term.  For
+      instance, in the term [Appl(Appl(f, x), Appl(Appl(g, a), b))], the
+      subterm [a] has position [1.0], encoded by [[0 ; 1]], [b] has [1.1]
+      encoded by [[1 ; 1]] and [x] has [0] encoded by [[0]]. *)
+  type t = int list
+
+  (** [compare a b] implements lexicographic order on positions. *)
+  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
+
+  (** [pp o p] output position [p] to channel [o]. *)
+  let pp : t pp = fun oc pos ->
+    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
+
+  (** Initial position. *)
+  let init = []
+
+  (** [succ p] returns the successor of position [p].  For instance, if
+      [p = [1 ; 1]], [succ p = [2 ; 1]]. *)
+  let succ = function
+    | []      -> 0 :: init
+    | x :: xs -> succ x :: xs
+
+  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
+      [prefix 1 3.4] is [1.3.4]. *)
+  let prefix : t -> t -> t = fun p q -> q @ p
+
+  (** [sub p] returns the first position of a subterm of [p]. *)
+  let sub : t -> t = fun p -> prefix p init
+
+  (** [tag l] attaches the positions to a list of terms as if they were the
+      subterms of a same term. *)
+  let tag : term list -> (term * t) list = List.mapi (fun i e -> (e, i :: init))
+
+  (** [tag_sub t] flattens term [t] and tags the elements.  For instance,
+      [tag_sub Appl(Appl(f, x), y)] yields
+      [[(f, []) ; (x, [1]) ; (y, [2])]]. *)
+  let tag_sub : term -> (term * t) list = function
+    | Appl(_, _) as a -> let s, args = get_args a in
+                        (s, init) :: (tag args)
+    | Abst(_, _)      -> assert false
+    | _               -> assert false
+end
+
+(** Functional map with [Subterm.t] as keys *)
+module SubtMap = Map.Make(Subterm)
