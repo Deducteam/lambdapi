@@ -183,15 +183,17 @@ struct
       StMap.union (fun _ _ -> assert false) nxpos
         (loop found remain (St.succ po))
     in
-    loop 0 (List.map fst lhs) St.init
+    (* Start as if the terms of the list were subterms of an initial term *)
+    loop 0 (List.map fst lhs) (St.succ St.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = Basics.Subterm.tag r.Terms.lhs in
+      let variables = pos_needed_by term_pos r.Terms.rhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = pos_needed_by term_pos r.Terms.rhs } in
+      ; variables = variables} in
     { values = List.map r2r rs ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
