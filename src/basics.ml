@@ -208,7 +208,9 @@ struct
 
   (** [pp o p] output position [p] to channel [o]. *)
   let pp : t pp = fun oc pos ->
-    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
+    match pos with
+    | [] -> Format.fprintf oc "{ε}"
+    | x  -> List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev x)
 
   (** Initial position. *)
   let init = []
