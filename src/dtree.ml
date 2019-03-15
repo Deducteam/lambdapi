@@ -166,6 +166,7 @@ struct
          begin
            match x with
            | Patt(None, _, _)
+           | Vari(_)
            | Symb(_, _)          -> loop found xs (St.succ po)
            | Patt(Some(i), _, _) -> StMap.add po i
               (loop (succ found) xs (St.succ po))
@@ -339,11 +340,10 @@ let rec spec_filter : term -> term list -> bool = fun pat li ->
   | Vari(x)     , Vari(y)                 -> Bindlib.eq_vars x y
   (* All below ought to be put in catch-all case*)
   | Symb(_, _)   , Appl(_, _)
-  | Patt(_, _, _), Symb(_, _)
-  | Patt(_, _, _), Appl(_, _)
   | Appl(_, _)   , Symb(_, _)
   | Appl(_, _)   , Abst(_, _)
   | Abst(_, _)   , Appl(_, _) -> false
+  | Patt(_, _, _), _          -> assert false
   | _                         -> assert false
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
@@ -453,30 +453,34 @@ let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let rec loop : term list -> int -> int IntMap.t -> t = fun telst added
-      env_builder ->
-        if added = missing then Leaf(env_builder, rhs) else
-        match telst with
-        | []       -> raise Not_found
-        | te :: tl ->
-           begin
-             match te with
-             | Patt(Some(i), _, _) ->
-                let neb =  IntMap.add (depth + added) i env_builder in
-                let child = loop tl (succ added) neb in
-                Node({ swap = None ; store = true ; children = [] ;
-                       default = Some(child) })
-             | Appl(_, _) as a     ->
-                let newtl = snd (Basics.get_args a) @ tl in
-                let child = loop newtl added env_builder in
-                Node({ swap = None ; store = false ; children = [] ;
-                       default = Some(child) })
-             | Symb(_, _)          ->
-                let child = loop tl added env_builder in
-                Node({ swap = None ; store = false ; children = [] ;
-                       default = Some(child) })
-             | _                   -> assert false
-           end in
+    let rec loop telst added env_builder =
+      if added = missing then Leaf(env_builder, rhs) else
+      match telst with
+      | []       -> assert false
+      | te :: tl ->
+         begin
+           match te with
+           | Patt(Some(i), _, _) ->
+              let neb =  IntMap.add (depth + added) i env_builder in
+              let child = loop tl (succ added) neb in
+              Node({ swap = None ; store = true ; children = [] ;
+                     default = Some(child) })
+           | Appl(_, _) as a     ->
+              let newtl = snd (Basics.get_args a) @ tl in
+              let child = loop newtl added env_builder in
+              Node({ swap = None ; store = false ; children = [] ;
+                     default = Some(child) })
+           | Symb(_, _)          ->
+              let child = loop tl added env_builder in
+              Node({ swap = None ; store = false ; children = [] ;
+                     default = Some(child) })
+           | Abst(_, b)          ->
+              let _, body = Bindlib.unbind b in
+              let child = loop (body :: tl) added env_builder in
+              Node( {swap = None ; store = false ; children = [] ;
+                    default = Some(child) })
+           | _                   -> assert false
+         end in
     loop terms 0 env_builder
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
