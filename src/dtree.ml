@@ -28,17 +28,6 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
-(* Redefinition for function [mark] as it uses a not generalizable type, it
-   couldn't be put into extra (and we need Subterm in {!module:Terms} as
-   well). *)
-module Subterm =
-struct
-  include Subterm
-
-  (** [mark l] enriches elements of [l] attaching a position to them. *)
-  let mark : 'a list -> ('a * t) list = List.mapi (fun i e -> (e, [i]))
-end
-
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
@@ -180,20 +169,20 @@ struct
            | Patt(Some(i), _, _) -> SubtMap.add po i (loop xs (St.succ po))
            | Appl(_, _)          ->
               let _, args = Basics.get_args x in
-              let xpos = loop args St.init in
+              let xpos = loop args (St.sub St.init) in
               let nxpos = SubtMap.fold (fun xpo slot nmap ->
                 SubtMap.add (St.prefix po xpo) slot nmap) SubtMap.empty xpos in
               SubtMap.union (fun _ _ -> assert false) nxpos
                 (loop xs (St.succ po))
            | _                   -> assert false
          end in
-    loop (List.map fst lhs) St.init
+    loop (List.map fst lhs) (St.sub St.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let term_pos = Subterm.mark r.Terms.lhs in
+      let term_pos = Subterm.tag r.Terms.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = pos_needed_by term_pos } in
     { values = List.map r2r rs ; var_catalogue = [] }
@@ -356,10 +345,10 @@ let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
   | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
-    let np = Subterm.prefix p Subterm.init in
+    let np = Subterm.sub p in
     spec_line upat ((u, np) :: (v, Subterm.succ np) :: litl)
   | Abst(_, b), p ->
-     let np = Subterm.prefix p Subterm.init in
+     let np = Subterm.sub p in
      let _, t = Bindlib.unbind b in (t, np) :: litl
   | Vari(_), _    -> litl
   | _             -> (* Cases that require the pattern *)

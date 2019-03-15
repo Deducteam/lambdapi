@@ -442,3 +442,44 @@ let rec lift : term -> tbox = fun t ->
     the names of bound variables updated.  This is useful to avoid any form of
     "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(** {3 Subterm position helper module} *)
+
+(** Position of a subterm in a term. *)
+module Subterm =
+struct
+  (** Each element of the list is a level in the tree of the term.  For
+      instance, the subterm [x] in the term [Appl(S, Appl(T, x))] has
+      position [1.2.2], encoded by [[2 ; 2 ; 1]]. *)
+  type t = int list
+
+  (** [compare a b] implements lexicographic order on positions. *)
+  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
+
+  (** [pp o p] output position [p] to channel [o]. *)
+  let pp : t pp = fun oc pos ->
+    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev pos)
+
+  (** Initial position. *)
+  let init = []
+
+  (** [succ p] returns the successor of position [p].  For instance, if
+      [p = [1 ; 1]], [succ p = [2 ; 1]]. *)
+  let succ = function
+    | [] -> assert false
+    | x :: xs -> succ x :: xs
+
+  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
+      [prefix 1 3.4] is [1.3.4]. *)
+  let prefix : t -> t -> t = fun p q -> q @ p
+
+  (** [sub p] returns the first position of a subterm of [p]. *)
+  let sub : t -> t = fun p -> prefix p (0 :: init)
+
+  (** [tag l] attaches the positions to a list of terms as if they were the
+      subterms of a same term. *)
+  let tag : term list -> (term * t) list = List.mapi (fun i e -> (e, i :: init))
+end
+
+(** Functional map with [Subterm.t] as keys *)
+module SubtMap = Map.Make(Subterm)
