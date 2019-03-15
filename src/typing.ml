@@ -108,11 +108,11 @@ let rec infer_aux : conv_f -> Ctxt.t -> term -> term = fun conv ctx t ->
 (** [check_aux conv ctx t c] checks that the term [t] has type [c], in context
     [ctx]. In the process, the [conv] function is used as convertibility test.
     In case of failure, the exception [Fatal] is raised.  Note that we require
-    [ctx] and [c] to be well-formed (with well-sorted types).
+    [ctx] and [c] to be well-formed (with well-sorted types). *)
 
-   [check_aux conv ctx t c] could be reduced to the default case [conv
+(* [check_aux conv ctx t c] could be reduced to the default case [conv
    (infer_aux conv ctx t) c]. We however provide some more efficient
-   code when [t] is an abstraction:
+   code when [t] is an abstraction, as witnessed by 'make holide':
 
    Finished in 3:57.79 at 99% with 3179880Kb of RAM
 
