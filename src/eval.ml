@@ -191,9 +191,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
          assert (IntMap.cardinal env_builder = Bindlib.mbinder_arity act) ;
+        (* [pre_env] is the same as [env] but without binders *)
         let pre_env = IntMap.fold (fun pos sl pe ->
           IntMap.add sl vars.(pos) pe) env_builder IntMap.empty in
-         (* Create the environment *)
         let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
         IntMap.iter (fun sl te ->
           let inject _ = te in
@@ -201,13 +201,12 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           env.(sl) <- TE_Some(b)) pre_env ;
         Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default }) ->
-         if stk = [] then None else (* If stack too short *)
-         (* The main operations are: (i) picking the right term in the terms
-            stack, (ii) filling the array containing terms to be substituted
-            in {!recfield:rhs} (or {!type:action}), (iii) branching on the
+         if stk = [] then None else (* If stack too short, quit *)
+         (* The main operations are: (a) picking the right term in the input
+            stack, (b) filling the array containing terms to be substituted
+            in {!recfield:rhs} (or {!type:action}), (c) branching on the
             correct branch. *)
-         (* (i) *)
-         let stk = match swap with
+(* (a) *)let stk = match swap with
            | None    -> stk
            | Some(i) -> List.bring i stk in
          let examined = List.hd stk in
@@ -222,11 +221,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            | Symb(_, _) as s ->
               unfold s, List.tl stk
            | _               -> assert false in
-         (* (ii) *)
-         if store then vars.(cursor) <- hd ;
+(* (b) *)if store then vars.(cursor) <- hd ;
          let ncurs = if store then succ cursor else cursor in
-        (* (iii) *)
-         let matched_on_cons = List.assoc_opt hd children in
+(* (c) *)let matched_on_cons = List.assoc_opt hd children in
          let matched = match matched_on_cons with
            | Some(_) as s -> s
            | None         -> default in
