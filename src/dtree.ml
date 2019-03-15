@@ -154,29 +154,31 @@ struct
 
   (** [pos_needed_by l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  (* Number of vars expected can be obtained with Bindlib.mbinder_arity, which
-     would allow to stop the search as soon as possible *)
-  let pos_needed_by : line -> int SubtMap.t = fun  lhs ->
+  let pos_needed_by : line -> action -> int SubtMap.t = fun lhs rhs ->
     let module St = Subterm in
-    let rec loop : term list -> St.t -> int SubtMap.t = fun st po ->
-      match st with
-      | [] -> SubtMap.empty
-      | x :: xs ->
-         begin
-           match x with
-           | Patt(None, _, _)
-           | Symb(_, _)          -> loop xs (St.succ po)
-           | Patt(Some(i), _, _) -> SubtMap.add po i (loop xs (St.succ po))
-           | Appl(_, _)          ->
-              let _, args = Basics.get_args x in
-              let xpos = loop args (St.sub St.init) in
-              let nxpos = SubtMap.fold (fun xpo slot nmap ->
-                SubtMap.add (St.prefix po xpo) slot nmap) SubtMap.empty xpos in
-              SubtMap.union (fun _ _ -> assert false) nxpos
-                (loop xs (St.succ po))
-           | _                   -> assert false
-         end in
-    loop (List.map fst lhs) (St.sub St.init)
+    let nvars = Bindlib.mbinder_arity rhs in
+    let rec loop : int -> term list -> St.t -> int SubtMap.t = fun found st
+      po -> if found = nvars then SubtMap.empty else
+        match st with
+        | [] -> SubtMap.empty
+        | x :: xs ->
+           begin
+             match x with
+             | Patt(None, _, _)
+             | Symb(_, _)          -> loop found xs (St.succ po)
+             | Patt(Some(i), _, _) -> SubtMap.add po i
+                (loop (succ found) xs (St.succ po))
+             | Appl(_, _)          ->
+                let _, args = Basics.get_args x in
+                let xpos = loop found args (St.sub St.init) in
+                let nxpos = SubtMap.fold (fun xpo slot nmap ->
+                  SubtMap.add (St.prefix po xpo) slot nmap)
+                  SubtMap.empty xpos in
+                SubtMap.union (fun _ _ -> assert false) nxpos
+                  (loop found xs (St.succ po))
+             | _                   -> assert false
+           end in
+    loop 0 (List.map fst lhs) (St.sub St.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
@@ -184,7 +186,7 @@ struct
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = Subterm.tag r.Terms.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = pos_needed_by term_pos } in
+      ; variables = pos_needed_by term_pos r.Terms.rhs } in
     { values = List.map r2r rs ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
