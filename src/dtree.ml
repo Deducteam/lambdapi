@@ -353,10 +353,10 @@ let rec spec_line : term -> (term * Basics.Subterm.t) -> Pm.line = fun pat hd ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
     let np = Basics.Subterm.sub p in
-    spec_line upat (u, np) @ (v, Basics.Subterm.succ np) :: []
+    spec_line upat (u, np) @ [(v, Basics.Subterm.succ np)]
   | Abst(_, b), p ->
      let np = Basics.Subterm.sub p in
-     let _, t = Bindlib.unbind b in (t, np) :: []
+     let _, t = Bindlib.unbind b in [(t, np)]
   | Vari(_), _    -> []
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
@@ -365,10 +365,10 @@ let rec spec_line : term -> (term * Basics.Subterm.t) -> Pm.line = fun pat hd ->
      let arity = List.length @@ snd @@ Basics.get_args pat in
      let tagged = Basics.Subterm.tag
        (List.init arity (fun _ -> Patt(None, "", [| |]))) in
-     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged) @ []
+     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged)
   | (Patt(_, _, _), p)    , Abst(_, b) ->
      let _, t = Bindlib.unbind b in
-     (t, Basics.Subterm.prefix p Basics.Subterm.init) :: []
+     [(t, Basics.Subterm.prefix p Basics.Subterm.init)]
   | (Patt(_, _, _), _)    , _          -> []
   | _                                  -> assert false
 
