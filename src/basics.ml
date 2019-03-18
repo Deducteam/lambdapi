@@ -227,7 +227,7 @@ struct
   let prefix : t -> t -> t = fun p q -> q @ p
 
   (** [sub p] returns the first position of a subterm of [p]. *)
-  let sub : t -> t = fun p -> prefix p init
+  let sub : t -> t = fun p -> prefix p (0 :: init)
 
   (** [tag l] attaches the positions to a list of terms as if they were the
       subterms of a same term. *)
