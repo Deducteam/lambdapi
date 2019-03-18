@@ -315,9 +315,10 @@ struct
 end
 
 module Pm = Pattmat
+module St = Basics.Subterm
 
-(** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
-    kept when specializing the matrix on pattern [p]. *)
+(** [spec_filter p h] returns whether a line with head [h] (from a pattern
+    matrix) must be kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> term -> bool = fun pat hd ->
   match pat, hd with
   | _            , Patt(None, _, _)    -> true
@@ -345,17 +346,18 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | Abst(_, _), Appl(_, _) -> false
   | _                      -> assert false
 
-(** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term -> (term * Basics.Subterm.t) -> Pm.line = fun pat hd ->
+(** [spec_transform p h] transform head of line [h] when specializing against
+    pattern [p]. *)
+let rec spec_transform : term -> (term * St.t) -> Pm.line = fun pat hd ->
   match hd with
   | Symb(_, _), _ -> []
   | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
-    let np = Basics.Subterm.sub p in
-    spec_line upat (u, np) @ [(v, Basics.Subterm.succ np)]
+    let np = St.sub p in
+    spec_transform upat (u, np) @ [(v, St.succ np)]
   | Abst(_, b), p ->
-     let np = Basics.Subterm.sub p in
+     let np = St.sub p in
      let _, t = Bindlib.unbind b in [(t, np)]
   | Vari(_), _    -> []
   | _             -> (* Cases that require the pattern *)
@@ -363,12 +365,12 @@ let rec spec_line : term -> (term * Basics.Subterm.t) -> Pm.line = fun pat hd ->
   | (Patt(_, _, [| |]), p), Appl(_, _) ->
       (* ^ Wildcard *)
      let arity = List.length @@ snd @@ Basics.get_args pat in
-     let tagged = Basics.Subterm.tag
+     let tagged = St.tag
        (List.init arity (fun _ -> Patt(None, "", [| |]))) in
-     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged)
+     (List.map (fun (te, po) -> (te, St.prefix p po)) tagged)
   | (Patt(_, _, _), p)    , Abst(_, b) ->
      let _, t = Bindlib.unbind b in
-     [(t, Basics.Subterm.prefix p Basics.Subterm.init)]
+     [(t, St.prefix p St.init)]
   | (Patt(_, _, _), _)    , _          -> []
   | _                                  -> assert false
 
@@ -386,7 +388,7 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
     m.values in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter p (fst (List.hd l))) m.values in
-  let newhds = List.map (fun rul -> spec_line p (List.hd rul.Pm.lhs))
+  let newhds = List.map (fun rul -> spec_transform p (List.hd rul.Pm.lhs))
     filtered in
   let newmat = List.map2 (fun newhd rul ->
     let oldlhstl = List.tl rul.Pm.lhs in
