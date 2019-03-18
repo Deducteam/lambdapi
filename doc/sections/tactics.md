@@ -84,16 +84,16 @@ with the following types and builtin declarations:
 
 ```
 symbol T : U ⇒ TYPE
-symbol Prop : TYPE
+symbol P : Prop ⇒ TYPE
 symbol eq {a} : T a ⇒ T a ⇒ Prop
-symbol const refl {a} (x:T a) : P (x = x)
-symbol const eqind {a} x y : P (x = y) ⇒ ∀(p:T a⇒Prop), P (p y) ⇒ P (p x)
+symbol refl {a} (x:T a) : P (x = x)
+symbol eqind {a} x y : P (x = y) ⇒ ∀(p:T a⇒Prop), P (p y) ⇒ P (p x)
 
-set builtin "P"     ≔ P
 set builtin "T"     ≔ T
+set builtin "P"     ≔ P
 set builtin "eq"    ≔ eq
-set builtin "eqind" ≔ eqind
 set builtin "refl"  ≔ refl
+set builtin "eqind" ≔ eqind
 ```
 
 <!---------------------------------------------------------------------------->
