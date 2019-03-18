@@ -216,7 +216,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
          let hd, tlstk = match snd Pervasives.(!examined) with
            | Appl(_, _) as a ->
               let t, la = Basics.get_args a in
-              let unfolded = List.map (fun e -> Pervasives.ref (false, e)) la in
+              let unfolded = List.map (fun e -> Pervasives.ref (false, e))
+                la in
               unfold t, unfolded @ (List.tl stk)
            | Symb(_, _) as s ->
               unfold s, List.tl stk
