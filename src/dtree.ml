@@ -318,28 +318,25 @@ module Pm = Pattmat
 
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
-let rec spec_filter : term -> term list -> bool = fun pat li ->
+let rec spec_filter : term -> term -> bool = fun pat hd ->
   (* Might be relevant to reduce the function to [term -> term -> bool] with
      [spec_filter p t] testing pattern [p] against head of line [t] *)
-  let lihd, litl = match li with
-    | x :: xs -> x, xs
-    | []      -> assert false in
-  match pat, lihd with
+  match pat, hd with
   | _            , Patt(None, _, _)    -> true
   (* ^ Wildcard or linear var not appearing in rhs *)
   | _            , Patt(Some(_), _, _) -> true
   (* ^ Linear var appearing in rhs *)
   | Symb(s, _)   , Symb(s', _)         -> s == s'
   | Appl(u1, u2) , Appl(v1, v2)        ->
-    spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
+    spec_filter u1 v1 && spec_filter u2 v2
   (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
   | Abst(_, b1)  , Abst(_, b2)             ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
-    spec_filter u (v :: litl)
+    spec_filter u v
   | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
   | Patt(_, _, e), _                   ->
   (* ^ Comes from a specialization on a lambda. *)
-     let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift lihd) in
+     let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift hd) in
      Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
   | Symb(_, _), Abst(_, _)
@@ -391,7 +388,7 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let newstack = List.fold_left Pm.update_catalogue m.var_catalogue
     m.values in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
-      spec_filter p (List.map fst l)) m.values in
+      spec_filter p (fst (List.hd l))) m.values in
   let newmat = List.map (fun rul ->
       { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
   { values = newmat ; var_catalogue = newstack }
