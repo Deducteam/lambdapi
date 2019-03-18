@@ -463,22 +463,26 @@ let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
            | Patt(Some(i), _, _) ->
               let neb =  IntMap.add (depth + added) i env_builder in
               let child = loop tl (succ added) neb in
-              Node({ swap = None ; store = true ; children = [] ;
-                     default = Some(child) })
+              Node({ swap = None ; store = true ; children = []
+                   ; default = Some(child) })
            | Appl(_, _) as a     ->
               let newtl = snd (Basics.get_args a) @ tl in
               let child = loop newtl added env_builder in
-              Node({ swap = None ; store = false ; children = [] ;
-                     default = Some(child) })
+              Node({ swap = None ; store = false ; children = []
+                   ; default = Some(child) })
            | Symb(_, _)          ->
               let child = loop tl added env_builder in
-              Node({ swap = None ; store = false ; children = [] ;
-                     default = Some(child) })
+              Node({ swap = None ; store = false ; children = []
+                   ; default = Some(child) })
            | Abst(_, b)          ->
               let _, body = Bindlib.unbind b in
               let child = loop (body :: tl) added env_builder in
-              Node( {swap = None ; store = false ; children = [] ;
-                    default = Some(child) })
+              Node( {swap = None ; store = false ; children = []
+                    ; default = Some(child) })
+           | Patt(None, _, _)    ->
+              let child = loop tl added env_builder in
+              Node({ swap = None ; store = false ; children = []
+                   ; default = Some(child) })
            | _                   -> assert false
          end in
     loop terms 0 env_builder
