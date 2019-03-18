@@ -325,26 +325,30 @@ let rec spec_filter : term -> term list -> bool = fun pat li ->
     | x :: xs -> x, xs
     | []      -> assert false in
   match pat, lihd with
-  | _           , Patt(None, _, [| |])    -> true
+  | _            , Patt(None, _, _)    -> true
   (* ^ Wildcard or linear var not appearing in rhs *)
-  | _           , Patt(Some(_), _, [| |]) -> true
+  | _            , Patt(Some(_), _, _) -> true
   (* ^ Linear var appearing in rhs *)
-  | Symb(s, _)  , Symb(s', _)             -> s == s'
-  | Appl(u1, u2), Appl(v1, v2)            ->
+  | Symb(s, _)   , Symb(s', _)         -> s == s'
+  | Appl(u1, u2) , Appl(v1, v2)        ->
     spec_filter u1 (v1 :: litl) && spec_filter u2 (v2 :: litl)
-  (* ^ Verify there are as many Appl (same arity of leftmost terms).  Check of
-       left arg of Appl is performed in [matching], so we perform it here. *)
-  | Abst(_, b1) , Abst(_, b2)             ->
+  (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
+  | Abst(_, b1)  , Abst(_, b2)             ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
     spec_filter u (v :: litl)
-  | Vari(x)     , Vari(y)                 -> Bindlib.eq_vars x y
+  | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
+  | Patt(_, _, e), _                   ->
+  (* ^ Comes from a specialization on a lambda. *)
+     let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift lihd) in
+     Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
-  | Symb(_, _)   , Appl(_, _)
-  | Appl(_, _)   , Symb(_, _)
-  | Appl(_, _)   , Abst(_, _)
-  | Abst(_, _)   , Appl(_, _) -> false
-  | Patt(_, _, _), _          -> assert false
-  | _                         -> assert false
+  | Symb(_, _), Abst(_, _)
+  | Abst(_, _), Symb(_, _)
+  | Symb(_, _), Appl(_, _)
+  | Appl(_, _), Symb(_, _)
+  | Appl(_, _), Abst(_, _)
+  | Abst(_, _), Appl(_, _) -> false
+  | _                      -> assert false
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
 let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
