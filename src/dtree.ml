@@ -430,23 +430,24 @@ let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
 
     The last is managed by the {!val:env_builder} as follows.  The matching
     process uses, along with the tree, an array to store terms that may be
-    used in the {!recfield:rhs}.  Terms are stores while parsing if the
-    {!const:Node} as its {!recfield:store} as {!val:true}.  To know when to
+    used in the {!recfield:rhs}.  Terms are stored while parsing if the
+    {!const:Node} has its {!recfield:store} at {!val:true}.  To know when to
     store variables, each rule is first parsed with {!val:Pm.pos_needed_by}
     to get the positions of {!const:Patt} in each {!recfield:lhs}.  Once these
     positions are known, the {!recfield:Pm.var_catalogue} can be built.  A
     {!recfield:Pm.var_catalogue} contains the accumulation of the positions
     encountered so far during successive specializations.  Once a rule can be
     triggered, {!recfield:Pm.var_catalogue} contains, in the order they appear
-    during matching, all the variables to be used for the rule {b that has
-    been inspected}.  There may remain terms that haven't been inspected
-    (because they are not needed to decide which rule to apply), but that are
-    nevertheless needed in the {!recfield:rhs}.  The
-    {!recfield:Pm.var_catalogue} contains useless variables as well: these may
-    have been needed by other rules, when several rules were still candidates.
-    The {!val:env_builder} is then initialized with variables from the
-    catalogue which are essential.  The remaining variables, which will remain
-    in the input stack, are fetched with {!val:fetch}. *)
+    during matching, all the variables the rule can use, that are the
+    variables {b that has been inspected}.  There may remain terms that
+    haven't been inspected (because they are not needed to decide which rule
+    to apply), but that are nevertheless needed in the {!recfield:rhs}.  Note
+    that the {!recfield:Pm.var_catalogue} contains useless variables as well:
+    these may have been needed by other rules, when several rules were still
+    candidates.  The {!val:env_builder} is then initialized with the essential
+    variables from the catalogue.  The remaining variables, which will remain
+    in the input stack, will be fetched thanks to a subtree built by
+    {!val:fetch}. *)
 
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
     elements as the number of variables in [r].  The environment builder[e] is

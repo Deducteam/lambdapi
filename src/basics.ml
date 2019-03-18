@@ -215,9 +215,9 @@ struct
   (** Initial position. *)
   let init = []
 
-  (** [succ p] returns the successor of position [p].  For instance, if [p =
-      [1 ; 1]], [succ p = [2 ; 1]].  The succ of the initial position is the
-      first subterm of this position. *)
+  (** [succ p] returns the successor of position [p].  For instance, if
+      [p = [1 ; 1]], [succ p = [2 ; 1]].  The succ of the initial position is
+      the first subterm of this position. *)
   let succ = function
     | []      -> 0 :: init
     | x :: xs -> succ x :: xs
