@@ -319,8 +319,6 @@ module Pm = Pattmat
 (** [spec_filter p l] returns whether a line [l] (of a pattern matrix) must be
     kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> term -> bool = fun pat hd ->
-  (* Might be relevant to reduce the function to [term -> term -> bool] with
-     [spec_filter p t] testing pattern [p] against head of line [t] *)
   match pat, hd with
   | _            , Patt(None, _, _)    -> true
   (* ^ Wildcard or linear var not appearing in rhs *)
@@ -348,31 +346,30 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | _                      -> assert false
 
 (** [spec_line p l] specializes the line [l] against pattern [p]. *)
-let rec spec_line : term -> Pm.line -> Pm.line = fun pat li ->
-  let lihd, litl = List.hd li, List.tl li in
-  match lihd with
-  | Symb(_, _), _ -> litl
+let rec spec_line : term -> (term * Basics.Subterm.t) -> Pm.line = fun pat hd ->
+  match hd with
+  | Symb(_, _), _ -> []
   | Appl(u, v), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
     let np = Basics.Subterm.sub p in
-    spec_line upat ((u, np) :: (v, Basics.Subterm.succ np) :: litl)
+    spec_line upat (u, np) @ (v, Basics.Subterm.succ np) :: []
   | Abst(_, b), p ->
      let np = Basics.Subterm.sub p in
-     let _, t = Bindlib.unbind b in (t, np) :: litl
-  | Vari(_), _    -> litl
+     let _, t = Bindlib.unbind b in (t, np) :: []
+  | Vari(_), _    -> []
   | _             -> (* Cases that require the pattern *)
-  match lihd, pat with
+  match hd, pat with
   | (Patt(_, _, [| |]), p), Appl(_, _) ->
       (* ^ Wildcard *)
      let arity = List.length @@ snd @@ Basics.get_args pat in
      let tagged = Basics.Subterm.tag
        (List.init arity (fun _ -> Patt(None, "", [| |]))) in
-     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged) @ litl
+     (List.map (fun (te, po) -> (te, Basics.Subterm.prefix p po)) tagged) @ []
   | (Patt(_, _, _), p)    , Abst(_, b) ->
      let _, t = Bindlib.unbind b in
-     (t, Basics.Subterm.prefix p Basics.Subterm.init) :: litl
-  | (Patt(_, _, _), _)    , _          -> litl
+     (t, Basics.Subterm.prefix p Basics.Subterm.init) :: []
+  | (Patt(_, _, _), _)    , _          -> []
   | _                                  -> assert false
 
 (** [specialize p m] specializes the matrix [m] when matching against pattern
@@ -389,8 +386,11 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
     m.values in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter p (fst (List.hd l))) m.values in
-  let newmat = List.map (fun rul ->
-      { rul with Pm.lhs = spec_line p rul.Pm.lhs }) filtered in
+  let newhds = List.map (fun rul -> spec_line p (List.hd rul.Pm.lhs))
+    filtered in
+  let newmat = List.map2 (fun newhd rul ->
+    let oldlhstl = List.tl rul.Pm.lhs in
+    { rul with Pm.lhs = newhd @ oldlhstl }) newhds filtered in
   { values = newmat ; var_catalogue = newstack }
 
 (** [default m] computes the default matrix containing what remains to be
