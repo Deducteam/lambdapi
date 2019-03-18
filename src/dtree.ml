@@ -279,28 +279,33 @@ struct
     assert (List.length unpacked > 0) ;
     Array.of_list unpacked
 
-  (** [is_cons t] returns whether [t] can be considered as a constructor. *)
-  let rec is_cons : term -> bool = function
-    | Symb(_, _) | Abst(_, _) -> true
-    | Appl(u, _)              -> is_cons u
-    | _                       -> false
-
   (** [get_cons l] extracts a list of unique constructors from [l]. *)
   let get_cons : term list -> term list = fun telst ->
+  (* [is_cons t] returns whether [t] can be considered as a constructor. *)
+    let rec is_cons : term -> bool = function
+      | Symb(_, _) | Abst(_, _) -> true
+      | Appl(_, _) as a         -> let hd, _ = Basics.get_args a in is_cons hd
+      | _                       -> false in
+    (* [cons_eq t u] returns whether [t] and [u] are the same regarding
+       specialization. *)
+    let cons_eq : term -> term -> bool = fun te tf ->
+      match te, tf with
+      | Abst(_, _), Abst(_, _) -> true
+      | _                      -> Basics.eq te tf in
   (* membership of terms *)
     let rec mem : term -> term list -> bool = fun te xs ->
       match xs with
       | []       -> false
       | hd :: tl ->
          let s = fst (Basics.get_args hd) in
-         if Basics.eq s te then true else mem te tl in
+         if cons_eq s te then true else mem te tl in
     let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
       match notseen with
       | [] -> List.rev seen
       | hd :: tl ->
          let s = fst (Basics.get_args hd) in
-         loop (if mem s seen then seen else hd :: seen) tl in
-    loop [] (List.filter is_cons telst)
+         loop (if not (is_cons s) || mem s seen then seen else hd :: seen) tl in
+    loop [] telst
 
 
   (** [update_catalogue c r] adds the position of the head of [r] to catalogue
