@@ -116,8 +116,17 @@ let to_dot : string -> t -> unit = fun fname tree ->
     matrices. *)
 module Pattmat =
 struct
+  (** A component of the matrix *)
+  type component = term * Basics.Subterm .t
+
+  let pp_component : component pp = fun oc (te, pos) ->
+    let module F = Format in
+    F.fprintf oc "(@[<h>" ; Print.pp oc te ;
+    F.fprintf oc ", " ; Basics.Subterm.pp oc pos ;
+    F.fprintf oc "@])@?"
+
   (** Type used to describe a line of a matrix (either a column or a row). *)
-  type line = (term * Basics.Subterm.t) list
+  type line = component list
 
   (** A redefinition of the rule type. *)
   type rule = { lhs : line
@@ -141,8 +150,7 @@ struct
                the matrix that gave birth to this one. *)}
 
   (** [pp_line o l] prints line [l] to out channel [o]. *)
-  let pp_line : line pp = fun oc l -> List.pp Print.pp ";" oc
-    (List.map (fst) l)
+  let pp_line : line pp = fun oc l -> List.pp pp_component ";" oc l
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { values ; _ } ->
