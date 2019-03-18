@@ -315,16 +315,16 @@ struct
          loop (if not (is_cons s) || mem s seen then seen else hd :: seen) tl in
     loop [] telst
 
-
-  (** [update_catalogue c r] adds the position of the head of [r] to catalogue
-      [c] if it is a pattern variable. *)
-  (* XXX uniqueness of positions in catalogue?*)
-  let update_catalogue : Basics.Subterm.t list -> rule ->
-    Basics.Subterm.t list = fun varstack rule ->
-      let { lhs ; _ } = rule in
-      match List.hd lhs with
-      | Patt(Some(_), _, _), p -> p :: varstack
-      | _                      -> varstack
+  (** [varpos p] returns the list of positions of pattern variables in the
+      first column of [p]. *)
+  let varpos : t -> Basics.Subterm.t list = fun pm ->
+    let is_var (te, _) = match te with
+      | Patt(Some(_), _, _) -> true
+      | _                   -> false in
+    let _, vars = List.split (List.filter is_var (get_col 0 pm)) in
+    (* We do not care about keeping the order of the new variables in [vars]
+       since for any rule, at most one of them will be chosen. *)
+    List.sort_uniq Basics.Subterm.compare vars
 end
 
 module Pm = Pattmat
@@ -396,9 +396,8 @@ let rec spec_transform : term -> (term * St.t) -> Pm.line = fun pat hd ->
     same number of applications and having the same leftmost {e non}
     {!cons:Appl} are considered as constructors. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
-  (* Add the the variables that are consumed by the specialization *)
-  let newstack = List.fold_left Pm.update_catalogue m.var_catalogue
-    m.values in
+  let newvars = Pm.varpos m in
+  let newcat = newvars @ m.var_catalogue in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       spec_filter p (fst (List.hd l))) m.values in
   let newhds = List.map (fun rul -> spec_transform p (List.hd rul.Pm.lhs))
@@ -406,11 +405,12 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let newmat = List.map2 (fun newhd rul ->
     let oldlhstl = List.tl rul.Pm.lhs in
     { rul with Pm.lhs = newhd @ oldlhstl }) newhds filtered in
-  { values = newmat ; var_catalogue = newstack }
+  { values = newmat ; var_catalogue = newcat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
+let default : Pm.t -> Pm.t = fun pm ->
+  let { Pm.values = m ; Pm.var_catalogue = vcat ; _ } = pm in
   let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
       match fst @@ List.hd l with
       | Patt(_ , _, _) -> true
@@ -424,8 +424,9 @@ let default : Pm.t -> Pm.t = fun { values = m ; var_catalogue = vs } ->
       | Patt(_, _, _), _ ->
         { rul with Pm.lhs = List.tl rul.Pm.lhs }
       | _             -> assert false) filtered in
-  let newst = List.fold_left Pm.update_catalogue vs m in
-  { values = unfolded ; var_catalogue = newst }
+  let newvars = Pm.varpos pm in
+  let newcat = newvars @ vcat in
+  { values = unfolded ; var_catalogue = newcat }
 
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
@@ -519,19 +520,21 @@ let rec compile : Pm.t -> t = fun patterns ->
       let rhs = (List.hd m).Pm.rhs in
       let lhs = (List.hd m).Pm.lhs in
       let pos2slot = (List.hd m).Pm.variables in
-      (* [env_builder] maps future position in the term store to the slot in
-         the environment. *)
-      let env_builder = snd (List.fold_left (fun (i, m) tpos ->
+      let f (count, map) tpos =
         let opslot = Basics.SubtMap.find_opt tpos pos2slot in
         match opslot with
-        | None     -> succ i, m
-        (* ^ The stack may contain more variables than needed for the
-           rule *)
-        | Some(sl) -> succ i, IntMap.add i sl m)
-                               (0, IntMap.empty) (List.rev vcat)) in
+        | None     -> succ count, map
+        (* ^ Discard useless variables *)
+        | Some(sl) -> succ count, IntMap.add count sl map in
+      (* [env_builder] maps future position in the term store to the slot in
+         the environment. *)
+      let _, env_builder = List.fold_left f (0, IntMap.empty)
+        (List.rev vcat) in
       (* ^ For now, [env_builder] contains only the variables encountered
          while choosing the rule.  Other pattern variables needed in the rhs,
          which are still in the [lhs] will now be fetched. *)
+      assert (IntMap.cardinal env_builder <=
+                Basics.SubtMap.cardinal pos2slot) ;
       let depth = List.length vcat in
       fetch lhs depth env_builder rhs
     else
