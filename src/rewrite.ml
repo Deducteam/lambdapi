@@ -27,23 +27,16 @@ type rw_patt =
 
 (** Equality configuration. *)
 type eq_config =
-  { symb_P     : sym * pp_hint (** Encoding of propositions.        *)
-  ; symb_T     : sym * pp_hint (** Encoding of types.               *)
-  ; symb_eq    : sym * pp_hint (** Equality proposition.            *)
-  ; symb_eqind : sym * pp_hint (** Induction principle on equality. *)
-  ; symb_refl  : sym * pp_hint (** Reflexivity of equality.         *) }
-
-(** [builtin builtins name] finds the builtin symbol named [name]
-   in [builtins] if it exists, and fails otherwise. *)
-let builtin : popt -> builtins -> string -> sym * pp_hint =
-  fun pos builtins name ->
-  try StrMap.find name builtins
-  with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
+  { symb_P     : sym (** Encoding of propositions.        *)
+  ; symb_T     : sym (** Encoding of types.               *)
+  ; symb_eq    : sym (** Equality proposition.            *)
+  ; symb_eqind : sym (** Induction principle on equality. *)
+  ; symb_refl  : sym (** Reflexivity of equality.         *) }
 
 (** [get_eq_config pos builtins] returns the current configuration for
    equality, used by tactics such as “rewrite” or “reflexivity”. *)
-let get_eq_config : popt -> builtins -> eq_config = fun pos builtins ->
-  let builtin = builtin pos builtins in
+let get_eq_config : popt -> sym StrMap.t -> eq_config = fun pos builtins ->
+  let builtin = Sign.builtin pos builtins in
   { symb_P     = builtin "P"
   ; symb_T     = builtin "T"
   ; symb_eq    = builtin "eq"
@@ -59,9 +52,9 @@ eq : ∀ (a:U), T a ⇒ T a ⇒ Prop
 refl : ∀ (a:U) (x:T a), P (eq a x x)
 eqind : ∀ (a:U) (x y:T a), P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 *)
-let check_builtin : popt -> builtins -> string -> sym -> unit
+let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
   = fun pos builtins s sym ->
-  let builtin = builtin pos builtins in
+  let builtin = Sign.builtin pos builtins in
   match s with
   | "T" | "P" ->
      begin
@@ -77,9 +70,8 @@ let check_builtin : popt -> builtins -> string -> sym -> unit
      end
   | "eq" ->
      begin
-       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P" in
-       let term_T = Symb (symb_T, Nothing)
-       and term_U =
+       let symb_T = builtin "T" and symb_P = builtin "P" in
+       let term_U =
          match !(symb_T.sym_type) with
          | Prod (a, _) -> a
          | _ -> assert false (* cannot happen *)
@@ -91,7 +83,7 @@ let check_builtin : popt -> builtins -> string -> sym -> unit
        let a = Bindlib.new_var mkfree "a"
        and x = Bindlib.new_var mkfree "x"
        and y = Bindlib.new_var mkfree "y" in
-       let ta = Appl (term_T, Vari a) in
+       let ta = Appl (symb symb_T, Vari a) in
        let c = [(y, ta); (x, ta); (a, term_U)] in
        let eq_type = Ctxt.to_prod c term_Prop in
        if not (Basics.eq eq_type !(sym.sym_type)) then
@@ -100,33 +92,27 @@ let check_builtin : popt -> builtins -> string -> sym -> unit
      end
   | "refl" ->
      begin
-       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P"
-       and symb_eq, _ = builtin "eq" in
-       let term_T = Symb (symb_T, Nothing)
-       and term_P = Symb (symb_P, Nothing)
-       and term_eq = Symb (symb_eq, Nothing)
-       and term_U =
+       let symb_T = builtin "T" and symb_P = builtin "P"
+       and symb_eq = builtin "eq" in
+       let term_U =
          match !(symb_T.sym_type) with
          | Prod (a, _) -> a
          | _ -> assert false (* cannot happen *)
        in
        let a = Bindlib.new_var mkfree "a"
        and x = Bindlib.new_var mkfree "x" in
-       let c = [(x, Appl (term_T, Vari a)); (a, term_U)] in
-       let t = Basics.add_args term_eq [Vari a; Vari x; Vari x] in
-       let refl_type = Ctxt.to_prod c (Appl (term_P, t)) in
+       let c = [(x, Appl (symb symb_T, Vari a)); (a, term_U)] in
+       let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
+       let refl_type = Ctxt.to_prod c (Appl (symb symb_P, t)) in
        if not (Basics.eq refl_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp refl_type
      end
   | "eqind" ->
      begin
-       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P"
-       and symb_eq, _ = builtin "eq" in
-       let term_T = Symb (symb_T, Nothing)
-       and term_P = Symb (symb_P, Nothing)
-       and term_eq = Symb (symb_eq, Nothing)
-       and term_U =
+       let symb_T = builtin "T" and symb_P = builtin "P"
+       and symb_eq = builtin "eq" in
+       let term_U =
          match !(symb_T.sym_type) with
          | Prod (a, _) -> a
          | _ -> assert false (* cannot happen *)
@@ -142,13 +128,13 @@ let check_builtin : popt -> builtins -> string -> sym -> unit
        and p = Bindlib.new_var mkfree "p"
        and py = Bindlib.new_var mkfree "py"
        and z = Bindlib.new_var mkfree "z" in
-       let ta = Appl (term_T, Vari a) in
+       let ta = Appl (symb symb_T, Vari a) in
        let typ_p = Ctxt.to_prod [(z,ta)] term_Prop in
-       let eqaxy = Basics.add_args term_eq [Vari a; Vari x; Vari y] in
-       let p_of y = Appl (term_P, Appl (Vari p, Vari y)) in
+       let eqaxy = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari y] in
+       let p_of y = Appl (symb symb_P, Appl (Vari p, Vari y)) in
        let c = [(py, p_of y)
                ;(p, typ_p)
-               ;(xy, Appl (term_P, eqaxy))
+               ;(xy, Appl (symb symb_P, eqaxy))
                ;(y, ta)
                ;(x, ta)
                ;(a, term_U)] in
@@ -165,10 +151,10 @@ let check_builtin : popt -> builtins -> string -> sym -> unit
 let get_eq_data : popt -> eq_config -> term -> term * term * term =
   fun pos cfg t ->
   match get_args t with
-  | (p, [u]) when is_symb (fst cfg.symb_P) p ->
+  | (p, [u]) when is_symb cfg.symb_P p ->
       begin
         match get_args u with
-        | (eq, [a;l;r]) when is_symb (fst cfg.symb_eq) eq -> (a, l, r)
+        | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
         | _ ->
            fatal pos "Expected an equality type, found [%a]." pp t
       end
@@ -317,7 +303,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   (* Extract the term from the goal type (get “t” from “P t”). *)
   let g_term =
     match get_args g_type with
-    | (p, [t]) when is_symb (fst cfg.symb_P) p -> t
+    | (p, [t]) when is_symb cfg.symb_P p -> t
     | _                                        ->
         fatal pos "Goal type [%a] is not of the form “P t”." pp g_type
   in
@@ -613,14 +599,14 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(Symb(fst cfg.symb_T, snd cfg.symb_T), a), pred_bind) in
+  let pred = Abst(Appl(symb cfg.symb_T, a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(Symb(fst cfg.symb_P, snd cfg.symb_P), new_term) in
+  let goal_type = Appl(symb cfg.symb_P, new_term) in
   let goal_term = Ctxt.make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let eqind = Symb(fst cfg.symb_eqind, snd cfg.symb_eqind) in
+  let eqind = symb cfg.symb_eqind in
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
@@ -651,7 +637,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
 
   (* Build the witness. *)
-  let s, hint = cfg.symb_refl in add_args (Symb(s, hint)) [a; l]
+  add_args (symb cfg.symb_refl) [a; l]
 
 (** [symmetry ps] attempts to use symmetry of equality on the focused goal. If
     successful,  a new goal is generated,  and the corresponding proof term is
@@ -659,11 +645,6 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
 let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
-  let symb_P = Symb(fst cfg.symb_P, snd cfg.symb_P) in
-  let symb_T = Symb(fst cfg.symb_T, snd cfg.symb_T) in
-  let symb_eq = Symb(fst cfg.symb_eq, snd cfg.symb_eq) in
-  let symb_refl = Symb(fst cfg.symb_refl, snd cfg.symb_refl) in
-  let symb_eqind = Symb(fst cfg.symb_eqind, snd cfg.symb_eqind) in
 
   (* Get the type of the focused goal. *)
   let (g_env, g_type) = Proof.focus_goal ps in
@@ -674,20 +655,22 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
 
   (* We create a new metavariable (“M” in the above). *)
-  let meta_type = Appl(symb_P, (add_args symb_eq [a; r; l])) in
+  let meta_type =
+    Appl(symb cfg.symb_P, (add_args (symb cfg.symb_eq) [a; r; l])) in
   let meta_term = Ctxt.make_meta (Ctxt.of_env g_env) meta_type in
 
   (* We build the predicate (“λx, eq a r x” in the above). *)
   let pred =
     let x = Bindlib.new_var mkfree "X" in
-    let pred = add_args symb_eq [a; l; Vari(x)] in
+    let pred = add_args (symb cfg.symb_eq) [a; l; Vari(x)] in
     let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
-    Abst(Appl(symb_T, a), pred)
+    Abst(Appl(symb cfg.symb_T, a), pred)
   in
 
   (* We build the proof term. *)
-  let refl_a_l = add_args symb_refl [a; l] in
-  let term = add_args symb_eqind [a; r; l; meta_term; pred; refl_a_l] in
+  let refl_a_l = add_args (symb cfg.symb_refl) [a; l] in
+  let term =
+    add_args (symb cfg.symb_eqind) [a; r; l; meta_term; pred; refl_a_l] in
 
   (* Debugging data to the log. *)
   log_rewr "Symmetry with:";

@@ -55,9 +55,7 @@ type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
   ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
-  ; proof_builtins : builtins    (** Signature state, for builtins.       *) }
-
-and builtins = (sym * pp_hint) StrMap.t
+  ; proof_builtins : sym StrMap.t(** Signature state, for builtins.       *) }
 
 (** Short synonym for qualified use. *)
 type t = proof_state
@@ -65,7 +63,8 @@ type t = proof_state
 (** [init builtins name a] returns an initial proof state for a theorem  named
     [name], which statement is represented by the type [a]. Builtin symbols of
     [builtins] may be used by tactics, and have been declared. *)
-let init : builtins -> Pos.strloc -> term -> t = fun proof_builtins name a ->
+let init : sym StrMap.t -> Pos.strloc -> term -> t =
+  fun proof_builtins name a ->
   let proof_term = fresh_meta ~name:name.elt a 0 in
   let proof_goals = [Goal.of_meta proof_term] in
   {proof_name = name; proof_term; proof_goals; proof_builtins}

@@ -223,6 +223,8 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
+let symb s = Symb (s, Nothing)
+
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
 
