@@ -335,15 +335,13 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | _            , Patt(Some(_), _, _) -> true
   (* ^ Linear var appearing in rhs *)
   | Symb(s, _)   , Symb(s', _)         -> s == s'
-  | Appl(_, _) , Appl(_, _)            ->
+  | Appl(_, _)   , Appl(_, _)          ->
      let ps, pargs = Basics.get_args pat in
      let hs, hargs = Basics.get_args hd in
      spec_filter ps hs && List.for_all2 spec_filter pargs hargs
   (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
   | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
-  | Abst(_, b1)  , Abst(_, b2)             ->
-    let _, u, v = Bindlib.unbind2 b1 b2 in
-    spec_filter u v
+  | Abst(_, _)   , Abst(_, _)          -> true
   | Patt(_, _, e), _                   ->
   (* ^ Comes from a specialization on a lambda. *)
      let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift hd) in
@@ -362,9 +360,10 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
 let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
   hd ->
   match hd with
-  | Symb(_, _), _ -> []
+  | Symb(_, _), _
+  | Vari(_)   , _ -> []
   | Appl(_, _), p ->
-  (* ^ Nested structure verified in filter *)
+  (* ^ Arguments verified in filter *)
     let upat = fst @@ Basics.get_args pat in
     let hs, hargs = Basics.get_args (fst hd) in
     let np = St.sub p in
@@ -373,20 +372,18 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
   | Abst(_, b), p ->
      let np = St.sub p in
      let _, t = Bindlib.unbind b in [(t, np)]
-  | Vari(_), _    -> []
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
-  | (Patt(_, _, [| |]), p), Appl(_, _) ->
-      (* ^ Wildcard *)
+  | (Patt(_, _, _), p), Appl(_, _) ->
      let arity = List.length @@ snd @@ Basics.get_args pat in
      let tagged = St.tag
        (List.init arity (fun _ -> Patt(None, "", [| |]))) in
      (List.map (fun (te, po) -> (te, St.prefix p po)) tagged)
-  | (Patt(_, _, _), p)    , Abst(_, b) ->
+  | (Patt(_, _, _), p), Abst(_, b) ->
      let _, t = Bindlib.unbind b in
      [(t, St.prefix p St.init)]
-  | (Patt(_, _, _), _)    , _          -> []
-  | _                                  -> assert false
+  | (Patt(_, _, _), _)    , _      -> []
+  | _                              -> assert false
 
 (** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
