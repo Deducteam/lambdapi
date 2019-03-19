@@ -29,8 +29,8 @@ let no_problems : problems =
 let can_instantiate : bool ref = ref true
 
 (** [instantiate m ts v] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = v”. The returned boolean tells whether [m] was
-    instantiated or not. *)
+    unification problem “m[ts] = v”. The returned boolean tells whether [m]
+    was instantiated or not. *)
 let instantiate : meta -> term array -> term -> bool = fun m ar v ->
   (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
