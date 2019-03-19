@@ -4,6 +4,8 @@
     {{:10.1145/1411304.1411311}DOI}. *)
 open Terms
 open Extra
+module St = Basics.Subterm
+module StMap = Basics.SubtMap
 
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
@@ -125,15 +127,12 @@ struct
     F.fprintf oc ", " ; Basics.Subterm.pp oc pos ;
     F.fprintf oc "@])@?"
 
-  (** Type used to describe a line of a matrix (either a column or a row). *)
-  type line = component list
-
   (** A redefinition of the rule type. *)
-  type rule = { lhs : line
+  type rule = { lhs : component list
               (** Left hand side of a rule. *)
               ; rhs : action
               (** Right hand side of a rule. *)
-              ; variables : int Basics.SubtMap.t
+              ; variables : int StMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)}
 
@@ -144,27 +143,23 @@ struct
       action. *)
   type t = { values : matrix
            (** The rules. *)
-           ; var_catalogue : Basics.Subterm.t list
+           ; var_catalogue : St.t list
            (** Contains positions of terms in {!recfield:lhs} that can be used
                as variables in any of the {!recfield:rhs} which appeared in
                the matrix that gave birth to this one. *)}
 
-  (** [pp_line o l] prints line [l] to out channel [o]. *)
-  let pp_line : line pp = fun oc l -> List.pp pp_component ";" oc l
-
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { values ; _ } ->
     let module F = Format in
+    let pp_line oc l = List.pp pp_component ";" oc l in
     F.fprintf oc "[|@[<v>@," ;
     List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
     (* List.pp does not process Format "@" directives when in sep *)
     F.fprintf oc "@.|]@,@?"
 
-  (** [pos_needed_by l] returns a mapping from position of variables into [l]
+  (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let pos_needed_by : line -> action -> int Basics.SubtMap.t = fun lhs rhs ->
-    let module St = Basics.Subterm in
-    let module StMap = Basics.SubtMap in
+  let flushout_vars : component list -> action -> int StMap.t = fun lhs rhs ->
     let nvars = Bindlib.mbinder_arity rhs in
     let rec loop found st po =
       if found = nvars then StMap.empty else
@@ -200,7 +195,7 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = Basics.Subterm.tag r.Terms.lhs in
-      let variables = pos_needed_by term_pos r.Terms.rhs in
+      let variables = flushout_vars term_pos r.Terms.rhs in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
     { values = List.map r2r rs ; var_catalogue = [] }
@@ -210,7 +205,7 @@ struct
 
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
-  let get_col : int -> t -> line = fun ind { values ; _ } ->
+  let get_col : int -> t -> component list = fun ind { values ; _ } ->
     let opcol = List.fold_left (fun acc { lhs = li ; _ } ->
         List.nth_opt li ind :: acc) [] values in
     let rem = List.filter (function None -> false | Some(_) -> true) opcol in
@@ -232,11 +227,12 @@ struct
   (** [compare c d] compares columns [c] and [d] returning: a positive integer
       if [c > d], 0 if [c = d] or a negative integer if [c < d]; where [<],
       [=] and [>] are defined according to a heuristic.  *)
-  let compare : line -> line -> int = fun _ _ -> 0
+  let compare : component list -> component list -> int = fun _ _ -> 0
 
   (** [k @> l] is true if [k] is greater or equal than [l] in the sense of
       {!val:compare}. *)
-  let (@>) : line -> line -> bool = fun l1 l2 -> compare l1 l2 >= 0
+  let (@>) : component list -> component list -> bool = fun l1 l2 ->
+    compare l1 l2 >= 0
 
   (** [pick_best m] returns the index of the best column of matrix [m]
       according to a heuristic. *)
@@ -317,18 +313,17 @@ struct
 
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
-  let varpos : t -> Basics.Subterm.t list = fun pm ->
+  let varpos : t -> St.t list = fun pm ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
     let _, vars = List.split (List.filter is_var (get_col 0 pm)) in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    List.sort_uniq Basics.Subterm.compare vars
+    List.sort_uniq St.compare vars
 end
 
 module Pm = Pattmat
-module St = Basics.Subterm
 
 (** [spec_filter p h] returns whether a line with head [h] (from a pattern
     matrix) must be kept when specializing the matrix on pattern [p]. *)
@@ -342,10 +337,10 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | Appl(u1, u2) , Appl(v1, v2)        ->
     spec_filter u1 v1 && spec_filter u2 v2
   (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
+  | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
   | Abst(_, b1)  , Abst(_, b2)             ->
     let _, u, v = Bindlib.unbind2 b1 b2 in
     spec_filter u v
-  | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
   | Patt(_, _, e), _                   ->
   (* ^ Comes from a specialization on a lambda. *)
      let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift hd) in
@@ -361,7 +356,8 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
 
 (** [spec_transform p h] transform head of line [h] when specializing against
     pattern [p]. *)
-let rec spec_transform : term -> (term * St.t) -> Pm.line = fun pat hd ->
+let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
+  hd ->
   match hd with
   | Symb(_, _), _ -> []
   | Appl(u, v), p ->
@@ -467,7 +463,7 @@ let default : Pm.t -> Pm.t = fun pm ->
     elements as the number of variables in [r].  The environment builder[e] is
     also enriched.  The tree which allows this consumption is returned, with a
     leaf holding action [r] and the new environment. *)
-let fetch : Pm.line -> int -> int IntMap.t -> action -> t =
+let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
