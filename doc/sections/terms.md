@@ -16,9 +16,9 @@ A user-defined term can be either:
 
    - a qualified symbol or a non-qualified symbol previously declared in the current file or in some previously open module, possibly prefixed by `@` to disallow implicit arguments
    - a bound variable
-   - a metavariable or goal
+   - a metavariable or goal when prefixed by `?`
 
-  Convention: identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
+  **Convention:** identifiers starting with a capital letter denote types and predicates (e.g. `Nat`, `List`), and identifiers starting with a small letter denote constructors, functions and proofs (e.g. `zero`, `add`, `refl`).
 
  * an anonymous function `λ(x:A) y z,t` mapping `x`, `y` and `z` (of type `A` for `x`) to `t`
 
@@ -26,13 +26,13 @@ A user-defined term can be either:
 
  * a non-dependent product `A ⇒ T` (syntactic sugar for `∀x:A,T` with `x` not occurring in `T`)
 
- * a `let f (x:A) y z = t` construction
+ * a `let f (x:A) y z = t in` construction
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 
  * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal.
 
- * an integer between 0 and 2^30-1 if the builtins "0" and "+1" are defined
+ * an integer between 0 and 2^30-1 if the builtins "0" and "+1" are defined (see the [`set`](commands.md) command)
 
 Subterms can be parenthesized to avoid ambiguities.
 

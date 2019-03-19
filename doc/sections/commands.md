@@ -236,27 +236,48 @@ assertnot succ : Nat
 ### `set`
 
 The `set` command is used to control the behaviour of Lambdapi, and to control
-extension points in its syntax.  For instance,  the following commands set the
-verbosity level to `1`,  enable the debugging flags `t` and `s`,  and disables
-the debugging flag `s`.
+extension points in its syntax.
+
+**verbose level** `set verbose <n>` where `<n>` is between 0 and 3
+sets the verbose level to the corresponding integer. Higher is the
+verbose level, more details are printed.
+
+**debug** The user can activate (with `+`) or deactivate (with `-`)
+the debug mode for some functionalities as follows:
 
 ```
-set verbose 1
 set debug +ts
 set debug -s
 ```
 
-The following code sets the definition of built-in symbols. They are used, for
-example, to specify a zero and successor function for unary natural numbers so
-that natural number literals can be automatically translated to their use.
+Each functionality is represented by a single character. For instance,
+`t` stands for typing. To get the list of debuggable functionalities,
+to `lambdapi -h`.
+
+**notation for natural numbers** It is possible to a usual notation
+for natural numbers by specifying the symbols representing 0 and the
+successor function as follows:
 
 ```
 set builtin "0"  ≔ zero
 set builtin "+1" ≔ succ
 ```
 
-The following code defines infix symbols for addition and multiplication. Both
-are associative to the left, and they have priority levels `6` and `7`.
+**equality-related builtins** In order to use tactics related to
+Leibinz equality, one first has to define a number of builtin symbols
+as follows:
+
+```
+set builtin "T"     ≔ T     // : U ⇒ TYPE
+set builtin "P"     ≔ P     // : Prop ⇒ TYPE
+set builtin "eq"    ≔ eq    // : ∀ {a}, T a ⇒ T a ⇒ Prop
+set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+```
+
+**infix symbols** The following code defines infix symbols for
+addition and multiplication. Both are associative to the left, and
+they have priority levels `6` and `7`.
 
 ```
 set infix left 6 "+" ≔ add

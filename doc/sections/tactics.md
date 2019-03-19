@@ -83,17 +83,11 @@ symbols `T`, `P`, `eq` (with infix notation `=`), `eqind` and `refl`
 with the following types and builtin declarations:
 
 ```
-symbol T : U ⇒ TYPE
-symbol P : Prop ⇒ TYPE
-symbol eq {a} : T a ⇒ T a ⇒ Prop
-symbol refl {a} (x:T a) : P (x = x)
-symbol eqind {a} x y : P (x = y) ⇒ ∀(p:T a⇒Prop), P (p y) ⇒ P (p x)
-
-set builtin "T"     ≔ T
-set builtin "P"     ≔ P
-set builtin "eq"    ≔ eq
-set builtin "refl"  ≔ refl
-set builtin "eqind" ≔ eqind
+set builtin "T"     ≔ T     // : U ⇒ TYPE
+set builtin "P"     ≔ P     // : Prop ⇒ TYPE
+set builtin "eq"    ≔ eq    // : ∀ {a}, T a ⇒ T a ⇒ Prop
+set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 ```
 
 <!---------------------------------------------------------------------------->
