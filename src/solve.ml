@@ -1,4 +1,4 @@
-(** Type-checking and inference. *)
+(** Solving unification constraints. *)
 
 open Extra
 open Timed
@@ -14,10 +14,10 @@ let log_solv = log_solv.logger
 
 (** Representation of a set of problems. *)
 type problems =
-  { to_solve  : conv_constrs
-  (** List of unification problems that must be put in WHNF first. *)
-  ; unsolved  : conv_constrs
-  (** List of unsolved unification problems. *)
+  { to_solve  : unif_constrs
+  (** List of unification problems to solve. *)
+  ; unsolved  : unif_constrs
+  (** List of unification problems that could not be solved. *)
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
 
@@ -29,24 +29,26 @@ let no_problems : problems =
 let can_instantiate : bool ref = ref true
 
 (** [instantiate m ts v] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = v”. The returne boolean tells whether [m] was
+    unification problem “m[ts] = v”. The returned boolean tells whether [m] was
     instantiated or not. *)
 let instantiate : meta -> term array -> term -> bool = fun m ar v ->
   (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
   let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
   Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
 
-(** [solve p] tries to solve the unification problems of [p]. *)
-let rec solve : problems -> conv_constrs = fun p ->
-  match p.to_solve with
-  | [] when p.unsolved = [] -> []
-  | [] when p.recompute     -> solve {no_problems with to_solve = p.unsolved}
-  | []                      -> p.unsolved
-  | (t,u)::to_solve         -> solve_aux t u {p with to_solve}
+(** [solve p] tries to solve the unification problems of [p] and
+   returns the constraints that could not be solved. *)
+let rec solve : problems -> unif_constrs = fun p ->
+  match p with
+  | { to_solve = []; unsolved = []; _ } -> []
+  | { to_solve = []; unsolved = cs; recompute = true } ->
+     solve {no_problems with to_solve = cs}
+  | { to_solve = []; unsolved = cs; _ } -> cs
+  | { to_solve = (t,u)::to_solve; _ } -> solve_aux t u {p with to_solve}
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
-and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
+and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
@@ -119,7 +121,7 @@ and solve_aux : term -> term -> problems -> conv_constrs = fun t1 t2 p ->
     value of [can_instantiate] to [flag].  If there is no solution,  the value
     [None] is returned. Otherwise [Some(cs)] is returned,  where the list [cs]
     is a list of unsolved convertibility constraints. *)
-let solve : bool -> problems -> conv_constrs option = fun b p ->
+let solve : bool -> problems -> unif_constrs option = fun b p ->
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s") m; None
@@ -137,7 +139,7 @@ let check : Ctxt.t -> term -> term -> bool = fun ctx t a ->
 (** [infer_constr ctx t] tries to infer a type [a],  together with unification
     constraints [cs], for the term [t] in context [ctx].  The function returns
     [Some(a,cs)] in case of success, and [None] otherwise. *)
-let infer_constr : Ctxt.t -> term -> (conv_constrs*term) option = fun ctx t ->
+let infer_constr : Ctxt.t -> term -> (unif_constrs*term) option = fun ctx t ->
   if !log_enabled then log_solv "infer_constr [%a]" pp t;
   let (a, to_solve) = Typing.infer ctx t in
   Option.map (fun cs -> (cs, a)) (solve true {no_problems with to_solve})
