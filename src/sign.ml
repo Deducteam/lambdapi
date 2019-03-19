@@ -10,11 +10,13 @@ open Pos
 
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
+type builtins = (sym * pp_hint) StrMap.t
+
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : (sym * pp_hint) StrMap.t ref
+  ; sign_builtins : builtins ref
   ; sign_binops   : (sym * binop) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the

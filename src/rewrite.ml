@@ -33,19 +33,22 @@ type eq_config =
   ; symb_eqind : sym * pp_hint (** Induction principle on equality. *)
   ; symb_refl  : sym * pp_hint (** Reflexivity of equality.         *) }
 
+(** [builtin builtins name] finds the builtin symbol named [name]
+   in [builtins] if it exists, and fails otherwise. *)
+let builtin : popt -> builtins -> string -> sym * pp_hint =
+  fun pos builtins name ->
+  try StrMap.find name builtins
+  with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
+
 (** [get_eq_config pos builtins] returns the current configuration for
    equality, used by tactics such as “rewrite” or “reflexivity”. *)
-let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
-  let {elt = id; pos} = name in
-  let find_sym key =
-    try StrMap.find key builtins with Not_found ->
-    fatal pos "Builtin symbol [%s] undefined in the proof of [%s]." key id
-  in
-  { symb_P     = find_sym "P"
-  ; symb_T     = find_sym "T"
-  ; symb_eq    = find_sym "eq"
-  ; symb_eqind = find_sym "eqind"
-  ; symb_refl  = find_sym "refl" }
+let get_eq_config : popt -> builtins -> eq_config = fun pos builtins ->
+  let builtin = builtin pos builtins in
+  { symb_P     = builtin "P"
+  ; symb_T     = builtin "T"
+  ; symb_eq    = builtin "eq"
+  ; symb_eqind = builtin "eqind"
+  ; symb_refl  = builtin "refl" }
 
 (** [check_builtin pos sign s sym] checks that symbol [sym] has the correct
    type for being declared builtin for [s]:
@@ -56,12 +59,9 @@ eq : ∀ (a:U), T a ⇒ T a ⇒ Prop
 refl : ∀ (a:U) (x:T a), P (eq a x x)
 eqind : ∀ (a:U) (x y:T a), P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 *)
-let check_builtin : popt -> Sign.t -> string -> sym -> unit
-  = fun pos sign s sym ->
-  let find_sym key =
-    try fst (StrMap.find key !(sign.sign_builtins)) with Not_found ->
-    fatal pos "Builtin symbol [%s] undefined." key
-  in
+let check_builtin : popt -> builtins -> string -> sym -> unit
+  = fun pos builtins s sym ->
+  let builtin = builtin pos builtins in
   match s with
   | "T" | "P" ->
      begin
@@ -77,7 +77,7 @@ let check_builtin : popt -> Sign.t -> string -> sym -> unit
      end
   | "eq" ->
      begin
-       let symb_T = find_sym "T" and symb_P = find_sym "P" in
+       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P" in
        let term_T = Symb (symb_T, Nothing)
        and term_U =
          match !(symb_T.sym_type) with
@@ -100,8 +100,8 @@ let check_builtin : popt -> Sign.t -> string -> sym -> unit
      end
   | "refl" ->
      begin
-       let symb_T = find_sym "T" and symb_P = find_sym "P"
-       and symb_eq = find_sym "eq" in
+       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P"
+       and symb_eq, _ = builtin "eq" in
        let term_T = Symb (symb_T, Nothing)
        and term_P = Symb (symb_P, Nothing)
        and term_eq = Symb (symb_eq, Nothing)
@@ -121,8 +121,8 @@ let check_builtin : popt -> Sign.t -> string -> sym -> unit
      end
   | "eqind" ->
      begin
-       let symb_T = find_sym "T" and symb_P = find_sym "P"
-       and symb_eq = find_sym "eq" in
+       let symb_T, _ = builtin "T" and symb_P, _ = builtin "P"
+       and symb_eq, _ = builtin "eq" in
        let term_T = Symb (symb_T, Nothing)
        and term_P = Symb (symb_P, Nothing)
        and term_eq = Symb (symb_eq, Nothing)
@@ -288,7 +288,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
 let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   fun pos ps p t ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = get_eq_config ps.proof_name ps.proof_builtins in
+  let cfg = get_eq_config pos ps.proof_builtins in
 
   (* Get the focused goal. *)
   let (g_env, g_type) = Proof.focus_goal ps in
@@ -641,7 +641,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
     If successful, the corresponding proof term is returned. *)
 let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
+  let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
 
   (* Get the type of the focused goal. *)
   let _, g_type = Proof.focus_goal ps in
@@ -658,7 +658,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
     returned. The proof of symmetry is built from the axioms of equality. *)
 let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
-  let cfg = Proof.(get_eq_config ps.proof_name ps.proof_builtins) in
+  let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
   let symb_P = Symb(fst cfg.symb_P, snd cfg.symb_P) in
   let symb_T = Symb(fst cfg.symb_T, snd cfg.symb_T) in
   let symb_eq = Symb(fst cfg.symb_eq, snd cfg.symb_eq) in
