@@ -79,12 +79,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
 
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
-      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-      solve {p with to_solve = (a1,a2) :: (b1,b2) :: p.to_solve}
+     let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
+     solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
 
-  | (Vari(x1)   , Vari(x2)   )
-       when Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 ->
-     decompose ()
+  | (Vari(x1)   , Vari(x2)   ) ->
+     if Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 then decompose ()
+     else error ()
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
