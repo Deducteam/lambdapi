@@ -183,7 +183,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     let fn l x = (x,Meta(fresh_meta Type 0,[||]))::l in
     List.fold_left fn [] !var_list
   in
-  let (_,l) = Typing.infer ctx lhs in
+  let (_,l) = Infer.infer ctx lhs in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of

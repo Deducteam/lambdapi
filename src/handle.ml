@@ -76,7 +76,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic ss a in
       (* We check that [a] is typable by a sort. *)
-      Solve.sort_type Ctxt.empty a;
+      Typing.sort_type Ctxt.empty a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas a then
         begin
@@ -132,11 +132,11 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Solve.sort_type Ctxt.empty a;
-            if Solve.check Ctxt.empty t a then a else
+            Typing.sort_type Ctxt.empty a;
+            if Typing.check Ctxt.empty t a then a else
             fatal cmd.pos "Term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Solve.infer Ctxt.empty t with
+            match Typing.infer Ctxt.empty t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -165,7 +165,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic ss a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Solve.sort_type Ctxt.empty a;
+      Typing.sort_type Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas a then
         begin
@@ -212,12 +212,12 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_assert_typing(t,a) ->
             let t = scope_basic ss t in
             let a = scope_basic ss a in
-            Solve.sort_type Ctxt.empty a;
-            (try Solve.check Ctxt.empty t a with _ -> false)
+            Typing.sort_type Ctxt.empty a;
+            (try Typing.check Ctxt.empty t a with _ -> false)
         | P_assert_conv(a,b)   ->
             let t = scope_basic ss a in
             let u = scope_basic ss b in
-            match (Solve.infer [] t, Solve.infer [] u) with
+            match (Typing.infer [] t, Typing.infer [] u) with
             | (Some(a), Some(b)) ->
                 if Eval.eq_modulo a b then Eval.eq_modulo t u else
                 fatal cmd.pos "Infered types not convertible (in assertion)."
@@ -259,7 +259,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let t_pos = t.pos in
       let t = scope_basic ss t in
       let a =
-        match Solve.infer [] t with
+        match Typing.infer [] t with
         | Some(a) -> Eval.eval cfg a
         | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
       in
@@ -269,7 +269,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       let t_pos = t.pos in
       let t = scope_basic ss t in
       let v =
-        match Solve.infer [] t with
+        match Typing.infer [] t with
         | Some(_) -> Eval.eval cfg t
         | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
       in
