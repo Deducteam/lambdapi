@@ -11,6 +11,25 @@ open Files
 open Syntax
 open Scope
 
+(** [check_builtin_nat s] checks that the builtin symbol [s] for
+   non-negative literals has a good type. *)
+let check_builtin_nat : popt -> Sign.t -> string -> sym -> unit
+  = fun pos sign s sym ->
+  match s with
+  | "+1" ->
+     let find_sym key =
+       try fst (StrMap.find key !(sign.sign_builtins)) with Not_found ->
+         fatal pos "Builtin symbol [%s] undefined." key
+     in
+     let symb_0 = find_sym "0" in
+     let typ_0 = !(symb_0.sym_type) in
+     let x = Bindlib.new_var mkfree "_" in
+     let typ_s = Ctxt.to_prod [(x, typ_0)] typ_0 in
+     if not (Basics.eq typ_s !(sym.sym_type)) then
+       fatal pos "The type of [%s] is not of the form [%a]"
+         sym.sym_name pp typ_s
+  | _ -> ()
+
 type proof_data =
   { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
   ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
@@ -245,6 +264,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             let sym = find_sym false ss qid in
+            check_builtin_nat cmd.pos ss.signature s (fst sym);
             Rewrite.check_builtin cmd.pos ss.signature s (fst sym);
             Sign.add_builtin ss.signature s sym;
             {ss with builtins = StrMap.add s sym ss.builtins}
