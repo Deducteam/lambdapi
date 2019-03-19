@@ -155,16 +155,16 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
    fails (but constraints may be unsatisfiable). *)
 let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
   Pervasives.(constraints := []);
-    let a = infer ctx t in
-    let constrs = Pervasives.(!constraints) in
-    if !log_enabled then
-      begin
-        log_type (gre "infer [%a] yields [%a]") pp t pp a;
-        let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
-        List.iter fn constrs;
-      end;
-    Pervasives.(constraints := []);
-    (a, constrs)
+  let a = infer ctx t in
+  let constrs = Pervasives.(!constraints) in
+  if !log_enabled then
+    begin
+      log_type (gre "infer [%a] yields [%a]") pp t pp a;
+      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      List.iter fn constrs;
+    end;
+  Pervasives.(constraints := []);
+  (a, constrs)
 
 (** [check ctx t c] checks returns a list [cs] of unification
    constraints for [t] to be of type [c] in the context [ctx]. The
@@ -173,13 +173,13 @@ let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
    unsatisfiable). *)
 let check : Ctxt.t -> term -> term -> unif_constrs = fun ctx t c ->
   Pervasives.(constraints := []);
-    check ctx t c;
-    let constrs = Pervasives.(!constraints) in
-    if !log_enabled then
-      begin
-        log_type (gre "check [%a] [%a]") pp t pp c;
-        let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
-        List.iter fn constrs;
-      end;
-    Pervasives.(constraints := []);
-    constrs
+  check ctx t c;
+  let constrs = Pervasives.(!constraints) in
+  if !log_enabled then
+    begin
+      log_type (gre "check [%a] [%a]") pp t pp c;
+      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      List.iter fn constrs;
+    end;
+  Pervasives.(constraints := []);
+  constrs
