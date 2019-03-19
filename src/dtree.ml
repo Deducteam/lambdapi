@@ -391,11 +391,9 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
 (** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
     or a pattern variable.  The specialization always happen on the first
-    column (which is swapped if needed).  We allow specialization by
-    {!cons:Appl} as it allows to check the number of successive applications.
-    In case an {!cons:Appl} is given as pattern [p], only terms having the
-    same number of applications and having the same leftmost {e non}
-    {!cons:Appl} are considered as constructors. *)
+    column (which is swapped if needed).  In case an {!cons:Appl} is given as
+    pattern [p], only terms having the same number of arguments and the same
+    leftmost {e non} {!cons:Appl} term match. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let newvars = Pm.varpos m in
   let newcat = newvars @ m.var_catalogue in
