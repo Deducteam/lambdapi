@@ -50,11 +50,11 @@ let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
 (** [check_builtin pos sign s sym] checks that symbol [sym] has the correct
    type for being declared builtin for [s]:
 
-symbol T : U ⇒ TYPE
-symbol P : Prop ⇒ TYPE
-symbol eq : ∀ (a:U), T a ⇒ T a ⇒ Prop
-symbol refl : ∀ (a:U) (x:T a), P (eq a x x)
-symbol eqind : ∀ (a:U) (x y:T a), P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+T : U ⇒ TYPE
+P : Prop ⇒ TYPE
+eq : ∀ (a:U), T a ⇒ T a ⇒ Prop
+refl : ∀ (a:U) (x:T a), P (eq a x x)
+eqind : ∀ (a:U) (x y:T a), P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 *)
 let check_builtin : popt -> Sign.t -> string -> sym -> unit
   = fun pos sign s sym ->
