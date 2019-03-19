@@ -231,8 +231,11 @@ struct
 
   (** [tag l] attaches the positions to a list of terms as if they were the
       subterms of a same term. *)
-  let tag : term list -> (term * t) list = List.mapi
-    (fun i e -> (e, i :: init))
+  let tag : ?ini:t -> term list -> (term * t) list = fun ?ini xs ->
+    let start = match ini with
+      | None | Some([]) -> 0
+      | Some(s :: _)    -> s in
+    List.mapi (fun i e -> (e, [i + start])) xs
 end
 
 (** Functional map with [Subterm.t] as keys *)
