@@ -24,9 +24,10 @@ Structure of directories and files
      - `basics.ml`: basic operations on terms
      - `print.ml`: pretty printing of terms
      - `eval.ml`: rewriting engine
-     - `solve.ml`: unification algorithm
+     - `unif.ml`: unification algorithm
      - `ctxt.ml`: typing contexts (maps variable -> type)
-     - `typing.ml`: type-checking algorithm
+     - `infer.ml`: constraints-generating type inference and checking
+     - `typing.ml`: type inference and checking
      - `sign.ml`: signatures/theories (sets of symbols and rules)
 
    + parsing and scoping:
