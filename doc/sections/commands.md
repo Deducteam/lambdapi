@@ -235,15 +235,18 @@ assertnot succ : Nat
 <!---------------------------------------------------------------------------->
 ### `set`
 
-The `set` command is used to control the behaviour of Lambdapi, and to control
+The `set` command is used to control the behaviour of Lambdapi and
 extension points in its syntax.
 
-**verbose level** `set verbose <n>` where `<n>` is between 0 and 3
-sets the verbose level to the corresponding integer. Higher is the
-verbose level, more details are printed.
+**verbose level** The verbose level can be set to an integer between 0
+and 3. Higher is the verbose level, more details are printed.
 
-**debug** The user can activate (with `+`) or deactivate (with `-`)
-the debug mode for some functionalities as follows:
+```
+set verbose 1
+```
+
+**debug mode** The user can activate (with `+`) or deactivate (with
+`-`) the debug mode for some functionalities as follows:
 
 ```
 set debug +ts
@@ -252,15 +255,15 @@ set debug -s
 
 Each functionality is represented by a single character. For instance,
 `t` stands for typing. To get the list of debuggable functionalities,
-to `lambdapi -h`.
+do `lambdapi -h`.
 
-**notation for natural numbers** It is possible to a usual notation
-for natural numbers by specifying the symbols representing 0 and the
-successor function as follows:
+**notation for natural numbers** It is possible to use the standard
+decimal notation for natural numbers by specifying the symbols
+representing 0 and the successor function as follows:
 
 ```
-set builtin "0"  ≔ zero
-set builtin "+1" ≔ succ
+set builtin "0"  ≔ zero // : N
+set builtin "+1" ≔ succ // : N ⇒ N
 ```
 
 **equality-related builtins** In order to use tactics related to
