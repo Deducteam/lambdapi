@@ -228,7 +228,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            | _               -> assert false in
 (* (b) *)if store then vars.(cursor) <- hd ;
          let ncurs = if store then succ cursor else cursor in
-(* (c) *)let matched_on_cons = List.assoc_opt hd children in
+(* (c) *)let matched_on_cons = List.assoc_eq Basics.eq hd children in
          let matched = match matched_on_cons with
            | Some(_) as s -> s
            | None         -> default in

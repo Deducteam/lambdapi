@@ -128,6 +128,15 @@ module List =
         let start = Option.get init (List.hd li) in
         List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
           start li
+
+    (** [assoc_eq e n x] is {!val:assoc_opt}[n x] using equality function
+        [e]. *)
+    let rec assoc_eq : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option =
+      fun eq n l ->
+        match l with
+        | []                     -> None
+        | (x, e) :: _ when x = n -> Some(e)
+        | _ :: xs                -> assoc_eq eq n xs
   end
 
 module Array =
