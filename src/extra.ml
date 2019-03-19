@@ -131,7 +131,7 @@ module List =
 
     (** [assoc_eq e n x] is {!val:assoc_opt}[n x] using equality function
         [e]. *)
-    let rec assoc_eq : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option =
+    let rec assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option =
       fun eq n l ->
         match l with
         | []                     -> None
