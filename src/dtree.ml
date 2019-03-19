@@ -335,8 +335,10 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | _            , Patt(Some(_), _, _) -> true
   (* ^ Linear var appearing in rhs *)
   | Symb(s, _)   , Symb(s', _)         -> s == s'
-  | Appl(u1, u2) , Appl(v1, v2)        ->
-    spec_filter u1 v1 && spec_filter u2 v2
+  | Appl(_, _) , Appl(_, _)            ->
+     let ps, pargs = Basics.get_args pat in
+     let hs, hargs = Basics.get_args hd in
+     spec_filter ps hs && List.for_all2 spec_filter pargs hargs
   (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
   | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
   | Abst(_, b1)  , Abst(_, b2)             ->
@@ -361,11 +363,13 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
   hd ->
   match hd with
   | Symb(_, _), _ -> []
-  | Appl(u, v), p ->
+  | Appl(_, _), p ->
   (* ^ Nested structure verified in filter *)
     let upat = fst @@ Basics.get_args pat in
+    let hs, hargs = Basics.get_args (fst hd) in
     let np = St.sub p in
-    spec_transform upat (u, np) @ [(v, St.succ np)]
+    let tagged = St.tag ?ini:(Some(St.succ np)) hargs in
+    spec_transform upat (hs, np) @ tagged
   | Abst(_, b), p ->
      let np = St.sub p in
      let _, t = Bindlib.unbind b in [(t, np)]
