@@ -245,6 +245,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             let sym = find_sym false ss qid in
+            Rewrite.check_builtin cmd.pos ss.signature s (fst sym);
             Sign.add_builtin ss.signature s sym;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_binop(binop)   ->

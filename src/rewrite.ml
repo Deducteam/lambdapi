@@ -33,8 +33,8 @@ type eq_config =
   ; symb_eqind : sym * pp_hint (** Induction principle on equality. *)
   ; symb_refl  : sym * pp_hint (** Reflexivity of equality.         *) }
 
-(** [get_eq_config ()] returns the current configuration for equality, used by
-    tactics such as “rewrite” or “reflexivity”. *)
+(** [get_eq_config pos builtins] returns the current configuration for
+   equality, used by tactics such as “rewrite” or “reflexivity”. *)
 let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
   let {elt = id; pos} = name in
   let find_sym key =
@@ -46,6 +46,118 @@ let get_eq_config : Pos.strloc -> builtins -> eq_config = fun name builtins ->
   ; symb_eq    = find_sym "eq"
   ; symb_eqind = find_sym "eqind"
   ; symb_refl  = find_sym "refl" }
+
+(** [check_builtin pos sign s sym] checks that symbol [sym] has the correct
+   type for being declared builtin for [s]:
+
+symbol T : U ⇒ TYPE
+symbol P : Prop ⇒ TYPE
+symbol eq : ∀ (a:U), T a ⇒ T a ⇒ Prop
+symbol refl : ∀ (a:U) (x:T a), P (eq a x x)
+symbol eqind : ∀ (a:U) (x y:T a), P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+*)
+let check_builtin : popt -> Sign.t -> string -> sym -> unit
+  = fun pos sign s sym ->
+  let find_sym key =
+    try fst (StrMap.find key !(sign.sign_builtins)) with Not_found ->
+    fatal pos "Builtin symbol [%s] undefined." key
+  in
+  match s with
+  | "T" | "P" ->
+     begin
+       let exception Invalid_type in
+       try match Eval.whnf !(sym.sym_type) with
+           | Prod (_, b) ->
+              let _, b = Bindlib.unbind b in
+              if b <> Type then raise Invalid_type
+           | _ -> raise Invalid_type
+       with Invalid_type ->
+         fatal pos "The type of [%s] is not of the form [_ ⇒ TYPE]"
+           sym.sym_name
+     end
+  | "eq" ->
+     begin
+       let symb_T = find_sym "T" and symb_P = find_sym "P" in
+       let term_T = Symb (symb_T, Nothing)
+       and term_U =
+         match !(symb_T.sym_type) with
+         | Prod (a, _) -> a
+         | _ -> assert false (* cannot happen *)
+       and term_Prop =
+         match !(symb_P.sym_type) with
+         | Prod (a, _) -> a
+         | _ -> assert false (* cannot happen *)
+       in
+       let a = Bindlib.new_var mkfree "a"
+       and x = Bindlib.new_var mkfree "x"
+       and y = Bindlib.new_var mkfree "y" in
+       let ta = Appl (term_T, Vari a) in
+       let c = [(y, ta); (x, ta); (a, term_U)] in
+       let eq_type = Ctxt.to_prod c term_Prop in
+       if not (Basics.eq eq_type !(sym.sym_type)) then
+         fatal pos "The type of [%s] is not of the form [%a]"
+           sym.sym_name pp eq_type
+     end
+  | "refl" ->
+     begin
+       let symb_T = find_sym "T" and symb_P = find_sym "P"
+       and symb_eq = find_sym "eq" in
+       let term_T = Symb (symb_T, Nothing)
+       and term_P = Symb (symb_P, Nothing)
+       and term_eq = Symb (symb_eq, Nothing)
+       and term_U =
+         match !(symb_T.sym_type) with
+         | Prod (a, _) -> a
+         | _ -> assert false (* cannot happen *)
+       in
+       let a = Bindlib.new_var mkfree "a"
+       and x = Bindlib.new_var mkfree "x" in
+       let c = [(x, Appl (term_T, Vari a)); (a, term_U)] in
+       let t = Basics.add_args term_eq [Vari a; Vari x; Vari x] in
+       let refl_type = Ctxt.to_prod c (Appl (term_P, t)) in
+       if not (Basics.eq refl_type !(sym.sym_type))
+       then fatal pos "The type of [%s] is not of the form [%a]."
+              sym.sym_name pp refl_type
+     end
+  | "eqind" ->
+     begin
+       let symb_T = find_sym "T" and symb_P = find_sym "P"
+       and symb_eq = find_sym "eq" in
+       let term_T = Symb (symb_T, Nothing)
+       and term_P = Symb (symb_P, Nothing)
+       and term_eq = Symb (symb_eq, Nothing)
+       and term_U =
+         match !(symb_T.sym_type) with
+         | Prod (a, _) -> a
+         | _ -> assert false (* cannot happen *)
+       and term_Prop =
+         match !(symb_P.sym_type) with
+         | Prod (a, _) -> a
+         | _ -> assert false (* cannot happen *)
+       in
+       let a = Bindlib.new_var mkfree "a"
+       and x = Bindlib.new_var mkfree "x"
+       and y = Bindlib.new_var mkfree "y"
+       and xy = Bindlib.new_var mkfree "xy"
+       and p = Bindlib.new_var mkfree "p"
+       and py = Bindlib.new_var mkfree "py"
+       and z = Bindlib.new_var mkfree "z" in
+       let ta = Appl (term_T, Vari a) in
+       let typ_p = Ctxt.to_prod [(z,ta)] term_Prop in
+       let eqaxy = Basics.add_args term_eq [Vari a; Vari x; Vari y] in
+       let p_of y = Appl (term_P, Appl (Vari p, Vari y)) in
+       let c = [(py, p_of y)
+               ;(p, typ_p)
+               ;(xy, Appl (term_P, eqaxy))
+               ;(y, ta)
+               ;(x, ta)
+               ;(a, term_U)] in
+       let eqind_type = Ctxt.to_prod c (p_of x) in
+       if not (Basics.eq eqind_type !(sym.sym_type))
+       then fatal pos "The type of [%s] is not of the form [%a]."
+              sym.sym_name pp eqind_type
+     end
+  | _ -> ()
 
 (** [get_eq_data cfg a] extra data from an equality type [a]. It consists of a
     triple containing the type in which equality is used and the equated terms
