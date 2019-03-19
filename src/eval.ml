@@ -221,6 +221,10 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
               unfold t, unfolded @ (List.tl stk)
            | Symb(_, _) as s ->
               unfold s, List.tl stk
+           | Abst(_, b) as a ->
+              let _, t = Bindlib.unbind b in
+              let tst = Pervasives.ref (false, t) in
+              a, tst :: (List.tl stk)
            | _               -> assert false in
 (* (b) *)if store then vars.(cursor) <- hd ;
          let ncurs = if store then succ cursor else cursor in
