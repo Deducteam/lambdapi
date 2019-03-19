@@ -239,9 +239,10 @@ struct
   let pick_best : t -> int = fun _ -> 0
 
   (** [is_pattern t] returns whether a term [t] is considered as a pattern *)
-  let is_pattern : term -> bool = function
-    | Patt(_, _, _) -> false
-    | _             -> true
+  let rec is_pattern : term -> bool = function
+    | Patt(_, _, _)   -> false
+    | Appl(_, _) as a -> is_pattern (fst (Basics.get_args a))
+    | _               -> true
 
   (** [exhausted r] returns whether rule [r] can be further pattern matched or
       if it is ready to yield the action.  A rule is exhausted when its left
