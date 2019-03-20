@@ -14,6 +14,14 @@ let empty : t = []
 let add : tvar -> term -> t -> t =
   fun x a ctx -> (x,a)::ctx
 
+(** [unbind_ctxt ctx a b] returns the triple [(x,b,ctx')] such that [(x,b)]
+   is the unbinding of [b] and [ctx'] is the context [ctx] extended with
+   [(x,a)] if [x] occurs in [b]. *)
+let unbind ctx a b =
+  let (x,b') = Bindlib.unbind b in
+  let ctx' = if Bindlib.binder_occur b then add x a ctx else ctx in
+  (x,b',ctx')
+
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
 let pp : t pp = fun oc ctx ->
   let pp_e oc (x,a) =

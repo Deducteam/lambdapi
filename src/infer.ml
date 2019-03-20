@@ -60,8 +60,8 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
-      let (x,b) = Bindlib.unbind b in
-      let s = infer (Ctxt.add x a ctx) b in
+      let (_,b,ctx') = Ctxt.unbind ctx a b in
+      let s = infer ctx' b in
       (* We check that [s] is a sort. *)
       begin
         let s = unfold s in
@@ -79,8 +79,8 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
-      let (x,t) = Bindlib.unbind t in
-      let b = infer (Ctxt.add x a ctx) t in
+      let (x,t,ctx') = Ctxt.unbind ctx a t in
+      let b = infer ctx' t in
       (* We build the product type by binding [x] in [b]. *)
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
 
@@ -139,8 +139,8 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
               conv c (Prod(a,b)); b
         in
         (* We type-check the body with the codomain. *)
-        let (x,t) = Bindlib.unbind t in
-        check (Ctxt.add x a ctx) t (Bindlib.subst b (Vari(x)))
+        let (x,t,ctx') = Ctxt.unbind ctx a t in
+        check ctx' t (Bindlib.subst b (Vari(x)))
       end
   | t           ->
       (*  ctx ⊢ t ⇒ a
