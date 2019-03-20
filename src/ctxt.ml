@@ -31,23 +31,6 @@ let find : tvar -> t -> term = fun x ctx ->
 let mem : tvar -> t -> bool = fun x ctx ->
   try ignore (find x ctx); false with Not_found -> true
 
-(** [unbind ctx a b] substitutes the binder [b] with a fresh variable [x], and
-    extends [ctx] with the binding [(x,a)]. When [x] does not occur, the [ctx]
-    is not extended. *)
-let unbind : t -> term -> tbinder -> t * term = fun ctx a b ->
-  let occurs = Bindlib.binder_occur b in
-  let (x,b) = Bindlib.unbind b in
-  if occurs then (add x a ctx, b) else (ctx, b)
-
-(** [unbind2 ctx a b1 b2] is similar to [unbind], but it handle two binders at
-    once. They are substituted with the same, fresh variable. *)
-let unbind2 : t -> term -> tbinder -> tbinder -> t * term * term =
-  fun ctx a b1 b2 ->
-    let occurs = Bindlib.binder_occur b1 || Bindlib.binder_occur b2 in
-    let (x,b1,b2) = Bindlib.unbind2 b1 b2 in
-    let c = if occurs then add x a ctx else ctx in
-    (c, b1, b2)
-
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. *)
 let to_prod : t -> term -> term = fun ctx t ->

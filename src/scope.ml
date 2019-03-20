@@ -14,7 +14,7 @@ type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases   : module_path StrMap.t      (** Established aliases. *)
-  ; builtins  : (sym * pp_hint) StrMap.t  (** Builtin symbols.     *) }
+  ; builtins  : sym StrMap.t              (** Builtin symbols.     *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
@@ -32,16 +32,6 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols)) in
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
-
-(** [get_builtin loc st key] extracts the builtin symbol associated to
-    [key] in the signature state [st]. If it does not exist, [Fatal] is raised
-    using the position [loc] in the associated error message. *)
-let get_builtin : Pos.popt -> sig_state -> string -> tbox = fun loc st key ->
-  let (s, hint) =
-    try StrMap.find key st.builtins with Not_found ->
-    fatal loc "Builtin symbol [%s] not defined." key
-  in
-  _Symb s hint
 
 (** [find_sym b st qid] returns the symbol and printing hint corresponding  to
     the qualified identifier [qid].  If [fst qid.elt] is empty,  we search for
@@ -292,8 +282,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Appl (scope env (Pos.none (P_Abst([([x],None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
-        let sym_z = get_builtin t.pos ss "0"  in
-        let sym_s = get_builtin t.pos ss "+1" in
+        let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
+        and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
