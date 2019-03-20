@@ -4,6 +4,16 @@ open Extra
 open Timed
 open Terms
 
+(** Sets and maps of variables. *)
+module Var =
+  struct
+    type t = term Bindlib.var
+    let compare = Bindlib.compare_vars
+  end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
 (** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
     the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
     does not correspond to a free variable. *)
@@ -108,8 +118,9 @@ let is_symb : sym -> term -> bool = fun s t ->
     term before the call are not included in the list. *)
 let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   let rec iter xs t =
+    let t = unfold t in
     action xs t;
-    match unfold t with
+    match t with
     | Wild
     | TRef(_)
     | Vari(_)
@@ -127,6 +138,18 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
     | Appl(t,u)  -> iter xs t; iter xs u
   in
   iter [] (cleanup t)
+
+(** [free_vars t] returns the set of free variables of [t]. *)
+let free_vars : term -> VarSet.t =
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let action xs t =
+    match t with
+    | Vari x when not (List.exists (Bindlib.eq_vars x) xs) ->
+       vars := VarSet.add x !vars
+    | _ -> ()
+  in
+  fun t -> iter action t; !vars
 
 (** [iter_meta f t] applies the function [f] to every metavariable in
    the term [t]. [t] must contain no [Patt], [TEnv], [Wild] or
