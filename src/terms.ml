@@ -269,6 +269,11 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
+let symb s = Symb (s, Nothing)
+
+(** Type of a list of unification constraints. *)
+type unif_constrs = (term * term) list
+
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
     is returned cannot be an instantiated metavariable or term environment nor

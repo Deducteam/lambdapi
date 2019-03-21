@@ -4,6 +4,16 @@ open Extra
 open Timed
 open Terms
 
+(** Sets and maps of variables. *)
+module Var =
+  struct
+    type t = term Bindlib.var
+    let compare = Bindlib.compare_vars
+  end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
 (** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
     the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
     does not correspond to a free variable. *)
@@ -121,14 +131,29 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
     | TEnv(_,ts)
     | Meta(_,ts) -> Array.iter (iter xs) ts
     | Prod(a,b)
-    | Abst(a,b)  -> let (x,b) = Bindlib.unbind b in iter xs a; iter (x::xs) b
+    | Abst(a,b)  ->
+       iter xs a;
+       let (x,b') = Bindlib.unbind b in
+       iter (if Bindlib.binder_occur b then x::xs else xs) b'
     | Appl(t,u)  -> iter xs t; iter xs u
   in
   iter [] (cleanup t)
 
-(** [iter_meta f t] applies the function [f] to every metavariable in the term
-    [t]. As for {!val:eq},  the behaviour of this function is unspecified when
-    [t] contains the [Patt] or the [TEnv] constructor. *)
+(** [free_vars t] returns the set of free variables of [t]. *)
+let free_vars : term -> VarSet.t =
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let action xs t =
+    match t with
+    | Vari x when not (List.exists (Bindlib.eq_vars x) xs) ->
+       vars := VarSet.add x !vars
+    | _ -> ()
+  in
+  fun t -> iter action t; !vars
+
+(** [iter_meta f t] applies the function [f] to every metavariable in
+   the term [t]. [t] must contain no [Patt], [TEnv], [Wild] or
+   [TRef]. *)
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)

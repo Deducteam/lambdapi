@@ -8,13 +8,20 @@ open Terms
 open Syntax
 open Pos
 
+(** [builtin builtins name] finds the builtin symbol named [name]
+   in [builtins] if it exists, and fails otherwise. *)
+let builtin : popt -> sym StrMap.t -> string -> sym =
+  fun pos builtins name ->
+  try StrMap.find name builtins
+  with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
+
 (** Representation of a signature. It roughly corresponds to a set of symbols,
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : (sym * pp_hint) StrMap.t ref
+  ; sign_builtins : sym StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
@@ -109,8 +116,8 @@ let link : t -> unit = fun sign ->
     List.iter h ls
   in
   PathMap.iter gn !(sign.sign_deps);
+  sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_builtins := StrMap.map hn !(sign.sign_builtins);
   sign.sign_binops := StrMap.map hn !(sign.sign_binops)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
@@ -156,7 +163,7 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter fn !(sign.sign_symbols);
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
-  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_builtins);
+  StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
 (** [add_symbol sign mode name a impl] creates a fresh symbol with name [name]
@@ -245,7 +252,7 @@ let read : string -> t = fun fname ->
     in
     StrMap.iter (fun _ (s,_) -> reset_sym s) !(sign.sign_symbols);
     StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_binops);
-    StrMap.iter (fun _ (s,_) -> shallow_reset_sym s) !(sign.sign_builtins);
+    StrMap.iter (fun _ s -> shallow_reset_sym s) !(sign.sign_builtins);
     let fn (_,r) = reset_rule r in
     PathMap.iter (fun _ -> List.iter fn) !(sign.sign_deps);
     sign
@@ -278,7 +285,7 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
-let add_builtin : t -> string -> (sym * pp_hint) -> unit = fun sign s sym ->
+let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
 
 (** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].

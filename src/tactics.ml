@@ -53,7 +53,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     (* Check that [t] is well-typed. *)
     let ctx = Ctxt.of_env env in
     log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
-    if not (Solve.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
+    if not (Typing.check ctx t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     let vs = Array.of_list (List.map (fun (_,(v,_)) -> v) env) in
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar vs (lift t)));
@@ -87,7 +87,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Infer the type of [t0] and count the number of products. *)
       (* NOTE there is room for improvement here. *)
       let nb =
-        match Solve.infer (Ctxt.of_env env) t0 with
+        match Typing.infer (Ctxt.of_env env) t0 with
         | Some(a) -> Basics.count_products a
         | None    -> fatal t.pos "Cannot infer the type of [%a]." Print.pp t0
       in

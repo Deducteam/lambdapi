@@ -119,7 +119,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst r.elt.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  match Solve.infer_constr Ctxt.empty lhs with
+  match Typing.infer_constr Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
   if !log_enabled then
@@ -134,7 +134,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  let to_solve = Typing.check Ctxt.empty rhs ty_lhs in
+  let to_solve = Infer.check Ctxt.empty rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
       log_subj "RHS has type [%a]" pp ty_lhs;
@@ -142,7 +142,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
       List.iter fn to_solve
     end;
   (* Solving the constraints. *)
-  match Solve.(solve false {no_problems with to_solve}) with
+  match Unif.(solve false {no_problems with to_solve}) with
   | Some(cs) ->
       let is_constr c =
         let eq_comm (t1,u1) (t2,u2) =
