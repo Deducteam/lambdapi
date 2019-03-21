@@ -180,6 +180,18 @@ let has_metas : term -> bool =
   let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
 
+(** [distinct_vars_opt ts] checks that [ts] is made of distinct
+   variables and returns these variables. *)
+let distinct_vars_opt : term array -> tvar array option =
+  let exception Not_unique_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let to_var t =
+    match unfold t with
+    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars; x
+    | _ -> raise Not_unique_var
+  in try Some (Array.map to_var ts) with Not_unique_var -> None
+
 (** [distinct_vars ts] checks that [ts] is made of distinct variables. *)
 let distinct_vars : term array -> bool =
   let exception Not_unique_var in fun ts ->
