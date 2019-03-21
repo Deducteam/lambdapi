@@ -139,27 +139,15 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   in
   iter [] (cleanup t)
 
-(** [free_vars t] returns the set of free variables of [t]. *)
-let free_vars : term -> VarSet.t =
-  let open Pervasives in
-  let vars = ref VarSet.empty in
-  let action xs t =
-    match t with
-    | Vari x when not (List.exists (Bindlib.eq_vars x) xs) ->
-       vars := VarSet.add x !vars
-    | _ -> ()
-  in
-  fun t -> iter action t; !vars
-
-(** [iter_meta f t] applies the function [f] to every metavariable in
-   the term [t]. [t] must contain no [Patt], [TEnv], [Wild] or
-   [TRef]. *)
+(** [iter_meta f t] applies the function [f] to every metavariable of
+   [t], as well as to every metavariable occurring in the type of an
+   uninstantiated metavariable occurring in [t], and so on. *)
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
   | TEnv(_,_)
   | Wild
-  | TRef(_)    -> assert false
+  | TRef(_)
   | Vari(_)
   | Type
   | Kind
@@ -175,19 +163,21 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
     the [Patt] or [TEnv] constructor. *)
-let occurs : meta -> term -> bool = fun m t ->
-  let fn p = if m == p then raise Exit in
-  try iter_meta fn t; false with Exit -> true
+let occurs : meta -> term -> bool =
+  let exception Found in fun m t ->
+  let fn p = if m == p then raise Found in
+  try iter_meta fn t; false with Found -> true
 
 (** [get_metas t] returns the list of all the metavariables in [t]. *)
 let get_metas : term -> meta list = fun t ->
-  let l = Pervasives.ref [] in
-  iter_meta (fun m -> Pervasives.(l := m :: !l)) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) Pervasives.(!l)
+  let open Pervasives in
+  let l = ref [] in
+  iter_meta (fun m -> l := m :: !l) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
 
 (** [has_metas t] checks that there are metavariables in [t]. *)
-let has_metas : term -> bool = fun t ->
-  let exception Found in
+let has_metas : term -> bool =
+  let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
 
 (** [distinct_vars a] checks that [a] is made of distinct variables. *)
