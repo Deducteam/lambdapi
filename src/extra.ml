@@ -134,9 +134,9 @@ module List =
     let rec assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option =
       fun eq n l ->
         match l with
-        | []                     -> None
-        | (x, e) :: _ when x = n -> Some(e)
-        | _ :: xs                -> assoc_eq eq n xs
+        | []                      -> None
+        | (x, e) :: _ when eq x n -> Some(e)
+        | _ :: xs                 -> assoc_eq eq n xs
   end
 
 module Array =
