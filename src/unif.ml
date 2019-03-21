@@ -104,6 +104,54 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       try add_args p.to_solve ts1 ts2 with Invalid_argument _ -> error () in
     solve {p with to_solve}
   in
+  (* For a problem m[vs]=s(ts), where [vs] are distinct variables, m
+     is a meta of type ∀y0:a0,..,∀yk-1:ak-1,b (k = length vs), s is an
+     injective symbol of type ∀x0:b0,..,∀xn-1:bn-1,c (n = length ts),
+     we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
+     meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
+     bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
+  let imitate m vs us s h ts =
+    let exception Unsolvable in try
+    if not (us = [] && Sign.is_inj s) then raise Unsolvable;
+    let vars = match distinct_vars_opt vs with
+      | None -> raise Unsolvable
+      | Some vars -> vars
+    in
+    (* Build the list (yk-1, ak-1{y0=v0,..,yk-2=vk-2}), .., (y0, a0). *)
+    let k = Array.length vars in
+    let rec build_types i acc t =
+      if i >= k then acc
+      else match unfold t with
+           | Prod(a,b) ->
+              let v = vars.(i) in
+              build_types (i+1) ((v,lift a)::acc) (Bindlib.subst b (Vari v))
+           | _ -> assert false
+    in
+    let types = build_types 0 [] !(m.meta_type) in
+    (* Given a term t, build ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},t. *)
+    let build_prod =
+      let rec build t l =
+        match l with
+        | [] -> t
+        | (y,a) :: l -> build (_Prod a (Bindlib.bind_var y t)) l
+      in fun t -> Bindlib.unbox (build (lift t) types)
+    in
+    (* Build the term s(m0[vs],..,mn-1[vs]). *)
+    let t =
+      let rec build i acc t =
+        if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
+        else match unfold t with
+             | Prod(a,b) ->
+                let m = fresh_meta (build_prod a) k in
+                let u = Meta (m,vs) in
+                build (i-1) (u::acc) (Bindlib.subst b u)
+             | _ -> raise Unsolvable
+      in build (List.length ts) [] !(s.sym_type)
+    in
+    set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+    solve_aux t1 t2 p
+    with Unsolvable -> add_to_unsolved ()
+  in
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
@@ -117,6 +165,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Vari(x1)   , Vari(x2)   ) ->
      if Bindlib.eq_vars x1 x2 then decompose () else error ()
 
+  (* Other cases. *)
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_mode with
@@ -136,6 +185,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       solve {p with recompute = true}
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
+
+  | (Meta(m,ts)  , Symb(s,h)  ) -> imitate m ts ts1 s h ts2
+  | (Symb(s,h)  , Meta(m,ts)  ) -> imitate m ts ts2 s h ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
