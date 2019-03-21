@@ -241,6 +241,10 @@ type term =
       rules.  For each element of the list [(e, t)], [e] is the constructor
       matched (here a {!cons:Symb} or an {!cons:Abst}) and [t] is the tree
       resulting from this match. *)
+  ; abstspec : tree option
+  (** Specialization by abstract.
+      XXX Should be removed in the long run in favour of using a dedicated
+      type for tree constructors. *)
   ; default : tree option
   (** If a wildcard is among the patterns, this subtree is used when the term
       matched isn't a constructor among the {!recfield:children} terms. *)}

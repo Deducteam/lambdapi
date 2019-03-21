@@ -34,14 +34,15 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!const:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int option -> bool -> (term * 'a) list -> 'a option -> 'a) ->
+  do_node:(int option -> bool -> (term * 'a) list -> 'a option ->
+           'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
-    | Node({ swap ; store ; children ; default }) ->
+    | Node({ swap ; store ; children ; abstspec ; default }) ->
        do_node swap store (List.map (fun (teo, c) -> (teo, loop c)) children)
-         (Option.map loop default) in
+         (Option.map loop abstspec)(Option.map loop default) in
   loop t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -76,7 +77,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
       pp_opterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata)   ->
-      let { swap ; children ; store ; default } = ndata in
+      let { swap ; children ; store ; abstspec ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       begin (* Create node *)
@@ -91,7 +92,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
         pp_opterm ppf swon ; F.fprintf ppf "\"];"
       end ;
       List.iter (fun (s, e) -> write_tree tag (Some(s)) e) children ;
-      (match default with None -> () | Some(tr) -> write_tree tag None tr)
+      (match default with None -> () | Some(tr) -> write_tree tag None tr) ;
+      (match abstspec with None -> () | Some(tr) -> write_tree tag None tr)
     | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "!"
@@ -99,13 +101,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap ; children = ch ; store ; default }) ->
+    | Node({ swap ; children = ch ; store ; abstspec ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\""
          (match swap with None -> 0 | Some(i) -> i) ;
        if store then F.fprintf ppf " shape=\"box\"" ;
        F.fprintf ppf "]" ;
        List.iter (fun (sw, c) -> write_tree 0 (Some(sw)) c) ch ;
-       (match default with None -> () | Some(tr) -> write_tree 0 None tr)
+       (match default with None -> () | Some(tr) -> write_tree 0 None tr) ;
+       (match abstspec with None -> () | Some(tr) -> write_tree 0 None tr) ;
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
@@ -477,23 +480,23 @@ let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
             let neb =  IntMap.add (depth + added) i env_builder in
             let child = loop tl (succ added) neb in
             Node({ swap = None ; store = true ; children = []
-                 ; default = Some(child) })
+                 ; abstspec = None ; default = Some(child) })
          | Appl(_, _) as a     ->
             let newtl = snd (Basics.get_args a) @ tl in
             let child = loop newtl added env_builder in
             Node({ swap = None ; store = false ; children = []
-                 ; default = Some(child) })
+                 ; abstspec = None ; default = Some(child) })
          | Abst(_, b)          ->
             let _, body = Bindlib.unbind b in
             let child = loop (body :: tl) added env_builder in
             Node( {swap = None ; store = false ; children = []
-                  ; default = Some(child) })
+                  ; abstspec = None ; default = Some(child) })
          | Patt(None, _, _)
          | Symb(_, _)
          | Vari(_)             ->
             let child = loop tl added env_builder in
             Node({ swap = None ; store = false ; children = []
-                 ; default = Some(child) })
+                 ; abstspec = None ; default = Some(child) })
          | _                   -> assert false
          end in
     loop terms 0 env_builder
@@ -554,4 +557,4 @@ let rec compile : Pm.t -> t = fun patterns ->
                     if Pm.is_empty dm then None else Some(compile dm) in
       let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
       Node({ swap = swap ; store = store ; children = children
-           ; default = default })
+           ; abstspec = None ; default = default })

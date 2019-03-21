@@ -173,13 +173,16 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   (* Count maximum number of stored items to initialize variable array *)
   let capacity = Dtree.iter ~do_leaf:(fun _ _ -> 0)
-    ~do_node:(fun _ store subr defr ->
+    ~do_node:(fun _ store subr abstr defr ->
       let maxch = if subr = [] then 0
         else List.extremum (>) (snd (List.split subr)) in
       let maxchd = match defr with
         | None     -> maxch
         | Some(dr) -> max dr maxch in
-      if store then succ maxchd else maxchd)
+      let maxchdab = match abstr with
+        | None     -> maxchd
+        | Some(ar) -> max ar maxchd in
+      if store then succ maxchdab else maxchdab)
     ~fail:0 itree in
   let vars = Array.init capacity (fun _ -> Patt(None, "", [| |])) in
 
@@ -200,7 +203,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
           env.(sl) <- TE_Some(b)) pre_env ;
         Some(Bindlib.msubst act env, stk)
-      | Node({ swap ; children ; store ; default }) ->
+      | Node({ swap ; children ; store ; default ; _ }) ->
          if stk = [] then None else (* If stack too short, quit *)
          (* The main operations are: (a) picking the right term in the input
             stack, (b) filling the array containing terms to be substituted
