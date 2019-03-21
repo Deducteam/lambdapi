@@ -344,18 +344,13 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
      spec_filter ps hs && List.for_all2 spec_filter pargs hargs
   (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
   | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
-  | Abst(_, _)   , Abst(_, _)          -> true
-  | Patt(_, _, e), _                   ->
-  (* ^ Comes from a specialization on a lambda. *)
-     let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift hd) in
-     Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
   | Symb(_, _), Abst(_, _)
   | Abst(_, _), Symb(_, _)
   | Symb(_, _), Appl(_, _)
   | Appl(_, _), Symb(_, _)
   | Appl(_, _), Abst(_, _)
-  | Abst(_, _), Appl(_, _) -> false
+  | Abst(_, _), _          -> false
   | _                      -> assert false
 
 (** [spec_transform p h] transform head of line [h] when specializing against
@@ -372,9 +367,6 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
     let np = St.sub p in
     let tagged = St.tag ?ini:(Some(St.succ np)) hargs in
     spec_transform upat (hs, np) @ tagged
-  | Abst(_, b), p ->
-     let np = St.sub p in
-     let _, t = Bindlib.unbind b in [(t, np)]
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
   | (Patt(_, _, _), p), Appl(_, _) ->
@@ -382,9 +374,6 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
      let tagged = St.tag
        (List.init arity (fun _ -> Patt(None, "", [| |]))) in
      (List.map (fun (te, po) -> (te, St.prefix p po)) tagged)
-  | (Patt(_, _, _), p), Abst(_, b) ->
-     let _, t = Bindlib.unbind b in
-     [(t, St.prefix p St.init)]
   | (Patt(_, _, _), _)    , _      -> []
   | _                              -> assert false
 
@@ -405,6 +394,30 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
     let oldlhstl = List.tl rul.Pm.lhs in
     { rul with Pm.lhs = newhd @ oldlhstl }) newhds filtered in
   { values = newmat ; var_catalogue = newcat }
+
+(** [abstract m] is a specialization on abstractions. *)
+let abstract : Pm.t -> Pm.t = fun { values ; var_catalogue } ->
+  let filtered = List.filter (fun { Pm.lhs ; _ } ->
+    match fst (List.hd lhs) with
+    | Abst(_, _)
+    | Patt(_, _, _) -> true
+    | _             -> false) values in
+  let newhds = List.map (fun { Pm.lhs ; _ } ->
+    match List.hd lhs with
+    | Abst(_, b), p ->
+       let np = St.sub p in
+       let _, t = Bindlib.unbind b in [(t, np)]
+    | Patt(s, n, e), p ->
+       (* Add a new var in env [e]? *)
+       let np = St.sub p in
+       [(Patt(s, n, e), np)]
+    | _             -> assert false) values in
+  let unfolded = List.map2 (fun newhd rul ->
+    let old_lhs_tl = List.tl rul.Pm.lhs in
+    { rul with Pm.lhs = newhd @ old_lhs_tl}) newhds filtered in
+  let newvars = Pm.varpos { values ; var_catalogue } in
+  let newcat = newvars @ var_catalogue in
+  { values = unfolded ; var_catalogue = newcat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
