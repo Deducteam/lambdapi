@@ -27,13 +27,43 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [instantiate m ts v] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = v”. The returned boolean tells whether [m]
+(** [distinct_vars ts] checks that [ts] is made of variables [vs] only
+   and returns some copy of [vs] where variables occurring more than
+   once are replaced by fresh variables. It returns [None]
+   otherwise. *)
+let distinct_vars : term array -> tvar array option =
+  let exception Not_a_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty
+  and nl_vars = ref VarSet.empty in
+  let to_var t =
+    match unfold t with
+    | Vari x ->
+       begin
+         if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars
+         else vars := VarSet.add x !vars;
+         x
+       end
+    | _ -> raise Not_a_var
+  in
+  let replace_nl_var x =
+    if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
+  in
+  try Some (Array.map replace_nl_var (Array.map to_var ts))
+  with Not_a_var -> None
+
+(** [instantiate m ts u] check whether [m] can be instantiated for solving the
+    unification problem “m[ts] = u”. The returned boolean tells whether [m]
     was instantiated or not. *)
-let instantiate : meta -> term array -> term -> bool = fun m ar v ->
-  (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
-  let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
-  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
+let instantiate : meta -> term array -> term -> bool = fun m ts u ->
+  (!can_instantiate || internal m)
+  && not (occurs m u)
+  && match distinct_vars ts with
+     | None -> false
+     | Some vs ->
+        let bu = Bindlib.bind_mvar vs (lift u) in
+        Bindlib.is_closed bu
+        && (set_meta m (Bindlib.unbox bu); true)
 
 (** [solve p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
