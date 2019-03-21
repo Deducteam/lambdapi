@@ -84,7 +84,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     begin
       let t1 = Eval.to_term h1 ts1 in
       let t2 = Eval.to_term h2 ts2 in
-      log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
+      log_solv "solve [%a] [%a]" pp t1 pp t2;
     end;
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
@@ -92,15 +92,17 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
-  let decompose () =
-    let add_args =
-      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
-    in solve {p with to_solve = add_args p.to_solve ts1 ts2}
-  in
   let error () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  in
+  let decompose () =
+    let add_args =
+      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l)) in
+    let to_solve =
+      try add_args p.to_solve ts1 ts2 with Invalid_argument _ -> error () in
+    solve {p with to_solve}
   in
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
@@ -113,14 +115,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
 
   | (Vari(x1)   , Vari(x2)   ) ->
-     if Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 then decompose ()
-     else error ()
+     if Bindlib.eq_vars x1 x2 then decompose () else error ()
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_mode with
-       | Const ->
-          if List.same_length ts1 ts2 then decompose () else error ()
+       | Const -> decompose ()
        | Injec ->
           if List.same_length ts1 ts2 then decompose ()
           else if !(s1.sym_rules) = [] then error ()
