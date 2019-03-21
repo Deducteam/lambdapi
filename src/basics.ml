@@ -180,16 +180,16 @@ let has_metas : term -> bool =
   let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
 
-(** [distinct_vars a] checks that [a] is made of distinct variables. *)
-let distinct_vars : term array -> bool = fun ar ->
-  let rec distinct_vars vars i =
-    if i < 0 then true else
-    match unfold ar.(i) with
-    | Vari(x) when List.exists (Bindlib.eq_vars x) vars -> false
-    | Vari(x) -> distinct_vars (x::vars) (i-1)
-    | _       -> false
-  in
-  distinct_vars [] (Array.length ar - 1)
+(** [distinct_vars ts] checks that [ts] is made of distinct variables. *)
+let distinct_vars : term array -> bool =
+  let exception Not_unique_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let check t =
+    match unfold t with
+    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars
+    | _ -> raise Not_unique_var
+  in try Array.iter check ts; true with Not_unique_var -> false
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
