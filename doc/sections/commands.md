@@ -259,6 +259,13 @@ Each functionality is represented by a single character. For instance,
 `t` stands for typing. To get the list of debuggable functionalities,
 do `lambdapi -h`.
 
+**flags** The user can set/unset some flags controling printing:
+
+```
+set flag "print_implicits" off // default is on
+set flag "print_domains" off // default is on
+```
+
 **notation for natural numbers** It is possible to use the standard
 decimal notation for natural numbers by specifying the symbols
 representing 0 and the successor function as follows:
