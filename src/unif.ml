@@ -27,13 +27,43 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [instantiate m ts v] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = v”. The returned boolean tells whether [m]
+(** [distinct_vars ts] checks that [ts] is made of variables [vs] only
+   and returns some copy of [vs] where variables occurring more than
+   once are replaced by fresh variables. It returns [None]
+   otherwise. *)
+let distinct_vars : term array -> tvar array option =
+  let exception Not_a_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty
+  and nl_vars = ref VarSet.empty in
+  let to_var t =
+    match unfold t with
+    | Vari x ->
+       begin
+         if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars
+         else vars := VarSet.add x !vars;
+         x
+       end
+    | _ -> raise Not_a_var
+  in
+  let replace_nl_var x =
+    if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
+  in
+  try Some (Array.map replace_nl_var (Array.map to_var ts))
+  with Not_a_var -> None
+
+(** [instantiate m ts u] check whether [m] can be instantiated for solving the
+    unification problem “m[ts] = u”. The returned boolean tells whether [m]
     was instantiated or not. *)
-let instantiate : meta -> term array -> term -> bool = fun m ar v ->
-  (!can_instantiate || internal m) && distinct_vars ar && not (occurs m v) &&
-  let bv = Bindlib.bind_mvar (to_tvars ar) (lift v) in
-  Bindlib.is_closed bv && (set_meta m (Bindlib.unbox bv); true)
+let instantiate : meta -> term array -> term -> bool = fun m ts u ->
+  (!can_instantiate || internal m)
+  && not (occurs m u)
+  && match distinct_vars ts with
+     | None -> false
+     | Some vs ->
+        let bu = Bindlib.bind_mvar vs (lift u) in
+        Bindlib.is_closed bu
+        && (set_meta m (Bindlib.unbox bu); true)
 
 (** [solve p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
@@ -54,7 +84,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     begin
       let t1 = Eval.to_term h1 ts1 in
       let t2 = Eval.to_term h2 ts2 in
-      log_solv "solve_aux [%a] [%a]" pp t1 pp t2;
+      log_solv "solve [%a] [%a]" pp t1 pp t2;
     end;
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
@@ -62,15 +92,65 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
-  let decompose () =
-    let add_args =
-      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l))
-    in solve {p with to_solve = add_args p.to_solve ts1 ts2}
-  in
   let error () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+  in
+  let decompose () =
+    let add_args =
+      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l)) in
+    let to_solve =
+      try add_args p.to_solve ts1 ts2 with Invalid_argument _ -> error () in
+    solve {p with to_solve}
+  in
+  (* For a problem m[vs]=s(ts), where [vs] are distinct variables, m
+     is a meta of type ∀y0:a0,..,∀yk-1:ak-1,b (k = length vs), s is an
+     injective symbol of type ∀x0:b0,..,∀xn-1:bn-1,c (n = length ts),
+     we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
+     meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
+     bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
+  let imitate m vs us s h ts =
+    let exception Unsolvable in try
+    if not (us = [] && Sign.is_inj s) then raise Unsolvable;
+    let vars = match distinct_vars_opt vs with
+      | None -> raise Unsolvable
+      | Some vars -> vars
+    in
+    (* Build the list (yk-1, ak-1{y0=v0,..,yk-2=vk-2}), .., (y0, a0). *)
+    let k = Array.length vars in
+    let rec build_types i acc t =
+      if i >= k then acc
+      else match unfold t with
+           | Prod(a,b) ->
+              let v = vars.(i) in
+              build_types (i+1) ((v,lift a)::acc) (Bindlib.subst b (Vari v))
+           | _ -> assert false
+    in
+    let types = build_types 0 [] !(m.meta_type) in
+    (* Given a term t, build ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},t. *)
+    let build_prod =
+      let rec build t l =
+        match l with
+        | [] -> t
+        | (y,a) :: l -> build (_Prod a (Bindlib.bind_var y t)) l
+      in fun t -> Bindlib.unbox (build (lift t) types)
+    in
+    (* Build the term s(m0[vs],..,mn-1[vs]). *)
+    let t =
+      let rec build i acc t =
+        if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
+        else match unfold t with
+             | Prod(a,b) ->
+                let m = fresh_meta (build_prod a) k in
+                let u = Meta (m,vs) in
+                build (i-1) (u::acc) (Bindlib.subst b u)
+             | _ -> raise Unsolvable
+      in build (List.length ts) [] !(s.sym_type)
+    in
+    set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+    solve_aux t1 t2 p
+    with Unsolvable -> add_to_unsolved ()
   in
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
@@ -83,14 +163,13 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
 
   | (Vari(x1)   , Vari(x2)   ) ->
-     if Bindlib.eq_vars x1 x2 && List.same_length ts1 ts2 then decompose ()
-     else error ()
+     if Bindlib.eq_vars x1 x2 then decompose () else error ()
 
+  (* Other cases. *)
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_mode with
-       | Const ->
-          if List.same_length ts1 ts2 then decompose () else error ()
+       | Const -> decompose ()
        | Injec ->
           if List.same_length ts1 ts2 then decompose ()
           else if !(s1.sym_rules) = [] then error ()
@@ -106,6 +185,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       solve {p with recompute = true}
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
+
+  | (Meta(m,ts)  , Symb(s,h)  ) -> imitate m ts ts1 s h ts2
+  | (Symb(s,h)  , Meta(m,ts)  ) -> imitate m ts ts2 s h ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()

@@ -173,10 +173,9 @@ let unlink : t -> unit = fun sign ->
 let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
     fun sign sym_mode s a impl ->
   (* Check for metavariables in the symbol type. *)
-  let nb = List.length (Basics.get_metas a) in
-  if nb > 0 then
-    fatal s.pos "The type symbol [%s] contains [%i] metavariables" s.elt nb;
-  (* We minimize the list to enforce our invariant (see {!type:Terms.sym}). *)
+  if Basics.has_metas a then
+    fatal s.pos "The type of [%s] contains metavariables" s.elt;
+  (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)

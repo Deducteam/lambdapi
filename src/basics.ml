@@ -4,6 +4,16 @@ open Extra
 open Timed
 open Terms
 
+(** Sets and maps of variables. *)
+module Var =
+  struct
+    type t = term Bindlib.var
+    let compare = Bindlib.compare_vars
+  end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
 (** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
     the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
     does not correspond to a free variable. *)
@@ -121,20 +131,23 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
     | TEnv(_,ts)
     | Meta(_,ts) -> Array.iter (iter xs) ts
     | Prod(a,b)
-    | Abst(a,b)  -> let (x,b) = Bindlib.unbind b in iter xs a; iter (x::xs) b
+    | Abst(a,b)  ->
+       iter xs a;
+       let (x,b') = Bindlib.unbind b in
+       iter (if Bindlib.binder_occur b then x::xs else xs) b'
     | Appl(t,u)  -> iter xs t; iter xs u
   in
   iter [] (cleanup t)
 
-(** [iter_meta f t] applies the function [f] to every metavariable in the term
-    [t]. As for {!val:eq},  the behaviour of this function is unspecified when
-    [t] contains the [Patt] or the [TEnv] constructor. *)
+(** [iter_meta f t] applies the function [f] to every metavariable of
+   [t], as well as to every metavariable occurring in the type of an
+   uninstantiated metavariable occurring in [t], and so on. *)
 let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   match unfold t with
   | Patt(_,_,_)
   | TEnv(_,_)
   | Wild
-  | TRef(_)    -> assert false
+  | TRef(_)
   | Vari(_)
   | Type
   | Kind
@@ -150,31 +163,45 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
     for {!val:eq}, the behaviour of this function is unspecified when [t] uses
     the [Patt] or [TEnv] constructor. *)
-let occurs : meta -> term -> bool = fun m t ->
-  let fn p = if m == p then raise Exit in
-  try iter_meta fn t; false with Exit -> true
+let occurs : meta -> term -> bool =
+  let exception Found in fun m t ->
+  let fn p = if m == p then raise Found in
+  try iter_meta fn t; false with Found -> true
 
 (** [get_metas t] returns the list of all the metavariables in [t]. *)
 let get_metas : term -> meta list = fun t ->
-  let l = Pervasives.ref [] in
-  iter_meta (fun m -> Pervasives.(l := m :: !l)) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) Pervasives.(!l)
+  let open Pervasives in
+  let l = ref [] in
+  iter_meta (fun m -> l := m :: !l) t;
+  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
 
 (** [has_metas t] checks that there are metavariables in [t]. *)
-let has_metas : term -> bool = fun t ->
-  let exception Found in
+let has_metas : term -> bool =
+  let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
 
-(** [distinct_vars a] checks that [a] is made of distinct variables. *)
-let distinct_vars : term array -> bool = fun ar ->
-  let rec distinct_vars vars i =
-    if i < 0 then true else
-    match unfold ar.(i) with
-    | Vari(x) when List.exists (Bindlib.eq_vars x) vars -> false
-    | Vari(x) -> distinct_vars (x::vars) (i-1)
-    | _       -> false
-  in
-  distinct_vars [] (Array.length ar - 1)
+(** [distinct_vars_opt ts] checks that [ts] is made of distinct
+   variables and returns these variables. *)
+let distinct_vars_opt : term array -> tvar array option =
+  let exception Not_unique_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let to_var t =
+    match unfold t with
+    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars; x
+    | _ -> raise Not_unique_var
+  in try Some (Array.map to_var ts) with Not_unique_var -> None
+
+(** [distinct_vars ts] checks that [ts] is made of distinct variables. *)
+let distinct_vars : term array -> bool =
+  let exception Not_unique_var in fun ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let check t =
+    match unfold t with
+    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars
+    | _ -> raise Not_unique_var
+  in try Array.iter check ts; true with Not_unique_var -> false
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
