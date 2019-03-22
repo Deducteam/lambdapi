@@ -78,41 +78,32 @@ let to_dot : string -> t -> unit = fun fname tree ->
     match tree with
     | Leaf(_, a) ->
       incr nodecount ;
-      F.fprintf ppf "@ %d [label=\"" !nodecount ;
       let _, acte = Bindlib.unmbind a in
-      P.pp ppf acte ; F.fprintf ppf "\"]" ;
-      F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
-      pp_dotterm ppf swon ; F.fprintf ppf "\"];"
+      F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
+      F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l !nodecount pp_dotterm
+        swon
     | Node(ndata)   ->
       let { swap ; children ; store ; abstspec ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
-      begin (* Create node *)
-        F.fprintf ppf "@ %d [label=\"" tag ;
-        F.fprintf ppf "%d" (match swap with None -> 0 | Some(i) -> i) ;
-        F.fprintf ppf "\"" ;
-        if store then F.fprintf ppf " shape=\"box\"" ;
-        F.fprintf ppf "]"
-      end ;
-      begin (* Create edge *)
-        F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
-        pp_dotterm ppf swon ; F.fprintf ppf "\"];"
-      end ;
+      (* Create node *)
+      F.fprintf ppf "@ %d [label=\"%d\"%s];" tag (Option.get swap 0)
+        (if store then " shape=\"box\"" else "") ;
+      (* Create edge *)
+      F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
       List.iter (fun (s, e) -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
       (match abstspec with None -> () | Some(tr) -> write_tree tag DotAbst tr)
     | Fail          ->
       incr nodecount ;
-      F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "!"
+      F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
   in
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
     | Node({ swap ; children = ch ; store ; abstspec ; default }) ->
-       F.fprintf ppf "@ 0 [label=\"%d\""
-         (match swap with None -> 0 | Some(i) -> i) ;
-       if store then F.fprintf ppf " shape=\"box\"" ;
-       F.fprintf ppf "]" ;
+       F.fprintf ppf "@ 0 [label=\"%d\"%s];"
+         (Option.get swap 0) (if store then " shape=\"box\"" else "") ;
        List.iter (fun (sw, c) -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
        (match abstspec with None -> () | Some(tr) -> write_tree 0 DotAbst tr) ;
@@ -133,9 +124,7 @@ struct
 
   let pp_component : component pp = fun oc (te, pos) ->
     let module F = Format in
-    F.fprintf oc "(@[<h>" ; Print.pp oc te ;
-    F.fprintf oc ", " ; Basics.Subterm.pp oc pos ;
-    F.fprintf oc "@])@?"
+    F.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
 
   (** A redefinition of the rule type. *)
   type rule = { lhs : component list
@@ -162,10 +151,10 @@ struct
   let pp : t pp = fun oc { values ; _ } ->
     let module F = Format in
     let pp_line oc l = List.pp pp_component ";" oc l in
-    F.fprintf oc "[|@[<v>@," ;
+    F.fprintf oc "{@[<v>@," ;
     List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
     (* List.pp does not process Format "@" directives when in sep *)
-    F.fprintf oc "@.|]@,@?"
+    F.fprintf oc "@.}@,"
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
@@ -248,7 +237,8 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun _ -> 0
 
-  (** [is_pattern t] returns whether a term [t] is considered as a pattern *)
+  (** [is_pattern t] returns whether a term [t] is considered as a pattern. *)
+  (* XXX = is_cons??? *)
   let rec is_pattern : term -> bool = function
     | Patt(_, _, _)   -> false
     | Appl(_, _) as a -> is_pattern (fst (Basics.get_args a))
