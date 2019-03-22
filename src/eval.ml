@@ -245,8 +245,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       those arguments to a right hand side.
     - The other of type {!type:term array} is filled during the matching and
       contains the terms from the input stack that have been matched against a
-      pattern variable {!cons:Patt} in some lhs.  The terms in this stack
-      might be substituted in the right hand side of the rule. *)
+      pattern variable {!constructor:Patt} in some lhs.  The terms in this
+      stack might be substituted in the right hand side of the rule. *)
 
 let whnf : term -> term = fun t ->
   let t = unfold t in

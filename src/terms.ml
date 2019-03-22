@@ -209,21 +209,21 @@ type term =
 
 (** Trees are used to efficiently choose a rewriting rule given a list of
     terms (beginning with a symbol) to be rewrote.  The left hand has side of
-    the rule is spread across the {!cons:Node}s of the tree.  Hence,
+    the rule is spread across the {!constructor:Node}s of the tree.  Hence,
     progressing down the tree is equivalent to reducing the set of possible
-    rules.  When a {!cons:Leaf} is reached, the target is rewrote to the
-    content of the leaf. *)
+    rules.  When a {!constructor:Leaf} is reached, the target is rewrote to
+    the content of the leaf. *)
  and tree =
   | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
-  (** Holds the right hand side of a rule.  In a {!cons:Leaf}[(e, a)],
+  (** Holds the right hand side of a rule.  In a {!constructor:Leaf}[(e, a)],
       - [a] is the right hand side of the rule.
       - [e] maps a position in the stack containing terms which stand as
             pattern variables in some rules to the slot allocated in the
             {!type:term_env array}. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
-      pattern.  Briefly, a {!cons:Node} contains one subtree per possible
-      switch, plus possibly a default case. *)
+      pattern.  Briefly, a {!constructor:Node} contains one subtree per
+      possible switch, plus possibly a default case. *)
   | Fail
 
 (** Data contained in a node of a tree.  A node allows to filter the possible
@@ -239,15 +239,15 @@ type term =
   ; children : (term * tree) list
   (** Subtrees that represent the matching of a constructor available in the
       rules.  For each element of the list [(e, t)], [e] is the constructor
-      matched (here a {!cons:Symb} or an {!cons:Abst}) and [t] is the tree
-      resulting from this match. *)
+      matched (here a {!constructor:Symb} or an {!constructor:Abst}) and [t]
+      is the tree resulting from this match. *)
   ; abstspec : tree option
   (** Specialization by abstract.
       XXX Should be removed in the long run in favour of using a dedicated
       type for tree constructors. *)
   ; default : tree option
   (** If a wildcard is among the patterns, this subtree is used when the term
-      matched isn't a constructor among the {!recfield:children} terms. *)}
+      matched isn't a constructor among the {!field:children} terms. *)}
 
 (** {3 Metavariables and related functions} *)
 

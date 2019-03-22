@@ -10,7 +10,7 @@ module StMap = Basics.SubtMap
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
 
-(** Type of the leaves of the tree.  See {!file:terms.ml}, {!recfield:rhs}. *)
+(** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
 (** {b Example} Given a rewrite system for a symbol [f] given as
@@ -32,7 +32,7 @@ type action = (term_env, term) Bindlib.mbinder
 
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
-    {!const:Fail} on tree [t]. *)
+    {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
   do_node:(int option -> bool -> (term * 'a) list -> 'a option ->
            'a option -> 'a) ->
@@ -58,8 +58,8 @@ type dot_term =
     child represents the term matched to generate the next pattern matrix (the
     one of the child node); and is therefore one of the terms in the column of
     the pattern matrix whose index is the label of the node.  The first [d]
-    edge is due to the initialization matrix (with {!recfield:origin} [=]
-    {!cons:Init}). *)
+    edge is due to the initialization matrix (with {!field:origin} [=]
+    {!constructor:Init}). *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
   let module P = Print in
@@ -72,7 +72,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotDefa -> F.fprintf oc "*"
     | DotCons(t) -> P.pp oc t in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
-     switch on [u] ({!cons:None} if default). *)
+     switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit =
     fun father_l swon tree ->
     match tree with
@@ -154,8 +154,8 @@ struct
   type t = { values : matrix
            (** The rules. *)
            ; var_catalogue : St.t list
-           (** Contains positions of terms in {!recfield:lhs} that can be used
-               as variables in any of the {!recfield:rhs} which appeared in
+           (** Contains positions of terms in {!field:lhs} that can be used
+               as variables in any of the {!field:rhs} which appeared in
                the matrix that gave birth to this one. *)}
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
@@ -389,9 +389,9 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
 (** [specialize p m] specializes the matrix [m] when matching against pattern
     [p].  A matrix can be specialized by a user defined symbol, an abstraction
     or a pattern variable.  The specialization always happen on the first
-    column (which is swapped if needed).  In case an {!cons:Appl} is given as
-    pattern [p], only terms having the same number of arguments and the same
-    leftmost {e non} {!cons:Appl} term match. *)
+    column (which is swapped if needed).  In case an {!constructor:Appl} is
+    given as pattern [p], only terms having the same number of arguments and
+    the same leftmost {e non} {!constructor:Appl} term match. *)
 let specialize : term -> Pm.t -> Pm.t = fun p m ->
   let newvars = Pm.varpos m in
   let newcat = newvars @ m.var_catalogue in
@@ -465,8 +465,8 @@ let default : Pm.t -> Pm.t = fun pm ->
     + accepting constructors and filtering possible rules,
     + getting the most efficient term to match in the stack,
     + storing terms from the stack that might be used in the right hand side,
-      because they match a pattern variable {!cons:Patt} in the
-      {!recfield:lhs}.
+      because they match a pattern variable {!constructor:Patt} in the
+      {!field:lhs}.
 
     The first bullet is ensured using {!val:specialize} and {!val:default}
     which allow to create new branches.
@@ -476,19 +476,19 @@ let default : Pm.t -> Pm.t = fun pm ->
 
     The last is managed by the {!val:env_builder} as follows.  The matching
     process uses, along with the tree, an array to store terms that may be
-    used in the {!recfield:rhs}.  Terms are stored while parsing if the
-    {!const:Node} has its {!recfield:store} at {!val:true}.  To know when to
-    store variables, each rule is first parsed with {!val:Pm.pos_needed_by}
-    to get the positions of {!const:Patt} in each {!recfield:lhs}.  Once these
-    positions are known, the {!recfield:Pm.var_catalogue} can be built.  A
-    {!recfield:Pm.var_catalogue} contains the accumulation of the positions
+    used in the {!field:rhs}.  Terms are stored while parsing if the
+    {!constructor:Node} has its {!field:store} at {!val:true}.  To know when
+    to store variables, each rule is first parsed with {!val:Pm.pos_needed_by}
+    to get the positions of {!constructor:Patt} in each {!field:lhs}.  Once
+    these positions are known, the {!field:Pm.var_catalogue} can be built.  A
+    {!field:Pm.var_catalogue} contains the accumulation of the positions
     encountered so far during successive specializations.  Once a rule can be
-    triggered, {!recfield:Pm.var_catalogue} contains, in the order they appear
+    triggered, {!field:Pm.var_catalogue} contains, in the order they appear
     during matching, all the variables the rule can use, that are the
     variables {b that has been inspected}.  There may remain terms that
     haven't been inspected (because they are not needed to decide which rule
-    to apply), but that are nevertheless needed in the {!recfield:rhs}.  Note
-    that the {!recfield:Pm.var_catalogue} contains useless variables as well:
+    to apply), but that are nevertheless needed in the {!field:rhs}.  Note
+    that the {!field:Pm.var_catalogue} contains useless variables as well:
     these may have been needed by other rules, when several rules were still
     candidates.  The {!val:env_builder} is then initialized with the essential
     variables from the catalogue.  The remaining variables, which will remain
