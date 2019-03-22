@@ -123,7 +123,7 @@ and  add (succ &n) &m → succ (add &n &m)
 
 Pattern variables need to be prefixed by `&`.
 
-**Higher-order pattern-matching**:
+**Higher-order pattern-matching**.
 Lambdapi accepts higher-order pattern variables too:
 
 ```
@@ -141,7 +141,7 @@ Lambdapi uses then higher-order pattern-matching, that is, matching
 modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
 η-reduction since no valid instance of `F` can contain `x`.
 
-**Important**: In contrast to languages like OCaml, Coq, Agda, etc. rule
+**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:
 
 ```
