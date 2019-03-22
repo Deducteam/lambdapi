@@ -45,6 +45,12 @@ let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
          (Option.map loop abstspec)(Option.map loop default) in
   loop t
 
+(** Printing hint for conversion to graphviz. *)
+type dot_term =
+  | DotAbst
+  | DotDefa
+  | DotCons of term
+
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label on the node is the
     column index in the matrix on which the matching is performed to give
@@ -61,12 +67,13 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let ppf = F.formatter_of_out_channel ochan in
   let nodecount = ref 0 in
   F.fprintf ppf "graph {@[<v>" ;
-  let pp_opterm : term option pp = fun oc teo -> match teo with
-    | Some(t) -> P.pp oc t
-    | None    -> F.fprintf oc "*" in
+  let pp_dotterm : dot_term pp = fun oc dh -> match dh with
+    | DotAbst -> F.fprintf oc "λ"
+    | DotDefa -> F.fprintf oc "*"
+    | DotCons(t) -> P.pp oc t in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!cons:None} if default). *)
-  let rec write_tree : int -> term option -> t -> unit =
+  let rec write_tree : int -> dot_term -> t -> unit =
     fun father_l swon tree ->
     match tree with
     | Leaf(_, a) ->
@@ -75,7 +82,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       let _, acte = Bindlib.unmbind a in
       P.pp ppf acte ; F.fprintf ppf "\"]" ;
       F.fprintf ppf "@ %d -- %d [label=\"" father_l !nodecount ;
-      pp_opterm ppf swon ; F.fprintf ppf "\"];"
+      pp_dotterm ppf swon ; F.fprintf ppf "\"];"
     | Node(ndata)   ->
       let { swap ; children ; store ; abstspec ; default } = ndata in
       incr nodecount ;
@@ -89,11 +96,11 @@ let to_dot : string -> t -> unit = fun fname tree ->
       end ;
       begin (* Create edge *)
         F.fprintf ppf "@ %d -- %d [label=\"" father_l tag ;
-        pp_opterm ppf swon ; F.fprintf ppf "\"];"
+        pp_dotterm ppf swon ; F.fprintf ppf "\"];"
       end ;
-      List.iter (fun (s, e) -> write_tree tag (Some(s)) e) children ;
-      (match default with None -> () | Some(tr) -> write_tree tag None tr) ;
-      (match abstspec with None -> () | Some(tr) -> write_tree tag None tr)
+      List.iter (fun (s, e) -> write_tree tag (DotCons(s)) e) children ;
+      (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
+      (match abstspec with None -> () | Some(tr) -> write_tree tag DotAbst tr)
     | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"%s\"];" father_l !nodecount "!"
@@ -106,9 +113,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
          (match swap with None -> 0 | Some(i) -> i) ;
        if store then F.fprintf ppf " shape=\"box\"" ;
        F.fprintf ppf "]" ;
-       List.iter (fun (sw, c) -> write_tree 0 (Some(sw)) c) ch ;
-       (match default with None -> () | Some(tr) -> write_tree 0 None tr) ;
-       (match abstspec with None -> () | Some(tr) -> write_tree 0 None tr) ;
+       List.iter (fun (sw, c) -> write_tree 0 (DotCons(sw)) c) ch ;
+       (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
+       (match abstspec with None -> () | Some(tr) -> write_tree 0 DotAbst tr) ;
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
