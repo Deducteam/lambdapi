@@ -346,9 +346,7 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | Appl(_, _)   , Appl(_, _)          ->
      let ps, pargs = Basics.get_args pat in
      let hs, hargs = Basics.get_args hd in
-     spec_filter ps hs && List.for_all2 spec_filter pargs hargs
-  (* ^ Arguments could be left unchecked for now since they will be checked
-     later.  Number of args must at least be checked. *)
+     spec_filter ps hs && List.same_length pargs hargs
   | Appl(_, _)   , Patt(_, _, _)       -> true
   | _            , Patt(_, _, e)       ->
      let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift pat) in
