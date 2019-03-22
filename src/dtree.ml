@@ -323,6 +323,13 @@ struct
          loop (if not (is_cons s) || mem s seen then seen else hd :: seen) tl in
     loop [] telst
 
+  (** [contains_abst l] returns whether list of terms [l] contains an
+      abstraction. *)
+  let rec contains_abst : term list -> bool = function
+    | [] -> false
+    | Abst(_, _) :: _  -> true
+    | _          :: xs -> contains_abst xs
+
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
   let varpos : t -> St.t list = fun pm ->
