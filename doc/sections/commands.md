@@ -82,6 +82,8 @@ We recommend to start types and predicates by a capital letter.
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
  For the moment, the verification is left to the user.
 
+These modifiers are used to help the unification engine.
+
 **Implicit arguments**. Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
