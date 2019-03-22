@@ -180,8 +180,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         | None     -> maxch
         | Some(dr) -> max dr maxch in
       let maxchdab = match abstr with
-        | None     -> maxchd
-        | Some(ar) -> max ar maxchd in
+        | None        -> maxchd
+        | Some(_, ar) -> max ar maxchd in
       if store then succ maxchdab else maxchdab)
     ~fail:0 itree in
   let vars = Array.init capacity (fun _ -> Patt(None, "", [| |])) in

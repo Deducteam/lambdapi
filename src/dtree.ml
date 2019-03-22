@@ -34,21 +34,23 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int option -> bool -> (term * 'a) list -> 'a option ->
-           'a option -> 'a) ->
+  do_node:(int option -> bool -> (term * 'a) list ->
+           (term Bindlib.var * 'a) option -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
     | Node({ swap ; store ; children ; abstspec ; default }) ->
-       do_node swap store (List.map (fun (teo, c) -> (teo, loop c)) children)
-         (Option.map loop abstspec)(Option.map loop default) in
+       do_node swap store
+         (List.map (fun (teo, c) -> (teo, loop c)) children)
+         (Option.map (fun (v, a) -> v, loop a) abstspec)
+         (Option.map loop default) in
   loop t
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
-  | DotAbst
   | DotDefa
+  | DotAbst of tvar
   | DotCons of term
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
@@ -68,8 +70,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let nodecount = ref 0 in
   F.fprintf ppf "graph {@[<v>" ;
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
-    | DotAbst -> F.fprintf oc "λ"
-    | DotDefa -> F.fprintf oc "*"
+    | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
+    | DotDefa    -> F.fprintf oc "*"
     | DotCons(t) -> P.pp oc t in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
@@ -93,7 +95,11 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
       List.iter (fun (s, e) -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
-      (match abstspec with None -> () | Some(tr) -> write_tree tag DotAbst tr)
+      begin
+        match abstspec with
+        | None        -> ()
+        | Some(v, tr) -> write_tree tag (DotAbst(v)) tr
+      end
     | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
@@ -106,7 +112,11 @@ let to_dot : string -> t -> unit = fun fname tree ->
          (Option.get swap 0) (if store then " shape=\"box\"" else "") ;
        List.iter (fun (sw, c) -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
-       (match abstspec with None -> () | Some(tr) -> write_tree 0 DotAbst tr) ;
+       (
+         match abstspec with
+         | None        -> ()
+         | Some(v, tr) -> write_tree 0 (DotAbst(v)) tr
+       ) ;
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
@@ -347,6 +357,7 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
   | Symb(_, _), Appl(_, _)
   | Appl(_, _), Symb(_, _)
   | Appl(_, _), Abst(_, _)
+  | _         , Abst(_, _)
   | Abst(_, _), _          -> false
   | _                      -> assert false
 
@@ -393,7 +404,8 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
   { values = newmat ; var_catalogue = newcat }
 
 (** [abstract m] is a specialization on abstractions. *)
-let abstract : Pm.t -> Pm.t = fun { values ; var_catalogue } ->
+let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
+  (* Substitute all binders with the same variable *)
   let rec filt = function
     | Abst(_, _)
     | Patt(_, _, _)   -> true
@@ -405,11 +417,10 @@ let abstract : Pm.t -> Pm.t = fun { values ; var_catalogue } ->
   let rec transf = function
     | Abst(_, b), p        ->
        let np = St.sub p in
-       let _, t = Bindlib.unbind b in [(t, np)]
+       let t = Bindlib.subst b (mkfree free) in [(t, np)]
     | Patt(s, n, e), p     ->
        let np = St.sub p in
-       let var = Bindlib.new_var mkfree "r" in
-       let nenv = Array.append e [| Vari(var) |] in
+       let nenv = Array.append e [| mkfree free |] in
        assert (Basics.distinct_vars nenv) ;
        [(Patt(s, n, nenv), np)]
     | Appl(_, _), _ as a_p ->
@@ -524,6 +535,7 @@ let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Pm.t -> t = fun patterns ->
   let { Pm.values = m ; Pm.var_catalogue = vcat } = patterns in
+  Pm.pp Format.std_formatter patterns ;
   if Pm.is_empty patterns then
     begin
       failwith "matching failure" ; (* For debugging purposes *)
@@ -574,8 +586,10 @@ let rec compile : Pm.t -> t = fun patterns ->
         (fst (Basics.get_args s), specialize s spm)) cons in
       let default = let dm = default spm in
                     if Pm.is_empty dm then None else Some(compile dm) in
-      let abst = let am = abstract spm in
-                 if Pm.is_empty am then None else Some(compile am) in
+      let newfreevar = Bindlib.new_var mkfree "t" in
+      let abst = let am = abstract newfreevar spm in
+                 if Pm.is_empty am then None
+                 else Some(newfreevar, compile am) in
       let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
       Node({ swap = swap ; store = store ; children = children
            ; abstspec = abst ; default = default })

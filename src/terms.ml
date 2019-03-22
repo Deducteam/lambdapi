@@ -241,7 +241,7 @@ type term =
       rules.  For each element of the list [(e, t)], [e] is the constructor
       matched (here a {!constructor:Symb} or an {!constructor:Abst}) and [t]
       is the tree resulting from this match. *)
-  ; abstspec : tree option
+  ; abstspec : (term Bindlib.var * tree) option
   (** Specialization by abstract.
       XXX Should be removed in the long run in favour of using a dedicated
       type for tree constructors. *)
