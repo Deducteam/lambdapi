@@ -333,17 +333,18 @@ module Pm = Pattmat
     matrix) must be kept when specializing the matrix on pattern [p]. *)
 let rec spec_filter : term -> term -> bool = fun pat hd ->
   match pat, hd with
-  | _            , Patt(None, _, _)    -> true
-  (* ^ Wildcard or linear var not appearing in rhs *)
-  | _            , Patt(Some(_), _, _) -> true
-  (* ^ Linear var appearing in rhs *)
-  | Symb(s, _)   , Symb(s', _)         -> s == s'
+  | Symb(_, _)   , Symb(_, _)
+  | Vari(_)      , Vari(_)             -> Basics.eq pat hd
   | Appl(_, _)   , Appl(_, _)          ->
      let ps, pargs = Basics.get_args pat in
      let hs, hargs = Basics.get_args hd in
      spec_filter ps hs && List.for_all2 spec_filter pargs hargs
-  (* ^ Verify there are as many Appl (same arity of leftmost terms). *)
-  | Vari(x)      , Vari(y)             -> Bindlib.eq_vars x y
+  (* ^ Arguments could be left unchecked for now since they will be checked
+     later.  Number of args must at least be checked. *)
+  | Appl(_, _)   , Patt(_, _, _)       -> true
+  | _            , Patt(_, _, e)       ->
+     let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift pat) in
+     Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
   | Symb(_, _), Abst(_, _)
   | Abst(_, _), Symb(_, _)
@@ -369,10 +370,10 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
     spec_transform upat (hs, np) @ tagged
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
-  | (Patt(_, _, _), p), Appl(_, _) ->
+  | (Patt(_, _, e), p), Appl(_, _) ->
      let arity = List.length @@ snd @@ Basics.get_args pat in
      let tagged = St.tag
-       (List.init arity (fun _ -> Patt(None, "", [| |]))) in
+       (List.init arity (fun _ -> Patt(None, "", e))) in
      (List.map (fun (te, po) -> (te, St.prefix p po)) tagged)
   | (Patt(_, _, _), _)    , _      -> []
   | _                              -> assert false
@@ -397,21 +398,32 @@ let specialize : term -> Pm.t -> Pm.t = fun p m ->
 
 (** [abstract m] is a specialization on abstractions. *)
 let abstract : Pm.t -> Pm.t = fun { values ; var_catalogue } ->
-  let filtered = List.filter (fun { Pm.lhs ; _ } ->
-    match fst (List.hd lhs) with
+  let rec filt = function
     | Abst(_, _)
-    | Patt(_, _, _) -> true
-    | _             -> false) values in
-  let newhds = List.map (fun { Pm.lhs ; _ } ->
-    match List.hd lhs with
-    | Abst(_, b), p ->
+    | Patt(_, _, _)   -> true
+    | Appl(_, _) as a ->
+       filt (fst (Basics.get_args a))
+    | _               -> false in
+  let filtered = List.filter (fun { Pm.lhs ; _} -> filt (fst (List.hd lhs)))
+    values in
+  let rec transf = function
+    | Abst(_, b), p        ->
        let np = St.sub p in
        let _, t = Bindlib.unbind b in [(t, np)]
-    | Patt(s, n, e), p ->
-       (* Add a new var in env [e]? *)
+    | Patt(s, n, e), p     ->
        let np = St.sub p in
-       [(Patt(s, n, e), np)]
-    | _             -> assert false) values in
+       let var = Bindlib.new_var mkfree "r" in
+       let nenv = Array.append e [| Vari(var) |] in
+       assert (Basics.distinct_vars nenv) ;
+       [(Patt(s, n, nenv), np)]
+    | Appl(_, _), _ as a_p ->
+       let hd, args = Basics.get_args (fst a_p) in
+       let np = St.sub (snd a_p) in
+       let argtagged = St.tag ?ini:(Some(St.succ np)) args in
+       (* ?ini might be wrong *)
+       transf (hd, np) @ argtagged
+    | _                    -> assert false in
+  let newhds = List.map (fun { Pm.lhs ; _ } -> transf (List.hd lhs)) filtered in
   let unfolded = List.map2 (fun newhd rul ->
     let old_lhs_tl = List.tl rul.Pm.lhs in
     { rul with Pm.lhs = newhd @ old_lhs_tl}) newhds filtered in
@@ -566,6 +578,8 @@ let rec compile : Pm.t -> t = fun patterns ->
         (fst (Basics.get_args s), specialize s spm)) cons in
       let default = let dm = default spm in
                     if Pm.is_empty dm then None else Some(compile dm) in
+      let abst = let am = abstract spm in
+                 if Pm.is_empty am then None else Some(compile am) in
       let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
       Node({ swap = swap ; store = store ; children = children
-           ; abstspec = None ; default = default })
+           ; abstspec = abst ; default = default })
