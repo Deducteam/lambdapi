@@ -387,7 +387,7 @@ let parser assoc =
   | "left"  -> Assoc_left
   | "right" -> Assoc_right
 
-(** [config] pases a single configuration option. *)
+(** [config] parses a single configuration option. *)
 let parser config =
   | "verbose" i:nat_lit ->
       P_config_verbose(i)
