@@ -116,7 +116,6 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_why3(s)    ->
       (* get the goal to prove *)
       let (hypothesis, trm) = Proof.Goal.get_type g in
-      let trm = unfold trm in
       (* get the default or the indicated name of the prover. *)
       let prover_name =
         match s with
@@ -129,7 +128,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create l_prop hyps why3term in
       (* call the prover named [prover_name] and get the result. *)
-      let prover_result = Why3prover.call  tac.pos prover_name tsk in
+      let prover_result = Why3prover.call tac.pos prover_name tsk in
       (* if the prover succeed to prover the goal. *)
       if Why3prover.answer prover_result.pr_answer then
         (* create a new axiom that represents the proved goal. *)

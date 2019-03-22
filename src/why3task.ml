@@ -29,7 +29,7 @@ let declare_axioms :
 (** [create l_prop hypothesis goal] Add all the symbols of [l_prop] in a new
  task and declare [hypothesis] as axioms and [goal] as a Why3 goal. *)
 let create :
-  Why3prop.cnst_table -> (string * Why3.Term.term) list -> Why3.Term.term
+  Why3prop.cnst_table -> Why3prop.ctxt_labels -> Why3.Term.term
   -> Why3.Task.task =
   fun l_prop hypothesis goal ->
     let symbols = List.map (fun (_, x) -> x) l_prop in
