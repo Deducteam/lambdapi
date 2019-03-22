@@ -291,9 +291,10 @@ struct
   let get_cons : term list -> term list = fun telst ->
   (* [is_cons t] returns whether [t] can be considered as a constructor. *)
     let rec is_cons : term -> bool = function
-      | Symb(_, _) | Abst(_, _) -> true
-      | Appl(_, _) as a         -> let hd, _ = Basics.get_args a in is_cons hd
-      | _                       -> false in
+      | Vari(_)
+      | Symb(_, _)      -> true
+      | Appl(_, _) as a -> let hd, _ = Basics.get_args a in is_cons hd
+      | _               -> false in
     (* [cons_eq t u] returns whether [t] and [u] are the same regarding
        specialization. *)
     let cons_eq : term -> term -> bool = fun te tf ->
@@ -531,7 +532,7 @@ let rec compile : Pm.t -> t = fun patterns ->
   if Pm.is_empty patterns then
     begin
       failwith "matching failure" ; (* For debugging purposes *)
-      (* Dtree.Fail *)
+      (* Fail *)
     end
   else
     if Pm.exhausted (List.hd m) then
