@@ -29,9 +29,9 @@ type prop_config =
 (** [get_prop_config pos builtins] set the builtins configuration using
     [builtins] *)
 let get_prop_config :
-    Pos.popt -> Proof.builtins -> prop_config = fun pos builtins ->
+    Pos.popt -> sym StrMap.t -> prop_config = fun pos builtins ->
     let find_sym key =
-        try fst (StrMap.find key builtins) with Not_found ->
+        try StrMap.find key builtins with Not_found ->
         Console.fatal pos "Builtin symbol [%s] undefined." key
     in
     { symb_P     = find_sym "P"
@@ -46,7 +46,7 @@ let get_prop_config :
     using the hypothesis [hs]. The function output the translation of the
     hypothesis and the goal to Why3 and return also a list of all Why3
     constants used during the translation. *)
-let rec translate : Pos.popt -> Proof.builtins -> (Env.env * term) ->
+let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     cnst_table * (string * Why3.Term.term) list * Why3.Term.term =
     fun pos builtins  (hs, g) ->
     let cfg = get_prop_config pos builtins in
