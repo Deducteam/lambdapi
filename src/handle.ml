@@ -27,11 +27,11 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
          sym.sym_name pp typ_s
   | _ -> ()
 
-(** Representation of a proof before it has been checked. The structure
-    is initialized when the proof mode is entered, and its finalizer is called
-    when the proof mode is exited (i.e., when a proof terminator like “qed” is
-    used). Note that tactics do not work on this structure directly,  but they
-    act on the contents of its [pdata_p_state] field. *)
+(** Representation of a yet unchecked proof. The structure is initialized when
+    the proof mode is entered, and its finalizer is called when the proof mode
+    is exited (i.e., when a terminator like “qed” is used).  Note that tactics
+    do not work on this structure directly,  although they act on the contents
+    of its [pdata_p_state] field. *)
 type proof_data =
   { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
   ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
@@ -53,7 +53,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Check that the module has not already been required. *)
       if PathMap.mem p !(ss.signature.sign_deps) then
         fatal cmd.pos "Module [%a] is already required." pp_path p;
-      (* Add the dependency (it was compiled while already while parsing). *)
+      (* Add the dependency (it was compiled already while parsing). *)
       ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
       (* Open or alias if necessary. *)
       let ss =
