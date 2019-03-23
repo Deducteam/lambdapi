@@ -34,11 +34,6 @@ type proof_data =
   ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
   ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
-(** [!require mp] can be called to require the compilation of the module (that
-    corresponds to) [mp]. The reference is set in the [Compile] module. *)
-let require : (Files.module_path -> unit) Pervasives.ref =
-  Pervasives.ref (fun _ -> ())
-
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned, and
     [Fatal] is raised in case of an error. *)
