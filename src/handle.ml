@@ -27,7 +27,7 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
          sym.sym_name pp typ_s
   | _ -> ()
 
-(** Representation of the of a proof before it has been checked. The structure
+(** Representation of a proof before it has been checked. The structure
     is initialized when the proof mode is entered, and its finalizer is called
     when the proof mode is exited (i.e., when a proof terminator like “qed” is
     used). Note that tactics do not work on this structure directly,  but they
