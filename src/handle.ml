@@ -27,6 +27,11 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
          sym.sym_name pp typ_s
   | _ -> ()
 
+(** Representation of the of a proof before it has been checked. The structure
+    is initialized when the proof mode is entered, and its finalizer is called
+    when the proof mode is exited (i.e., when a proof terminator like “qed” is
+    used). Note that tactics do not work on this structure directly,  but they
+    act on the contents of its [pdata_p_state] field. *)
 type proof_data =
   { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
   ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
@@ -35,8 +40,11 @@ type proof_data =
   ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
-    signature state. On success, an updated signature state is returned, and
-    [Fatal] is raised in case of an error. *)
+    signature state. On success, an updated signature state is returned.  When
+    [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
+    This structure contains the list of the tactics to be executed, as well as
+    the initial state of the proof.  The checking of the proof is then handled
+    separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
     fun ss cmd ->
   let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
@@ -306,5 +314,5 @@ let handle_cmd : sig_state -> command -> sig_state * proof_data option =
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | e                           -> let e = Printexc.to_string e in
-                                   fatal cmd.pos "Uncaught exception [%s]." e
+  | e                           ->
+      fatal cmd.pos "Uncaught exception [%s]." (Printexc.to_string e)
