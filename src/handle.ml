@@ -50,9 +50,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Check that the module has not already been required. *)
       if PathMap.mem p !(ss.signature.sign_deps) then
         fatal cmd.pos "Module [%a] is already required." pp_path p;
-      (* Add the dependency and compile the module. *)
+      (* Add the dependency (it was compiled while already while parsing). *)
       ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-      (*compile false p;*)
       (* Open or alias if necessary. *)
       let ss =
         match m with
@@ -60,11 +59,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_require_open    ->
             let sign =
               try PathMap.find p !(Sign.loaded)
-              with Not_found -> (* assert false (* Cannot happen. *) *)
-                (* FIXME temporary fix for lp-lsp. *)
-                Pervasives.(!require p);
-                try PathMap.find p !(Sign.loaded)
-                with Not_found -> assert false (* Cannot happen. *)
+              with Not_found -> assert false (* Cannot happen. *)
             in
             open_sign ss sign
         | P_require_as(id)  ->
