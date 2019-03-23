@@ -412,22 +412,20 @@ let parser assert_must_fail =
   | _assert_    -> false
   | _assertnot_ -> true
 
-(** [require] is set in [Compile] module (avoids cyclic dependencies). *)
+(** [!require mp] can be used to require the compilation of a module [mp] when
+    it is required as a dependency. This has the effect of importing notations
+    exported by that module. The value of [require] is set in [Compile], and a
+    reference is used to avoid to avoid cyclic dependencies. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
-
-(** [do_require loc mp] can be used to require the compilation of module [mp],
-    and reporting possible exceptions at position [loc]. *)
-let do_require : Pos.pos -> module_path -> unit = fun loc p ->
-  try !require p with Fatal(_, msg) -> raise (Fatal(Some(Some(loc)), msg))
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> do_require _loc p;
+      -> !require p;
          if m = P_require_open then get_binops _loc p;
          P_require(p,m)
   | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> do_require _loc p;
+      -> !require p;
          P_require(p,m)
   | _open_ p:path
       -> get_binops _loc p;
