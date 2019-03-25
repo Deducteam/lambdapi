@@ -234,7 +234,7 @@ struct
   (** [pp o p] output position [p] to channel [o]. *)
   let pp : t pp = fun oc pos ->
     match pos with
-    | [] -> Format.fprintf oc "{ε}"
+    | [] -> Format.fprintf oc "ε"
     | x  -> List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev x)
 
   (** Initial position. *)
@@ -248,11 +248,12 @@ struct
     | x :: xs -> succ x :: xs
 
   (** [prefix p q] sets position [p] as prefix of position [q], for instance,
-      [prefix 1 3.4] is [1.3.4]. *)
+      {i prefix 1 3.4} is {i 1.3.4}; which is represented [prefix [1] [4;3]]
+      is [[4;3;1]]. *)
   let prefix : t -> t -> t = fun p q -> q @ p
 
-  (** [sub p] returns the first position of a subterm of [p]. *)
-  let sub : t -> t = fun p -> prefix p (0 :: init)
+  (** [sub p] returns the position of the first subterm of [p]. *)
+  let sub : t -> t = fun p -> 0 :: p
 
   (** [tag ?s l] attaches the positions to a list of terms as if they were the
       subterms of a same term.  If [?s] is supplied, the first element of the
