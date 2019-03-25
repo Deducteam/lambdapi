@@ -4,8 +4,8 @@
     {{:10.1145/1411304.1411311}DOI}. *)
 open Terms
 open Extra
-module St = Basics.Subterm
-module StMap = Basics.SubtMap
+module Sub = Basics.Subterm
+module SubMap = Basics.SubtMap
 
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
@@ -139,7 +139,7 @@ struct
               (** Left hand side of a rule. *)
               ; rhs : action
               (** Right hand side of a rule. *)
-              ; variables : int StMap.t
+              ; variables : int SubMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)}
 
@@ -150,7 +150,7 @@ struct
       action. *)
   type t = { values : matrix
            (** The rules. *)
-           ; var_catalogue : St.t list
+           ; var_catalogue : Sub.t list
            (** Contains positions of terms in {!field:lhs} that can be used
                as variables in any of the {!field:rhs} which appeared in
                the matrix that gave birth to this one. *)}
@@ -170,20 +170,20 @@ struct
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : component list -> action -> int StMap.t = fun lhs rhs ->
+  let flushout_vars : component list -> action -> int SubMap.t = fun lhs rhs ->
     let nvars = Bindlib.mbinder_arity rhs in
     let rec loop found st po =
-      if found = nvars then StMap.empty else
+      if found = nvars then SubMap.empty else
       match st with
-      | [] -> StMap.empty
+      | [] -> SubMap.empty
       | x :: xs ->
          begin
            match x with
            | Patt(None, _, _)
            | Vari(_)
-           | Symb(_, _)          -> loop found xs (St.succ po)
-           | Patt(Some(i), _, _) -> StMap.add po i
-              (loop (succ found) xs (St.succ po))
+           | Symb(_, _)          -> loop found xs (Sub.succ po)
+           | Patt(Some(i), _, _) -> SubMap.add po i
+              (loop (succ found) xs (Sub.succ po))
            | Appl(_, _) as x     -> let _, args = Basics.get_args x in
                                    deepen found args xs po
            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
@@ -191,15 +191,15 @@ struct
            | _                   -> assert false
          end
     and deepen found args remain po =
-      let xpos = loop found args St.init in
-      let nxpos = StMap.fold (fun xpo slot nmap ->
-        StMap.add (St.prefix po xpo) slot nmap)
-        StMap.empty xpos in
-      StMap.union (fun _ _ -> assert false) nxpos
-        (loop found remain (St.succ po))
+      let xpos = loop found args Sub.init in
+      let nxpos = SubMap.fold (fun xpo slot nmap ->
+        SubMap.add (Sub.prefix po xpo) slot nmap)
+        SubMap.empty xpos in
+      SubMap.union (fun _ _ -> assert false) nxpos
+        (loop found remain (Sub.succ po))
     in
     (* Start as if the terms of the list were subterms of an initial term *)
-    loop 0 (List.map fst lhs) (St.succ St.init)
+    loop 0 (List.map fst lhs) (Sub.succ Sub.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
@@ -341,14 +341,14 @@ struct
 
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
-  let varpos : t -> St.t list = fun pm ->
+  let varpos : t -> Sub.t list = fun pm ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
     let _, vars = List.split (List.filter is_var (get_col 0 pm)) in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    List.sort_uniq St.compare vars
+    List.sort_uniq Sub.compare vars
 end
 
 module Pm = Pattmat
@@ -379,7 +379,7 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
 
 (** [spec_transform p h] transform head of line [h] when specializing against
     pattern [p]. *)
-let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
+let rec spec_transform : term -> (term * Sub.t) -> Pm.component list = fun pat
   hd ->
   match hd with
   | Symb(_, _), _
@@ -388,16 +388,16 @@ let rec spec_transform : term -> (term * St.t) -> Pm.component list = fun pat
   (* ^ Arguments verified in filter *)
     let upat = fst @@ Basics.get_args pat in
     let hs, hargs = Basics.get_args (fst hd) in
-    let np = St.sub p in
-    let tagged = St.tag ?ini:(Some(St.succ np)) hargs in
+    let np = Sub.sub p in
+    let tagged = Sub.tag ?ini:(Some(Sub.succ np)) hargs in
     spec_transform upat (hs, np) @ tagged
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
   | (Patt(_, _, e), p), Appl(_, _) ->
      let arity = List.length @@ snd @@ Basics.get_args pat in
-     let tagged = St.tag
+     let tagged = Sub.tag
        (List.init arity (fun _ -> Patt(None, "", e))) in
-     (List.map (fun (te, po) -> (te, St.prefix p po)) tagged)
+     (List.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
   | (Patt(_, _, _), _)    , _      -> []
   | _                              -> assert false
 
@@ -432,17 +432,17 @@ let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
     values in
   let rec transf = function
     | Abst(_, b), p        ->
-       let np = St.sub p in
+       let np = Sub.sub p in
        let t = Bindlib.subst b (mkfree free) in [(t, np)]
     | Patt(s, n, e), p     ->
-       let np = St.sub p in
+       let np = Sub.sub p in
        let nenv = Array.append e [| mkfree free |] in
        assert (Basics.distinct_vars nenv) ;
        [(Patt(s, n, nenv), np)]
     | Appl(_, _), _ as a_p ->
        let hd, args = Basics.get_args (fst a_p) in
-       let np = St.sub (snd a_p) in
-       let argtagged = St.tag ?ini:(Some(St.succ np)) args in
+       let np = Sub.sub (snd a_p) in
+       let argtagged = Sub.tag ~ini:(Sub.succ np) args in
        (* ?ini might be wrong *)
        transf (hd, np) @ argtagged
     | _                    -> assert false in
@@ -566,7 +566,7 @@ let compile : Pm.t -> t = fun patterns ->
         let lhs = (List.hd m).Pm.lhs in
         let pos2slot = (List.hd m).Pm.variables in
         let f (count, map) tpos =
-          let opslot = StMap.find_opt tpos pos2slot in
+          let opslot = SubMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ count, map
         (* ^ Discard useless variables *)
