@@ -30,6 +30,21 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
+(** Redefinition of {!val:pp} to accept format tags as separators. *)
+module List =
+struct
+  include List
+
+  (** [pp pp_e sep oc l] prints the list [l] on the channel [oc] using [sep]
+      as separator, and [pp_e] for printing the elements. *)
+  let pp : 'a pp -> ('a, 'b, 'c, 'd, 'e, 'f) format6 -> 'a list pp =
+    fun pp_elt sep oc l ->
+      match l with
+      | []    -> ()
+      | e::es -> let fn e = Format.fprintf oc "%(fmt %)%a" sep pp_elt e in
+                pp_elt oc e; iter fn es
+end
+
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
@@ -59,9 +74,7 @@ type dot_term =
     birth to children nodes.  The label on the edge between a node and its
     child represents the term matched to generate the next pattern matrix (the
     one of the child node); and is therefore one of the terms in the column of
-    the pattern matrix whose index is the label of the node.  The first [d]
-    edge is due to the initialization matrix (with {!field:origin} [=]
-    {!constructor:Init}). *)
+    the pattern matrix whose index is the label of the node. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
   let module P = Print in
