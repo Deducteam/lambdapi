@@ -160,11 +160,11 @@ struct
     let module F = Format in
     let pp_line oc l =
       F.fprintf oc "@[<h>" ;
-      F.pp_print_list ?pp_sep:(Some(fun _ () -> F.fprintf oc ";@ "))
+      F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
         pp_component oc l ;
       F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
-    F.pp_print_list ?pp_sep:(Some(fun _ () -> F.fprintf oc "@,")) pp_line oc
+    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
       (List.map (fun { lhs ; _ } -> lhs) values) ;
     F.fprintf oc "@.}@,"
 
