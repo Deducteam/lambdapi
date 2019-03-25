@@ -9,8 +9,9 @@ let current_prover : string ref = ref "Alt-Ergo"
 (** [time_limit] is the time limit of a prover while finding a proof. *)
 let time_limit : int ref = ref 10
 
-(** [config] read the config file of Why3 that is installed in the machine
-    the default path is [~/.why3.conf]. *)
+(** [config] read the config file of Why3 that is installed in the machine.
+    the default path is [~/.why3.conf]. more information could be found in
+    http://why3.lri.fr/api/Whyconf.html *)
 let config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
 (** [main] get only the main section of the Why3 config *)
