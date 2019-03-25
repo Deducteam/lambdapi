@@ -160,10 +160,12 @@ struct
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { values ; _ } ->
     let module F = Format in
-    let pp_line oc l = List.pp pp_component ";" oc l in
+    let pp_line oc l =
+      F.fprintf oc "@[<h>" ;
+      List.pp pp_component ";@ " oc l ;
+      F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
-    List.pp pp_line "\n " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
-    (* List.pp does not process Format "@" directives when in sep *)
+    List.pp pp_line "@," oc (List.map (fun { lhs ; _ } -> lhs) values) ;
     F.fprintf oc "@.}@,"
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
