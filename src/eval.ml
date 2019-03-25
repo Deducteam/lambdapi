@@ -196,13 +196,13 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
       | Leaf(env_builder, act)                ->
          assert (IntMap.cardinal env_builder = Bindlib.mbinder_arity act) ;
         (* [pre_env] is the same as [env] but without binders *)
-        let pre_env = IntMap.fold (fun pos sl pe ->
-          IntMap.add sl vars.(pos) pe) env_builder IntMap.empty in
+        let pre_env = IntMap.fold (fun pos env_slot acc ->
+          IntMap.add env_slot vars.(pos) acc) env_builder IntMap.empty in
         let env = Array.make (IntMap.cardinal pre_env) TE_None in
-        IntMap.iter (fun sl te ->
+        IntMap.iter (fun slot te ->
           let inject _ = te in
           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
-          env.(sl) <- TE_Some(b)) pre_env ;
+          env.(slot) <- TE_Some(b)) pre_env ;
         Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default ; abstspec }) ->
          if stk = [] then None else (* If stack too short, quit *)
