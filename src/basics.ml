@@ -256,9 +256,9 @@ struct
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
-  (** [tag ?s l] attaches the positions to a list of terms as if they were the
-      subterms of a same term.  If [?s] is supplied, the first element of the
-      list is at position [s]. *)
+  (** [tag ?ini l] attaches the positions to a list of terms as if they were the
+      subterms of a same term.  If [?ini] is supplied, the first element of the
+      list is at position [ini]. *)
   let tag : ?ini:t -> term list -> (term * t) list = fun ?ini xs ->
     let start, p = match ini with
       | None | Some([]) -> 0, init
