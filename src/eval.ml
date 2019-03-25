@@ -211,15 +211,17 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
            | Some(i) -> List.bring i stk in
          let examined = List.hd stk in
          if not (fst Pervasives.(!examined))
-         then Pervasives.(examined := (true, unfold (snd !examined))) ;
-         (* ^ Ought to be lightened, as well as [stack] data structure *)
-         (* Remove [Appl] nodes *)
+         then Pervasives.(examined := (true, whnf (snd !examined))) ;
+         (* ^ The mutability of the stack is kept to be backward compatible,
+            but will be removed in the long run, the main advantage of trees
+            being that we examine each term at most once. *)
+         (* Remove by flattening [Appl] nodes *)
          let stk =
            let te = snd Pervasives.(!examined) in
            let te_symb, te_args = Basics.get_args te in
            let unfolded = List.map (fun e -> Pervasives.ref (false, e))
              te_args in
-           (Pervasives.ref (false, unfold te_symb)) :: unfolded @
+           (Pervasives.ref (true, te_symb)) :: unfolded @
              (List.tl stk) in
          (* Store hd of stack if needed *)
          if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
