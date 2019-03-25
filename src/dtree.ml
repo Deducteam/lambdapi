@@ -162,7 +162,7 @@ struct
     let module F = Format in
     let pp_line oc l = List.pp pp_component ";" oc l in
     F.fprintf oc "{@[<v>@," ;
-    List.pp pp_line "\n  " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
+    List.pp pp_line "\n " oc (List.map (fun { lhs = l ; _ } -> l) values) ;
     (* List.pp does not process Format "@" directives when in sep *)
     F.fprintf oc "@.}@,"
 
@@ -594,9 +594,10 @@ let rec compile : Pm.t -> t = fun patterns ->
       let default = let dm = default spm in
                     if Pm.is_empty dm then None else Some(compile dm) in
       let newfreevar = Bindlib.new_var mkfree "t" in
-      let abst = let am = abstract newfreevar spm in
-                 if Pm.is_empty am then None
-                 else Some(newfreevar, compile am) in
+      let abst = if Pm.contains_abst (fst (List.split fcol)) then
+          let am = abstract newfreevar spm in
+          if Pm.is_empty am then None
+          else Some(newfreevar, compile am) else None in
       let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
       Node({ swap = swap ; store = store ; children = children
            ; abstspec = abst ; default = default })
