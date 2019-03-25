@@ -52,11 +52,11 @@ let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     cnst_table * ctxt_labels * Why3.Term.term =
     fun pos builtins  (hs, g) ->
     let cfg = get_prop_config pos builtins in
-    let (l_prop, hypothesis) =
+    let (constants_table, hypothesis) =
         List.fold_left (translate_context cfg) ([], []) hs in
     try
-        let (l_prop, formula) = t_goal cfg l_prop g in
-        (l_prop, hypothesis, formula)
+        let (constants_table, formula) = t_goal cfg constants_table g in
+        (constants_table, hypothesis, formula)
     with NoGoalTranslation ->
         Console.fatal pos "The term [%a] is not of the form [P _]"
         Print.pp g
@@ -76,51 +76,52 @@ and translate_context :
     with NoGoalTranslation ->
             (l_constants, l_hypothesis)
 
-(** [t_goal cfg l_prop trm] translate the lambdapi term [trm] to Why3 term
-    using the configuration [cfg] and the list of Why3 constants in [l_prop].
-    *)
+(** [t_goal cfg constants_table trm] translate the lambdapi term [trm] to Why3
+    term using the configuration [cfg] and the list of Why3 constants in
+    [constants_table]. *)
 and t_goal : prop_config -> cnst_table -> term ->
     cnst_table * Why3.Term.term =
-    fun cfg l_prop trm ->
+    fun cfg constants_table trm ->
     match Basics.get_args trm with
     | (symbol, [t]) when Basics.is_symb cfg.symb_P symbol ->
-        t_prop cfg l_prop [] t
+        t_prop cfg constants_table [] t
     | _                                                         ->
         raise NoGoalTranslation
 
-(** [t_prop cfg l_prop ctxt p] translate the term [p] into Why3 terms with a
-    context [ctxt] and a config [cfg]. *)
+(** [t_prop cfg constants_table ctxt p] translate the term [p] into Why3 terms
+    with a context [ctxt] and a config [cfg]. *)
 and t_prop :
     prop_config -> cnst_table -> Ctxt.t -> term ->
     cnst_table * Why3.Term.term =
-    fun cfg l_prop ctxt p ->
+    fun cfg constants_table ctxt p ->
     match Basics.get_args p with
     | symbol, [t1; t2] when Basics.is_symb cfg.symb_and symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
-        l_prop, Why3.Term.t_and t1 t2
+        let (constants_table, t1) = t_prop cfg constants_table ctxt t1 in
+        let (constants_table, t2) = t_prop cfg constants_table ctxt t2 in
+        constants_table, Why3.Term.t_and t1 t2
     | symbol, [t1; t2] when Basics.is_symb cfg.symb_or symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
-        l_prop, Why3.Term.t_or t1 t2
+        let (constants_table, t1) = t_prop cfg constants_table ctxt t1 in
+        let (constants_table, t2) = t_prop cfg constants_table ctxt t2 in
+        constants_table, Why3.Term.t_or t1 t2
     | symbol, [t1; t2] when Basics.is_symb cfg.symb_imp symbol  ->
-        let (l_prop, t1) = t_prop cfg l_prop ctxt t1 in
-        let (l_prop, t2) = t_prop cfg l_prop ctxt t2 in
-        l_prop, Why3.Term.t_implies t1 t2
+        let (constants_table, t1) = t_prop cfg constants_table ctxt t1 in
+        let (constants_table, t2) = t_prop cfg constants_table ctxt t2 in
+        constants_table, Why3.Term.t_implies t1 t2
     | symbol, [t] when Basics.is_symb cfg.symb_not symbol  ->
-        let (l_prop, t) = t_prop cfg l_prop ctxt t in
-        l_prop, Why3.Term.t_not t
+        let (constants_table, t) = t_prop cfg constants_table ctxt t in
+        constants_table, Why3.Term.t_not t
     | _                                                     ->
-        (* if the term [p] is in the list [l_prop] *)
-        if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) l_prop then
+        (* if the term [p] is in the list [constants_table] *)
+        if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) constants_table
+        then
             (* then find it and return it *)
             let lp_eq = fun (lp_t, _) -> Basics.eq lp_t p in
-            let (_, ct) = List.find lp_eq l_prop in
-                (l_prop, Why3.Term.ps_app ct [])
+            let (_, ct) = List.find lp_eq constants_table in
+                (constants_table, Why3.Term.ps_app ct [])
         else
         (* or generate a new constant in why3 *)
             let new_symbol = Why3.Ident.id_fresh "P" in
             let sym = Why3.Term.create_psymbol new_symbol [] in
             let new_predicate = Why3.Term.ps_app sym [] in
             (* add the new symbol to the list and return it *)
-            (p, sym)::l_prop, new_predicate
+            (p, sym)::constants_table, new_predicate
