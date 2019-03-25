@@ -229,7 +229,8 @@ struct
   type t = int list
 
   (** [compare a b] implements lexicographic order on positions. *)
-  let compare : t -> t -> int = fun a b -> compare (List.rev a) (List.rev b)
+  let compare : t -> t -> int = fun a b -> Pervasives.compare (List.rev a)
+    (List.rev b)
 
   (** [pp o p] output position [p] to channel [o]. *)
   let pp : t pp = fun oc pos ->
