@@ -30,21 +30,6 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
-(** Redefinition of {!val:pp} to accept format tags as separators. *)
-module List =
-struct
-  include List
-
-  (** [pp pp_e sep oc l] prints the list [l] on the channel [oc] using [sep]
-      as separator, and [pp_e] for printing the elements. *)
-  let pp : 'a pp -> ('a, 'b, 'c, 'd, 'e, 'f) format6 -> 'a list pp =
-    fun pp_elt sep oc l ->
-      match l with
-      | []    -> ()
-      | e::es -> let fn e = Format.fprintf oc "%(fmt %)%a" sep pp_elt e in
-                pp_elt oc e; iter fn es
-end
-
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
@@ -175,10 +160,12 @@ struct
     let module F = Format in
     let pp_line oc l =
       F.fprintf oc "@[<h>" ;
-      List.pp pp_component ";@ " oc l ;
+      F.pp_print_list ?pp_sep:(Some(fun _ () -> F.fprintf oc ";@ "))
+        pp_component oc l ;
       F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
-    List.pp pp_line "@," oc (List.map (fun { lhs ; _ } -> lhs) values) ;
+    F.pp_print_list ?pp_sep:(Some(fun _ () -> F.fprintf oc "@,")) pp_line oc
+      (List.map (fun { lhs ; _ } -> lhs) values) ;
     F.fprintf oc "@.}@,"
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
