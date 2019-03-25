@@ -184,7 +184,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         | Some(_, ar) -> max ar maxchd in
       if store then succ maxchdab else maxchdab)
     ~fail:0 itree in
-  let vars = Array.init capacity (fun _ -> Patt(None, "", [| |])) in
+  let vars = Array.make capacity (Patt(None, "", [| |])) in
 
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array . *)
@@ -197,7 +197,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
         (* [pre_env] is the same as [env] but without binders *)
         let pre_env = IntMap.fold (fun pos sl pe ->
           IntMap.add sl vars.(pos) pe) env_builder IntMap.empty in
-        let env = Array.init (IntMap.cardinal pre_env) (fun _ -> TE_None) in
+        let env = Array.make (IntMap.cardinal pre_env) TE_None in
         IntMap.iter (fun sl te ->
           let inject _ = te in
           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
