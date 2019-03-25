@@ -258,10 +258,10 @@ struct
       subterms of a same term.  If [?s] is supplied, the first element of the
       list is at position [s]. *)
   let tag : ?ini:t -> term list -> (term * t) list = fun ?ini xs ->
-    let start = match ini with
-      | None | Some([]) -> 0
-      | Some(s :: _)    -> s in
-    List.mapi (fun i e -> (e, [i + start])) xs
+    let start, p = match ini with
+      | None | Some([]) -> 0, init
+      | Some(s :: p)    -> s, p in
+    List.mapi (fun i e -> (e, prefix p [i + start])) xs
 end
 
 (** Functional map with [Subterm.t] as keys *)
