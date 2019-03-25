@@ -11,11 +11,10 @@ type cnst_table = (term * Why3.Term.lsymbol) list
 (* a map from labels to Why3 terms. *)
 type ctxt_labels = (string * Why3.Term.term) list
 
-(* number of axioms proved whith the Why3 tactic *)
-let nbr_axioms : int ref = ref 0
-
 (** [get_newname ()] generates a new axiom name. *)
-let get_newname () : string =
+let get_newname : unit -> string =
+    (* number of axioms proved whith the Why3 tactic *)
+    let nbr_axioms : int ref = ref 0 in fun () ->
     nbr_axioms := !nbr_axioms + 1;
     "Why3axiom_" ^ (string_of_int !nbr_axioms)
 
