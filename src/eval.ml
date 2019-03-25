@@ -187,7 +187,8 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
   let vars = Array.make capacity (Patt(None, "", [| |])) in
 
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
-     indicating where to write in the [env] array . *)
+     indicating where to write in the [env] array described in {!module:Terms}
+     as the environment of the RHS during matching. *)
   let rec walk : Dtree.t -> stack -> int -> (term * stack) option =
     fun tree stk cursor ->
       match tree with
@@ -215,7 +216,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
          (* ^ The mutability of the stack is kept to be backward compatible,
             but will be removed in the long run, the main advantage of trees
             being that we examine each term at most once. *)
-         (* Remove by flattening [Appl] nodes *)
+         (* Remove [Appl] nodes by flattening them. *)
          let stk =
            let te = snd Pervasives.(!examined) in
            let te_symb, te_args = Basics.get_args te in
