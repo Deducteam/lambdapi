@@ -203,38 +203,44 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
           env.(sl) <- TE_Some(b)) pre_env ;
         Some(Bindlib.msubst act env, stk)
-      | Node({ swap ; children ; store ; default ; _ }) ->
+      | Node({ swap ; children ; store ; default ; abstspec }) ->
          if stk = [] then None else (* If stack too short, quit *)
-         (* The main operations are: (a) picking the right term in the input
-            stack, (b) filling the array containing terms to be substituted
-            in {!recfield:rhs} (or {!type:action}), (c) branching on the
-            correct branch. *)
-(* (a) *)let stk = match swap with
+         (* Pick the right term in the stack *)
+         let stk = match swap with
            | None    -> stk
            | Some(i) -> List.bring i stk in
          let examined = List.hd stk in
          if not (fst Pervasives.(!examined))
          then Pervasives.(examined := (true, unfold (snd !examined))) ;
          (* ^ Ought to be lightened, as well as [stack] data structure *)
-         let hd, tlstk = match snd Pervasives.(!examined) with
+         (* Remove [Appl] nodes *)
+         let stk = match snd Pervasives.(!examined) with
            | Appl(_, _) as a ->
               let t, la = Basics.get_args a in
               let unfolded = List.map (fun e -> Pervasives.ref (false, e))
                 la in
-              unfold t, unfolded @ (List.tl stk)
-           | Symb(_, _) as s ->
-              unfold s, List.tl stk
-           | Abst(_, b) as a ->
-              let _, t = Bindlib.unbind b in
-              let tst = Pervasives.ref (false, t) in
-              a, tst :: (List.tl stk)
-           | _               -> assert false in
-(* (b) *)if store then vars.(cursor) <- hd ;
+              (Pervasives.ref (false, unfold t)) :: unfolded @ (List.tl stk)
+           | _               -> stk in
+         (* Store hd of stack if needed *)
+         if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
          let ncurs = if store then succ cursor else cursor in
-(* (c) *)let matched_on_cons = List.assoc_eq Basics.eq hd children in
-         let matched = match matched_on_cons with
-           | Some(_) as s -> s
-           | None         -> default in
+         (* Fetch the right subtree and the new stack *)
+         let matched, tlstk = match snd Pervasives.(!(List.hd stk)) with
+           | Symb(_, _) as s ->
+              let matched_on_cons = List.assoc_eq Basics.eq s children in
+              let matched = match matched_on_cons with
+                | Some(_) as s -> s
+                | None         -> default in
+              matched, List.tl stk
+           | Abst(_, b)      ->
+              begin match abstspec with
+              | None       -> None, List.tl stk
+              | Some(v, t) ->
+                 let substituted_hd = Bindlib.subst b (mkfree v) in
+                 let shd_stk = Pervasives.ref (false, substituted_hd) in
+                 Some(t), shd_stk :: (List.tl stk)
+              end
+           | _               -> assert false in
          Option.bind (fun tr -> walk tr tlstk ncurs) matched in
   walk itree istk 0
 
