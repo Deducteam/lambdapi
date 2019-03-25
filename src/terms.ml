@@ -208,10 +208,10 @@ type term =
 (** {3 Decision trees for rewriting} *)
 
 (** Trees are used to efficiently choose a rewriting rule given a list of
-    terms (beginning with a symbol) to be rewrote.  The left hand has side of
-    the rule is spread across the {!constructor:Node}s of the tree.  Hence,
+    terms (beginning with a symbol) to be rewritten.  The left hand has side
+    of the rule is spread across the {!constructor:Node}s of the tree.  Hence,
     progressing down the tree is equivalent to reducing the set of possible
-    rules.  When a {!constructor:Leaf} is reached, the target is rewrote to
+    rules.  When a {!constructor:Leaf} is reached, the target is rewritten to
     the content of the leaf. *)
  and tree =
   | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
