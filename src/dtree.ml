@@ -555,64 +555,70 @@ let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let rec compile : Pm.t -> t = fun patterns ->
-  let { Pm.values = m ; Pm.var_catalogue = vcat } = patterns in
-  Pm.pp Format.std_formatter patterns ;
-  if Pm.is_empty patterns then
-    begin
-      failwith "matching failure" ; (* For debugging purposes *)
-      (* Fail *)
-    end
-  else
-    if Pm.exhausted (List.hd m) then
+let compile : Pm.t -> t = fun patterns ->
+  let varcount = ref 0 in
+  let rec compile patterns =
+    let { Pm.values = m ; Pm.var_catalogue = vcat } = patterns in
+    Pm.pp Format.std_formatter patterns ;
+    if Pm.is_empty patterns then
+      begin
+        failwith "matching failure" ; (* For debugging purposes *)
+    (* Fail *)
+      end
+    else
+      if Pm.exhausted (List.hd m) then
       (* A rule can be applied *)
-      let rhs = (List.hd m).Pm.rhs in
-      let lhs = (List.hd m).Pm.lhs in
-      let pos2slot = (List.hd m).Pm.variables in
-      let f (count, map) tpos =
-        let opslot = StMap.find_opt tpos pos2slot in
-        match opslot with
-        | None     -> succ count, map
+        let rhs = (List.hd m).Pm.rhs in
+        let lhs = (List.hd m).Pm.lhs in
+        let pos2slot = (List.hd m).Pm.variables in
+        let f (count, map) tpos =
+          let opslot = StMap.find_opt tpos pos2slot in
+          match opslot with
+          | None     -> succ count, map
         (* ^ Discard useless variables *)
-        | Some(sl) -> succ count, IntMap.add count sl map in
+          | Some(sl) -> succ count, IntMap.add count sl map in
       (* [env_builder] maps future position in the term store to the slot in
          the environment. *)
-      let _, env_builder = List.fold_left f (0, IntMap.empty)
-        (List.rev vcat) in
+        let _, env_builder = List.fold_left f (0, IntMap.empty)
+          (List.rev vcat) in
       (* ^ For now, [env_builder] contains only the variables encountered
          while choosing the rule.  Other pattern variables needed in the rhs,
          which are still in the [lhs] will now be fetched. *)
-      assert (IntMap.cardinal env_builder <=
-                Basics.SubtMap.cardinal pos2slot) ;
-      let depth = List.length vcat in
-      fetch lhs depth env_builder rhs
-    else
+        assert (IntMap.cardinal env_builder <=
+                  Basics.SubtMap.cardinal pos2slot) ;
+        let depth = List.length vcat in
+        fetch lhs depth env_builder rhs
+      else
       (* Pick a column in the matrix and pattern match on the constructors in
          it to grow the tree. *)
-      let kept_cols = Pm.discard_patt_free patterns in
-      let sel_in_partial = Pm.pick_best (Pm.select patterns kept_cols) in
-      let swap = if kept_cols.(sel_in_partial) = 0 then None
-        else Some kept_cols.(sel_in_partial) in
-      let spm = match swap with
-        | None    -> patterns
-        | Some(i) -> Pm.swap patterns i in
-      let fcol = Pm.get_col 0 spm in
-      let store = (* Store if there is a pattern variable in fcol *)
-        let rec loop : term list -> bool = function
-          | []                       -> false
-          | Patt(Some(_), _, _) :: _ -> true
-          | _ :: xs                  -> loop xs in
-        loop (List.map fst fcol) in
-      let cons = Pm.get_cons (fst (List.split fcol)) in
-      let spepatts = List.map (fun s ->
-        (fst (Basics.get_args s), specialize s spm)) cons in
-      let default = let dm = default spm in
-                    if Pm.is_empty dm then None else Some(compile dm) in
-      let newfreevar = Bindlib.new_var mkfree "t" in
-      let abst = if Pm.contains_abst (fst (List.split fcol)) then
-          let am = abstract newfreevar spm in
-          if Pm.is_empty am then None
-          else Some(newfreevar, compile am) else None in
-      let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
-      Node({ swap = swap ; store = store ; children = children
-           ; abstspec = abst ; default = default })
+        let kept_cols = Pm.discard_patt_free patterns in
+        let sel_in_partial = Pm.pick_best (Pm.select patterns kept_cols) in
+        let swap = if kept_cols.(sel_in_partial) = 0 then None
+          else Some kept_cols.(sel_in_partial) in
+        let spm = match swap with
+          | None    -> patterns
+          | Some(i) -> Pm.swap patterns i in
+        let fcol = Pm.get_col 0 spm in
+        let store = (* Store if there is a pattern variable in fcol *)
+          let rec loop : term list -> bool = function
+            | []                       -> false
+            | Patt(Some(_), _, _) :: _ -> true
+            | _ :: xs                  -> loop xs in
+          loop (List.map fst fcol) in
+        let cons = Pm.get_cons (fst (List.split fcol)) in
+        let spepatts = List.map (fun s ->
+          (fst (Basics.get_args s), specialize s spm)) cons in
+        let default = let dm = default spm in
+                      if Pm.is_empty dm then None else Some(compile dm) in
+        let newfreevar =
+          let suffix = string_of_int !varcount in
+          Bindlib.new_var mkfree ("x" ^ suffix) in
+        incr varcount ;
+        let abst = if Pm.contains_abst (fst (List.split fcol)) then
+            let am = abstract newfreevar spm in
+            if Pm.is_empty am then None
+            else Some(newfreevar, compile am) else None in
+        let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
+        Node({ swap = swap ; store = store ; children = children
+             ; abstspec = abst ; default = default }) in
+  compile patterns
