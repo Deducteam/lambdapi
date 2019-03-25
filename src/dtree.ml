@@ -345,6 +345,13 @@ struct
     | Abst(_, _) :: _  -> true
     | _          :: xs -> contains_abst xs
 
+  (** [in_rhs] returns whether a list of term contains a term needed in the
+      right hand side of a rule. *)
+  let rec in_rhs : term list -> bool = function
+    | []                       -> false
+    | Patt(Some(_), _, _) :: _ -> true
+    | _ :: xs                  -> in_rhs xs
+
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
   let varpos : t -> St.t list = fun pm ->
@@ -589,8 +596,7 @@ let compile : Pm.t -> t = fun patterns ->
         let depth = List.length vcat in
         fetch lhs depth env_builder rhs
       else
-      (* Pick a column in the matrix and pattern match on the constructors in
-         it to grow the tree. *)
+        (* Set appropriate column as first*)
         let kept_cols = Pm.discard_patt_free patterns in
         let sel_in_partial = Pm.pick_best (Pm.select patterns kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
@@ -598,27 +604,27 @@ let compile : Pm.t -> t = fun patterns ->
         let spm = match swap with
           | None    -> patterns
           | Some(i) -> Pm.swap patterns i in
+        (* Extract this column *)
         let fcol = Pm.get_col 0 spm in
-        let store = (* Store if there is a pattern variable in fcol *)
-          let rec loop : term list -> bool = function
-            | []                       -> false
-            | Patt(Some(_), _, _) :: _ -> true
-            | _ :: xs                  -> loop xs in
-          loop (List.map fst fcol) in
-        let cons = Pm.get_cons (fst (List.split fcol)) in
+        let f_terms, _ = List.split fcol in
+        let store = Pm.in_rhs f_terms in
+        (* Specializations *)
+        let cons = Pm.get_cons f_terms in
         let spepatts = List.map (fun s ->
           (fst (Basics.get_args s), specialize s spm)) cons in
+        let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
+        (* Abstraction *)
+        let abst = if Pm.contains_abst f_terms then
+            let newfreevar =
+              let suffix = string_of_int !varcount in
+              Bindlib.new_var mkfree ("x" ^ suffix) in
+            incr varcount ;
+            let am = abstract newfreevar spm in
+            if Pm.is_empty am then None else Some(newfreevar, compile am)
+          else None in
+        (* Default *)
         let default = let dm = default spm in
                       if Pm.is_empty dm then None else Some(compile dm) in
-        let newfreevar =
-          let suffix = string_of_int !varcount in
-          Bindlib.new_var mkfree ("x" ^ suffix) in
-        incr varcount ;
-        let abst = if Pm.contains_abst (fst (List.split fcol)) then
-            let am = abstract newfreevar spm in
-            if Pm.is_empty am then None
-            else Some(newfreevar, compile am) else None in
-        let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
         Node({ swap = swap ; store = store ; children = children
              ; abstspec = abst ; default = default }) in
   compile patterns
