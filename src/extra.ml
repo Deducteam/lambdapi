@@ -64,11 +64,12 @@ module List =
 
     (** [pp pp_e sep oc l] prints the list [l] on the channel [oc] using [sep]
         as separator, and [pp_e] for printing the elements. *)
-    let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
-      match l with
-      | []    -> ()
-      | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
-                 pp_elt oc e; iter fn es
+    let pp : 'a pp -> ('a, 'b, 'c, 'd, 'e, 'f) format6 -> 'a list pp =
+      fun pp_elt sep oc l ->
+        match l with
+        | []    -> ()
+        | e::es -> let fn e = Format.fprintf oc "%(fmt %)%a" sep pp_elt e in
+                  pp_elt oc e; iter fn es
 
     (** [map_find f l] applies [f] to the elements of list [l] (in order), and
         returns the result of the first application of [f] which result is not
@@ -154,8 +155,9 @@ module Array =
 
     (** [pp pp_e sep oc a] prints the array list [a] on the channel [oc] using
         [sep] as separator, and [pp_e] for printing the elements. *)
-    let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
-      List.pp pp_elt sep oc (to_list a)
+    let pp : 'a pp -> ('a, 'b, 'c, 'd, 'e, 'f) format6 -> 'a array pp =
+      fun pp_elt sep oc a ->
+        List.pp pp_elt sep oc (to_list a)
 
     (** [equal eq a1 a2] tests the equality of [a1] and [a2],  comparing their
         elements with [eq]. *)
