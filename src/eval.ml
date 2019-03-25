@@ -223,9 +223,9 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
              (List.tl stk) in
          (* Store hd of stack if needed *)
          if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
-         let ncurs = if store then succ cursor else cursor in
+         let cursor = if store then succ cursor else cursor in
          (* Fetch the right subtree and the new stack *)
-         let matched, tlstk = match snd Pervasives.(!(List.hd stk)) with
+         let matched, stk = match snd Pervasives.(!(List.hd stk)) with
            | Symb(_, _) as s ->
               let matched_on_cons = List.assoc_eq Basics.eq s children in
               let matched = match matched_on_cons with
@@ -241,7 +241,7 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
                  Some(t), shd_stk :: (List.tl stk)
               end
            | _               -> assert false in
-         Option.bind (fun tr -> walk tr tlstk ncurs) matched in
+         Option.bind (fun tr -> walk tr stk cursor) matched in
   walk itree istk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
