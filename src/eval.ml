@@ -214,13 +214,13 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
          then Pervasives.(examined := (true, unfold (snd !examined))) ;
          (* ^ Ought to be lightened, as well as [stack] data structure *)
          (* Remove [Appl] nodes *)
-         let stk = match snd Pervasives.(!examined) with
-           | Appl(_, _) as a ->
-              let t, la = Basics.get_args a in
-              let unfolded = List.map (fun e -> Pervasives.ref (false, e))
-                la in
-              (Pervasives.ref (false, unfold t)) :: unfolded @ (List.tl stk)
-           | _               -> stk in
+         let stk =
+           let te = snd Pervasives.(!examined) in
+           let te_symb, te_args = Basics.get_args te in
+           let unfolded = List.map (fun e -> Pervasives.ref (false, e))
+             te_args in
+           (Pervasives.ref (false, unfold te_symb)) :: unfolded @
+             (List.tl stk) in
          (* Store hd of stack if needed *)
          if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
          let ncurs = if store then succ cursor else cursor in
