@@ -182,15 +182,16 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
-        (* [pre_env] is the same as [env] but without binders *)
-        let pre_env = IntMap.fold (fun pos env_slot acc ->
-          IntMap.add env_slot vars.(pos) acc) env_builder IntMap.empty in
-        let env = Array.make (IntMap.cardinal pre_env) TE_None in
-        IntMap.iter (fun slot te ->
-          let inject _ = te in
-          let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
-          env.(slot) <- TE_Some(b)) pre_env ;
-        Some(Bindlib.msubst act env, stk)
+         (* Retrieve terms needed in the action from the [vars] array *)
+         (* [pre_env] is the same as [env] but without binders *)
+         let pre_env = IntMap.fold (fun pos env_slot acc ->
+           IntMap.add env_slot vars.(pos) acc) env_builder IntMap.empty in
+         let env = Array.make (IntMap.cardinal pre_env) TE_None in
+         IntMap.iter (fun slot te ->
+           let inject _ = te in
+           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
+           env.(slot) <- TE_Some(b)) pre_env ;
+         Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default ; abstspec }) ->
          if stk = [] then None else (* If stack too short, quit *)
          (* Pick the right term in the stack *)
