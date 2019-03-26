@@ -269,7 +269,7 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
   (* EXPE *)
   begin
-    let pama = Dtree.Pattmat.of_rules !(sym.sym_rules) in
+    let pama = Dtree.ClauseMat.of_rules !(sym.sym_rules) in
     let tree = Dtree.compile pama in
     let capacity = Dtree.capacity tree in
     sym.sym_tree := (capacity, tree) ;

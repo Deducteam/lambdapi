@@ -223,7 +223,8 @@ type term =
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!constructor:Node} contains one subtree per
-      possible switch, plus possibly a default case. *)
+      possible switch, plus possibly a default case and an abstraction
+      case. *)
   | Fail
 
 (** Data contained in a node of a tree.  A node allows to filter the possible
@@ -234,18 +235,16 @@ type term =
       next switch is to be done.
       XXX remove option?  *)
   ; store : bool
-  (** Whether to store the current term into the array containing
-      variables. *)
+  (** Whether to store the current term.  Stored terms might be used in the
+      right hand side. *)
   ; children : tree StrMap.t
-  (* ; children : (term * tree) list *)
   (** Subtrees that represent the matching of a constructor available in the
-      rules.  For each element of the list [(e, t)], [e] is the constructor
-      matched (here a {!constructor:Symb} or an {!constructor:Abst}) and [t]
-      is the tree resulting from this match. *)
+      rules.  Maps representation of constructors as strings built with
+      {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to
+      trees resulting from a specialisation on the key. *)
   ; abstspec : (term Bindlib.var * tree) option
-  (** Specialization by abstract.
-      XXX Should be removed in the long run in favour of using a dedicated
-      type for tree constructors. *)
+  (** Specialization by abstraction.  The first element is the fresh variable
+      created for the substitution. *)
   ; default : tree option
   (** If a wildcard is among the patterns, this subtree is used when the term
       matched isn't a constructor among the {!field:children} terms. *)}

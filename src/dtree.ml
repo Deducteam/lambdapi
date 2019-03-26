@@ -1,6 +1,6 @@
 (** This module provides functions to compile rewrite rules to decision trees
-    in order to pattern match the rules efficiently.  The method is explained
-    in Luc Maranget's {i Compiling Pattern Matching to Good Decision Trees},
+    in order to pattern match the rules efficiently.  The method is based on
+    Luc Maranget's {i Compiling Pattern Matching to Good Decision Trees},
     {{:10.1145/1411304.1411311}DOI}. *)
 open Terms
 open Extra
@@ -47,7 +47,10 @@ let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
          (Option.map loop default) in
   loop t
 
-(** [depth t] computes the depth of tree [t]. *)
+(** [capacity t] computes the capacity of tree [t].  During evaluation, some
+    terms that are being filtered by the patterns need to be saved in order to
+    be bound in the right hand side of the rule.  The capacity is an upper
+    bound of the number of terms to be saved. *)
 let capacity : t -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
@@ -65,7 +68,7 @@ let add_args_repr : string -> int -> string = fun sym nargs ->
   sym ^ (string_of_int nargs)
 
 (** [symrepr_of_term s] extracts the name of [s] concatenated with the number
-    of arguments. *)
+    of arguments.  Handles {!constructor:Appl} nodes. *)
 let symrepr_of_term : term -> string = fun te ->
   let hd, args = Basics.get_args te in
   let nargs = List.length args in
@@ -80,12 +83,12 @@ type dot_term =
   | DotCons of string
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
-    of the tree embodies a pattern matrix.  The label on the node is the
+    of the tree embodies a pattern matrix.  The label of a node is the
     column index in the matrix on which the matching is performed to give
-    birth to children nodes.  The label on the edge between a node and its
-    child represents the term matched to generate the next pattern matrix (the
-    one of the child node); and is therefore one of the terms in the column of
-    the pattern matrix whose index is the label of the node. *)
+    birth to children nodes.  The label on the edge between a node and one of
+    its children represents the term matched to generate the next pattern
+    matrix (the one of the child node); and is therefore one of the terms in
+    the column of the pattern matrix whose index is the label of the node. *)
 let to_dot : string -> t -> unit = fun fname tree ->
   let module F = Format in
   let module P = Print in
@@ -147,15 +150,19 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
-(** Pattern matrices is a way to encode a pattern matching problem.  A line is
-    a candidate instance of the values matched.  Each line is a pattern having
-    an action attached.  This module provides functions to operate on these
-    matrices. *)
-module Pattmat =
+(** A clause matrix encodes a pattern matching problem.  The clause matrix
+    {%latex:C%} can be denote {%latex:C = P \rightarrow A%} where {i P} is a
+    {e pattern matrix} and {i A} is a column of {e actions}.  Each line of a
+    pattern matrix is a pattern to which is attached an action.  When reducing
+    a term, if a line filters the term, or equivalently the term matches the
+    pattern, the term is rewritten to the action. *)
+module ClauseMat =
 struct
-  (** A component of the matrix *)
+  (** A component of the matrix, a term along with its position in the top
+      term. *)
   type component = term * Basics.Subterm .t
 
+  (** [pp_component o c] prints component [c] to channel [o]. *)
   let pp_component : component pp = fun oc (te, pos) ->
     let module F = Format in
     F.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
@@ -379,7 +386,7 @@ struct
     List.sort_uniq Sub.compare vars
 end
 
-module Pm = Pattmat
+module Cm = ClauseMat
 
 (** [spec_filter p h] returns whether a line with head [h] (from a pattern
     matrix) must be kept when specializing the matrix on pattern [p]. *)
@@ -407,7 +414,7 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
 
 (** [spec_transform p h] transform head of line [h] when specializing against
     pattern [p]. *)
-let rec spec_transform : term -> (term * Sub.t) -> Pm.component list = fun pat
+let rec spec_transform : term -> (term * Sub.t) -> Cm.component list = fun pat
   hd ->
   match hd with
   | Symb(_, _), _
@@ -435,20 +442,20 @@ let rec spec_transform : term -> (term * Sub.t) -> Pm.component list = fun pat
     column (which is swapped if needed).  In case an {!constructor:Appl} is
     given as pattern [p], only terms having the same number of arguments and
     the same leftmost {e non} {!constructor:Appl} term match. *)
-let specialize : term -> Pm.t -> Pm.t = fun p m ->
-  let newvars = Pm.varpos m in
+let specialize : term -> Cm.t -> Cm.t = fun p m ->
+  let newvars = Cm.varpos m in
   let newcat = newvars @ m.var_catalogue in
-  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
+  let filtered = List.filter (fun { Cm.lhs = l ; _ } ->
       spec_filter p (fst (List.hd l))) m.values in
-  let newhds = List.map (fun rul -> spec_transform p (List.hd rul.Pm.lhs))
+  let newhds = List.map (fun rul -> spec_transform p (List.hd rul.Cm.lhs))
     filtered in
   let newmat = List.map2 (fun newhd rul ->
-    let oldlhstl = List.tl rul.Pm.lhs in
-    { rul with Pm.lhs = newhd @ oldlhstl }) newhds filtered in
+    let oldlhstl = List.tl rul.Cm.lhs in
+    { rul with Cm.lhs = newhd @ oldlhstl }) newhds filtered in
   { values = newmat ; var_catalogue = newcat }
 
 (** [abstract m] is a specialization on abstractions. *)
-let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
+let abstract : tvar -> Cm.t -> Cm.t = fun free { values ; var_catalogue } ->
   (* Substitute all binders with the same variable *)
   let rec filt = function
     | Abst(_, _)
@@ -456,7 +463,7 @@ let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
     | Appl(_, _) as a ->
        filt (fst (Basics.get_args a))
     | _               -> false in
-  let filtered = List.filter (fun { Pm.lhs ; _} -> filt (fst (List.hd lhs)))
+  let filtered = List.filter (fun { Cm.lhs ; _} -> filt (fst (List.hd lhs)))
     values in
   let rec transf = function
     | Abst(_, b), p        ->
@@ -474,19 +481,19 @@ let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
        (* ?empty might be wrong *)
        transf (hd, np) @ argtagged
     | _                    -> assert false in
-  let newhds = List.map (fun { Pm.lhs ; _ } -> transf (List.hd lhs)) filtered in
+  let newhds = List.map (fun { Cm.lhs ; _ } -> transf (List.hd lhs)) filtered in
   let unfolded = List.map2 (fun newhd rul ->
-    let old_lhs_tl = List.tl rul.Pm.lhs in
-    { rul with Pm.lhs = newhd @ old_lhs_tl}) newhds filtered in
-  let newvars = Pm.varpos { values ; var_catalogue } in
+    let old_lhs_tl = List.tl rul.Cm.lhs in
+    { rul with Cm.lhs = newhd @ old_lhs_tl}) newhds filtered in
+  let newvars = Cm.varpos { values ; var_catalogue } in
   let newcat = newvars @ var_catalogue in
   { values = unfolded ; var_catalogue = newcat }
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Pm.t -> Pm.t = fun pm ->
-  let { Pm.values = m ; Pm.var_catalogue = vcat ; _ } = pm in
-  let filtered = List.filter (fun { Pm.lhs = l ; _ } ->
+let default : Cm.t -> Cm.t = fun pm ->
+  let { Cm.values = m ; Cm.var_catalogue = vcat ; _ } = pm in
+  let filtered = List.filter (fun { Cm.lhs = l ; _ } ->
       match fst @@ List.hd l with
       | Patt(_ , _, _) -> true
       | Symb(_, _)
@@ -495,11 +502,11 @@ let default : Pm.t -> Pm.t = fun pm ->
       | Appl(_, _)     -> false
       | _              -> assert false) m in
   let unfolded = List.map (fun rul ->
-      match List.hd rul.Pm.lhs with
+      match List.hd rul.Cm.lhs with
       | Patt(_, _, _), _ ->
-        { rul with Pm.lhs = List.tl rul.Pm.lhs }
+        { rul with Cm.lhs = List.tl rul.Cm.lhs }
       | _             -> assert false) filtered in
-  let newvars = Pm.varpos pm in
+  let newvars = Cm.varpos pm in
   let newcat = newvars @ vcat in
   { values = unfolded ; var_catalogue = newcat }
 
@@ -511,38 +518,40 @@ let default : Pm.t -> Pm.t = fun pm ->
       because they match a pattern variable {!constructor:Patt} in the
       {!field:lhs}.
 
-    The first bullet is ensured using {!val:specialize} and {!val:default}
-    which allow to create new branches.
+    The first bullet is ensured using {!val:specialize}, {!val:default} and
+    {!val:abstract} which allow to create new branches.
 
     Efficiency is managed thanks to heuristics, which are not yet
     implemented.
 
     The last is managed by the {!val:env_builder} as follows.  The matching
     process uses, along with the tree, an array to store terms that may be
-    used in the {!field:rhs}.  Terms are stored while parsing if the
+    used in a candidate {!field:rhs}.  Terms are stored while parsing if the
     {!constructor:Node} has its {!field:store} at {!val:true}.  To know when
-    to store variables, each rule is first parsed with {!val:Pm.pos_needed_by}
+    to store variables, each rule is first parsed with {!val:Cm.flushout_vars}
     to get the positions of {!constructor:Patt} in each {!field:lhs}.  Once
-    these positions are known, the {!field:Pm.var_catalogue} can be built.  A
-    {!field:Pm.var_catalogue} contains the accumulation of the positions
-    encountered so far during successive specializations.  Once a rule can be
-    triggered, {!field:Pm.var_catalogue} contains, in the order they appear
-    during matching, all the variables the rule can use, that are the
-    variables {b that has been inspected}.  There may remain terms that
-    haven't been inspected (because they are not needed to decide which rule
-    to apply), but that are nevertheless needed in the {!field:rhs}.  Note
-    that the {!field:Pm.var_catalogue} contains useless variables as well:
-    these may have been needed by other rules, when several rules were still
-    candidates.  The {!val:env_builder} is then initialized with the essential
-    variables from the catalogue.  The remaining variables, which will remain
-    in the input stack, will be fetched thanks to a subtree built by
-    {!val:fetch}. *)
+    these positions are known, the {!field:Cm.var_catalogue} can be built.  A
+    {!field:Cm.var_catalogue} contains the accumulation of the positions of
+    terms used in {!field:rhs}s encountered so far during successive
+    branchings.  Once a rule can be triggered, {!field:Cm.var_catalogue}
+    contains, in the order they appear during matching, all the terms the
+    rule can use, that are the terms {b that have been inspected}.  There
+    may remain terms that haven't been inspected (because they are not needed
+    to decide which rule to apply), but that are nevertheless needed in the
+    {!field:rhs}.  Note that the {!field:Cm.var_catalogue} contains useless
+    variables as well: these may have been needed by other rules, when several
+    rules were still candidates.  The {!val:env_builder} is then initialized
+    and contains only essential terms from the catalogue for the rule to
+    apply.  The remaining variables, which will remain in the input stack will
+    be fetched thanks to a subtree built by {!val:fetch}. *)
 
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
-    elements as the number of variables in [r].  The environment builder[e] is
+    elements as the number of variables in [r].  The environment builder [e] is
     also enriched.  The tree which allows this consumption is returned, with a
-    leaf holding action [r] and the new environment. *)
-let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
+    leaf holding action [r] and the new environment.  Even though only
+    essential terms could be consumed using appropriate swaps; it costs less
+    to consume linearly the stack than performing multiple swaps. *)
+let fetch : Cm.component list -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
@@ -577,22 +586,22 @@ let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let compile : Pm.t -> t = fun patterns ->
+let compile : Cm.t -> t = fun patterns ->
   let varcount = ref 0 in
   let rec compile patterns =
-    let { Pm.values = m ; Pm.var_catalogue = vcat } = patterns in
-    Pm.pp Format.std_formatter patterns ;
-    if Pm.is_empty patterns then
+    let { Cm.values = m ; Cm.var_catalogue = vcat } = patterns in
+    Cm.pp Format.std_formatter patterns ;
+    if Cm.is_empty patterns then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
     (* Fail *)
       end
     else
-      if Pm.exhausted (List.hd m) then
+      if Cm.exhausted (List.hd m) then
       (* A rule can be applied *)
-        let rhs = (List.hd m).Pm.rhs in
-        let lhs = (List.hd m).Pm.lhs in
-        let pos2slot = (List.hd m).Pm.variables in
+        let rhs = (List.hd m).Cm.rhs in
+        let lhs = (List.hd m).Cm.lhs in
+        let pos2slot = (List.hd m).Cm.variables in
         let f (count, map) tpos =
           let opslot = SubMap.find_opt tpos pos2slot in
           match opslot with
@@ -612,35 +621,35 @@ let compile : Pm.t -> t = fun patterns ->
         fetch lhs depth env_builder rhs
       else
         (* Set appropriate column as first*)
-        let kept_cols = Pm.discard_patt_free patterns in
-        let sel_in_partial = Pm.pick_best (Pm.select patterns kept_cols) in
+        let kept_cols = Cm.discard_patt_free patterns in
+        let sel_in_partial = Cm.pick_best (Cm.select patterns kept_cols) in
         let swap = if kept_cols.(sel_in_partial) = 0 then None
           else Some kept_cols.(sel_in_partial) in
         let spm = match swap with
           | None    -> patterns
-          | Some(i) -> Pm.swap patterns i in
+          | Some(i) -> Cm.swap patterns i in
         (* Extract this column *)
-        let fcol = Pm.get_col 0 spm in
+        let fcol = Cm.get_col 0 spm in
         let f_terms, _ = List.split fcol in
-        let store = Pm.in_rhs f_terms in
+        let store = Cm.in_rhs f_terms in
         (* Specializations *)
-        let cons = Pm.get_cons f_terms in
+        let cons = Cm.get_cons f_terms in
         let spepatts = List.fold_left (fun acc cons ->
           StrMap.add (symrepr_of_term cons) (specialize cons spm) acc)
           StrMap.empty cons in
         let children = StrMap.map compile spepatts in
         (* Abstraction *)
-        let abst = if Pm.contains_abst f_terms then
+        let abst = if Cm.contains_abst f_terms then
             let newfreevar =
               let suffix = string_of_int !varcount in
               Bindlib.new_var mkfree ("x" ^ suffix) in
             incr varcount ;
             let am = abstract newfreevar spm in
-            if Pm.is_empty am then None else Some(newfreevar, compile am)
+            if Cm.is_empty am then None else Some(newfreevar, compile am)
           else None in
         (* Default *)
         let default = let dm = default spm in
-                      if Pm.is_empty dm then None else Some(compile dm) in
+                      if Cm.is_empty dm then None else Some(compile dm) in
         Node({ swap = swap ; store = store ; children = children
              ; abstspec = abst ; default = default }) in
   compile patterns
