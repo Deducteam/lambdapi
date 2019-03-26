@@ -6,7 +6,8 @@ open Timed
     by using the set prover <name> command). *)
 let current_prover : string ref = ref "Alt-Ergo"
 
-(** [time_limit] is the time limit of a prover while finding a proof. *)
+(** [time_limit] is the time limit (in seconds) of a prover while finding a
+    proof. *)
 let time_limit : int ref = ref 10
 
 (** [config] read the config file of Why3 that is installed in the machine.
