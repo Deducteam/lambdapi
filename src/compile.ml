@@ -47,6 +47,8 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       loading := path :: !loading;
       let sign = Sign.create path in
       let sig_st = Scope.empty_sig_state sign in
+      (* [sign] is added to [loaded] before processing the commands so that it
+         is possible to qualify the symbols of the current modules. *)
       loaded := PathMap.add path sign !loaded;
       let handle ss c =
         let (ss, p) = Handle.handle_cmd ss c in
@@ -75,6 +77,4 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
 (* NOTE we need to give access to the compilation function to the parser. This
    is the only way infix symbols can be parsed, since they may be added to the
    scope by a “require” command. *)
-let _ =
-  Pervasives.(Parser.require := compile false);
-  Pervasives.(Handle.require := compile false)
+let _ = Pervasives.(Parser.require := compile false)

@@ -27,6 +27,11 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
          sym.sym_name pp typ_s
   | _ -> ()
 
+(** Representation of a yet unchecked proof. The structure is initialized when
+    the proof mode is entered, and its finalizer is called when the proof mode
+    is exited (i.e., when a terminator like “qed” is used).  Note that tactics
+    do not work on this structure directly,  although they act on the contents
+    of its [pdata_p_state] field. *)
 type proof_data =
   { pdata_stmt_pos : Pos.popt (* Position of the proof's statement.  *)
   ; pdata_p_state  : Proof.t  (* Initial proof state for the proof.  *)
@@ -34,14 +39,12 @@ type proof_data =
   ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
   ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
-(** [!require mp] can be called to require the compilation of the module (that
-    corresponds to) [mp]. The reference is set in the [Compile] module. *)
-let require : (Files.module_path -> unit) Pervasives.ref =
-  Pervasives.ref (fun _ -> ())
-
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
-    signature state. On success, an updated signature state is returned, and
-    [Fatal] is raised in case of an error. *)
+    signature state. On success, an updated signature state is returned.  When
+    [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
+    This structure contains the list of the tactics to be executed, as well as
+    the initial state of the proof.  The checking of the proof is then handled
+    separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
     fun ss cmd ->
   let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
@@ -50,9 +53,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Check that the module has not already been required. *)
       if PathMap.mem p !(ss.signature.sign_deps) then
         fatal cmd.pos "Module [%a] is already required." pp_path p;
-      (* Add the dependency and compile the module. *)
+      (* Add the dependency (it was compiled already while parsing). *)
       ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-      (*compile false p;*)
       (* Open or alias if necessary. *)
       let ss =
         match m with
@@ -60,11 +62,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         | P_require_open    ->
             let sign =
               try PathMap.find p !(Sign.loaded)
-              with Not_found -> (* assert false (* Cannot happen. *) *)
-                (* FIXME temporary fix for lp-lsp. *)
-                Pervasives.(!require p);
-                try PathMap.find p !(Sign.loaded)
-                with Not_found -> assert false (* Cannot happen. *)
+              with Not_found -> assert false (* Cannot happen. *)
             in
             open_sign ss sign
         | P_require_as(id)  ->
@@ -316,5 +314,5 @@ let handle_cmd : sig_state -> command -> sig_state * proof_data option =
   | Fatal(Some(Some(_)),_) as e -> raise e
   | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
   | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | e                           -> let e = Printexc.to_string e in
-                                   fatal cmd.pos "Uncaught exception [%s]." e
+  | e                           ->
+      fatal cmd.pos "Uncaught exception [%s]." (Printexc.to_string e)

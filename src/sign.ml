@@ -47,11 +47,15 @@ let find : t -> string -> sym =
 let mem : t -> string -> bool =
   fun sign name -> StrMap.mem name !(sign.sign_symbols)
 
-(** [loaded] stores the signatures of the known (already compiled) modules. An
-    important invariant is that all the occurrences of a symbol are physically
-    equal (even across different signatures). In particular, this requires the
-    objects to be copied when loading an object file. *)
+(** [loaded] stores the signatures of the known (already compiled or currently
+    being compiled) modules. An important invariant is that all occurrences of
+    a symbol are physically equal, even across signatures). This is ensured by
+    making copies of terms when loading an object file. *)
 let loaded : t PathMap.t ref = ref PathMap.empty
+
+(* NOTE that the current module is stored in [loaded] so that the symbols that
+   it contains can be qualified with the name of the module. This behavior was
+   inherited from previous versions of Dedukti. *)
 
 (** [loading] contains the [module_path] of the signatures (or files) that are
     being processed. They are stored in a stack due to dependencies. Note that
@@ -177,10 +181,9 @@ let unlink : t -> unit = fun sign ->
 let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
     fun sign sym_mode s a impl ->
   (* Check for metavariables in the symbol type. *)
-  let nb = List.length (Basics.get_metas a) in
-  if nb > 0 then
-    fatal s.pos "The type symbol [%s] contains [%i] metavariables" s.elt nb;
-  (* We minimize the list to enforce our invariant (see {!type:Terms.sym}). *)
+  if Basics.has_metas a then
+    fatal s.pos "The type of [%s] contains metavariables" s.elt;
+  (* We minimize [impl] to enforce our invariant (see {!type:Terms.sym}). *)
   let rec rem_false l = match l with false::l -> rem_false l | _ -> l in
   let sym_impl = List.rev (rem_false (List.rev impl)) in
   (* Add the symbol. *)

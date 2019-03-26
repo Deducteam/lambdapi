@@ -27,8 +27,8 @@ type t = {
   uri : string;
   version: int;
   text : string;
-  root  : Pure.command_state;
-  final : Pure.command_state;
+  mutable root  : Pure.state; (* Only mutated after parsing. *)
+  mutable final : Pure.state; (* Only mutated after parsing. *)
   nodes : doc_node list;
 }
 
@@ -116,7 +116,11 @@ let dummy_loc =
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
   try
-    let doc_spans = Pure.parse_text uri doc.text in
+    let doc_spans =
+      let (doc_spans, root) = Pure.parse_text doc.root uri doc.text in
+      (* One shot state update after parsing. *)
+      doc.root <- root; doc.final <- root; doc_spans
+    in
     (* let doc = { doc with nodes = List.map doc_spans } in *)
     let nodes, final, diag = List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
     let doc = { doc with nodes; final } in
