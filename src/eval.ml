@@ -172,8 +172,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
 and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
-  fun itree depth istk ->
-  let vars = Array.make depth (Patt(None, "", [| |])) in
+  fun itree capa istk ->
+  let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
@@ -182,7 +182,6 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
-         assert (IntMap.cardinal env_builder = Bindlib.mbinder_arity act) ;
         (* [pre_env] is the same as [env] but without binders *)
         let pre_env = IntMap.fold (fun pos env_slot acc ->
           IntMap.add env_slot vars.(pos) acc) env_builder IntMap.empty in
