@@ -49,10 +49,10 @@ let print_term : bool -> term pp = fun lhs ->
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
 let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
-  (* Print the pattern variables declarations. *)
+  (* Print the pattern variable declarations. *)
   let get_patt_names : term list -> string list = fun ts ->
     let names = Pervasives.ref [] in
-    let fn _ t =
+    let fn t =
       match t with
       | Patt(_,n,_) -> Pervasives.(names := n :: !names)
       | _           -> ()
