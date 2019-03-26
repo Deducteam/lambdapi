@@ -256,11 +256,11 @@ struct
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
-  (** [tag ?ini l] attaches the positions to a list of terms as if they were the
-      subterms of a same term.  If [?ini] is supplied, the first element of the
-      list is at position [ini]. *)
-  let tag : ?ini:t -> term list -> (term * t) list = fun ?ini xs ->
-    let start, p = match ini with
+  (** [tag ?empty l] attaches the positions to a list of terms as if they were
+      the subterms of a same term.  If [?empty] is supplied, the first element
+      of the list is at position [empty]. *)
+  let tag : ?empty:t -> term list -> (term * t) list = fun ?empty xs ->
+    let start, p = match empty with
       | None | Some([]) -> 0, init
       | Some(s :: p)    -> s, p in
     List.mapi (fun i e -> (e, prefix p [i + start])) xs
