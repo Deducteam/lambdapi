@@ -89,6 +89,9 @@ let spec =
     ; ( "--trees"
       , Arg.Set Eval.with_trees
       , " Whether to use trees for pattern matching" )
+    ; ( "--write-trees"
+      , Arg.Set Sign.write_trees
+      , " Whether to write created trees as dot file" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )

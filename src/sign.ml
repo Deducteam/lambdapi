@@ -8,6 +8,10 @@ open Terms
 open Syntax
 open Pos
 
+(** [write_trees] contains whether trees created for rule parsing should be
+    written to disk. *)
+let write_trees : bool Pervasives.ref = Pervasives.ref false
+
 (** [builtin builtins name] finds the builtin symbol named [name]
    in [builtins] if it exists, and fails otherwise. *)
 let builtin : popt -> sym StrMap.t -> string -> sym =
@@ -273,7 +277,8 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     let tree = Dtree.compile pama in
     let capacity = Dtree.capacity tree in
     sym.sym_tree := (capacity, tree) ;
-    Dtree.to_dot sym.sym_name (snd !(sym.sym_tree))
+    if Pervasives.(!write_trees) then
+      Dtree.to_dot sym.sym_name (snd !(sym.sym_tree)) ;
   end ;
   (* EXPE *)
   if sym.sym_path <> sign.sign_path then
