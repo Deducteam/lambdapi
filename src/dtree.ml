@@ -48,14 +48,15 @@ let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
   loop t
 
 (** [depth t] computes the depth of tree [t]. *)
-let depth : t -> int =
+let capacity : t -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
-  let do_node _ _ ch ab de =
+  let do_node _ st ch ab de =
     let _, chdepths = List.split (StrMap.bindings ch) in
     let abdepth = match ab with None -> 0 | Some(_, d) -> d in
     let dedepth = Option.get de 0 in
-    List.extremum (>) ([abdepth ; dedepth] @ chdepths) + 1 in
+    List.extremum (>) ([abdepth ; dedepth] @ chdepths) +
+      (if st then 1 else 0) in
   iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
 
 (** [add_args_repr s a] adds the number of arguments in the representation of

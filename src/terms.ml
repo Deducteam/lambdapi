@@ -66,7 +66,7 @@ type term =
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : (int * tree) ref
-  (** Tree for rule selection along with its depth. *)
+  (** Tree for rule selection along with its capacity. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
