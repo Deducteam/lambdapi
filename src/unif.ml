@@ -27,11 +27,11 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [distinct_vars ts] checks that [ts] is made of variables [vs] only
+(** [nl_distinct_vars ts] checks that [ts] is made of variables [vs] only
    and returns some copy of [vs] where variables occurring more than
    once are replaced by fresh variables. It returns [None]
    otherwise. *)
-let distinct_vars : term array -> tvar array option =
+let nl_distinct_vars : term array -> tvar array option =
   let exception Not_a_var in fun ts ->
   let open Pervasives in
   let vars = ref VarSet.empty
@@ -58,11 +58,12 @@ let distinct_vars : term array -> tvar array option =
 let instantiate : meta -> term array -> term -> bool = fun m ts u ->
   (!can_instantiate || internal m)
   && not (occurs m u)
-  && match distinct_vars ts with
+  && match nl_distinct_vars ts with
      | None -> false
      | Some vs ->
         let bu = Bindlib.bind_mvar vs (lift u) in
-        Bindlib.is_closed bu
+        Bindlib.is_closed bu (* To make sure that there is no non-linear
+                                variable of [vs] occurring in [u]. *)
         && (set_meta m (Bindlib.unbox bu); true)
 
 (** [solve p] tries to solve the unification problems of [p] and
@@ -86,6 +87,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       let t2 = Eval.to_term h2 ts2 in
       log_solv "solve [%a] [%a]" pp t1 pp t2;
     end;
+
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
@@ -104,6 +106,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       try add_args p.to_solve ts1 ts2 with Invalid_argument _ -> error () in
     solve {p with to_solve}
   in
+
   (* For a problem m[vs]=s(ts), where [vs] are distinct variables, m
      is a meta of type ∀y0:a0,..,∀yk-1:ak-1,b (k = length vs), s is an
      injective symbol of type ∀x0:b0,..,∀xn-1:bn-1,c (n = length ts),
@@ -152,6 +155,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     solve_aux t1 t2 p
     with Unsolvable -> add_to_unsolved ()
   in
+
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
@@ -162,10 +166,10 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
      solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
 
+  (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) ->
      if Bindlib.eq_vars x1 x2 then decompose () else error ()
 
-  (* Other cases. *)
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_mode with
