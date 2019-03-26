@@ -183,7 +183,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
-    ; sym_tree = ref Fail }
+    ; sym_tree = ref (0, Fail) }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -271,8 +271,9 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   begin
     let pama = Dtree.Pattmat.of_rules !(sym.sym_rules) in
     let tree = Dtree.compile pama in
-    sym.sym_tree := tree ;
-    Dtree.to_dot sym.sym_name !(sym.sym_tree)
+    let depth = Dtree.depth tree in
+    sym.sym_tree := (depth, tree) ;
+    Dtree.to_dot sym.sym_name (snd !(sym.sym_tree))
   end ;
   (* EXPE *)
   if sym.sym_path <> sign.sign_path then

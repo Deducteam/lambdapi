@@ -34,7 +34,7 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int option -> bool -> (term * 'a) list ->
+  do_node:(int option -> bool -> 'a StrMap.t ->
            (term Bindlib.var * 'a) option -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
@@ -42,16 +42,41 @@ let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
     | Fail                             -> fail
     | Node({ swap ; store ; children ; abstspec ; default }) ->
        do_node swap store
-         (List.map (fun (teo, c) -> (teo, loop c)) children)
+         (StrMap.map (fun c -> loop c) children)
          (Option.map (fun (v, a) -> v, loop a) abstspec)
          (Option.map loop default) in
   loop t
+
+(** [depth t] computes the depth of tree [t]. *)
+let depth : t -> int =
+  let do_leaf _ _ = 0 in
+  let fail = 0 in
+  let do_node _ _ ch ab de =
+    let _, chdepths = List.split (StrMap.bindings ch) in
+    let abdepth = match ab with None -> 0 | Some(_, d) -> d in
+    let dedepth = Option.get de 0 in
+    List.extremum (>) ([abdepth ; dedepth] @ chdepths) + 1 in
+  iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
+
+(** [add_args_repr s a] adds the number of arguments in the representation of
+    [s]. *)
+let add_args_repr : string -> int -> string = fun sym nargs ->
+  sym ^ (string_of_int nargs)
+
+(** [symrepr_of_term s] extracts the name of [s] concatenated with the number
+    of arguments. *)
+let symrepr_of_term : term -> string = fun te ->
+  let hd, args = Basics.get_args te in
+  let nargs = List.length args in
+  match hd with
+  | Symb({ sym_name ; _ }, _) -> add_args_repr sym_name nargs
+  | _                         -> assert false
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa
   | DotAbst of tvar
-  | DotCons of term
+  | DotCons of string
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label on the node is the
@@ -70,7 +95,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(t) -> P.pp oc t in
+    | DotCons(t) -> F.fprintf oc "%s" t in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit =
@@ -91,7 +116,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         (if store then " shape=\"box\"" else "") ;
       (* Create edge *)
       F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
-      List.iter (fun (s, e) -> write_tree tag (DotCons(s)) e) children ;
+      StrMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
       begin
         match abstspec with
@@ -108,7 +133,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | Node({ swap ; children = ch ; store ; abstspec ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
          (Option.get swap 0) (if store then " shape=\"box\"" else "") ;
-       List.iter (fun (sw, c) -> write_tree 0 (DotCons(sw)) c) ch ;
+       StrMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
        (
          match abstspec with
@@ -296,7 +321,9 @@ struct
     assert (List.length unpacked > 0) ;
     Array.of_list unpacked
 
-  (** [get_cons l] extracts a list of unique constructors from [l]. *)
+  (** [get_cons l] extracts a list of unique constructors from [l].  The
+      returned list can contain {!constructor:Appl} nodes to keep track of the
+      number of arguments. *)
   let get_cons : term list -> term list = fun telst ->
   (* [is_cons t] returns whether [t] can be considered as a constructor. *)
     let rec is_cons : term -> bool = function
@@ -518,7 +545,7 @@ let fetch : Pm.component list -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (List.split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let defn = { swap = None ; store = false ; children = []
+    let defn = { swap = None ; store = false ; children = StrMap.empty
                ; abstspec = None ; default = None } in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
@@ -597,9 +624,10 @@ let compile : Pm.t -> t = fun patterns ->
         let store = Pm.in_rhs f_terms in
         (* Specializations *)
         let cons = Pm.get_cons f_terms in
-        let spepatts = List.map (fun s ->
-          (fst (Basics.get_args s), specialize s spm)) cons in
-        let children = List.map (fun (c, p) -> (c, compile p)) spepatts in
+        let spepatts = List.fold_left (fun acc cons ->
+          StrMap.add (symrepr_of_term cons) (specialize cons spm) acc)
+          StrMap.empty cons in
+        let children = StrMap.map compile spepatts in
         (* Abstraction *)
         let abst = if Pm.contains_abst f_terms then
             let newfreevar =

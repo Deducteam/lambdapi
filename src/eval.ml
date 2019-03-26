@@ -78,7 +78,8 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
 and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
-  if Pervasives.(!with_trees) then tree_walk !(s.sym_tree) stk else
+  let de, tr = !(s.sym_tree) in
+  if Pervasives.(!with_trees) then tree_walk tr de stk else
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -169,23 +170,10 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [tree_walk t s] tries to match stack [s] against tree [t] *)
-and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
-  (* Count maximum number of stored items to initialize variable array *)
-  let capacity = Dtree.iter ~do_leaf:(fun _ _ -> 0)
-    ~do_node:(fun _ store subr abstr defr ->
-      let maxch = if subr = [] then 0
-        else List.extremum (>) (snd (List.split subr)) in
-      let maxchd = match defr with
-        | None     -> maxch
-        | Some(dr) -> max dr maxch in
-      let maxchdab = match abstr with
-        | None        -> maxchd
-        | Some(_, ar) -> max ar maxchd in
-      if store then succ maxchdab else maxchdab)
-    ~fail:0 itree in
-  let vars = Array.make capacity (Patt(None, "", [| |])) in
-
+(** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
+and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
+  fun itree depth istk ->
+  let vars = Array.make depth (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
@@ -217,25 +205,26 @@ and tree_walk : Dtree.t -> stack -> (term * stack) option = fun itree istk ->
             but will be removed in the long run, the main advantage of trees
             being that we examine each term at most once. *)
          (* Remove [Appl] nodes by flattening them. *)
-         let stk =
+         let stk, nargs =
            let te = snd Pervasives.(!examined) in
            let te_symb, te_args = Basics.get_args te in
            let unfolded = List.map (fun e -> Pervasives.ref (false, e))
              te_args in
            (Pervasives.ref (true, te_symb)) :: unfolded @
-             (List.tl stk) in
+             (List.tl stk), List.length te_args in
          (* Store hd of stack if needed *)
          if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
          let cursor = if store then succ cursor else cursor in
          (* Fetch the right subtree and the new stack *)
          let matched, stk = match snd Pervasives.(!(List.hd stk)) with
-           | Symb(_, _) as s ->
-              let matched_on_cons = List.assoc_eq Basics.eq s children in
+           | Symb({ sym_name ; _ }, _) ->
+              let consname = Dtree.add_args_repr sym_name nargs in
+              let matched_on_cons = StrMap.find_opt consname children in
               let matched = match matched_on_cons with
                 | Some(_) as s -> s
                 | None         -> default in
               matched, List.tl stk
-           | Abst(_, b)      ->
+           | Abst(_, b)                ->
               begin match abstspec with
               | None       -> None, List.tl stk
               | Some(v, t) ->

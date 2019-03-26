@@ -65,8 +65,8 @@ type term =
   (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_tree : tree ref
-  (** Tree for rule selection. *)
+  ; sym_tree  : (int * tree) ref
+  (** Tree for rule selection along with its depth. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
@@ -236,7 +236,8 @@ type term =
   ; store : bool
   (** Whether to store the current term into the array containing
       variables. *)
-  ; children : (term * tree) list
+  ; children : tree StrMap.t
+  (* ; children : (term * tree) list *)
   (** Subtrees that represent the matching of a constructor available in the
       rules.  For each element of the list [(e, t)], [e] is the constructor
       matched (here a {!constructor:Symb} or an {!constructor:Abst}) and [t]
@@ -333,7 +334,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_tree = ref Fail }
+    ; sym_tree = ref (0, Fail) }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
