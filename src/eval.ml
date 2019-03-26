@@ -198,42 +198,42 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
          let stk = match swap with
            | None    -> stk
            | Some(i) -> List.bring i stk in
-         let examined = List.hd stk in
-         if not (fst Pervasives.(!examined))
-         then Pervasives.(examined := (true, whnf (snd !examined))) ;
+         let examined = Pervasives.(ref (true, whnf (snd !(List.hd stk)))) in
          (* ^ The mutability of the stack is kept to be backward compatible,
             but will be removed in the long run, the main advantage of trees
             being that we examine each term at most once. *)
          (* Remove [Appl] nodes by flattening them. *)
-         let stk, nargs =
+         let tlstk, nargs =
            let te = snd Pervasives.(!examined) in
            let te_symb, te_args = Basics.get_args te in
+           Pervasives.(examined := (false, te_symb)) ;
            let unfolded = List.map (fun e -> Pervasives.ref (false, e))
              te_args in
-           (Pervasives.ref (true, te_symb)) :: unfolded @
-             (List.tl stk), List.length te_args in
+            unfolded @ (List.tl stk), List.length te_args in
+         Pervasives.(examined := (true, whnf (snd !examined))) ;
          (* Store hd of stack if needed *)
-         if store then vars.(cursor) <- (snd Pervasives.(!(List.hd stk))) ;
+         if store then vars.(cursor) <- (snd Pervasives.(!examined)) ;
          let cursor = if store then succ cursor else cursor in
          (* Fetch the right subtree and the new stack *)
-         let matched, stk = match snd Pervasives.(!(List.hd stk)) with
+         let matched, tlstk = match snd Pervasives.(!examined) with
            | Symb({ sym_name ; _ }, _) ->
               let consname = Dtree.add_args_repr sym_name nargs in
               let matched_on_cons = StrMap.find_opt consname children in
               let matched = match matched_on_cons with
                 | Some(_) as s -> s
                 | None         -> default in
-              matched, List.tl stk
+              matched, tlstk
            | Abst(_, b)                ->
               begin match abstspec with
               | None       -> None, List.tl stk
               | Some(v, t) ->
                  let substituted_hd = Bindlib.subst b (mkfree v) in
                  let shd_stk = Pervasives.ref (false, substituted_hd) in
-                 Some(t), shd_stk :: (List.tl stk)
+                 Some(t), shd_stk :: tlstk
               end
+           | Meta(_, _)      -> assert false
            | _               -> assert false in
-         Option.bind (fun tr -> walk tr stk cursor) matched in
+         Option.bind (fun tr -> walk tr tlstk cursor) matched in
   walk itree istk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
