@@ -217,18 +217,15 @@ struct
            | Symb(_, _)          -> loop found xs (Sub.succ po)
            | Patt(Some(i), _, _) -> SubMap.add po i
               (loop (succ found) xs (Sub.succ po))
-           | Appl(_, _) as x     -> let _, args = Basics.get_args x in
+           | Appl(_, _)          -> let _, args = Basics.get_args x in
                                    deepen found args xs po
            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
                                    deepen found [body] xs po
            | _                   -> assert false
          end
     and deepen found args remain po =
-      let xpos = loop found args Sub.init in
-      let nxpos = SubMap.fold (fun xpo slot nmap ->
-        SubMap.add (Sub.prefix po xpo) slot nmap)
-        SubMap.empty xpos in
-      SubMap.union (fun _ _ -> assert false) nxpos
+      let argpos = loop found args (Sub.sub po) in
+      SubMap.union (fun _ _ _ -> assert false) argpos
         (loop found remain (Sub.succ po))
     in
     (* Start as if the terms of the list were subterms of an initial term *)
