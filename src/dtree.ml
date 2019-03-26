@@ -421,7 +421,7 @@ let rec spec_transform : term -> (term * Sub.t) -> Cm.component list = fun pat
     let upat = fst @@ Basics.get_args pat in
     let hs, hargs = Basics.get_args (fst hd) in
     let np = Sub.sub p in
-    let tagged = Sub.tag ~empty:(Sub.succ np) hargs in
+    let tagged = Sub.tag ~empty:np hargs in
     spec_transform upat (hs, np) @ tagged
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
