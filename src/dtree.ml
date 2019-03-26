@@ -389,7 +389,7 @@ let rec spec_transform : term -> (term * Sub.t) -> Pm.component list = fun pat
     let upat = fst @@ Basics.get_args pat in
     let hs, hargs = Basics.get_args (fst hd) in
     let np = Sub.sub p in
-    let tagged = Sub.tag ?ini:(Some(Sub.succ np)) hargs in
+    let tagged = Sub.tag ~empty:(Sub.succ np) hargs in
     spec_transform upat (hs, np) @ tagged
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
@@ -442,8 +442,8 @@ let abstract : tvar -> Pm.t -> Pm.t = fun free { values ; var_catalogue } ->
     | Appl(_, _), _ as a_p ->
        let hd, args = Basics.get_args (fst a_p) in
        let np = Sub.sub (snd a_p) in
-       let argtagged = Sub.tag ~ini:(Sub.succ np) args in
-       (* ?ini might be wrong *)
+       let argtagged = Sub.tag ~empty:(Sub.succ np) args in
+       (* ?empty might be wrong *)
        transf (hd, np) @ argtagged
     | _                    -> assert false in
   let newhds = List.map (fun { Pm.lhs ; _ } -> transf (List.hd lhs)) filtered in
