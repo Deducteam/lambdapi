@@ -564,8 +564,9 @@ let fetch : Cm.component list -> int -> int IntMap.t -> action -> t =
             let neb =  IntMap.add (depth + added) i env_builder in
             let child = loop tl (succ added) neb in
             Node({ defn with store = true ; default = Some(child) })
-         | Appl(_, _) as a     ->
-            let newtl = snd (Basics.get_args a) @ tl in
+         | Appl(_, _)          ->
+            let s, args = Basics.get_args te in
+            let newtl = s :: args @ tl in
             let child = loop newtl added env_builder in
             Node({ defn with default = Some(child) })
          | Abst(_, b)          ->
@@ -587,7 +588,7 @@ let compile : Cm.t -> t = fun patterns ->
   let varcount = ref 0 in
   let rec compile patterns =
     let { Cm.values = m ; Cm.var_catalogue = vcat } = patterns in
-    Cm.pp Format.std_formatter patterns ;
+    (* Cm.pp Format.std_formatter patterns ; *)
     if Cm.is_empty patterns then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
