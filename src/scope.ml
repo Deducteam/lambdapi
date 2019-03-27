@@ -131,9 +131,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   let fresh_patt : env -> tbox =
     let c = Pervasives.ref (-1) in
     fun env ->
-      let name = Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c) in
-      let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-      _Patt None name (Array.of_list xs)
+      let open Pervasives in
+      let name = incr c; Printf.sprintf "#%i" !c in
+      _Patt None name (Env.to_tbox env)
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -187,7 +187,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (None   , _       ) ->
        (* We create a new metavariable [m] of type [TYPE] for the missing
           domain. *)
-       let vs = Env.vars env in
+       let vs = Env.to_tbox env in
        let m = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
        _Meta m vs
   (* Scoping of a binder (abstraction or product). *)
@@ -199,7 +199,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | (x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain x.pos env d in
-          let t = aux (Env.add x.elt v a env) ((l,d,i)::xs) in
+          let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
+          let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
     in
     aux env xs
@@ -215,7 +216,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_Term(_)) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
           metavariable [m2] of type [m1], and return [m2]. *)
-        let vs = Env.vars env in
+        let vs = Env.to_tbox env in
         let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
         let a = Env.to_prod env (_Meta m1 vs) in
         let m2 = fresh_meta a (Array.length vs) in
@@ -227,7 +228,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
              and a new metavariable [m2] of name [id] and type [m1], and
              return [m2]. *)
-          let vs = Env.vars env in
+          let vs = Env.to_tbox env in
           let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
           let a = Env.to_prod env (_Meta m1 vs) in
           let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
