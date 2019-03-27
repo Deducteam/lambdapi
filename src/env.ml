@@ -21,14 +21,30 @@ let add : string -> tvar -> tbox -> env -> env = fun n x a env ->
 let find : string -> env -> tvar = fun n env ->
   fst (List.assoc n env)
 
-(** [prod_of_env env t] builds a sequence of product types whose  domains  are
+(** [to_prod env t] builds a sequence of products whose  domains  are the
     variables of the environment [env] (from left to right), and which body is
-    the term [t]. *)
-let prod_of_env : env -> tbox -> term = fun env t ->
+    the term [t]: [to_prod [(xn,an);..;(x1,a1)] t = ∀x1:a1,..,xn:an,t]. *)
+let to_prod : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a)) = _Prod a (Bindlib.bind_var x t) in
   Bindlib.unbox (List.fold_left fn t env)
 
-(** [vars_of_env env] extracts the array of the Bindlib variables in [env] and
-    injects them into the [tbox] type. Note that the order is reversed. *)
-let vars_of_env : env -> tbox array = fun env ->
+(** [vars env] extracts the array of the Bindlib variables in [env] and
+   injects them into the [tbox] type. Note that the order is reversed:
+   [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]. *)
+let vars : env -> tbox array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env)
+
+(** [of_prod xs t] returns the environment [(xn,an),..,(x1,a1)] if [t] is of
+   the form [∀x1:a1,..,∀xn:an,b]. Raises [Invalid_argument] if [t] is not of
+   this form. *)
+let of_prod : tvar array -> term -> env = fun vars t ->
+  let n = Array.length vars in
+  let rec build_env i env t =
+    if i >= n then env
+    else match unfold t with
+         | Prod(a,b) ->
+            let v = vars.(i) in
+            let env = (Bindlib.name_of v, (v,lift a))::env in
+            build_env (i+1) env (Bindlib.subst b (Vari v))
+         | _ -> raise (Invalid_argument "of_prod")
+  in build_env 0 [] t
