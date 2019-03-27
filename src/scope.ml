@@ -187,8 +187,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (None   , _       ) ->
        (* We create a new metavariable [m] of type [TYPE] for the missing
           domain. *)
-       let vs = Env.vars_of_env env in
-       let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+       let vs = Env.vars env in
+       let m = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
        _Meta m vs
   (* Scoping of a binder (abstraction or product). *)
   and scope_binder cons env xs t =
@@ -215,9 +215,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_Term(_)) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
           metavariable [m2] of type [m1], and return [m2]. *)
-        let vs = Env.vars_of_env env in
-        let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
-        let a = prod_of_env env (_Meta m1 vs) in
+        let vs = Env.vars env in
+        let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+        let a = Env.to_prod env (_Meta m1 vs) in
         let m2 = fresh_meta a (Array.length vs) in
         _Meta m2 vs
     | (P_Meta(id,ts)   , M_Term(m)) ->
@@ -227,9 +227,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
              and a new metavariable [m2] of name [id] and type [m1], and
              return [m2]. *)
-          let vs = Env.vars_of_env env in
-          let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
-          let a = prod_of_env env (_Meta m1 vs) in
+          let vs = Env.vars env in
+          let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+          let a = Env.to_prod env (_Meta m1 vs) in
           let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
           Pervasives.(m := StrMap.add id.elt m2 !m); m2
         in
