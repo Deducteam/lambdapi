@@ -100,10 +100,10 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
   in
   let decompose () =
-    let add_args =
-      List.fold_left2 (fun l p1 p2 -> Pervasives.((snd !p1, snd !p2)::l)) in
+    let add_arg_pb l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
     let to_solve =
-      try add_args p.to_solve ts1 ts2 with Invalid_argument _ -> error () in
+      try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
+      with Invalid_argument _ -> error () in
     solve {p with to_solve}
   in
 
@@ -113,31 +113,87 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
      meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
-  let imitate m vs us s h ts =
-    let exception Unsolvable in try
-    if not (us = [] && Sign.is_inj s) then raise Unsolvable;
-    let vars = match distinct_vars_opt vs with
-      | None -> raise Unsolvable
-      | Some vars -> vars
-    in
-    (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-    let env = Env.of_prod vars !(m.meta_type) in
-    (* Build the term s(m0[vs],..,mn-1[vs]). *)
-    let k = Array.length vars in
-    let t =
-      let rec build i acc t =
-        if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
-        else match unfold t with
-             | Prod(a,b) ->
-                let m = fresh_meta (Env.to_prod env (lift a)) k in
-                let u = Meta (m,vs) in
-                build (i-1) (u::acc) (Bindlib.subst b u)
-             | _ -> raise Unsolvable
-      in build (List.length ts) [] !(s.sym_type)
-    in
-    set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
-    solve_aux t1 t2 p
+  let imitate_inj m vs us s h ts =
+    let exception Unsolvable in
+    try
+      if not (us = [] && Sign.is_inj s) then raise Unsolvable;
+      let vars = match distinct_vars_opt vs with
+        | None -> raise Unsolvable
+        | Some vars -> vars
+      in
+      (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
+      let env, _ = Env.of_prod_vars vars !(m.meta_type) in
+      (* Build the term s(m0[vs],..,mn-1[vs]). *)
+      let k = Array.length vars in
+      let t =
+        let rec build i acc t =
+          if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
+          else match unfold t with
+               | Prod(a,b) ->
+                  let m = fresh_meta (Env.to_prod env (lift a)) k in
+                  let u = Meta (m,vs) in
+                  build (i-1) (u::acc) (Bindlib.subst b u)
+               | _ -> raise Unsolvable
+        in build (List.length ts) [] !(s.sym_type)
+      in
+      set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+      solve_aux t1 t2 p
     with Unsolvable -> add_to_unsolved ()
+  in
+
+  (* [imitate_lam_cond t1 ts2] checks that [ts2] is headed by a variable
+     not occurring in [t1]. *)
+  let imitate_lam_cond t1 ts2 =
+    match ts2 with
+    | [] -> false
+    | e :: _ ->
+       begin
+         match unfold (snd Pervasives.(!e)) with
+         | Vari x -> not (Bindlib.occur x (lift t1))
+         | _ -> false
+       end
+  in
+  (* For a problem of the form Appl(m[ts],[Vari x;_])=_, where m is a
+     metavariable of arity n and type ∀x1:a1,..,∀xn:an,t and x does not occur
+     in m[ts], instantiate m by λx1:a1,..,λxn:an,λx:a,m1[x1,..,xn,x] where
+     m1 is a new metavariable of arity n+1 and:
+
+     - either t = ∀x:a,b and m1 is of type ∀x1:a1,..,∀xn:an,∀x:a,b,
+
+     - or we add the problem t = ∀x:m2[x1,..,xn],m3[x1,..,xn,x] where m2 is a
+     new metavariable of arity n and type ∀x1:a1,..,∀xn:an,KIND and m3 is a
+     new metavariable of arity n+1 and type
+     ∀x1:a1,..,∀xn:an,∀x:m2[x1,..,xn],KIND, and do as in the previous case. *)
+  let imitate_lam m =
+    let n = m.meta_arity in
+    let env, t = Env.of_prod_arity n !(m.meta_type) in
+    let env, b, p =
+      match Eval.whnf t with
+      | Prod(a,b) ->
+         let x,b = Bindlib.unbind b in
+         let env = Env.add x (lift a) env in
+         env, lift b, p
+      | _ ->
+         (* After type inference, a similar constraint should have already
+            been generated but has not been processed yet. *)
+         let t2 = Env.to_prod env _Kind in
+         let m2 = fresh_meta t2 n in
+         let a = _Meta m2 (Env.to_tbox env) in
+         let x = Bindlib.new_var mkfree "x" in
+         let env = Env.add x a env in
+         let t3 = Env.to_prod env _Kind in
+         let m3 = fresh_meta t3 (n+1) in
+         let b = _Meta m3 (Env.to_tbox env) in
+         (* Could be optimized by extending the first [Env.to_tbox env]. *)
+         let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
+         env, b, {p with to_solve = (u,t)::p.to_solve}
+    in
+    let t1 = Env.to_prod env b in
+    let m1 = fresh_meta t1 (n+1) in
+    let vs = Env.vars env in
+    let v = Bindlib.bind_mvar vs (_Meta m1 (Array.map _Vari vs)) in
+    set_meta m (Bindlib.unbox v);
+    solve p
   in
 
   match (h1, h2) with
@@ -170,19 +226,22 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      else add_to_unsolved ()
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
-      solve {p with recompute = true}
+     solve {p with recompute = true}
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
-      solve {p with recompute = true}
+     solve {p with recompute = true}
 
-  | (Meta(m,ts)  , Symb(s,h) ) -> imitate m ts ts1 s h ts2
-  | (Symb(s,h)  , Meta(m,ts) ) -> imitate m ts ts2 s h ts1
+  | (Meta(m,_) , _          ) when imitate_lam_cond t1 ts1 -> imitate_lam m
+  | (_          , Meta(m,_) ) when imitate_lam_cond t2 ts2 -> imitate_lam m
+
+  | (Meta(m,ts)  , Symb(s,h) ) -> imitate_inj m ts ts1 s h ts2
+  | (Symb(s,h)  , Meta(m,ts) ) -> imitate_inj m ts ts2 s h ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
   | (Symb(s,_)  , _          )
   | (_          , Symb(s,_)  ) ->
-      if !(s.sym_rules) = [] then error () else add_to_unsolved ()
+     if !(s.sym_rules) = [] then error () else add_to_unsolved ()
 
   | (_          , _          ) -> error ()
 
