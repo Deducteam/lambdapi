@@ -282,7 +282,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Ctxt.of_env g_env in
   let t_type =
-    match Typing.infer g_ctxt t with
+    match Typing.infer ps.proof_builtins g_ctxt t with
     | Some(a) -> a
     | None    -> fatal pos "Cannot infer the type of [%a]." pp t
   in

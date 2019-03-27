@@ -11,6 +11,25 @@ open Print
 let log_solv = new_logger 's' "solv" "debugging information for unification"
 let log_solv = log_solv.logger
 
+(** Unification configuration. *)
+type config =
+  { symb_P     : sym (** Encoding of propositions.        *)
+  ; symb_T     : sym (** Encoding of types.               *)
+  ; symb_all   : sym (** Universal quantifier.            *) }
+
+let config : config option Pervasives.ref = Pervasives.ref None
+
+(** [set_config builtins] set the configuration from [builtins]. FIXME: add
+   code to check that a config is correct. *)
+let set_config : sym StrMap.t -> unit = fun builtins ->
+  let open Pervasives in
+  try
+    let c = { symb_P   = StrMap.find "P" builtins
+            ; symb_T   = StrMap.find "T" builtins
+            ; symb_all = StrMap.find "all" builtins }
+    in config := Some c
+  with Not_found -> config := None
+
 (** Representation of a set of problems. *)
 type problems =
   { to_solve  : unif_constrs
@@ -66,7 +85,7 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
                                 variable of [vs] occurring in [u]. *)
         && (set_meta m (Bindlib.unbox bu); true)
 
-(** [solve p] tries to solve the unification problems of [p] and
+(** [solve cfg p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
 let rec solve : problems -> unif_constrs = fun p ->
   match p with
@@ -141,15 +160,15 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     with Unsolvable -> add_to_unsolved ()
   in
 
-  (* [imitate_lam_cond t1 ts2] checks that [ts2] is headed by a variable
-     not occurring in [t1]. *)
-  let imitate_lam_cond t1 ts2 =
-    match ts2 with
+  (* [imitate_lam_cond h ts] checks that [ts] is headed by a variable
+     not occurring in [h]. *)
+  let imitate_lam_cond h ts =
+    match ts with
     | [] -> false
     | e :: _ ->
        begin
          match unfold (snd Pervasives.(!e)) with
-         | Vari x -> not (Bindlib.occur x (lift t1))
+         | Vari x -> not (Bindlib.occur x (lift h))
          | _ -> false
        end
   in
@@ -196,6 +215,43 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     solve p
   in
 
+  (* [solve_inj s1 ts1 h2 ts2] tries to solve a problem of the form s1(ts1) =
+     h2 ts2 when s1 is injective and h2 is not a metavariable. Currently, it
+     only handles a specific case: when [s1=P], [ts1=[t]], [h2=∀x:S a,P u] and
+     [ts2=[]]. FIXME: [P] and [S] should be taken from the builtins of the
+     current signature. *)
+  let solve_inj s1 ts1 h2 _ts2 =
+    if !(s1.sym_rules) = [] then error () else
+    match Pervasives.(!config) with
+    | None -> add_to_unsolved()
+    | Some c ->
+       let exception Unsolvable in
+       try
+         let t,ta,a,x,u =
+           if not (s1 == c.symb_P) then raise Unsolvable else
+           match ts1, h2 with
+           | [t], Prod(ta,b) ->
+              begin
+                match Basics.get_args (Eval.whnf ta) with
+                | Symb(s,_), [a] when s == c.symb_T ->
+                   begin
+                     let x,b' = Bindlib.unbind b in
+                     match Basics.get_args (Eval.whnf b') with
+                     | Symb(s,_), [u] when s == c.symb_P ->
+                        Pervasives.(snd !t),ta,a,x,u
+                     | _ -> raise Unsolvable
+                   end
+                | _ -> raise Unsolvable
+              end
+           | _, _ -> raise Unsolvable
+         in
+         let ta = lift ta and u = lift u in
+         let xu = Bindlib.unbox (_Abst ta (Bindlib.bind_var x u)) in
+         let t' = add_args (symb c.symb_all) [a; xu] in
+         solve_aux t t' p
+       with Unsolvable -> add_to_unsolved ()
+  in
+
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
@@ -230,26 +286,27 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
      solve {p with recompute = true}
 
-  | (Meta(m,_) , _          ) when imitate_lam_cond t1 ts1 -> imitate_lam m
-  | (_          , Meta(m,_) ) when imitate_lam_cond t2 ts2 -> imitate_lam m
+  | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
+  | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
 
-  | (Meta(m,ts)  , Symb(s,h) ) -> imitate_inj m ts ts1 s h ts2
+  | (Meta(m,ts) , Symb(s,h)  ) -> imitate_inj m ts ts1 s h ts2
   | (Symb(s,h)  , Meta(m,ts) ) -> imitate_inj m ts ts2 s h ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          )
-  | (_          , Symb(s,_)  ) ->
-     if !(s.sym_rules) = [] then error () else add_to_unsolved ()
+  | (Symb(s,_)  , _          ) -> solve_inj s ts1 h2 ts2
+  | (_          , Symb(s,_)  ) -> solve_inj s ts2 h1 ts1
 
   | (_          , _          ) -> error ()
 
-(** [solve flag problems] attempts to solve [problems],  after having sets the
-    value of [can_instantiate] to [flag].  If there is no solution,  the value
-    [None] is returned. Otherwise [Some(cs)] is returned,  where the list [cs]
-    is a list of unsolved convertibility constraints. *)
-let solve : bool -> problems -> unif_constrs option = fun b p ->
+(** [solve builtins flag problems] attempts to solve [problems], after having
+   sets the value of [can_instantiate] to [flag].  If there is no solution,
+   the value [None] is returned. Otherwise [Some(cs)] is returned, where the
+   list [cs] is a list of unsolved convertibility constraints. *)
+let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
+  fun builtins b p ->
+  set_config builtins;
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s") m; None
