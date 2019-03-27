@@ -143,9 +143,9 @@ type p_config =
   | P_config_binop   of binop
   (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
   | P_config_prover  of string
-  (** Set the prover to use inside a proof *)
+  (** Set the prover to use inside a proof. *)
   | P_config_prover_limit of int
-  (** Set the time (in seconds) limit of the prover *)
+  (** Set the time limit of the prover (in seconds). *)
 
 type require_mode =
   | P_require_default
