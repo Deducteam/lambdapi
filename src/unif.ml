@@ -120,32 +120,16 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       | None -> raise Unsolvable
       | Some vars -> vars
     in
-    (* Build the list (yk-1, ak-1{y0=v0,..,yk-2=vk-2}), .., (y0, a0). *)
-    let k = Array.length vars in
-    let rec build_types i acc t =
-      if i >= k then acc
-      else match unfold t with
-           | Prod(a,b) ->
-              let v = vars.(i) in
-              build_types (i+1) ((v,lift a)::acc) (Bindlib.subst b (Vari v))
-           | _ -> assert false
-    in
-    let types = build_types 0 [] !(m.meta_type) in
-    (* Given a term t, build ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},t. *)
-    let build_prod =
-      let rec build t l =
-        match l with
-        | [] -> t
-        | (y,a) :: l -> build (_Prod a (Bindlib.bind_var y t)) l
-      in fun t -> Bindlib.unbox (build (lift t) types)
-    in
+    (* Build the environment (yk-1, ak-1{y0=v0,..,yk-2=vk-2}), .., (y0, a0). *)
+    let env = Env.of_prod vars !(m.meta_type) in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
+    let k = Array.length vars in
     let t =
       let rec build i acc t =
         if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
         else match unfold t with
              | Prod(a,b) ->
-                let m = fresh_meta (build_prod a) k in
+                let m = fresh_meta (Env.to_prod env (lift a)) k in
                 let u = Meta (m,vs) in
                 build (i-1) (u::acc) (Bindlib.subst b u)
              | _ -> raise Unsolvable
@@ -190,8 +174,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
       solve {p with recompute = true}
 
-  | (Meta(m,ts)  , Symb(s,h)  ) -> imitate m ts ts1 s h ts2
-  | (Symb(s,h)  , Meta(m,ts)  ) -> imitate m ts ts2 s h ts1
+  | (Meta(m,ts)  , Symb(s,h) ) -> imitate m ts ts1 s h ts2
+  | (Symb(s,h)  , Meta(m,ts) ) -> imitate m ts ts2 s h ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
