@@ -162,27 +162,6 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Appl(t,u)  -> iter t; iter u
   in iter
 
-(** [occurs_var x t] tests whether the variable [x] occurs in the term [t]. *)
-let occurs_var : tvar -> term -> bool =
-  let exception Found in fun x t ->
-  let rec occurs t =
-    match t with
-    | Vari(y) when Bindlib.eq_vars x y -> raise Found
-    | Meta(_,ts) -> Array.iter occurs ts
-    | Prod(a,b)
-    | Abst(a,b)  -> occurs a; occurs (Bindlib.subst b Kind)
-    | Appl(t,u)  -> occurs t; occurs u
-    | Vari(_)
-    | Wild
-    | TRef(_)
-    | Type
-    | Kind
-    | Symb(_)
-    | Patt(_,_,_)
-    | TEnv(_,_)  -> ()
-  in
-  try occurs t; false with Found -> true
-
 (** [iter_meta f t] applies the function [f] to every metavariable of
    [t], as well as to every metavariable occurring in the type of an
    uninstantiated metavariable occurring in [t], and so on. *)
