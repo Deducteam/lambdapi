@@ -229,6 +229,10 @@ let parser any_ident =
 (** Identifier (regular and non-keyword, or escaped). *)
 let parser ident = id:any_ident -> in_pos _loc id
 
+let parser arg_ident =
+  | id:ident -> Some(id)
+  | _wild_   -> None
+
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
 let parser meta =
   | "?" - id:{regular_ident | escaped_ident} -> in_pos _loc id
@@ -334,11 +338,11 @@ and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
 (** [arg] parses a single function argument. *)
 and parser arg =
   (* Explicit argument without type annotation. *)
-  | x:ident                                 -> ([x], None,    false)
+  | x:arg_ident                                 -> ([x], None,    false)
   (* Explicit argument with type annotation. *)
-  | "(" xs:ident+    ":" a:(term PFunc) ")" -> (xs , Some(a), false)
+  | "(" xs:arg_ident+    ":" a:(term PFunc) ")" -> (xs , Some(a), false)
   (* Implicit argument (with possible type annotation). *)
-  | "{" xs:ident+ a:{":" (term PFunc)}? "}" -> (xs , a      , true )
+  | "{" xs:arg_ident+ a:{":" (term PFunc)}? "}" -> (xs , a      , true )
 
 let term = term PFunc
 
@@ -361,7 +365,7 @@ let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
   | _refine_ t:term             -> Pos.in_pos _loc (P_tac_refine(t))
-  | _intro_ xs:ident+           -> Pos.in_pos _loc (P_tac_intro(xs))
+  | _intro_ xs:arg_ident+       -> Pos.in_pos _loc (P_tac_intro(xs))
   | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
   | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
