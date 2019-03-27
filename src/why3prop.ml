@@ -26,6 +26,7 @@ type prop_config =
   ; symb_and   : sym (** Conjunction(∧) symbol.           *)
   ; symb_imp   : sym (** Implication(⇒) symbol.           *)
   ; symb_bot   : sym (** Bot(⊥) symbol.                   *)
+  ; symb_top   : sym (** Top(⊤) symbol.                   *)
   ; symb_not   : sym (** Not(¬) symbol.                   *) }
 
 (** [get_prop_config pos builtins] set the builtins configuration using
@@ -42,6 +43,7 @@ let get_prop_config :
     ; symb_and   = find_sym "and"
     ; symb_imp   = find_sym "imp"
     ; symb_bot   = find_sym "bot"
+    ; symb_top   = find_sym "top"
     ; symb_not   = find_sym "not" }
 
 (** [translate pos builtins (hs, g)] translate from lambdapi to Why3 goal [g]
@@ -110,15 +112,18 @@ and t_prop :
     | symbol, [t] when Basics.is_symb cfg.symb_not symbol  ->
         let (constants_table, t) = t_prop cfg constants_table ctxt t in
         constants_table, Why3.Term.t_not t
+    | symbol, [] when Basics.is_symb cfg.symb_bot symbol   ->
+        constants_table, Why3.Term.t_false
+    | symbol, [] when Basics.is_symb cfg.symb_top symbol   ->
+        constants_table, Why3.Term.t_true
     | _                                                     ->
         (* if the term [p] is in the list [constants_table] *)
-        if List.exists (fun (lp_t, _) -> Basics.eq lp_t p) constants_table
-        then
+        try
             (* then find it and return it *)
             let lp_eq = fun (lp_t, _) -> Basics.eq lp_t p in
             let (_, ct) = List.find lp_eq constants_table in
                 (constants_table, Why3.Term.ps_app ct [])
-        else
+        with | Not_found ->
         (* or generate a new constant in why3 *)
             let new_symbol = Why3.Ident.id_fresh "P" in
             let sym = Why3.Term.create_psymbol new_symbol [] in

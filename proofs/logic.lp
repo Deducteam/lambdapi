@@ -52,14 +52,15 @@ symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
 symbol const refl  : ∀a x, P (eq a x x)
 symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 
-// Definition of connectors 
+// Definition of connectors
 symbol const bot        : Prop
+symbol const top        : Prop
 symbol const imp        : Prop ⇒ Prop ⇒ Prop
 symbol const {|and|}    : Prop ⇒ Prop ⇒ Prop
 symbol const or         : Prop ⇒ Prop ⇒ Prop
 symbol const not        : Prop ⇒ Prop
 
-// Axioms of Classical Natural Deduction 
+// Axioms of Classical Natural Deduction
 
 // Intro and Elimination of not
 symbol not_elim         : ∀ (p : Prop), P (not p) ⇒ P p ⇒ P bot
@@ -79,7 +80,7 @@ symbol and_elim2        : ∀ (p : Prop) (q : Prop), P ({|and|} p q) ⇒ P q
 // Intro and Elimination of or
 symbol or_intro1        : ∀ (p : Prop) (q : Prop), P p ⇒ P (or p q)
 symbol or_intro2        : ∀ (p : Prop) (q : Prop), P q ⇒ P (or p q)
-symbol or_elim          : ∀ (p : Prop) (q : Prop) (c : Prop), P (or p q) ⇒ (P p ⇒ P c) ⇒ (P q ⇒ P c) ⇒ P c 
+symbol or_elim          : ∀ (p : Prop) (q : Prop) (c : Prop), P (or p q) ⇒ (P p ⇒ P c) ⇒ (P q ⇒ P c) ⇒ P c
 
 // Intro and Elimination of imp
 symbol imp_intro        : ∀ (p : Prop) (q : Prop), (P p ⇒ P q) ⇒ P (imp p q)
@@ -106,6 +107,7 @@ set builtin "eqind" ≔ eqind
 set builtin "refl"  ≔ refl
 
 set builtin "bot"   ≔ bot
+set builtin "top"   ≔ top
 set builtin "imp"   ≔ imp
 set builtin "and"   ≔ {|and|}
 set builtin "or"    ≔ or
