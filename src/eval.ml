@@ -192,7 +192,7 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(slot) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env, stk)
-      | Node({ swap ; children ; store ; default ; abstspec }) ->
+      | Node({ swap ; children ; store ; default ; _ }) ->
          if stk = [] then None else (* If stack too short, quit *)
          (* Pick the right term in the stack *)
          let stk = match swap with
@@ -202,38 +202,44 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
          (* ^ The mutability of the stack is kept to be backward compatible,
             but will be removed in the long run, the main advantage of trees
             being that we examine each term at most once. *)
-         (* Remove [Appl] nodes by flattening them. *)
-         let tlstk, nargs =
-           let te = snd Pervasives.(!examined) in
-           let te_symb, te_args = Basics.get_args te in
-           Pervasives.(examined := (false, te_symb)) ;
-           let unfolded = List.map (fun e -> Pervasives.ref (false, e))
-             te_args in
-            unfolded @ (List.tl stk), List.length te_args in
-         Pervasives.(examined := (true, whnf (snd !examined))) ;
          (* Store hd of stack if needed *)
-         if store then vars.(cursor) <- (snd Pervasives.(!examined)) ;
+         if store then
+           begin
+             let fsym, _ = Basics.get_args (snd Pervasives.(!examined)) in
+             (* XXX It doesn't seem normal to [get_args], how are applications
+                sent to the rhs? *)
+             if !log_enabled then
+               log_eval "storing [%a]" pp fsym ;
+             vars.(cursor) <- fsym
+           end ;
          let cursor = if store then succ cursor else cursor in
          (* Fetch the right subtree and the new stack *)
-         let matched, tlstk = match snd Pervasives.(!examined) with
+         (* [choose t s] chooses a tree among {!val:children} when term [t] is
+            on the head of the stack and returns the new head of stack. *)
+         let rec choose te stk_hd : tree option * term list =
+           let te = whnf te in
+           match te with
+           | Appl(u, v) ->
+              choose u (v :: stk_hd)
            | Symb({ sym_name ; _ }, _) ->
+              let nargs = List.length stk_hd in
               let consname = Dtree.add_args_repr sym_name nargs in
               let matched_on_cons = StrMap.find_opt consname children in
               let matched = match matched_on_cons with
-                | Some(_) as s -> s
-                | None         -> default in
-              matched, tlstk
-           | Abst(_, b)                ->
-              begin match abstspec with
-              | None       -> None, List.tl stk
-              | Some(v, t) ->
-                 let substituted_hd = Bindlib.subst b (mkfree v) in
-                 let shd_stk = Pervasives.ref (false, substituted_hd) in
-                 Some(t), shd_stk :: tlstk
-              end
-           | Meta(_, _)      -> assert false
-           | _               -> assert false in
-         Option.bind (fun tr -> walk tr tlstk cursor) matched in
+                | Some(_) ->
+                   if !log_enabled then
+                    log_eval (r_or_g true "[%s] =~= [%a]") consname pp
+                      (snd Pervasives.(!examined)) ;
+                  matched_on_cons
+                | None    -> default in
+              matched, stk_hd
+           | Abst(_, _) -> assert false
+           | Meta(_, _) -> assert false
+           | _          -> assert false in
+         let matched, stk_hd = choose (snd Pervasives.(!examined)) [] in
+         let stk = List.map (fun e -> Pervasives.(ref (false, e))) stk_hd @
+           (List.tl stk) in
+         Option.bind (fun tr -> walk tr stk cursor) matched in
   walk itree istk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
