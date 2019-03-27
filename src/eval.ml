@@ -80,12 +80,12 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     (* First check that we have enough arguments. *)
     if r.arity > stk_len then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
+    let ar = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args ps ts =
       match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
-      | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
+      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs ar, ts)
+      | (p::ps, t::ts) -> if matching ar p t then match_args ps ts else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
     match_args r.lhs stk
@@ -110,8 +110,9 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
         let vs = Array.map to_tvar e in
         let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        ar.(i) <- TE_Some(Bindlib.unbox b);
-        Bindlib.is_closed b
+        let res = Bindlib.is_closed b in
+        if res then ar.(i) <- TE_Some(Bindlib.unbox b);
+        res
     | Patt(None   ,_,[||]) -> true
     | Patt(None   ,_,e   ) ->
         let vs = Array.map to_tvar e in
