@@ -4,6 +4,7 @@ open Timed
 open Console
 open Terms
 open Print
+open Extra
 
 (** Logging function for typing. *)
 let log_subj =
@@ -68,9 +69,10 @@ let build_meta_type : int -> term = fun k ->
   let tk = _Meta mk (Array.map _Vari vs) in
   Bindlib.unbox (build_prod k tk)
 
-(** [check_rule r] check whether rule [r] is well-typed. The program
+(** [check_rule builtins r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
-let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
+let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
+  = fun builtins (s,h,r) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
   (* We process the LHS to replace pattern variables by metavariables. *)
   let arity = Bindlib.mbinder_arity r.elt.rhs in
@@ -119,7 +121,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst r.elt.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  match Typing.infer_constr Ctxt.empty lhs with
+  match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
   if !log_enabled then
@@ -142,7 +144,7 @@ let check_rule : sym * pp_hint * rule Pos.loc -> unit = fun (s,h,r) ->
       List.iter fn to_solve
     end;
   (* Solving the constraints. *)
-  match Unif.(solve false {no_problems with to_solve}) with
+  match Unif.(solve builtins false {no_problems with to_solve}) with
   | Some(cs) ->
       let is_constr c =
         let eq_comm (t1,u1) (t2,u2) =
