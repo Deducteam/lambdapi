@@ -105,13 +105,17 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
     | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
         let fn _ = snd Pervasives.(!t) in
         let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
-        ar.(i) <- TE_Some(b); true
+        ar.(i) <- TE_Some(b);
+        true
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
-        ar.(i) <- TE_Some(Bindlib.unbox b); Bindlib.is_closed b
+        let vs = Array.map to_tvar e in
+        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
+        ar.(i) <- TE_Some(Bindlib.unbox b);
+        Bindlib.is_closed b
     | Patt(None   ,_,[||]) -> true
     | Patt(None   ,_,e   ) ->
-        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
+        let vs = Array.map to_tvar e in
+        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
         Bindlib.is_closed b
     | _                                 ->
     (* Other cases need the term to be evaluated. *)
