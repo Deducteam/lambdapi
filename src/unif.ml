@@ -186,12 +186,13 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let imitate_lam m =
     let n = m.meta_arity in
     let env, t = Env.of_prod_arity n !(m.meta_type) in
-    let env, b, p =
+    let x,a,env',b,p =
       match Eval.whnf t with
       | Prod(a,b) ->
          let x,b = Bindlib.unbind b in
-         let env = Env.add x (lift a) env in
-         env, lift b, p
+         let a = lift a in
+         let env' = Env.add x a env in
+         x,a,env',lift b,p
       | _ ->
          (* After type inference, a similar constraint should have already
             been generated but has not been processed yet. *)
@@ -199,18 +200,19 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          let m2 = fresh_meta t2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = Bindlib.new_var mkfree "x" in
-         let env = Env.add x a env in
-         let t3 = Env.to_prod env _Kind in
+         let env' = Env.add x a env in
+         let t3 = Env.to_prod env' _Kind in
          let m3 = fresh_meta t3 (n+1) in
-         let b = _Meta m3 (Env.to_tbox env) in
-         (* Could be optimized by extending the first [Env.to_tbox env]. *)
+         let b = _Meta m3 (Env.to_tbox env') in
+         (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
-         env, b, {p with to_solve = (u,t)::p.to_solve}
+         x,a,env',b,{p with to_solve = (u,t)::p.to_solve}
     in
-    let t1 = Env.to_prod env b in
-    let m1 = fresh_meta t1 (n+1) in
-    let vs = Env.vars env in
-    let v = Bindlib.bind_mvar vs (_Meta m1 (Array.map _Vari vs)) in
+    let tm1 = Env.to_prod env' b in
+    let m1 = fresh_meta tm1 (n+1) in
+    let t1 = _Meta m1 (Env.to_tbox env') in
+    let xt1 = _Abst a (Bindlib.bind_var x t1) in
+    let v = Bindlib.bind_mvar (Env.vars env) xt1 in
     set_meta m (Bindlib.unbox v);
     solve p
   in
