@@ -112,11 +112,12 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
-(** [iter f t] applies the function [f] to every node of the term [t]. At each
-    call, the function is given the list of the free variables in the term, in
-    the reverse order they were given. Free variables that were already in the
-    term before the call are not included in the list. *)
-let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
+(** [iter_ctxt f t] applies the function [f] to every node of the term [t].
+   At each call, the function is given the list of the free variables in the
+   term, in the reverse order they were given. Free variables that were
+   already in the term before the call are not included in the list. Note: [f]
+   is called on already unfolded terms only. *)
+let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   let rec iter xs t =
     let t = unfold t in
     action xs t;
@@ -139,6 +140,49 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   in
   iter [] (cleanup t)
 
+(** [iter f t] applies the function [f] to every node of the term [t] with
+   bound variables replaced by [Kind]. Note: [f] is called on already unfolded
+   terms only. *)
+let iter : (term -> unit) -> term -> unit = fun action ->
+  let rec iter t =
+    let t = unfold t in
+    action t;
+    match t with
+    | Wild
+    | TRef(_)
+    | Vari(_)
+    | Type
+    | Kind
+    | Symb(_)    -> ()
+    | Patt(_,_,ts)
+    | TEnv(_,ts)
+    | Meta(_,ts) -> Array.iter iter ts
+    | Prod(a,b)
+    | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)  -> iter t; iter u
+  in iter
+
+(** [occurs_var x t] tests whether the variable [x] occurs in the term [t]. *)
+let occurs_var : tvar -> term -> bool =
+  let exception Found in fun x t ->
+  let rec occurs t =
+    match t with
+    | Vari(y) when Bindlib.eq_vars x y -> raise Found
+    | Meta(_,ts) -> Array.iter occurs ts
+    | Prod(a,b)
+    | Abst(a,b)  -> occurs a; occurs (Bindlib.subst b Kind)
+    | Appl(t,u)  -> occurs t; occurs u
+    | Vari(_)
+    | Wild
+    | TRef(_)
+    | Type
+    | Kind
+    | Symb(_)
+    | Patt(_,_,_)
+    | TEnv(_,_)  -> ()
+  in
+  try occurs t; false with Found -> true
+
 (** [iter_meta f t] applies the function [f] to every metavariable of
    [t], as well as to every metavariable occurring in the type of an
    uninstantiated metavariable occurring in [t], and so on. *)
@@ -158,11 +202,9 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
 
 (** {b NOTE} that {!val:iter_meta} is not implemented using {!val:iter} due to
-    the fact this it is performance-cricical. *)
+    the fact this it is performance-critical. *)
 
-(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
-    for {!val:eq}, the behaviour of this function is unspecified when [t] uses
-    the [Patt] or [TEnv] constructor. *)
+(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
 let occurs : meta -> term -> bool =
   let exception Found in fun m t ->
   let fn p = if m == p then raise Found in
