@@ -120,7 +120,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       | None -> raise Unsolvable
       | Some vars -> vars
     in
-    (* Build the environment (yk-1, ak-1{y0=v0,..,yk-2=vk-2}), .., (y0, a0). *)
+    (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
     let env = Env.of_prod vars !(m.meta_type) in
     (* Build the term s(m0[vs],..,mn-1[vs]). *)
     let k = Array.length vars in
