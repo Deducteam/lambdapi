@@ -274,16 +274,6 @@ let read : string -> t = fun fname ->
     its dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
   sym.sym_rules := !(sym.sym_rules) @ [r];
-  (* EXPE *)
-  begin
-    let pama = Dtree.ClauseMat.of_rules !(sym.sym_rules) in
-    let tree = Dtree.compile pama in
-    let capacity = Dtree.capacity tree in
-    sym.sym_tree := (capacity, tree) ;
-    if Pervasives.(!write_trees) then
-      Dtree.to_dot sym.sym_name (snd !(sym.sym_tree)) ;
-  end ;
-  (* EXPE *)
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
@@ -291,6 +281,25 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     in
     let m = (sym.sym_name, r) :: m in
     sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
+
+(** [add_rules s r] adds a bunch of rules [r] to its attached symbol to the
+    signature [s] and builds decision trees. *)
+let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
+  let add_rule (s, h, r) =
+    out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt) ;
+    add_rule sign s r.elt in
+  List.iter add_rule rs ;
+  (* EXPE *)
+  let build_tree symb =
+      let pama = Dtree.ClauseMat.of_rules !(symb.sym_rules) in
+      let tree = Dtree.compile pama in
+      let capacity = Dtree.capacity tree in
+      symb.sym_tree := (capacity, tree) ;
+      if Pervasives.(!write_trees) then
+        Dtree.to_dot symb.sym_name (snd !(symb.sym_tree)) in
+  let uniq_sym = List.uniqify (==) (List.map (fun (e, _, _) -> e) rs) in
+  List.iter build_tree uniq_sym
+  (* EXPE *)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)

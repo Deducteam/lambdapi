@@ -119,11 +119,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
-      let add_rule (s,h,r) =
-        out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt);
-        Sign.add_rule ss.signature s r.elt
-      in
-      List.iter add_rule rs; (ss, None)
+      Sign.add_rules ss.signature rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
