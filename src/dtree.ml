@@ -168,7 +168,7 @@ struct
     F.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
 
   (** A redefinition of the rule type. *)
-  type rule = { lhs : component list
+  type rule = { lhs : component array
               (** Left hand side of a rule. *)
               ; rhs : action
               (** Right hand side of a rule. *)
@@ -176,12 +176,9 @@ struct
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)}
 
-  (** The core data, contains the rewrite rules. *)
-  type matrix = rule list
-
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
-  type t = { values : matrix
+  type t = { clauses : rule list
            (** The rules. *)
            ; var_catalogue : Sub.t list
            (** Contains positions of terms in {!field:lhs} that can be used
@@ -189,16 +186,16 @@ struct
                the matrix that gave birth to this one. *)}
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { values ; _ } ->
+  let pp : t pp = fun oc { clauses ; _ } ->
     let module F = Format in
     let pp_line oc l =
       F.fprintf oc "@[<h>" ;
       F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
-        pp_component oc l ;
+        pp_component oc (Array.to_list l) ;
       F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
-      (List.map (fun { lhs ; _ } -> lhs) values) ;
+      (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
@@ -237,33 +234,34 @@ struct
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = Basics.Subterm.tag r.Terms.lhs in
       let variables = flushout_vars term_pos r.Terms.rhs in
-      { lhs = term_pos ; rhs = r.Terms.rhs
+      { lhs = Array.of_list term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
-    { values = List.map r2r rs ; var_catalogue = [] }
+    { clauses = List.map r2r rs ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
-  let is_empty : t -> bool = fun m -> m.values = []
+  let is_empty : t -> bool = fun m -> m.clauses = []
 
   (** [get_col n m] retrieves column [n] of matrix [m].  There is some
       processing because all rows do not have the same length. *)
-  let get_col : int -> t -> component list = fun ind { values ; _ } ->
-    let opcol = List.fold_left (fun acc { lhs = li ; _ } ->
-        List.nth_opt li ind :: acc) [] values in
-    let rem = List.filter (function None -> false | Some(_) -> true) opcol in
-    List.map (function Some(e) -> e | None -> assert false) rem
+  let get_col : int -> t -> component list = fun ind { clauses ; _ } ->
+    List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
+    (* let opcol = List.fold_left (fun acc { lhs = li ; _ } -> *)
+    (*     List.nth_opt li ind :: acc) [] clauses in *)
+    (* let rem = List.filter (function None -> false | Some(_) -> true) opcol in *)
+    (* List.map (function Some(e) -> e | None -> assert false) rem *)
 
   (** [select m i] keeps the columns of [m] whose index are in [i]. *)
   let select : t -> int array -> t = fun m indexes ->
     { m with
-      values = List.map (fun rul ->
+      clauses = List.map (fun rul ->
         { rul with
-          lhs = Array.fold_left (fun acc i -> List.nth rul.lhs i :: acc)
-            [] indexes }) m.values }
+          lhs = Array.of_list @@ Array.fold_left (fun acc i ->
+            rul.lhs.(i) :: acc) [] indexes }) m.clauses }
 
-  (** [swap p i] brings the [i]th column as 1st column. *)
-  let swap : t -> int -> t = fun pm c ->
-    { pm with values = List.map (fun rul ->
-      { rul with lhs = List.bring c rul.lhs }) pm.values }
+  (* (\** [swap p i] brings the [i]th column as 1st column. *\) *)
+  (* let swap : t -> int -> t = fun pm c -> *)
+  (*   { pm with clauses = List.map (fun rul -> *)
+  (*     { rul with lhs = List.bring c rul.lhs }) pm.clauses } *)
 
   (** [compare c d] compares columns [c] and [d] returning: a positive integer
       if [c > d], 0 if [c = d] or a negative integer if [c < d]; where [<],
@@ -279,41 +277,37 @@ struct
       according to a heuristic. *)
   let pick_best : t -> int = fun _ -> 0
 
-  (** [is_pattern t] returns whether a term [t] is considered as a pattern. *)
-  (* XXX = is_cons??? *)
-  let rec is_pattern : term -> bool = function
+  (** [is_cons t] returns whether a term [t] is considered as a constructor. *)
+  let rec is_cons : term -> bool = function
+    | Appl(_, _) as a -> is_cons (fst (Basics.get_args a))
+    | Meta(_, _)
+    | Abst(_, _)
     | Patt(_, _, _)   -> false
-    | Appl(_, _) as a -> is_pattern (fst (Basics.get_args a))
-    | _               -> true
+    | Vari(_)
+    | Symb(_, _)      -> true
+    | _               -> assert false
 
   (** [exhausted r] returns whether rule [r] can be further pattern matched or
       if it is ready to yield the action.  A rule is exhausted when its left
       hand side is composed only of wildcards. *)
   let exhausted : rule -> bool = fun { lhs ; _ }->
-    let rec loop = function
-      | []                            -> true
-      | (x, _) :: _ when is_pattern x -> false
-      | _ :: xs                       -> loop xs in
-    loop lhs
+    let rec loop i = if i = Array.length lhs then true else
+        if is_cons (fst lhs.(i)) then false else loop (succ i) in
+    loop 0
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
-  let can_switch_on : t -> int -> bool = fun { values ; _ } k ->
+  let can_switch_on : t -> int -> bool = fun { clauses ; _ } k ->
     let rec loop : rule list -> bool = function
-      | []      -> true
-      | r :: rs ->
-        begin
-          match List.nth_opt r.lhs k with
-          | None       -> loop rs
-          | Some(t, _) -> is_pattern t
-        end in
-    loop values
+      | []      -> false
+      | r :: rs -> if is_cons (fst r.lhs.(k)) then true else loop rs in
+    loop clauses
 
-  (** [discard_patt_free m] returns the list of indexes of columns containing
-      terms that can be matched against (discard pattern-free columns). *)
-  let discard_patt_free : t -> int array = fun m ->
+  (** [discard_cons_free m] returns the list of indexes of columns containing
+      terms that can be matched against (discard constructor-free columns). *)
+  let discard_cons_free : t -> int array = fun m ->
     let ncols = List.extremum (>)
-      (List.map (fun { lhs ; _ } -> List.length lhs) m.values) in
+      (List.map (fun { lhs ; _ } -> Array.length lhs) m.clauses) in
     let switchable = List.init ncols (can_switch_on m) in
     let indexes = List.mapi (fun k cm ->
         if cm then Some(k) else None) switchable in
@@ -373,11 +367,11 @@ struct
 
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
-  let varpos : t -> Sub.t list = fun pm ->
+  let varpos : t -> int -> Sub.t list = fun pm ci ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
-    let _, vars = List.split (List.filter is_var (get_col 0 pm)) in
+    let _, vars = List.split (List.filter is_var (get_col ci pm)) in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
     List.sort_uniq Sub.compare vars
@@ -385,8 +379,9 @@ end
 
 module Cm = ClauseMat
 
-(** [spec_filter p h] returns whether a line with head [h] (from a pattern
-    matrix) must be kept when specializing the matrix on pattern [p]. *)
+(** [spec_filter p e] returns whether a line been inspected on element [e]
+    (from a pattern matrix) must be kept when specializing the matrix on
+    pattern [p]. *)
 let rec spec_filter : term -> term -> bool = fun pat hd ->
   match pat, hd with
   | Symb(_, _)   , Symb(_, _)
@@ -411,26 +406,26 @@ let rec spec_filter : term -> term -> bool = fun pat hd ->
 
 (** [spec_transform p h] transform head of line [h] when specializing against
     pattern [p]. *)
-let rec spec_transform : term -> (term * Sub.t) -> Cm.component list = fun pat
+let rec spec_transform : term -> Cm.component -> Cm.component array = fun pat
   hd ->
   match hd with
   | Symb(_, _), _
-  | Vari(_)   , _ -> []
+  | Vari(_)   , _ -> [| |]
   | Appl(_, _), p ->
   (* ^ Arguments verified in filter *)
     let upat = fst @@ Basics.get_args pat in
     let hs, hargs = Basics.get_args (fst hd) in
     let np = Sub.sub p in
     let tagged = Sub.tag ~empty:np hargs in
-    spec_transform upat (hs, np) @ tagged
+    Array.append (spec_transform upat (hs, np)) (Array.of_list tagged)
   | _             -> (* Cases that require the pattern *)
   match hd, pat with
   | (Patt(_, _, e), p), Appl(_, _) ->
      let arity = List.length @@ snd @@ Basics.get_args pat in
      let tagged = Sub.tag
        (List.init arity (fun _ -> Patt(None, "", e))) in
-     (List.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
-  | (Patt(_, _, _), _)    , _      -> []
+     Array.of_list (List.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
+  | (Patt(_, _, _), _)    , _      -> [| |]
   | _                              -> assert false
 
 (** [specialize p m] specializes the matrix [m] when matching against pattern
@@ -439,59 +434,65 @@ let rec spec_transform : term -> (term * Sub.t) -> Cm.component list = fun pat
     column (which is swapped if needed).  In case an {!constructor:Appl} is
     given as pattern [p], only terms having the same number of arguments and
     the same leftmost {e non} {!constructor:Appl} term match. *)
-let specialize : term -> Cm.t -> Cm.t = fun p m ->
-  let newvars = Cm.varpos m in
+let specialize : term -> int -> Cm.t -> Cm.t = fun p ci m ->
+  let newvars = Cm.varpos m ci in
   let newcat = newvars @ m.var_catalogue in
-  let filtered = List.filter (fun { Cm.lhs = l ; _ } ->
-      spec_filter p (fst (List.hd l))) m.values in
-  let newhds = List.map (fun rul -> spec_transform p (List.hd rul.Cm.lhs))
+  let filtered = List.filter (fun { Cm.lhs ; _ } ->
+      spec_filter p (fst lhs.(ci))) m.clauses in
+  let newcith = List.map (fun rul -> spec_transform p rul.Cm.lhs.(ci))
     filtered in
-  let newmat = List.map2 (fun newhd rul ->
-    let oldlhstl = List.tl rul.Cm.lhs in
-    { rul with Cm.lhs = newhd @ oldlhstl }) newhds filtered in
-  { values = newmat ; var_catalogue = newcat }
+  let newmat = List.map2 (fun newcith rul ->
+    let lhs = rul.Cm.lhs in
+    let postfix = if ci >= Array.length lhs then [| |] else
+        Array.sub lhs (ci + 1) (Array.length lhs - (ci + 1)) in
+    let newline = Array.concat
+      [ Array.sub lhs 0 ci
+      ; newcith
+      ; postfix ] in
+    { rul with Cm.lhs = newline }) newcith filtered in
+  { clauses = newmat ; var_catalogue = newcat }
 
 (** [abstract m] is a specialization on abstractions. *)
-let abstract : tvar -> Cm.t -> Cm.t = fun free { values ; var_catalogue } ->
-  (* Substitute all binders with the same variable *)
-  let rec filt = function
-    | Abst(_, _)
-    | Patt(_, _, _)   -> true
-    | Appl(_, _) as a ->
-       filt (fst (Basics.get_args a))
-    | _               -> false in
-  let filtered = List.filter (fun { Cm.lhs ; _} -> filt (fst (List.hd lhs)))
-    values in
-  let rec transf = function
-    | Abst(_, b), p        ->
-       let np = Sub.sub p in
-       let t = Bindlib.subst b (mkfree free) in [(t, np)]
-    | Patt(s, n, e), p     ->
-       let np = Sub.sub p in
-       let nenv = Array.append e [| mkfree free |] in
-       assert (Basics.distinct_vars nenv) ;
-       [(Patt(s, n, nenv), np)]
-    | Appl(_, _), _ as a_p ->
-       let hd, args = Basics.get_args (fst a_p) in
-       let np = Sub.sub (snd a_p) in
-       let argtagged = Sub.tag ~empty:(Sub.succ np) args in
-       (* ?empty might be wrong *)
-       transf (hd, np) @ argtagged
-    | _                    -> assert false in
-  let newhds = List.map (fun { Cm.lhs ; _ } -> transf (List.hd lhs)) filtered in
-  let unfolded = List.map2 (fun newhd rul ->
-    let old_lhs_tl = List.tl rul.Cm.lhs in
-    { rul with Cm.lhs = newhd @ old_lhs_tl}) newhds filtered in
-  let newvars = Cm.varpos { values ; var_catalogue } in
-  let newcat = newvars @ var_catalogue in
-  { values = unfolded ; var_catalogue = newcat }
+(* let abstract : tvar -> Cm.t -> Cm.t = fun free { clauses ; var_catalogue } -> *)
+(*   (\* Substitute all binders with the same variable *\) *)
+(*   let rec filt = function *)
+(*     | Abst(_, _) *)
+(*     | Patt(_, _, _)   -> true *)
+(*     | Appl(_, _) as a -> *)
+(*        filt (fst (Basics.get_args a)) *)
+(*     | _               -> false in *)
+(*   let filtered = List.filter (fun { Cm.lhs ; _} -> filt (fst (List.hd lhs))) *)
+(*     clauses in *)
+(*   let rec transf = function *)
+(*     | Abst(_, b), p        -> *)
+(*        let np = Sub.sub p in *)
+(*        let t = Bindlib.subst b (mkfree free) in [(t, np)] *)
+(*     | Patt(s, n, e), p     -> *)
+(*        let np = Sub.sub p in *)
+(*        let nenv = Array.append e [| mkfree free |] in *)
+(*        assert (Basics.distinct_vars nenv) ; *)
+(*        [(Patt(s, n, nenv), np)] *)
+(*     | Appl(_, _), _ as a_p -> *)
+(*        let hd, args = Basics.get_args (fst a_p) in *)
+(*        let np = Sub.sub (snd a_p) in *)
+(*        let argtagged = Sub.tag ~empty:(Sub.succ np) args in *)
+(*        (\* ?empty might be wrong *\) *)
+(*        transf (hd, np) @ argtagged *)
+(*     | _                    -> assert false in *)
+(*   let newhds = List.map (fun { Cm.lhs ; _ } -> transf (List.hd lhs)) filtered in *)
+(*   let unfolded = List.map2 (fun newhd rul -> *)
+(*     let old_lhs_tl = List.tl rul.Cm.lhs in *)
+(*     { rul with Cm.lhs = newhd @ old_lhs_tl}) newhds filtered in *)
+(*   let newvars = Cm.varpos { clauses ; var_catalogue } in *)
+(*   let newcat = newvars @ var_catalogue in *)
+(*   { clauses = unfolded ; var_catalogue = newcat } *)
 
 (** [default m] computes the default matrix containing what remains to be
     matched if no specialization occurred. *)
-let default : Cm.t -> Cm.t = fun pm ->
-  let { Cm.values = m ; Cm.var_catalogue = vcat ; _ } = pm in
-  let filtered = List.filter (fun { Cm.lhs = l ; _ } ->
-      match fst @@ List.hd l with
+let default : Cm.t -> int -> Cm.t = fun pm ci ->
+  let { Cm.clauses = m ; Cm.var_catalogue = vcat ; _ } = pm in
+  let filtered = List.filter (fun { Cm.lhs ; _ } ->
+      match fst @@ lhs.(ci) with
       | Patt(_ , _, _) -> true
       | Symb(_, _)
       | Abst(_, _)
@@ -499,13 +500,16 @@ let default : Cm.t -> Cm.t = fun pm ->
       | Appl(_, _)     -> false
       | _              -> assert false) m in
   let unfolded = List.map (fun rul ->
-      match List.hd rul.Cm.lhs with
-      | Patt(_, _, _), _ ->
-        { rul with Cm.lhs = List.tl rul.Cm.lhs }
-      | _             -> assert false) filtered in
-  let newvars = Cm.varpos pm in
+    let lhs = rul.Cm.lhs in
+    match lhs.(ci) with
+    | Patt(_, _, _), _ ->
+       let postfix = if (ci + 1) >= Array.length lhs then [| |] else
+           Array.sub lhs (ci + 1) (Array.length lhs - (ci + 1)) in
+       { rul with Cm.lhs = Array.append (Array.sub lhs 0 ci) postfix  }
+    | _             -> assert false) filtered in
+  let newvars = Cm.varpos pm ci in
   let newcat = newvars @ vcat in
-  { values = unfolded ; var_catalogue = newcat }
+  { clauses = unfolded ; var_catalogue = newcat }
 
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
@@ -542,15 +546,19 @@ let default : Cm.t -> Cm.t = fun pm ->
     apply.  The remaining variables, which will remain in the input stack will
     be fetched thanks to a subtree built by {!val:fetch}. *)
 
+let split : ('a * 'b) array -> ('a list) * ('b list) =
+  Array.fold_left (fun (accl, accr) (el, er) -> (el :: accl, er :: accr))
+    ([], [])
+
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
     elements as the number of variables in [r].  The environment builder [e] is
     also enriched.  The tree which allows this consumption is returned, with a
     leaf holding action [r] and the new environment.  Even though only
     essential terms could be consumed using appropriate swaps; it costs less
     to consume linearly the stack than performing multiple swaps. *)
-let fetch : Cm.component list -> int -> int IntMap.t -> action -> t =
+let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
-    let terms = fst (List.split line) in
+    let terms = fst (split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
     let defn = { swap = None ; store = false ; children = StrMap.empty
                ; abstspec = None ; default = None } in
@@ -585,9 +593,9 @@ let fetch : Cm.component list -> int -> int IntMap.t -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let compile : Cm.t -> t = fun patterns ->
-  let varcount = ref 0 in
+  (* let varcount = ref 0 in *)
   let rec compile patterns =
-    let { Cm.values = m ; Cm.var_catalogue = vcat } = patterns in
+    let { Cm.clauses = m ; Cm.var_catalogue = vcat } = patterns in
     (* Cm.pp Format.std_formatter patterns ; *)
     if Cm.is_empty patterns then
       begin
@@ -619,35 +627,33 @@ let compile : Cm.t -> t = fun patterns ->
         fetch lhs depth env_builder rhs
       else
         (* Set appropriate column as first*)
-        let kept_cols = Cm.discard_patt_free patterns in
+        let kept_cols = Cm.discard_cons_free patterns in
         let sel_in_partial = Cm.pick_best (Cm.select patterns kept_cols) in
-        let swap = if kept_cols.(sel_in_partial) = 0 then None
-          else Some kept_cols.(sel_in_partial) in
-        let spm = match swap with
-          | None    -> patterns
-          | Some(i) -> Cm.swap patterns i in
+        let absolute_cind = kept_cols.(sel_in_partial) in
+        let swap = if absolute_cind = 0 then None else Some(absolute_cind) in
         (* Extract this column *)
-        let fcol = Cm.get_col 0 spm in
-        let f_terms, _ = List.split fcol in
-        let store = Cm.in_rhs f_terms in
+        let col = Cm.get_col absolute_cind patterns in
+        let terms, _ = List.split col in
+        let store = Cm.in_rhs terms in
         (* Specializations *)
-        let cons = Cm.get_cons f_terms in
+        let cons = Cm.get_cons terms in
         let spepatts = List.fold_left (fun acc cons ->
-          StrMap.add (symrepr_of_term cons) (specialize cons spm) acc)
+          let crepr = symrepr_of_term cons in
+          StrMap.add crepr (specialize cons absolute_cind patterns) acc)
           StrMap.empty cons in
         let children = StrMap.map compile spepatts in
         (* Abstraction *)
-        let abst = if Cm.contains_abst f_terms then
-            let newfreevar =
-              let suffix = string_of_int !varcount in
-              Bindlib.new_var mkfree ("x" ^ suffix) in
-            incr varcount ;
-            let am = abstract newfreevar spm in
-            if Cm.is_empty am then None else Some(newfreevar, compile am)
-          else None in
+        (* let abst = if Cm.contains_abst terms then *)
+        (*     let newfreevar = *)
+        (*       let suffix = string_of_int !varcount in *)
+        (*       Bindlib.new_var mkfree ("x" ^ suffix) in *)
+        (*     incr varcount ; *)
+        (*     let am = abstract newfreevar absolute_cind spm in *)
+        (*     if Cm.is_empty am then None else Some(newfreevar, compile am) *)
+        (*   else None in *)
         (* Default *)
-        let default = let dm = default spm in
+        let default = let dm = default patterns absolute_cind in
                       if Cm.is_empty dm then None else Some(compile dm) in
         Node({ swap = swap ; store = store ; children = children
-             ; abstspec = abst ; default = default }) in
+             ; abstspec = None ; default = default }) in
   compile patterns
