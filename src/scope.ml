@@ -194,9 +194,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
-      | []             -> scope env t
-      | ([]  ,_,_)::xs -> aux env xs
-      | (x::l,d,i)::xs ->
+      | []                  -> scope env t
+      | ([]       ,_,_)::xs -> aux env xs
+      | (None  ::l,d,i)::xs ->
+          let v = Bindlib.new_var mkfree "_" in
+          let a = scope_domain None env d in (* FIXME *)
+          let t = aux env ((l,d,i)::xs) in
+          cons a (Bindlib.bind_var v t)
+      | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain x.pos env d in
           let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
@@ -280,7 +285,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([([x],None,false)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
@@ -407,8 +412,8 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt loc
-    -> Rewrite.rw_patt = fun ss env s ->
+let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
+    fun ss env s ->
   let open Rewrite in
   match s.elt with
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)

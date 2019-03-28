@@ -43,7 +43,7 @@ and p_term_aux =
   (** Abstraction over several variables. *)
   | P_Prod of p_arg list * p_term
   (** Product over several variables. *)
-  | P_LLet of strloc * p_arg list * p_term * p_term
+  | P_LLet of ident * p_arg list * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -66,7 +66,7 @@ and p_patt = p_term
 
 (** Parser-level representation of a function argument. The boolean is true if
     the argument is marked as implicit (i.e., between curly braces). *)
-and p_arg = ident list * p_type option * bool
+and p_arg = ident option list * p_type option * bool
 
 (** Representation of a symbol tag. *)
 type symtag =
@@ -91,7 +91,7 @@ type p_rw_patt =
 type p_tactic_aux =
   | P_tac_refine  of p_term
   (** Refine the current goal using the given term. *)
-  | P_tac_intro   of ident list
+  | P_tac_intro   of ident option list
   (** Eliminate quantifiers using the given names for hypotheses. *)
   | P_tac_apply   of p_term
   (** Apply the given term to the current goal. *)
@@ -212,7 +212,7 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
       t1 = t2
 
 and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
-  List.equal (fun x1 x2 -> x1.elt = x2.elt) x1 x2
+  List.equal (Option.equal (fun x1 x2 -> x1.elt = x2.elt)) x1 x2
   && Option.equal eq_p_term ao1 ao2 && b1 = b2
 
 let eq_p_rule : p_rule eq = fun r1 r2 ->
@@ -246,7 +246,7 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
   | (P_tac_refine(t1)    , P_tac_refine(t2)    ) ->
       eq_p_term t1 t2
   | (P_tac_intro(xs1)    , P_tac_intro(xs2)    ) ->
-      List.equal eq_ident xs1 xs2
+      List.equal (Option.equal eq_ident) xs1 xs2
   | (P_tac_apply(t1)     , P_tac_apply(t2)     ) ->
       eq_p_term t1 t2
   | (P_tac_rewrite(r1,t1), P_tac_rewrite(r2,t2)) ->
