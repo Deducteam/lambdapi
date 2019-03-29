@@ -306,9 +306,9 @@ struct
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
-  (** [tag ?empty l] attaches the positions to a list of terms as if they were
-      the subterms of a same term.  If [?empty] is supplied, the first element
-      of the list is at position [empty]. *)
+  (** [tag ?empty a] attaches the positions to an array of terms [a] as if
+      they were the subterms of a same term.  If [?empty] is supplied, the
+      first element of the list is at position [empty]. *)
   let tag : ?empty:t -> term array -> (term * t) array = fun ?empty xs ->
     let start, p = match empty with
       | None | Some([]) -> 0, init

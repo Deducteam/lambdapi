@@ -390,14 +390,14 @@ struct
          let tagged = Sub.tag ~empty:np (Array.of_list hargs) in
          Array.append (spec_transform upat (hs, np)) tagged
       | _             -> (* Cases that require the pattern *)
-         match elt, pat with
-         | (Patt(_, _, e), p), Appl(_, _) ->
-            let arity = List.length @@ snd @@ Basics.get_args pat in
-            let tagged = Sub.tag
-              (Array.init arity (fun _ -> Patt(None, "", e))) in
-            (Array.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
-         | (Patt(_, _, _), _)    , _      -> [| |]
-         | _                              -> assert false
+      match elt, pat with
+      | (Patt(_, _, e), p), Appl(_, _) ->
+         let arity = List.length @@ snd @@ Basics.get_args pat in
+         let tagged = Sub.tag
+           (Array.init arity (fun _ -> Patt(None, "", e))) in
+         (Array.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
+      | (Patt(_, _, _), _)    , _      -> [| |]
+      | _                              -> assert false
 
 (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
     against column [c].  A matrix can be specialized by a user defined symbol.
@@ -430,15 +430,14 @@ struct
       | Vari(_)
       | Appl(_, _)     -> false
       | _              -> assert false) rs in
-    let unfolded = List.map (fun rul ->
+    List.map (fun rul ->
       let { lhs ; _ } = rul in
       match lhs.(ci) with
       | Patt(_, _, _), _ ->
          let postfix = if (ci + 1) >= Array.length lhs then [| |] else
              Array.sub lhs (ci + 1) (Array.length lhs - (ci + 1)) in
          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
-      | _                -> assert false) filtered in
-    unfolded
+      | _                -> assert false) filtered
 end
 
 module Cm = ClauseMat
