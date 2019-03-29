@@ -193,7 +193,10 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
            env.(slot) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env, stk)
       | Node({ swap ; children ; store ; default ; _ }) ->
-         if stk = [] then None else (* If stack too short, quit *)
+         (* Quit if stack is too short*)
+         if stk = [] then None else match swap with
+         | Some(i) when i >= List.length stk -> None
+         | _ ->
          (* Pick the right term in the stack *)
          let stk = match swap with
            | None    -> stk
