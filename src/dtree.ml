@@ -245,28 +245,6 @@ struct
   let get_col : int -> t -> component list = fun ind { clauses ; _ } ->
     List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
 
-  (** [select m i] keeps the columns of [m] whose index are in [i]. *)
-  let select : t -> int array -> t = fun m indexes ->
-    { m with
-      clauses = List.map (fun rul ->
-        { rul with
-          lhs = Array.of_list @@ Array.fold_left (fun acc i ->
-            rul.lhs.(i) :: acc) [] indexes }) m.clauses }
-
-  (** [compare c d] compares columns [c] and [d] returning: a positive integer
-      if [c > d], 0 if [c = d] or a negative integer if [c < d]; where [<],
-      [=] and [>] are defined according to a heuristic.  *)
-  let compare : component list -> component list -> int = fun _ _ -> 0
-
-  (** [k @> l] is true if [k] is greater or equal than [l] in the sense of
-      {!val:compare}. *)
-  let (@>) : component list -> component list -> bool = fun l1 l2 ->
-    compare l1 l2 >= 0
-
-  (** [pick_best m] returns the index of the best column of matrix [m]
-      according to a heuristic. *)
-  let pick_best : t -> int = fun _ -> 0
-
   (** [is_cons t] returns whether a term [t] is considered as a constructor. *)
   let rec is_cons : term -> bool = function
     | Appl(_, _) as a -> is_cons (fst (Basics.get_args a))
@@ -276,6 +254,17 @@ struct
     | Vari(_)
     | Symb(_, _)      -> true
     | _               -> assert false
+
+  (** [pick_best_among m c] returns the index of the best column of matrix [m]
+      among columns [c] according to a heuristic. *)
+  let pick_best_among : t -> int array -> int = fun mat columns->
+    let rec count_non_const = function
+      | []                           -> 0
+      | x :: xs when is_cons (fst x) -> count_non_const xs
+      | _ :: xs                      -> 1 + (count_non_const xs) in
+    let wild_pc = Array.map (fun ci ->
+      let c = get_col ci mat in count_non_const c) columns in
+    Array.argmax (<=) wild_pc
 
   (** [exhausted r] returns whether rule [r] can be further pattern matched or
       if it is ready to yield the action.  A rule is exhausted when its left
@@ -543,7 +532,7 @@ let compile : Cm.t -> t = fun patterns ->
   (* let varcount = ref 0 in *)
   let rec compile patterns =
     let { Cm.clauses = m ; Cm.var_catalogue = vcat } = patterns in
-    (* Cm.pp Format.std_formatter patterns ; *)
+    Cm.pp Format.std_formatter patterns ;
     if Cm.is_empty patterns then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
@@ -575,7 +564,7 @@ let compile : Cm.t -> t = fun patterns ->
       else
         (* Set appropriate column as first*)
         let kept_cols = Cm.discard_cons_free patterns in
-        let sel_in_partial = Cm.pick_best (Cm.select patterns kept_cols) in
+        let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         let absolute_cind = kept_cols.(sel_in_partial) in
         let swap = if absolute_cind = 0 then None else Some(absolute_cind) in
         (* Extract this column *)
