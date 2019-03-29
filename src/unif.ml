@@ -107,6 +107,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       log_solv "solve [%a] [%a]" pp t1 pp t2;
     end;
 
+  let exception Unsolvable in
+  
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
@@ -133,7 +135,6 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
-    let exception Unsolvable in
     try
       if not (us = [] && Sign.is_inj s) then raise Unsolvable;
       let vars = match distinct_vars_opt vs with
@@ -217,41 +218,45 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     solve_aux t1 t2 p
   in
 
-  (* [solve_inj s1 ts1 h2 ts2] tries to solve a problem of the form s1(ts1) =
-     h2 ts2 when s1 is injective and h2 is not a metavariable. Currently, it
-     only handles a specific case: when [s1=P], [ts1=[t]], [h2=∀x:S a,P u] and
-     [ts2=[]]. FIXME: [P] and [S] should be taken from the builtins of the
-     current signature. *)
-  let solve_inj s1 ts1 h2 _ts2 =
-    if !(s1.sym_rules) = [] then error () else
-    match Pervasives.(!config) with
-    | None -> add_to_unsolved()
-    | Some c ->
-       let exception Unsolvable in
-       try
-         let t,ta,a,x,u =
-           if not (s1 == c.symb_P) then raise Unsolvable else
-           match ts1, h2 with
-           | [t], Prod(ta,b) ->
+  (* [inverse c s t] computes a term [u] such that [s(u)] reduces to
+     [t]. Raises [Unsolvable] if it cannot find [u]. Currently, it only
+     handles a specific case: the builtin [P]. *)
+  let inverse c sym =
+    let rec inv t =
+      match get_args (Eval.whnf t) with
+      | Symb(s,_), [u] when s == sym -> u
+      | Prod(ta,b), _ when sym == c.symb_P ->
+         begin
+           match get_args (Eval.whnf ta) with
+           | Symb(s,_), [a] when s == c.symb_T ->
               begin
-                match Basics.get_args (Eval.whnf ta) with
-                | Symb(s,_), [a] when s == c.symb_T ->
-                   begin
-                     let x,b' = Bindlib.unbind b in
-                     match Basics.get_args (Eval.whnf b') with
-                     | Symb(s,_), [u] when s == c.symb_P ->
-                        Pervasives.(snd !t),ta,a,x,u
-                     | _ -> raise Unsolvable
-                   end
-                | _ -> raise Unsolvable
+                let x,b' = Bindlib.unbind b in
+                let b' = lift (inv b') in
+                let xb' = _Abst (lift ta) (Bindlib.bind_var x b') in
+                add_args (symb c.symb_all) [a; Bindlib.unbox xb']
               end
-           | _, _ -> raise Unsolvable
-         in
-         let ta = lift ta and u = lift u in
-         let xu = Bindlib.unbox (_Abst ta (Bindlib.bind_var x u)) in
-         let t' = add_args (symb c.symb_all) [a; xu] in
-         solve_aux t t' p
-       with Unsolvable -> add_to_unsolved ()
+           | _ -> raise Unsolvable
+         end
+      | _ -> raise Unsolvable
+    in inv
+  in
+
+(* [solve_inj s ts v] tries to solve a problem of the form s(ts) = v when s is
+   injective. Currently, it only handles a specific case: when s is the
+   builtin P. *)
+  let solve_inj s ts v =
+    if !(s.sym_rules) = [] then error ()
+    else
+      match Pervasives.(!config) with
+      | None -> add_to_unsolved ()
+      | Some c ->
+         try
+           if s == c.symb_P then
+             match ts with
+             | [t] -> solve_aux Pervasives.(snd !t) (inverse c s v) p
+             | _ -> raise Unsolvable
+           else raise Unsolvable
+         with Unsolvable -> add_to_unsolved ()
   in
 
   match (h1, h2) with
@@ -297,8 +302,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 h2 ts2
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 h1 ts1
+  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
+  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
 
   | (_          , _          ) -> error ()
 
