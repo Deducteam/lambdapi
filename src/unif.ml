@@ -210,11 +210,11 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     in
     let tm1 = Env.to_prod env' b in
     let m1 = fresh_meta tm1 (n+1) in
-    let t1 = _Meta m1 (Env.to_tbox env') in
-    let xt1 = _Abst a (Bindlib.bind_var x t1) in
-    let v = Bindlib.bind_mvar (Env.vars env) xt1 in
+    let u1 = _Meta m1 (Env.to_tbox env') in
+    let xu1 = _Abst a (Bindlib.bind_var x u1) in
+    let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
-    solve p
+    solve_aux t1 t2 p
   in
 
   (* [solve_inj s1 ts1 h2 ts2] tries to solve a problem of the form s1(ts1) =
