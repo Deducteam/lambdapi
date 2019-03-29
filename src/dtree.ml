@@ -200,7 +200,7 @@ struct
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : component list -> action -> int SubMap.t = fun lhs rhs ->
+  let flushout_vars : term list -> action -> int SubMap.t = fun lhs rhs ->
     let nvars = Bindlib.mbinder_arity rhs in
     let rec loop found st po =
       if found = nvars then SubMap.empty else
@@ -226,15 +226,15 @@ struct
         (loop found remain (Sub.succ po))
     in
     (* Start as if the terms of the list were subterms of an initial term *)
-    loop 0 (List.map fst lhs) (Sub.succ Sub.init)
+    loop 0 lhs (Sub.succ Sub.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let term_pos = Basics.Subterm.tag r.Terms.lhs in
-      let variables = flushout_vars term_pos r.Terms.rhs in
-      { lhs = Array.of_list term_pos ; rhs = r.Terms.rhs
+      let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
+      let term_pos = Sub.tag (Array.of_list r.Terms.lhs) in
+      { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
     { clauses = List.map r2r rs ; var_catalogue = [] }
 
@@ -387,15 +387,15 @@ struct
          let upat = fst @@ Basics.get_args pat in
          let hs, hargs = Basics.get_args (fst elt) in
          let np = Sub.sub p in
-         let tagged = Sub.tag ~empty:np hargs in
-         Array.append (spec_transform upat (hs, np)) (Array.of_list tagged)
+         let tagged = Sub.tag ~empty:np (Array.of_list hargs) in
+         Array.append (spec_transform upat (hs, np)) tagged
       | _             -> (* Cases that require the pattern *)
          match elt, pat with
          | (Patt(_, _, e), p), Appl(_, _) ->
             let arity = List.length @@ snd @@ Basics.get_args pat in
             let tagged = Sub.tag
-              (List.init arity (fun _ -> Patt(None, "", e))) in
-            Array.of_list (List.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
+              (Array.init arity (fun _ -> Patt(None, "", e))) in
+            (Array.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
          | (Patt(_, _, _), _)    , _      -> [| |]
          | _                              -> assert false
 

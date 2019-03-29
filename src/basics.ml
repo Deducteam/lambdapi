@@ -309,11 +309,11 @@ struct
   (** [tag ?empty l] attaches the positions to a list of terms as if they were
       the subterms of a same term.  If [?empty] is supplied, the first element
       of the list is at position [empty]. *)
-  let tag : ?empty:t -> term list -> (term * t) list = fun ?empty xs ->
+  let tag : ?empty:t -> term array -> (term * t) array = fun ?empty xs ->
     let start, p = match empty with
       | None | Some([]) -> 0, init
       | Some(s :: p)    -> s, p in
-    List.mapi (fun i e -> (e, prefix p [i + start])) xs
+    Array.mapi (fun i e -> (e, prefix p [i + start])) xs
 end
 
 (** Functional map with [Subterm.t] as keys *)
