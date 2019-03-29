@@ -1,9 +1,6 @@
-(** Confluence checking.
-
-    This module allows the translation of a signature into the HRS format used
-    in the confluence competition.
-
-    @see <http://cops.uibk.ac.at> *)
+(** This module provides a function to translate a signature to the HRS format
+   used in the confluence competition. @see
+   <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
 
 open Extra
 open Timed
@@ -72,9 +69,9 @@ let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
 
-(** [to_TPDB oc sign] outputs a TPDB representation of the rewriting system of
+(** [to_HRS oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
-let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
+let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
   (* Get all the dependencies (every needed symbols and rewriting rules). *)
   let deps = Sign.dependencies sign in
   (* Function to iterate over every symbols. *)
@@ -119,14 +116,3 @@ let to_TPDB : Format.formatter -> Sign.t -> unit = fun oc sign ->
     | None    -> List.iter (print_rule oc s) !(s.sym_rules)
   in
   iter_symbols print_rules
-
-(** [check cmd sign] runs the confluence checker specified by command [cmd] on
-    the rewrite system of signature [sign]. The return value is [Some true] in
-    the case where the system is confluent.  It is [Some false] if the  system
-    is not confluent, and it is [None] if the tool cannot conclude.  Note that
-    it is assumed that [cmd] corresponds to a command that accepts TPSP format
-    on its standard output, and outputs either ["YES"], ["NO"] or ["MAYBE"] as
-    the first line of its standard output. The exception [Fatal] may be raised
-    if [cmd] does not behave as expected. *)
-let check : string -> Sign.t -> bool option =
-  External.run "confluence" to_TPDB
