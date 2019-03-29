@@ -108,7 +108,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     end;
 
   let exception Unsolvable in
-  
+
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
