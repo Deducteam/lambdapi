@@ -266,11 +266,15 @@ struct
       let c = get_col ci mat in count_non_const c) columns in
     Array.argmax (<=) wild_pc
 
-  (** [exhausted r] returns whether rule [r] can be further pattern matched or
-      if it is ready to yield the action.  A rule is exhausted when its left
-      hand side is composed only of wildcards. *)
-  let exhausted : rule -> bool = fun { lhs ; _ } ->
-    Array.for_all (fun (e, _) -> not @@ is_cons e) lhs
+  (** [exhausted m] returns whether clause matrix [m] can be further pattern
+      matched or if it is ready to yield an action.  A rule is exhausted when
+      its left hand side is composed only of wildcards. *)
+  let exhausted : t -> bool = fun { clauses ; _ } ->
+    let flhs = (List.hd clauses).lhs in
+    Array.for_all (fun (e, _) -> not @@ is_cons e) flhs
+
+  (** [yield m] yields a rule to be applied. *)
+  let yield : t -> rule = fun { clauses ; _ } -> List.hd clauses
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
@@ -531,19 +535,17 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
 let compile : Cm.t -> t = fun patterns ->
   (* let varcount = ref 0 in *)
   let rec compile patterns =
-    let { Cm.clauses = m ; Cm.var_catalogue = vcat } = patterns in
-    Cm.pp Format.std_formatter patterns ;
+    let { Cm.var_catalogue = vcat ; _ } = patterns in
+    (* Cm.pp Format.std_formatter patterns ; *)
     if Cm.is_empty patterns then
       begin
         failwith "matching failure" ; (* For debugging purposes *)
     (* Fail *)
       end
     else
-      if Cm.exhausted (List.hd m) then
+      if Cm.exhausted patterns then
       (* A rule can be applied *)
-        let rhs = (List.hd m).Cm.rhs in
-        let lhs = (List.hd m).Cm.lhs in
-        let pos2slot = (List.hd m).Cm.variables in
+        let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
         let f (count, map) tpos =
           let opslot = SubMap.find_opt tpos pos2slot in
           match opslot with
