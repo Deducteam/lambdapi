@@ -220,25 +220,17 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
 
   (* [inverse c s t] computes a term [u] such that [s(u)] reduces to
      [t]. Raises [Unsolvable] if it cannot find [u]. Currently, it only
-     handles a specific case: the builtin [P]. *)
-  let inverse c sym =
-    let rec inv t =
-      match get_args (Eval.whnf t) with
-      | Symb(s,_), [u] when s == sym -> u
-      | Prod(ta,b), _ when sym == c.symb_P ->
-         begin
-           match get_args (Eval.whnf ta) with
-           | Symb(s,_), [a] when s == c.symb_T ->
-              begin
-                let x,b' = Bindlib.unbind b in
-                let b' = lift (inv b') in
-                let xb' = _Abst (lift ta) (Bindlib.bind_var x b') in
-                add_args (symb c.symb_all) [a; Bindlib.unbox xb']
-              end
-           | _ -> raise Unsolvable
-         end
-      | _ -> raise Unsolvable
-    in inv
+     handles the builtin [P]. *)
+  let rec inverse c sym t =
+    match get_args (Eval.whnf t) with
+    | Symb(s,_), [u] when s == sym -> u
+    | Prod(ta,b), _ when sym == c.symb_P ->
+       let a = inverse c c.symb_T ta in
+       let x,b' = Bindlib.unbind b in
+       let b' = lift (inverse c sym b') in
+       let xb' = _Abst (lift a) (Bindlib.bind_var x b') in
+       add_args (symb c.symb_all) [a; Bindlib.unbox xb']
+    | _ -> raise Unsolvable
   in
 
 (* [solve_inj s ts v] tries to solve a problem of the form s(ts) = v when s is
