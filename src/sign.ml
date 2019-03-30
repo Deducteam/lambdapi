@@ -291,12 +291,17 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
   List.iter add_rule rs ;
   (* EXPE *)
   let build_tree symb =
-      let pama = Dtree.ClauseMat.of_rules !(symb.sym_rules) in
-      let tree = Dtree.compile pama in
-      let capacity = Dtree.capacity tree in
-      symb.sym_tree := (capacity, tree) ;
-      if Pervasives.(!write_trees) then
-        Dtree.to_dot symb.sym_name (snd !(symb.sym_tree)) in
+    match symb.sym_mode with
+    | Defin
+    | Injec when !(symb.sym_rules) <> [] ->
+       Format.printf "Build tree for %s\n" symb.sym_name ;
+       let pama = Dtree.ClauseMat.of_rules !(symb.sym_rules) in
+       let tree = Dtree.compile pama in
+       let capacity = Dtree.capacity tree in
+       symb.sym_tree := (capacity, tree) ;
+       if Pervasives.(!write_trees) then
+         Dtree.to_dot symb.sym_name (snd !(symb.sym_tree))
+    | _                                  -> () in
   let uniq_sym = List.uniqify (==) (List.map (fun (e, _, _) -> e) rs) in
   List.iter build_tree uniq_sym
   (* EXPE *)
