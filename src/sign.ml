@@ -190,7 +190,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
-    ; sym_tree = ref (0, Fail) }
+    ; sym_tree = ref (lazy 0, lazy Fail) }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -294,13 +294,12 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
     match symb.sym_mode with
     | Defin
     | Injec when !(symb.sym_rules) <> [] ->
-       Format.printf "Build tree for %s\n" symb.sym_name ;
-       let pama = Dtree.ClauseMat.of_rules !(symb.sym_rules) in
-       let tree = Dtree.compile pama in
-       let capacity = Dtree.capacity tree in
+       let pama = lazy (Dtree.ClauseMat.of_rules !(symb.sym_rules)) in
+       let tree = lazy (Dtree.compile @@ Lazy.force pama) in
+       let capacity = lazy (Dtree.capacity @@ Lazy.force tree) in
        symb.sym_tree := (capacity, tree) ;
        if Pervasives.(!write_trees) then
-         Dtree.to_dot symb.sym_name (snd !(symb.sym_tree))
+         Dtree.to_dot symb.sym_name (Lazy.force (snd !(symb.sym_tree)))
     | _                                  -> () in
   let uniq_sym = List.uniqify (==) (List.map (fun (e, _, _) -> e) rs) in
   List.iter build_tree uniq_sym

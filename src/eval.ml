@@ -78,8 +78,10 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
 and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
-  let de, tr = !(s.sym_tree) in
-  if Pervasives.(!with_trees) then tree_walk tr de stk else
+  if Pervasives.(!with_trees) then
+    let de, tr = !(s.sym_tree) in
+    let de, tr = Lazy.force de, Lazy.force tr in
+    tree_walk tr de stk else
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
