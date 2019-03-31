@@ -34,7 +34,7 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int option -> bool -> 'a StrMap.t ->
+  do_node:(int -> bool -> 'a StrMap.t ->
            (term Bindlib.var * 'a) option -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
@@ -116,7 +116,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       incr nodecount ;
       let tag = !nodecount in
       (* Create node *)
-      F.fprintf ppf "@ %d [label=\"%d\"%s];" tag (Option.get swap 0)
+      F.fprintf ppf "@ %d [label=\"%d\"%s];" tag swap
         (if store then " shape=\"box\"" else "") ;
       (* Create edge *)
       F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
@@ -136,7 +136,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     (* First step must be done to avoid drawing a top node. *)
     | Node({ swap ; children = ch ; store ; abstspec ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
-         (Option.get swap 0) (if store then " shape=\"box\"" else "") ;
+         swap (if store then " shape=\"box\"" else "") ;
        StrMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
        (
@@ -492,7 +492,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let defn = { swap = None ; store = false ; children = StrMap.empty
+    let defn = { swap = 0 ; store = false ; children = StrMap.empty
                ; abstspec = None ; default = None } in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
@@ -560,7 +560,6 @@ let compile : Cm.t -> t = fun patterns ->
         let kept_cols = Cm.discard_cons_free patterns in
         let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         let absolute_cind = kept_cols.(sel_in_partial) in
-        let swap = if absolute_cind = 0 then None else Some(absolute_cind) in
         (* Extract this column *)
         let col = Cm.get_col absolute_cind patterns in
         let terms, _ = List.split col in
@@ -584,6 +583,6 @@ let compile : Cm.t -> t = fun patterns ->
           let rules = Cm.default absolute_cind patterns.Cm.clauses in
           let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
           if Cm.is_empty ncm then None else Some(compile ncm) in
-        Node({ swap = swap ; store = store ; children = children
+        Node({ swap = absolute_cind ; store = store ; children = children
              ; abstspec = None ; default = defmat }) in
   compile patterns

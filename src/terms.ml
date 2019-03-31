@@ -230,10 +230,9 @@ type term =
 (** Data contained in a node of a tree.  A node allows to filter the possible
     rules by branching on a child node. *)
  and node_data =
-  { swap : int option
+  { swap : int
   (** Indicates on which term of the input stack (counting from the head), the
-      next switch is to be done.
-      XXX remove option?  *)
+      next switch is to be done. *)
   ; store : bool
   (** Whether to store the current term.  Stored terms might be used in the
       right hand side. *)

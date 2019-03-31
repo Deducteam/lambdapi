@@ -220,7 +220,6 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
      as the environment of the RHS during matching. *)
   let rec walk : Dtree.t -> term array -> int -> term option =
     fun tree stk cursor ->
-    (* XXX stack could be modified in place and not taken as arg *)
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
@@ -235,11 +234,10 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
            env.(slot) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env)
       | Node({ swap ; children ; store ; default ; _ }) ->
-         let si = Option.get swap 0 in
          (* Quit if stack is too short*)
-         if stk = [| |] || si >= Array.length stk then None else 
+         if stk = [| |] || swap >= Array.length stk then None else 
          (* Pick the right term in the stack *)
-         let examined = whnf stk.(si) in
+         let examined = whnf stk.(swap) in
          (* Store hd of stack if needed *)
          if store then
            begin if !log_enabled then log_eval "storing [%a]" pp examined ;
@@ -271,10 +269,10 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
            | _          -> assert false in
          let matched, stk_part = choose examined [] in
          let stk =
-           let postfix = if si >= Array.length stk then [| |] else
-                           Array.sub stk (si + 1)
-                             (Array.length stk - (si + 1)) in
-           Array.concat [ Array.sub stk 0 si
+           let postfix = if swap >= Array.length stk then [| |] else
+                           Array.sub stk (swap + 1)
+                             (Array.length stk - (swap + 1)) in
+           Array.concat [ Array.sub stk 0 swap
                         ; Array.of_list stk_part
                         ; postfix ] in
          Option.bind (fun tr -> walk tr stk cursor) matched in
