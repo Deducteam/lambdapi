@@ -37,6 +37,14 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
+(* Suffix [_t] for "tree" version *)
+
+let to_term_t : term -> term list -> term = fun t args ->
+  let rec to_term_t t = function
+    | [] -> t
+    | u :: args -> to_term_t (Appl(t, u)) args in
+  to_term_t t args
+
 (** Evaluation step counter. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
@@ -45,28 +53,31 @@ let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  if Pervasives.(!with_trees) then
-    let u, _ = whnf_stk_t t [] in
-    u
-  else let u, stk = whnf_stk t [] in
-       if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!with_trees) then whnf_stk_t t [] else
+  let u, stk = whnf_stk t [] in
+  if Pervasives.(!steps) <> s then to_term u stk else t
 
-and whnf_stk_t : term -> term list -> term * term list = fun t stk ->
+and whnf_stk_t : term -> term list -> term = fun t stk ->
   match (unfold t, stk) with
+  (* Push argument to the stack. *)
   | Appl(_, _), _ as st   ->
      let f, args = Basics.get_args (fst st) in
      whnf_stk_t f (args @ stk)
+  (* Beta reduction. *)
   | Abst(_, f), u :: stk  ->
      whnf_stk_t (Bindlib.subst f u) stk
+  (* Try to rewrite. *)
   | Symb(s, _), stk as st ->
      begin match Timed.(!(s.sym_def)) with
      | Some(t) -> whnf_stk_t t stk
      | None    ->
      match find_rule_t s stk with
-     | None -> st
-     | Some(t, stk) -> whnf t, stk
+     (* If no rule is found, build back the Appl *)
+     | None    -> to_term_t (fst st) stk
+     | Some(t) -> whnf t
      end
-  | _         , _ as st   -> st
+  (* In head normal form. *)
+  | _         , _         -> t
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -94,7 +105,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_        , _      ) -> st
 
-and find_rule_t : sym -> term list -> (term * term list) option = fun s stk ->
+and find_rule_t : sym -> term list -> term option = fun s stk ->
   let de, tr = !(s.sym_tree) in
   let de, tr = Lazy.force de, Lazy.force tr in
   tree_walk tr de (Array.of_list stk)
@@ -194,14 +205,15 @@ and eq_modulo : term -> term -> bool = fun a b ->
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
-and tree_walk : Dtree.t -> int -> term array -> (term * term list) option =
+and tree_walk : Dtree.t -> int -> term array -> term option =
   fun itree capa istk ->
   let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk : Dtree.t -> term array -> int -> (term * term list) option =
+  let rec walk : Dtree.t -> term array -> int -> term option =
     fun tree stk cursor ->
+    (* XXX stack could be modified in place and not taken as arg *)
       match tree with
       | Fail                                  -> None
       | Leaf(env_builder, act)                ->
@@ -214,13 +226,13 @@ and tree_walk : Dtree.t -> int -> term array -> (term * term list) option =
            let inject _ = te in
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(slot) <- TE_Some(b)) pre_env ;
-         Some(Bindlib.msubst act env, Array.to_list stk)
+         Some(Bindlib.msubst act env)
       | Node({ swap ; children ; store ; default ; _ }) ->
          let si = Option.get swap 0 in
          (* Quit if stack is too short*)
          if stk = [| |] || si >= Array.length stk then None else 
          (* Pick the right term in the stack *)
-         let examined = stk.(si) in
+         let examined = whnf stk.(si) in
          (* Store hd of stack if needed *)
          if store then
            begin if !log_enabled then log_eval "storing [%a]" pp examined ;
@@ -231,7 +243,6 @@ and tree_walk : Dtree.t -> int -> term array -> (term * term list) option =
          (* [choose t s] chooses a tree among {!val:children} when term [t] is
             examined and returns the new head of stack. *)
          let rec choose te stk_part : tree option * term list =
-           let te = whnf te in
            match te with
            | Appl(_, _) ->
               let hs, args = Basics.get_args te in
