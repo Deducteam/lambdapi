@@ -39,6 +39,7 @@ let to_term : term -> stack -> term = fun t args ->
 
 (* Suffix [_t] for "tree" version *)
 
+(** [to_term_t t k] builds a term from a symbol and its arguments. *)
 let to_term_t : term -> term list -> term = fun t args ->
   let rec to_term_t t = function
     | [] -> t
@@ -57,6 +58,9 @@ let rec whnf : term -> term = fun t ->
   let u, stk = whnf_stk t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
+(** [whnf_stk_t t k] computes the weak head normal form of [t] applied to
+    arguments [k].  Note that the normalisation is done in thee sense of
+    [whnf]. *)
 and whnf_stk_t : term -> term list -> term = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
@@ -105,6 +109,9 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_        , _      ) -> st
 
+(** [find_rule_t s k] attempts to find a reduction rule of [s] when applied to
+    arguments [k].  Returns the reduced term if a rule if found, [None]
+    otherwise. *)
 and find_rule_t : sym -> term list -> term option = fun s stk ->
   let de, tr = !(s.sym_tree) in
   let de, tr = Lazy.force de, Lazy.force tr in
