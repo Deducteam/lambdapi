@@ -45,8 +45,28 @@ let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  let (u, stk) = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!with_trees) then
+    let u, _ = whnf_stk_t t [] in
+    u
+  else let u, stk = whnf_stk t [] in
+       if Pervasives.(!steps) <> s then to_term u stk else t
+
+and whnf_stk_t : term -> term list -> term * term list = fun t stk ->
+  match (unfold t, stk) with
+  | Appl(_, _), _ as st   ->
+     let f, args = Basics.get_args (fst st) in
+     whnf_stk_t f (args @ stk)
+  | Abst(_, f), u :: stk  ->
+     whnf_stk_t (Bindlib.subst f u) stk
+  | Symb(s, _), stk as st ->
+     begin match Timed.(!(s.sym_def)) with
+     | Some(t) -> whnf_stk_t t stk
+     | None    ->
+     match find_rule_t s stk with
+     | None -> st
+     | Some(t, stk) -> whnf t, stk
+     end
+  | _         , _ as st   -> st
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -74,14 +94,15 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_        , _      ) -> st
 
+and find_rule_t : sym -> term list -> (term * term list) option = fun s stk ->
+  let de, tr = !(s.sym_tree) in
+  let de, tr = Lazy.force de, Lazy.force tr in
+  tree_walk tr de (Array.of_list stk)
+
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
 and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
-  if Pervasives.(!with_trees) then
-    let de, tr = !(s.sym_tree) in
-    let de, tr = Lazy.force de, Lazy.force tr in
-    tree_walk tr de stk else
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -173,13 +194,13 @@ and eq_modulo : term -> term -> bool = fun a b ->
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
-and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
+and tree_walk : Dtree.t -> int -> term array -> (term * term list) option =
   fun itree capa istk ->
   let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk : Dtree.t -> stack -> int -> (term * stack) option =
+  let rec walk : Dtree.t -> term array -> int -> (term * term list) option =
     fun tree stk cursor ->
       match tree with
       | Fail                                  -> None
@@ -193,57 +214,51 @@ and tree_walk : Dtree.t -> int -> stack -> (term * stack) option =
            let inject _ = te in
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(slot) <- TE_Some(b)) pre_env ;
-         Some(Bindlib.msubst act env, stk)
+         Some(Bindlib.msubst act env, Array.to_list stk)
       | Node({ swap ; children ; store ; default ; _ }) ->
+         let si = Option.get swap 0 in
          (* Quit if stack is too short*)
-         if stk = [] then None else match swap with
-         | Some(i) when i >= List.length stk -> None
-         | _ ->
+         if stk = [| |] || si >= Array.length stk then None else 
          (* Pick the right term in the stack *)
-         let stk = match swap with
-           | None    -> stk
-           | Some(i) -> List.bring i stk in
-         let examined = Pervasives.(ref (true, whnf (snd !(List.hd stk)))) in
-         (* ^ The mutability of the stack is kept to be backward compatible,
-            but will be removed in the long run, the main advantage of trees
-            being that we examine each term at most once. *)
+         let examined = stk.(si) in
          (* Store hd of stack if needed *)
          if store then
-           begin
-             let fsym, _ = Basics.get_args (snd Pervasives.(!examined)) in
-             (* XXX It doesn't seem normal to [get_args], how are applications
-                sent to the rhs? *)
-             if !log_enabled then
-               log_eval "storing [%a]" pp fsym ;
-             vars.(cursor) <- fsym
+           begin if !log_enabled then log_eval "storing [%a]" pp examined ;
+                 vars.(cursor) <- examined
            end ;
          let cursor = if store then succ cursor else cursor in
          (* Fetch the right subtree and the new stack *)
          (* [choose t s] chooses a tree among {!val:children} when term [t] is
-            on the head of the stack and returns the new head of stack. *)
-         let rec choose te stk_hd : tree option * term list =
+            examined and returns the new head of stack. *)
+         let rec choose te stk_part : tree option * term list =
            let te = whnf te in
            match te with
-           | Appl(u, v) ->
-              choose u (v :: stk_hd)
+           | Appl(_, _) ->
+              let hs, args = Basics.get_args te in
+              choose hs (args @ stk_part)
            | Symb({ sym_name ; _ }, _) ->
-              let nargs = List.length stk_hd in
+              let nargs = List.length stk_part in
               let consname = Dtree.add_args_repr sym_name nargs in
               let matched_on_cons = StrMap.find_opt consname children in
               let matched = match matched_on_cons with
                 | Some(_) ->
                    if !log_enabled then
                     log_eval (r_or_g true "[%s] =~= [%a]") consname pp
-                      (snd Pervasives.(!examined)) ;
+                      examined ;
                   matched_on_cons
                 | None    -> default in
-              matched, stk_hd
+              matched, stk_part
            | Abst(_, _) -> assert false
            | Meta(_, _) -> assert false
            | _          -> assert false in
-         let matched, stk_hd = choose (snd Pervasives.(!examined)) [] in
-         let stk = List.map (fun e -> Pervasives.(ref (false, e))) stk_hd @
-           (List.tl stk) in
+         let matched, stk_part = choose examined [] in
+         let stk =
+           let postfix = if si >= Array.length stk then [| |] else
+                           Array.sub stk (si + 1)
+                             (Array.length stk - (si + 1)) in
+           Array.concat [ Array.sub stk 0 si
+                        ; Array.of_list stk_part
+                        ; postfix ] in
          Option.bind (fun tr -> walk tr stk cursor) matched in
   walk itree istk 0
 
@@ -261,6 +276,7 @@ let whnf : term -> term = fun t ->
   let t = unfold t in
   Pervasives.(steps := 0);
   let u = whnf t in
+  if Pervasives.(!with_trees) then u else
   if Pervasives.(!steps = 0) then t else u
 
 (** [snf t] computes the strong normal form of the term [t]. *)
