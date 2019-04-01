@@ -1,10 +1,7 @@
-(** Temination checking.
-
-    This module allows the translation of a signature to the XTC format, which
-    is used for the termination competition.  More details can be found on the
-    “Termination Problem Database”'s website.
-
-    @see <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB> *)
+(** This module provides a function to translate a signature to the XTC format
+   used in the termination competition. @see
+   <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>.
+   *)
 
 open Extra
 open Timed
@@ -316,14 +313,3 @@ let to_XTC : Format.formatter -> Sign.t -> unit = fun oc sign ->
   );
   Format.fprintf oc "</higherOrderSignature>@.";
   List.iter (Format.fprintf oc "%s@.") postlude
-
-(** [check cmd sign] runs the external termination checker specified by (Unix)
-    command [cmd] on the rewrite system of signature [sign].  The return value
-    is [Some true] if the system is found to be terminating, [Some false] when
-    it is found to be non-terminating, and [None] if the tool cannot conclude.
-    The command [cmd] is assumed to accept XTC format on its  standard  input,
-    and it should output either ["YES"], ["NO"] or ["MAYBE"] as the first line
-    of its standard output.  The exception [Fatal] may be raised if [cmd] does
-    not behave in the expected way. *)
-let check : string -> Sign.t -> bool option =
-  External.run "termination" to_XTC

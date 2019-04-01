@@ -8,14 +8,17 @@ open Console
 (* NOTE only standard [Pervasives] references here. *)
 
 (** [confluence_checker] holds a possible confluence checking command. When it
-    is given,  the command should accept HRS format on its input and the first
-    line of its output should contain either ["YES"], ["NO"] or ["MAYBE"]. *)
+   is given, the command should accept the HRS format on its input (see
+   http://project-coco.uibk.ac.at/problems/hrs.php) and the first line of its
+   output should contain either ["YES"], ["NO"] or ["MAYBE"]. *)
 let confluence_checker : string option ref = ref None
 
 (** [termination_checker] holds a possible termination checking command, using
-    a similar mechanism as for [confluence_checker]. The command should accept
-    TPDB format on its input,  and the first line of its output should contain
-    either ["YES"], ["NO"] or ["MAYBE"]. *)
+   a similar mechanism as for [confluence_checker]. The command should accept
+   XTC format on its input (see
+   http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd),
+   and the first line of its output should contain either ["YES"], ["NO"] or
+   ["MAYBE"]. *)
 let termination_checker : string option ref = ref None
 
 (** Available modes for handling input files. *)
@@ -49,18 +52,18 @@ let handle_file : string -> unit = fun fname ->
       | Some(i) -> try with_timeout i compile mp with Timeout ->
                      fatal_no_pos "Compilation timed out for [%s]." fname
     in
-    let external_checker chk fn kw =
+    let run_checker prop fn chk kw =
       let run cmd =
         let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
-          match fn cmd sign with
+          match External.run prop fn cmd sign with
           | Some(true ) -> ()
           | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
           | None        -> fatal_no_pos "The rewrite system may not be %s." kw
       in
       Option.iter run !chk
     in
-    external_checker confluence_checker Confluence.check "confluent";
-    external_checker termination_checker Termination.check "terminating"
+    run_checker "confluence" Hrs.to_HRS confluence_checker "confluent";
+    run_checker "termination" Xtc.to_XTC termination_checker "terminating"
   with
   | Fatal(None,    msg) -> exit_with "%s" msg
   | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg

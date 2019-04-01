@@ -13,6 +13,11 @@ open Syntax
 let pp_ident : ident pp = fun oc id ->
   Format.pp_print_string oc id.elt
 
+let pp_arg_ident : ident option pp = fun oc id ->
+  match id with
+  | Some(id) -> pp_ident oc id
+  | None     -> Format.pp_print_string oc "_"
+
 let pp_qident : qident pp = fun oc qid ->
   match qid.elt with
   | ([], id) -> Format.pp_print_string oc id
@@ -73,7 +78,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
   pp_toplevel oc t
 
 and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
-  let pp_ids = List.pp (fun oc id -> Format.pp_print_string oc id.elt) " " in
+  let pp_ids = List.pp pp_arg_ident " " in
   match (ao,b) with
   | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
   | (None   , true ) -> Format.fprintf oc "{%a}" pp_ids ids
@@ -109,7 +114,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
   | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" pp_p_term t
-  | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_ident " ") xs
+  | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_arg_ident " ") xs
   | P_tac_apply(t)           -> out "@[<hov 2>apply@ %a@]" pp_p_term t
   | P_tac_simpl              -> out "simpl"
   | P_tac_rewrite(None   ,t) -> out "@[<hov 2>rewrite@ %a@]" pp_p_term t
