@@ -46,10 +46,13 @@ let get_prop_config :
     ; symb_top   = find_sym "top"
     ; symb_not   = find_sym "not" }
 
-(** [translate pos builtins (hs, g)] translate from lambdapi to Why3 goal [g]
-    using the hypothesis [hs]. The function output the translation of the
-    hypothesis and the goal to Why3 and return also a list of all Why3
-    constants used during the translation. *)
+(** [translate pos builtins (hs, g)] translates from lambdapi to Why3 goal [g]
+    using the hypothesis [hs]. The function return
+    [constants_table, hypothesis, formula] where :
+    - [constants_table] maps abstracted Lambdapi terms to Why3 constants
+    - [hypothesis] maps abstracted labels to Why3 terms (presentation of [hs])
+    - [formula] Why3 term representing the goal [g].  *)
+
 let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     cnst_table * ctxt_labels * Why3.Term.term =
     fun pos builtins  (hs, g) ->
@@ -87,7 +90,7 @@ and t_goal : prop_config -> cnst_table -> term ->
     match Basics.get_args trm with
     | (symbol, [t]) when Basics.is_symb cfg.symb_P symbol ->
         t_prop cfg constants_table [] t
-    | _                                                         ->
+    | _                                                   ->
         raise NoGoalTranslation
 
 (** [t_prop cfg constants_table ctxt p] translate the term [p] into Why3 terms
