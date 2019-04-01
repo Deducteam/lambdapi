@@ -241,9 +241,6 @@ type term =
       rules.  Maps representation of constructors as strings built with
       {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to
       trees resulting from a specialisation on the key. *)
-  ; abstspec : (term Bindlib.var * tree) option
-  (** Specialization by abstraction.  The first element is the fresh variable
-      created for the substitution. *)
   ; default : tree option
   (** If a wildcard is among the patterns, this subtree is used when the term
       matched isn't a constructor among the {!field:children} terms. *)}

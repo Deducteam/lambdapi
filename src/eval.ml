@@ -233,7 +233,7 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
            let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
            env.(slot) <- TE_Some(b)) pre_env ;
          Some(Bindlib.msubst act env)
-      | Node({ swap ; children ; store ; default ; _ }) ->
+      | Node({ swap ; children ; store ; default }) ->
          (* Quit if stack is too short*)
          if stk = [| |] || swap >= Array.length stk then None else 
          (* Pick the right term in the stack *)

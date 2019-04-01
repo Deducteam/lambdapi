@@ -34,16 +34,14 @@ type action = (term_env, term) Bindlib.mbinder
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int -> bool -> 'a StrMap.t ->
-           (term Bindlib.var * 'a) option -> 'a option -> 'a) ->
+  do_node:(int -> bool -> 'a StrMap.t -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
-    | Node({ swap ; store ; children ; abstspec ; default }) ->
+    | Node({ swap ; store ; children ; default }) ->
        do_node swap store
          (StrMap.map (fun c -> loop c) children)
-         (Option.map (fun (v, a) -> v, loop a) abstspec)
          (Option.map loop default) in
   loop t
 
@@ -54,11 +52,10 @@ let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
 let capacity : t -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
-  let do_node _ st ch ab de =
+  let do_node _ st ch de =
     let _, chdepths = List.split (StrMap.bindings ch) in
-    let abdepth = match ab with None -> 0 | Some(_, d) -> d in
     let dedepth = Option.get de 0 in
-    List.extremum (>) ([abdepth ; dedepth] @ chdepths) +
+    List.extremum (>) (dedepth :: chdepths) +
       (if st then 1 else 0) in
   iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
 
@@ -112,7 +109,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l !nodecount pp_dotterm
         swon
     | Node(ndata)   ->
-      let { swap ; children ; store ; abstspec ; default } = ndata in
+      let { swap ; children ; store ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
       (* Create node *)
@@ -122,11 +119,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
       StrMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
-      begin
-        match abstspec with
-        | None        -> ()
-        | Some(v, tr) -> write_tree tag (DotAbst(v)) tr
-      end
     | Fail          ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
@@ -134,16 +126,11 @@ let to_dot : string -> t -> unit = fun fname tree ->
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap ; children = ch ; store ; abstspec ; default }) ->
+    | Node({ swap ; children = ch ; store ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
          swap (if store then " shape=\"box\"" else "") ;
        StrMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
-       (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr) ;
-       (
-         match abstspec with
-         | None        -> ()
-         | Some(v, tr) -> write_tree 0 (DotAbst(v)) tr
-       ) ;
+       (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
@@ -493,7 +480,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
     let terms = fst (split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
     let defn = { swap = 0 ; store = false ; children = StrMap.empty
-               ; abstspec = None ; default = None } in
+               ; default = None } in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
       match telst with
@@ -584,5 +571,5 @@ let compile : Cm.t -> t = fun patterns ->
           let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
           if Cm.is_empty ncm then None else Some(compile ncm) in
         Node({ swap = absolute_cind ; store = store ; children = children
-             ; abstspec = None ; default = defmat }) in
+             ; default = defmat }) in
   compile patterns
