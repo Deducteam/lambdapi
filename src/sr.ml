@@ -69,6 +69,64 @@ let build_meta_type : int -> term = fun k ->
   let tk = _Meta mk (Array.map _Vari vs) in
   Bindlib.unbox (build_prod k tk)
 
+(** Translation from Xml-light
+    (https://opam.ocaml.org/packages/xml-light/xml-light.2.4/) to Lambdapi **)
+
+(** [find_trs xml] finds the Xml node corresponding to the TRS in an Xml node
+    obtained from a CPF file. In a valid CPF file generated from external
+    tools for the Knuth-Bendix completion, there is exactly one such node. **)
+let find_trs : Xml.xml -> Xml.xml = fun xml ->
+  let rec find_tag : string -> Xml.xml -> Xml.xml option = fun s xml ->
+    if Xml.tag xml = s then Some xml
+    else
+      let rec iter f = function
+        | []      -> None
+        | x :: xs -> match f x with
+            | None -> iter f xs
+            | y    -> y in
+      iter (find_tag s) (Xml.children xml)
+  in
+  match find_tag "completionInput" xml with
+  | None      -> assert false
+  | Some xml  ->
+      match find_tag "trs" xml with
+      | None     -> assert false
+      | Some xml -> xml
+
+(** [get_only_child xml] returns the only child of an Xml node given **)
+let get_only_child : Xml.xml -> Xml.xml = fun xml ->
+  match Xml.children xml with
+  | [xml] -> xml
+  | _     -> assert false
+
+(** [get_term sign xml] translates an Xml node of tag name "var" or "funapp"
+    into a term according to the signature state of the original system **)
+let rec get_term : Sign.t -> Xml.xml -> term = fun sign xml ->
+  match Xml.tag xml with
+  | "var"    -> (* to finish *) assert false
+  | "funapp" -> begin match Xml.children xml with
+      | []        -> assert false
+      | f :: args ->
+          match get_only_child f with
+          | Xml.Element _ -> assert false
+          | Xml.PCData str  ->
+              let args = List.map get_arg args in
+              let s, path =
+                match String.split_on_char '_' str with
+                | ["c"; path; s] ->
+                    s, String.split_on_char '.' path
+                | _ -> assert false in
+              let sign = PathMap.find path Sign.(!loaded) in
+              let sym =
+                try symb (Sign.find sign s) with Not_found -> assert false in
+              List.fold_left (fun u v -> Appl (u, v)) s args
+      end
+  | _             -> assert false
+
+(** [get_arg xml] translates an Xml node of tag name "arg" into a term **)
+and get_arg : Xml.xml -> term = fun xml -> get_term (get_only_child xml)
+
+
 (** [check_rule builtins r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
 let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
