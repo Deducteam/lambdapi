@@ -30,18 +30,20 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
+(** {3 Operators on trees} *)
+
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int -> bool -> 'a StrMap.t -> 'a option -> 'a) ->
+  do_node:(int -> bool -> 'a ConsMap.t -> 'a option -> 'a) ->
   fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                      -> do_leaf pa a
     | Fail                             -> fail
     | Node({ swap ; store ; children ; default }) ->
        do_node swap store
-         (StrMap.map (fun c -> loop c) children)
+         (ConsMap.map (fun c -> loop c) children)
          (Option.map loop default) in
   loop t
 
@@ -53,31 +55,29 @@ let capacity : t -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
   let do_node _ st ch de =
-    let _, chdepths = List.split (StrMap.bindings ch) in
+    let _, chdepths = List.split (ConsMap.bindings ch) in
     let dedepth = Option.get de 0 in
     List.extremum (>) (dedepth :: chdepths) +
       (if st then 1 else 0) in
   iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
 
-(** [add_args_repr s a] adds the number of arguments in the representation of
-    [s]. *)
-let add_args_repr : string -> int -> string = fun sym nargs ->
-  sym ^ (string_of_int nargs)
+(** {3 Constructors} *)
 
-(** [symrepr_of_term s] extracts the name of [s] concatenated with the number
-    of arguments.  Handles {!constructor:Appl} nodes. *)
-let symrepr_of_term : term -> string = fun te ->
-  let hd, args = Basics.get_args te in
-  let nargs = List.length args in
-  match hd with
-  | Symb({ sym_name ; _ }, _) -> add_args_repr sym_name nargs
-  | _                         -> assert false
+let cons_of_term : term -> constructor = fun te ->
+  let hs, args = Basics.get_args te in
+  let arity = List.length args in
+  match hs with
+  | Symb({ sym_name ; sym_path ; _ }, _) ->
+     { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
+  | _                                    -> assert false
+
+(** {3 Graphviz output} *)
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa
   | DotAbst of tvar
-  | DotCons of string
+  | DotCons of constructor
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
@@ -96,7 +96,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(t) -> F.fprintf oc "%s" t in
+    | DotCons(t) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit =
@@ -106,7 +106,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       incr nodecount ;
       let _, acte = Bindlib.unmbind a in
       F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
-      F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l !nodecount pp_dotterm
+      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
         swon
     | Node(ndata)   ->
       let { swap ; children ; store ; default } = ndata in
@@ -116,8 +116,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d [label=\"%d\"%s];" tag swap
         (if store then " shape=\"box\"" else "") ;
       (* Create edge *)
-      F.fprintf ppf "@ %d -- %d [label=\"%a\"];" father_l tag pp_dotterm swon ;
-      StrMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
+      ConsMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
     | Fail          ->
       incr nodecount ;
@@ -129,13 +129,15 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | Node({ swap ; children = ch ; store ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
          swap (if store then " shape=\"box\"" else "") ;
-       StrMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
+       ConsMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
     | Leaf(_)                                -> ()
     | _                                      -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
+
+(** {3 Clause matrix and pattern matching problem} *)
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix
     {%latex:C%} can be denote {%latex:C = P \rightarrow A%} where {i P} is a
@@ -475,7 +477,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms = fst (split line) in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let defn = { swap = 0 ; store = false ; children = StrMap.empty
+    let defn = { swap = 0 ; store = false ; children = ConsMap.empty
                ; default = None } in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
@@ -554,13 +556,13 @@ let compile : Cm.t -> t = fun patterns ->
         (* Specializations *)
         let spepatts =
           let cons = Cm.get_cons terms in
-          let f acc cons =
-            let crepr = symrepr_of_term cons in
-            let rules = Cm.specialize cons absolute_cind patterns.clauses in
+          let f acc cons_te =
+            let cons = cons_of_term cons_te in
+            let rules = Cm.specialize cons_te absolute_cind patterns.clauses in
             let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-            StrMap.add crepr ncm acc in
-          List.fold_left f StrMap.empty cons in
-        let children = StrMap.map compile spepatts in
+            ConsMap.add cons ncm acc in
+          List.fold_left f ConsMap.empty cons in
+        let children = ConsMap.map compile spepatts in
         (* Default *)
         let defmat =
           let rules = Cm.default absolute_cind patterns.Cm.clauses in

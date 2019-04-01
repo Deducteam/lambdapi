@@ -10,6 +10,18 @@
 open Extra
 open Timed
 
+(** {4 Constructors for decision trees} *)
+
+(** A constructor is the representation of a symbol along with the number of
+    arguments to which it is applied. *)
+type constructor = { c_mod : string list
+                   ; c_sym : string
+                   ; c_ari : int }
+
+(** Functional map on constructors. *)
+module ConsMap = Map.Make(struct type t = constructor
+                                 let compare = Pervasives.compare end)
+
 (** {3 Term (and symbol) representation} *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
@@ -236,7 +248,7 @@ type term =
   ; store : bool
   (** Whether to store the current term.  Stored terms might be used in the
       right hand side. *)
-  ; children : tree StrMap.t
+  ; children : tree ConsMap.t
   (** Subtrees that represent the matching of a constructor available in the
       rules.  Maps representation of constructors as strings built with
       {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to

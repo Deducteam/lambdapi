@@ -252,14 +252,15 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
            | Appl(_, _) ->
               let hs, args = Basics.get_args te in
               choose hs (args @ stk_part)
-           | Symb({ sym_name ; _ }, _) ->
+           | Symb({ sym_name ; sym_path ; _ }, _) ->
               let nargs = List.length stk_part in
-              let consname = Dtree.add_args_repr sym_name nargs in
-              let matched_on_cons = StrMap.find_opt consname children in
+              let cons = { c_sym = sym_name ; c_mod = sym_path
+                         ; c_ari = nargs } in
+              let matched_on_cons = ConsMap.find_opt cons children in
               let matched = match matched_on_cons with
                 | Some(_) ->
                    if !log_enabled then
-                    log_eval (r_or_g true "[%s] =~= [%a]") consname pp
+                    log_eval (r_or_g true "[%s] =~= [%a]") cons.c_sym pp
                       examined ;
                   matched_on_cons
                 | None    -> default in
