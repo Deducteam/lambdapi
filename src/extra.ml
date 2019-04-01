@@ -110,16 +110,6 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [bring i x] brings the [i]th element of [x] at the front. *)
-    let bring : int -> 'a list -> 'a list = fun bi li ->
-      let rec loop : 'a list -> int -> 'a list * 'a = fun l i ->
-        let x, xs = List.hd l, List.tl l in
-        if i = 0 then xs, x
-        else let u, v = loop xs (i - 1) in
-             x :: u, v in
-      let replaced, bith = loop li bi in
-      bith :: replaced
-
     (** [extremum ?init c l] finds the max of list [l] with compare function
         [c] with [?init] as default value if given, else the head of [l] is
         used.  For a max function, [c] is [(>)].  *)
@@ -128,15 +118,6 @@ module List =
         let start = Option.get init (List.hd li) in
         List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
           start li
-
-    (** [assoc_eq e n x] is {!val:assoc_opt}[n x] using equality function
-        [e]. *)
-    let rec assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option =
-      fun eq n l ->
-        match l with
-        | []                      -> None
-        | (x, e) :: _ when eq x n -> Some(e)
-        | _ :: xs                 -> assoc_eq eq n xs
 
     (** [mem_eq e x l] is {!val:List.mem}[x l] with equality [e]. *)
     let rec mem_eq : 'a eq -> 'a -> 'a list -> bool = fun e x -> function

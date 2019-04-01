@@ -294,23 +294,19 @@ struct
   let get_cons : term list -> term list = fun telst ->
     (* [cons_eq t u] returns whether [t] and [u] are the same regarding
        specialization. *)
-    let cons_eq : term -> term -> bool = fun te tf ->
+    let rec cons_eq : term -> term -> bool = fun te tf ->
       match te, tf with
       | Abst(_, _), Abst(_, _) -> true
+      | Appl(_, _), Appl(_, _) -> cons_eq (fst @@ Basics.get_args te)
+         (fst @@ Basics.get_args tf)
       | _                      -> Basics.eq te tf in
-  (* membership of terms *)
-    let rec mem : term -> term list -> bool = fun te xs ->
-      match xs with
-      | []       -> false
-      | hd :: tl ->
-         let s = fst (Basics.get_args hd) in
-         if cons_eq s te then true else mem te tl in
     let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
       match notseen with
       | [] -> List.rev seen
       | hd :: tl ->
          let s = fst (Basics.get_args hd) in
-         loop (if not (is_cons s) || mem s seen then seen else hd :: seen) tl in
+         loop (if not (is_cons s) || List.mem_eq cons_eq s seen then seen
+           else hd :: seen) tl in
     loop [] telst
 
   (** [contains_abst l] returns whether list of terms [l] contains an
