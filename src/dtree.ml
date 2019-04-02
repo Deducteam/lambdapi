@@ -58,7 +58,7 @@ struct
   (** [length v] is the number of elements in [v]. [O(1)] amortized. *)
   let length : 'a t -> int = Vect.length
 
-  (** [append e v] returns a vector with [e] added at the beginning of
+  (** [prepend e v] returns a vector with [e] added at the beginning of
       [v]. [O(1)] amortized *)
   let prepend : 'a -> 'a t -> 'a t = Vect.prepend
 
@@ -74,7 +74,7 @@ struct
     prefix, elt, postfix
 
   (** [restruct r n o] is the concatenation of three stacks [r] [n] and
-      [o]. [O(log min r n o)] amortized *)
+      [o]. [O(log min (size r) (size n) (size o))] amortized *)
   let restruct : 'a t -> 'a t -> 'a t -> 'a t = fun prefix infix postfix ->
     let post_in_fix = Vect.concat prefix infix in
     Vect.concat post_in_fix postfix
