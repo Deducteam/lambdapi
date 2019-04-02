@@ -186,10 +186,12 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
-      (* Initialize proof state. *)
+      (* Initialize proof state and save configuration data. *)
       let st = Proof.init ss.builtins x a in
+      Console.push_state ();
       (* Build proof checking data. *)
       let finalize ss st =
+        Console.pop_state ();
         match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)

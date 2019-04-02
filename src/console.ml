@@ -79,6 +79,9 @@ let log_enabled : bool ref = ref false
 (** [loggers] constains the registered logging functions. *)
 let loggers : logger_data list Pervasives.ref = Pervasives.ref []
 
+(** [default_loggers] give the loggers enabled by default. *)
+let default_loggers : string Pervasives.ref = Pervasives.ref ""
+
 (** [log_summary ()] returns descriptions for logging options. *)
 let log_summary : unit -> string list = fun () ->
   let fn data = Format.sprintf "%c : %s" data.logger_key data.logger_desc in
@@ -93,6 +96,11 @@ let set_debug : bool -> string -> unit = fun value str ->
   List.iter fn Pervasives.(!loggers);
   let is_enabled data = !(data.logger_enabled) in
   log_enabled := List.exists is_enabled Pervasives.(!loggers)
+
+(** [set_default_debug str] declares the debug flags of [str] to be enabled by
+    default. *)
+let set_default_debug : string -> unit = fun str ->
+  Pervasives.(default_loggers := str); set_debug true str
 
 (** [new_logger key name desc] returns (and registers) a new logger. *)
 let new_logger : char -> string -> string -> logger = fun key name desc ->
@@ -121,8 +129,15 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
   in
   {logger}
 
-(* Current verbosity level. *)
-let verbose    = ref 1
+(** Current verbosity level. *)
+let verbose = ref 1
+
+(** Default verbosity level (may be set with command line arguments). *)
+let default_verbose = Pervasives.ref 1
+
+(** [set_default_verbose i] sets the default verbosity level to [i]. *)
+let set_default_verbose : int -> unit = fun i ->
+  Pervasives.(default_verbose := i); verbose := i
 
 (** [out lvl fmt] prints an output message using the format [fmt], but only if
     [lvl] is strictly greater than the current verbosity level.  Note that the
@@ -133,8 +148,8 @@ let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   if lvl > !verbose then Format.ifprintf Pervasives.(!out_fmt) fmt
   else Format.fprintf Pervasives.(!out_fmt) fmt
 
-(** List of registered boolean flags. *)
-let boolean_flags : bool ref StrMap.t Pervasives.ref =
+(** List of registered boolean flags, with their default values. *)
+let boolean_flags : (bool * bool ref) StrMap.t Pervasives.ref =
   Pervasives.ref StrMap.empty
 
 (** [register_flag id d] registers a new boolean flag named [id], with default
@@ -143,9 +158,65 @@ let register_flag : string -> bool -> bool ref = fun id default ->
   if StrMap.mem id Pervasives.(!boolean_flags) then
     invalid_arg "Console.register_flag: already registered";
   let r = ref default in
-  Pervasives.(boolean_flags := StrMap.add id r !boolean_flags); r
+  Pervasives.(boolean_flags := StrMap.add id (default, r) !boolean_flags); r
 
 (** [set_flag id b] sets the value of the flag named [id] to be [b], or raises
     [Not_found] if no flag with this name was registered. *)
 let set_flag : string -> bool -> unit = fun id b ->
-  StrMap.find id Pervasives.(!boolean_flags) := b
+  snd (StrMap.find id Pervasives.(!boolean_flags)) := b
+
+(** [reset_default ()] resets the verbosity level to [1], disables all loggers
+    and reset boolean flags to their default values. *)
+let reset_default : unit -> unit = fun () ->
+  (* Reset verbosity level. *)
+  verbose := Pervasives.(!default_verbose);
+  (* Reset debugging flags. *)
+  log_enabled := false;
+  let reset l =
+    l.logger_enabled :=
+      String.contains Pervasives.(!default_loggers) l.logger_key
+  in
+  List.iter reset Pervasives.(!loggers);
+  (* Reset flags to their default values. *)
+  let reset _ (default, r) = r := default in
+  StrMap.iter reset Pervasives.(!boolean_flags)
+
+(** Stack of saved state for verbosity, loggers and boolean flags. *)
+let saved_state : (int * (char * bool) list * bool StrMap.t) list ref = ref []
+
+(** [push_state ()] saves the current state of [verbose], the loggers, and the
+    boolean flags, pushing it to the stack. *)
+let push_state : unit -> unit = fun () ->
+  let verbose = !verbose in
+  let loggers =
+    let fn l = (l.logger_key, !(l.logger_enabled)) in
+    List.map fn Pervasives.(!loggers)
+  in
+  let flags : bool StrMap.t =
+    let fn (_,r) = !r in
+    StrMap.map fn Pervasives.(!boolean_flags)
+  in
+  saved_state := (verbose, loggers, flags) :: !saved_state
+
+(** [pop_state ()] restores the setting saved with [push_stack], removing them
+    from the top of the stack at the same time. *)
+let pop_state : unit -> unit = fun () ->
+  let (v,l,f) =
+    match !saved_state with
+    | []   -> failwith "[Console.pop_state] not well-bracketed."
+    | e::s -> saved_state := s; e
+  in
+  (* Reset verbosity level. *)
+  verbose := v;
+  (* Reset debugging flags. *)
+  let reset logger =
+    try logger.logger_enabled := List.assoc logger.logger_key l
+    with Not_found -> ()
+  in
+  List.iter reset Pervasives.(!loggers);
+  (* Reset boolean flags. *)
+  let reset k (_,r) =
+    try r := StrMap.find k f
+    with Not_found -> ()
+  in
+  StrMap.iter reset Pervasives.(!boolean_flags)
