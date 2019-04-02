@@ -41,9 +41,8 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
-  let t = unfold t in
   let (u, stk) = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!steps) <> s then to_term u stk else unfold t
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -170,11 +169,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
+(** [whnf t] computes the weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
-  let t = unfold t in
   Pervasives.(steps := 0);
   let u = whnf t in
-  if Pervasives.(!steps = 0) then t else u
+  if Pervasives.(!steps = 0) then unfold t else u
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 let rec snf : term -> term = fun t ->
@@ -208,7 +207,15 @@ let rec hnf : term -> term = fun t ->
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
-type strategy = WHNF | HNF | SNF | NONE
+type strategy =
+  | WHNF
+  (** Put in weak head-normal form. *)
+  | HNF
+  (** Put in head-normal form. *)
+  | SNF
+  (** Put in strong normal form. *)
+  | NONE
+  (** Make no reduction. *)
 
 (** Configuration for evaluation. *)
 type config =
