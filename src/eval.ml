@@ -1,5 +1,6 @@
 (** Evaluation and conversion. *)
 
+open Batteries
 open Extra
 open Timed
 open Console
@@ -115,7 +116,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 and find_rule_t : sym -> term list -> term option = fun s stk ->
   let de, tr = !(s.sym_tree) in
   let de, tr = Lazy.force de, Lazy.force tr in
-  tree_walk tr de (Array.of_list stk)
+  tree_walk tr de stk
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
@@ -212,13 +213,14 @@ and eq_modulo : term -> term -> bool = fun a b ->
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
-and tree_walk : Dtree.t -> int -> term array -> term option =
-  fun itree capa istk ->
+and tree_walk : Dtree.t -> int -> term list -> term option =
+  fun itree capa stk ->
+  let stk = FingerTree.of_list stk in
   let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk : Dtree.t -> term array -> int -> term option =
+  let rec walk : Dtree.t -> term FingerTree.t -> int -> term option =
     fun tree stk cursor ->
       match tree with
       | Fail                                  -> None
@@ -235,9 +237,10 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
          Some(Bindlib.msubst act env)
       | Node({ swap ; children ; store ; default }) ->
          (* Quit if stack is too short*)
-         if stk = [| |] || swap >= Array.length stk then None else 
+         if FingerTree.is_empty stk || swap >= FingerTree.size stk
+         then None else
          (* Pick the right term in the stack *)
-         let examined = whnf stk.(swap) in
+         let examined = whnf @@ FingerTree.get stk swap in
          (* Store hd of stack if needed *)
          if store then
            begin if !log_enabled then log_eval "storing [%a]" pp examined ;
@@ -270,14 +273,14 @@ and tree_walk : Dtree.t -> int -> term array -> term option =
            | _          -> assert false in
          let matched, stk_part = choose examined [] in
          let stk =
-           let postfix = if swap >= Array.length stk then [| |] else
-                           Array.sub stk (swap + 1)
-                             (Array.length stk - (swap + 1)) in
-           Array.concat [ Array.sub stk 0 swap
-                        ; Array.of_list stk_part
-                        ; postfix ] in
+           let prefix, postfix = FingerTree.split_at stk swap in
+           let prefix = List.fold_right (fun e acc -> FingerTree.snoc acc e)
+             stk_part prefix in
+           match FingerTree.tail postfix with
+           | None -> prefix
+           | Some(t) -> FingerTree.append prefix t in
          Option.bind (fun tr -> walk tr stk cursor) matched in
-  walk itree istk 0
+  walk itree stk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.
