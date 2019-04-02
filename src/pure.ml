@@ -62,6 +62,7 @@ type tactic_result =
 let t0 = Time.save ()
 
 let initial_state : Files.module_path -> state = fun path ->
+  Console.reset_default ();
   Time.restore t0;
   Sign.loading := [path];
   let sign = Sign.create path in
