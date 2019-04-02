@@ -250,13 +250,12 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
          (* Fetch the right subtree and the new stack *)
          (* [choose t s] chooses a tree among {!val:children} when term [t] is
             examined and returns the new head of stack. *)
-         let rec choose te stk_part : tree option * term list =
+         let rec choose te stk_part : tree option * term FingerTree.t =
            match te with
-           | Appl(_, _) ->
-              let hs, args = Basics.get_args te in
-              choose hs (args @ stk_part)
+           | Appl(u, v) ->
+              choose u (FingerTree.cons stk_part v)
            | Symb({ sym_name ; sym_path ; _ }, _) ->
-              let nargs = List.length stk_part in
+              let nargs = FingerTree.size stk_part in
               let cons = { c_sym = sym_name ; c_mod = sym_path
                          ; c_ari = nargs } in
               let matched_on_cons = ConsMap.find_opt cons children in
@@ -271,11 +270,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
            | Abst(_, _) -> assert false
            | Meta(_, _) -> assert false
            | _          -> assert false in
-         let matched, stk_part = choose examined [] in
+         let matched, stk_part = choose examined FingerTree.empty in
          let stk =
            let prefix, postfix = FingerTree.split_at stk swap in
-           let prefix = List.fold_right (fun e acc -> FingerTree.snoc acc e)
-             stk_part prefix in
+           let prefix = FingerTree.append prefix stk_part in
            match FingerTree.tail postfix with
            | None -> prefix
            | Some(t) -> FingerTree.append prefix t in
