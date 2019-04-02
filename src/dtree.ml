@@ -41,7 +41,8 @@ type action = (term_env, term) Bindlib.mbinder
     - {!module:BatFingerTree} *)
 module ReductionStack =
 struct
-  open Batteries
+  open Extra
+  module Vect = BatVect
 
   (** Type of a stack of ['a]. *)
   type 'a t = 'a Vect.t
@@ -78,6 +79,13 @@ struct
   let restruct : 'a t -> 'a t -> 'a t -> 'a t = fun prefix infix postfix ->
     let post_in_fix = Vect.concat prefix infix in
     Vect.concat post_in_fix postfix
+
+  (** [pp e o s] prints stack [s] to out channel [o] using element pp [e]. *)
+  let pp : 'a pp -> 'a t pp = fun pp_elt oc v ->
+    Format.pp_print_string oc "[" ;
+    List.pp pp_elt ";" oc (Vect.to_list v) ;
+    Format.pp_print_string oc "]"
+
 end
 
 (** {3 Operators on trees} *)
