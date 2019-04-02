@@ -153,7 +153,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_proofterm          -> out "proofterm"
   | P_tac_query(q)           -> pp_p_query oc q
 
-let pp_command : command pp = fun oc cmd ->
+let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
   | P_require(m, P_require_default) ->

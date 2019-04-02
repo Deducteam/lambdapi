@@ -45,7 +45,7 @@ type proof_data =
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
   match cmd.elt with
@@ -251,10 +251,10 @@ let too_long = Pervasives.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   try
-    let (tm, ss) = time (handle_cmd_aux ss) cmd in
+    let (tm, ss) = time (handle_cmd ss) cmd in
     if Pervasives.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
