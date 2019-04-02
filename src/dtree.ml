@@ -294,15 +294,17 @@ struct
     | Symb(_, _)      -> true
     | _               -> assert false
 
+  (** [score c] returns the score heuristic for column [c]. *)
+  let rec score : component list -> int = function
+    | [] -> 0
+    | (x, _) :: xs when is_cons x -> score xs
+    | _ :: xs                     -> succ (score xs)
+
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic. *)
   let pick_best_among : t -> int array -> int = fun mat columns->
-    let rec count_non_const = function
-      | []                           -> 0
-      | x :: xs when is_cons (fst x) -> count_non_const xs
-      | _ :: xs                      -> 1 + (count_non_const xs) in
     let wild_pc = Array.map (fun ci ->
-      let c = get_col ci mat in count_non_const c) columns in
+      let c = get_col ci mat in score c) columns in
     Array.argmax (<=) wild_pc
 
   (** [exhausted m] returns whether clause matrix [m] can be further pattern
