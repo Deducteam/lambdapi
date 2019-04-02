@@ -52,9 +52,9 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
-  let s = Pervasives.(!steps) in
   let t = unfold t in
   if Pervasives.(!with_trees) then whnf_stk_t t [] else
+  let s = Pervasives.(!steps) in
   let u, stk = whnf_stk t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
@@ -78,7 +78,7 @@ and whnf_stk_t : term -> term list -> term = fun t stk ->
      match find_rule_t s stk with
      (* If no rule is found, build back the Appl *)
      | None    -> to_term_t (fst st) stk
-     | Some(t) -> whnf t
+     | Some(t) -> whnf_stk_t t []
      end
   (* In head normal form. *)
   | _         , _         -> t
