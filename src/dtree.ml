@@ -30,6 +30,56 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
+(** {3 Stack} *)
+
+(** Stack used for when reducing terms.  The requirements are
+    - fast access / split
+    - fast insertion / concatenation.
+
+    Two implementations have been tried,
+    - {!module:BatVect},
+    - {!module:BatFingerTree} *)
+module ReductionStack =
+struct
+  open Batteries
+
+  (** Type of a stack of ['a]. *)
+  type 'a t = 'a Vect.t
+
+  (** The empty stack. *)
+  let empty : 'a t = Vect.empty
+
+  (** [is_empty v] returns whether a stack is empty. *)
+  let is_empty : 'a t -> bool = Vect.is_empty
+
+  (** [of_list l] returns a stack containing the elements of [l]. *)
+  let of_list : 'a list -> 'a t = Vect.of_list
+
+  (** [length v] is the number of elements in [v]. [O(1)] amortized. *)
+  let length : 'a t -> int = Vect.length
+
+  (** [append e v] returns a vector with [e] added at the beginning of
+      [v]. [O(1)] amortized *)
+  let prepend : 'a -> 'a t -> 'a t = Vect.prepend
+
+  (** [destruct v i] returns a triplet [(r, e, o)] with [r] being the
+      elements from 0 to [i - 1], [e] the [i]th element and [o] the elements
+      from [i + 1] to the end of [v]. [O(log size v)] *)
+  let destruct : 'a t -> int -> 'a t * 'a * 'a t = fun restk i ->
+    let elt = Vect.get restk i in
+    let prefix = Vect.sub restk 0 i in
+    let postfix =
+      if i >= Vect.length restk then Vect.empty else
+        Vect.sub restk (i + 1) (Vect.length restk - (i + 1)) in
+    prefix, elt, postfix
+
+  (** [restruct r n o] is the concatenation of three stacks [r] [n] and
+      [o]. [O(log min r n o)] amortized *)
+  let restruct : 'a t -> 'a t -> 'a t -> 'a t = fun prefix infix postfix ->
+    let post_in_fix = Vect.concat prefix infix in
+    Vect.concat post_in_fix postfix
+end
+
 (** {3 Operators on trees} *)
 
 (** [iter l n f t] is a generic iterator on trees; with function [l] performed

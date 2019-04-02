@@ -1,6 +1,5 @@
 (** Evaluation and conversion. *)
 
-open Batteries
 open Extra
 open Timed
 open Console
@@ -215,12 +214,13 @@ and eq_modulo : term -> term -> bool = fun a b ->
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
 and tree_walk : Dtree.t -> int -> term list -> term option =
   fun itree capa stk ->
-  let stk = FingerTree.of_list stk in
+  let module RedStack = Dtree.ReductionStack in
+  let stk = Dtree.ReductionStack.of_list stk in
   let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk : Dtree.t -> term FingerTree.t -> int -> term option =
+  let rec walk : Dtree.t -> term RedStack.t -> int -> term option =
     fun tree stk cursor ->
       match tree with
       | Fail                                  -> None
@@ -237,10 +237,11 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
          Some(Bindlib.msubst act env)
       | Node({ swap ; children ; store ; default }) ->
          (* Quit if stack is too short*)
-         if FingerTree.is_empty stk || swap >= FingerTree.size stk
+         if RedStack.is_empty stk || swap >= RedStack.length stk
          then None else
          (* Pick the right term in the stack *)
-         let examined = whnf @@ FingerTree.get stk swap in
+         let prefix, examined, postfix = RedStack.destruct stk swap in
+         let examined = whnf examined in
          (* Store hd of stack if needed *)
          if store then
            begin if !log_enabled then log_eval "storing [%a]" pp examined ;
@@ -250,12 +251,12 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
          (* Fetch the right subtree and the new stack *)
          (* [choose t s] chooses a tree among {!val:children} when term [t] is
             examined and returns the new head of stack. *)
-         let rec choose te stk_part : tree option * term FingerTree.t =
+         let rec choose te stk_part : tree option * term RedStack.t =
            match te with
            | Appl(u, v) ->
-              choose u (FingerTree.cons stk_part v)
+              choose u (RedStack.prepend v stk_part)
            | Symb({ sym_name ; sym_path ; _ }, _) ->
-              let nargs = FingerTree.size stk_part in
+              let nargs = RedStack.length stk_part in
               let cons = { c_sym = sym_name ; c_mod = sym_path
                          ; c_ari = nargs } in
               let matched_on_cons = ConsMap.find_opt cons children in
@@ -270,13 +271,8 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
            | Abst(_, _) -> assert false
            | Meta(_, _) -> assert false
            | _          -> assert false in
-         let matched, stk_part = choose examined FingerTree.empty in
-         let stk =
-           let prefix, postfix = FingerTree.split_at stk swap in
-           let prefix = FingerTree.append prefix stk_part in
-           match FingerTree.tail postfix with
-           | None -> prefix
-           | Some(t) -> FingerTree.append prefix t in
+         let matched, infix = choose examined RedStack.empty in
+         let stk = RedStack.restruct prefix infix postfix in
          Option.bind (fun tr -> walk tr stk cursor) matched in
   walk itree stk 0
 
