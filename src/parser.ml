@@ -366,6 +366,32 @@ let parser rw_patt_spec =
 (** [rw_patt] is a parser for a (located) rewrite pattern. *)
 let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 
+let parser assert_must_fail =
+  | _assert_    -> false
+  | _assertnot_ -> true
+
+(** [assertion] parses a single assertion. *)
+let parser assertion =
+  | t:term ":" a:term -> P_assert_typing(t,a)
+  | t:term "≡" u:term -> P_assert_conv(t,u)
+
+(** [query] parses a query. *)
+let parser query =
+  | _set_ "verbose" i:nat_lit ->
+      Pos.in_pos _loc (P_query_verbose(i))
+  | _set_ "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
+      Pos.in_pos _loc (P_query_debug(b, s))
+  | _set_ "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
+      Pos.in_pos _loc (P_query_flag(s, b))
+  | mf:assert_must_fail a:assertion ->
+      Pos.in_pos _loc (P_query_assert(mf,a))
+  | _type_ t:term ->
+      let c = Eval.{strategy = NONE; steps = None} in
+      Pos.in_pos _loc (P_query_infer(t,c))
+  | _compute_ t:term ->
+      let c = Eval.{strategy = SNF; steps = None} in
+      Pos.in_pos _loc (P_query_normalize(t,c))
+
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
   | _refine_ t:term             -> Pos.in_pos _loc (P_tac_refine(t))
@@ -378,17 +404,13 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
+  | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
   | _qed_   -> P_proof_qed
   | _admit_ -> P_proof_admit
   | _abort_ -> P_proof_abort
-
-(** [assertion] parses a single assertion. *)
-let parser assertion =
-  | t:term ":" a:term -> P_assert_typing(t,a)
-  | t:term "≡" u:term -> P_assert_conv(t,u)
 
 let parser assoc =
   | EMPTY   -> Assoc_none
@@ -397,12 +419,6 @@ let parser assoc =
 
 (** [config] parses a single configuration option. *)
 let parser config =
-  | "verbose" i:nat_lit ->
-      P_config_verbose(i)
-  | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
-      P_config_debug(b, s)
-  | "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
-      P_config_flag(s, b)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
@@ -415,10 +431,6 @@ let parser statement =
 
 let parser proof =
   ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
-
-let parser assert_must_fail =
-  | _assert_    -> false
-  | _assertnot_ -> true
 
 (** [!require mp] can be used to require the compilation of a module [mp] when
     it is required as a dependency. This has the effect of importing notations
@@ -446,14 +458,10 @@ let parser cmd =
       -> P_definition(false,s,al,ao,t)
   | st:statement (ts,e):proof
       -> P_theorem(st,ts,e)
-  | mf:assert_must_fail a:assertion
-      -> P_assert(mf,a)
   | _set_ c:config
       -> P_set(c)
-  | _type_ t:term
-      -> P_infer(t, Eval.{strategy = NONE; steps = None})
-  | _compute_ t:term
-      -> P_normalize(t, Eval.{strategy = SNF; steps = None})
+  | q:query
+      -> P_query(q)
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

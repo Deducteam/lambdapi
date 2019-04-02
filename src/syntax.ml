@@ -87,6 +87,30 @@ type p_rw_patt =
   | P_rw_TermInIdInTerm of p_term * ident * p_term
   | P_rw_TermAsIdInTerm of p_term * ident * p_term
 
+(** Parser-level representation of an assertion. *)
+type p_assertion =
+  | P_assert_typing of p_term * p_type
+  (** The given term should have the given type. *)
+  | P_assert_conv   of p_term * p_term
+  (** The two given terms should be convertible. *)
+
+(** Parser-level representation of a query command. *)
+type p_query_aux =
+  | P_query_verbose    of int
+  (** Sets the verbosity level. *)
+  | P_query_debug      of bool * string
+  (** Toggles logging functions described by string according to boolean. *)
+  | P_query_flag       of string * bool
+  (** Sets the boolean flag registered under the given name (if any). *)
+  | P_query_assert     of bool * p_assertion
+  (** Assertion (must fail if boolean is [true]). *)
+  | P_query_infer      of p_term * Eval.config
+  (** Type inference command. *)
+  | P_query_normalize  of p_term * Eval.config
+  (** Normalisation command. *)
+
+type p_query = p_query_aux loc
+
 (** Parser-level representation of a proof tactic. *)
 type p_tactic_aux =
   | P_tac_refine  of p_term
@@ -109,6 +133,8 @@ type p_tactic_aux =
   (** Print the current goal. *)
   | P_tac_proofterm
   (** Print the current proof term (possibly containing open goals). *)
+  | P_tac_query   of p_query
+  (** Query. *)
 type p_tactic = p_tactic_aux loc
 
 (** Parser-level representation of a proof terminator. *)
@@ -120,21 +146,8 @@ type p_proof_end =
   | P_proof_abort
   (** Abort the proof (theorem not admitted). *)
 
-(** Parser-level representation of an assertion. *)
-type p_assertion =
-  | P_assert_typing of p_term * p_type
-  (** The given term should have the given type. *)
-  | P_assert_conv   of p_term * p_term
-  (** The two given terms should be convertible. *)
-
 (** Parser-level representation of a configuration command. *)
 type p_config =
-  | P_config_verbose of int
-  (** Sets the verbosity level. *)
-  | P_config_debug   of bool * string
-  (** Toggles logging functions described by string according to boolean. *)
-  | P_config_flag    of string * bool
-  (** Sets the boolean flag registered under the given name (if any). *)
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
@@ -164,14 +177,10 @@ type p_cmd =
   (** Definition of a symbol (unfoldable). *)
   | P_theorem    of p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
-  | P_assert     of bool * p_assertion
-  (** Assertion (must fail if boolean is [true]). *)
   | P_set        of p_config
-  (** Set the configuration (debug, logging, ...). *)
-  | P_infer      of p_term * Eval.config
-  (** Type inference command. *)
-  | P_normalize  of p_term * Eval.config
-  (** Normalisation command. *)
+  (** Set the configuration. *)
+  | P_query      of p_query
+  (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
 type command = p_cmd loc
@@ -241,6 +250,26 @@ let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   | (_                            , _                            ) ->
       false
 
+let eq_p_assertion : p_assertion eq = fun a1 a2 ->
+  match (a1, a2) with
+  | (P_assert_typing(t1,a1), P_assert_typing(t2,a2)) ->
+      eq_p_term t1 t2 && eq_p_term a1 a2
+  | (P_assert_conv(t1,u1)  , P_assert_conv(t2,u2)  ) ->
+      eq_p_term t1 t2 && eq_p_term u1 u2
+  | (_                     , _                     ) ->
+      false
+
+let eq_p_query : p_query eq = fun q1 q2 ->
+  match (q1.elt, q2.elt) with
+  | (P_query_assert(b1,a1)   , P_query_assert(b2,a2)   ) ->
+     b1 = b2 && eq_p_assertion a1 a2
+  | (P_query_infer(t1,c1)    , P_query_infer(t2,c2)    ) ->
+     eq_p_term t1 t2 && c1 = c2
+  | (P_query_normalize(t1,c1), P_query_normalize(t2,c2)) ->
+     eq_p_term t1 t2 && c1 = c2
+  | (_                       , _                       ) ->
+      false
+
 let eq_p_tactic : p_tactic eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
   | (P_tac_refine(t1)    , P_tac_refine(t2)    ) ->
@@ -251,17 +280,10 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
       eq_p_term t1 t2
   | (P_tac_rewrite(r1,t1), P_tac_rewrite(r2,t2)) ->
       Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
+  | (P_tac_query(q1)     , P_tac_query(q2)     ) ->
+      eq_p_query q1 q2
   | (t1                  , t2                  ) ->
       t1 = t2
-
-let eq_p_assertion : p_assertion eq = fun a1 a2 ->
-  match (a1, a2) with
-  | (P_assert_typing(t1,a1), P_assert_typing(t2,a2)) ->
-      eq_p_term t1 t2 && eq_p_term a1 a2
-  | (P_assert_conv(t1,u1)  , P_assert_conv(t2,u2)  ) ->
-      eq_p_term t1 t2 && eq_p_term u1 u2
-  | (_                     , _                     ) ->
-      false
 
 let eq_p_config : p_config eq = fun c1 c2 ->
   match (c1, c2) with
@@ -289,14 +311,10 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
       let (s2,l2,a2) = st2.elt in
       eq_ident s1 s2 && eq_p_term a1 a2 && e1.elt = e2.elt
       && List.equal eq_p_arg l1 l2 && List.equal eq_p_tactic ts1 ts2
-  | (P_assert(mf1,a1)            , P_assert(mf2,a2)            ) ->
-      mf1 = mf2 && eq_p_assertion a1 a2
   | (P_set(c1)                   , P_set(c2)                   ) ->
       eq_p_config c1 c2
-  | (P_infer(t1,c1)              , P_infer(t2,c2)              ) ->
-      eq_p_term t1 t2 && c1 = c2
-  | (P_normalize(t1,c1)          , P_normalize(t2,c2)          ) ->
-      eq_p_term t1 t2 && c1 = c2
+  | (P_query(q1)                 , P_query(q2)                 ) ->
+      eq_p_query q1 q2
   | (_                           , _                           ) ->
       false
 

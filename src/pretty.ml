@@ -110,6 +110,32 @@ let pp_p_rw_patt : p_rw_patt pp = fun oc p ->
   | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" pp_p_term u
                                     pp_ident x pp_p_term t
 
+let pp_p_assertion : p_assertion pp = fun oc asrt ->
+  let out fmt = Format.fprintf oc fmt in
+  match asrt with
+  | P_assert_typing(t,a) -> out "%a@ : %a" pp_p_term t pp_p_term a
+  | P_assert_conv(t,u)   -> out "%a@ ≡ %a" pp_p_term t pp_p_term u
+
+let pp_p_query : p_query pp = fun oc q ->
+  let out fmt = Format.fprintf oc fmt in
+  match q.elt with
+  | P_query_assert(true , asrt)           ->
+      out "assertnot %a" pp_p_assertion asrt
+  | P_query_assert(false, asrt)           ->
+      out "assert %a" pp_p_assertion asrt
+  | P_query_verbose(i)                    ->
+      out "set verbose %i" i
+  | P_query_debug(true ,s)                ->
+      out "set debug \"+%s\"" s
+  | P_query_debug(false,s)                ->
+      out "set debug \"-%s\"" s
+  | P_query_flag(s, b)                    ->
+      out "set flag \"%s\" %s" s (if b then "on" else "off")
+  | P_query_infer(t, _)                   ->
+      out "@[<hov 4>type %a@]" pp_p_term t
+  | P_query_normalize(t, _)               ->
+      out "@[<hov 2>compute@ %a@]" pp_p_term t
+
 let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
@@ -125,12 +151,7 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
-
-let pp_p_assertion : p_assertion pp = fun oc asrt ->
-  let out fmt = Format.fprintf oc fmt in
-  match asrt with
-  | P_assert_typing(t,a) -> out "%a@ : %a" pp_p_term t pp_p_term a
-  | P_assert_conv(t,u)   -> out "%a@ ≡ %a" pp_p_term t pp_p_term u
+  | P_tac_query(q)           -> pp_p_query oc q
 
 let pp_command : command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
@@ -162,18 +183,6 @@ let pp_command : command pp = fun oc cmd ->
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt
-  | P_assert(true , asrt)           ->
-      out "assertnot %a" pp_p_assertion asrt
-  | P_assert(false, asrt)           ->
-      out "assert %a" pp_p_assertion asrt
-  | P_set(P_config_verbose(i)    )  ->
-      out "set verbose %i" i
-  | P_set(P_config_debug(true ,s))  ->
-      out "set debug \"+%s\"" s
-  | P_set(P_config_flag(s, b))      ->
-      out "set flag \"%s\" %s" s (if b then "on" else "off")
-  | P_set(P_config_debug(false,s))  ->
-      out "set debug \"-%s\"" s
   | P_set(P_config_builtin(n,i)  )  ->
       out "set builtin %S ≔ %a" n pp_qident i
   | P_set(P_config_binop(binop)  )  ->
@@ -185,10 +194,8 @@ let pp_command : command pp = fun oc cmd ->
         | Assoc_right -> "r"
       in
       out "set infix%s %f %S ≔ %a" a p s pp_qident qid
-  | P_infer(t, _)                   ->
-      out "@[<hov 4>infer %a@]" pp_p_term t
-  | P_normalize(t, _)               ->
-      out "@[<hov 2>normalize@ %a@]" pp_p_term t
+  | P_query(q)                      ->
+     pp_p_query oc q
 
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with
