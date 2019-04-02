@@ -288,7 +288,7 @@ let parser term @(p : prio) =
   | "∀" xs:arg+ "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
   | "∀" xs:arg_ident+ ":" a:(term PFunc) "," b:(term PFunc)
-     when p >= PFunc -> in_pos _loc (P_Prod([xs,Some(a),false],b))
+      when p >= PFunc -> in_pos _loc (P_Prod([xs,Some(a),false],b))
   (* Abstraction. *)
   | "λ" xs:arg+ "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
