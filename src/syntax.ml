@@ -164,7 +164,7 @@ type require_mode =
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
 
-type p_cmd =
+type p_command_aux =
   | P_require    of module_path * require_mode
   (** Require statement. *)
   | P_open       of module_path
@@ -183,10 +183,10 @@ type p_cmd =
   (** Query. *)
 
 (** Parser-level representation of a single (located) command. *)
-type command = p_cmd loc
+type p_command = p_command_aux loc
 
 (** Top level AST returned by the parser. *)
-type ast = command list
+type ast = p_command list
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
@@ -292,8 +292,10 @@ let eq_p_config : p_config eq = fun c1 c2 ->
   | (c1                     , c2                     ) ->
       c1 = c2
 
-let eq_p_cmd : p_cmd eq = fun c1 c2 ->
-  match (c1, c2) with
+(** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
+    are compared up to source code positions. *)
+let eq_p_command : p_command eq = fun c1 c2 ->
+  match (c1.elt, c2.elt) with
   | (P_require(m1,r1)            , P_require(m2,r2)            ) ->
       m1 = m2 && eq_require_mode r1 r2
   | (P_open(m1)                  , P_open(m2)                  ) ->
@@ -317,10 +319,6 @@ let eq_p_cmd : p_cmd eq = fun c1 c2 ->
       eq_p_query q1 q2
   | (_                           , _                           ) ->
       false
-
-(** [eq_command c1 c2] tells whether [c1] and [c2] are the same commands. They
-    are compared up to source code positions. *)
-let eq_command : command eq = fun c1 c2 -> eq_p_cmd c1.elt c2.elt
 
 (** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
     when [h] is the term at the head of the application and [args] is the list

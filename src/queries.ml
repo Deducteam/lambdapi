@@ -1,6 +1,5 @@
 (** Queries (available in tactics and at the toplevel). *)
 
-open Extra
 open Console
 open Print
 open Pos
@@ -15,7 +14,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
     | None     -> Env.empty
     | Some(ps) -> fst (Proof.focus_goal ps)
   in
-  let scope t = fst (scope_term StrMap.empty ss env t) in
+  let scope = scope_term ss env in
   match q.elt with
   | P_query_assert(must_fail, asrt)  ->
       let result =

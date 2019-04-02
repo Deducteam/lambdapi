@@ -1,5 +1,5 @@
-require open proofs.logic
-require open proofs.bool
+require open tests.OK.logic
+require open tests.OK.bool
 
 // [∀ a, bool_and a a = a]
 theorem and_idempotent : ∀a, P (eq bool (bool_and a a) a)
