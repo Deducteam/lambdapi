@@ -220,43 +220,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
       (ss, Some(data))
-  | P_assert(must_fail, asrt)  ->
-      let result =
-        match asrt with
-        | P_assert_typing(t,a) ->
-            let t = scope_basic ss t in
-            let a = scope_basic ss a in
-            Typing.sort_type ss.builtins Ctxt.empty a;
-            (try Typing.check ss.builtins Ctxt.empty t a with _ -> false)
-        | P_assert_conv(a,b)   ->
-            let t = scope_basic ss a in
-            let u = scope_basic ss b in
-            match (Typing.infer ss.builtins Ctxt.empty t,
-                   Typing.infer ss.builtins Ctxt.empty u) with
-            | (Some(a), Some(b)) ->
-                if Eval.eq_modulo a b then Eval.eq_modulo t u else
-                fatal cmd.pos "Infered types not convertible (in assertion)."
-            | (None   , _      ) ->
-                fatal a.pos "Type cannot be infered (in assertion)."
-            | (_      , None   ) ->
-                fatal b.pos "Type cannot be infered (in assertion)."
-      in
-      if result = must_fail then fatal cmd.pos "Assertion failed."; (ss, None)
   | P_set(cfg)                 ->
       let ss =
         match cfg with
-        | P_config_debug(e,s)     ->
-            (* Just update the option, state not modified. *)
-            Console.set_debug e s; ss
-        | P_config_verbose(i)     ->
-            (* Just update the option, state not modified. *)
-            Console.verbose := i; ss
-        | P_config_flag(id,b)     ->
-            (* We set the value of the flag, if it exists. *)
-            begin
-              try Console.set_flag id b with Not_found ->
-                wrn cmd.pos "Unknown flag \"%s\"." id
-            end; ss
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             let builtins = !(ss.signature.sign_builtins) in
@@ -274,26 +240,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             Sign.add_binop ss.signature s (sym, binop); ss
       in
       (ss, None)
-  | P_infer(t, cfg)            ->
-      (* Infer the type of [t]. *)
-      let t_pos = t.pos in
-      let t = scope_basic ss t in
-      let a =
-        match Typing.infer ss.builtins Ctxt.empty t with
-        | Some(a) -> Eval.eval cfg a
-        | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
-      in
-      out 3 "(infr) %a : %a\n" pp t pp a; (ss, None)
-  | P_normalize(t, cfg)        ->
-      (* Infer a type for [t], and evaluate [t]. *)
-      let t_pos = t.pos in
-      let t = scope_basic ss t in
-      let v =
-        match Typing.infer ss.builtins Ctxt.empty t with
-        | Some(_) -> Eval.eval cfg t
-        | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
-      in
-      out 3 "(eval) %a\n" pp v; (ss, None)
+  | P_query(q)                ->
+     Tactics.handle_query ss None q; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
