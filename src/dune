@@ -16,7 +16,6 @@
 
 (executable
  (name lambdapi)
- (ocamlopt_flags (:standard -p))
  (public_name lambdapi)
  (modules lambdapi)
  (libraries lambdapi.core))
