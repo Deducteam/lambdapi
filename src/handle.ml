@@ -240,8 +240,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             Sign.add_binop ss.signature s (sym, binop); ss
       in
       (ss, None)
-  | P_query(q)                ->
-     Tactics.handle_query ss None q; (ss, None)
+  | P_query(q)                 ->
+      Queries.handle_query ss None q; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
