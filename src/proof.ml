@@ -31,17 +31,8 @@ module Goal :
 
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        let rec aux n t acc =
-          if n = 0 then (acc, t) else
-          match t with
-          | Prod(a,b) ->
-              let (v,b) = Bindlib.unbind b in
-              aux (n-1) b ((Bindlib.name_of v,(v,lift a))::acc)
-          | _         -> assert false
-        in
-        aux m.meta_arity !(m.meta_type) []
-      in
-      {goal_meta = m; goal_hyps; goal_type}
+        Env.of_prod_arity m.meta_arity !(m.meta_type)
+      in {goal_meta = m; goal_hyps; goal_type}
 
     let get_meta : t -> meta = fun g -> g.goal_meta
 
