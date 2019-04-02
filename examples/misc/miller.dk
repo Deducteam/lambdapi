@@ -17,7 +17,7 @@ def dx : (R -> R -> R) -> (R -> R -> R).
 [F] dx (x => y => F x) --> x => y => (d (x => F x)) x.
 [F] dx (x => y => F y) --> x => y => 0.
 ;)
-[F] dx (x => y => F x) --> x:R => y:R => (d (x => F x)) x.
+[F] dx (x => y => F x) --> x:R => y:R => (d (x:R => F x)) x.
 [F] dx (x => y => F y) --> x:R => y:R => 0.
 
 def dy : (R -> R -> R) -> (R -> R -> R).
@@ -26,26 +26,20 @@ def dy : (R -> R -> R) -> (R -> R -> R).
 [F] dy (x => y => F y) --> x => y => (d (x => F x)) x.
 ;)
 [F] dy (x => y => F x) --> x:R => y:R => 0.
-[F] dy (x => y => F y) --> x:R => y:R => (d (x => F x)) x.
+[F] dy (x => y => F y) --> x:R => y:R => (d (x:R => F x)) x.
 
 def grad : (R -> R -> R) -> (R -> R -> R2).
-[F] grad F --> x => y => pair ((dx F) x y) ((dy F) x y).
+[F] grad F --> x:R => y:R => pair ((dx F) x y) ((dy F) x y).
 
 
 def trans : (R -> R -> R) -> (R -> R -> R).
-[F] trans (x => y => F x y) --> x => y => F y x.
+[F] trans (x => y => F x y) --> x:R => y:R => F y x.
 
 def flip : (R -> R -> R2) -> (R -> R -> R2).
-[F,G] flip (x => y => pair (F x y) (G x y)) --> x => y => pair (G x y) (F x y).
+[F,G] flip (x => y => pair (F x y) (G x y)) --> x:R => y:R => pair (G x y) (F x y).
 
 
 def f : R -> R -> R := x : R => y : R => ch x.
-
-#SNF grad (trans f).
-#SNF flip (grad f).
-
-#SNF g : (R -> R -> R) => grad (trans g).
-#SNF g : (R -> R -> R) => flip (grad g).
 
 
 #EVAL grad (trans f).
