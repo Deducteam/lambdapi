@@ -5,6 +5,7 @@ open Console
 open Terms
 open Print
 open Extra
+open Files
 
 (** Logging function for typing. *)
 let log_subj =
@@ -108,24 +109,24 @@ let rec get_term : Sign.t -> Xml.xml -> term = fun sign xml ->
       | []        -> assert false
       | f :: args ->
           match get_only_child f with
-          | Xml.Element _ -> assert false
+          | Xml.Element _   -> assert false
           | Xml.PCData str  ->
-              let args = List.map get_arg args in
+              let args = List.map (get_arg sign) args in
               let s, path =
                 match String.split_on_char '_' str with
                 | ["c"; path; s] ->
                     s, String.split_on_char '.' path
-                | _ -> assert false in
+                | _              -> assert false in
               let sign = PathMap.find path Sign.(!loaded) in
               let sym =
                 try symb (Sign.find sign s) with Not_found -> assert false in
-              List.fold_left (fun u v -> Appl (u, v)) s args
+              List.fold_left (fun u v -> Appl (u, v)) sym args
       end
-  | _             -> assert false
+  | _        -> assert false
 
 (** [get_arg xml] translates an Xml node of tag name "arg" into a term **)
-and get_arg : Xml.xml -> term = fun xml -> get_term (get_only_child xml)
-
+and get_arg : Sign.t -> Xml.xml -> term = fun sign xml ->
+  get_term sign (get_only_child xml)
 
 (** [check_rule builtins r] check whether rule [r] is well-typed. The program
     fails gracefully in case of error. *)
