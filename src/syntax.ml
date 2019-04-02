@@ -96,17 +96,17 @@ type p_assertion =
 
 (** Parser-level representation of a query command. *)
 type p_query_aux =
-  | P_query_verbose    of int
+  | P_query_verbose   of int
   (** Sets the verbosity level. *)
-  | P_query_debug      of bool * string
+  | P_query_debug     of bool * string
   (** Toggles logging functions described by string according to boolean. *)
-  | P_query_flag       of string * bool
+  | P_query_flag      of string * bool
   (** Sets the boolean flag registered under the given name (if any). *)
-  | P_query_assert     of bool * p_assertion
+  | P_query_assert    of bool * p_assertion
   (** Assertion (must fail if boolean is [true]). *)
-  | P_query_infer      of p_term * Eval.config
+  | P_query_infer     of p_term * Eval.config
   (** Type inference command. *)
-  | P_query_normalize  of p_term * Eval.config
+  | P_query_normalize of p_term * Eval.config
   (** Normalisation command. *)
 
 type p_query = p_query_aux loc
