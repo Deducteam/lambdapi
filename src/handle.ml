@@ -47,7 +47,7 @@ type proof_data =
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
-  let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
+  let scope_basic = Scope.scope_term ss Env.empty in
   match cmd.elt with
   | P_require(p, m)            ->
       (* Check that the module has not already been required. *)
@@ -88,7 +88,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
-      let a = scope_basic ss a in
+      let a = scope_basic a in
       (* We check that [a] is typable by a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains. *)
@@ -130,7 +130,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-      let t = scope_basic ss t in
+      let t = scope_basic t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
       let (ao, impl) =
         match ao with
@@ -139,7 +139,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map (scope_basic ss) ao in
+      let ao = Option.map scope_basic ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)
@@ -177,7 +177,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic ss a in
+      let a = scope_basic a in
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
