@@ -156,9 +156,9 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
 let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
-  | P_require(ps)                   ->
+  | P_require(false,ps)             ->
       List.iter (out "require %a" pp_path) ps
-  | P_require_open(ps)              ->
+  | P_require(true, ps)             ->
       List.iter (out "require open %a" pp_path) ps
   | P_require_as(p,i)               ->
       out "require %a as %s" pp_path p i.elt

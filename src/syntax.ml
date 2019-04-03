@@ -157,10 +157,8 @@ type p_config =
 type p_statement = (ident * p_arg list * p_type) loc
 
 type p_command_aux =
-  | P_require    of module_path list
-  (** Require statement. *)
-  | P_require_open of module_path list
-  (** Require open statement. *)
+  | P_require    of bool * module_path list
+  (** Require statement (require open if the boolean is true). *)
   | P_require_as of module_path * ident
   (** Require as statement. *)
   | P_open       of module_path list
@@ -285,8 +283,8 @@ let eq_p_config : p_config eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun c1 c2 ->
   match (c1.elt, c2.elt) with
-  | (P_require(ps1)              , P_require(ps2)              )
-  | (P_require_open(ps1)         , P_require_open(ps2)         )
+  | (P_require(b1,ps1)           , P_require(b2,ps2)           ) ->
+     b1 = b2 && List.equal (=) ps1 ps2
   | (P_open(ps1)                 , P_open(ps2)                 ) ->
      List.equal (=) ps1 ps2
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->

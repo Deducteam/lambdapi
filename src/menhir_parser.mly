@@ -249,7 +249,7 @@ line:
     }
   | r=REQUIRE    DOT {
       Pervasives.(!Parser.require r);
-      make_pos $loc (P_require [r])
+      make_pos $loc (P_require(false,[r]))
     }
   | EOF {
       raise End_of_file

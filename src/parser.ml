@@ -440,12 +440,9 @@ let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
-  | _require_ ps:path+
-      -> List.iter (!require) ps;
-         P_require(ps)
-  | _require_ _open_ ps:path+
-      -> List.iter (fun p -> !require p; get_binops _loc p) ps;
-         P_require_open(ps)
+  | _require_ o:{_open_ -> true}?[false] ps:path+
+      -> List.iter (fun p -> !require p; if o then get_binops _loc p) ps;
+         P_require(o,ps)
   | _require_ p:path _as_ n:ident
       -> !require p;
          P_require_as(p,n)
