@@ -288,7 +288,7 @@ let eq_p_command : p_command eq = fun c1 c2 ->
   | (P_require(ps1)              , P_require(ps2)              )
   | (P_require_open(ps1)         , P_require_open(ps2)         )
   | (P_open(ps1)                 , P_open(ps2)                 ) ->
-     (try List.for_all2 (=) ps1 ps2 with Invalid_argument _ -> false)
+     List.equal (=) ps1 ps2
   | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
      p1 = p2 && id1.elt = id2.elt
   | (P_symbol(l1,s1,al1,a1)      , P_symbol(l2,s2,al2,a2)      ) ->
