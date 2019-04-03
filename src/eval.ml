@@ -54,6 +54,43 @@ let to_term : term -> stack -> term = fun t args ->
 (** Evaluation step counter. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
+(** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
+let rec whnf_beta : term -> term = fun t ->
+  if !log_enabled then log_eval "evaluating [%a]" pp t;
+  let s = Pervasives.(!steps) in
+  let t = unfold t in
+  let (u, stk) = whnf_beta_stk t [] in
+  if Pervasives.(!steps) <> s then to_term u stk else t
+
+(** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
+   applied to the argument list (or stack) [stk]. Note that the normalisation
+   is done in the sense of [whnf]. *)
+and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
+  let st = (unfold t, stk) in
+  match st with
+  (* Push argument to the stack. *)
+  | (Appl(f,u), stk    ) ->
+      whnf_beta_stk f (Pervasives.ref (false, u) :: stk)
+  (* Beta reduction. *)
+  | (Abst(_,f), u::stk ) ->
+      Pervasives.incr steps;
+      whnf_beta_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
+  (* In head beta normal form. *)
+  | (_        , _      ) -> st
+
+(** [whnf_beta t] computes a weak head beta normal form of [t]. *)
+let whnf_beta : term -> term = fun t ->
+  Pervasives.(steps := 0);
+  let t = unfold t in
+  let u = whnf_beta t in
+  if Pervasives.(!steps = 0) then t else u
+
+(** [simpl_beta t] computes a weak head beta normal form of [t] whose
+   arguments are in weak beta normal form too. *)
+let simpl_beta : term -> term = fun t ->
+  let h, ts = get_args (whnf_beta t) in
+  add_args h (List.map whnf_beta ts)
+
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
