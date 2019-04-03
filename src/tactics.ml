@@ -103,3 +103,10 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry tac.pos ps)
+
+let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
+    fun ss ps tac ->
+  try handle_tactic ss ps tac
+  with Fatal(_,_) as e->
+    let _ = handle_tactic ss ps (none P_tac_print) in
+    raise e
