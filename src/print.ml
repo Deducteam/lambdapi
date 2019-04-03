@@ -54,10 +54,10 @@ let pp_term : term pp = fun oc t ->
     in
     match (h, args) with
     | (Symb(_,Binary(o)), [l;r]) ->
-        if p = `Atom then out oc "(";
+        if p <> `Func then out oc "(";
         (* Can be improved by looking at symbol priority. *)
-        out oc "%a %s %a" (pp `Atom) l o (pp `Atom) r;
-        if p = `Atom then out oc ")";
+        out oc "%a %s %a" (pp `Appl) l o (pp `Appl) r;
+        if p <> `Func then out oc ")";
     | (h                , []   ) ->
         pp_head (p <> `Func) oc h
     | (h                , args ) ->

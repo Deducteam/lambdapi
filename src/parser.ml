@@ -253,7 +253,7 @@ let parser symtag =
   | _inj_   -> Sym_inj
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PBinO | PAppl | PFunc
+type prio = PAtom | PAppl | PBinO | PFunc
 
 (** [term] is a parser for a term. *)
 let parser term @(p : prio) =
@@ -279,10 +279,10 @@ let parser term @(p : prio) =
   | "{" t:(term PFunc) "}"
       when p >= PAtom -> in_pos _loc (P_Expl(t))
   (* Application. *)
-  | t:(term PAppl) u:(term PBinO)
+  | t:(term PAppl) u:(term PAtom)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Implication. *)
-  | a:(term PAppl) "⇒" b:(term PFunc)
+  | a:(term PBinO) "⇒" b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Impl(a,b))
   (* Products. *)
   | "∀" xs:arg+ "," b:(term PFunc)
@@ -337,7 +337,7 @@ let parser term @(p : prio) =
    required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
+and parser env = "[" t:(term PBinO) ts:{"," (term PBinO)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
