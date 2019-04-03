@@ -259,15 +259,11 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
               let nargs = RedStack.length stk_part in
               let cons = { c_sym = sym_name ; c_mod = sym_path
                          ; c_ari = nargs } in
-              let matched_on_cons = ConsMap.find_opt cons children in
-              let matched = match matched_on_cons with
-                | Some(_) ->
-                   if !log_enabled then
-                    log_eval (r_or_g true "[%s] =~= [%a]") cons.c_sym pp
-                      examined ;
-                  matched_on_cons
-                | None    -> default in
-              matched, stk_part
+              let matched = ConsMap.find_opt cons children in
+              begin match matched with
+                | Some(_) -> matched, stk_part
+                | None    -> default, RedStack.empty
+              end
            | Abst(_, _) -> assert false
            | Meta(_, _) -> assert false
            | _          -> assert false in
