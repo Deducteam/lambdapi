@@ -87,9 +87,13 @@ let whnf_beta : term -> term = fun t ->
 
 (** [simpl_beta t] computes a weak head beta normal form of [t] whose
    arguments are in weak beta normal form too. *)
-let simpl_beta : term -> term = fun t ->
-  let h, ts = get_args (whnf_beta t) in
-  add_args h (List.map whnf_beta ts)
+let rec simpl_beta : term -> term = fun t ->
+  match get_args (whnf_beta t) with
+  | Prod(a,b), _ ->
+     let x,b = Bindlib.unbind b in
+     let b = simpl_beta b in
+     Prod (simpl_beta a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
+  | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
