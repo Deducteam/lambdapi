@@ -218,8 +218,7 @@ struct
 
   (** [pp_component o c] prints component [c] to channel [o]. *)
   let pp_component : component pp = fun oc (te, pos) ->
-    let module F = Format in
-    F.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
+    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
 
   (** A redefinition of the rule type.
 
