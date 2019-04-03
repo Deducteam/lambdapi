@@ -214,7 +214,7 @@ module ClauseMat =
 struct
   (** A component of the matrix, a term along with its position in the top
       term. *)
-  type component = term * Basics.Subterm .t
+  type component = term * Sub.t
 
   (** [pp_component o c] prints component [c] to channel [o]. *)
   let pp_component : component pp = fun oc (te, pos) ->
@@ -282,7 +282,7 @@ struct
       SubMap.union (fun _ _ _ -> assert false) argpos
         (loop found remain (Sub.succ po))
     in
-    (* Start as if the terms of the list were subterms of an initial term *)
+    (* The terms of the list are the subterms of the head symbol. *)
     loop 0 lhs (Sub.succ Sub.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
@@ -508,8 +508,8 @@ module Cm = ClauseMat
     The first bullet is ensured using {!val:specialize}, {!val:default} and
     {!val:abstract} which allow to create new branches.
 
-    Efficiency is managed thanks to heuristics, which are not yet
-    implemented.
+    Efficiency is managed thanks to heuristics handled by the {!val:score}
+    function.
 
     The last is managed by the {!val:env_builder} as follows.  The matching
     process uses, along with the tree, an array to store terms that may be
@@ -522,7 +522,7 @@ module Cm = ClauseMat
     terms used in {!field:rhs}s encountered so far during successive
     branchings.  Once a rule can be triggered, {!field:Cm.var_catalogue}
     contains, in the order they appear during matching, all the terms the
-    rule can use, that are the terms {b that have been inspected}.  There
+    rule can use, that are the terms {e that have been inspected}.  There
     may remain terms that haven't been inspected (because they are not needed
     to decide which rule to apply), but that are nevertheless needed in the
     {!field:rhs}.  Note that the {!field:Cm.var_catalogue} contains useless
@@ -539,6 +539,8 @@ module Cm = ClauseMat
     essential terms could be consumed using appropriate swaps; it costs less
     to consume linearly the stack than performing multiple swaps. *)
 let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
+(* XXX The above statement might not be true depending on the data structure
+   used in {!module:ReductionStack}. *)
   fun line depth env_builder rhs ->
     let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
@@ -578,7 +580,6 @@ let compile : Cm.t -> t = fun patterns ->
   (* let varcount = ref 0 in *)
   let rec compile patterns =
     let { Cm.var_catalogue = vcat ; _ } = patterns in
-    (* Cm.pp Format.std_formatter patterns ; *)
     if Cm.is_empty patterns then
       begin
         failwith "matching failure" ; (* For debugging purposes *)

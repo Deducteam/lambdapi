@@ -237,7 +237,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> int -> term list -> term option =
   fun itree capa stk ->
   let module RedStack = Dtree.ReductionStack in
-  let stk = Dtree.ReductionStack.of_list stk in
+  let stk = RedStack.of_list stk in
   let vars = Array.make capa (Patt(None, "", [| |])) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
