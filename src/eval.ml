@@ -7,6 +7,23 @@ open Terms
 open Basics
 open Print
 
+(** The head-structure of a term t is:
+- λx:_,h if t=λx:a,u and h is the head-structure of u
+- ∀ if t=∀x:a,u
+- h _ if t=uv and h is the head-structure of u
+- ? if t=?M[t1,..,tn] (and ?M is not instanciated)
+- t itself otherwise (TYPE, KIND, x, f)
+
+A term t is in head-normal form (hnf) if its head-structure is invariant by
+reduction.
+
+A term t is in weak head-normal form (whnf) if it is an abstration or if it
+is in hnf. In particular, a term in head-normal form is in weak head-normal
+form.
+
+A term t is in strong normal form (snf) if it cannot be reduced further.
+*)
+
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -170,7 +187,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [whnf t] computes the weak head-normal form of [t]. *)
+(** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
@@ -202,22 +219,24 @@ let rec snf : term -> term = fun t ->
   | Wild        -> assert false
   | TRef(_)     -> assert false
 
-(** [hnf t] computes the head normal form of the term [t]. *)
+(** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
   match whnf t with
-  | Appl(t,u) -> Appl(hnf t, hnf u)
+  | Abst(a,t) ->
+     let x,t = Bindlib.unbind t in
+     Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf t))))
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
 type strategy =
   | WHNF
-  (** Put in weak head-normal form. *)
+  (** Reduce to weak head-normal form. *)
   | HNF
-  (** Put in head-normal form. *)
+  (** Reduce to head-normal form. *)
   | SNF
-  (** Put in strong normal form. *)
+  (** Reduce to strong normal form. *)
   | NONE
-  (** Make no reduction. *)
+  (** Do nothing. *)
 
 (** Configuration for evaluation. *)
 type config =
