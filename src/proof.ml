@@ -31,8 +31,8 @@ module Goal :
 
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
-        Env.of_prod_arity m.meta_arity !(m.meta_type)
-      in {goal_meta = m; goal_hyps; goal_type}
+        Env.of_prod_arity m.meta_arity !(m.meta_type) in
+      {goal_meta = m; goal_hyps; goal_type}
 
     let get_meta : t -> meta = fun g -> g.goal_meta
 
