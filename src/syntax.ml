@@ -153,21 +153,15 @@ type p_config =
   | P_config_binop   of binop
   (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
 
-type require_mode =
-  | P_require_default
-  (** Just require the module. *)
-  | P_require_open
-  (** Require the module and open it. *)
-  | P_require_as of ident
-  (** Require the module and aliases it with the given indentifier. *)
-
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
 
 type p_command_aux =
-  | P_require    of module_path * require_mode
-  (** Require statement. *)
-  | P_open       of module_path
+  | P_require    of bool * module_path list
+  (** Require statement (require open if the boolean is true). *)
+  | P_require_as of module_path * ident
+  (** Require as statement. *)
+  | P_open       of module_path list
   (** Open statement. *)
   | P_symbol     of symtag list * ident * p_arg list * p_type
   (** Symbol declaration. *)
@@ -229,13 +223,6 @@ let eq_p_rule : p_rule eq = fun r1 r2 ->
   let {elt = (lhs2, rhs2); _} = r2 in
   eq_p_term lhs1 lhs2 && eq_p_term rhs1 rhs2
 
-let eq_require_mode : require_mode eq = fun r1 r2 ->
-  match (r1, r2) with
-  | (P_require_default, P_require_default) -> true
-  | (P_require_open   , P_require_open   ) -> true
-  | (P_require_as(id1), P_require_as(id2)) -> id1.elt = id2.elt
-  | (_                , _                ) -> false
-
 let eq_p_rw_patt : p_rw_patt loc eq = fun r1 r2 ->
   match (r1.elt, r2.elt) with
   | (P_rw_Term(t1)                , P_rw_Term(t2)                )
@@ -296,10 +283,12 @@ let eq_p_config : p_config eq = fun c1 c2 ->
     are compared up to source code positions. *)
 let eq_p_command : p_command eq = fun c1 c2 ->
   match (c1.elt, c2.elt) with
-  | (P_require(m1,r1)            , P_require(m2,r2)            ) ->
-      m1 = m2 && eq_require_mode r1 r2
-  | (P_open(m1)                  , P_open(m2)                  ) ->
-      m1 = m2
+  | (P_require(b1,ps1)           , P_require(b2,ps2)           ) ->
+     b1 = b2 && List.equal (=) ps1 ps2
+  | (P_open(ps1)                 , P_open(ps2)                 ) ->
+     List.equal (=) ps1 ps2
+  | (P_require_as(p1,id1)  , P_require_as(p2,id2)              ) ->
+     p1 = p2 && id1.elt = id2.elt
   | (P_symbol(l1,s1,al1,a1)      , P_symbol(l2,s2,al2,a2)      ) ->
       l1 = l2 && eq_ident s1 s2 && eq_p_term a1 a2
       && List.equal eq_p_arg al1 al2

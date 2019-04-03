@@ -156,14 +156,12 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
 let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
-  | P_require(m, P_require_default) ->
-      out "require %a" pp_path m
-  | P_require(m, P_require_open   ) ->
-      out "require open %a" pp_path m
-  | P_require(m, P_require_as(i)  ) ->
-      out "require %a as %s" pp_path m i.elt
-  | P_open(m)                       ->
-      out "open %a" pp_path m
+  | P_require(b,ps)             ->
+      out "require%s %a" (if b then " open" else "") (List.pp pp_path " ") ps
+  | P_require_as(p,i)               ->
+      out "require %a as %s" pp_path p i.elt
+  | P_open(ps)                      ->
+      List.iter (out "open %a" pp_path) ps
   | P_symbol(tags,s,args,a)         ->
       out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
       List.iter (out " %a" pp_p_arg) args;

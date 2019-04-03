@@ -39,6 +39,40 @@ type proof_data =
   ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
   ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
+(** [handle_open pos ss p] handles the command [open p] with [ss] as the
+   signature state. On success, an updated signature state is returned. *)
+let handle_open : popt -> sig_state -> Path.t -> sig_state =
+    fun pos ss p ->
+  (* Obtain the signature corresponding to [m]. *)
+  let sign =
+    try PathMap.find p !(Sign.loaded) with Not_found ->
+      (* The signature has not been required... *)
+      fatal pos "Module [%a] has not been required." pp_path p
+  in
+  (* Open the module. *)
+  open_sign ss sign
+
+(** [handle_require b pos ss p] handles the command [require p] (or [require
+   open p] if b is true) with [ss] as the signature state. On success, an
+   updated signature state is returned. *)
+let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
+    fun b pos ss p ->
+  (* Check that the module has not already been required. *)
+  if PathMap.mem p !(ss.signature.sign_deps) then
+    fatal pos "Module [%a] is already required." pp_path p;
+  (* Add the dependency (it was compiled already while parsing). *)
+  ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
+  if b then handle_open pos ss p else ss
+
+(** [handle_require_as pos ss p id] handles the command [require p as id] with
+   [ss] as the signature state. On success, an updated signature state is
+   returned. *)
+let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
+    fun pos ss p id ->
+  let ss = handle_require false pos ss p in
+  let aliases = StrMap.add id.elt p ss.aliases in
+  {ss with aliases}
+
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
@@ -49,36 +83,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   let scope_basic = Scope.scope_term ss Env.empty in
   match cmd.elt with
-  | P_require(p, m)            ->
-      (* Check that the module has not already been required. *)
-      if PathMap.mem p !(ss.signature.sign_deps) then
-        fatal cmd.pos "Module [%a] is already required." pp_path p;
-      (* Add the dependency (it was compiled already while parsing). *)
-      ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-      (* Open or alias if necessary. *)
-      let ss =
-        match m with
-        | P_require_default -> ss
-        | P_require_open    ->
-            let sign =
-              try PathMap.find p !(Sign.loaded)
-              with Not_found -> assert false (* Cannot happen. *)
-            in
-            open_sign ss sign
-        | P_require_as(id)  ->
-            let aliases = StrMap.add id.elt p ss.aliases in
-            {ss with aliases}
-      in
-      (ss, None)
-  | P_open(m)                  ->
-      (* Obtain the signature corresponding to [m]. *)
-      let sign =
-        try PathMap.find m !(Sign.loaded) with Not_found ->
-        (* The signature has not been required... *)
-        fatal cmd.pos "Module [%a] has not been required." pp_path m
-      in
-      (* Open the module. *)
-      (open_sign ss sign, None)
+  | P_require(b,ps)            ->
+     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+  | P_require_as(p,id)         ->
+     (handle_require_as cmd.pos ss p id, None)
+  | P_open(ps)                  ->
+     (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ts, x, xs, a)     ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
