@@ -51,4 +51,4 @@ def bpi_trans_2 (X : type) (x : term X) (y : term X) (z : term X)
           p)
     -->
   bpi X x z (trans X x y z h h')
-    (z => h'' => P z (trans X y x z (sym X x y h) h'')) p.
+    (z:term X => h'':Eq X x z => P z (trans X y x z (sym X x y h) h'')) p.

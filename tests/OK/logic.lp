@@ -1,5 +1,5 @@
-require open proofs.bool
-require open proofs.nat
+require open tests.OK.bool
+require open tests.OK.nat
 
 // Type of data type.
 

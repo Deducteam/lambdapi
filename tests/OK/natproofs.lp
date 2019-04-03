@@ -1,6 +1,6 @@
-require open proofs.logic
-require open proofs.bool
-require open proofs.nat
+require open tests.OK.logic
+require open tests.OK.bool
+require open tests.OK.nat
 
 // Symmetry of the equality (first option, rewrite).
 theorem eq_sym : ∀a x y, P (eq a x y) ⇒ P (eq a y x)

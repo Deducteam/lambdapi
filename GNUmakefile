@@ -23,8 +23,6 @@ doc:
 LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
-TESTFILES    = $(sort $(wildcard examples/*.dk examples/*.lp))
-TESTPROOFS   = $(sort $(wildcard proofs/*.lp))
 
 .PHONY: tests
 tests: bin
@@ -41,20 +39,6 @@ tests: bin
 		&& printf "\033[31mOK\033[0m $$file\n" \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done || true
-	@printf "## Examples ##\n"
-	@for file in $(TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
-	done || true
-	@printf "## Proofs   ##\n"
-	@for file in $(TESTPROOFS) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; } ; \
-	done || true
 
 .PHONY: real_tests
 real_tests: bin
@@ -70,20 +54,6 @@ real_tests: bin
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
-	done
-	@printf "## Examples ##\n"
-	@for file in $(TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
-	done
-	@printf "## Proofs   ##\n"
-	@for file in $(TESTPROOFS) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
-	  && printf "\033[32mOK\033[0m $$file\n" \
-	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 
 .PHONY: sanity_check

@@ -13,6 +13,11 @@ open Syntax
 let pp_ident : ident pp = fun oc id ->
   Format.pp_print_string oc id.elt
 
+let pp_arg_ident : ident option pp = fun oc id ->
+  match id with
+  | Some(id) -> pp_ident oc id
+  | None     -> Format.pp_print_string oc "_"
+
 let pp_qident : qident pp = fun oc qid ->
   match qid.elt with
   | ([], id) -> Format.pp_print_string oc id
@@ -73,7 +78,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
   pp_toplevel oc t
 
 and pp_p_arg : p_arg pp = fun oc (ids,ao,b) ->
-  let pp_ids = List.pp (fun oc id -> Format.pp_print_string oc id.elt) " " in
+  let pp_ids = List.pp pp_arg_ident " " in
   match (ao,b) with
   | (None   , false) -> Format.fprintf oc "%a" pp_ids ids
   | (None   , true ) -> Format.fprintf oc "{%a}" pp_ids ids
@@ -105,11 +110,37 @@ let pp_p_rw_patt : p_rw_patt pp = fun oc p ->
   | P_rw_TermAsIdInTerm(u,x,t) -> out "%a as %a in %a" pp_p_term u
                                     pp_ident x pp_p_term t
 
+let pp_p_assertion : p_assertion pp = fun oc asrt ->
+  let out fmt = Format.fprintf oc fmt in
+  match asrt with
+  | P_assert_typing(t,a) -> out "%a@ : %a" pp_p_term t pp_p_term a
+  | P_assert_conv(t,u)   -> out "%a@ ≡ %a" pp_p_term t pp_p_term u
+
+let pp_p_query : p_query pp = fun oc q ->
+  let out fmt = Format.fprintf oc fmt in
+  match q.elt with
+  | P_query_assert(true , asrt)           ->
+      out "assertnot %a" pp_p_assertion asrt
+  | P_query_assert(false, asrt)           ->
+      out "assert %a" pp_p_assertion asrt
+  | P_query_verbose(i)                    ->
+      out "set verbose %i" i
+  | P_query_debug(true ,s)                ->
+      out "set debug \"+%s\"" s
+  | P_query_debug(false,s)                ->
+      out "set debug \"-%s\"" s
+  | P_query_flag(s, b)                    ->
+      out "set flag \"%s\" %s" s (if b then "on" else "off")
+  | P_query_infer(t, _)                   ->
+      out "@[<hov 4>type %a@]" pp_p_term t
+  | P_query_normalize(t, _)               ->
+      out "@[<hov 2>compute@ %a@]" pp_p_term t
+
 let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
   match t.elt with
   | P_tac_refine(t)          -> out "@[<hov 2>refine@ %a@]" pp_p_term t
-  | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_ident " ") xs
+  | P_tac_intro(xs)          -> out "intro %a" (List.pp pp_arg_ident " ") xs
   | P_tac_apply(t)           -> out "@[<hov 2>apply@ %a@]" pp_p_term t
   | P_tac_simpl              -> out "simpl"
   | P_tac_rewrite(None   ,t) -> out "@[<hov 2>rewrite@ %a@]" pp_p_term t
@@ -120,24 +151,17 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
+  | P_tac_query(q)           -> pp_p_query oc q
 
-let pp_p_assertion : p_assertion pp = fun oc asrt ->
-  let out fmt = Format.fprintf oc fmt in
-  match asrt with
-  | P_assert_typing(t,a) -> out "%a@ : %a" pp_p_term t pp_p_term a
-  | P_assert_conv(t,u)   -> out "%a@ ≡ %a" pp_p_term t pp_p_term u
-
-let pp_command : command pp = fun oc cmd ->
+let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
-  | P_require(m, P_require_default) ->
-      out "require %a" pp_path m
-  | P_require(m, P_require_open   ) ->
-      out "require open %a" pp_path m
-  | P_require(m, P_require_as(i)  ) ->
-      out "require %a as %s" pp_path m i.elt
-  | P_open(m)                       ->
-      out "open %a" pp_path m
+  | P_require(b,ps)             ->
+      out "require%s %a" (if b then " open" else "") (List.pp pp_path " ") ps
+  | P_require_as(p,i)               ->
+      out "require %a as %s" pp_path p i.elt
+  | P_open(ps)                      ->
+      List.iter (out "open %a" pp_path) ps
   | P_symbol(tags,s,args,a)         ->
       out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
       List.iter (out " %a" pp_p_arg) args;
@@ -157,18 +181,6 @@ let pp_command : command pp = fun oc cmd ->
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt
-  | P_assert(true , asrt)           ->
-      out "assertnot %a" pp_p_assertion asrt
-  | P_assert(false, asrt)           ->
-      out "assert %a" pp_p_assertion asrt
-  | P_set(P_config_verbose(i)    )  ->
-      out "set verbose %i" i
-  | P_set(P_config_debug(true ,s))  ->
-      out "set debug \"+%s\"" s
-  | P_set(P_config_flag(s, b))      ->
-      out "set flag \"%s\" %s" s (if b then "on" else "off")
-  | P_set(P_config_debug(false,s))  ->
-      out "set debug \"-%s\"" s
   | P_set(P_config_builtin(n,i)  )  ->
       out "set builtin %S ≔ %a" n pp_qident i
   | P_set(P_config_binop(binop)  )  ->
@@ -180,10 +192,8 @@ let pp_command : command pp = fun oc cmd ->
         | Assoc_right -> "r"
       in
       out "set infix%s %f %S ≔ %a" a p s pp_qident qid
-  | P_infer(t, _)                   ->
-      out "@[<hov 4>infer %a@]" pp_p_term t
-  | P_normalize(t, _)               ->
-      out "@[<hov 2>normalize@ %a@]" pp_p_term t
+  | P_query(q)                      ->
+     pp_p_query oc q
 
 let rec pp_ast : ast pp = fun oc cs ->
   match cs with

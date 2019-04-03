@@ -409,7 +409,7 @@ struct
        spec_filter ps hs && List.same_length pargs hargs
     | Appl(_, _)   , Patt(_, _, _)       -> true
     | _            , Patt(_, _, e)       ->
-       let b = Bindlib.bind_mvar (Basics.to_tvars e) (lift pat) in
+       let b = Bindlib.bind_mvar (Array.map Basics.to_tvar e) (lift pat) in
        Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
     | Symb(_, _), Abst(_, _)

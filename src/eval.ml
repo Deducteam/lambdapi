@@ -7,6 +7,23 @@ open Terms
 open Basics
 open Print
 
+(** The head-structure of a term t is:
+- λx:_,h if t=λx:a,u and h is the head-structure of u
+- ∀ if t=∀x:a,u
+- h _ if t=uv and h is the head-structure of u
+- ? if t=?M[t1,..,tn] (and ?M is not instanciated)
+- t itself otherwise (TYPE, KIND, x, f)
+
+A term t is in head-normal form (hnf) if its head-structure is invariant by
+reduction.
+
+A term t is in weak head-normal form (whnf) if it is an abstration or if it
+is in hnf. In particular, a term in head-normal form is in weak head-normal
+form.
+
+A term t is in strong normal form (snf) if it cannot be reduced further.
+*)
+
 (** [with_trees] contains whether trees are used for pattern matching. *)
 let with_trees : bool Pervasives.ref = Pervasives.ref false
 
@@ -126,12 +143,12 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     (* First check that we have enough arguments. *)
     if r.arity > stk_len then None else
     (* Substitute the left-hand side of [r] with pattern variables *)
-    let env = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
+    let ar = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
     (* Match each argument of the lhs with the terms in the stack. *)
     let rec match_args ps ts =
       match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs env, ts)
-      | (p::ps, t::ts) -> if matching env p t then match_args ps ts else None
+      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs ar, ts)
+      | (p::ps, t::ts) -> if matching ar p t then match_args ps ts else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
     match_args r.lhs stk
@@ -151,13 +168,18 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
     | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
         let fn _ = snd Pervasives.(!t) in
         let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
-        ar.(i) <- TE_Some(b); true
+        ar.(i) <- TE_Some(b);
+        true
     | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
-        ar.(i) <- TE_Some(Bindlib.unbox b); Bindlib.is_closed b
+        let vs = Array.map to_tvar e in
+        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
+        let res = Bindlib.is_closed b in
+        if res then ar.(i) <- TE_Some(Bindlib.unbox b);
+        res
     | Patt(None   ,_,[||]) -> true
     | Patt(None   ,_,e   ) ->
-        let b = Bindlib.bind_mvar (to_tvars e) (lift (snd Pervasives.(!t))) in
+        let vs = Array.map to_tvar e in
+        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
         Bindlib.is_closed b
     | _                                 ->
     (* Other cases need the term to be evaluated. *)
@@ -282,9 +304,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
       pattern variable {!constructor:Patt} in some lhs.  The terms in this
       stack might be substituted in the right hand side of the rule. *)
 
+(** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
-  let t = unfold t in
   Pervasives.(steps := 0);
+  let t = unfold t in
   let u = whnf t in
   if Pervasives.(!with_trees) then u else
   if Pervasives.(!steps = 0) then t else u
@@ -314,14 +337,24 @@ let rec snf : term -> term = fun t ->
   | Wild        -> assert false
   | TRef(_)     -> assert false
 
-(** [hnf t] computes the head normal form of the term [t]. *)
+(** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
   match whnf t with
-  | Appl(t,u) -> Appl(hnf t, hnf u)
+  | Abst(a,t) ->
+     let x,t = Bindlib.unbind t in
+     Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf t))))
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
-type strategy = WHNF | HNF | SNF | NONE
+type strategy =
+  | WHNF
+  (** Reduce to weak head-normal form. *)
+  | HNF
+  (** Reduce to head-normal form. *)
+  | SNF
+  (** Reduce to strong normal form. *)
+  | NONE
+  (** Do nothing. *)
 
 (** Configuration for evaluation. *)
 type config =

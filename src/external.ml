@@ -65,4 +65,4 @@ let run : string -> Sign.t pp -> string -> Sign.t -> bool option =
 (** {b NOTE} that for any given property being checked,  the simplest possible
     valid command is ["echo MAYBE"]. Moreover,  ["cat > file; echo MAYBE"] can
     conveniently be used to write generated data to the file ["file"]. This is
-    usefule for debugging purposes. *)
+    useful for debugging purposes. *)

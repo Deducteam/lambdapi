@@ -12,8 +12,8 @@ let _ = Compile.compile
 
 (** Representation of a single command (abstract). *)
 module Command = struct
-  type t = Syntax.command
-  let equal = Syntax.eq_command
+  type t = Syntax.p_command
+  let equal = Syntax.eq_p_command
   let get_pos c = Pos.(c.pos)
 end
 
@@ -62,6 +62,7 @@ type tactic_result =
 let t0 = Time.save ()
 
 let initial_state : Files.module_path -> state = fun path ->
+  Console.reset_default ();
   Time.restore t0;
   Sign.loading := [path];
   let sign = Sign.create path in

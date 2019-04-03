@@ -77,4 +77,15 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
 (* NOTE we need to give access to the compilation function to the parser. This
    is the only way infix symbols can be parsed, since they may be added to the
    scope by a “require” command. *)
-let _ = Pervasives.(Parser.require := compile false)
+let _ =
+  let require mp =
+    (* We save the current console state. *)
+    Console.push_state ();
+    (* We restore the console state to default for compiling. *)
+    Console.reset_default ();
+    (* We compile the required module path in the default state. *)
+    compile false mp;
+    (* We restore the state to its value before the “require”. *)
+    Console.pop_state ()
+  in
+  Pervasives.(Parser.require := require)

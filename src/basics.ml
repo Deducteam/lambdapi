@@ -14,31 +14,31 @@ module Var =
 module VarSet = Set.Make(Var)
 module VarMap = Map.Make(Var)
 
-(** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
-    the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
-    does not correspond to a free variable. *)
-let to_tvars : term array -> tvar array =
-  Array.map (fun t -> match t with Vari(x) -> x | _ -> assert false)
+(** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
+    otherwise. *)
+let to_tvar : term -> tvar = fun t ->
+  match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the {!val:to_tvars} function is useful when working with multiple
-    binders. For example, this is the case when manipulating pattern variables
-    ([Patt] constructor) or metatavariables ([Meta] constructor).  Remark that
-    it is Importantly for these constructors to hold an array of terms, rather
-    than an array of variables:  a variable can only be substituted when if it
-    is injected in a term (using the [Vari] constructor). *)
+(** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
+   with multiple binders. For example, this is the case when manipulating
+   pattern variables ([Patt] constructor) or metatavariables ([Meta]
+   constructor).  Remark that it is important for these constructors to hold
+   an array of terms, rather than an array of variables: a variable can only
+   be substituted when if it is injected in a term (using the [Vari]
+   constructor). *)
 
-(** {b NOTE} the result of {!val:to_tvars} can generally NOT be precomputed. A
+(** {b NOTE} the result of {!val:to_tvar} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
     going to arise when working under binders,  for which fresh variables will
     often be generated. A second reason is that free variables should never be
-    “marshalled” (e.g., by the {!module:Sign} module), as this would break the
+    “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->
   match unfold t with
-  | Prod(_,b) -> 1 + count_products (snd (Bindlib.unbind b))
+  | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)
   | _         -> 0
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
@@ -161,27 +161,6 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)  -> iter t; iter u
   in iter
-
-(** [occurs_var x t] tests whether the variable [x] occurs in the term [t]. *)
-let occurs_var : tvar -> term -> bool =
-  let exception Found in fun x t ->
-  let rec occurs t =
-    match t with
-    | Vari(y) when Bindlib.eq_vars x y -> raise Found
-    | Meta(_,ts) -> Array.iter occurs ts
-    | Prod(a,b)
-    | Abst(a,b)  -> occurs a; occurs (Bindlib.subst b Kind)
-    | Appl(t,u)  -> occurs t; occurs u
-    | Vari(_)
-    | Wild
-    | TRef(_)
-    | Type
-    | Kind
-    | Symb(_)
-    | Patt(_,_,_)
-    | TEnv(_,_)  -> ()
-  in
-  try occurs t; false with Found -> true
 
 (** [iter_meta f t] applies the function [f] to every metavariable of
    [t], as well as to every metavariable occurring in the type of an

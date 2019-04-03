@@ -39,46 +39,56 @@ type proof_data =
   ; pdata_finalize : sig_state -> Proof.t -> sig_state (* Finalizer. *)
   ; pdata_term_pos : Pos.popt (* Position of the proof's terminator. *) }
 
+(** [handle_open pos ss p] handles the command [open p] with [ss] as the
+   signature state. On success, an updated signature state is returned. *)
+let handle_open : popt -> sig_state -> Path.t -> sig_state =
+    fun pos ss p ->
+  (* Obtain the signature corresponding to [m]. *)
+  let sign =
+    try PathMap.find p !(Sign.loaded) with Not_found ->
+      (* The signature has not been required... *)
+      fatal pos "Module [%a] has not been required." pp_path p
+  in
+  (* Open the module. *)
+  open_sign ss sign
+
+(** [handle_require b pos ss p] handles the command [require p] (or [require
+   open p] if b is true) with [ss] as the signature state. On success, an
+   updated signature state is returned. *)
+let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
+    fun b pos ss p ->
+  (* Check that the module has not already been required. *)
+  if PathMap.mem p !(ss.signature.sign_deps) then
+    fatal pos "Module [%a] is already required." pp_path p;
+  (* Add the dependency (it was compiled already while parsing). *)
+  ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
+  if b then handle_open pos ss p else ss
+
+(** [handle_require_as pos ss p id] handles the command [require p as id] with
+   [ss] as the signature state. On success, an updated signature state is
+   returned. *)
+let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
+    fun pos ss p id ->
+  let ss = handle_require false pos ss p in
+  let aliases = StrMap.add id.elt p ss.aliases in
+  {ss with aliases}
+
 (** [handle_cmd_aux ss cmd] tries to handle the command [cmd] with [ss] as the
     signature state. On success, an updated signature state is returned.  When
     [cmd] leads to entering the proof mode,  a [proof_data] is also  returned.
     This structure contains the list of the tactics to be executed, as well as
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
-let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
-  let scope_basic ss t = fst (Scope.scope_term StrMap.empty ss Env.empty t) in
+  let scope_basic = Scope.scope_term ss Env.empty in
   match cmd.elt with
-  | P_require(p, m)            ->
-      (* Check that the module has not already been required. *)
-      if PathMap.mem p !(ss.signature.sign_deps) then
-        fatal cmd.pos "Module [%a] is already required." pp_path p;
-      (* Add the dependency (it was compiled already while parsing). *)
-      ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
-      (* Open or alias if necessary. *)
-      let ss =
-        match m with
-        | P_require_default -> ss
-        | P_require_open    ->
-            let sign =
-              try PathMap.find p !(Sign.loaded)
-              with Not_found -> assert false (* Cannot happen. *)
-            in
-            open_sign ss sign
-        | P_require_as(id)  ->
-            let aliases = StrMap.add id.elt p ss.aliases in
-            {ss with aliases}
-      in
-      (ss, None)
-  | P_open(m)                  ->
-      (* Obtain the signature corresponding to [m]. *)
-      let sign =
-        try PathMap.find m !(Sign.loaded) with Not_found ->
-        (* The signature has not been required... *)
-        fatal cmd.pos "Module [%a] has not been required." pp_path m
-      in
-      (* Open the module. *)
-      (open_sign ss sign, None)
+  | P_require(b,ps)            ->
+     (List.fold_left (handle_require b cmd.pos) ss ps, None)
+  | P_require_as(p,id)         ->
+     (handle_require_as cmd.pos ss p id, None)
+  | P_open(ps)                  ->
+     (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ts, x, xs, a)     ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -88,9 +98,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
-      let a = scope_basic ss a in
+      let a = scope_basic a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type Ctxt.empty a;
+      Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas a then
         begin
@@ -115,7 +125,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         let (s,_,_) as r = scope_rule ss r in
         if !(s.sym_def) <> None then
           fatal_no_pos "Symbol [%s] cannot be (re)defined." s.sym_name;
-        Sr.check_rule r; r
+        Sr.check_rule ss.builtins r; r
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
@@ -126,7 +136,7 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-      let t = scope_basic ss t in
+      let t = scope_basic t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
       let (ao, impl) =
         match ao with
@@ -135,18 +145,18 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map (scope_basic ss) ao in
+      let ao = Option.map scope_basic ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type Ctxt.empty a;
-            if Typing.check Ctxt.empty t a then a else
+            Typing.sort_type ss.builtins Ctxt.empty a;
+            if Typing.check ss.builtins Ctxt.empty t a then a else
             fatal cmd.pos "Term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Typing.infer Ctxt.empty t with
+            match Typing.infer ss.builtins Ctxt.empty t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -173,19 +183,21 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic ss a in
+      let a = scope_basic a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type Ctxt.empty a;
+      Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
-      (* Initialize proof state. *)
+      (* Initialize proof state and save configuration data. *)
       let st = Proof.init ss.builtins x a in
+      Console.push_state ();
       (* Build proof checking data. *)
       let finalize ss st =
+        Console.pop_state ();
         match pe.elt with
         | P_proof_abort ->
             (* Just ignore the command, with a warning. *)
@@ -216,42 +228,9 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
         ; pdata_finalize = finalize ; pdata_term_pos = pe.pos }
       in
       (ss, Some(data))
-  | P_assert(must_fail, asrt)  ->
-      let result =
-        match asrt with
-        | P_assert_typing(t,a) ->
-            let t = scope_basic ss t in
-            let a = scope_basic ss a in
-            Typing.sort_type Ctxt.empty a;
-            (try Typing.check Ctxt.empty t a with _ -> false)
-        | P_assert_conv(a,b)   ->
-            let t = scope_basic ss a in
-            let u = scope_basic ss b in
-            match (Typing.infer [] t, Typing.infer [] u) with
-            | (Some(a), Some(b)) ->
-                if Eval.eq_modulo a b then Eval.eq_modulo t u else
-                fatal cmd.pos "Infered types not convertible (in assertion)."
-            | (None   , _      ) ->
-                fatal a.pos "Type cannot be infered (in assertion)."
-            | (_      , None   ) ->
-                fatal b.pos "Type cannot be infered (in assertion)."
-      in
-      if result = must_fail then fatal cmd.pos "Assertion failed."; (ss, None)
   | P_set(cfg)                 ->
       let ss =
         match cfg with
-        | P_config_debug(e,s)     ->
-            (* Just update the option, state not modified. *)
-            Console.set_debug e s; ss
-        | P_config_verbose(i)     ->
-            (* Just update the option, state not modified. *)
-            Console.verbose := i; ss
-        | P_config_flag(id,b)     ->
-            (* We set the value of the flag, if it exists. *)
-            begin
-              try Console.set_flag id b with Not_found ->
-                wrn cmd.pos "Unknown flag \"%s\"." id
-            end; ss
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
             let builtins = !(ss.signature.sign_builtins) in
@@ -269,26 +248,8 @@ let handle_cmd_aux : sig_state -> command -> sig_state * proof_data option =
             Sign.add_binop ss.signature s (sym, binop); ss
       in
       (ss, None)
-  | P_infer(t, cfg)            ->
-      (* Infer the type of [t]. *)
-      let t_pos = t.pos in
-      let t = scope_basic ss t in
-      let a =
-        match Typing.infer [] t with
-        | Some(a) -> Eval.eval cfg a
-        | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
-      in
-      out 3 "(infr) %a : %a\n" pp t pp a; (ss, None)
-  | P_normalize(t, cfg)        ->
-      (* Infer a type for [t], and evaluate [t]. *)
-      let t_pos = t.pos in
-      let t = scope_basic ss t in
-      let v =
-        match Typing.infer [] t with
-        | Some(_) -> Eval.eval cfg t
-        | None    -> fatal t_pos "Cannot infer the type of [%a]." pp t
-      in
-      out 3 "(eval) %a\n" pp v; (ss, None)
+  | P_query(q)                 ->
+      Queries.handle_query ss None q; (ss, None)
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
@@ -298,10 +259,10 @@ let too_long = Pervasives.ref infinity
     exception handling. In particular, the position of [cmd] is used on errors
     that lack a specific position. All exceptions except [Timeout] and [Fatal]
     are captured, although they should not occur. *)
-let handle_cmd : sig_state -> command -> sig_state * proof_data option =
+let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   try
-    let (tm, ss) = time (handle_cmd_aux ss) cmd in
+    let (tm, ss) = time (handle_cmd ss) cmd in
     if Pervasives.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
