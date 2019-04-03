@@ -41,8 +41,9 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
+  let t = unfold t in
   let (u, stk) = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else unfold t
+  if Pervasives.(!steps) <> s then to_term u stk else t
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
@@ -172,8 +173,9 @@ and eq_modulo : term -> term -> bool = fun a b ->
 (** [whnf t] computes the weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
+  let t = unfold t in
   let u = whnf t in
-  if Pervasives.(!steps = 0) then unfold t else u
+  if Pervasives.(!steps = 0) then t else u
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 let rec snf : term -> term = fun t ->
