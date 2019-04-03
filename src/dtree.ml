@@ -32,13 +32,20 @@ type action = (term_env, term) Bindlib.mbinder
 
 (** {3 Stack} *)
 
-(** Stack used for when reducing terms.  The requirements are
-    - fast access / split
-    - fast insertion / concatenation.
+(** Stack used when reducing terms.  When reducing, we must have
+    - fast access to any element in the stack (for swaps)
+    - fast replacement of an element and extension to replace an element of
+      the stack by its reduced form, or an unfolding of {!constructor:Appl}
+      nodes.
 
-    Two implementations have been tried,
+    Arrays have fast access but can't be extended efficiently.  Lists can be
+    extended easily but access is slow.  Tree structure have moderately fast
+    access and extension, and are therefore appropriate.
+
+    Two implementations have been tried with
     - {!module:BatVect},
-    - {!module:BatFingerTree} *)
+    - {!module:BatFingerTree}
+    The performances are similar. *)
 module ReductionStack =
 struct
   open Extra
@@ -197,12 +204,12 @@ let to_dot : string -> t -> unit = fun fname tree ->
 
 (** {3 Clause matrix and pattern matching problem} *)
 
-(** A clause matrix encodes a pattern matching problem.  The clause matrix
-    {%latex:C%} can be denote {%latex:C = P \rightarrow A%} where {i P} is a
-    {e pattern matrix} and {i A} is a column of {e actions}.  Each line of a
-    pattern matrix is a pattern to which is attached an action.  When reducing
-    a term, if a line filters the term, or equivalently the term matches the
-    pattern, the term is rewritten to the action. *)
+(** A clause matrix encodes a pattern matching problem.  The clause matrix {i
+    C} can be denote {i C = P → A} where {i P} is a {e pattern matrix} and {i
+    A} is a column of {e actions}.  Each line of a pattern matrix is a pattern
+    to which is attached an action.  When reducing a term, if a line filters
+    the term, or equivalently the term matches the pattern, the term is
+    rewritten to the action. *)
 module ClauseMat =
 struct
   (** A component of the matrix, a term along with its position in the top
@@ -214,9 +221,13 @@ struct
     let module F = Format in
     F.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
 
-  (** A redefinition of the rule type. *)
+  (** A redefinition of the rule type.
+
+      {b Note} that {!type:array} is used while {!module:ReductionStack} could
+      be used because {!val:pick_best_among} goes through all items of a rule
+      anyway ([max(S) = Θ(|S|)]). *)
   type rule = { lhs : component array
-              (** Left hand side of a rule. *)
+              (** Left hand side of a rule.   *)
               ; rhs : action
               (** Right hand side of a rule. *)
               ; variables : int SubMap.t
@@ -576,21 +587,20 @@ let compile : Cm.t -> t = fun patterns ->
       end
     else
       if Cm.exhausted patterns then
-      (* A rule can be applied *)
         let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
         let f (count, map) tpos =
           let opslot = SubMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ count, map
-        (* ^ Discard useless variables *)
+          (* ^ Discard useless variables *)
           | Some(sl) -> succ count, IntMap.add count sl map in
-      (* [env_builder] maps future position in the term store to the slot in
-         the environment. *)
+        (* [env_builder] maps future position in the term store to the slot in
+           the environment. *)
         let _, env_builder = List.fold_left f (0, IntMap.empty)
           (List.rev vcat) in
-      (* ^ For now, [env_builder] contains only the variables encountered
-         while choosing the rule.  Other pattern variables needed in the rhs,
-         which are still in the [lhs] will now be fetched. *)
+        (* ^ For now, [env_builder] contains only the variables encountered
+           while choosing the rule.  Other pattern variables needed in the
+           rhs, which are still in the [lhs] will now be fetched. *)
         assert (IntMap.cardinal env_builder <=
                   Basics.SubtMap.cardinal pos2slot) ;
         let depth = List.length vcat in
