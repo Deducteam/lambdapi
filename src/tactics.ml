@@ -17,7 +17,7 @@ let log_tact = log_tact.logger
      gracefully in case of error. *)
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
-    (* First handle the tactics that do not change the goal. *)
+    (* First handle the tactics that do not change the goals. *)
   match tac.elt with
   | P_tac_print         ->
       (* Just print the current proof state. *)
@@ -30,24 +30,28 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_query(q)      ->
       Queries.handle_query ss (Some ps) q; ps
   | _                   ->
-  (* Other tactics need to act on the goal / goals. *)
+  (* The other tactics may change the goals. *)
+  (* Get the focused goal and the other goals. *)
   let (g, gs) =
     match ps.Proof.proof_goals with
     | []    -> fatal tac.pos "There is nothing left to prove.";
     | g::gs -> (g, gs)
   in
+  (* Obtaining the goal environment and type. *)
+  let (env, a) = Proof.Goal.get_type g in
+
+  let scope = scope_term ss env in
+  let infer t = Typing.infer ss.builtins (Ctxt.of_env env) t in
+  let check t a = Typing.check ss.builtins (Ctxt.of_env env) t a in
+
   let handle_refine : term -> Proof.t = fun t ->
-    (* Obtaining the goal environment and type. *)
-    let (env, a) = Proof.Goal.get_type g in
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
     log_tact "refining [%a] with term [%a]" pp_meta m pp t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    let ctx = Ctxt.of_env env in
-    log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp ctx pp t pp a;
-    if not (Typing.check ss.builtins ctx t a) then
-      fatal tac.pos "Ill-typed refinement.";
+    log_tact "proving [%a ⊢ %a : %a]" Ctxt.pp (Ctxt.of_env env) pp t pp a;
+    if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
@@ -69,47 +73,32 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
      in
      Proof.{ps with proof_goals = swap i [] ps.proof_goals}
   | P_tac_refine(t)     ->
-      (* Scoping the term in the goal's environment. *)
-      let env, _ = Proof.Goal.get_type g in
-      let t = scope_term ss env t in
-      (* Refine using the given term. *)
-      handle_refine t
+      handle_refine (scope t)
   | P_tac_intro(xs)     ->
-      (* Scoping a sequence of abstractions in the goal's environment. *)
-      let env, _ = Proof.Goal.get_type g in
       let t = Pos.none (P_Abst([(xs,None,false)], Pos.none P_Wild)) in
-      let t = scope_term ss env t in
-      (* Refine using the built term. *)
-      handle_refine t
-  | P_tac_apply(t)      ->
-      (* Scoping the term in the goal's environment. *)
-      let env, _ = Proof.Goal.get_type g in
-      let t0 = scope_term ss env t in
-      (* Infer the type of [t0] and count the number of products. *)
+      handle_refine (scope t)
+  | P_tac_apply(pt)      ->
+      let t = scope pt in
+      (* Infer the type of [t] and count the number of products. *)
       (* NOTE there is room for improvement here. *)
       let nb =
-        match Typing.infer ss.builtins (Ctxt.of_env env) t0 with
+        match infer t with
         | Some(a) -> Basics.count_products a
-        | None    -> fatal t.pos "Cannot infer the type of [%a]." Print.pp t0
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.pp t
       in
       (* Refine using [t] applied to [nb] wildcards (metavariables). *)
       (* NOTE it is scoping that handles wildcards as metavariables. *)
-      let rec add_wilds t n =
+      let rec add_wilds pt n =
         match n with
-        | 0 -> scope_term ss env t
-        | _ -> add_wilds (Pos.none (P_Appl(t, Pos.none P_Wild))) (n-1)
+        | 0 -> scope pt
+        | _ -> add_wilds (Pos.none (P_Appl(pt, Pos.none P_Wild))) (n-1)
       in
-      handle_refine (add_wilds t nb)
+      handle_refine (add_wilds pt nb)
   | P_tac_simpl         ->
       Proof.({ps with proof_goals = Proof.Goal.simpl g :: gs})
   | P_tac_rewrite(po,t) ->
-      (* Scoping the term in the goal's environment. *)
-      let env, _ = Proof.Goal.get_type g in
-      let t = scope_term ss env t in
-      (* Scoping the rewrite pattern if given. *)
       let po = Option.map (scope_rw_patt ss env) po in
-      (* Calling rewriting, and refining. *)
-      handle_refine (Rewrite.rewrite tac.pos ps po t)
+      handle_refine (Rewrite.rewrite tac.pos ps po (scope t))
   | P_tac_refl          ->
       handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->

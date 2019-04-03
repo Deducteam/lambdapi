@@ -31,9 +31,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Patt(i,n,ts) ->
         if ts = [||] then out "&%s" n else
         pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
-    (* Applications are printed when priority is above [`Appl]. *)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
-    (* Abstractions and products are only printed at priority [`Func]. *)
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
         if lhs then out "lam(m_typ,\\v_%s.%a)" (Bindlib.name_of x) pp t
