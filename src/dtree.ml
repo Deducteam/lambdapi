@@ -535,7 +535,8 @@ let split : ('a * 'b) array -> ('a list) * ('b list) =
     to consume linearly the stack than performing multiple swaps. *)
 let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
-    let terms = fst (split line) in
+    let terms = List.rev @@ fst (split line) in
+    (* XXX List.rev? Why is [line] reversed? *)
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
     let defn = { swap = 0 ; store = false ; children = ConsMap.empty
                ; default = None } in
