@@ -167,6 +167,11 @@ module Array =
         (0, start, 0) arr in
       r
 
+    (** [split a] is {!val:List.split}[Array.to_list a]. *)
+    let split : ('a * 'b) array -> ('a list) * ('b list) = fun a ->
+      Array.fold_right (fun (el, er) (accl, accr) -> (el :: accl, er :: accr))
+        a ([], [])
+
   end
 
 (* Functional maps with [int] keys. *)

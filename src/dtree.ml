@@ -522,11 +522,6 @@ module Cm = ClauseMat
     apply.  The remaining variables, which will remain in the input stack will
     be fetched thanks to a subtree built by {!val:fetch}. *)
 
-(** [split a] is {!val:List.split}[Array.to_list a]. *)
-let split : ('a * 'b) array -> ('a list) * ('b list) =
-  Array.fold_left (fun (accl, accr) (el, er) -> (el :: accl, er :: accr))
-    ([], [])
-
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
     elements as the number of variables in [r].  The environment builder [e] is
     also enriched.  The tree which allows this consumption is returned, with a
@@ -535,8 +530,7 @@ let split : ('a * 'b) array -> ('a list) * ('b list) =
     to consume linearly the stack than performing multiple swaps. *)
 let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
-    let terms = List.rev @@ fst (split line) in
-    (* XXX List.rev? Why is [line] reversed? *)
+    let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
     let defn = { swap = 0 ; store = false ; children = ConsMap.empty
                ; default = None } in
