@@ -30,13 +30,13 @@ type action = (term_env, term) Bindlib.mbinder
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
-(** {3 Stack} *)
+(** {3 Reduction substrate} *)
 
-(** Stack used when reducing terms.  When reducing, we must have
-    - fast access to any element in the stack (for swaps)
+(** Element consumed when reducing terms.  When reducing, we must have
+    - fast access to any element in the substrate (for swaps)
     - fast replacement of an element and extension to replace an element of
-      the stack by its reduced form, or an unfolding of {!constructor:Appl}
-      nodes.
+      the substrate by its reduced form, or an unfolding of
+      {!constructor:Appl} nodes.
 
     Arrays have fast access but can't be extended efficiently.  Lists can be
     extended easily but access is slow.  Tree structure have moderately fast
@@ -46,34 +46,58 @@ type action = (term_env, term) Bindlib.mbinder
     - {!module:BatVect},
     - {!module:BatFingerTree}
     The performances are similar. *)
-module ReductionStack =
-struct
-  open Extra
-  module Vect = BatVect
+module type reduction_substrate =
+sig
+  (** Type of a substrate of ['a]. *)
+  type 'a t
 
-  (** Type of a stack of ['a]. *)
-  type 'a t = 'a Vect.t
-
-  (** The empty stack. *)
-  let empty : 'a t = Vect.empty
+  (** The empty substrate. *)
+  val empty : 'a t
 
   (** [is_empty v] returns whether a stack is empty. *)
-  let is_empty : 'a t -> bool = Vect.is_empty
+  val is_empty : 'a t -> bool
 
   (** [of_list l] returns a stack containing the elements of [l]. *)
-  let of_list : 'a list -> 'a t = Vect.of_list
+  val of_list : 'a list -> 'a t
 
   (** [length v] is the number of elements in [v]. [O(1)] amortized. *)
-  let length : 'a t -> int = Vect.length
+  val length : 'a t -> int
 
-  (** [prepend e v] returns a vector with [e] added at the beginning of
-      [v]. [O(1)] amortized *)
-  let prepend : 'a -> 'a t -> 'a t = Vect.prepend
+  (** Prefix and suffix of the substrate. *)
+  type 'a prefix
+  type 'a suffix
 
   (** [destruct v i] returns a triplet [(r, e, o)] with [r] being the
       elements from 0 to [i - 1], [e] the [i]th element and [o] the elements
       from [i + 1] to the end of [v]. [O(log size v)] *)
-  let destruct : 'a t -> int -> 'a t * 'a * 'a t = fun restk i ->
+  val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
+
+  (** [restruct r n o] is the concatenation of three stacks [r] [n] and
+      [o]. [O(log min (size r) (size n) (size o))] amortized *)
+  val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
+
+  (** [pp o s] prints substrate [s] to channel [o]. *)
+  val pp : 'a pp -> 'a t pp
+end
+
+module ReductionStack : reduction_substrate =
+struct
+  open Extra
+  module Vect = BatVect
+
+  type 'a t = 'a Vect.t
+  type 'a prefix = 'a Vect.t
+  type 'a suffix = 'a Vect.t
+
+  let empty = Vect.empty
+
+  let is_empty = Vect.is_empty
+
+  let of_list = Vect.of_list
+
+  let length = Vect.length
+
+  let destruct restk i =
     let elt = Vect.get restk i in
     let prefix = Vect.sub restk 0 i in
     let postfix =
@@ -81,11 +105,9 @@ struct
         Vect.sub restk (i + 1) (Vect.length restk - (i + 1)) in
     prefix, elt, postfix
 
-  (** [restruct r n o] is the concatenation of three stacks [r] [n] and
-      [o]. [O(log min (size r) (size n) (size o))] amortized *)
-  let restruct : 'a t -> 'a list -> 'a t -> 'a t = fun prefix infix postfix ->
-    let post_in_fix = Vect.concat prefix (of_list infix) in
-    Vect.concat post_in_fix postfix
+  let restruct left middle right =
+    let post_in_fix = Vect.concat left (of_list middle) in
+    Vect.concat post_in_fix right
 
   (** [pp e o s] prints stack [s] to out channel [o] using element pp [e]. *)
   let pp : 'a pp -> 'a t pp = fun pp_elt oc v ->
