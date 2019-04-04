@@ -97,16 +97,6 @@ let whnf_beta : term -> term = fun t ->
   let u = whnf_beta t in
   if Pervasives.(!steps = 0) then t else u
 
-(** [simpl_beta t] computes a weak head beta normal form of [t] whose
-   arguments are in weak beta normal form too. *)
-let rec simpl_beta : term -> term = fun t ->
-  match get_args (whnf_beta t) with
-  | Prod(a,b), _ ->
-     let x,b = Bindlib.unbind b in
-     let b = simpl_beta b in
-     Prod (simpl_beta a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
-  | h, ts -> add_args h (List.map whnf_beta ts)
-
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
@@ -344,6 +334,14 @@ let whnf : term -> term = fun t ->
   let u = whnf t in
   if Pervasives.(!with_trees) then u else
   if Pervasives.(!steps = 0) then t else u
+
+(** [simplify t] reduces simple redexes of [t]. *)
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
+  | Prod(a,b), _ ->
+     let x,b = Bindlib.unbind b in
+     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
+  | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 let rec snf : term -> term = fun t ->

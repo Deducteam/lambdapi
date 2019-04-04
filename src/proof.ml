@@ -32,7 +32,7 @@ module Goal :
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
         Env.of_prod_arity m.meta_arity !(m.meta_type) in
-      let goal_type = Eval.simpl_beta goal_type in
+      let goal_type = Eval.simplify goal_type in
       {goal_meta = m; goal_hyps; goal_type}
 
     let get_meta : t -> meta = fun g -> g.goal_meta
@@ -75,29 +75,28 @@ let pp_goals : _ pp = fun oc gl ->
   match gl with
   | []    -> Format.fprintf oc " No more goals...\n"
   | g::gs ->
-    let (hyps, a) = Goal.get_type g in
-    let print_hyp (s,(_,t)) =
-      Format.fprintf oc "  %s : %a\n" s pp (Bindlib.unbox t)
-    in
-    List.iter print_hyp (List.rev hyps);
-    Format.fprintf oc " ----------------------------------------\n";
-    Format.fprintf oc "  %a\n" pp a;
+     Format.fprintf oc "\n== Goals ================================\n";
+    let (hyps, _) = Goal.get_type g in
+    if hyps <> [] then
+      begin
+        let print_hyp (s,(_,t)) =
+          Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
+        in
+        List.iter print_hyp (List.rev hyps);
+        Format.fprintf oc "   --------------------------------------\n"
+      end;
+    let (_, a) = Goal.get_type g in
+    Format.fprintf oc "0. %a\n" pp a;
     if gs <> [] then
       begin
-        let g_meta = Goal.get_meta g in
-        let (_, g_type) = Goal.get_type g in
         Format.fprintf oc "\n";
-        Format.fprintf oc " >0< %a : %a\n" pp_meta g_meta pp g_type;
         let print_goal i g =
-          let m = Goal.get_meta g in
           let (_, a) = Goal.get_type g in
-          Format.fprintf oc " (%i) %a : %a\n" (i+1) pp_meta m pp a
+          Format.fprintf oc "%i. %a\n" (i+1) pp a
         in
         List.iteri print_goal gs
       end
 
+
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
-let pp : t pp = fun oc ps ->
-  Format.fprintf oc "== Current theorem ======================\n";
-  pp_goals oc ps.proof_goals;
-  Format.fprintf oc "=========================================\n"
+let pp : t pp = fun oc ps -> pp_goals oc ps.proof_goals
