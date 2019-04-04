@@ -1,0 +1,76 @@
+diff --git a/src/dtree.ml b/src/dtree.ml
+index 1b3b96f..585c124 100644
+--- a/src/dtree.ml
++++ b/src/dtree.ml
+@@ -7,6 +7,8 @@ open Extra
+ module Sub = Basics.Subterm
+ module SubMap = Basics.SubtMap
+ 
++let ti_build_tree = ref 0.
++
+ (** See {!type:tree} in {!module:Terms}. *)
+ type t = tree
+ 
+@@ -600,6 +602,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
+     pattern matching problem contained in pattern matrix [m]. *)
+ let compile : Cm.t -> t = fun patterns ->
+   (* let varcount = ref 0 in *)
++  let _t = Unix.gettimeofday () in
+   let rec compile patterns =
+     let { Cm.var_catalogue = vcat ; _ } = patterns in
+     if Cm.is_empty patterns then
+@@ -657,4 +660,6 @@ let compile : Cm.t -> t = fun patterns ->
+           if Cm.is_empty ncm then None else Some(compile ncm) in
+         Node({ swap = absolute_cind ; store = store ; children = children
+              ; default = defmat }) in
+-  compile patterns
++  let r = compile patterns in
++  ti_build_tree := !ti_build_tree +. (Unix.gettimeofday () -. _t) ;
++  r
+diff --git a/src/eval.ml b/src/eval.ml
+index 2ccec55..f9ca79b 100644
+--- a/src/eval.ml
++++ b/src/eval.ml
+@@ -24,6 +24,9 @@ form.
+ A term t is in strong normal form (snf) if it cannot be reduced further.
+ *)
+ 
++let ti_eval_tree = Pervasives.ref 0.
++let ti_eval = Pervasives.ref 0. ;;
++
+ (** [with_trees] contains whether trees are used for pattern matching. *)
+ let with_trees : bool Pervasives.ref = Pervasives.ref false
+ 
+@@ -101,9 +104,13 @@ let whnf_beta : term -> term = fun t ->
+ let rec whnf : term -> term = fun t ->
+   if !log_enabled then log_eval "evaluating [%a]" pp t;
+   let t = unfold t in
+-  if Pervasives.(!with_trees) then whnf_stk_t t [] else
++  let _t = Unix.gettimeofday () in
++  let _ = whnf_stk_t t [] in
++  Pervasives.(ti_eval_tree := !ti_eval_tree +. (Unix.gettimeofday () -. _t)) ;
+   let s = Pervasives.(!steps) in
++  let _t = Unix.gettimeofday () in
+   let u, stk = whnf_stk t [] in
++  Pervasives.(ti_eval := !ti_eval +. (Unix.gettimeofday () -. _t)) ;
+   if Pervasives.(!steps) <> s then to_term u stk else t
+ 
+ (** [whnf_stk_t t k] computes the weak head normal form of [t] applied to
+diff --git a/src/lambdapi.ml b/src/lambdapi.ml
+index 897cb6f..e7f3fc5 100644
+--- a/src/lambdapi.ml
++++ b/src/lambdapi.ml
+@@ -5,6 +5,13 @@ open Extra
+ open Files
+ open Console
+ 
++;;
++at_exit (fun () ->
++  let real_tree_eval = (!(Eval.ti_eval_tree) -. !(Dtree.ti_build_tree)) in
++  let fmt = r_or_g (!(Eval.ti_eval) > real_tree_eval)
++    "Tree/tree build/vanilla: %f/%f/%f\n" in
++  Format.printf fmt real_tree_eval !(Dtree.ti_build_tree) !(Eval.ti_eval))
++
+ (* NOTE only standard [Pervasives] references here. *)
+ 
+ (** [confluence_checker] holds a possible confluence checking command. When it
