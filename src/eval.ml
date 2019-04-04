@@ -275,65 +275,57 @@ and eq_modulo : term -> term -> bool = fun a b ->
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
-and tree_walk : Dtree.t -> int -> term list -> term option =
-  fun itree capa stk ->
-  let module RedStack = Dtree.ReductionStack in
-  let stk = RedStack.of_list stk in
-  let vars = Array.make capa (Patt(None, "", [| |])) in
+and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
+  let vars = Array.make d Kind in (* dummy terms *)
+  let module R = Dtree.ReductionStack in
+  let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk : Dtree.t -> term RedStack.t -> int -> term option =
-    fun tree stk cursor ->
-      match tree with
-      | Fail                                  -> None
-      | Leaf(env_builder, act)                ->
-         (* Retrieve terms needed in the action from the [vars] array *)
-         (* [pre_env] is the same as [env] but without binders *)
-         let pre_env = IntMap.fold (fun pos env_slot acc ->
-           IntMap.add env_slot vars.(pos) acc) env_builder IntMap.empty in
-         let env = Array.make (IntMap.cardinal pre_env) TE_None in
-         IntMap.iter (fun slot te ->
-           let inject _ = te in
-           let b = Bindlib.raw_mbinder [| |] [| |] 0 mkfree inject in
-           env.(slot) <- TE_Some(b)) pre_env ;
-         Some(Bindlib.msubst act env)
-      | Node({ swap ; children ; store ; default }) ->
-         (* Quit if stack is too short*)
-         if RedStack.is_empty stk || swap >= RedStack.length stk
-         then None else
-         (* Pick the right term in the stack *)
-         let prefix, examined, postfix = RedStack.destruct stk swap in
-         let examined = whnf examined in
-         (* Store hd of stack if needed *)
-         if store then
-           begin if !log_enabled then log_eval "storing [%a]" pp examined ;
-                 vars.(cursor) <- examined
-           end ;
-         let cursor = if store then succ cursor else cursor in
-         (* Fetch the right subtree and the new stack *)
-         (* [choose t s] chooses a tree among {!val:children} when term [t] is
-            examined and returns the new head of stack. *)
-         let rec choose te stk_part : tree option * term RedStack.t =
-           match te with
-           | Appl(u, v) ->
-              choose u (RedStack.prepend v stk_part)
-           | Symb({ sym_name ; sym_path ; _ }, _) ->
-              let nargs = RedStack.length stk_part in
-              let cons = { c_sym = sym_name ; c_mod = sym_path
-                         ; c_ari = nargs } in
-              let matched = ConsMap.find_opt cons children in
-              begin match matched with
-                | Some(_) -> matched, stk_part
-                | None    -> default, RedStack.empty
-              end
-           | Abst(_, _) -> assert false
-           | Meta(_, _) -> assert false
-           | _          -> assert false in
-         let matched, infix = choose examined RedStack.empty in
-         let stk = RedStack.restruct prefix infix postfix in
-         Option.bind (fun tr -> walk tr stk cursor) matched in
-  walk itree stk 0
+  let rec walk tree stk cursor =
+    match tree with
+    | Fail                                   -> None
+    | Leaf(env_builder, act)                 ->
+        (* Allocate an environement for the action. *)
+        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+        (* Retrieve terms needed in the action from the [vars] array. *)
+        let fn pos slot =
+          let t = vars.(pos) in
+          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+          env.(slot) <- TE_Some(b)
+        in
+        IntMap.iter fn env_builder;
+        (* Actually perform the action. *)
+        Some(Bindlib.msubst act env)
+    | Node({swap; children; store; default}) ->
+        (* Quit if stack is too short. *)
+        if R.is_empty stk || swap >= R.length stk then None else
+        (* Pick the right term in the stack. *)
+        let (left, examined, right) = R.destruct stk swap in
+        let examined = whnf examined in
+        (* Store hd of stack if needed *)
+        if store then vars.(cursor) <- examined;
+        let cursor = if store then succ cursor else cursor in
+        (* Fetch the right subtree and the new stack *)
+        (* [choose t] chooses a tree among {!val:children} when term [t] is
+           examined and returns the new head of stack. *)
+        let choose t : tree option * term list =
+          let (h, args) = Basics.get_args t in
+          match h with
+          | Symb(s,_)  ->
+             let c_ari = List.length args in
+             let cons = {c_sym = s.sym_name; c_mod = s.sym_path; c_ari} in
+             let matched = ConsMap.find_opt cons children in
+             if matched = None then (default, []) else (matched, args)
+          | Abst(_, _) -> assert false
+          | Meta(_, _) -> assert false
+          | _          -> assert false
+        in
+        let (matched, args) = choose examined in
+        let stk = R.restruct left args right in
+        Option.bind (fun tr -> walk tr stk cursor) matched
+  in
+  walk tree stk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.

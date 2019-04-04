@@ -83,8 +83,8 @@ struct
 
   (** [restruct r n o] is the concatenation of three stacks [r] [n] and
       [o]. [O(log min (size r) (size n) (size o))] amortized *)
-  let restruct : 'a t -> 'a t -> 'a t -> 'a t = fun prefix infix postfix ->
-    let post_in_fix = Vect.concat prefix infix in
+  let restruct : 'a t -> 'a list -> 'a t -> 'a t = fun prefix infix postfix ->
+    let post_in_fix = Vect.concat prefix (of_list infix) in
     Vect.concat post_in_fix postfix
 
   (** [pp e o s] prints stack [s] to out channel [o] using element pp [e]. *)
