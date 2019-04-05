@@ -1,34 +1,44 @@
 #!/bin/bash
 
-up_bound=1000
+# Currently generates two test files
+# + many_sym.lp
+# + many_args.lp
 
 nat_boilerplate="nat.lp"
 
 # Many rules on one symbol
-many_symb="many_symb.lp"
+nrules=1000
+fname="many_symb.lp"
+# Use the nat template
+cp "$nat_boilerplate" "$fname"
 
-cp "$nat_boilerplate" "$many_symb"
-
-echo "symbol f : Nat ⇒ Nat" >> "$many_symb"
-echo "rule f 0 → 0" >> "$many_symb"
-for i in `seq 1 $up_bound` ; do
+echo "symbol f : Nat ⇒ Nat" >> "$fname"
+# Define rules: if n pair, f n → n /2 else f n → 0
+echo "rule f 0 → 0" >> "$fname"
+for i in $(seq 1 $nrules) ; do
     if [[ $(($i % 2)) -eq 0 ]] ; then
         half=$(($i / 2))
-        echo "and f $i → $half" >> "$many_symb"
+        echo "and f $i → $half" >> "$fname"
     else
-        echo "and f $i → 0" >> "$many_symb"
+        echo "and f $i → 0" >> "$fname"
     fi
 done
-
-sum_of_ints="symbol sof : Nat ⇒ Nat
+# Define function summing values of f
+sum_of_effs="symbol sof : Nat ⇒ Nat
 rule sof (S &n) → plus (f (S &n)) (sof &n)"
-echo "$sum_of_ints" >> "$many_symb"
+echo "$sum_of_effs" >> "$fname"
 
-echo "compute sof $up_bound" >> "$many_symb"
+# Computation
+echo "compute sof $nrules" >> "$fname"
 
-# Many arguments on one rule
-many_args="many_args.lp"
-cp "$nat_boilerplate" "$many_args"
+
+## Many arguments on one rule
+## Generate a file with a symbol having rules with many arguments
+## a rule is 'f 0 0 ... 0 i 0 ... 0 → f 0 0 ... (i - 1) 0 ... 0'
+## with [i] at the index [i] in the sequence of zeros, and the first rule is
+## f 0 ... 0 → 0
+fname="many_args.lp"
+cp "$nat_boilerplate" "$fname"
 
 ftype=""
 nargs=400
@@ -37,14 +47,16 @@ for i in {1..nargs}; do
 done
 ftype="$ftype""Nat"
 
-cp "$nat_boilerplate" "$many_args"
+cp "$nat_boilerplate" "$fname"
 
 ftype=""
 for i in $(seq 0 $nargs); do
     ftype+="Nat ⇒ "
 done
 ftype+="Nat"
-echo "symbol f : $ftype" >> "$many_args"
+echo "symbol f : $ftype" >> "$fname"
+# [all_except_one i] returns a line of zeros with [i] at the [i]th
+# position
 function all_except_one {
     local args=""
     for i in $(seq 1 $1); do
@@ -56,14 +68,17 @@ function all_except_one {
     done
     echo $args
 }
+# Initial rule
 for i in $(seq 0 $nargs); do
     lhs="$lhs 0"
 done
-echo "rule f $lhs → 0" >> "$many_args"
+echo "rule f $lhs → 0" >> "$fname"
+# Other rules
 for i in $(seq 1 $nargs); do
     lhs=$(all_except_one $i)
     prev=$(( i - 1 ))
     rhs=$(all_except_one $prev)
-    echo "and f $lhs → f $rhs" >> "$many_args"
+    echo "and f $lhs → f $rhs" >> "$fname"
 done
-echo "compute f $(all_except_one $nargs)" >> "$many_args"
+# computation
+echo "compute f $(all_except_one $nargs)" >> "$fname"
