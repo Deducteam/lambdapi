@@ -1,4 +1,4 @@
 _autogen*
 *.plain
 *.prof
-gmon.out\n
+gmon.out
