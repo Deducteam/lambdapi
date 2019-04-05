@@ -28,7 +28,7 @@ index 1b3b96f..585c124 100644
 +  ti_build_tree := !ti_build_tree +. (Unix.gettimeofday () -. _t) ;
 +  r
 diff --git a/src/eval.ml b/src/eval.ml
-index 2ccec55..e9f2558 100644
+index 2ccec55..acc29f5 100644
 --- a/src/eval.ml
 +++ b/src/eval.ml
 @@ -7,6 +7,9 @@ open Terms
@@ -41,21 +41,26 @@ index 2ccec55..e9f2558 100644
  (** The head-structure of a term t is:
  - λx:_,h if t=λx:a,u and h is the head-structure of u
  - ∀ if t=∀x:a,u
-@@ -331,7 +334,14 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
- let whnf : term -> term = fun t ->
-   Pervasives.(steps := 0);
-   let t = unfold t in
-+  Pervasives.(with_trees := true) ;
-+  let _t = Unix.gettimeofday () in
-+  let _ = whnf t in
-+  Pervasives.(ti_evb_tree := !ti_evb_tree +. (Unix.gettimeofday () -. _t)) ;
-+  Pervasives.(with_trees := false) ;
-+  let _t = Unix.gettimeofday () in
-   let u = whnf t in
-+  Pervasives.(ti_eval := !ti_eval +. (Unix.gettimeofday () -. _t)) ;
-   if Pervasives.(!with_trees) then u else
-   if Pervasives.(!steps = 0) then t else u
+@@ -368,6 +371,19 @@ let rec snf : term -> term = fun t ->
+   | Wild        -> assert false
+   | TRef(_)     -> assert false
  
++let snf t =
++  Pervasives.(with_trees := true) ;
++  let _tsta = Unix.gettimeofday () in
++  let _ = snf t in
++  let _tsto = Unix.gettimeofday () in
++  Pervasives.(ti_evb_tree := !ti_evb_tree +. (_tsto -. _tsta)) ;
++  Pervasives.(with_trees := false) ;
++  let _tsta = Unix.gettimeofday () in
++  let u = snf t in
++  let _tsto = Unix.gettimeofday () in
++  Pervasives.(ti_eval := !ti_eval +. (_tsto -. _tsta)) ;
++  u
++
+ (** [hnf t] computes a head-normal form of the term [t]. *)
+ let rec hnf : term -> term = fun t ->
+   match whnf t with
 diff --git a/src/lambdapi.ml b/src/lambdapi.ml
 index 897cb6f..9ea6c8e 100644
 --- a/src/lambdapi.ml
