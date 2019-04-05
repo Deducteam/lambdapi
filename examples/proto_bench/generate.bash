@@ -8,9 +8,7 @@
 natural_prelude="require nat
 open nat
 "
-for f in "_autogen*"; do
-    rm "$f"
-done
+rm "_autogen"*
 
 ## Many rules on one symbol
 ## Create a function defined on each integer and compute the sum
