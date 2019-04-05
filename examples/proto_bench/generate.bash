@@ -8,7 +8,7 @@ nat_boilerplate="nat.lp"
 
 # Many rules on one symbol
 nrules=1000
-fname="many_symb.lp"
+fname="_autogen_many_symb.lp"
 # Use the nat template
 cp "$nat_boilerplate" "$fname"
 
@@ -37,7 +37,7 @@ echo "compute sof $nrules" >> "$fname"
 ## a rule is 'f 0 0 ... 0 i 0 ... 0 → f 0 0 ... (i - 1) 0 ... 0'
 ## with [i] at the index [i] in the sequence of zeros, and the first rule is
 ## f 0 ... 0 → 0
-fname="many_args.lp"
+fname="_autogen_many_args.lp"
 cp "$nat_boilerplate" "$fname"
 
 ftype=""
