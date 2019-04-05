@@ -8,6 +8,9 @@
 natural_prelude="require nat
 open nat
 "
+for f in "_autogen*"; do
+    rm "$f"
+done
 
 ## Many rules on one symbol
 ## Create a function defined on each integer and compute the sum
@@ -28,7 +31,7 @@ for i in $(seq 1 $nrules) ; do
     fi
 done
 # Define function summing values of f
-sum_of_effs="symbol sof : Nat.Nat ⇒ Nat.Nat
+sum_of_effs="symbol sof : Nat ⇒ Nat
 rule sof (S &n) → plus (f (S &n)) (sof &n)"
 echo "$sum_of_effs" >> "$fname"
 
@@ -48,16 +51,16 @@ echo "$natural_prelude" >> "$fname"
 funtype=""
 nargs=400
 for i in {1..nargs}; do
-    funtype="Nat ⇒ $ftype"
+    funtype="Nat ⇒ $funtype"
 done
-funtype="$ftype""Nat"
+funtype+="Nat"
 
 funtype=""
 for i in $(seq 0 $nargs); do
     funtype+="Nat ⇒ "
 done
 funtype+="Nat"
-echo "symbol f : $ftype" >> "$fname"
+echo "symbol f : $funtype" >> "$fname"
 # [all_except_one i] returns a line of zeros with [i] at the [i]th
 # position
 function all_except_one {

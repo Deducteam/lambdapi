@@ -12,6 +12,7 @@ make
 cd "examples/proto_bench"
 lp="../../_build/install/default/bin/lambdapi"
 for t in *.lp; do
+    echo "Checking $t..."
     exec "$lp" "$t"
 done
 cd "../.."
