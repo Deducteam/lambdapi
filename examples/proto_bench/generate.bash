@@ -1,16 +1,20 @@
 #!/bin/bash
 
 # Currently generates two test files
-# + many_sym.lp
-# + many_args.lp
+# + _autogen_many_sym.lp
+# + _autogen_many_args.lp
 
-nat_boilerplate="nat.lp"
+# Boilerplate code
+natural_prelude="require nat
+open nat
+"
 
-# Many rules on one symbol
+## Many rules on one symbol
+## Create a function defined on each integer and compute the sum
 nrules=1000
 fname="_autogen_many_symb.lp"
-# Use the nat template
-cp "$nat_boilerplate" "$fname"
+touch "$fname"
+echo "$natural_prelude" >> "$fname"
 
 echo "symbol f : Nat ⇒ Nat" >> "$fname"
 # Define rules: if n pair, f n → n /2 else f n → 0
@@ -24,7 +28,7 @@ for i in $(seq 1 $nrules) ; do
     fi
 done
 # Define function summing values of f
-sum_of_effs="symbol sof : Nat ⇒ Nat
+sum_of_effs="symbol sof : Nat.Nat ⇒ Nat.Nat
 rule sof (S &n) → plus (f (S &n)) (sof &n)"
 echo "$sum_of_effs" >> "$fname"
 
@@ -38,22 +42,21 @@ echo "compute sof $nrules" >> "$fname"
 ## with [i] at the index [i] in the sequence of zeros, and the first rule is
 ## f 0 ... 0 → 0
 fname="_autogen_many_args.lp"
-cp "$nat_boilerplate" "$fname"
+touch "$fname"
+echo "$natural_prelude" >> "$fname"
 
-ftype=""
+funtype=""
 nargs=400
 for i in {1..nargs}; do
-    ftype="Nat ⇒ $ftype"
+    funtype="Nat ⇒ $ftype"
 done
-ftype="$ftype""Nat"
+funtype="$ftype""Nat"
 
-cp "$nat_boilerplate" "$fname"
-
-ftype=""
+funtype=""
 for i in $(seq 0 $nargs); do
-    ftype+="Nat ⇒ "
+    funtype+="Nat ⇒ "
 done
-ftype+="Nat"
+funtype+="Nat"
 echo "symbol f : $ftype" >> "$fname"
 # [all_except_one i] returns a line of zeros with [i] at the [i]th
 # position
