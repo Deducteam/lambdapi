@@ -1,16 +1,16 @@
 require nat
 open nat
 
-symbol constant State : TYPE
-symbol constant finished : State
-symbol constant computing : State
+symbol const State : TYPE
+symbol const finished : State
+symbol const computing : State
 
 definition upper ≔ 2000
 
-symbol const loop : Nat ⇒ Nat ⇒ State
+symbol loop : Nat ⇒ Nat ⇒ State
 rule loop 0      0      → finished
- and loop (S &x) 0      → f &x upper
- and loop &x     (S &y) → f &x &y
+ and loop (S &x) 0      → loop &x upper
+ and loop &x     (S &y) → loop &x &y
 
-compute f upper
-assert (f upper) ≡ finished
+compute loop upper
+assert (loop upper) ≡ finished
