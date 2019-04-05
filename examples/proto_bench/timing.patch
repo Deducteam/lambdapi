@@ -28,36 +28,36 @@ index 1b3b96f..585c124 100644
 +  ti_build_tree := !ti_build_tree +. (Unix.gettimeofday () -. _t) ;
 +  r
 diff --git a/src/eval.ml b/src/eval.ml
-index 2ccec55..f9ca79b 100644
+index 2ccec55..e9f2558 100644
 --- a/src/eval.ml
 +++ b/src/eval.ml
-@@ -24,6 +24,9 @@ form.
- A term t is in strong normal form (snf) if it cannot be reduced further.
- *)
+@@ -7,6 +7,9 @@ open Terms
+ open Basics
+ open Print
  
-+let ti_eval_tree = Pervasives.ref 0.
-+let ti_eval = Pervasives.ref 0. ;;
++let ti_eval = Pervasives.ref 0.
++let ti_evb_tree = Pervasives.ref 0.
 +
- (** [with_trees] contains whether trees are used for pattern matching. *)
- let with_trees : bool Pervasives.ref = Pervasives.ref false
- 
-@@ -101,9 +104,13 @@ let whnf_beta : term -> term = fun t ->
- let rec whnf : term -> term = fun t ->
-   if !log_enabled then log_eval "evaluating [%a]" pp t;
+ (** The head-structure of a term t is:
+ - λx:_,h if t=λx:a,u and h is the head-structure of u
+ - ∀ if t=∀x:a,u
+@@ -331,7 +334,14 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
+ let whnf : term -> term = fun t ->
+   Pervasives.(steps := 0);
    let t = unfold t in
--  if Pervasives.(!with_trees) then whnf_stk_t t [] else
++  Pervasives.(with_trees := true) ;
 +  let _t = Unix.gettimeofday () in
-+  let _ = whnf_stk_t t [] in
-+  Pervasives.(ti_eval_tree := !ti_eval_tree +. (Unix.gettimeofday () -. _t)) ;
-   let s = Pervasives.(!steps) in
++  let _ = whnf t in
++  Pervasives.(ti_evb_tree := !ti_evb_tree +. (Unix.gettimeofday () -. _t)) ;
++  Pervasives.(with_trees := false) ;
 +  let _t = Unix.gettimeofday () in
-   let u, stk = whnf_stk t [] in
+   let u = whnf t in
 +  Pervasives.(ti_eval := !ti_eval +. (Unix.gettimeofday () -. _t)) ;
-   if Pervasives.(!steps) <> s then to_term u stk else t
+   if Pervasives.(!with_trees) then u else
+   if Pervasives.(!steps = 0) then t else u
  
- (** [whnf_stk_t t k] computes the weak head normal form of [t] applied to
 diff --git a/src/lambdapi.ml b/src/lambdapi.ml
-index 897cb6f..e7f3fc5 100644
+index 897cb6f..9ea6c8e 100644
 --- a/src/lambdapi.ml
 +++ b/src/lambdapi.ml
 @@ -5,6 +5,13 @@ open Extra
@@ -66,9 +66,9 @@ index 897cb6f..e7f3fc5 100644
  
 +;;
 +at_exit (fun () ->
-+  let real_tree_eval = (!(Eval.ti_eval_tree) -. !(Dtree.ti_build_tree)) in
++  let real_tree_eval = (!(Eval.ti_evb_tree) -. !(Dtree.ti_build_tree)) in
 +  let fmt = r_or_g (!(Eval.ti_eval) > real_tree_eval)
-+    "Tree/tree build/vanilla: %f/%f/%f\n" in
++    "(Tree eval/build)/vanilla: (%f/%f)/%f\n" in
 +  Format.printf fmt real_tree_eval !(Dtree.ti_build_tree) !(Eval.ti_eval))
 +
  (* NOTE only standard [Pervasives] references here. *)
