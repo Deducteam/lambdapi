@@ -60,7 +60,7 @@ sig
   (** [of_list l] returns a stack containing the elements of [l]. *)
   val of_list : 'a list -> 'a t
 
-  (** [length v] is the number of elements in [v]. [O(1)] amortized. *)
+  (** [length v] is the number of elements in [v]. *)
   val length : 'a t -> int
 
   (** Prefix and suffix of the substrate. *)
@@ -69,52 +69,39 @@ sig
 
   (** [destruct v i] returns a triplet [(r, e, o)] with [r] being the
       elements from 0 to [i - 1], [e] the [i]th element and [o] the elements
-      from [i + 1] to the end of [v]. [O(log size v)] *)
+      from [i + 1] to the end of [v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
   (** [restruct r n o] is the concatenation of three stacks [r] [n] and
-      [o]. [O(log min (size r) (size n) (size o))] amortized *)
+      [o]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
-
-  (** [pp o s] prints substrate [s] to channel [o]. *)
-  val pp : 'a pp -> 'a t pp
 end
 
 module ReductionStack : reduction_substrate =
 struct
-  open Extra
-  module Vect = BatVect
-
-  type 'a t = 'a Vect.t
-  type 'a prefix = 'a Vect.t
-  type 'a suffix = 'a Vect.t
-
-  let empty = Vect.empty
-
-  let is_empty = Vect.is_empty
-
-  let of_list = Vect.of_list
-
-  let length = Vect.length
-
-  let destruct restk i =
-    let elt = Vect.get restk i in
-    let prefix = Vect.sub restk 0 i in
-    let postfix =
-      if i >= Vect.length restk then Vect.empty else
-        Vect.sub restk (i + 1) (Vect.length restk - (i + 1)) in
-    prefix, elt, postfix
-
-  let restruct left middle right =
-    let post_in_fix = Vect.concat left (of_list middle) in
-    Vect.concat post_in_fix right
-
-  (** [pp e o s] prints stack [s] to out channel [o] using element pp [e]. *)
-  let pp : 'a pp -> 'a t pp = fun pp_elt oc v ->
-    Format.pp_print_string oc "[" ;
-    List.pp pp_elt ";" oc (Vect.to_list v) ;
-    Format.pp_print_string oc "]"
-
+  type 'a t = 'a list
+  type 'a prefix = 'a list
+  type 'a suffix = 'a list
+  let empty = []
+  let is_empty l = (=) [] l
+  let of_list l = l
+  let length = List.length
+  let destruct e i =
+    if i < 0 then invalid_arg "RedStack.destruct";
+    let rec destruct l i r =
+      match (r, i) with
+      | ([]  , _) -> raise Not_found
+      | (v::r, 0) -> (l, v, r)
+      | (v::r, i) -> destruct (v :: l) (i - 1) r
+    in
+    destruct [] i e
+  let restruct l c r =
+    let rec insert acc l =
+      match l with
+      | []   -> acc
+      | x::l -> insert (x :: acc) l
+    in
+    insert (c @ r) l
 end
 
 (** {3 Operators on trees} *)
