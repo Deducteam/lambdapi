@@ -266,7 +266,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
 
 (** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
 and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
-  let vars = Array.make d Kind in (* dummy terms *)
+  let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
@@ -299,7 +299,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         (* Fetch the right subtree and the new stack *)
         (* [choose t] chooses a tree among {!val:children} when term [t] is
            examined and returns the new head of stack. *)
-        let choose t : tree option * term list =
+        let choose t =
           let (h, args) = Basics.get_args t in
           match h with
           | Symb(s,_)  ->
