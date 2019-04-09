@@ -544,12 +544,10 @@ module Cm = ClauseMat
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
     elements as the number of variables in [r].  The environment builder [e] is
     also enriched.  The tree which allows this consumption is returned, with a
-    leaf holding action [r] and the new environment.  Even though only
-    essential terms could be consumed using appropriate swaps; it costs less
-    to consume linearly the stack than performing multiple swaps. *)
+    leaf holding action [r] and the new environment.  Current strategy is
+    rather stupid, the stack is consumed linearly until all pattern variables
+    are gathered. *)
 let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
-(* XXX The above statement might not be true depending on the data structure
-   used in {!module:ReductionStack}. *)
   fun line depth env_builder rhs ->
     let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
@@ -560,24 +558,21 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
       match telst with
       | []       -> assert false
       | te :: tl ->
-         begin match te with
+         let h, args = Basics.get_args te in
+         let atl = args @ tl in
+         begin match h with
          | Patt(Some(i), _, _) ->
             let neb =  IntMap.add (depth + added) i env_builder in
-            let child = loop tl (succ added) neb in
+            let child = loop atl (succ added) neb in
             Node({ defn with store = true ; default = Some(child) })
-         | Appl(_, _)          ->
-            let s, args = Basics.get_args te in
-            let newtl = s :: args @ tl in
-            let child = loop newtl added env_builder in
-            Node({ defn with default = Some(child) })
          | Abst(_, b)          ->
             let _, body = Bindlib.unbind b in
-            let child = loop (body :: tl) added env_builder in
-            Node( {defn with default = Some(child) })
+            let child = loop (body :: atl) added env_builder in
+            Node({ defn with default = Some(child) })
          | Patt(None, _, _)
          | Symb(_, _)
          | Vari(_)             ->
-            let child = loop tl added env_builder in
+            let child = loop atl added env_builder in
             Node({ defn with default = Some(child) })
          | _                   -> assert false
          end in
