@@ -132,6 +132,14 @@ module List =
         | l, []     -> l
         | l, h :: t -> loop ((if (mem_eq e h l) then l else (h :: l)), t) in
       loop ([], l)
+
+    (** [assoc_eq e k l] is [List.assoc k l] with equality function [e]. *)
+    let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option = fun eq k l ->
+      let rec loop = function
+        | []                      -> None
+        | (x, e) :: _ when eq x k -> Some(e)
+        | _      :: t             -> loop t in
+      loop l
   end
 
 module Array =

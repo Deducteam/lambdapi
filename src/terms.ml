@@ -18,18 +18,89 @@ type constructor = { c_mod : string list
                    ; c_sym : string
                    ; c_ari : int }
 
-(** [cons_compare c d] is a comparison function for constructors; more
-    efficient than the pervasive. *)
-let cons_compare : constructor -> constructor -> int = fun ca cb ->
-  let scomp = String.compare ca.c_sym cb.c_sym in
-  if scomp <> 0 then scomp
-  else let acomp = Int.compare ca.c_ari cb.c_ari in
-    if acomp <> 0 then acomp
-    else Pervasives.compare ca.c_mod cb.c_mod
+(** Functional map on constructors.  Special processing for small maps. *)
+module type constructor_mapping =
+sig
+  (** Type of keys. *)
+  type key = constructor
 
-(** Functional map on constructors. *)
-module ConsMap = Map.Make(struct type t = constructor
-                                 let compare = cons_compare end)
+  (** Type of a mapping. *)
+  type 'a t
+
+  (** The empty map. *)
+  val empty : 'a t
+
+  (** [is_empty m] returns whether [m] is empty; more efficient than comparing
+      to [empty] (avoids a conversion). *)
+  val is_empty : 'a t -> bool
+
+  (** [add k e m] adds element [e] with key [k] to mapping [m]. *)
+  val add : key -> 'a -> 'a t -> 'a t
+
+  (** [bindings m] returns an associative list [(k, e)] with [k] key and [e]
+      element. *)
+  val bindings : 'a t -> (key * 'a) list
+
+  (** [find_opt k m] returns [Some(e)] with [e] the element mapped by [k]
+      through [m] and [None] if [k] is not in [m]. *)
+  val find_opt : key -> 'a t -> 'a option
+
+  (** [iter f m] iters function [f] on mapping [m]. *)
+  val iter : (key -> 'a -> unit) -> 'a t -> unit
+
+  (** [map f m] maps [f] on mapping m. *)
+  val map : ('a -> 'b) -> 'a t -> 'b t
+end
+
+module ConsMap : constructor_mapping =
+struct
+
+  (** [cons_compare c d] is a comparison function for constructors; more
+      efficient than the pervasive. *)
+  let cons_compare : constructor -> constructor -> int = fun ca cb ->
+    let scomp = String.compare ca.c_sym cb.c_sym in
+    if scomp <> 0 then scomp
+    else let acomp = Int.compare ca.c_ari cb.c_ari in
+      if acomp <> 0 then acomp
+      else Pervasives.compare ca.c_mod cb.c_mod
+  let cons_eq : 'a eq = fun a b -> cons_compare a b = 0
+
+  module ConsMap = Map.Make(struct type t = constructor
+      let compare = cons_compare end)
+
+  let threshold = 4
+
+  type key = constructor
+
+  let heavy_of_bindings : (key * 'a) list -> 'a ConsMap.t = fun x ->
+    ConsMap.of_seq @@ List.to_seq x
+
+  type 'a t =
+    | Light of (constructor * 'a) list
+    | Heavy of 'a ConsMap.t
+  let empty = Light([])
+  let is_empty = function
+    | Light([])      -> true
+    | Light(_ :: _)  -> false
+    | Heavy(x)       -> ConsMap.is_empty x
+  let add k e m = match m with
+    | Light(x) -> let x = (k, e) :: x in
+      if List.length x > threshold
+      then Heavy(heavy_of_bindings x) else Light(x)
+    | Heavy(x) -> Heavy(ConsMap.add k e x)
+  let find_opt k = function
+    | Light(x) -> List.assoc_eq cons_eq k x
+    | Heavy(x) -> ConsMap.find_opt k x
+  let bindings = function
+    | Light(x) -> x
+    | Heavy(x) -> ConsMap.bindings x
+  let map f = function
+    | Light(x) -> Light(List.map (fun (k, e) -> (k, f e)) x)
+    | Heavy(x) -> Heavy(ConsMap.map f x)
+  let iter f = function
+    | Light(x) -> List.iter (fun (k, e) -> f k e) x
+    | Heavy(x) -> ConsMap.iter f x
+end
 
 (** {3 Term (and symbol) representation} *)
 
