@@ -111,14 +111,17 @@ end
     {!constructor:Fail} on tree [t]. *)
 let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
   do_node:(int -> bool -> 'a ConsMap.t -> 'a option -> 'a) ->
-  fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~fail t ->
+  do_fetch:(bool -> 'a -> 'a) ->
+  fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~do_fetch ~fail t ->
   let rec loop = function
-    | Leaf(pa, a)                      -> do_leaf pa a
-    | Fail                             -> fail
+    | Leaf(pa, a)                                 -> do_leaf pa a
+    | Fail                                        -> fail
     | Node({ swap ; store ; children ; default }) ->
        do_node swap store
          (ConsMap.map (fun c -> loop c) children)
-         (Option.map loop default) in
+         (Option.map loop default)
+    | Fetch(store, next)                          -> do_fetch store (loop next)
+  in
   loop t
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
@@ -133,7 +136,8 @@ let capacity : t -> int =
     let dedepth = Option.get de 0 in
     List.extremum (>) (dedepth :: chdepths) +
       (if st then 1 else 0) in
-  iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
+  let do_fetch st ne = (if st then 1 else 0) + ne in
+  iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node ~do_fetch:do_fetch
 
 (** {3 Constructors} *)
 
@@ -176,13 +180,13 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let rec write_tree : int -> dot_term -> t -> unit =
     fun father_l swon tree ->
     match tree with
-    | Leaf(_, a) ->
+    | Leaf(_, a)         ->
       incr nodecount ;
       let _, acte = Bindlib.unmbind a in
       F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
         swon
-    | Node(ndata)   ->
+    | Node(ndata)        ->
       let { swap ; children ; store ; default } = ndata in
       incr nodecount ;
       let tag = !nodecount in
@@ -193,7 +197,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
       ConsMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
-    | Fail          ->
+    | Fetch(store, next) ->
+      incr nodecount ;
+      let tag = !nodecount in
+      let store_tag = if store then "s" else "" in
+      F.fprintf ppf "@ %d [label=<%s> shape=\"diamond\"]" tag store_tag ;
+      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
+      write_tree tag DotDefa next
+    | Fail               ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
   in
@@ -544,15 +555,12 @@ module Cm = ClauseMat
 (** [fetch l d e r] consumes [l] until environment build [e] contains as many
     elements as the number of variables in [r].  The environment builder [e] is
     also enriched.  The tree which allows this consumption is returned, with a
-    leaf holding action [r] and the new environment.  Current strategy is
-    rather stupid, the stack is consumed linearly until all pattern variables
-    are gathered. *)
+    leaf holding action [r] and the new environment.  The strategy is for the
+    moment rather stupid, nodes are consumed linearly (no swaps performed). *)
 let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
   fun line depth env_builder rhs ->
     let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
-    let defn = { swap = 0 ; store = false ; children = ConsMap.empty
-               ; default = None } in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
       match telst with
@@ -564,16 +572,14 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
          | Patt(Some(i), _, _) ->
             let neb =  IntMap.add (depth + added) i env_builder in
             let child = loop atl (succ added) neb in
-            Node({ defn with store = true ; default = Some(child) })
+            Fetch(true, child)
          | Abst(_, b)          ->
             let _, body = Bindlib.unbind b in
             let child = loop (body :: atl) added env_builder in
-            Node({ defn with default = Some(child) })
-         | Patt(None, _, _)
-         | Symb(_, _)
-         | Vari(_)             ->
+            Fetch(false, child)
+         | Patt(None, _, _)    ->
             let child = loop atl added env_builder in
-            Node({ defn with default = Some(child) })
+            Fetch(false, child)
          | _                   -> assert false
          end in
     loop terms 0 env_builder
