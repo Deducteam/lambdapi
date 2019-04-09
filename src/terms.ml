@@ -157,8 +157,9 @@ type term =
   (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_tree  : (int Lazy.t * tree Lazy.t) ref
-  (** Tree for rule selection along with its capacity. *)
+  ; sym_tree  : (term array Lazy.t * tree Lazy.t) ref
+  (** Tree for rule selection along with an array used systematically during
+      evaluation. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
@@ -426,7 +427,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_tree = ref (lazy 0, lazy Fail) }
+    ; sym_tree = ref (lazy [||], lazy Fail) }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 
