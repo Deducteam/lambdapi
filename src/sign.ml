@@ -190,7 +190,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
-    ; sym_tree = ref (lazy [||], lazy Fail) }
+    ; sym_tree = ref (lazy 0, lazy Fail) }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -297,8 +297,7 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
        let pama = lazy (Dtree.ClauseMat.of_rules !(symb.sym_rules)) in
        let tree = lazy (Dtree.compile @@ Lazy.force pama) in
        let capacity = lazy (Dtree.capacity @@ Lazy.force tree) in
-       let vars = lazy (Array.make (Lazy.force capacity) Kind) in (* Dummy *)
-       symb.sym_tree := (vars, tree) ;
+       symb.sym_tree := (capacity, tree) ;
        if Pervasives.(!write_trees) then
          Dtree.to_dot symb.sym_name (Lazy.force (snd !(symb.sym_tree)))
     | _                                  -> () in

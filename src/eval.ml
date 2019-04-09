@@ -160,9 +160,9 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
     arguments [k].  Returns the reduced term if a rule if found, [None]
     otherwise. *)
 and find_rule_t : sym -> term list -> term option = fun s stk ->
-  let va, tr = !(s.sym_tree) in
-  let va, tr = Lazy.force va, Lazy.force tr in
-  tree_walk tr va stk
+  let de, tr = !(s.sym_tree) in
+  let de, tr = Lazy.force de, Lazy.force tr in
+  tree_walk tr de stk
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
@@ -263,10 +263,9 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [tree_walk t v s] tries to match stack [s] against tree [t] using array
-    [v] to store variables. *)
-and tree_walk : Dtree.t -> term array -> term list -> term option =
-  fun tree vars stk ->
+(** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
+and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
+  let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
@@ -276,7 +275,7 @@ and tree_walk : Dtree.t -> term array -> term list -> term option =
     match tree with
     | Fail                                   -> None
     | Leaf(env_builder, act)                 ->
-        (* Allocate an environment for the action. *)
+        (* Allocate an environement for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn pos slot =
