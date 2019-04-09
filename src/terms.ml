@@ -18,9 +18,18 @@ type constructor = { c_mod : string list
                    ; c_sym : string
                    ; c_ari : int }
 
+(** [cons_compare c d] is a comparison function for constructors; more
+    efficient than the pervasive. *)
+let cons_compare : constructor -> constructor -> int = fun ca cb ->
+  let scomp = String.compare ca.c_sym cb.c_sym in
+  if scomp <> 0 then scomp
+  else let acomp = Int.compare ca.c_ari cb.c_ari in
+    if acomp <> 0 then acomp
+    else Pervasives.compare ca.c_mod cb.c_mod
+
 (** Functional map on constructors. *)
 module ConsMap = Map.Make(struct type t = constructor
-                                 let compare = Pervasives.compare end)
+                                 let compare = cons_compare end)
 
 (** {3 Term (and symbol) representation} *)
 
