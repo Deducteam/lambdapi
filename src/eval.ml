@@ -112,9 +112,8 @@ let rec whnf : term -> term = fun t ->
 and whnf_stk_t : term -> term list -> term = fun t stk ->
   match (unfold t, stk) with
   (* Push argument to the stack. *)
-  | Appl(_, _), _ as st   ->
-     let f, args = Basics.get_args (fst st) in
-     whnf_stk_t f (args @ stk)
+  | Appl(u, v), _ ->
+     whnf_stk_t u (v :: stk)
   (* Beta reduction. *)
   | Abst(_, f), u :: stk  ->
      whnf_stk_t (Bindlib.subst f u) stk
