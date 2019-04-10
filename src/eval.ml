@@ -107,24 +107,22 @@ and whnf_stk_t : term -> term list -> term = fun t stk ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
-    | Appl(u, v), _ ->
-      loop_wst ifnred u (v :: stk)
+    | Appl(u, v), _ -> loop_wst ifnred u (v :: stk)
     (* Beta reduction. *)
     | Abst(_, f), u :: stk  ->
       loop_wst ifnred (Bindlib.subst f u) stk
     (* Try to rewrite. *)
     | Symb(s, _), stk ->
       begin match Timed.(!(s.sym_def)) with
-        | Some(t) -> let t = unfold t in loop_wst t t stk
+        | Some(t) -> loop_wst t t stk
         | None    ->
           match find_rule_t s stk with
-          (* If no rule is found, build back the Appl *)
-          | None    -> ifnred
-          | Some(t) -> let t = unfold t in loop_wst t t []
+          (* If no rule is found, return the original term *)
+          | None    -> unfold ifnred
+          | Some(t) -> loop_wst t t []
       end
     (* In head normal form. *)
     | _         , _         -> t in
-  let t = unfold t in
   loop_wst t t stk
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
