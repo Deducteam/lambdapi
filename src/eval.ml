@@ -56,13 +56,6 @@ let to_term : term -> stack -> term = fun t args ->
 
 (* Suffix [_t] for "tree" version *)
 
-(** [to_term_t t k] builds a term from a symbol and its arguments. *)
-let to_term_t : term -> term list -> term = fun t args ->
-  let rec to_term_t t = function
-    | [] -> t
-    | u :: args -> to_term_t (Appl(t, u)) args in
-  to_term_t t args
-
 (** Evaluation step counter. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
@@ -110,25 +103,28 @@ let rec whnf : term -> term = fun t ->
     arguments [k].  Note that the normalisation is done in thee sense of
     [whnf]. *)
 and whnf_stk_t : term -> term list -> term = fun t stk ->
-  match (unfold t, stk) with
-  (* Push argument to the stack. *)
-  | Appl(u, v), _ ->
-     whnf_stk_t u (v :: stk)
-  (* Beta reduction. *)
-  | Abst(_, f), u :: stk  ->
-     whnf_stk_t (Bindlib.subst f u) stk
-  (* Try to rewrite. *)
-  | Symb(s, _), stk as st ->
-     begin match Timed.(!(s.sym_def)) with
-     | Some(t) -> whnf_stk_t t stk
-     | None    ->
-     match find_rule_t s stk with
-     (* If no rule is found, build back the Appl *)
-     | None    -> to_term_t (fst st) stk
-     | Some(t) -> whnf_stk_t t []
-     end
-  (* In head normal form. *)
-  | _         , _         -> t
+  let rec loop_wst ifnred t stk =
+    match (unfold t, stk) with
+    (* Push argument to the stack. *)
+    | Appl(u, v), _ ->
+      loop_wst ifnred u (v :: stk)
+    (* Beta reduction. *)
+    | Abst(_, f), u :: stk  ->
+      loop_wst ifnred (Bindlib.subst f u) stk
+    (* Try to rewrite. *)
+    | Symb(s, _), stk ->
+      begin match Timed.(!(s.sym_def)) with
+        | Some(t) -> let t = unfold t in loop_wst t t stk
+        | None    ->
+          match find_rule_t s stk with
+          (* If no rule is found, build back the Appl *)
+          | None    -> ifnred
+          | Some(t) -> let t = unfold t in loop_wst t t []
+      end
+    (* In head normal form. *)
+    | _         , _         -> t in
+  let t = unfold t in
+  loop_wst t t stk
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
