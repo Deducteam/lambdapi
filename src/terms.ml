@@ -12,22 +12,36 @@ open Timed
 
 (** {4 Constructors for decision trees} *)
 
-(** A constructor is the representation of a symbol along with the number of
-    arguments to which it is applied. *)
-type treecons =
-  { c_mod : string list
-  (** Module name where the symbol of the constructor is defined. *)
-  ; c_sym : string
-  (** Symbol of the constructor. *)
-  ; c_ari : int
-  (** Arity of the considered constructor.  A same symbol representation may
-      generate several constructors with different arities. *) }
+module TreeCons = struct
+  (** A constructor is the representation of a symbol along with the number of
+      arguments to which it is applied. *)
+  type t =
+    { c_mod : string list
+    (** Module name where the symbol of the constructor is defined. *)
+    ; c_sym : string
+    (** Symbol of the constructor. *)
+    ; c_ari : int
+    (** Arity of the considered constructor.  A same symbol representation may
+        generate several constructors with different arities. *) }
+
+  (** [compare c d] is a comparison function for constructors; more efficient
+      than the pervasive. *)
+  let compare : t -> t -> int = fun ca cb ->
+    let scomp = String.compare ca.c_sym cb.c_sym in
+    if scomp <> 0 then scomp
+    else let acomp = Int.compare ca.c_ari cb.c_ari in
+      if acomp <> 0 then acomp
+      else Pervasives.compare ca.c_mod cb.c_mod
+
+  (** [eq c d] returns true iff [c] and [d] are equal regarding [compare]. *)
+  let eq : 'a eq = fun a b -> compare a b = 0
+end
 
 (** Functional map with {!type:treecons} as keys. *)
 module type TreeCons_mapping =
 sig
   (** Type of keys. *)
-  type key = treecons
+  type key = TreeCons.t
 
   (** Type of a mapping. *)
   type 'a t
@@ -62,31 +76,15 @@ end
     evaluation on very simple rules. *)
 module ConsMap : TreeCons_mapping =
 struct
+  module ConsMap = Map.Make(TreeCons)
 
-  (** [cons_compare c d] is a comparison function for constructors; more
-      efficient than the pervasive. *)
-  let cons_compare : treecons -> treecons -> int = fun ca cb ->
-    let scomp = String.compare ca.c_sym cb.c_sym in
-    if scomp <> 0 then scomp
-    else let acomp = Int.compare ca.c_ari cb.c_ari in
-      if acomp <> 0 then acomp
-      else Pervasives.compare ca.c_mod cb.c_mod
-  let cons_eq : 'a eq = fun a b -> cons_compare a b = 0
-
-  module TreeCons_comp = struct
-    type t = treecons
-    let compare = cons_compare
-  end
-
-  module ConsMap = Map.Make(TreeCons_comp)
-
-  type key = treecons
+  type key = TreeCons.t
 
   let heavy_of_bindings : (key * 'a) list -> 'a ConsMap.t = fun x ->
     ConsMap.of_seq @@ List.to_seq x
 
   type 'a t =
-    | Light of (treecons * 'a) list
+    | Light of (TreeCons.t * 'a) list
     | Heavy of 'a ConsMap.t
 
   (** A mapping is considered {i big} if the number of bindings exceeds the
@@ -108,7 +106,7 @@ struct
       then Heavy(heavy_of_bindings x) else Light(x)
     | Heavy(x) -> Heavy(ConsMap.add k e x)
   let find_opt k = function
-    | Light(x) -> List.assoc_eq cons_eq k x
+    | Light(x) -> List.assoc_eq TreeCons.eq k x
     | Heavy(x) -> ConsMap.find_opt k x
   let bindings = function
     | Light(x) -> x

@@ -263,6 +263,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
   let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
   let module R = Dtree.ReductionStack in
+  let module TC = TreeCons in
   let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
@@ -299,7 +300,8 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           match h with
           | Symb(s,_)  ->
              let c_ari = List.length args in
-             let cons = {c_sym = s.sym_name; c_mod = s.sym_path; c_ari} in
+             let cons = { TC.c_sym = s.sym_name ; TC.c_mod = s.sym_path
+                        ; TC.c_ari} in
              let matched = ConsMap.find_opt cons children in
              if matched = None then (default, []) else (matched, args)
           | Abst(_, _) -> assert false

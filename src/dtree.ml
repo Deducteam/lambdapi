@@ -141,7 +141,17 @@ let capacity : t -> int =
 
 (** {3 Constructors} *)
 
-let cons_of_term : term -> treecons = fun te ->
+(** [is_cons t] returns whether a term [t] is considered as a constructor. *)
+let rec is_treecons : term -> bool = function
+  | Appl(u, _)    -> is_treecons u
+  | Meta(_, _)
+  | Abst(_, _)
+  | Patt(_, _, _) -> false
+  | Vari(_)
+  | Symb(_, _)    -> true
+  | _             -> assert false
+
+let treecons_of_term : term -> TreeCons.t = fun te ->
   let hs, args = get_args te in
   let arity = List.length args in
   match hs with
@@ -155,7 +165,7 @@ let cons_of_term : term -> treecons = fun te ->
 type dot_term =
   | DotDefa
   | DotAbst of tvar
-  | DotCons of treecons
+  | DotCons of TreeCons.t
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
@@ -326,21 +336,11 @@ struct
   let get_col : int -> t -> component list = fun ind { clauses ; _ } ->
     List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
 
-  (** [is_cons t] returns whether a term [t] is considered as a constructor. *)
-  let rec is_cons : term -> bool = function
-    | Appl(_, _) as a -> is_cons (fst (get_args a))
-    | Meta(_, _)
-    | Abst(_, _)
-    | Patt(_, _, _)   -> false
-    | Vari(_)
-    | Symb(_, _)      -> true
-    | _               -> assert false
-
   (** [score c] returns the score heuristic for column [c]. *)
   let rec score : component list -> int = function
     | [] -> 0
-    | (x, _) :: xs when is_cons x -> score xs
-    | _ :: xs                     -> succ (score xs)
+    | (x, _) :: xs when is_treecons x -> score xs
+    | _ :: xs                         -> succ (score xs)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic. *)
@@ -354,7 +354,7 @@ struct
       its left hand side is composed only of wildcards. *)
   let exhausted : t -> bool = fun { clauses ; _ } ->
     let flhs = (List.hd clauses).lhs in
-    Array.for_all (fun (e, _) -> not @@ is_cons e) flhs
+    Array.for_all (fun (e, _) -> not @@ is_treecons e) flhs
 
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> rule = fun { clauses ; _ } -> List.hd clauses
@@ -364,7 +364,7 @@ struct
   let can_switch_on : t -> int -> bool = fun { clauses ; _ } k ->
     let rec loop : rule list -> bool = function
       | []      -> false
-      | r :: rs -> if is_cons (fst r.lhs.(k)) then true else loop rs in
+      | r :: rs -> if is_treecons (fst r.lhs.(k)) then true else loop rs in
     loop clauses
 
   (** [discard_cons_free m] returns the list of indexes of columns containing
@@ -401,7 +401,7 @@ struct
       | [] -> List.rev seen
       | hd :: tl ->
          let s = fst (get_args hd) in
-         loop (if not (is_cons s) || List.mem_eq cons_eq s seen then seen
+         loop (if not (is_treecons s) || List.mem_eq cons_eq s seen then seen
            else hd :: seen) tl in
     loop [] telst
 
@@ -636,7 +636,7 @@ let compile : Cm.t -> t = fun patterns ->
         let spepatts =
           let cons = Cm.get_cons terms in
           let f acc cons_te =
-            let cons = cons_of_term cons_te in
+            let cons = treecons_of_term cons_te in
             let rules = Cm.specialize cons_te absolute_cind patterns.clauses in
             let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
             ConsMap.add cons ncm acc in
