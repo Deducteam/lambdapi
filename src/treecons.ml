@@ -16,14 +16,17 @@ type treecons =
 (** [tc_compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
 let tc_compare : treecons -> treecons -> int = fun ca cb ->
-  let scomp = String.compare ca.c_sym cb.c_sym in
-  if scomp <> 0 then scomp
-  else let acomp = Int.compare ca.c_ari cb.c_ari in
-    if acomp <> 0 then acomp
-    else Pervasives.compare ca.c_mod cb.c_mod
+  match String.compare ca.c_sym cb.c_sym with
+  | 0 ->
+    begin match Int.compare ca.c_ari cb.c_ari with
+      | 0 -> Pervasives.compare ca.c_mod cb.c_mod
+      | x -> x
+    end
+  | x -> x
 
-(** [eq c d] returns true iff [c] and [d] are equal regarding [compare]. *)
-let tc_eq : 'a eq = fun a b -> compare a b = 0
+(** [tc_eq c d] returns true iff [c] and [d] are equal regarding
+    [tc_compare]. *)
+let tc_eq : treecons eq = fun a b -> tc_compare a b = 0
 
 module type TcMapSig =
 sig
