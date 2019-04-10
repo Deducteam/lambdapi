@@ -67,6 +67,8 @@ sig
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
 end
 
+(** Naive implementation based on lists.  Appeared to be faster than tree
+    based structures (like ropes). *)
 module RedListStack : Reduction_substrate =
 struct
   type 'a t = 'a list
@@ -75,7 +77,11 @@ struct
   let empty = []
   let is_empty l = (=) [] l
   let of_list l = l
+
+  (** [length l] complexity in [Θ(length l)]. *)
   let length = List.length
+
+  (** [destruct e i] complexity in [Θ(i)]. *)
   let destruct e i =
     if i < 0 then invalid_arg "RedStack.destruct";
     let rec destruct l i r =
@@ -85,6 +91,8 @@ struct
       | (v::r, i) -> destruct (v :: l) (i - 1) r
     in
     destruct [] i e
+
+  (** [restruct l c r] complexity in [Θ(length l)]*)
   let restruct l c r =
     let rec insert acc l =
       match l with
