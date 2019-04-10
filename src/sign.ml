@@ -296,7 +296,7 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
     | Injec when !(symb.sym_rules) <> [] ->
        let pama = lazy (Dtree.ClauseMat.of_rules !(symb.sym_rules)) in
        let tree = lazy (Dtree.compile @@ Lazy.force pama) in
-       let capacity = lazy (Dtree.capacity @@ Lazy.force tree) in
+       let capacity = lazy (Basics.capacity @@ Lazy.force tree) in
        symb.sym_tree := (capacity, tree) ;
        if Pervasives.(!write_trees) then
          Dtree.to_dot symb.sym_name (Lazy.force (snd !(symb.sym_tree)))

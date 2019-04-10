@@ -104,41 +104,6 @@ end
 
 module ReductionStack = RedListStack
 
-(** {3 Operators on trees} *)
-
-(** [iter l n f t] is a generic iterator on trees; with function [l] performed
-    on leaves, function [n] performed on nodes, [f] returned in case of
-    {!constructor:Fail} on tree [t]. *)
-let iter : do_leaf:(int IntMap.t -> action -> 'a) ->
-  do_node:(int -> bool -> 'a ConsMap.t -> 'a option -> 'a) ->
-  do_fetch:(bool -> 'a -> 'a) ->
-  fail:'a -> t -> 'a = fun ~do_leaf ~do_node ~do_fetch ~fail t ->
-  let rec loop = function
-    | Leaf(pa, a)                                 -> do_leaf pa a
-    | Fail                                        -> fail
-    | Node({ swap ; store ; children ; default }) ->
-       do_node swap store
-         (ConsMap.map (fun c -> loop c) children)
-         (Option.map loop default)
-    | Fetch(store, next)                          -> do_fetch store (loop next)
-  in
-  loop t
-
-(** [capacity t] computes the capacity of tree [t].  During evaluation, some
-    terms that are being filtered by the patterns need to be saved in order to
-    be bound in the right hand side of the rule.  The capacity is an upper
-    bound of the number of terms to be saved. *)
-let capacity : t -> int =
-  let do_leaf _ _ = 0 in
-  let fail = 0 in
-  let do_node _ st ch de =
-    let _, chdepths = List.split (ConsMap.bindings ch) in
-    let dedepth = Option.get de 0 in
-    List.extremum (>) (dedepth :: chdepths) +
-      (if st then 1 else 0) in
-  let do_fetch st ne = (if st then 1 else 0) + ne in
-  iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node ~do_fetch:do_fetch
-
 (** {3 Constructors} *)
 
 (** [is_cons t] returns whether a term [t] is considered as a constructor. *)
