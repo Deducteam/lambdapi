@@ -35,17 +35,8 @@ type action = (term_env, term) Bindlib.mbinder
     - fast access to any element in the substrate (for swaps)
     - fast replacement of an element and extension to replace an element of
       the substrate by its reduced form, or an unfolding of
-      {!constructor:Appl} nodes.
-
-    Arrays have fast access but can't be extended efficiently.  Lists can be
-    extended easily but access is slow.  Tree structure have moderately fast
-    access and extension, and are therefore appropriate.
-
-    Two implementations have been tried with
-    - {!module:BatVect},
-    - {!module:BatFingerTree}
-    The performances are similar. *)
-module type reduction_substrate =
+      {!constructor:Appl} nodes. *)
+module type Reduction_substrate =
 sig
   (** Type of a substrate of ['a]. *)
   type 'a t
@@ -66,9 +57,9 @@ sig
   type 'a prefix
   type 'a suffix
 
-  (** [destruct v i] returns a triplet [(r, e, o)] with [r] being the
-      elements from 0 to [i - 1], [e] the [i]th element and [o] the elements
-      from [i + 1] to the end of [v]. *)
+  (** [destruct v i] returns a triplet [(l, m, r)] with [l]eft being the
+      elements from 0 to [i - 1], [m]iddle the [i]th element and [r]ight the
+      elements from [i + 1] to the end of [v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
   (** [restruct r n o] is the concatenation of three stacks [r] [n] and
@@ -76,7 +67,7 @@ sig
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
 end
 
-module ReductionStack : reduction_substrate =
+module RedListStack : Reduction_substrate =
 struct
   type 'a t = 'a list
   type 'a prefix = 'a list
@@ -102,6 +93,8 @@ struct
     in
     insert (c @ r) l
 end
+
+module ReductionStack = RedListStack
 
 (** {3 Operators on trees} *)
 
@@ -224,7 +217,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
 (** {3 Clause matrix and pattern matching problem} *)
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix {i
-    C} can be denote {i C = P → A} where {i P} is a {e pattern matrix} and {i
+    C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
     A} is a column of {e actions}.  Each line of a pattern matrix is a pattern
     to which is attached an action.  When reducing a term, if a line filters
     the term, or equivalently the term matches the pattern, the term is
