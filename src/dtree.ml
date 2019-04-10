@@ -255,12 +255,16 @@ struct
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
-  type t = { clauses : rule list
-           (** The rules. *)
-           ; var_catalogue : Subterm.t list
-           (** Contains positions of terms in {!field:lhs} that can be used
-               as variables in any of the {!field:rhs} which appeared in
-               the matrix that gave birth to this one. *)}
+  type t =
+    { clauses : rule list
+    (** The rules. *)
+    ; var_catalogue : Subterm.t list
+    (** Say {i (Mₙ)ₙ} is a finite sequence of clause matrices, where {i Mₙ₊₁}
+        is either the specialisation or the default case of {i Mₙ}.  Let {i L}
+        be the last matrix of the sequence.  Then {!field:var_catalogue} of {i
+        L} contains positions of terms in any {!field:lhs} of any
+        matrix of {i (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix
+        in {i (Mₙ)ₙ}). *) }
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
