@@ -5,6 +5,7 @@
 open Terms
 open Extra
 open Basics
+open Treecons
 
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
@@ -104,33 +105,13 @@ end
 
 module ReductionStack = RedListStack
 
-(** {3 Constructors} *)
-
-(** [is_cons t] returns whether a term [t] is considered as a constructor. *)
-let rec is_treecons : term -> bool = function
-  | Appl(u, _)    -> is_treecons u
-  | Meta(_, _)
-  | Abst(_, _)
-  | Patt(_, _, _) -> false
-  | Vari(_)
-  | Symb(_, _)    -> true
-  | _             -> assert false
-
-let treecons_of_term : term -> TreeCons.t = fun te ->
-  let hs, args = get_args te in
-  let arity = List.length args in
-  match hs with
-  | Symb({ sym_name ; sym_path ; _ }, _) ->
-     { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
-  | _                                    -> assert false
-
 (** {3 Graphviz output} *)
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa
   | DotAbst of tvar
-  | DotCons of TreeCons.t
+  | DotCons of treecons
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
@@ -170,7 +151,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         (if store then " shape=\"box\"" else "") ;
       (* Create edge *)
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
-      ConsMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+      TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
     | Fetch(store, next) ->
       incr nodecount ;
@@ -189,7 +170,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | Node({ swap ; children = ch ; store ; default }) ->
        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
          swap (if store then " shape=\"box\"" else "") ;
-       ConsMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
+       TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
     | Leaf(_)                                -> ()
     | _                                      -> assert false
@@ -604,9 +585,9 @@ let compile : Cm.t -> t = fun patterns ->
             let cons = treecons_of_term cons_te in
             let rules = Cm.specialize cons_te absolute_cind patterns.clauses in
             let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-            ConsMap.add cons ncm acc in
-          List.fold_left f ConsMap.empty cons in
-        let children = ConsMap.map compile spepatts in
+            TcMap.add cons ncm acc in
+          List.fold_left f TcMap.empty cons in
+        let children = TcMap.map compile spepatts in
         (* Default *)
         let defmat =
           let rules = Cm.default absolute_cind patterns.Cm.clauses in

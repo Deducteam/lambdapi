@@ -3,6 +3,7 @@
 open Extra
 open Timed
 open Terms
+open Treecons
 
 (** Sets and maps of variables. *)
 module Var =
@@ -305,7 +306,7 @@ module SubtMap = Map.Make(Subterm)
     {!constructor:Fail} on tree [t]. *)
 let tree_iter :
   do_leaf:(int IntMap.t -> (term_env, term) Bindlib.mbinder -> 'a) ->
-  do_node:(int -> bool -> 'a ConsMap.t -> 'a option -> 'a) ->
+  do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
   do_fetch:(bool -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_fetch ~fail t ->
   let rec loop = function
@@ -313,7 +314,7 @@ let tree_iter :
     | Fail                                        -> fail
     | Node({ swap ; store ; children ; default }) ->
        do_node swap store
-         (ConsMap.map (fun c -> loop c) children)
+         (TcMap.map (fun c -> loop c) children)
          (Option.map loop default)
     | Fetch(store, next)                          -> do_fetch store (loop next)
   in
@@ -327,8 +328,32 @@ let capacity : tree -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
   let do_node _ st ch de =
-    let _, chdepths = List.split (ConsMap.bindings ch) in
+    let _, chdepths = List.split (TcMap.bindings ch) in
     let dedepth = Option.get de 0 in
     List.extremum (>) (dedepth :: chdepths) + (if st then 1 else 0) in
   let do_fetch st ne = (if st then 1 else 0) + ne in
   tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node ~do_fetch:do_fetch
+
+(** {3 Tree constructor conversion} *)
+
+(** [is_treecons t] returns whether a term [t] is considered as a
+     constructor. *)
+let rec is_treecons : term -> bool = function
+  | Appl(u, _)    -> is_treecons u
+  | Meta(_, _)
+  | Abst(_, _)
+  | Patt(_, _, _) -> false
+  | Vari(_)
+  | Symb(_, _)    -> true
+  | _             -> assert false
+
+(** [treecons_of_term t] returns the tree constructor representing term
+    [t]. *)
+let treecons_of_term : term -> treecons = fun te ->
+  let hs, args = get_args te in
+  let arity = List.length args in
+  match hs with
+  | Symb({ sym_name ; sym_path ; _ }, _) ->
+     { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
+  | _                                    -> assert false
+
