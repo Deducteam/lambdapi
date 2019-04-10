@@ -141,7 +141,7 @@ let capacity : t -> int =
 
 (** {3 Constructors} *)
 
-let cons_of_term : term -> constructor = fun te ->
+let cons_of_term : term -> treecons = fun te ->
   let hs, args = Basics.get_args te in
   let arity = List.length args in
   match hs with
@@ -155,7 +155,7 @@ let cons_of_term : term -> constructor = fun te ->
 type dot_term =
   | DotDefa
   | DotAbst of tvar
-  | DotCons of constructor
+  | DotCons of treecons
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the

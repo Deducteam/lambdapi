@@ -14,15 +14,20 @@ open Timed
 
 (** A constructor is the representation of a symbol along with the number of
     arguments to which it is applied. *)
-type constructor = { c_mod : string list
-                   ; c_sym : string
-                   ; c_ari : int }
+type treecons =
+  { c_mod : string list
+  (** Module name where the symbol of the constructor is defined. *)
+  ; c_sym : string
+  (** Symbol of the constructor. *)
+  ; c_ari : int
+  (** Arity of the considered constructor.  A same symbol representation may
+      generate several constructors with different arities. *) }
 
-(** Functional map on constructors.  Special processing for small maps. *)
-module type constructor_mapping =
+(** Functional map with {!type:treecons} as keys. *)
+module type TreeCons_mapping =
 sig
   (** Type of keys. *)
-  type key = constructor
+  type key = treecons
 
   (** Type of a mapping. *)
   type 'a t
@@ -52,12 +57,15 @@ sig
   val map : ('a -> 'b) -> 'a t -> 'b t
 end
 
-module ConsMap : constructor_mapping =
+(** Implementation of a mapping with {!type:constructor} as keys.  Very small
+    mappings are treated differently.  The incentive is to have faster
+    evaluation on very simple rules. *)
+module ConsMap : TreeCons_mapping =
 struct
 
   (** [cons_compare c d] is a comparison function for constructors; more
       efficient than the pervasive. *)
-  let cons_compare : constructor -> constructor -> int = fun ca cb ->
+  let cons_compare : treecons -> treecons -> int = fun ca cb ->
     let scomp = String.compare ca.c_sym cb.c_sym in
     if scomp <> 0 then scomp
     else let acomp = Int.compare ca.c_ari cb.c_ari in
@@ -65,19 +73,30 @@ struct
       else Pervasives.compare ca.c_mod cb.c_mod
   let cons_eq : 'a eq = fun a b -> cons_compare a b = 0
 
-  module ConsMap = Map.Make(struct type t = constructor
-      let compare = cons_compare end)
+  module TreeCons_comp = struct
+    type t = treecons
+    let compare = cons_compare
+  end
 
-  let threshold = 4
+  module ConsMap = Map.Make(TreeCons_comp)
 
-  type key = constructor
+  type key = treecons
 
   let heavy_of_bindings : (key * 'a) list -> 'a ConsMap.t = fun x ->
     ConsMap.of_seq @@ List.to_seq x
 
   type 'a t =
-    | Light of (constructor * 'a) list
+    | Light of (treecons * 'a) list
     | Heavy of 'a ConsMap.t
+
+  (** A mapping is considered {i big} if the number of bindings exceeds the
+      threshold.  The threshold [t] should be such that
+      + a {!constructor:Light} mapping with [t - 1] elements should have an
+        access time smaller than a {!constructor:Heavy} one,
+      + a {!constructor:Heavy} mapping with [t + 1] elements should have an
+        access time smaller than a {!constructor:Light} one. *)
+  let threshold = 4
+
   let empty = Light([])
   let is_empty = function
     | Light([])      -> true
@@ -158,7 +177,8 @@ type term =
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : (int Lazy.t * tree Lazy.t) ref
-  (** Tree for rule selection along with its capacity. *)
+  (** Tree for rule selection along with its capacity (see
+      {!val:Dtree.capacity}). *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
