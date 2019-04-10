@@ -4,8 +4,7 @@
     {{:10.1145/1411304.1411311}DOI}. *)
 open Terms
 open Extra
-module Sub = Basics.Subterm
-module SubMap = Basics.SubtMap
+open Basics
 
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
@@ -142,7 +141,7 @@ let capacity : t -> int =
 (** {3 Constructors} *)
 
 let cons_of_term : term -> treecons = fun te ->
-  let hs, args = Basics.get_args te in
+  let hs, args = get_args te in
   let arity = List.length args in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
@@ -234,11 +233,11 @@ module ClauseMat =
 struct
   (** A component of the matrix, a term along with its position in the top
       term. *)
-  type component = term * Sub.t
+  type component = term * Subterm.t
 
   (** [pp_component o c] prints component [c] to channel [o]. *)
   let pp_component : component pp = fun oc (te, pos) ->
-    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Basics.Subterm.pp pos
+    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
 
   (** A redefinition of the rule type.
 
@@ -249,7 +248,7 @@ struct
               (** Left hand side of a rule.   *)
               ; rhs : action
               (** Right hand side of a rule. *)
-              ; variables : int SubMap.t
+              ; variables : int SubtMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)}
 
@@ -257,7 +256,7 @@ struct
       action. *)
   type t = { clauses : rule list
            (** The rules. *)
-           ; var_catalogue : Sub.t list
+           ; var_catalogue : Subterm.t list
            (** Contains positions of terms in {!field:lhs} that can be used
                as variables in any of the {!field:rhs} which appeared in
                the matrix that gave birth to this one. *)}
@@ -277,40 +276,40 @@ struct
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : term list -> action -> int SubMap.t = fun lhs rhs ->
+  let flushout_vars : term list -> action -> int SubtMap.t = fun lhs rhs ->
     let nvars = Bindlib.mbinder_arity rhs in
     let rec loop found st po =
-      if found = nvars then SubMap.empty else
+      if found = nvars then SubtMap.empty else
       match st with
-      | [] -> SubMap.empty
+      | [] -> SubtMap.empty
       | x :: xs ->
          begin
            match x with
            | Patt(None, _, _)
            | Vari(_)
-           | Symb(_, _)          -> loop found xs (Sub.succ po)
-           | Patt(Some(i), _, _) -> SubMap.add po i
-              (loop (succ found) xs (Sub.succ po))
-           | Appl(_, _)          -> let _, args = Basics.get_args x in
+           | Symb(_, _)          -> loop found xs (Subterm.succ po)
+           | Patt(Some(i), _, _) -> SubtMap.add po i
+              (loop (succ found) xs (Subterm.succ po))
+           | Appl(_, _)          -> let _, args = get_args x in
                                    deepen found args xs po
            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
                                    deepen found [body] xs po
            | _                   -> assert false
          end
     and deepen found args remain po =
-      let argpos = loop found args (Sub.sub po) in
-      SubMap.union (fun _ _ _ -> assert false) argpos
-        (loop found remain (Sub.succ po))
+      let argpos = loop found args (Subterm.sub po) in
+      SubtMap.union (fun _ _ _ -> assert false) argpos
+        (loop found remain (Subterm.succ po))
     in
     (* The terms of the list are the subterms of the head symbol. *)
-    loop 0 lhs (Sub.succ Sub.init)
+    loop 0 lhs (Subterm.succ Subterm.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
-      let term_pos = Sub.tag (Array.of_list r.Terms.lhs) in
+      let term_pos = Subterm.tag (Array.of_list r.Terms.lhs) in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
     { clauses = List.map r2r rs ; var_catalogue = [] }
@@ -324,7 +323,7 @@ struct
 
   (** [is_cons t] returns whether a term [t] is considered as a constructor. *)
   let rec is_cons : term -> bool = function
-    | Appl(_, _) as a -> is_cons (fst (Basics.get_args a))
+    | Appl(_, _) as a -> is_cons (fst (get_args a))
     | Meta(_, _)
     | Abst(_, _)
     | Patt(_, _, _)   -> false
@@ -389,14 +388,14 @@ struct
     let rec cons_eq : term -> term -> bool = fun te tf ->
       match te, tf with
       | Abst(_, _), Abst(_, _) -> true
-      | Appl(_, _), Appl(_, _) -> cons_eq (fst @@ Basics.get_args te)
-         (fst @@ Basics.get_args tf)
-      | _                      -> Basics.eq te tf in
+      | Appl(_, _), Appl(_, _) -> cons_eq (fst @@ get_args te)
+         (fst @@ get_args tf)
+      | _                      -> eq te tf in
     let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
       match notseen with
       | [] -> List.rev seen
       | hd :: tl ->
-         let s = fst (Basics.get_args hd) in
+         let s = fst (get_args hd) in
          loop (if not (is_cons s) || List.mem_eq cons_eq s seen then seen
            else hd :: seen) tl in
     loop [] telst
@@ -417,14 +416,14 @@ struct
 
   (** [varpos p] returns the list of positions of pattern variables in the
       first column of [p]. *)
-  let varpos : t -> int -> Sub.t list = fun pm ci ->
+  let varpos : t -> int -> Subterm.t list = fun pm ci ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
     let _, vars = List.split (List.filter is_var (get_col ci pm)) in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    List.sort_uniq Sub.compare vars
+    List.sort_uniq Subterm.compare vars
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
@@ -432,14 +431,14 @@ struct
   let rec spec_filter : term -> term -> bool = fun pat hd ->
     match pat, hd with
     | Symb(_, _)   , Symb(_, _)
-    | Vari(_)      , Vari(_)             -> Basics.eq pat hd
+    | Vari(_)      , Vari(_)             -> eq pat hd
     | Appl(_, _)   , Appl(_, _)          ->
-       let ps, pargs = Basics.get_args pat in
-       let hs, hargs = Basics.get_args hd in
+       let ps, pargs = get_args pat in
+       let hs, hargs = get_args hd in
        spec_filter ps hs && List.same_length pargs hargs
     | Appl(_, _)   , Patt(_, _, _)       -> true
     | _            , Patt(_, _, e)       ->
-       let b = Bindlib.bind_mvar (Array.map Basics.to_tvar e) (lift pat) in
+       let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift pat) in
        Bindlib.is_closed b
   (* All below ought to be put in catch-all case*)
     | Symb(_, _), Abst(_, _)
@@ -459,18 +458,18 @@ struct
       | Vari(_)   , _ -> [| |]
       | Appl(_, _), p ->
          (* ^ Arguments verified in filter *)
-         let upat = fst @@ Basics.get_args pat in
-         let hs, hargs = Basics.get_args (fst elt) in
-         let np = Sub.sub p in
-         let tagged = Sub.tag ~empty:np (Array.of_list hargs) in
+         let upat = fst @@ get_args pat in
+         let hs, hargs = get_args (fst elt) in
+         let np = Subterm.sub p in
+         let tagged = Subterm.tag ~empty:np (Array.of_list hargs) in
          Array.append (spec_transform upat (hs, np)) tagged
       | _             -> (* Cases that require the pattern *)
       match elt, pat with
       | (Patt(_, _, e), p), Appl(_, _) ->
-         let arity = List.length @@ snd @@ Basics.get_args pat in
-         let tagged = Sub.tag
+         let arity = List.length @@ snd @@ get_args pat in
+         let tagged = Subterm.tag
            (Array.init arity (fun _ -> Patt(None, "", e))) in
-         (Array.map (fun (te, po) -> (te, Sub.prefix p po)) tagged)
+         (Array.map (fun (te, po) -> (te, Subterm.prefix p po)) tagged)
       | (Patt(_, _, _), _)    , _      -> [| |]
       | _                              -> assert false
 
@@ -566,7 +565,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
       match telst with
       | []       -> assert false
       | te :: tl ->
-         let h, args = Basics.get_args te in
+         let h, args = get_args te in
          let atl = args @ tl in
          begin match h with
          | Patt(Some(i), _, _) ->
@@ -599,7 +598,7 @@ let compile : Cm.t -> t = fun patterns ->
       if Cm.exhausted patterns then
         let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
         let f (count, map) tpos =
-          let opslot = SubMap.find_opt tpos pos2slot in
+          let opslot = SubtMap.find_opt tpos pos2slot in
           match opslot with
           | None     -> succ count, map
           (* ^ Discard useless variables *)
@@ -612,7 +611,7 @@ let compile : Cm.t -> t = fun patterns ->
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
         assert (IntMap.cardinal env_builder <=
-                  Basics.SubtMap.cardinal pos2slot) ;
+                  SubtMap.cardinal pos2slot) ;
         let depth = List.length vcat in
         fetch lhs depth env_builder rhs
       else
