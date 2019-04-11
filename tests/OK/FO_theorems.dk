@@ -1,14 +1,14 @@
-#REQUIRE examples.FO.
+#REQUIRE tests.OK.FO.
 
-(;  Imports from examples.FO theory  ;)
-def Prop  := examples.FO.Prop.
-def prf   := examples.FO.prf.
-def or    := examples.FO.or.
-def imp   := examples.FO.imp.
-def not   := examples.FO.not.
-def false := examples.FO.false.
-def or_intro_1 := examples.FO.or_intro_1.
-def or_intro_2 := examples.FO.or_intro_2.
+(;  Imports from tests.OK.FO theory  ;)
+def Prop  := tests.OK.FO.Prop.
+def prf   := tests.OK.FO.prf.
+def or    := tests.OK.FO.or.
+def imp   := tests.OK.FO.imp.
+def not   := tests.OK.FO.not.
+def false := tests.OK.FO.false.
+def or_intro_1 := tests.OK.FO.or_intro_1.
+def or_intro_2 := tests.OK.FO.or_intro_2.
 
 
 (;  Encoded proposition families corresponding to:

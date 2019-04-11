@@ -282,7 +282,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Ctxt.of_env g_env in
   let t_type =
-    match Typing.infer g_ctxt t with
+    match Typing.infer ps.proof_builtins g_ctxt t with
     | Some(a) -> a
     | None    -> fatal pos "Cannot infer the type of [%a]." pp t
   in
@@ -628,14 +628,11 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
 let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
-
   (* Get the type of the focused goal. *)
   let _, g_type = Proof.focus_goal ps in
-
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
   let (a, l, r)  = get_eq_data pos cfg (Eval.whnf g_type) in
   if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
-
   (* Build the witness. *)
   add_args (symb cfg.symb_refl) [a; l]
 
@@ -645,20 +642,15 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
 let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
-
   (* Get the type of the focused goal. *)
   let (g_env, g_type) = Proof.focus_goal ps in
-
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
   let (a, l, r) = get_eq_data pos cfg g_type in
-
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
-
   (* We create a new metavariable (“M” in the above). *)
   let meta_type =
     Appl(symb cfg.symb_P, (add_args (symb cfg.symb_eq) [a; r; l])) in
   let meta_term = Ctxt.make_meta (Ctxt.of_env g_env) meta_type in
-
   (* We build the predicate (“λx, eq a r x” in the above). *)
   let pred =
     let x = Bindlib.new_var mkfree "X" in
@@ -666,18 +658,15 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
     let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
     Abst(Appl(symb cfg.symb_T, a), pred)
   in
-
   (* We build the proof term. *)
   let refl_a_l = add_args (symb cfg.symb_refl) [a; l] in
   let term =
     add_args (symb cfg.symb_eqind) [a; r; l; meta_term; pred; refl_a_l] in
-
   (* Debugging data to the log. *)
   log_rewr "Symmetry with:";
   log_rewr "  goal       = [%a]" pp g_type;
   log_rewr "  new goal   = [%a]" pp meta_type;
   log_rewr "  predicate  = [%a]" pp pred;
   log_rewr "  proof term = [%a]" pp term;
-
   (* Return the proof-term. *)
   term

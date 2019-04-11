@@ -35,6 +35,9 @@ let pp_meta : meta pp = fun oc m ->
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
 let pp_term : term pp = fun oc t ->
   let out = Format.fprintf in
+  (* The possible priority levels are [`Func] (top level, including
+     abstraction or product), [`Appl] (application) and [`Atom] (smallest
+     priority). *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let (h, args) = Basics.get_args t in
     let args =
@@ -51,10 +54,10 @@ let pp_term : term pp = fun oc t ->
     in
     match (h, args) with
     | (Symb(_,Binary(o)), [l;r]) ->
-        if p = `Atom then out oc "(";
+        if p <> `Func then out oc "(";
         (* Can be improved by looking at symbol priority. *)
-        out oc "%a %s %a" (pp `Atom) l o (pp `Atom) r;
-        if p = `Atom then out oc ")";
+        out oc "%a %s %a" (pp `Appl) l o (pp `Appl) r;
+        if p <> `Func then out oc ")";
     | (h                , []   ) ->
         pp_head (p <> `Func) oc h
     | (h                , args ) ->

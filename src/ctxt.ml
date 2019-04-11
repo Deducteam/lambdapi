@@ -32,12 +32,12 @@ let pp : t pp = fun oc ctx ->
 
 (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,
     and raises [Not_found] otherwise. *)
-let find : tvar -> t -> term = fun x ctx ->
+let type_of : tvar -> t -> term = fun x ctx ->
   snd (List.find (fun (y,_) -> Bindlib.eq_vars x y) ctx)
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> t -> bool = fun x ctx ->
-  try ignore (find x ctx); false with Not_found -> true
+  try ignore (type_of x ctx); false with Not_found -> true
 
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. *)

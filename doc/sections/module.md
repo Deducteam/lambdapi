@@ -21,7 +21,7 @@ working_directory  # lambdapi is invoked in that directory
 │   ├── nat.lp     # this module must always be refered as "church.nat"
 │   └── list.lp    # this module must always be refered as "church.list"
 └── scott
-    ├── nat.lp     # this module must always be refered as "scott.list"
+    ├── nat.lp     # this module must always be refered as "scott.nat"
     └── list.lp    # this module must always be refered as "scott.list"
 ```
 An important limitation here is the following: if `church.list` depends on the

@@ -47,7 +47,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Ctxt.find x ctx with Not_found -> assert false)
+  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)

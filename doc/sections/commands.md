@@ -82,6 +82,8 @@ We recommend to start types and predicates by a capital letter.
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
  For the moment, the verification is left to the user.
 
+These modifiers are used to help the unification engine.
+
 **Implicit arguments**. Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
@@ -121,7 +123,7 @@ and  add (succ &n) &m → succ (add &n &m)
 
 Pattern variables need to be prefixed by `&`.
 
-**Higher-order pattern-matching**:
+**Higher-order pattern-matching**.
 Lambdapi accepts higher-order pattern variables too:
 
 ```
@@ -139,7 +141,7 @@ Lambdapi uses then higher-order pattern-matching, that is, matching
 modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
 η-reduction since no valid instance of `F` can contain `x`.
 
-**Important**: In contrast to languages like OCaml, Coq, Agda, etc. rule
+**Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:
 
 ```
@@ -256,6 +258,13 @@ set debug -s
 Each functionality is represented by a single character. For instance,
 `t` stands for typing. To get the list of debuggable functionalities,
 do `lambdapi -h`.
+
+**flags** The user can set/unset some flags controling printing:
+
+```
+set flag "print_implicits" off // default is on
+set flag "print_domains" off // default is on
+```
 
 **notation for natural numbers** It is possible to use the standard
 decimal notation for natural numbers by specifying the symbols

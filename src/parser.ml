@@ -230,6 +230,10 @@ let parser any_ident =
 (** Identifier (regular and non-keyword, or escaped). *)
 let parser ident = id:any_ident -> in_pos _loc id
 
+let parser arg_ident =
+  | id:ident -> Some(id)
+  | _wild_   -> None
+
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
 let parser meta =
   | "?" - id:{regular_ident | escaped_ident} -> in_pos _loc id
@@ -250,7 +254,7 @@ let parser symtag =
   | _inj_   -> Sym_inj
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PBinO | PAppl | PFunc
+type prio = PAtom | PAppl | PBinO | PFunc
 
 (** [term] is a parser for a term. *)
 let parser term @(p : prio) =
@@ -276,17 +280,21 @@ let parser term @(p : prio) =
   | "{" t:(term PFunc) "}"
       when p >= PAtom -> in_pos _loc (P_Expl(t))
   (* Application. *)
-  | t:(term PAppl) u:(term PBinO)
+  | t:(term PAppl) u:(term PAtom)
       when p >= PAppl -> in_pos _loc (P_Appl(t,u))
   (* Implication. *)
-  | a:(term PAppl) "⇒" b:(term PFunc)
+  | a:(term PBinO) "⇒" b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Impl(a,b))
   (* Products. *)
   | "∀" xs:arg+ "," b:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Prod(xs,b))
+  | "∀" xs:arg_ident+ ":" a:(term PFunc) "," b:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_Prod([xs,Some(a),false],b))
   (* Abstraction. *)
   | "λ" xs:arg+ "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst(xs,t))
+  | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
   | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
@@ -330,16 +338,16 @@ let parser term @(p : prio) =
    required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
-and parser env = "[" t:(term PAppl) ts:{"," (term PAppl)}* "]" -> t::ts
+and parser env = "[" t:(term PBinO) ts:{"," (term PBinO)}* "]" -> t::ts
 
 (** [arg] parses a single function argument. *)
 and parser arg =
   (* Explicit argument without type annotation. *)
-  | x:ident                                 -> ([x], None,    false)
+  | x:arg_ident                                 -> ([x], None,    false)
   (* Explicit argument with type annotation. *)
-  | "(" xs:ident+    ":" a:(term PFunc) ")" -> (xs , Some(a), false)
+  | "(" xs:arg_ident+    ":" a:(term PFunc) ")" -> (xs , Some(a), false)
   (* Implicit argument (with possible type annotation). *)
-  | "{" xs:ident+ a:{":" (term PFunc)}? "}" -> (xs , a      , true )
+  | "{" xs:arg_ident+ a:{":" (term PFunc)}? "}" -> (xs , a      , true )
 
 let term = term PFunc
 
@@ -359,10 +367,40 @@ let parser rw_patt_spec =
 (** [rw_patt] is a parser for a (located) rewrite pattern. *)
 let parser rw_patt = "[" r:rw_patt_spec "]" -> in_pos _loc r
 
+let parser assert_must_fail =
+  | _assert_    -> false
+  | _assertnot_ -> true
+
+(** [assertion] parses a single assertion. *)
+let parser assertion =
+  | t:term ":" a:term -> P_assert_typing(t,a)
+  | t:term "≡" u:term -> P_assert_conv(t,u)
+
+(** [query] parses a query. *)
+let parser query =
+  | _set_ "verbose" i:nat_lit ->
+      Pos.in_pos _loc (P_query_verbose(i))
+  | _set_ "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
+      Pos.in_pos _loc (P_query_debug(b, s))
+  | _set_ "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
+      Pos.in_pos _loc (P_query_flag(s, b))
+  | mf:assert_must_fail a:assertion ->
+      Pos.in_pos _loc (P_query_assert(mf,a))
+  | _type_ t:term ->
+      let c = Eval.{strategy = NONE; steps = None} in
+      Pos.in_pos _loc (P_query_infer(t,c))
+  | _compute_ t:term ->
+      let c = Eval.{strategy = SNF; steps = None} in
+      Pos.in_pos _loc (P_query_normalize(t,c))
+  | _set_ "prover" s:string_lit ->
+      Pos.in_pos _loc (P_query_prover(s))
+  | _set_ "prover_limit" n:nat_lit ->
+      Pos.in_pos _loc (P_query_prover_limit(n))
+
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
   | _refine_ t:term             -> Pos.in_pos _loc (P_tac_refine(t))
-  | _intro_ xs:ident+           -> Pos.in_pos _loc (P_tac_intro(xs))
+  | _intro_ xs:arg_ident+       -> Pos.in_pos _loc (P_tac_intro(xs))
   | _apply_ t:term              -> Pos.in_pos _loc (P_tac_apply(t))
   | _simpl_                     -> Pos.in_pos _loc P_tac_simpl
   | _rewrite_ p:rw_patt? t:term -> Pos.in_pos _loc (P_tac_rewrite(p,t))
@@ -371,7 +409,8 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
-  | _why3_ s:string_lit?             -> Pos.in_pos _loc (P_tac_why3(s))
+  | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
+  | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
 
 (** [proof_end] is a parser for a proof terminator. *)
 let parser proof_end =
@@ -379,34 +418,19 @@ let parser proof_end =
   | _admit_ -> P_proof_admit
   | _abort_ -> P_proof_abort
 
-(** [assertion] parses a single assertion. *)
-let parser assertion =
-  | t:term ":" a:term -> P_assert_typing(t,a)
-  | t:term "≡" u:term -> P_assert_conv(t,u)
-
 let parser assoc =
   | EMPTY   -> Assoc_none
   | "left"  -> Assoc_left
   | "right" -> Assoc_right
 
-(** [config] pases a single configuration option. *)
+(** [config] parses a single configuration option. *)
 let parser config =
-  | "verbose" i:nat_lit ->
-      P_config_verbose(i)
-  | "debug" b:{'+' -> true | '-' -> false} - s:alpha ->
-      P_config_debug(b, s)
-  | "flag" s:string_lit b:{"on" -> true | "off" -> false} ->
-      P_config_flag(s, b)
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
       Prefix.add binops s binop;
       P_config_binop(binop)
-  | "prover" s:string_lit ->
-      P_config_prover(s)
-  | "prover_limit" n:nat_lit ->
-      P_config_prover_limit(n)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
@@ -414,30 +438,23 @@ let parser statement =
 let parser proof =
   ts:tactic* e:proof_end -> (ts, Pos.in_pos _loc_e e)
 
-let parser assert_must_fail =
-  | _assert_    -> false
-  | _assertnot_ -> true
-
-(** [require] is set in [Compile] module (avoids cyclic dependencies). *)
+(** [!require mp] can be used to require the compilation of a module [mp] when
+    it is required as a dependency. This has the effect of importing notations
+    exported by that module. The value of [require] is set in [Compile], and a
+    reference is used to avoid to avoid cyclic dependencies. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
-
-(** [do_require loc mp] can be used to require the compilation of module [mp],
-    and reporting possible exceptions at position [loc]. *)
-let do_require : Pos.pos -> module_path -> unit = fun loc p ->
-  try !require p with Fatal(_, msg) -> raise (Fatal(Some(Some(loc)), msg))
 
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
-  | _require_ m:{_open_ -> P_require_open}?[P_require_default] p:path
-      -> do_require _loc p;
-         if m = P_require_open then get_binops _loc p;
-         P_require(p,m)
-  | _require_ p:path m:{_as_ n:ident -> P_require_as(n)}
-      -> do_require _loc p;
-         P_require(p,m)
-  | _open_ p:path
-      -> get_binops _loc p;
-         P_open(p)
+  | _require_ o:{_open_ -> true}?[false] ps:path+
+      -> List.iter (fun p -> !require p; if o then get_binops _loc p) ps;
+         P_require(o,ps)
+  | _require_ p:path _as_ n:ident
+      -> !require p;
+         P_require_as(p,n)
+  | _open_ ps:path+
+      -> List.iter (get_binops _loc) ps;
+         P_open(ps)
   | _symbol_ l:symtag* s:ident al:arg* ":" a:term
       -> P_symbol(l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
@@ -446,14 +463,10 @@ let parser cmd =
       -> P_definition(false,s,al,ao,t)
   | st:statement (ts,e):proof
       -> P_theorem(st,ts,e)
-  | mf:assert_must_fail a:assertion
-      -> P_assert(mf,a)
   | _set_ c:config
       -> P_set(c)
-  | _type_ t:term
-      -> P_infer(t, Eval.{strategy = NONE; steps = None})
-  | _compute_ t:term
-      -> P_normalize(t, Eval.{strategy = SNF; steps = None})
+  | q:query
+      -> P_query(q)
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let parser cmds = {c:cmd -> in_pos _loc c}*

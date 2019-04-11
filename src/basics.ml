@@ -14,31 +14,31 @@ module Var =
 module VarSet = Set.Make(Var)
 module VarMap = Map.Make(Var)
 
-(** [to_tvars ar] extracts an array of {!type:tvar} from an array of terms  of
-    the form [Vari(x)].  The function (brutally) fails if any element of  [ar]
-    does not correspond to a free variable. *)
-let to_tvars : term array -> tvar array =
-  Array.map (fun t -> match t with Vari(x) -> x | _ -> assert false)
+(** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
+    otherwise. *)
+let to_tvar : term -> tvar = fun t ->
+  match t with Vari(x) -> x | _ -> assert false
 
-(** {b NOTE} the {!val:to_tvars} function is useful when working with multiple
-    binders. For example, this is the case when manipulating pattern variables
-    ([Patt] constructor) or metatavariables ([Meta] constructor).  Remark that
-    it is Importantly for these constructors to hold an array of terms, rather
-    than an array of variables:  a variable can only be substituted when if it
-    is injected in a term (using the [Vari] constructor). *)
+(** {b NOTE} the {!val:Array.map to_tvar} function is useful when working
+   with multiple binders. For example, this is the case when manipulating
+   pattern variables ([Patt] constructor) or metatavariables ([Meta]
+   constructor).  Remark that it is important for these constructors to hold
+   an array of terms, rather than an array of variables: a variable can only
+   be substituted when if it is injected in a term (using the [Vari]
+   constructor). *)
 
-(** {b NOTE} the result of {!val:to_tvars} can generally NOT be precomputed. A
+(** {b NOTE} the result of {!val:to_tvar} can generally NOT be precomputed. A
     first reason is that we cannot know in advance what variable identifier is
     going to arise when working under binders,  for which fresh variables will
     often be generated. A second reason is that free variables should never be
-    “marshalled” (e.g., by the {!module:Sign} module), as this would break the
+    “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->
   match unfold t with
-  | Prod(_,b) -> 1 + count_products (snd (Bindlib.unbind b))
+  | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)
   | _         -> 0
 
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
@@ -112,11 +112,12 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
-(** [iter f t] applies the function [f] to every node of the term [t]. At each
-    call, the function is given the list of the free variables in the term, in
-    the reverse order they were given. Free variables that were already in the
-    term before the call are not included in the list. *)
-let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
+(** [iter_ctxt f t] applies the function [f] to every node of the term [t].
+   At each call, the function is given the list of the free variables in the
+   term, in the reverse order they were given. Free variables that were
+   already in the term before the call are not included in the list. Note: [f]
+   is called on already unfolded terms only. *)
+let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   let rec iter xs t =
     let t = unfold t in
     action xs t;
@@ -139,6 +140,28 @@ let iter : (tvar list -> term -> unit) -> term -> unit = fun action t ->
   in
   iter [] (cleanup t)
 
+(** [iter f t] applies the function [f] to every node of the term [t] with
+   bound variables replaced by [Kind]. Note: [f] is called on already unfolded
+   terms only. *)
+let iter : (term -> unit) -> term -> unit = fun action ->
+  let rec iter t =
+    let t = unfold t in
+    action t;
+    match t with
+    | Wild
+    | TRef(_)
+    | Vari(_)
+    | Type
+    | Kind
+    | Symb(_)    -> ()
+    | Patt(_,_,ts)
+    | TEnv(_,ts)
+    | Meta(_,ts) -> Array.iter iter ts
+    | Prod(a,b)
+    | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)  -> iter t; iter u
+  in iter
+
 (** [iter_meta f t] applies the function [f] to every metavariable of
    [t], as well as to every metavariable occurring in the type of an
    uninstantiated metavariable occurring in [t], and so on. *)
@@ -158,11 +181,9 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
   | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
 
 (** {b NOTE} that {!val:iter_meta} is not implemented using {!val:iter} due to
-    the fact this it is performance-cricical. *)
+    the fact this it is performance-critical. *)
 
-(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. As
-    for {!val:eq}, the behaviour of this function is unspecified when [t] uses
-    the [Patt] or [TEnv] constructor. *)
+(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
 let occurs : meta -> term -> bool =
   let exception Found in fun m t ->
   let fn p = if m == p then raise Found in

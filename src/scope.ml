@@ -131,9 +131,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   let fresh_patt : env -> tbox =
     let c = Pervasives.ref (-1) in
     fun env ->
-      let name = Pervasives.incr c; Printf.sprintf "#%i" Pervasives.(!c) in
-      let xs = List.map (fun (_,(x,_)) -> _Vari x) env in
-      _Patt None name (Array.of_list xs)
+      let open Pervasives in
+      let name = incr c; Printf.sprintf "#%i" !c in
+      _Patt None name (Env.to_tbox env)
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -187,19 +187,25 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (None   , _       ) ->
        (* We create a new metavariable [m] of type [TYPE] for the missing
           domain. *)
-       let vs = Env.vars_of_env env in
-       let m = fresh_meta (prod_of_env env _Type) (Array.length vs) in
+       let vs = Env.to_tbox env in
+       let m = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
        _Meta m vs
   (* Scoping of a binder (abstraction or product). *)
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
-      | []             -> scope env t
-      | ([]  ,_,_)::xs -> aux env xs
-      | (x::l,d,i)::xs ->
+      | []                  -> scope env t
+      | ([]       ,_,_)::xs -> aux env xs
+      | (None  ::l,d,i)::xs ->
+          let v = Bindlib.new_var mkfree "_" in
+          let a = scope_domain None env d in (* FIXME *)
+          let t = aux env ((l,d,i)::xs) in
+          cons a (Bindlib.bind_var v t)
+      | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain x.pos env d in
-          let t = aux (Env.add x.elt v a env) ((l,d,i)::xs) in
+          let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
+          let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
     in
     aux env xs
@@ -215,9 +221,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_Term(_)) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
           metavariable [m2] of type [m1], and return [m2]. *)
-        let vs = Env.vars_of_env env in
-        let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
-        let a = prod_of_env env (_Meta m1 vs) in
+        let vs = Env.to_tbox env in
+        let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+        let a = Env.to_prod env (_Meta m1 vs) in
         let m2 = fresh_meta a (Array.length vs) in
         _Meta m2 vs
     | (P_Meta(id,ts)   , M_Term(m)) ->
@@ -227,9 +233,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
              and a new metavariable [m2] of name [id] and type [m1], and
              return [m2]. *)
-          let vs = Env.vars_of_env env in
-          let m1 = fresh_meta (prod_of_env env _Type) (Array.length vs) in
-          let a = prod_of_env env (_Meta m1 vs) in
+          let vs = Env.to_tbox env in
+          let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+          let a = Env.to_prod env (_Meta m1 vs) in
           let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
           Pervasives.(m := StrMap.add id.elt m2 !m); m2
         in
@@ -279,7 +285,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([([x],None,false)], u)))) t
+        _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
     | (P_NLit(n)       , _        ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
@@ -301,15 +307,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t], and the scoping mode
-    [md] changes the behaviour related to certain constructors.  The signature
+(** [scope ss env t] turns a parser-level term [t] into an actual term. The
+    variables of the environment [env] may appear in [t].  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope_term : metamap -> sig_state -> env -> p_term -> term * metamap
-  = fun m ss env t ->
-  let m = Pervasives.ref m in
-  let t = scope (M_Term(m)) ss env t in
-  (Bindlib.unbox t, Pervasives.(!m))
+let scope_term : sig_state -> env -> p_term -> term
+  = fun ss env t ->
+  let m = Pervasives.ref StrMap.empty in
+  Bindlib.unbox (scope (M_Term(m)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
@@ -406,8 +410,8 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt loc
-    -> Rewrite.rw_patt = fun ss env s ->
+let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
+    fun ss env s ->
   let open Rewrite in
   match s.elt with
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)

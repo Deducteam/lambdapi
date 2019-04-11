@@ -1,4 +1,4 @@
-require open proofs.bool
+require open tests.OK.bool
 
 // Data type of natural numbers.
 

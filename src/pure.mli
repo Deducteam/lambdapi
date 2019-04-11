@@ -17,25 +17,26 @@ module Tactic : sig
   val get_pos : t -> Pos.popt
 end
 
-(** Exception raised by [parse_text]. *)
-exception Parse_error of Pos.pos * string
-
-(** [parse_text fname contents] runs the parser on the string [contents] as if
-    it were a file named [fname]. This function may raise [Parse_error]. *)
-val parse_text : string -> string -> Command.t list
-
 (** Representation of the state when at the toplevel. *)
-type command_state
+type state
 
 (** Representation of the state when in a proof. *)
 type proof_state
+
+(** Exception raised by [parse_text]. *)
+exception Parse_error of Pos.pos * string
+
+(** [parse_text st fname contents] runs the parser on the string [contents] as
+    if it were a file named [fname]. The action takes place in the state [st],
+    and an updated state is returned. The function may raise [Parse_error]. *)
+val parse_text : state -> string -> string -> Command.t list * state
 
 (** [current_goals s] returns the list of open goals for proof state [s]. *)
 val current_goals : proof_state -> Proof.Goal.t list
 
 (** Result type of the [handle_command] function. *)
 type command_result =
-  | Cmd_OK    of command_state
+  | Cmd_OK    of state
   (** Command is done. *)
   | Cmd_Proof of proof_state * Tactic.t list * Pos.popt * Pos.popt
   (** Enter proof mode (positions are for statement and qed). *)
@@ -49,14 +50,14 @@ type tactic_result =
 
 (** [initial_state path] returns an initial state for a signature with  module
     path [path]. The resulting state can be used by [handle_command]. *)
-val initial_state : Files.module_path -> command_state
+val initial_state : Files.module_path -> state
 
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding
     to the [Cmd_OK] constructor,  the command starts a proof (corresponding to
     the [Cmd_Proof] constructor), or the command fails (corresponding  to  the
     [Cmd_Error] constuctor). *)
-val handle_command : command_state -> Command.t -> command_result
+val handle_command : state -> Command.t -> command_result
 
 (** [handle_tactic st tac] evaluated the tactic [tac] in state [st], returning
     a new proof state (with [Tac_OK]) or an error (with [Tac_Error]). *)
@@ -70,4 +71,4 @@ val end_proof : proof_state -> command_result
 
 (** [get_symbols st] returns all the symbols defined in the signature at state
     [st]. This can be used for displaying the type of symbols. *)
-val get_symbols : command_state -> (Terms.sym * Pos.popt) Extra.StrMap.t
+val get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t
