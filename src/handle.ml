@@ -250,10 +250,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Define the binary operator [s]. *)
             let sym, _ = find_sym false ss qid in
             Sign.add_binop ss.signature s (sym, binop); ss
-        | P_config_prover(s)      ->
-            Why3prover.current_prover := s; ss
-        | P_config_prover_limit(n)->
-            Why3prover.time_limit := n; ss
       in
       (ss, None)
   | P_query(q)                 ->
