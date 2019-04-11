@@ -9,7 +9,7 @@ exception NoGoalTranslation
 type cnst_table = (term * Why3.Term.lsymbol) list
 
 (* a map from labels to Why3 terms. *)
-type ctxt_labels = (string * Why3.Term.term) list
+type ctxt_labels = Why3.Term.term StrMap.t
 
 (** [get_newname ()] generates a new axiom name. *)
 let get_newname : unit -> string =
@@ -58,7 +58,7 @@ let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     fun pos builtins  (hs, g) ->
     let cfg = get_prop_config pos builtins in
     let (constants_table, hypothesis) =
-        List.fold_left (translate_context cfg) ([], []) hs in
+        List.fold_left (translate_context cfg) ([], StrMap.empty) hs in
     try
         let (constants_table, formula) = t_goal cfg constants_table g in
         (constants_table, hypothesis, formula)
@@ -77,7 +77,7 @@ and translate_context :
     fun cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp)) ->
     try
         let (new_why3_l, hyp') = t_goal cfg l_constants (Bindlib.unbox hyp) in
-            (new_why3_l, (hyp_name, hyp')::l_hypothesis)
+            (new_why3_l, StrMap.add hyp_name hyp' l_hypothesis)
     with NoGoalTranslation ->
             (l_constants, l_hypothesis)
 

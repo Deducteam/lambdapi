@@ -1,5 +1,7 @@
 (** Handling tasks in why3. *)
 
+open Extra
+
 (** [declare_symbols l] add the declaration of every symbol in [l] to [tsk] *)
 let declare_symbols : Why3.Term.lsymbol list -> Why3.Task.task = fun l ->
     List.fold_left Why3.Task.add_param_decl None l
@@ -14,8 +16,8 @@ let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
 (** [add_hypothesis tsk (axiom_name, axiom_term)] add the axiom [axiom_term]
     named [axiom_name] to the Why3 task [tsk]. *)
 let add_hypothesis :
-    Why3.Task.task -> string * Why3.Term.term -> Why3.Task.task =
-    fun tsk (axiom_name, axiom_term) ->
+    string -> Why3.Term.term -> Why3.Task.task ->  Why3.Task.task =
+    fun axiom_name axiom_term tsk ->
     let new_axiom = Why3.Ident.id_fresh axiom_name in
     let axiom = Why3.Decl.create_prsymbol new_axiom in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom axiom_term
@@ -23,8 +25,8 @@ let add_hypothesis :
 (** [declare_axioms l tsk] add all axioms that [l] contains to the Why3 task
     [tsk]. *)
 let declare_axioms :
-    (string * Why3.Term.term) list -> Why3.Task.task -> Why3.Task.task =
-    fun l tsk -> List.fold_left add_hypothesis tsk l
+    Why3.Term.term StrMap.t -> Why3.Task.task -> Why3.Task.task =
+    fun l tsk -> StrMap.fold add_hypothesis l tsk
 
 (** [create constants_table hypothesis goal] Add all the symbols of
     [constants_table] in a new task and declare [hypothesis] as axioms and
