@@ -311,8 +311,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
         let left, examined, right = R.destruct stk 0 in
-        let examined = if store then whnf examined else examined in
-        if store then vars.(cursor) <- examined ;
+        if store then vars.(cursor) <- whnf examined ;
         let cursor = if store then succ cursor else cursor in
         let stk = R.restruct left [] right in
         walk next stk cursor
