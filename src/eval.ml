@@ -95,15 +95,15 @@ let whnf_beta : term -> term = fun t ->
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let t = unfold t in
-  if Pervasives.(!with_trees) then whnf_stk_t t [] else
+  if Pervasives.(!with_trees) then whnf_stk_t t else
   let s = Pervasives.(!steps) in
   let u, stk = whnf_stk t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
 (** [whnf_stk_t t k] computes the weak head normal form of [t] applied to
-    arguments [k].  Note that the normalisation is done in thee sense of
+    arguments [k].  Note that the normalisation is done in the sense of
     [whnf]. *)
-and whnf_stk_t : term -> term list -> term = fun t stk ->
+and whnf_stk_t : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
@@ -123,7 +123,7 @@ and whnf_stk_t : term -> term list -> term = fun t stk ->
       end
     (* In head normal form. *)
     | _         , _         -> t in
-  loop_wst t t stk
+  loop_wst t t []
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
     argument list (or stack) [stk]. Note that the normalisation is done in the
