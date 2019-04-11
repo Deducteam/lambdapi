@@ -8,8 +8,6 @@ exception NoGoalTranslation
 (* a map from lambdapi terms to Why3 constants *)
 type cnst_table = (term * Why3.Term.lsymbol) list
 
-(* a map from labels to Why3 terms. *)
-type ctxt_labels = Why3.Term.term StrMap.t
 
 (** [get_newname ()] generates a new axiom name. *)
 let get_newname : unit -> string =
@@ -54,7 +52,7 @@ let get_prop_config :
     - [formula] Why3 term representing the goal [g].  *)
 
 let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
-    cnst_table * ctxt_labels * Why3.Term.term =
+    cnst_table * Why3.Term.term StrMap.t * Why3.Term.term =
     fun pos builtins  (hs, g) ->
     let cfg = get_prop_config pos builtins in
     let (constants_table, hypothesis) =
@@ -71,9 +69,9 @@ let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     [l_hypothesis] with the why3 constants [l_constants]. *)
 and translate_context :
     prop_config ->
-    cnst_table * ctxt_labels ->
+    cnst_table * Why3.Term.term StrMap.t ->
     string * (tvar * tbox) ->
-    cnst_table * ctxt_labels =
+    cnst_table * Why3.Term.term StrMap.t =
     fun cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp)) ->
     try
         let (new_why3_l, hyp') = t_goal cfg l_constants (Bindlib.unbox hyp) in

@@ -32,7 +32,7 @@ let declare_axioms :
     [constants_table] in a new task and declare [hypothesis] as axioms and
     [goal] as a Why3 goal. *)
 let create :
-  Why3prop.cnst_table -> Why3prop.ctxt_labels -> Why3.Term.term
+  Why3prop.cnst_table -> Why3.Term.term StrMap.t -> Why3.Term.term
   -> Why3.Task.task =
   fun constants_table hypothesis goal ->
     let symbols = List.map (fun (_, x) -> x) constants_table in
