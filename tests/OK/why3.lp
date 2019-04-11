@@ -1,5 +1,5 @@
-require open proofs.logic
-require open proofs.nat
+require open tests.OK.logic
+require open tests.OK.nat
 
 set prover "Alt-Ergo"
 set prover_limit 2
