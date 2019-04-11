@@ -286,7 +286,8 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         if R.is_empty stk || swap >= R.length stk then None else
         (* Pick the right term in the stack. *)
         let (left, examined, right) = R.destruct stk swap in
-        let examined = whnf examined in
+        let examined = if store || not (TcMap.is_empty children)
+          then whnf examined else examined in
         (* Store hd of stack if needed *)
         if store then vars.(cursor) <- examined;
         let cursor = if store then succ cursor else cursor in
@@ -310,7 +311,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
         let left, examined, right = R.destruct stk 0 in
-        let examined = whnf examined in
+        let examined = if store then whnf examined else examined in
         if store then vars.(cursor) <- examined ;
         let cursor = if store then succ cursor else cursor in
         let stk = R.restruct left [] right in
