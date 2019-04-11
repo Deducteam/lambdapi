@@ -200,7 +200,8 @@ struct
 
       {b Note} that {!type:array} is used while {!module:ReductionStack} could
       be used because {!val:pick_best_among} goes through all items of a rule
-      anyway ([max(S) = Θ(|S|)]). *)
+      anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
+      the matrix, we favour quick access with {!type:array}. *)
   type rule = { lhs : component array
               (** Left hand side of a rule.   *)
               ; rhs : action
@@ -284,7 +285,7 @@ struct
 
   (** [score c] returns the score heuristic for column [c]. *)
   let rec score : component list -> int = function
-    | [] -> 0
+    | []                              -> 0
     | (x, _) :: xs when is_treecons x -> score xs
     | _ :: xs                         -> succ (score xs)
 
@@ -469,9 +470,10 @@ module Cm = ClauseMat
 
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
-    + accepting constructors and filtering possible rules,
-    + getting the most efficient term to match in the stack,
-    + storing terms from the stack that might be used in the right hand side,
+    - accepting constructors and filtering possible rules,
+    - guiding the matching in order to carry out as few atomic matchings as
+      possible by selecting the most appropriate term in the stack,
+    - storing terms from the stack that might be used in the right hand side,
       because they match a pattern variable {!constructor:Patt} in the
       {!field:lhs}.
 
@@ -561,8 +563,7 @@ let compile : Cm.t -> t = fun patterns ->
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
-        assert (IntMap.cardinal env_builder <=
-                  SubtMap.cardinal pos2slot) ;
+        assert (IntMap.cardinal env_builder <= SubtMap.cardinal pos2slot) ;
         let depth = List.length vcat in
         fetch lhs depth env_builder rhs
       else
