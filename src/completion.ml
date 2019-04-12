@@ -196,7 +196,7 @@ let match_rule : ctxt -> term -> rule -> term option = fun ctxt t (s, r) ->
 let match_rules : ctxt -> term -> rule list -> term option = fun ctxt t rs ->
   List.map_find (match_rule ctxt t) rs
 
-(** [rewrite t rs] attempts to rewrite [t] in the rewrite system [rs] *)
+(** [rewrite t rs] attempts to rewrite [t] in the rewrite system [rs]. *)
 let rewrite : term -> rule list -> term option = fun t rs ->
   let t = unfold t in
   match t with
@@ -231,10 +231,62 @@ let rec nf : term -> rule list -> term = fun t rs ->
   | Some t -> nf t rs
 
 (** [to_rule (lhs, rhs)] translates the pair [(lhs, rhs)] into a rule for
-    closed lhs and rhs *)
+    closed lhs and rhs. *)
 let to_rule : term * term -> rule = fun (lhs, rhs) ->
   let (s, args) = get_args lhs in
   let s = get_sym s in
   let vs = Bindlib.new_mvar te_mkfree [||] in
   let rhs = Bindlib.unbox (Bindlib.bind_mvar vs (lift rhs)) in
   s, { lhs = args ; rhs = rhs ; arity = List.length args ; vars = [||] }
+
+(** [completion eqs ord] applies Huet's completion procedure on the set of
+    equations [eqs] by using the lexicographic path ordering corresponding to
+    the order [ord] on the set of function symbols. *)
+let completion : (term * term) list -> sym cmp -> rule list = fun eqs ord ->
+  let ord = lpo ord in
+  let eqs = ref eqs in
+  let marked_rs = ref [] in
+  let unmarked_rs = ref [] in
+  let get_head l =
+    match l with
+    | []       -> assert false
+    | hd :: tl -> (hd, tl) in
+  while !eqs <> [] || !unmarked_rs <> [] do
+    while !eqs <> [] do
+      let (s, t), eqs' = get_head !eqs in
+      let rs = !marked_rs @ !unmarked_rs in
+      let snf = nf s rs in
+      let tnf = nf t rs in
+      if eq snf tnf then eqs := eqs'
+      else begin
+        let lhs, rhs = if ord snf tnf > 0 then snf, tnf else tnf, snf in
+        let new_rule = to_rule (lhs, rhs) in
+        let sep_rule b (mrs, umrs, eqs) r =
+          let lhs, rhs = to_term r in
+          match rewrite lhs [new_rule] with
+          | None    ->
+              let rhs = nf rhs (new_rule :: rs) in
+              let r = to_rule (lhs, rhs) in
+              if b then (r :: mrs, umrs, eqs) else (mrs, r :: umrs, eqs)
+          | Some lhs' ->
+              (mrs, umrs, (lhs', rhs) :: eqs) in
+        let (mrs, umrs, eqs') =
+          List.fold_left (sep_rule true) ([], [new_rule], eqs') !marked_rs in
+        let (mrs, umrs, eqs') =
+          List.fold_left (sep_rule false) (mrs, umrs, eqs') !unmarked_rs in
+        marked_rs := mrs;
+        unmarked_rs := umrs;
+        eqs := eqs'
+      end
+    done;
+    if !unmarked_rs <> [] then begin
+      let r, umrs = get_head !unmarked_rs in
+      let cps =
+        List.fold_left (fun acc r' -> cps [r; r'] @ acc) [] (r :: !marked_rs)
+      in
+      eqs := cps;
+      unmarked_rs := umrs;
+      marked_rs := r :: !marked_rs
+    end;
+  done;
+  !marked_rs
