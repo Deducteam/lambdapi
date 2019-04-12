@@ -55,6 +55,12 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
+(** [tref t] transforms term [t] to a term with reference if it is not
+    already. *)
+let tref : term -> term = function
+  | TRef(_) as t -> t
+  | t            -> TRef(ref (Some t))
+
 (* Suffix [_t] for "tree" version *)
 
 (** Evaluation step counter. *)
@@ -107,7 +113,7 @@ and whnf_stk_t : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
-    | Appl(u, v), _ -> loop_wst ifnred u (v :: stk)
+    | Appl(u, v), _ -> loop_wst ifnred u (tref v :: stk)
     (* Beta reduction. *)
     | Abst(_, f), u :: stk  ->
       loop_wst ifnred (Bindlib.subst f u) stk
@@ -262,7 +268,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
   let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
   let module R = Dtree.ReductionStack in
-  let stk = R.of_list (List.map (fun e -> TRef(ref (Some e))) stk) in
+  let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
