@@ -180,3 +180,61 @@ let cps : rule list -> (term * term) list = fun rs ->
     | r :: rs' -> List.iter (cps_aux r) rs; cps rs' in
   cps rs;
   !acc
+
+(** Rewriting for closed rules and closed terms *)
+
+type ctxt = term -> term
+
+(** [match_rule ctxt t (s, r)] attempts to rewrite [ctxt[t]] by appling the
+    rule [(s, t)]. *)
+let match_rule : ctxt -> term -> rule -> term option = fun ctxt t (s, r) ->
+  let lhs = add_args (symb s) r.lhs in
+  if eq t lhs then Some (ctxt (term_of_rhs r)) else None
+
+(** [match_rules ctxt t rs] attempts to rewrite [ctxt[t]] by appling the
+    rules [rs]. *)
+let match_rules : ctxt -> term -> rule list -> term option = fun ctxt t rs ->
+  List.map_find (match_rule ctxt t) rs
+
+(** [rewrite t rs] attempts to rewrite [t] in the rewrite system [rs] *)
+let rewrite : term -> rule list -> term option = fun t rs ->
+  let t = unfold t in
+  match t with
+  | Wild
+  | TRef _
+  | Vari _
+  | Type
+  | Kind
+  | Patt _
+  | Meta _
+  | TEnv _
+  | Prod _
+  | Abst _      -> None
+  | Symb _      -> match_rules (fun t -> t) t rs
+  | Appl (t, u) ->
+      match match_rules (fun t -> t) t rs with
+      | None ->
+          let ctxt = fun t -> Appl (t, u) in
+          begin match match_rules ctxt t rs with
+          | None ->
+              let ctxt = fun u -> Appl (t, u) in
+              match_rules ctxt u rs
+          | res  -> res
+          end
+      | res  -> res
+
+(** [nf t rs] attempts to compute a normal form of [t] in the rewrite system
+    [rs]. *)
+let rec nf : term -> rule list -> term = fun t rs ->
+  match rewrite t rs with
+  | None   -> t
+  | Some t -> nf t rs
+
+(** [to_rule (lhs, rhs)] translates the pair [(lhs, rhs)] into a rule for
+    closed lhs and rhs *)
+let to_rule : term * term -> rule = fun (lhs, rhs) ->
+  let (s, args) = get_args lhs in
+  let s = get_sym s in
+  let vs = Bindlib.new_mvar te_mkfree [||] in
+  let rhs = Bindlib.unbox (Bindlib.bind_mvar vs (lift rhs)) in
+  s, { lhs = args ; rhs = rhs ; arity = List.length args ; vars = [||] }
