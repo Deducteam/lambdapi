@@ -262,7 +262,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
   let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
   let module R = Dtree.ReductionStack in
-  let stk = R.of_list stk in
+  let stk = R.of_list (List.map (fun e -> TRef(ref (Some e))) stk) in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
@@ -286,32 +286,33 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         if R.is_empty stk || swap >= R.length stk then None else
         (* Pick the right term in the stack. *)
         let (left, examined, right) = R.destruct stk swap in
-        let examined = if store || not (TcMap.is_empty children)
-          then whnf examined else examined in
         (* Store hd of stack if needed *)
-        if store then vars.(cursor) <- examined;
+        if store then vars.(cursor) <- examined ;
         let cursor = if store then succ cursor else cursor in
+        let r_ex = match examined with TRef(x) -> x | _ -> assert false in
         (* Fetch the right subtree and the new stack *)
         (* [choose t] chooses a tree among {!val:children} when term [t] is
            examined and returns the new head of stack. *)
-        let choose t =
-          let (h, args) = Basics.get_args t in
-          match h with
+        let rec choose t c_ari args : tree option * term list =
+          match t with
+          | Appl(u, v) -> let nr_ex, r_arg = ref (Some u), ref (Some v)in
+            r_ex := Some(Appl(TRef nr_ex, TRef(r_arg))) ;
+            choose u (c_ari + 1) (TRef(r_arg) :: args)
           | Symb(s,_)  ->
-             let c_ari = List.length args in
-             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
-             let matched = TcMap.find_opt cons children in
-             if matched = None then (default, []) else (matched, args)
+            let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+            let matched = TcMap.find_opt cons children in
+            if matched = None then (default, []) else (matched, args)
           | Abst(_, _) -> assert false
           | Meta(_, _) -> assert false
           | _          -> assert false
         in
-        let (matched, args) = choose examined in
+        let (matched, args) = if TcMap.is_empty children
+          then (default, []) else choose (whnf examined) 0 [] in
         let stk = R.restruct left args right in
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
         let left, examined, right = R.destruct stk 0 in
-        if store then vars.(cursor) <- whnf examined ;
+        if store then vars.(cursor) <- examined ;
         let cursor = if store then succ cursor else cursor in
         let stk = R.restruct left [] right in
         walk next stk cursor
