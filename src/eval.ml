@@ -55,6 +55,13 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
+(** [to_term_n] is an "overloaded" [to_term] on term list. *)
+let to_term_n : term -> term list -> term = fun t args ->
+  let rec to_term_n t = function
+    | []        -> t
+    | u :: args -> to_term_n (Appl(t, u)) args in
+  to_term_n t args
+
 (** [tref t] transforms term [t] to a term with reference if it is not
     already. *)
 let tref : term -> term = function
@@ -299,12 +306,13 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         (* Fetch the right subtree and the new stack *)
         (* [choose t] chooses a tree among {!val:children} when term [t] is
            examined and returns the new head of stack. *)
-        let rec choose t c_ari args : tree option * term list =
-          match t with
-          | Appl(u, v) -> let nr_ex, r_arg = ref (Some u), ref (Some v)in
-            r_ex := Some(Appl(TRef nr_ex, TRef(r_arg))) ;
-            choose u (c_ari + 1) (TRef(r_arg) :: args)
+        let choose t : tree option * term list =
+          let h, args = get_args t in
+          let args = List.map tref args in
+          let c_ari = List.length args in
+          match h with
           | Symb(s,_)  ->
+            r_ex := Some(to_term_n h args) ;
             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
             let matched = TcMap.find_opt cons children in
             if matched = None then (default, []) else (matched, args)
@@ -313,7 +321,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           | _          -> assert false
         in
         let (matched, args) = if TcMap.is_empty children
-          then (default, []) else choose (whnf examined) 0 [] in
+          then (default, []) else choose (whnf examined) in
         let stk = R.restruct left args right in
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
