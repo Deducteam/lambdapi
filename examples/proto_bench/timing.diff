@@ -1,17 +1,17 @@
 diff --git a/src/dtree.ml b/src/dtree.ml
-index 1b3b96f..585c124 100644
+index c17ac46..958838c 100644
 --- a/src/dtree.ml
 +++ b/src/dtree.ml
 @@ -7,6 +7,8 @@ open Extra
- module Sub = Basics.Subterm
- module SubMap = Basics.SubtMap
+ open Basics
+ open Treecons
  
 +let ti_build_tree = ref 0.
 +
  (** See {!type:tree} in {!module:Terms}. *)
  type t = tree
  
-@@ -600,6 +602,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
+@@ -521,6 +523,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
      pattern matching problem contained in pattern matrix [m]. *)
  let compile : Cm.t -> t = fun patterns ->
    (* let varcount = ref 0 in *)
@@ -19,7 +19,7 @@ index 1b3b96f..585c124 100644
    let rec compile patterns =
      let { Cm.var_catalogue = vcat ; _ } = patterns in
      if Cm.is_empty patterns then
-@@ -657,4 +660,6 @@ let compile : Cm.t -> t = fun patterns ->
+@@ -576,4 +579,6 @@ let compile : Cm.t -> t = fun patterns ->
            if Cm.is_empty ncm then None else Some(compile ncm) in
          Node({ swap = absolute_cind ; store = store ; children = children
               ; default = defmat }) in
@@ -28,12 +28,12 @@ index 1b3b96f..585c124 100644
 +  ti_build_tree := !ti_build_tree +. (Unix.gettimeofday () -. _t) ;
 +  r
 diff --git a/src/eval.ml b/src/eval.ml
-index 2ccec55..acc29f5 100644
+index dd6675f..7127340 100644
 --- a/src/eval.ml
 +++ b/src/eval.ml
-@@ -7,6 +7,9 @@ open Terms
- open Basics
+@@ -8,6 +8,9 @@ open Basics
  open Print
+ open Treecons
  
 +let ti_eval = Pervasives.ref 0.
 +let ti_evb_tree = Pervasives.ref 0.
@@ -41,7 +41,7 @@ index 2ccec55..acc29f5 100644
  (** The head-structure of a term t is:
  - λx:_,h if t=λx:a,u and h is the head-structure of u
  - ∀ if t=∀x:a,u
-@@ -368,6 +371,19 @@ let rec snf : term -> term = fun t ->
+@@ -378,6 +381,19 @@ let rec snf : term -> term = fun t ->
    | Wild        -> assert false
    | TRef(_)     -> assert false
  
