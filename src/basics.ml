@@ -35,6 +35,17 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
+(** [ensure_tref t] transforms term [t] to a term with reference if it is not
+    already. *)
+let ensure_tref : term -> term = function
+  | TRef(_) as t -> t
+  | t            -> TRef(ref (Some t))
+
+(** [to_tref t] returns [r] if [t] is of the form [t = TRef(r)] and fails
+    otherwise. *)
+let to_tref : term -> term option ref = function
+  | TRef(x) -> x | _ -> assert false
+
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->

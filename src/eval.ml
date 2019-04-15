@@ -62,12 +62,6 @@ let to_term_n : term -> term list -> term = fun t args ->
     | u :: args -> to_term_n (Appl(t, u)) args in
   to_term_n t args
 
-(** [tref t] transforms term [t] to a term with reference if it is not
-    already. *)
-let tref : term -> term = function
-  | TRef(_) as t -> t
-  | t            -> TRef(ref (Some t))
-
 (* Suffix [_t] for "tree" version *)
 
 (** Evaluation step counter. *)
@@ -120,7 +114,7 @@ and whnf_stk_t : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
-    | Appl(u, v), _         -> loop_wst ifnred u (tref v :: stk)
+    | Appl(u, v), _         -> loop_wst ifnred u (ensure_tref v :: stk)
     (* Beta reduction. *)
     | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
       loop_wst t t stk
@@ -302,13 +296,13 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         (* Store hd of stack if needed *)
         if store then vars.(cursor) <- examined ;
         let cursor = if store then succ cursor else cursor in
-        let r_ex = match examined with TRef(x) -> x | _ -> assert false in
+        let r_ex = to_tref examined in
         (* Fetch the right subtree and the new stack *)
         (* [choose t] chooses a tree among {!val:children} when term [t] is
            examined and returns the new head of stack. *)
         let choose t : tree option * term list =
           let h, args = get_args t in
-          let args = List.map tref args in
+          let args = List.map ensure_tref args in
           let c_ari = List.length args in
           match h with
           | Symb(s,_)  ->
