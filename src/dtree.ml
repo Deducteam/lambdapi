@@ -320,15 +320,9 @@ struct
     let ncols = List.extremum (>)
       (List.map (fun { lhs ; _ } -> Array.length lhs) m.clauses) in
     let switchable = List.init ncols (can_switch_on m) in
-    let indexes = List.mapi (fun k cm ->
-        if cm then Some(k) else None) switchable in
-    let remaining = List.filter (function
-        | None    -> false
-        | Some(_) -> true) indexes in
-    let unpacked = List.map (function
-        | Some(k) -> k
-        | None    -> assert false) remaining in
-    assert (List.length unpacked > 0) ;
+    let unpacked = List.filteri_map (fun i e ->
+        if e then Some(i) else None) switchable in
+    assert (unpacked <> []) ;
     Array.of_list unpacked
 
   (** [get_cons l] extracts a list of unique constructors from [l].  The
