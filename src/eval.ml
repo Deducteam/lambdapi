@@ -120,19 +120,19 @@ and whnf_stk_t : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
-    | Appl(u, v), _ -> loop_wst ifnred u (tref v :: stk)
+    | Appl(u, v), _         -> loop_wst ifnred u (tref v :: stk)
     (* Beta reduction. *)
-    | Abst(_, f), u :: stk  ->
-      loop_wst ifnred (Bindlib.subst f u) stk
+    | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
+      loop_wst t t stk
     (* Try to rewrite. *)
-    | Symb(s, _), stk ->
-      begin match Timed.(!(s.sym_def)) with
+    | Symb(s, _), stk       ->
+      begin match !(s.sym_def) with
         | Some(t) -> loop_wst t t stk
         | None    ->
-          match find_rule_t s stk with
-          (* If no rule is found, return the original term *)
-          | None    -> unfold ifnred
-          | Some(t) -> loop_wst t t []
+        match find_rule_t s stk with
+        (* If no rule is found, return the original term *)
+        | None    -> unfold ifnred
+        | Some(t) -> loop_wst t t []
       end
     (* In head normal form. *)
     | _         , _         -> t in
