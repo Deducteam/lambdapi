@@ -325,26 +325,13 @@ struct
     assert (unpacked <> []) ;
     Array.of_list unpacked
 
-  (** [get_cons l] extracts a list of unique constructors from [l].  The
-      returned list can contain {!constructor:Appl} nodes to keep track of the
-      number of arguments. *)
-  let get_cons : term list -> term list = fun telst ->
-    (* [cons_eq t u] returns whether [t] and [u] are the same regarding
-       specialization. *)
-    let rec cons_eq : term -> term -> bool = fun te tf ->
-      match te, tf with
-      | Abst(_, _), Abst(_, _) -> true
-      | Appl(_, _), Appl(_, _) -> cons_eq (fst @@ get_args te)
-         (fst @@ get_args tf)
-      | _                      -> eq te tf in
-    let rec loop : 'a list -> 'a list -> 'a list = fun seen notseen ->
-      match notseen with
-      | [] -> List.rev seen
-      | hd :: tl ->
-         let s = fst (get_args hd) in
-         loop (if not (is_treecons s) || List.mem_eq cons_eq s seen then seen
-           else hd :: seen) tl in
-    loop [] telst
+  (** [get_cons l] extracts, sorts and uniqify terms that are tree
+      constructors in [l].  The actual tree constructor (of type
+      {!type:treecons}) is returned along the original term. *)
+  let get_cons : term list -> (treecons * term) list = fun telst ->
+    let tcs = List.filter_map (fun e ->
+        if is_treecons e then Some(treecons_of_term e, e) else None) telst in
+    List.sort_uniq (fun (tca, _) (tcb, _)-> tc_compare tca tcb) tcs
 
   (** [contains_abst l] returns whether list of terms [l] contains an
       abstraction. *)
@@ -576,11 +563,10 @@ let compile : Cm.t -> t = fun patterns ->
         (* Specializations *)
         let spepatts =
           let cons = Cm.get_cons terms in
-          let f acc cons_te =
-            let cons = treecons_of_term cons_te in
-            let rules = Cm.specialize cons_te absolute_cind patterns.clauses in
+          let f acc (tr_cons, te_cons) =
+            let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
             let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-            TcMap.add cons ncm acc in
+            TcMap.add tr_cons ncm acc in
           List.fold_left f TcMap.empty cons in
         let children = TcMap.map compile spepatts in
         (* Default *)

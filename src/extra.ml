@@ -78,6 +78,17 @@ module List =
       | []    -> None
       | e::es -> match f e with None -> map_find f es | res -> res
 
+    (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
+        such that [Some(x)] in [List.map f l]. *)
+    let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+      function
+      | []     -> []
+      | h :: t ->
+        begin match f h with
+          | Some(x) -> x :: filter_map f t
+          | None    -> filter_map f t
+        end
+
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
     let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list =
