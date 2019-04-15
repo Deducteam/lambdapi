@@ -13,3 +13,11 @@ rule fact 0      → 1
 compute l 0 (S (fact 99))
 // Second 'S' is discovered by rule 2
 compute l (S (S (fact 99))) 1
+
+symbol chaina : Nat ⇒ Nat ⇒ Nat
+symbol chainb : Nat ⇒ Nat ⇒ Nat
+symbol chainc : Nat ⇒ Nat ⇒ Nat
+rule chaina 0      &x → chainb &x &x
+ and chainb (S &x) &y → chainc &x &y
+
+compute chaina 0 (fact 8)
