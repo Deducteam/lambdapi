@@ -126,10 +126,10 @@ and whnf_stk_t : term -> term = fun t ->
         match find_rule_t s stk with
         (* If no rule is found, return the original term *)
         | None    -> unfold ifnred
-        | Some(t) -> loop_wst t t []
+        | Some(t) -> whnf t
       end
     (* In head normal form. *)
-    | _         , _         -> t in
+    | _         , _         -> to_term_n t stk in
   loop_wst t t []
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
@@ -294,7 +294,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         (* Pick the right term in the stack. *)
         let (left, examined, right) = R.destruct stk swap in
         (* Store hd of stack if needed *)
-        if store then vars.(cursor) <- examined ;
+        if store then begin
+          if !log_enabled then log_eval "(node) storing [%a]" pp examined ;
+          vars.(cursor) <- examined
+        end ;
         let cursor = if store then succ cursor else cursor in
         let r_ex = to_tref examined in
         (* Fetch the right subtree and the new stack *)
@@ -305,7 +308,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           let args = List.map ensure_tref args in
           let c_ari = List.length args in
           match h with
-          | Symb(s,_)  ->
+          | Symb(s, _)  ->
             r_ex := Some(to_term_n h args) ;
             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
             let matched = TcMap.find_opt cons children in
@@ -320,7 +323,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
         let left, examined, right = R.destruct stk 0 in
-        if store then vars.(cursor) <- examined ;
+        if store then begin
+          if !log_enabled then log_eval "(fetch) storing [%a]" pp examined ;
+          vars.(cursor) <- examined
+        end ;
         let cursor = if store then succ cursor else cursor in
         let stk = R.restruct left [] right in
         walk next stk cursor
