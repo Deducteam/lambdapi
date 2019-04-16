@@ -114,7 +114,7 @@ and whnf_stk_t : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
-    | Appl(u, v), _         -> loop_wst ifnred u (v :: stk)
+    | Appl(u, v), _         -> loop_wst ifnred u (ensure_tref v :: stk)
     (* Beta reduction. *)
     | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
       loop_wst t t stk
@@ -306,7 +306,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
            examined and returns the new head of stack. *)
         let choose t : tree option * term list =
           let h, args = get_args t in
-          (* let args = List.map ensure_tref args in *)
+          let args = List.map ensure_tref args in
           let c_ari = List.length args in
           match h with
           | Symb(s, _)  ->
