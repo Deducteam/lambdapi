@@ -129,7 +129,7 @@ and whnf_stk_t : term -> term = fun t ->
         | Some(t) -> whnf t
       end
     (* In head normal form. *)
-    | _         , _         -> to_term_n t stk in
+    | _         , _         -> ifnred in
   loop_wst t t []
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
