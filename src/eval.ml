@@ -293,14 +293,13 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         if R.is_empty stk || swap >= R.length stk then None else
         (* Pick the right term in the stack. *)
         let (left, examined, right) = R.destruct stk swap in
-        let examined = whnf examined in
         (* Store hd of stack if needed *)
         if store then begin
           if !log_enabled then log_eval "(node) storing [%a]" pp examined ;
           vars.(cursor) <- examined
         end ;
         let cursor = if store then succ cursor else cursor in
-        (* let r_ex = to_tref examined in *)
+        let r_ex = to_tref examined in
         (* Fetch the right subtree and the new stack *)
         (* [choose t] chooses a tree among {!val:children} when term [t] is
            examined and returns the new head of stack. *)
@@ -310,7 +309,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           let c_ari = List.length args in
           match h with
           | Symb(s, _)  ->
-            (* r_ex := Some(to_term_n h args) ; *)
+            r_ex := Some(to_term_n h args) ;
             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
             let matched = TcMap.find_opt cons children in
             if matched = None then (default, []) else (matched, args)
@@ -319,12 +318,11 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           | _          -> assert false
         in
         let (matched, args) = if TcMap.is_empty children
-          then (default, []) else choose ((* whnf *) examined) in
+          then (default, []) else choose (whnf examined) in
         let stk = R.restruct left args right in
         Option.bind (fun tr -> walk tr stk cursor) matched
     | Fetch(store, next)                     ->
         let left, examined, right = R.destruct stk 0 in
-        let examined = whnf examined in
         if store then begin
           if !log_enabled then log_eval "(fetch) storing [%a]" pp examined ;
           vars.(cursor) <- examined
