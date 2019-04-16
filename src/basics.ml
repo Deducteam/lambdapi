@@ -325,14 +325,14 @@ let tree_iter :
     | Fail                                        -> fail
     | Node({ swap ; store ; children ; default }) ->
        do_node swap store
-         (TcMap.map (fun c -> loop c) children)
+         (TcMap.map loop children)
          (Option.map loop default)
     | Fetch(store, next)                          -> do_fetch store (loop next)
   in
   loop t
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
-    terms that are being filtered by the patterns need to be saved in order to
+    terms that are being filtered by the patterns have to be saved in order to
     be bound in the right hand side of the rule.  The capacity is an upper
     bound of the number of terms to be saved. *)
 let capacity : tree -> int =

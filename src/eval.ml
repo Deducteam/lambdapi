@@ -55,15 +55,6 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
-(** [to_term_n] is an "overloaded" [to_term] on term list. *)
-let to_term_n : term -> term list -> term = fun t args ->
-  let rec to_term_n t = function
-    | []        -> t
-    | u :: args -> to_term_n (Appl(t, u)) args in
-  to_term_n t args
-
-(* Suffix [_t] for "tree" version *)
-
 (** Evaluation step counter. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
@@ -102,15 +93,15 @@ let whnf_beta : term -> term = fun t ->
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let t = unfold t in
-  if Pervasives.(!with_trees) then whnf_stk_t t else
+  if Pervasives.(!with_trees) then whnf_stk_tree t else
   let s = Pervasives.(!steps) in
   let u, stk = whnf_stk t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
-(** [whnf_stk_t t k] computes the weak head normal form of [t] applied to
+(** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
     arguments [k].  Note that the normalisation is done in the sense of
     [whnf]. *)
-and whnf_stk_t : term -> term = fun t ->
+and whnf_stk_tree : term -> term = fun t ->
   let rec loop_wst ifnred t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
@@ -123,7 +114,7 @@ and whnf_stk_t : term -> term = fun t ->
       begin match !(s.sym_def) with
         | Some(t) -> loop_wst t t stk
         | None    ->
-        match find_rule_t s stk with
+        match find_rule_tree s stk with
         (* If no rule is found, return the original term *)
         | None    -> unfold ifnred
         | Some(t) -> whnf t
@@ -158,13 +149,13 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_        , _      ) -> st
 
-(** [find_rule_t s k] attempts to find a reduction rule of [s] when applied to
-    arguments [k].  Returns the reduced term if a rule if found, [None]
+(** [find_rule_tree s k] attempts to find a reduction rule of [s] when applied
+    to arguments [k].  Returns the reduced term if a rule if found, [None]
     otherwise. *)
-and find_rule_t : sym -> term list -> term option = fun s stk ->
-  let de, tr = !(s.sym_tree) in
-  let de, tr = Lazy.force de, Lazy.force tr in
-  tree_walk tr de stk
+and find_rule_tree : sym -> term list -> term option = fun s stk ->
+  let capa, tr = !(s.sym_tree) in
+  let capa, tr = Lazy.force capa, Lazy.force tr in
+  tree_walk tr capa stk
 
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
@@ -265,9 +256,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [tree_walk t d s] tries to match stack [s] against tree [t] of depth [d]. *)
-and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
-  let vars = if d > 0 then Array.make d Kind else [||] in (* dummy terms *)
+(** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
+    [c]. *)
+and tree_walk : Dtree.t -> int -> term list -> term option =
+  fun tree capa stk ->
+  let vars = Array.make capa Kind in (* dummy terms *)
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
@@ -309,7 +302,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
           let c_ari = List.length args in
           match h with
           | Symb(s, _)  ->
-            r_ex := Some(to_term_n h args) ;
+            r_ex := Some(add_args h args) ;
             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
             let matched = TcMap.find_opt cons children in
             if matched = None then (default, []) else (matched, args)
