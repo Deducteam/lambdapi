@@ -210,7 +210,7 @@ type term =
 (** {3 Decision trees for rewriting} *)
 
 (** Trees are used to efficiently choose a rewriting rule given a list of
-    terms (beginning with a symbol) to be rewritten.  The left hand has side
+    terms (beginning with a symbol) to be rewritten.  The left-hand side
     of the rule is spread across the {!constructor:Node}s of the tree.  Hence,
     progressing down the tree is equivalent to reducing the set of possible
     rules.  When a {!constructor:Leaf} is reached, the target is rewritten to
