@@ -1,19 +1,18 @@
 #!/bin/bash
 
 # Currently generates two test files
-# + _autogen_many_sym.lp
-# + _autogen_many_args.lp
+# + autogen_many_sym.lp
+# + autogen_many_args.lp
 
 # Boilerplate code
-natural_prelude="require nat
-open nat
+natural_prelude="require open nat
 "
-rm "_autogen"*
+rm 'autogen'*
 
 ## Many rules on one symbol
 ## Create a function defined on each integer and compute the sum
 nrules=1000
-fname="_autogen_many_symb.lp"
+fname="autogen_many_symb.lp"
 touch "$fname"
 echo "$natural_prelude" >> "$fname"
 

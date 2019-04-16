@@ -50,6 +50,4 @@ fi
 
 ## Clean generatated files
 cd "$FROMGIT"
-for f in _autogen*; do
-    rm "$f"
-done
+rm 'autogen'*
