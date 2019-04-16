@@ -218,10 +218,10 @@ type term =
  and tree =
   | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
   (** Holds the right hand side of a rule.  In a {!constructor:Leaf}[(e, a)],
-      - [a] is the right hand side of the rule.
       - [e] maps a position in the stack containing terms which stand as
             pattern variables in some rules to the slot allocated in the
-            {!type:term_env array}. *)
+            {!type:term_env array}.
+      - [a] is the right hand side of the rule. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!constructor:Node} contains one subtree per

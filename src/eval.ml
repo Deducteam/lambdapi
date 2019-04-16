@@ -270,7 +270,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
     match tree with
     | Fail                                   -> None
     | Leaf(env_builder, act)                 ->
-        (* Allocate an environement for the action. *)
+        (* Allocate an environment for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn pos slot =

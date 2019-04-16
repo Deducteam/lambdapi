@@ -298,8 +298,8 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
        let tree = lazy (Dtree.compile @@ Lazy.force pama) in
        let capacity = lazy (Basics.capacity @@ Lazy.force tree) in
        symb.sym_tree := (capacity, tree) ;
-       if Pervasives.(!write_trees) then
-         Dtree.to_dot symb.sym_name (Lazy.force (snd !(symb.sym_tree)))
+       if Pervasives.(!write_trees)
+       then Dtree.to_dot symb.sym_name (Lazy.force tree)
     | _                                  -> () in
   let uniq_sym = List.uniqify (==) (List.map (fun (e, _, _) -> e) rs) in
   List.iter build_tree uniq_sym
