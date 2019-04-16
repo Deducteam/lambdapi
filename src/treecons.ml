@@ -16,9 +16,9 @@ type treecons =
 (** [tc_compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
 let tc_compare : treecons -> treecons -> int = fun ca cb ->
-  match String.compare ca.c_sym cb.c_sym with
+  match Int.compare ca.c_ari cb.c_ari with
   | 0 ->
-    begin match Int.compare ca.c_ari cb.c_ari with
+    begin match String.compare ca.c_sym cb.c_sym with
       | 0 -> Pervasives.compare ca.c_mod cb.c_mod
       | x -> x
     end
