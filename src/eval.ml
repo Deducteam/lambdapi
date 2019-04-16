@@ -129,7 +129,7 @@ and whnf_stk_t : term -> term = fun t ->
         | Some(t) -> whnf t
       end
     (* In head normal form. *)
-    | _         , _         -> ifnred in
+    | _         , _         -> unfold ifnred in
   loop_wst t t []
 
 (** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
@@ -281,7 +281,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option = fun tree d stk ->
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn pos slot =
-          let t = vars.(pos) in
+          let t = unfold vars.(pos) in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(slot) <- TE_Some(b)
         in
