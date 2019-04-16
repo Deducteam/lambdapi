@@ -300,10 +300,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
            examined and returns the new head of stack. *)
         let choose t : tree option * term list =
           let h, args = get_args t in
-          let args = List.map ensure_tref args in
-          let c_ari = List.length args in
           match h with
           | Symb(s, _)  ->
+            let args = List.map ensure_tref args in
+            let c_ari = List.length args in
             r_ex := Some(add_args h args) ;
             let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
             let matched = TcMap.find_opt cons children in
