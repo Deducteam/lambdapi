@@ -102,7 +102,9 @@ let rec whnf : term -> term = fun t ->
     arguments [k].  Note that the normalisation is done in the sense of
     [whnf]. *)
 and whnf_stk_tree : term -> term = fun t ->
-  let rec loop_wst ifnred t stk =
+  (* [loop_wst t' t stk] tries to reduce [t] when applied to stack [stk].  If
+     nothing can be done, [t'] is returned. *)
+  let rec loop_wst (ifnred : term) t stk =
     match (unfold t, stk) with
     (* Push argument to the stack. *)
     | Appl(u, v), _         -> loop_wst ifnred u (ensure_tref v :: stk)
