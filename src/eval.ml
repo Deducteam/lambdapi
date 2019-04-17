@@ -263,10 +263,10 @@ and eq_modulo : term -> term -> bool = fun a b ->
     elements to be put in the stack are returned along the tree. *)
 and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
   fun examined children default ->
-  let r_ex = to_tref examined in
   (* [choose t] chooses a tree among {!val:children} when term [t] is examined
      and returns the new head of stack. *)
   let choose t =
+    let r_ex = to_tref examined in
     let h, args = get_args t in
     match h with
     | Symb(s, _)  ->
@@ -314,8 +314,10 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
             (* Store hd of stack if needed *)
             let cursor = fill_vars store examined cursor in
             let matched, args = branch examined children default in
-            let stk = R.restruct left args right in
-            Option.bind (fun tr -> walk tr stk cursor) matched
+            let next child =
+              let stk = R.restruct left args right in
+              walk child stk cursor in
+            Option.bind next matched
           with Not_found -> None
         end
     | Fetch(store, next)                     ->
