@@ -216,12 +216,14 @@ type term =
     rules.  When a {!constructor:Leaf} is reached, the target is rewritten to
     the content of the leaf. *)
  and tree =
-  | Leaf of int IntMap.t * (term_env, term) Bindlib.mbinder
+  | Leaf of (int * int) list * (term_env, term) Bindlib.mbinder
   (** Holds the right hand side of a rule.  In a {!constructor:Leaf}[(e, a)],
-      - [e] maps a position in the stack containing terms which stand as
+      - [e] maps positions in the stack containing terms which stand as
             pattern variables in some rules to the slot allocated in the
-            {!type:term_env array}.
-      - [a] is the right hand side of the rule. *)
+            {!type:term_env array}.  An associative list is used rather than a
+            mapping because the only operations performed are adding elements
+            and then {!val:List.iter}ing through the whole structure.
+      - [a] is the right-hand side of the rule. *)
   | Node of node_data
   (** Nodes allow to perform switches, a switch being the matching of a
       pattern.  Briefly, a {!constructor:Node} contains one subtree per

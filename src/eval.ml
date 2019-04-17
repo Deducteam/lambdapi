@@ -300,11 +300,11 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
         (* Allocate an environment for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn pos slot =
+        let fn (pos, slot) =
           let t = unfold vars.(pos) in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
           env.(slot) <- TE_Some(b) in
-        IntMap.iter fn env_builder;
+        List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env)
     | Node({swap; children; store; default}) ->

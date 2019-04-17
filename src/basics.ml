@@ -316,7 +316,7 @@ module SubtMap = Map.Make(Subterm)
     on leaves, function [n] performed on nodes, [f] returned in case of
     {!constructor:Fail} on tree [t]. *)
 let tree_iter :
-  do_leaf:(int IntMap.t -> (term_env, term) Bindlib.mbinder -> 'a) ->
+  do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
   do_fetch:(bool -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_fetch ~fail t ->

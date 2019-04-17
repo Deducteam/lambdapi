@@ -487,15 +487,16 @@ module Cm = ClauseMat
     apply.  The remaining variables, which will remain in the input stack will
     be fetched thanks to a subtree built by {!val:fetch}. *)
 
-(** [fetch l d e r] consumes [l] until environment build [e] contains as many
-    elements as the number of variables in [r].  The environment builder [e] is
-    also enriched.  The tree which allows this consumption is returned, with a
-    leaf holding action [r] and the new environment.  The strategy is for the
-    moment rather stupid, nodes are consumed linearly (no swaps performed). *)
-let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
+(** [fetch l d e r] consumes [l] until environment builder [e] contains as
+    many elements as the number of variables in [r].  The environment builder
+    [e] is also enriched.  The tree which allows this consumption is returned,
+    with a leaf holding action [r] and the new environment.  The strategy is
+    for the moment rather stupid, nodes are consumed linearly (no swaps
+    performed). *)
+let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
     let terms, _ = Array.split line in
-    let missing = Bindlib.mbinder_arity rhs - (IntMap.cardinal env_builder) in
+    let missing = Bindlib.mbinder_arity rhs - (List.length env_builder) in
     let rec loop telst added env_builder =
       if added = missing then Leaf(env_builder, rhs) else
       match telst with
@@ -505,7 +506,7 @@ let fetch : Cm.component array -> int -> int IntMap.t -> action -> t =
          let atl = args @ tl in
          begin match h with
          | Patt(Some(i), _, _) ->
-            let neb =  IntMap.add (depth + added) i env_builder in
+            let neb = (depth + added, i) :: env_builder in
             let child = loop atl (succ added) neb in
             Fetch(true, child)
          | Abst(_, b)          ->
@@ -533,20 +534,20 @@ let compile : Cm.t -> t = fun patterns ->
     else
       if Cm.exhausted patterns then
         let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
-        let f (count, map) tpos =
+        let f (count, acc) tpos =
           let opslot = SubtMap.find_opt tpos pos2slot in
           match opslot with
-          | None     -> succ count, map
+          | None     -> succ count, acc
           (* ^ Discard useless variables *)
-          | Some(sl) -> succ count, IntMap.add count sl map in
+          | Some(sl) -> succ count, (count, sl) :: acc in
         (* [env_builder] maps future position in the term store to the slot in
            the environment. *)
-        let _, env_builder = List.fold_left f (0, IntMap.empty)
+        let _, env_builder = List.fold_left f (0, [])
           (List.rev vcat) in
         (* ^ For now, [env_builder] contains only the variables encountered
            while choosing the rule.  Other pattern variables needed in the
            rhs, which are still in the [lhs] will now be fetched. *)
-        assert (IntMap.cardinal env_builder <= SubtMap.cardinal pos2slot) ;
+        assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
         let depth = List.length vcat in
         fetch lhs depth env_builder rhs
       else
