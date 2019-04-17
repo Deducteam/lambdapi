@@ -308,8 +308,6 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env)
     | Node({swap; children; store; default}) ->
-        (* Quit if stack is too short. *)
-        if R.is_empty stk then None else
         (* Pick the right term in the stack. *)
         begin try
             let left, examined, right = R.destruct stk swap in
