@@ -258,6 +258,29 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
+(** [branch t c d]returns the subtree in children [c] resulting from matching
+    on term [t].  If no tree is found in [c], [d] is returned.  The new
+    elements to be put in the stack are returned along the tree. *)
+and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
+  fun examined children default ->
+  let r_ex = to_tref examined in
+  (* [choose t] chooses a tree among {!val:children} when term [t] is examined
+     and returns the new head of stack. *)
+  let choose t =
+    let h, args = get_args t in
+    match h with
+    | Symb(s, _)  ->
+      let args = List.map ensure_tref args in
+      let c_ari = List.length args in
+      r_ex := Some(add_args h args) ;
+      let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+      let matched = TcMap.find_opt cons children in
+      if matched = None then (default, []) else (matched, args)
+    | Abst(_, _) -> assert false
+    | Meta(_, _) -> assert false
+    | _          -> assert false in
+  if TcMap.is_empty children then (default, []) else choose (whnf examined)
+
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> term option =
@@ -280,8 +303,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
         let fn pos slot =
           let t = unfold vars.(pos) in
           let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-          env.(slot) <- TE_Some(b)
-        in
+          env.(slot) <- TE_Some(b) in
         IntMap.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env)
@@ -293,26 +315,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
             let left, examined, right = R.destruct stk swap in
             (* Store hd of stack if needed *)
             let cursor = fill_vars store examined cursor in
-            let r_ex = to_tref examined in
-            (* Fetch the right subtree and the new stack *)
-            (* [choose t] chooses a tree among {!val:children} when term [t] is
-               examined and returns the new head of stack. *)
-            let choose t =
-              let h, args = get_args t in
-              match h with
-              | Symb(s, _)  ->
-                let args = List.map ensure_tref args in
-                let c_ari = List.length args in
-                r_ex := Some(add_args h args) ;
-                let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
-                let matched = TcMap.find_opt cons children in
-                if matched = None then (default, []) else (matched, args)
-              | Abst(_, _) -> assert false
-              | Meta(_, _) -> assert false
-              | _          -> assert false
-            in
-            let (matched, args) = if TcMap.is_empty children
-              then (default, []) else choose (whnf examined) in
+            let matched, args = branch examined children default in
             let stk = R.restruct left args right in
             Option.bind (fun tr -> walk tr stk cursor) matched
           with Not_found -> None
