@@ -285,46 +285,51 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
         Some(Bindlib.msubst act env)
     | Node({swap; children; store; default}) ->
         (* Quit if stack is too short. *)
-        if R.is_empty stk || swap >= R.length stk then None else
+        if R.is_empty stk then None else
         (* Pick the right term in the stack. *)
-        let (left, examined, right) = R.destruct stk swap in
-        (* Store hd of stack if needed *)
-        if store then begin
-          if !log_enabled then log_eval "(node) storing [%a]" pp examined ;
-          vars.(cursor) <- examined
-        end ;
-        let cursor = if store then succ cursor else cursor in
-        let r_ex = to_tref examined in
-        (* Fetch the right subtree and the new stack *)
-        (* [choose t] chooses a tree among {!val:children} when term [t] is
-           examined and returns the new head of stack. *)
-        let choose t : tree option * term list =
-          let h, args = get_args t in
-          match h with
-          | Symb(s, _)  ->
-            let args = List.map ensure_tref args in
-            let c_ari = List.length args in
-            r_ex := Some(add_args h args) ;
-            let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
-            let matched = TcMap.find_opt cons children in
-            if matched = None then (default, []) else (matched, args)
-          | Abst(_, _) -> assert false
-          | Meta(_, _) -> assert false
-          | _          -> assert false
-        in
-        let (matched, args) = if TcMap.is_empty children
-          then (default, []) else choose (whnf examined) in
-        let stk = R.restruct left args right in
-        Option.bind (fun tr -> walk tr stk cursor) matched
+        begin try
+            let left, examined, right = R.destruct stk swap in
+            (* Store hd of stack if needed *)
+            if store then begin
+              if !log_enabled then log_eval "(node) storing [%a]" pp examined ;
+              vars.(cursor) <- examined
+            end ;
+            let cursor = if store then succ cursor else cursor in
+            let r_ex = to_tref examined in
+            (* Fetch the right subtree and the new stack *)
+            (* [choose t] chooses a tree among {!val:children} when term [t] is
+               examined and returns the new head of stack. *)
+            let choose t : tree option * term list =
+              let h, args = get_args t in
+              match h with
+              | Symb(s, _)  ->
+                let args = List.map ensure_tref args in
+                let c_ari = List.length args in
+                r_ex := Some(add_args h args) ;
+                let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+                let matched = TcMap.find_opt cons children in
+                if matched = None then (default, []) else (matched, args)
+              | Abst(_, _) -> assert false
+              | Meta(_, _) -> assert false
+              | _          -> assert false
+            in
+            let (matched, args) = if TcMap.is_empty children
+              then (default, []) else choose (whnf examined) in
+            let stk = R.restruct left args right in
+            Option.bind (fun tr -> walk tr stk cursor) matched
+          with Not_found -> None
+        end
     | Fetch(store, next)                     ->
-        let left, examined, right = R.destruct stk 0 in
-        if store then begin
-          if !log_enabled then log_eval "(fetch) storing [%a]" pp examined ;
-          vars.(cursor) <- examined
-        end ;
-        let cursor = if store then succ cursor else cursor in
-        let stk = R.restruct left [] right in
-        walk next stk cursor
+        try
+          let left, examined, right = R.destruct stk 0 in
+          if store then begin
+            if !log_enabled then log_eval "(fetch) storing [%a]" pp examined ;
+            vars.(cursor) <- examined
+          end ;
+          let cursor = if store then succ cursor else cursor in
+          let stk = R.restruct left [] right in
+          walk next stk cursor
+        with Not_found -> None
   in
   walk tree stk 0
 
