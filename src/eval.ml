@@ -263,6 +263,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
 and tree_walk : Dtree.t -> int -> term list -> term option =
   fun tree capa stk ->
   let vars = Array.make capa Kind in (* dummy terms *)
+  let fill_vars store t slot =
+    if store then (vars.(slot) <- t ; succ slot) else slot in
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
@@ -290,16 +292,12 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
         begin try
             let left, examined, right = R.destruct stk swap in
             (* Store hd of stack if needed *)
-            if store then begin
-              if !log_enabled then log_eval "(node) storing [%a]" pp examined ;
-              vars.(cursor) <- examined
-            end ;
-            let cursor = if store then succ cursor else cursor in
+            let cursor = fill_vars store examined cursor in
             let r_ex = to_tref examined in
             (* Fetch the right subtree and the new stack *)
             (* [choose t] chooses a tree among {!val:children} when term [t] is
                examined and returns the new head of stack. *)
-            let choose t : tree option * term list =
+            let choose t =
               let h, args = get_args t in
               match h with
               | Symb(s, _)  ->
@@ -322,11 +320,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
     | Fetch(store, next)                     ->
         try
           let left, examined, right = R.destruct stk 0 in
-          if store then begin
-            if !log_enabled then log_eval "(fetch) storing [%a]" pp examined ;
-            vars.(cursor) <- examined
-          end ;
-          let cursor = if store then succ cursor else cursor in
+          let cursor = fill_vars store examined cursor in
           let stk = R.restruct left [] right in
           walk next stk cursor
         with Not_found -> None
