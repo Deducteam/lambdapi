@@ -60,7 +60,9 @@ sig
 
   (** [destruct v i] returns a triplet [(l, m, r)] with [l]eft being the
       elements from 0 to [i - 1], [m]iddle the [i]th element and [r]ight the
-      elements from [i + 1] to the end of [v]. *)
+      elements from [i + 1] to the end of [v].
+      @raise invalid_arg when [i < 0]
+      @raise Not_found when [i ≥ length v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
   (** [restruct r n o] is the concatenation of three stacks [r] [n] and
@@ -84,7 +86,7 @@ struct
 
   (** [destruct e i] complexity in [Θ(i)]. *)
   let destruct e i =
-    if i < 0 then invalid_arg "RedStack.destruct";
+    if i < 0 then invalid_arg "RedListStack.destruct" ;
     let rec destruct l i r =
       match (r, i) with
       | ([]  , _) -> raise Not_found
