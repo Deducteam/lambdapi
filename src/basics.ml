@@ -112,6 +112,11 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
+let get_symb : term -> sym = fun t ->
+  match unfold t with
+  | Symb (s, _) -> s
+  | _           -> assert false
+
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the
    term, in the reverse order they were given. Free variables that were
@@ -201,6 +206,57 @@ let has_metas : term -> bool =
   let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
 
+(** [build_meta_type k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), B” where
+    “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
+    new metavar of arity “i-1” and type “∀(x₁:A₂) ⋯ (x(i-1):A(i-1), TYPE”. *)
+let build_meta_type : int -> term = fun k ->
+  assert (k>=0);
+  let vs = Bindlib.new_mvar mkfree (Array.make k "x") in
+  let rec build_prod k p =
+    if k = 0 then p
+    else
+      let k = k-1 in
+      let mk_typ = Bindlib.unbox (build_prod k _Type) in
+      let mk = fresh_meta mk_typ k in
+      let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
+      let b = Bindlib.bind_var vs.(k) p in
+      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
+      build_prod k p
+  in
+  let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
+  let mk = fresh_meta mk_typ k in
+  let tk = _Meta mk (Array.map _Vari vs) in
+  Bindlib.unbox (build_prod k tk)
+
+(** [to_m k metas t] computes a new (boxed) term by replacing every pattern
+    variable in [t] by a fresh metavariable and store the latter in [metas],
+    where [k] indicates the order of the term obtained *)
+let rec to_m : int -> (meta option) array -> term -> tbox = fun k metas t ->
+  match unfold t with
+  | Vari x         -> _Vari x
+  | Symb (s, h)    -> _Symb s h
+  | Abst (a, t)    ->
+      let (x, t) = Bindlib.unbind t in
+      _Abst (to_m 0 metas a) (Bindlib.bind_var x (to_m 0 metas t))
+  | Appl (t, u)    -> _Appl (to_m (k + 1) metas t) (to_m 0 metas u)
+  | Patt (i, n, a) ->
+      begin
+        let a = Array.map (to_m 0 metas) a in
+        let l = Array.length a in
+        match i with
+        | None   ->
+            let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
+            _Meta m a
+        | Some i ->
+            match metas.(i) with
+            | Some m -> _Meta m a
+            | None   ->
+                let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
+                metas.(i) <- Some m;
+                _Meta m a
+      end
+  | _              -> assert false
+
 (** [distinct_vars_opt ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
 let distinct_vars_opt : term array -> tvar array option =
@@ -239,3 +295,24 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** [to_terms r] translates the rule [r] into a pair of terms. The pattern
+    variables in the LHS are replaced by metavariables and the terms with
+    environment in the RHS are replaced by their corresponding metavariables.
+    *)
+let to_terms : sym * rule -> term * term = fun (s, r) ->
+  let arity = Bindlib.mbinder_arity r.rhs in
+  let metas = Array.init arity (fun _ -> None) in
+  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 metas p)) r.lhs in
+  let lhs = add_args (symb s) lhs in
+  (* [to_term_env m] computes the term with environment corresponding to the
+     metavariable [m]. *)
+  let to_term_env : meta option -> term_env = fun m ->
+    let m = match m with Some m -> m | None -> assert false in
+    let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
+    let xs = Bindlib.new_mvar mkfree xs in
+    let ar = Array.map _Vari xs in
+    TE_Some (Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ar))) in
+  let terms_env = Array.map to_term_env metas in
+  let rhs = Bindlib.msubst r.rhs terms_env in
+  (lhs, rhs)
