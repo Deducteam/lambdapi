@@ -362,27 +362,17 @@ struct
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
     pattern [p]. *)
-  let rec spec_filter : term -> term -> bool = fun pat hd ->
-    match pat, hd with
-    | Symb(_, _)   , Symb(_, _)
-    | Vari(_)      , Vari(_)             -> eq pat hd
-    | Appl(_, _)   , Appl(_, _)          ->
-       let ps, pargs = get_args pat in
-       let hs, hargs = get_args hd in
-       spec_filter ps hs && List.same_length pargs hargs
-    | Appl(_, _)   , Patt(_, _, _)       -> true
-    | _            , Patt(_, _, e)       ->
+  let spec_filter : term -> term -> bool = fun pat hd ->
+    let h, args = get_args hd in
+    let ph, pargs = get_args pat in
+    List.same_length args pargs &&
+    match ph, h with
+    | Symb(_, _), Symb(_, _)
+    | Vari(_)   , Vari(_)       -> eq pat hd
+    | _         , Patt(_, _, e) ->
        let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift pat) in
        Bindlib.is_closed b
-  (* All below ought to be put in catch-all case*)
-    | Symb(_, _), Abst(_, _)
-    | Abst(_, _), Symb(_, _)
-    | Symb(_, _), Appl(_, _)
-    | Appl(_, _), Symb(_, _)
-    | Appl(_, _), Abst(_, _)
-    | _         , Abst(_, _)
-    | Abst(_, _), _          -> false
-    | _                      -> assert false
+    | _         , _             -> false
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
       specializing against pattern [p]. *)
