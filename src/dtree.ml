@@ -386,26 +386,21 @@ struct
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
       specializing against pattern [p]. *)
-  let rec spec_transform : term -> component -> component array = fun pat elt ->
-      match elt with
-      | Symb(_, _), _
-      | Vari(_)   , _ -> [| |]
-      | Appl(_, _), p ->
-         (* ^ Arguments verified in filter *)
-         let upat = fst @@ get_args pat in
-         let hs, hargs = get_args (fst elt) in
-         let np = Subterm.sub p in
-         let tagged = Subterm.tag ~empty:np (Array.of_list hargs) in
-         Array.append (spec_transform upat (hs, np)) tagged
-      | _             -> (* Cases that require the pattern *)
-      match elt, pat with
-      | (Patt(_, _, e), p), Appl(_, _) ->
-         let arity = List.length @@ snd @@ get_args pat in
-         let tagged = Subterm.tag
-           (Array.init arity (fun _ -> Patt(None, "", e))) in
-         (Array.map (fun (te, po) -> (te, Subterm.prefix p po)) tagged)
-      | (Patt(_, _, _), _)    , _      -> [| |]
-      | _                              -> assert false
+  let spec_transform : term -> component -> component array =
+    fun pat (t, p) ->
+    let h, args = Basics.get_args t in
+    match h with
+    | Symb(_, _)
+    | Vari(_)       ->
+      let np = Subterm.sub p in
+      Subterm.tag ~empty:np (Array.of_list args)
+    | Patt(_, _, e) ->
+      let _, pargs = Basics.get_args pat in
+      let arity = List.length pargs in
+      let tagged = Subterm.tag
+          (Array.init arity (fun _ -> Patt(None, "", e))) in
+      Array.map (fun (te, po) -> (te, Subterm.prefix p po)) tagged
+    | _             -> assert false
 
 (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
     against column [c].  A matrix can be specialized by a user defined symbol.
