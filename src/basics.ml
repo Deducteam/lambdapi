@@ -268,9 +268,9 @@ struct
     let rec loop (acc:int) = function
       | []      , []                    -> acc
       | h1 :: t1, h2 :: t2 when h1 = h2 -> loop 0 (t1, t2)
-      | h1 :: _ , h2 :: _               -> Pervasives.compare h1 h2
-      | _ :: _  , []                    -> 1
-      | []      , _ :: _                -> ~-1 in
+      | h1 :: _ , h2 :: _               -> Int.compare h1 h2
+      | _  :: _ , []                    -> 1
+      | []      , _  :: _               -> ~-1 in
     loop 0 (a, b)
 
   (** [pp o p] output position [p] to channel [o]. *)
@@ -297,14 +297,14 @@ struct
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
-  (** [tag ?empty a] attaches the positions to an array of terms [a] as if
+  (** [tag ?empty s] attaches the positions to a sequence of terms [s] as if
       they were the subterms of a same term.  If [?empty] is supplied, the
       first element of the list is at position [empty]. *)
-  let tag : ?empty:t -> term array -> (term * t) array = fun ?empty xs ->
+  let tag : ?empty:t -> term Seq.t -> (term * t) Seq.t = fun ?empty xs ->
     let start, p = match empty with
       | None | Some([]) -> 0, init
       | Some(s :: p)    -> s, p in
-    Array.mapi (fun i e -> (e, prefix p [i + start])) xs
+    Seq.mapi (fun i e -> (e, prefix p [i + start])) xs
 end
 
 (** Functional map with [Subterm.t] as keys *)

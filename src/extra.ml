@@ -206,6 +206,25 @@ module Array =
 
   end
 
+module Seq =
+  struct
+    include Seq
+
+    (** [mapi f s] lazily maps elements of [s] into a new sequence using
+        [f] whose arguments are the index and the element. *)
+    let mapi : (int -> 'a -> 'b) -> 'a Seq.t -> 'b Seq.t = fun f s ->
+      let rec mapi i s () = match s () with
+        | Nil -> Nil
+        | Cons(x, s) -> Cons(f i x, mapi (succ i) s) in
+      mapi 0 s
+
+    let init : int -> (int -> 'a) -> 'a Seq.t = fun n f ->
+      let rec aux i () =
+        if i = n then Nil else Cons(f i, aux (i + 1)) in
+      if n < 0 then invalid_arg "Seq.init" else aux 0
+
+  end
+
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 

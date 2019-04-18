@@ -273,7 +273,7 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
-      let term_pos = Subterm.tag (Array.of_list r.Terms.lhs) in
+      let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
     { clauses = List.map r2r rs ; var_catalogue = [] }
@@ -383,13 +383,14 @@ struct
     | Symb(_, _)
     | Vari(_)       ->
       let np = Subterm.sub p in
-      Subterm.tag ~empty:np (Array.of_list args)
+      Array.of_seq @@ Subterm.tag ~empty:np (List.to_seq args)
     | Patt(_, _, e) ->
       let _, pargs = Basics.get_args pat in
       let arity = List.length pargs in
-      let tagged = Subterm.tag
-          (Array.init arity (fun _ -> Patt(None, "", e))) in
-      Array.map (fun (te, po) -> (te, Subterm.prefix p po)) tagged
+      Seq.init arity (fun _ -> Patt(None, "", e))
+        |> Subterm.tag
+        |> Seq.map (fun (te, po) -> (te, Subterm.prefix p po))
+        |> Array.of_seq
     | _             -> assert false
 
 (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
