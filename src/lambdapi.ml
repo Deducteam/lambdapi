@@ -93,8 +93,8 @@ let spec =
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
     ; ( "--verbose"
-      , Arg.Int (Timed.(:=) verbose)
-      , "<int> Set the verbosity level" ^ verbose_values )
+      , Arg.Int set_default_verbose
+      , "<int> Set the default verbosity level" ^ verbose_values )
     ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
@@ -111,8 +111,8 @@ let spec =
       , Arg.String (fun cmd -> termination_checker := Some(cmd))
       , "<cmd> Runs the given termination checker" )
     ; ( "--debug"
-      , Arg.String (set_debug true)
-      , "<flags> Sets the given debugging flags" ^ debug_flags ) ]
+      , Arg.String set_default_debug
+      , "<flags> Enables given debugging flags by default " ^ debug_flags ) ]
   in
   List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2) spec
 

@@ -183,7 +183,7 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
 %token <string list * string> QID
 
 %start line
-%type <Syntax.command> line
+%type <Syntax.p_command> line
 
 %right ARROW FARROW
 
@@ -221,27 +221,35 @@ line:
       make_pos $loc (P_rules(List.map translate_old_rule rs))
     }
   | EVAL t=term DOT {
-      make_pos $loc (P_normalize(t, Eval.{strategy = SNF; steps = None}))
+      let c = Eval.{strategy = SNF; steps = None} in
+      let q = make_pos $loc (P_query_normalize(t,c)) in
+      make_pos $loc (P_query q)
     }
   | EVAL c=eval_config t=term DOT {
       let c = Eval.(if c.strategy=NONE then {c with strategy=SNF} else c) in
-      make_pos $loc (P_normalize(t, c))
+      let q = make_pos $loc (P_query_normalize(t, c)) in
+      make_pos $loc (P_query q)
     }
   | INFER t=term DOT {
-      make_pos $loc (P_infer(t, Eval.{strategy = NONE; steps = None}))
+      let c = Eval.{strategy = NONE; steps = None} in
+      let q = make_pos $loc (P_query_infer(t, c)) in
+      make_pos $loc (P_query q)
     }
   | INFER c=eval_config t=term DOT {
-      make_pos $loc (P_infer(t, c))
+      let q = make_pos $loc (P_query_infer(t, c)) in
+      make_pos $loc (P_query q)
     }
   | mf=ASSERT t=aterm COLON a=term DOT {
-      make_pos $loc (P_assert(mf, P_assert_typing(t,a)))
+      let q = make_pos $loc (P_query_assert(mf, P_assert_typing(t,a))) in
+      make_pos $loc (P_query q)
     }
   | mf=ASSERT t=aterm EQUAL u=term DOT {
-      make_pos $loc (P_assert(mf, P_assert_conv(t,u)))
+      let q = make_pos $loc (P_query_assert(mf, P_assert_conv(t,u))) in
+      make_pos $loc (P_query q)
     }
   | r=REQUIRE    DOT {
       Pervasives.(!Parser.require r);
-      make_pos $loc (P_require(r, P_require_default))
+      make_pos $loc (P_require(false,[r]))
     }
   | EOF {
       raise End_of_file

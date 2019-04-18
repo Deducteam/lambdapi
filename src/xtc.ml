@@ -60,7 +60,6 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
        ) args
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                                  (print_term i s) t (print_term i s) u
-  (* Abstractions and products are only printed at priority [`Func]. *)
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
@@ -91,7 +90,6 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        ) args
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                       (print_type i s) t (print_term i s) u
-  (* Abstractions and products are only printed at priority [`Func]. *)
   | Abst(a,t)               ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."

@@ -307,15 +307,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t], and the scoping mode
-    [md] changes the behaviour related to certain constructors.  The signature
+(** [scope ss env t] turns a parser-level term [t] into an actual term. The
+    variables of the environment [env] may appear in [t].  The signature
     state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope_term : metamap -> sig_state -> env -> p_term -> term * metamap
-  = fun m ss env t ->
-  let m = Pervasives.ref m in
-  let t = scope (M_Term(m)) ss env t in
-  (Bindlib.unbox t, Pervasives.(!m))
+let scope_term : sig_state -> env -> p_term -> term
+  = fun ss env t ->
+  let m = Pervasives.ref StrMap.empty in
+  Bindlib.unbox (scope (M_Term(m)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
