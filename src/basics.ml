@@ -124,6 +124,13 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
+(** [sym_cmp s s'] compares symbols [s] and [s']. *)
+let sym_cmp : sym -> sym -> int = fun sa sb ->
+  if sa.sym_def == sb.sym_def then 0 else
+  match String.compare sa.sym_name sb.sym_name with
+  | 0 -> Pervasives.compare sa.sym_path sb.sym_path
+  | x -> x
+
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the
    term, in the reverse order they were given. Free variables that were
