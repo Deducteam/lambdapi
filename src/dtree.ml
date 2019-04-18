@@ -298,15 +298,11 @@ struct
       let c = get_col ci mat in score c) columns in
     Array.argmax (<=) wild_pc
 
-  (** [exhausted m] returns whether clause matrix [m] can be further pattern
-      matched or if it is ready to yield an action.  A rule is exhausted when
-      its left hand side is composed only of wildcards. *)
-  let exhausted : t -> bool = fun { clauses ; _ } ->
-    let flhs = (List.hd clauses).lhs in
-    Array.for_all (fun (e, _) -> not (is_treecons e)) flhs
-
   (** [yield m] yields a rule to be applied. *)
-  let yield : t -> rule = fun { clauses ; _ } -> List.hd clauses
+  let yield : t -> rule option = fun { clauses ; _ } ->
+    let is_exhausted { lhs ; _ } =
+      Array.for_all (fun (e, _) -> not (is_treecons e)) lhs in
+    List.find_opt is_exhausted clauses
 
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
@@ -510,8 +506,8 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.var_catalogue = vcat ; _ } = patterns in
   if Cm.is_empty patterns then Fail
-  else if Cm.exhausted patterns then
-    let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
+  else match Cm.yield patterns with
+  | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot }) ->
     let f (count, acc) tpos =
       let opslot = SubtMap.find_opt tpos pos2slot in
       match opslot with
@@ -525,7 +521,7 @@ let rec compile : Cm.t -> t = fun patterns ->
     assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
     let depth = List.length vcat in
     fetch lhs depth env_builder rhs
-  else
+  | None                                                ->
     let absolute_cind = (* Index of column switched on *)
       let kept_cols = Cm.discard_cons_free patterns in
       let sel_in_partial = Cm.pick_best_among patterns kept_cols in
