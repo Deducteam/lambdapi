@@ -269,25 +269,21 @@ let read : string -> t = fun fname ->
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
 
-(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-    rule does not correspond to a symbol of signature [sign],  it is stored in
-    its dependencies. *)
-let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
-  sym.sym_rules := !(sym.sym_rules) @ [r];
-  if sym.sym_path <> sign.sign_path then
-    let m =
-      try PathMap.find sym.sym_path !(sign.sign_deps)
-      with Not_found -> assert false
-    in
-    let m = (sym.sym_name, r) :: m in
-    sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
-
 (** [add_rules s r] adds a bunch of rules [r] to its attached symbol to the
     signature [s] and builds decision trees. *)
 let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
+  (* [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When
+     the rule does not correspond to a symbol of signature [sign], it is
+     stored in its dependencies. *)
   let add_rule (s, h, r) =
     out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt) ;
-    add_rule sign s r.elt in
+    s.sym_rules := !(s.sym_rules) @ [r.elt] ;
+    if s.sym_path <> sign.sign_path then
+      let m =
+        try PathMap.find s.sym_path !(sign.sign_deps)
+        with Not_found -> assert false in
+      let m = (s.sym_name, r.elt) :: m in
+      sign.sign_deps := PathMap.add s.sym_path m !(sign.sign_deps) in
   List.iter add_rule rs ;
   let build_tree symb =
     match symb.sym_mode with
@@ -300,8 +296,8 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
        if Pervasives.(!write_trees)
        then Dtree.to_dot symb.sym_name (Lazy.force tree)
     | _     -> () in
-  let uniq_sym = List.uniqify (==) (List.map (fun (e, _, _) -> e) rs) in
-  List.iter build_tree uniq_sym
+  rs |> List.map (fun (e, _, _) -> e) |> List.sort_uniq Basics.sym_cmp
+     |> List.iter build_tree
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
