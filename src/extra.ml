@@ -223,10 +223,17 @@ module Seq =
         | Cons(x, s) -> Cons(f i x, mapi (succ i) s) in
       mapi 0 s
 
+    (** [init n f] is like [List.init n f |> List.to_seq]. *)
     let init : int -> (int -> 'a) -> 'a Seq.t = fun n f ->
       let rec aux i () =
         if i = n then Nil else Cons(f i, aux (i + 1)) in
       if n < 0 then invalid_arg "Seq.init" else aux 0
+
+    (** [make n e] is like [List.make n e |> List.to_seq]. *)
+    let make : int -> 'a -> 'a Seq.t = fun n e ->
+      let rec aux i () =
+        if i = n then Nil else Cons(e, aux (i + 1)) in
+      if n < 0 then invalid_arg "Seq.make" else aux 0
 
   end
 

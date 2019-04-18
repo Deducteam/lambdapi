@@ -387,7 +387,7 @@ struct
     | Patt(_, _, e) ->
       let _, pargs = Basics.get_args pat in
       let arity = List.length pargs in
-      Seq.init arity (fun _ -> Patt(None, "", e))
+      Seq.make arity (Patt(None, "", e))
         |> Subterm.tag
         |> Seq.map (fun (te, po) -> (te, Subterm.prefix p po))
         |> Array.of_seq
