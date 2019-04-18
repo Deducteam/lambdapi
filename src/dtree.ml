@@ -13,6 +13,10 @@ type t = tree
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
+(** An exception raised if trying to match an abstraction or a left non linear
+variable. *)
+exception Not_implemented
+
 (** {b Example} Given a rewrite system for a symbol [f] given as
     - [f Z (S m)     → S m]
     - [f n Z         → n]
@@ -267,6 +271,27 @@ struct
     in
     (* The terms of the list are the subterms of the head symbol. *)
     loop 0 lhs (Subterm.succ Subterm.init)
+
+  (** [scan_for_unimplemented r] does nothing or
+      @raise Not_implemented if the rule contains a not yet implemented
+      feature (e.g. abstraction or non linear var). *)
+  let scan_unimplemented : Terms.rule -> unit =
+    fun { Terms.lhs ; Terms.rhs ; _ } ->
+    let env = Array.make (Bindlib.mbinder_arity rhs) false in
+    let rec loop lhs =
+      match lhs with
+      | []     -> ()
+      | hd :: tl ->
+        let h, args = Basics.get_args hd in
+        begin match h with
+          | Abst(_) -> raise Not_implemented
+          | Patt(Some(i), _, _) when not env.(i) -> env.(i) <- true ;
+            loop (args @ tl)
+          | Patt(Some(i), _, _) when env.(i)     -> raise Not_implemented
+          (* ^ Non linear variable *)
+          | _                                    -> loop (args @ tl)
+        end in
+    loop lhs
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)

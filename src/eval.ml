@@ -25,8 +25,15 @@ form.
 A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
+(** A type to specify how trees should be used. *)
+type tree_mode =
+  | Tm_Full     (** Use only trees *)
+  | Tm_Fallback (** Try to use tree and fallback to legacy matching if rules
+                    contain an unimplemented feature. *)
+  | Tm_Without  (** Do not use trees. *)
+
 (** [with_trees] contains whether trees are used for pattern matching. *)
-let with_trees : bool Pervasives.ref = Pervasives.ref false
+let with_trees : tree_mode Pervasives.ref = Pervasives.ref Tm_Without
 
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
@@ -93,10 +100,12 @@ let whnf_beta : term -> term = fun t ->
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let t = unfold t in
-  if Pervasives.(!with_trees) then whnf_stk_tree t else
-  let s = Pervasives.(!steps) in
-  let u, stk = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  match Pervasives.(!with_trees) with
+  | Tm_Full     -> whnf_stk_tree t
+  | Tm_Without  -> let s = Pervasives.(!steps) in
+    let u, stk = whnf_stk t [] in
+    if Pervasives.(!steps) <> s then to_term u stk else t
+  | Tm_Fallback -> assert false
 
 (** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
     arguments [k].  Note that the normalisation is done in the sense of
@@ -345,8 +354,10 @@ let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
   let u = whnf t in
-  if Pervasives.(!with_trees) then u else
-  if Pervasives.(!steps = 0) then t else u
+  match Pervasives.(!with_trees) with
+  | Tm_Full     -> u
+  | Tm_Without  -> if Pervasives.(!steps = 0) then t else u
+  | Tm_Fallback -> assert false
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->

@@ -90,8 +90,11 @@ let spec =
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--trees"
-      , Arg.Set Eval.with_trees
+      , Arg.Unit (fun _ -> Eval.with_trees := Eval.Tm_Full)
       , " Whether to use trees for pattern matching" )
+    ; ( "--trees-hybrid"
+      , Arg.Unit (fun _ -> Eval.with_trees := Eval.Tm_Fallback)
+      , " Try to use trees with fallback on legacy matching" )
     ; ( "--write-trees"
       , Arg.Set Sign.write_trees
       , " Whether to write created trees as dot file" )
