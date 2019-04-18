@@ -521,60 +521,45 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let compile : Cm.t -> t = fun patterns ->
-  (* let varcount = ref 0 in *)
-  let rec compile patterns =
-    let { Cm.var_catalogue = vcat ; _ } = patterns in
-    if Cm.is_empty patterns then
-      begin
-        failwith "matching failure" ; (* For debugging purposes *)
-    (* Fail *)
-      end
-    else
-      if Cm.exhausted patterns then
-        let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
-        let f (count, acc) tpos =
-          let opslot = SubtMap.find_opt tpos pos2slot in
-          match opslot with
-          | None     -> succ count, acc
-          (* ^ Discard useless variables *)
-          | Some(sl) -> succ count, (count, sl) :: acc in
-        (* [env_builder] maps future position in the term store to the slot in
-           the environment. *)
-        let _, env_builder = List.fold_left f (0, [])
-          (List.rev vcat) in
-        (* ^ For now, [env_builder] contains only the variables encountered
-           while choosing the rule.  Other pattern variables needed in the
-           rhs, which are still in the [lhs] will now be fetched. *)
-        assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
-        let depth = List.length vcat in
-        fetch lhs depth env_builder rhs
-      else
-        (* Set appropriate column as first*)
-        let kept_cols = Cm.discard_cons_free patterns in
-        let sel_in_partial = Cm.pick_best_among patterns kept_cols in
-        let absolute_cind = kept_cols.(sel_in_partial) in
-        (* Extract this column *)
-        let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
-        let store = Cm.in_rhs terms in
-        (* Get new var catalogue *)
-        let newcat =
-          let newvars = Cm.varpos patterns absolute_cind in
-          newvars @ patterns.Cm.var_catalogue in
-        (* Specializations *)
-        let spepatts =
-          let cons = Cm.get_cons terms in
-          let f acc (tr_cons, te_cons) =
-            let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
-            let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-            TcMap.add tr_cons ncm acc in
-          List.fold_left f TcMap.empty cons in
-        let children = TcMap.map compile spepatts in
-        (* Default *)
-        let defmat =
-          let rules = Cm.default absolute_cind patterns.Cm.clauses in
-          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-          if Cm.is_empty ncm then None else Some(compile ncm) in
-        Node({ swap = absolute_cind ; store = store ; children = children
-             ; default = defmat }) in
-  compile patterns
+let rec compile : Cm.t -> t = fun patterns ->
+  let { Cm.var_catalogue = vcat ; _ } = patterns in
+  if Cm.is_empty patterns then Fail
+  else if Cm.exhausted patterns then
+    let { Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot } = Cm.yield patterns in
+    let f (count, acc) tpos =
+      let opslot = SubtMap.find_opt tpos pos2slot in
+      match opslot with
+      | None     -> succ count, acc
+      (* ^ Discard useless variables *)
+      | Some(sl) -> succ count, (count, sl) :: acc in
+    let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
+    (* ^ For now, [env_builder] contains only the variables encountered
+       while choosing the rule.  Other pattern variables needed in the
+       rhs, which are still in the [lhs] will now be fetched. *)
+    assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
+    let depth = List.length vcat in
+    fetch lhs depth env_builder rhs
+  else
+    let absolute_cind = (* Index of column switched on *)
+      let kept_cols = Cm.discard_cons_free patterns in
+      let sel_in_partial = Cm.pick_best_among patterns kept_cols in
+      kept_cols.(sel_in_partial) in
+    let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
+    let store = Cm.in_rhs terms in
+    let newcat = (* New var catalogue *)
+      let newvars = Cm.varpos patterns absolute_cind in
+      newvars @ patterns.Cm.var_catalogue in
+    let spepatts = (* Specialization sub-matrices *)
+      let cons = Cm.get_cons terms in
+      let f acc (tr_cons, te_cons) =
+        let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
+        let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+        TcMap.add tr_cons ncm acc in
+      List.fold_left f TcMap.empty cons in
+    let children = TcMap.map compile spepatts in
+    let defmat = (* Default matrix *)
+      let rules = Cm.default absolute_cind patterns.clauses in
+      let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+      if Cm.is_empty ncm then None else Some(compile ncm) in
+    Node({ swap = absolute_cind ; store = store ; children = children
+         ; default = defmat })
