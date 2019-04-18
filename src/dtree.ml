@@ -303,7 +303,7 @@ struct
       its left hand side is composed only of wildcards. *)
   let exhausted : t -> bool = fun { clauses ; _ } ->
     let flhs = (List.hd clauses).lhs in
-    Array.for_all (fun (e, _) -> not @@ is_treecons e) flhs
+    Array.for_all (fun (e, _) -> not (is_treecons e)) flhs
 
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> rule = fun { clauses ; _ } -> List.hd clauses
@@ -322,18 +322,17 @@ struct
     let ncols = List.extremum (>)
       (List.map (fun { lhs ; _ } -> Array.length lhs) m.clauses) in
     let switchable = List.init ncols (can_switch_on m) in
-    let unpacked = List.filteri_map (fun i e ->
-        if e then Some(i) else None) switchable in
-    assert (unpacked <> []) ;
-    Array.of_list unpacked
+    let switchable2ind i e = if e then Some(i) else None in
+    switchable |> List.filteri_map switchable2ind |> Array.of_list
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
   let get_cons : term list -> (treecons * term) list = fun telst ->
-    let tcs = List.filter_map (fun e ->
-        if is_treecons e then Some(treecons_of_term e, e) else None) telst in
-    List.sort_uniq (fun (tca, _) (tcb, _)-> tc_compare tca tcb) tcs
+    let keep_treecons e =
+      if is_treecons e then Some(treecons_of_term e, e) else None in
+    let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
+    telst |> List.filter_map keep_treecons |> List.sort_uniq tc_fst_cmp
 
   (** [contains_abst l] returns whether list of terms [l] contains an
       abstraction. *)
@@ -355,7 +354,7 @@ struct
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
-    let _, vars = List.split (List.filter is_var (get_col ci pm)) in
+    let _, vars = (get_col ci pm) |> List.filter is_var |> List.split in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
     List.sort_uniq Subterm.compare vars
@@ -556,8 +555,7 @@ let compile : Cm.t -> t = fun patterns ->
         let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         let absolute_cind = kept_cols.(sel_in_partial) in
         (* Extract this column *)
-        let col = Cm.get_col absolute_cind patterns in
-        let terms, _ = List.split col in
+        let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
         let store = Cm.in_rhs terms in
         (* Get new var catalogue *)
         let newcat =
