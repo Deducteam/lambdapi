@@ -143,20 +143,6 @@ module List =
         List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
           start li
 
-    (** [mem_eq e x l] is {!val:List.mem}[x l] with equality [e]. *)
-    let rec mem_eq : 'a eq -> 'a -> 'a list -> bool = fun e x -> function
-      | [] -> false
-      | h :: _ when e h x -> true
-      | _ :: t            -> mem_eq e x t
-
-    (** [uniqify e l] returns [l] without duplicates according to equality
-        [e]. *)
-    let uniqify : 'a eq -> 'a list -> 'a list = fun e l ->
-      let rec loop = function
-        | l, []     -> l
-        | l, h :: t -> loop ((if (mem_eq e h l) then l else (h :: l)), t) in
-      loop ([], l)
-
     (** [assoc_eq e k l] is [List.assoc k l] with equality function [e]. *)
     let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option = fun eq k l ->
       let rec loop = function
