@@ -41,7 +41,7 @@ echo "compute sof $nrules" >> "$fname"
 ## a rule is 'f 0 0 ... 0 i 0 ... 0 → f 0 0 ... (i - 1) 0 ... 0'
 ## with [i] at the index [i] in the sequence of zeros, and the first rule is
 ## f 0 ... 0 → 0
-fname="_autogen_many_args.lp"
+fname="autogen_many_args.lp"
 touch "$fname"
 echo "$natural_prelude" >> "$fname"
 
