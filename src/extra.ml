@@ -204,6 +204,11 @@ module Array =
       Array.fold_right (fun (el, er) (accl, accr) -> (el :: accl, er :: accr))
         a ([], [])
 
+    (** [of_seq s] converts sequence [s] to an array.  The pervasive function
+        doesn't keep the order of the sequence. *)
+    let of_seq : 'a Seq.t -> 'a array = fun s ->
+      s |> List.of_seq |> Array.of_list
+
   end
 
 module Seq =
