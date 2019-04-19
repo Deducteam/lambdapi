@@ -294,7 +294,8 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
        let capacity = lazy (Basics.capacity @@ Lazy.force tree) in
        symb.sym_tree := (capacity, tree) ;
        if Pervasives.(!write_trees)
-       then Dtree.to_dot symb.sym_name (Lazy.force tree)
+       then begin try Dtree.to_dot symb.sym_name (Lazy.force tree)
+         with _ -> () end
     | _     -> () in
   rs |> List.map (fun (e, _, _) -> e) |> List.sort_uniq Basics.sym_cmp
      |> List.iter build_tree
