@@ -20,7 +20,7 @@ let check_rule :
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
   (* We process the LHS to replace pattern variables by fresh function
      symbols. *)
-  let lhs, rhs = to_terms_closed (s, r.elt) in
+  let lhs, rhs = to_closed_terms (s, r.elt) in
   (* Infer the type of the LHS and the constraints. *)
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                       -> wrn r.pos "Untypable LHS."

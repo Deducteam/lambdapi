@@ -112,12 +112,12 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
-(** [get_symb t] checks that [t] is of the form [Symb (s , _)] and returns
-    [s]. *)
-let get_symb : term -> sym = fun t ->
+(** [get_symb t] returns [Some s] if [t] is of the form [Symb (s , _)].
+    Otherwise, it returns [None]. *)
+let get_symb : term -> sym option = fun t ->
   match unfold t with
-  | Symb (s, _) -> s
-  | _           -> assert false
+  | Symb (s, _) -> Some s
+  | _           -> None
 
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the

@@ -10,32 +10,41 @@ open Timed
 let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
   let f, args = get_args t1 in
   let f = get_symb f in
-  if List.exists (fun x -> lpo ord x t2 >= 0) args then 1
-  else
-    let g, args' = get_args t2 in
-    let g = get_symb g in
-    match ord f g with
-    | 1 ->
-        if List.for_all (fun x -> lpo ord t1 x > 0) args' then 1
-        else -1
-    | 0 ->
-        if List.for_all (fun x -> lpo ord t1 x > 0) args' then
-          Ord.ord_lex (lpo ord) args args'
-        else -1
-    | _ -> -1
+  match f with
+  | None   -> if t1 == t2 then 0 else -1
+  | Some f ->
+      if List.exists (fun x -> lpo ord x t2 >= 0) args then 1
+      else
+        let g, args' = get_args t2 in
+        let g = get_symb g in
+        match g with
+        | None   -> 1
+        | Some g ->
+            match ord f g with
+            | 1 ->
+                if List.for_all (fun x -> lpo ord t1 x > 0) args' then 1
+                else -1
+            | 0 ->
+                if List.for_all (fun x -> lpo ord t1 x > 0) args' then
+                  Ord.ord_lex (lpo ord) args args'
+                else -1
+            | _ -> -1
 
 (** [to_rule (lhs, rhs)] tranlates the pair [(lhs, rhs)] of closed terms into
     a rule. *)
 let to_rule : term * term -> sym * rule = fun (lhs, rhs) ->
   let (s, args) = get_args lhs in
   let s = get_symb s in
-  let vs = Bindlib.new_mvar te_mkfree [||] in
-  let rhs = Bindlib.unbox (Bindlib.bind_mvar vs (lift rhs)) in
-  s, { lhs = args ; rhs = rhs ; arity = List.length args ; vars = [||] }
+  match s with
+  | None   -> assert false
+  | Some s ->
+      let vs = Bindlib.new_mvar te_mkfree [||] in
+      let rhs = Bindlib.unbox (Bindlib.bind_mvar vs (lift rhs)) in
+      s, { lhs = args ; rhs = rhs ; arity = List.length args ; vars = [||] }
 
-(** [completion eqs ord] returns a pair of time points [(t1, t2)] where t1
-    corresponds to the used-defined rewrite system and t2 to the convergent
-    rewrite system obtained using the completion procedure. *)
+(** [completion eqs ord] returns the convergent rewrite system obtained from
+    the completion procedure on the set of equations [eqs] using the LPO
+    [lpo ord]. *)
 let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
   = fun eqs ord ->
   let lpo = lpo ord in
