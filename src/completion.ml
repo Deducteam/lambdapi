@@ -36,9 +36,8 @@ let to_rule : term * term -> sym * rule = fun (lhs, rhs) ->
 (** [completion eqs ord] returns a pair of time points [(t1, t2)] where t1
     corresponds to the used-defined rewrite system and t2 to the convergent
     rewrite system obtained using the completion procedure. *)
-let completion : (term * term) list -> sym Ord.cmp -> Time.t * Time.t
+let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
   = fun eqs ord ->
-  let t1 = Time.save () in
   let lpo = lpo ord in
   (* [symbs] is used to store all the symbols appearing in the equations. *)
   let symbs = ref [] in
@@ -52,8 +51,7 @@ let completion : (term * term) list -> sym Ord.cmp -> Time.t * Time.t
     | _                                        -> () in
   List.iter
     (fun (t1, t2) -> Basics.iter reset_sym t1; Basics.iter reset_sym t2) eqs;
-  let add_rule (s, r) =
-    s.sym_rules := r :: !(s.sym_rules) in
+  let add_rule (s, r) = s.sym_rules := r :: !(s.sym_rules) in
   (* [orient (t1, t2)] orients the equation [t1 = t2] using LPO. *)
   let orient (t1, t2) =
     match lpo t1 t2 with
@@ -81,29 +79,27 @@ let completion : (term * term) list -> sym Ord.cmp -> Time.t * Time.t
         let (lhs, rhs) = to_terms (s, r) in
         let lhs' = Eval.snf lhs in
         let rhs' = Eval.snf rhs in
-        if eq lhs lhs' then acc
+        s.sym_rules := r :: !(s.sym_rules);
+        if eq lhs lhs' then ()
         else begin
           match lpo lhs' rhs' with
-          | 0            -> acc
+          | 0            -> ()
           | k when k > 0 ->
               to_add := to_rule (lhs', rhs') :: !to_add;
               b := true;
-              r :: acc
           | _            ->
               to_add := to_rule (rhs', lhs') :: !to_add;
               b := true;
-              r :: acc
         end
       in
       let rec aux acc f rs =
         match rs with
         | []       -> ()
-        | r :: rs' -> let acc = f acc rs' r in aux acc f rs' in
+        | r :: rs' -> f acc rs' r; aux (r :: acc) f rs' in
       aux [] f !(s.sym_rules) in
     List.iter find_cp !symbs;
     List.iter add_rule !to_add;
     !b in
   let b = ref true in
   while !b do b := completion_aux () done;
-  let t2 = Time.save () in
-  t1, t2
+  List.map (fun s -> (s, !(s.sym_rules))) !symbs
