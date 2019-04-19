@@ -100,12 +100,14 @@ let whnf_beta : term -> term = fun t ->
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let t = unfold t in
-  match Pervasives.(!with_trees) with
-  | Tm_Full     -> whnf_stk_tree t
-  | Tm_Without  -> let s = Pervasives.(!steps) in
-    let u, stk = whnf_stk t [] in
-    if Pervasives.(!steps) <> s then to_term u stk else t
-  | Tm_Fallback -> assert false
+  let s = Pervasives.(!steps) in
+  let u, stk = whnf_stk t [] in
+  if Pervasives.(!steps) <> s then to_term u stk else t
+
+(** [whnf_tree t] computes a weak head normal form of term [t] using decision
+    trees. *)
+and whnf_tree : term -> term = fun t ->
+  let t = unfold t in whnf_stk_tree t
 
 (** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
     arguments [k].  Note that the normalisation is done in the sense of
@@ -285,9 +287,7 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
       let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
       let matched = TcMap.find_opt cons children in
       if matched = None then (default, []) else (matched, args)
-    | Abst(_, _) -> assert false
-    | Meta(_, _) -> assert false
-    | _          -> assert false in
+    | _           -> raise Dtree.Not_implemented in
   if TcMap.is_empty children then (default, []) else choose (whnf examined)
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
@@ -353,11 +353,14 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
-  let u = whnf t in
   match Pervasives.(!with_trees) with
-  | Tm_Full     -> u
-  | Tm_Without  -> if Pervasives.(!steps = 0) then t else u
-  | Tm_Fallback -> assert false
+  | Tm_Full     -> whnf_tree t
+  | Tm_Without  -> let u = whnf t in if Pervasives.(!steps = 0) then t else u
+  | Tm_Fallback ->
+    try whnf_tree t
+    with Dtree.Not_implemented ->
+      let u = whnf t in
+      if Pervasives.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->

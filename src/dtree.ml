@@ -272,27 +272,6 @@ struct
     (* The terms of the list are the subterms of the head symbol. *)
     loop 0 lhs (Subterm.succ Subterm.init)
 
-  (** [scan_for_unimplemented r] does nothing or
-      @raise Not_implemented if the rule contains a not yet implemented
-      feature (e.g. abstraction or non linear var). *)
-  let scan_unimplemented : Terms.rule -> unit =
-    fun { Terms.lhs ; Terms.rhs ; _ } ->
-    let env = Array.make (Bindlib.mbinder_arity rhs) false in
-    let rec loop lhs =
-      match lhs with
-      | []     -> ()
-      | hd :: tl ->
-        let h, args = Basics.get_args hd in
-        begin match h with
-          | Abst(_) -> raise Not_implemented
-          | Patt(Some(i), _, _) when not env.(i) -> env.(i) <- true ;
-            loop (args @ tl)
-          | Patt(Some(i), _, _) when env.(i)     -> raise Not_implemented
-          (* ^ Non linear variable *)
-          | _                                    -> loop (args @ tl)
-        end in
-    loop lhs
-
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
@@ -522,7 +501,7 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
          | Patt(None, _, _)    ->
             let child = loop atl added env_builder in
             Fetch(false, child)
-         | _                   -> assert false
+         | _                   -> Fail
          end in
     loop terms 0 env_builder
 

@@ -44,10 +44,11 @@ tests: bin
 real_tests: bin
 	@printf "## OK tests ##\n"
 	@for file in $(OK_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --trees-hybrid --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
+		&& $(LAMBDAPI) --trees-hybrid --verbose 0 $$file ; \
+		exit 1 ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
