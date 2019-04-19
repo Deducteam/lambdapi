@@ -12,26 +12,6 @@ let log_subj =
   new_logger 'j' "subj" "debugging information for subject-reduction"
 let log_subj = log_subj.logger
 
-let reduce_eqs : (term * term) list -> (term * term) list = fun eqs ->
-  let rec reduce_aux acc eqs =
-  match eqs with
-  | [] -> acc
-  | (t, u) :: eqs ->
-      let (ht, argst) = Basics.get_args t in
-      let (hu, argsu) = Basics.get_args u in
-      let nt = List.length argst in
-      let nu = List.length argsu in
-      if Eval.eq_modulo t u then reduce_aux acc eqs
-      else
-        match (unfold ht, unfold hu) with
-        | Symb (st, _), Symb (su, _) when st == su && nt = nu
-          && Sign.is_inj st ->
-            let add_eqs l t1 t2  = (t1, t2) :: l in
-            reduce_aux acc (List.fold_left2 add_eqs eqs argst argsu)
-        | _                 -> reduce_aux ((t, u) :: acc) eqs
-  in
-  reduce_aux [] eqs
-
 (** [check_rule symbs builtins r] check whether rule [r] is well-typed. The
     program fails gracefully in case of error. *)
 let check_rule :
@@ -45,7 +25,6 @@ let check_rule :
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                       -> wrn r.pos "Untypable LHS."
   | Some (lhs_constrs, ty_lhs) ->
-      let lhs_constrs = reduce_eqs lhs_constrs in
       if !log_enabled then
         begin
           log_subj "LHS has type [%a]" pp ty_lhs;
