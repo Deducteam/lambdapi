@@ -96,7 +96,7 @@ As far as we now, [`SizeChangeTool`]
 compatible with all `lambdapi` features.
 It can be called in the following way.
 ```bash
-lambdapi --termination "path/to/sct.native -nc --stdin=xml" input_file.lp
+lambdapi --termination "path/to/sct.native --no-color --stdin=xml" input_file.lp
 ```
 
 If the file does not contain type-level rewriting, [`Wanda`]
