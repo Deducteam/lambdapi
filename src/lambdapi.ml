@@ -91,13 +91,13 @@ let spec =
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--trees"
       , Arg.Unit (fun _ -> Eval.with_trees := Eval.Tm_Full)
-      , " Whether to use trees for pattern matching" )
+      , " Enforce use of trees for pattern matching" )
     ; ( "--trees-hybrid"
       , Arg.Unit (fun _ -> Eval.with_trees := Eval.Tm_Fallback)
       , " Try to use trees with fallback on legacy matching" )
     ; ( "--write-trees"
       , Arg.Set Sign.write_trees
-      , " Whether to write created trees as dot file" )
+      , " Write created trees as dot files" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
