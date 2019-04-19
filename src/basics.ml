@@ -112,6 +112,8 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
+(** [get_symb t] checks that [t] is of the form [Symb (s , _)] and returns
+    [s]. *)
 let get_symb : term -> sym = fun t ->
   match unfold t with
   | Symb (s, _) -> s
@@ -228,6 +230,12 @@ let build_meta_type : int -> term = fun k ->
   let tk = _Meta mk (Array.map _Vari vs) in
   Bindlib.unbox (build_prod k tk)
 
+(** [new_symb name t] returns a new function symbol of name [name] and of
+    type [t]. *)
+let new_symb name t =
+  { sym_name = name ; sym_type = ref t ; sym_path = [] ; sym_def = ref None
+  ; sym_impl = [] ; sym_rules = ref [] ; sym_mode = Const }
+
 (** [to_m k metas t] computes a new (boxed) term by replacing every pattern
     variable in [t] by a fresh metavariable and store the latter in [metas],
     where [k] indicates the order of the term obtained *)
@@ -245,15 +253,48 @@ let rec to_m : int -> (meta option) array -> term -> tbox = fun k metas t ->
         let l = Array.length a in
         match i with
         | None   ->
-            let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
+            let m = fresh_meta ~name:n Kind l in
             _Meta m a
         | Some i ->
             match metas.(i) with
             | Some m -> _Meta m a
             | None   ->
-                let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
+                let m = fresh_meta ~name:n Kind l in
                 metas.(i) <- Some m;
                 _Meta m a
+      end
+  | _              -> assert false
+
+(** [to_closed symbs t] computes a new (boxed) term by replacing every
+    pattern variable in [t] by a fresh symbol [c_n] of type [t_n] ([t_n] is
+    another fresh symbol of type [Kind]) and store [c_n] the latter in
+    [symbs]. *)
+let rec to_closed : (sym option) array -> term -> tbox
+  = fun symbs t ->
+  match unfold t with
+  | Vari x         -> _Vari x
+  | Symb (s, h)    -> _Symb s h
+  | Abst (a, t)    ->
+      let (x, t) = Bindlib.unbind t in
+      _Abst (to_closed symbs a) (Bindlib.bind_var x (to_closed symbs t))
+  | Appl (t, u)    -> _Appl (to_closed symbs t) (to_closed symbs u)
+  | Patt (i, n, _) ->
+      begin
+        match i with
+        | None   ->
+            let t_n = new_symb ("t_" ^ n) Kind in
+            let term_t_n = symb t_n in
+            let c_n = new_symb ("c_" ^ n) term_t_n in
+            _Symb c_n Nothing
+        | Some i ->
+            match symbs.(i) with
+            | Some s -> _Symb s Nothing
+            | None   ->
+                let t_n = new_symb ("t_" ^ n) Kind in
+                let term_t_n = symb t_n in
+                let c_n = new_symb ("c_" ^ n) term_t_n in
+                symbs.(i) <- Some c_n;
+                _Symb c_n Nothing
       end
   | _              -> assert false
 
@@ -316,3 +357,33 @@ let to_terms : sym * rule -> term * term = fun (s, r) ->
   let terms_env = Array.map to_term_env metas in
   let rhs = Bindlib.msubst r.rhs terms_env in
   (lhs, rhs)
+
+(** [to_closed_terms r] translates the rule [r] into a pair of terms. The
+    pattern variables in the LHS are replaced by fresh symbols as in the
+    function [to_closed] and the terms with environment in the RHS are
+    replaced by their corresponding symbols. *)
+let to_closed_terms : sym * rule -> term * term = fun (s, r) ->
+  let arity = Bindlib.mbinder_arity r.rhs in
+  let symbs = Array.init arity (fun _ -> None) in
+  let lhs = List.map (fun p -> Bindlib.unbox (to_closed symbs p)) r.lhs in
+  let lhs = add_args (symb s) lhs in
+  let to_term_env : sym option -> term_env = fun s ->
+    let s = match s with Some s -> s | None -> assert false in
+    TE_Some (Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb s Nothing))) in
+  let terms_env = Array.map to_term_env symbs in
+  let rhs = Bindlib.msubst r.rhs terms_env in
+  (lhs, rhs)
+
+exception Not_FO
+
+(** [check_fo t] checks that [t] is a first-order term. *)
+let rec check_fo : term -> unit = fun t ->
+  match t with
+  | Type
+  | Kind
+  | Symb _
+  | Wild
+  | Patt _                      -> ()
+  | Meta (_, ar) when ar = [||] -> ()
+  | Appl (u, v)                 -> check_fo u; check_fo v
+  | _                           -> raise Not_FO

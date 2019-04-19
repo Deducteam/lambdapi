@@ -125,7 +125,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         let (s,_,_) as r = scope_rule ss r in
         if !(s.sym_def) <> None then
           fatal_no_pos "Symbol [%s] cannot be (re)defined." s.sym_name;
-        Sr.check_rule ss.builtins r; r
+        r
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
@@ -133,7 +133,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt);
         Sign.add_rule ss.signature s r.elt
       in
-      List.iter add_rule rs; (ss, None)
+      List.iter add_rule rs;
+      List.iter (Sr.check_rule ss.builtins) rs; (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -208,6 +209,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             wrn cmd.pos "Proof aborted."; ss
         | P_proof_admit ->
             (* If the proof is finished, display a warning. *)
+
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)

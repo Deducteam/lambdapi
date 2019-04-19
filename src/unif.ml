@@ -237,7 +237,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
    injective. Currently, it only handles a specific case: when s is the
    builtin P. *)
   let solve_inj s ts v =
-    if !(s.sym_rules) = [] then error ()
+    if !(s.sym_rules) = [] then add_to_unsolved ()
     else
       match Pervasives.(!config) with
       | None -> add_to_unsolved ()
@@ -277,7 +277,6 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
           if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
           then add_to_unsolved ()
           else error ()
-     else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
