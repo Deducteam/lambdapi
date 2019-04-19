@@ -277,7 +277,7 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
   (* [choose t] chooses a tree among {!val:children} when term [t] is examined
      and returns the new head of stack. *)
   let choose t =
-    let r_ex = to_tref examined in
+    let r_ex = tref_val examined in
     let h, args = get_args t in
     match h with
     | Symb(s, _)  ->
