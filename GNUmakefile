@@ -52,7 +52,7 @@ real_tests: bin
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
-		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
+		$(LAMBDAPI) --trees-hybrid --verbose 0 $$file 2> /dev/null \
 		&& { printf "\033[31mOK\033[0m $$file\n" ; exit 1 ; } \
 		|| printf "\033[32mKO\033[0m $$file\n" ; \
 	done
