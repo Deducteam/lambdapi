@@ -99,9 +99,9 @@ let whnf_beta : term -> term = fun t ->
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
-  let t = unfold t in
   let s = Pervasives.(!steps) in
-  let u, stk = whnf_stk t [] in
+  let t = unfold t in
+  let (u, stk) = whnf_stk t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
 (** [whnf_tree t] computes a weak head normal form of term [t] using decision
