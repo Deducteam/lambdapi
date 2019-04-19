@@ -158,7 +158,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       (* Create edge *)
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
       TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
-      (match default with None -> () | Some(tr) -> write_tree tag DotDefa tr) ;
+      Option.iter (write_tree tag DotDefa) default ;
     | Fetch(store, next) ->
       incr nodecount ;
       let tag = !nodecount in

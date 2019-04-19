@@ -319,9 +319,11 @@ module SubtMap = Map.Make(Subterm)
 
 (** {3 Operators on trees} *)
 
-(** [iter l n f t] is a generic iterator on trees; with function [l] performed
-    on leaves, function [n] performed on nodes, [f] returned in case of
-    {!constructor:Fail} on tree [t]. *)
+(** [iter l n e f t] is a generic iterator on trees; with
+    - function [l] performed on leaves,
+    - function [n] performed on nodes,
+    - function [e] performed on fetch nodes,
+    - [f] returned in case of {!constructor:Fail} on tree [t]. *)
 let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
@@ -334,7 +336,8 @@ let tree_iter :
        do_node swap store
          (TcMap.map loop children)
          (Option.map loop default)
-    | Fetch(store, next)                          -> do_fetch store (loop next)
+    | Fetch(store, next)                          ->
+      do_fetch store (loop next)
   in
   loop t
 
