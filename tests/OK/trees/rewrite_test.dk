@@ -1,0 +1,17 @@
+A : Type.
+
+a : A.
+b : A.
+f : A -> A.
+
+def g : A -> A -> A.
+
+[]     g a b     --> f b.
+[x]    g (f a) x --> f x.
+[x]    g b (f x) --> x.
+[x]    g a (f x) --> a.
+
+#EVAL[SNF] g a b.
+#EVAL[SNF] g (f a) a.
+#EVAL[SNF] g b (f (f (f a))).
+#EVAL[SNF] g b (f a).
