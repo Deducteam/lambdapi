@@ -358,7 +358,8 @@ struct
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
-    pattern [p]. *)
+    pattern [p].
+    @raise Invalid_argument when the element [e] is ill formed. *)
   let spec_filter : term -> term -> bool = fun pat hd ->
     let h, args = get_args hd in
     let ph, pargs = get_args pat in
@@ -366,6 +367,7 @@ struct
     | Symb(_, _), Symb(_, _)
     | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
     | _         , Patt(_, _, e) ->
+       if args <> [] then invalid_arg "ClauseMat.spec_filter" else
        let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
        Bindlib.is_closed b
     | _         , _             -> false
