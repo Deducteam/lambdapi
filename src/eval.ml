@@ -354,15 +354,14 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
+  let legacy () =
+    let u = whnf_legacy t in
+    if Pervasives.(!steps = 0) then t else u in
   match Pervasives.(!with_trees) with
   | Tm_Full     -> whnf_tree t
-  | Tm_Without  -> let u = whnf_legacy t in
-    if Pervasives.(!steps = 0) then t else u
-  | Tm_Fallback ->
-    try whnf_tree t
-    with Dtree.Not_implemented ->
-      let u = whnf_legacy t in
-      if Pervasives.(!steps = 0) then t else u
+  | Tm_Without  -> legacy ()
+  | Tm_Fallback -> try whnf_tree t
+    with Dtree.Not_implemented -> legacy ()
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
