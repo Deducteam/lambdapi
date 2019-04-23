@@ -253,17 +253,19 @@ let rec to_m : int -> (meta option) array -> term -> tbox = fun k metas t ->
         let l = Array.length a in
         match i with
         | None   ->
-            let m = fresh_meta ~name:n Kind l in
+            let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
             _Meta m a
         | Some i ->
             match metas.(i) with
             | Some m -> _Meta m a
             | None   ->
-                let m = fresh_meta ~name:n Kind l in
+                let m = fresh_meta ~name:n (build_meta_type (l + k)) l in
                 metas.(i) <- Some m;
                 _Meta m a
       end
   | _              -> assert false
+
+exception Not_FO
 
 (** [to_closed symbs t] computes a new (boxed) term by replacing every
     pattern variable in [t] by a fresh symbol [c_n] of type [t_n] ([t_n] is
@@ -272,31 +274,32 @@ let rec to_m : int -> (meta option) array -> term -> tbox = fun k metas t ->
 let rec to_closed : (sym option) array -> term -> tbox
   = fun symbs t ->
   match unfold t with
-  | Vari x         -> _Vari x
-  | Symb (s, h)    -> _Symb s h
-  | Abst (a, t)    ->
+  | Vari x            -> _Vari x
+  | Symb (s, h)       -> _Symb s h
+  | Abst (a, t)       ->
       let (x, t) = Bindlib.unbind t in
       _Abst (to_closed symbs a) (Bindlib.bind_var x (to_closed symbs t))
-  | Appl (t, u)    -> _Appl (to_closed symbs t) (to_closed symbs u)
-  | Patt (i, n, _) ->
+  | Appl (t, u)       -> _Appl (to_closed symbs t) (to_closed symbs u)
+  | Patt (i, n, [||]) ->
       begin
         match i with
         | None   ->
-            let t_n = new_symb ("t_" ^ n) Kind in
+            let t_n = new_symb ("{t_" ^ n) Kind in
             let term_t_n = symb t_n in
-            let c_n = new_symb ("c_" ^ n) term_t_n in
+            let c_n = new_symb ("{c_" ^ n) term_t_n in
             _Symb c_n Nothing
         | Some i ->
             match symbs.(i) with
             | Some s -> _Symb s Nothing
             | None   ->
-                let t_n = new_symb ("t_" ^ n) Kind in
+                let t_n = new_symb ("{t_" ^ n) Kind in
                 let term_t_n = symb t_n in
-                let c_n = new_symb ("c_" ^ n) term_t_n in
+                let c_n = new_symb ("{c_" ^ n) term_t_n in
                 symbs.(i) <- Some c_n;
                 _Symb c_n Nothing
       end
-  | _              -> assert false
+  | Patt _            -> raise Not_FO
+  | _                 -> assert false
 
 (** [distinct_vars_opt ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
@@ -373,8 +376,6 @@ let to_closed_terms : sym * rule -> term * term = fun (s, r) ->
   let terms_env = Array.map to_term_env symbs in
   let rhs = Bindlib.msubst r.rhs terms_env in
   (lhs, rhs)
-
-exception Not_FO
 
 (** [check_fo t] checks that [t] is a first-order term. *)
 let rec check_fo : term -> unit = fun t ->
