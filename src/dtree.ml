@@ -369,7 +369,7 @@ struct
     | Symb(_, _), Symb(_, _)
     | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
     | _         , Patt(_, _, e) ->
-       let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift pat) in
+       let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
        Bindlib.is_closed b
     | _         , _             -> false
 
