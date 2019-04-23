@@ -248,10 +248,8 @@ struct
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : term list -> action -> int SubtMap.t = fun lhs rhs ->
-    let nvars = Bindlib.mbinder_arity rhs in
+  let flushout_vars : term list -> int SubtMap.t = fun lhs ->
     let rec loop found st po =
-      if found = nvars then SubtMap.empty else
       match st with
       | [] -> SubtMap.empty
       | x :: xs ->
@@ -271,8 +269,7 @@ struct
     and deepen found args remain po =
       let argpos = loop found args (Subterm.sub po) in
       SubtMap.union (fun _ _ _ -> assert false) argpos
-        (loop found remain (Subterm.succ po))
-    in
+        (loop found remain (Subterm.succ po)) in
     (* The terms of the list are the subterms of the head symbol. *)
     loop 0 lhs (Subterm.succ Subterm.init)
 
@@ -280,7 +277,7 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
+      let variables = flushout_vars r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
@@ -352,8 +349,8 @@ struct
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
 
-  (** [varpos p] returns the list of positions of pattern variables in the
-      first column of [p]. *)
+  (** [varpos p c] returns the list of positions of pattern variables in
+      column [c] of [p]. *)
   let varpos : t -> int -> Subterm.t list = fun pm ci ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
