@@ -98,7 +98,7 @@ let whnf_beta : term -> term = fun t ->
 
 (** [whnf_legacy t] computes a weak head normal form of the term [t]. *)
 let rec whnf_legacy : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating [%a]" pp t;
+  if !log_enabled then log_eval "evaluating (legacy) [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_stk_legacy t [] in
@@ -107,7 +107,8 @@ let rec whnf_legacy : term -> term = fun t ->
 (** [whnf_tree t] computes a weak head normal form of term [t] using decision
     trees. *)
 and whnf_tree : term -> term = fun t ->
-  let t = unfold t in let u, stk = whnf_stk_tree t [] in
+  if !log_enabled then log_eval "evaluating (trees) [%a]" pp t ;
+  let u, stk = whnf_stk_tree t [] in
   add_args u stk
 
 (** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
