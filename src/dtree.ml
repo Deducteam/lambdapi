@@ -382,10 +382,9 @@ struct
     | Symb(_, _)
     | Vari(_)       ->
       let np = Subterm.sub p in
-      Array.of_seq @@ Subterm.tag ~empty:np (List.to_seq args)
+      args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
     | Patt(_, _, e) ->
-      let _, pargs = Basics.get_args pat in
-      let arity = List.length pargs in
+      let arity = pat |> Basics.get_args |> snd |> List.length in
       Seq.make arity (Patt(None, "", e))
         |> Subterm.tag
         |> Seq.map (fun (te, po) -> (te, Subterm.prefix p po))

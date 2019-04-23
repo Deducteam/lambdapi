@@ -288,7 +288,8 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
       let matched = TcMap.find_opt cons children in
       if matched = None then (default, []) else (matched, args)
     | _           -> raise Dtree.Not_implemented in
-  if TcMap.is_empty children then (default, []) else choose (whnf_tree examined)
+  if TcMap.is_empty children then (default, [])
+  else choose (whnf_tree examined)
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
