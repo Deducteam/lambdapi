@@ -475,17 +475,19 @@ module Cm = ClauseMat
 (** [fetch l d e r] consumes [l] until environment builder [e] contains as
     many elements as the number of variables in [r].  The environment builder
     [e] is also enriched.  The tree which allows this consumption is returned,
-    with a leaf holding action [r] and the new environment.  The strategy is
-    for the moment rather stupid, nodes are consumed linearly (no swaps
-    performed). *)
+    with a leaf holding action [r] and the new environment.
+
+    The remaining terms are all consumed to expunge the stack during
+    evaluation. *)
 let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
     let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (List.length env_builder) in
     let rec loop telst added env_builder =
-      if added = missing then Leaf(env_builder, rhs) else
       match telst with
-      | []       -> assert false
+      | []       ->
+        if added <> missing then failwith "arity mismatch in lhs variables"
+        else Leaf(env_builder, rhs)
       | te :: tl ->
          let h, args = get_args te in
          let atl = args @ tl in
