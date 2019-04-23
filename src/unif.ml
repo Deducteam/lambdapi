@@ -98,8 +98,8 @@ let rec solve : problems -> unif_constrs = fun p ->
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
-  let (h1, ts1) = Eval.whnf_stk t1 [] in
-  let (h2, ts2) = Eval.whnf_stk t2 [] in
+  let (h1, ts1) = Eval.whnf_stk_legacy t1 [] in
+  let (h2, ts2) = Eval.whnf_stk_legacy t2 [] in
   if !log_enabled then
     begin
       let t1 = Eval.to_term h1 ts1 in

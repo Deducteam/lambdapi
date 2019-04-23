@@ -96,12 +96,12 @@ let whnf_beta : term -> term = fun t ->
   let u = whnf_beta t in
   if Pervasives.(!steps = 0) then t else u
 
-(** [whnf t] computes a weak head normal form of the term [t]. *)
-let rec whnf : term -> term = fun t ->
+(** [whnf_legacy t] computes a weak head normal form of the term [t]. *)
+let rec whnf_legacy : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  let (u, stk) = whnf_stk t [] in
+  let (u, stk) = whnf_stk_legacy t [] in
   if Pervasives.(!steps) <> s then to_term u stk else t
 
 (** [whnf_tree t] computes a weak head normal form of term [t] using decision
@@ -109,9 +109,8 @@ let rec whnf : term -> term = fun t ->
 and whnf_tree : term -> term = fun t ->
   let t = unfold t in whnf_stk_tree t
 
-(** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
-    arguments [k].  Note that the normalisation is done in the sense of
-    [whnf]. *)
+(** [whnf_stk_tree t] computes the weak head normal form of [t].  Note that
+    the normalisation is done in the sense of [whnf]. *)
 and whnf_stk_tree : term -> term = fun t ->
   (* [loop_wst t' t stk] tries to reduce [t] when applied to stack [stk].  If
      nothing can be done, [t'] is returned. *)
@@ -130,34 +129,34 @@ and whnf_stk_tree : term -> term = fun t ->
         match find_rule_tree s stk with
         (* If no rule is found, return the original term *)
         | None    -> unfold ifnred
-        | Some(t) -> whnf t
+        | Some(t) -> whnf_tree t
       end
     (* In head normal form. *)
     | _         , _         -> unfold ifnred in
   loop_wst t t []
 
-(** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
-    argument list (or stack) [stk]. Note that the normalisation is done in the
-    sense of [whnf]. *)
-and whnf_stk : term -> stack -> term * stack = fun t stk ->
+(** [whnf_stk_legacy t stk] computes the weak head normal form of [t] applied
+    to the argument list (or stack) [stk]. Note that the normalisation is done
+    in the sense of [whnf]. *)
+and whnf_stk_legacy : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk    ) ->
-      whnf_stk f (Pervasives.ref (false, u) :: stk)
+      whnf_stk_legacy f (Pervasives.ref (false, u) :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) ->
       Pervasives.incr steps;
-      whnf_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
+      whnf_stk_legacy (Bindlib.subst f (snd Pervasives.(!u))) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk    ) ->
       begin
         match Timed.(!(s.sym_def)) with
-        | Some(t) -> Pervasives.incr steps; whnf_stk t stk
+        | Some(t) -> Pervasives.incr steps; whnf_stk_legacy t stk
         | None    ->
-        match find_rule s stk with
+        match find_rule_legacy s stk with
         | None        -> st
-        | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
+        | Some(t,stk) -> Pervasives.incr steps; whnf_stk_legacy t stk
       end
   (* In head normal form. *)
   | (_        , _      ) -> st
@@ -173,7 +172,7 @@ and find_rule_tree : sym -> term list -> term option = fun s stk ->
 (** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
     under the stack [stk]. If such a rule is found, the machine state produced
     by its application is returned. *)
-and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
+and find_rule_legacy : sym -> stack -> (term * stack) option = fun s stk ->
   let stk_len = List.length stk in
   let match_rule r =
     (* First check that we have enough arguments. *)
@@ -219,7 +218,8 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
         Bindlib.is_closed b
     | _                                 ->
     (* Other cases need the term to be evaluated. *)
-    if not (fst Pervasives.(!t)) then Pervasives.(t := (true, whnf (snd !t)));
+    if not (fst Pervasives.(!t))
+    then Pervasives.(t := (true, whnf_legacy (snd !t)));
     match (p, snd Pervasives.(!t)) with
     | (Patt(Some(i),_,e), t            ) -> (* ar.(i) <> TE_None *)
         let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
@@ -247,7 +247,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf a, whnf b) with
+    match (whnf_legacy a, whnf_legacy b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -288,7 +288,7 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
       let matched = TcMap.find_opt cons children in
       if matched = None then (default, []) else (matched, args)
     | _           -> raise Dtree.Not_implemented in
-  if TcMap.is_empty children then (default, []) else choose (whnf examined)
+  if TcMap.is_empty children then (default, []) else choose (whnf_tree examined)
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
@@ -355,11 +355,12 @@ let whnf : term -> term = fun t ->
   let t = unfold t in
   match Pervasives.(!with_trees) with
   | Tm_Full     -> whnf_tree t
-  | Tm_Without  -> let u = whnf t in if Pervasives.(!steps = 0) then t else u
+  | Tm_Without  -> let u = whnf_legacy t in
+    if Pervasives.(!steps = 0) then t else u
   | Tm_Fallback ->
     try whnf_tree t
     with Dtree.Not_implemented ->
-      let u = whnf t in
+      let u = whnf_legacy t in
       if Pervasives.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
