@@ -481,6 +481,8 @@ module Cm = ClauseMat
     evaluation. *)
 let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
+    let defnd = { swap = 0 ; store = false ; children = TcMap.empty
+                ; default = None } in
     let terms, _ = Array.split line in
     let missing = Bindlib.mbinder_arity rhs - (List.length env_builder) in
     let rec loop telst added env_builder =
@@ -494,14 +496,14 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
          | Patt(Some(i), _, _) ->
             let neb = (depth + added, i) :: env_builder in
             let child = loop atl (succ added) neb in
-            Fetch(true, child)
+            Node( { defnd with store = true ; default = Some(child) })
          | Abst(_, b)          ->
             let _, body = Bindlib.unbind b in
             let child = loop (body :: atl) added env_builder in
-            Fetch(false, child)
+            Node({ defnd with default = Some(child) })
          | Patt(None, _, _)    ->
             let child = loop atl added env_builder in
-            Fetch(false, child)
+            Node({ defnd with default = Some(child) })
          | _                   -> Fail
          end in
     loop terms 0 env_builder
