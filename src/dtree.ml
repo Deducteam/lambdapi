@@ -365,10 +365,9 @@ struct
   let spec_filter : term -> term -> bool = fun pat hd ->
     let h, args = get_args hd in
     let ph, pargs = get_args pat in
-    List.same_length args pargs &&
     match ph, h with
     | Symb(_, _), Symb(_, _)
-    | Vari(_)   , Vari(_)       -> eq pat hd
+    | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
     | _         , Patt(_, _, e) ->
        let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift pat) in
        Bindlib.is_closed b
