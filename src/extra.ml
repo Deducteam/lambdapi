@@ -190,6 +190,13 @@ module Array =
       Array.fold_right (fun (el, er) (accl, accr) -> (el :: accl, er :: accr))
         a ([], [])
 
+    (** [drop n a] discards the first [n] elements of [a].  The empty array is
+        returned if [n > length a]. *)
+    let drop : int -> 'a array -> 'a array = fun n a ->
+      let l = length a in
+      if n >= l then [||]
+      else let suffix = Array.sub a n (l - n) in suffix
+
     (** [of_seq s] converts sequence [s] to an array.  The pervasive function
         doesn't keep the order of the sequence. *)
     let of_seq : 'a Seq.t -> 'a array = fun s ->

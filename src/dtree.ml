@@ -403,8 +403,7 @@ struct
       filtered in
     List.map2 (fun newcith rul ->
       let { lhs ; _ } = rul in
-      let postfix = if ci >= Array.length lhs then [| |] else
-          Array.sub lhs (ci + 1) (Array.length lhs - (ci + 1)) in
+      let postfix = Array.drop (ci + 1) lhs in
       let newline = Array.concat
         [ Array.sub lhs 0 ci
         ; newcith
@@ -426,8 +425,7 @@ struct
       let { lhs ; _ } = rul in
       match lhs.(ci) with
       | Patt(_, _, _), _ ->
-         let postfix = if (ci + 1) >= Array.length lhs then [| |] else
-             Array.sub lhs (ci + 1) (Array.length lhs - (ci + 1)) in
+        let postfix = Array.drop (ci + 1) lhs in
          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
       | _                -> assert false) filtered
 end
