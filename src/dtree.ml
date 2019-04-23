@@ -354,10 +354,10 @@ struct
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
       | _                   -> false in
-    let _, vars = (get_col ci pm) |> List.filter is_var |> List.split in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    List.sort_uniq Subterm.compare vars
+    get_col ci pm |> List.filter is_var |> List.split |> snd
+                  |> List.sort_uniq Subterm.compare
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
