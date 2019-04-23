@@ -14,7 +14,7 @@ type t = tree
 type action = (term_env, term) Bindlib.mbinder
 
 (** An exception raised if trying to match an abstraction or a left non linear
-variable. *)
+    variable. *)
 exception Not_implemented
 
 (** {b Example} Given a rewrite system for a symbol [f] given as
@@ -352,8 +352,8 @@ struct
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
 
-  (** [varpos p] returns the list of positions of pattern variables in the
-      first column of [p]. *)
+  (** [varpos p c] returns the list of positions of pattern variables in
+      column [c] of [p]. *)
   let varpos : t -> int -> Subterm.t list = fun pm ci ->
     let is_var (te, _) = match te with
       | Patt(Some(_), _, _) -> true
