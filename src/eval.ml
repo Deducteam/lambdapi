@@ -107,33 +107,31 @@ let rec whnf_legacy : term -> term = fun t ->
 (** [whnf_tree t] computes a weak head normal form of term [t] using decision
     trees. *)
 and whnf_tree : term -> term = fun t ->
-  let t = unfold t in whnf_stk_tree t
+  let t = unfold t in let u, stk = whnf_stk_tree t [] in
+  add_args u stk
 
-(** [whnf_stk_tree t] computes the weak head normal form of [t].  Note that
-    the normalisation is done in the sense of [whnf]. *)
-and whnf_stk_tree : term -> term = fun t ->
-  (* [loop_wst t' t stk] tries to reduce [t] when applied to stack [stk].  If
-     nothing can be done, [t'] is returned. *)
-  let rec loop_wst (ifnred : term) t stk =
-    match (unfold t, stk) with
-    (* Push argument to the stack. *)
-    | Appl(u, v), _         -> loop_wst ifnred u (ensure_tref v :: stk)
-    (* Beta reduction. *)
-    | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
-      loop_wst t t stk
-    (* Try to rewrite. *)
-    | Symb(s, _), stk       ->
-      begin match !(s.sym_def) with
-        | Some(t) -> loop_wst t t stk
-        | None    ->
-        match find_rule_tree s stk with
-        (* If no rule is found, return the original term *)
-        | None    -> unfold ifnred
-        | Some(t) -> whnf_tree t
-      end
-    (* In head normal form. *)
-    | _         , _         -> unfold ifnred in
-  loop_wst t t []
+(** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
+    stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
+and whnf_stk_tree : term -> term list -> term * term list = fun t stk ->
+  let st = (unfold t, stk) in
+  match st with
+  (* Push argument to the stack. *)
+  | Appl(u, v), stk       -> whnf_stk_tree u (ensure_tref v :: stk)
+  (* Beta reduction. *)
+  | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
+    whnf_stk_tree t stk
+  (* Try to rewrite. *)
+  | Symb(s, _), stk       ->
+    begin match !(s.sym_def) with
+      | Some(t) -> whnf_stk_tree t stk
+      | None    ->
+      match find_rule_tree s stk with
+      (* If no rule is found, return the original term *)
+      | None         -> st
+      | Some(t, stk) -> whnf_stk_tree t stk
+    end
+  (* In head normal form. *)
+  | _         , _         -> st
 
 (** [whnf_stk_legacy t stk] computes the weak head normal form of [t] applied
     to the argument list (or stack) [stk]. Note that the normalisation is done
@@ -164,7 +162,8 @@ and whnf_stk_legacy : term -> stack -> term * stack = fun t stk ->
 (** [find_rule_tree s k] attempts to find a reduction rule of [s] when applied
     to arguments [k].  Returns the reduced term if a rule if found, [None]
     otherwise. *)
-and find_rule_tree : sym -> term list -> term option = fun s stk ->
+and find_rule_tree : sym -> term list -> (term * term list) option =
+  fun s stk ->
   let capa, tr = !(s.sym_tree) in
   let capa, tr = Lazy.force capa, Lazy.force tr in
   tree_walk tr capa stk
@@ -293,7 +292,7 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
-and tree_walk : Dtree.t -> int -> term list -> term option =
+and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
   let vars = Array.make capa Kind in (* dummy terms *)
   let fill_vars store t slot =
@@ -316,7 +315,7 @@ and tree_walk : Dtree.t -> int -> term list -> term option =
           env.(slot) <- TE_Some(b) in
         List.iter fn env_builder;
         (* Actually perform the action. *)
-        Some(Bindlib.msubst act env)
+        Some(Bindlib.msubst act env, R.to_list stk)
     | Node({swap; children; store; default}) ->
         (* Pick the right term in the stack. *)
         begin try

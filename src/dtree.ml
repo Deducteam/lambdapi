@@ -55,6 +55,9 @@ sig
   (** [of_list l] returns a stack containing the elements of [l]. *)
   val of_list : 'a list -> 'a t
 
+  (** [to_list s] returns a list containing the elements of the stack [s]. *)
+  val to_list : 'a t -> 'a list
+
   (** [length v] is the number of elements in [v]. *)
   val length : 'a t -> int
 
@@ -84,6 +87,7 @@ struct
   let empty = []
   let is_empty l = (=) [] l
   let of_list l = l
+  let to_list s = s
 
   (** [length l] complexity in [Θ(length l)]. *)
   let length = List.length
