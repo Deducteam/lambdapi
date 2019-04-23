@@ -229,10 +229,6 @@ type term =
       pattern.  Briefly, a {!constructor:Node} contains one subtree per
       possible switch, plus possibly a default case and an abstraction
       case. *)
-  | Fetch of (bool * tree)
-  (** Node dedicated to fetching remaining variables. [Fetch(s, c)] consumes
-      an element from the term stack, stores it if [s] is true and branches on
-      child [c].  Theses nodes are created by {!val:Dtree.fetch}. *)
   | Fail
 
 (** Data contained in a node of a tree.  A node allows to filter the possible

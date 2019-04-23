@@ -319,26 +319,21 @@ module SubtMap = Map.Make(Subterm)
 
 (** {3 Operators on trees} *)
 
-(** [iter l n e f t] is a generic iterator on trees; with
+(** [iter l n f t] is a generic iterator on trees; with
     - function [l] performed on leaves,
     - function [n] performed on nodes,
-    - function [e] performed on fetch nodes,
     - [f] returned in case of {!constructor:Fail} on tree [t]. *)
 let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
-  do_fetch:(bool -> 'a -> 'a) ->
-  fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_fetch ~fail t ->
+  fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~fail t ->
   let rec loop = function
     | Leaf(pa, a)                                 -> do_leaf pa a
     | Fail                                        -> fail
     | Node({ swap ; store ; children ; default }) ->
        do_node swap store
          (TcMap.map loop children)
-         (Option.map loop default)
-    | Fetch(store, next)                          ->
-      do_fetch store (loop next)
-  in
+         (Option.map loop default) in
   loop t
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
@@ -355,8 +350,7 @@ let capacity : tree -> int =
     let _, chdepths = List.split (TcMap.bindings ch) in
     let dedepth = Option.get de 0 in
     List.extremum (>) (dedepth :: chdepths) + (if st then 1 else 0) in
-  let do_fetch st ne = (if st then 1 else 0) + ne in
-  tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node ~do_fetch:do_fetch
+  tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
 
 (** {3 Tree constructor conversion} *)
 

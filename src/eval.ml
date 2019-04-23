@@ -329,15 +329,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               walk child stk cursor in
             Option.bind next matched
           with Not_found -> None
-        end
-    | Fetch(store, next)                     ->
-        try
-          let left, examined, right = R.destruct stk 0 in
-          let cursor = fill_vars store examined cursor in
-          let stk = R.restruct left [] right in
-          walk next stk cursor
-        with Not_found -> None
-  in
+        end in
   walk tree stk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
