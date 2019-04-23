@@ -486,8 +486,7 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
     let rec loop telst added env_builder =
       match telst with
       | []       ->
-        if added <> missing then failwith "arity mismatch in lhs variables"
-        else Leaf(env_builder, rhs)
+        if added <> missing then Fail else Leaf(env_builder, rhs)
       | te :: tl ->
          let h, args = get_args te in
          let atl = args @ tl in
