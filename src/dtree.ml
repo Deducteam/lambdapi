@@ -239,6 +239,16 @@ struct
         matrix of {i (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix
         in {i (Mₙ)ₙ}). *) }
 
+  (** Operations embedded in the tree *)
+  type decision =
+    | Yield of rule
+    (** Apply a rule. *)
+    | Specialise of int
+    (** Further specialise the matrix against constructors of a given
+        column. *)
+    | Constrain
+    (** Check some constraints on the matrix. *)
+
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
     let module F = Format in
@@ -342,12 +352,6 @@ struct
       let c = get_col ci mat in score c) columns in
     Array.argmax (<=) wild_pc
 
-  (** [yield m] yields a rule to be applied. *)
-  let yield : t -> rule option = fun { clauses ; _ } ->
-    let is_exhausted { lhs ; _ } =
-      Array.for_all (fun (e, _) -> not (is_treecons e)) lhs in
-    List.find_opt is_exhausted clauses
-
   (** [can_switch_on p k] returns whether a switch can be carried out on
       column [k] in matrix [p] *)
   let can_switch_on : t -> int -> bool = fun { clauses ; _ } k ->
@@ -355,6 +359,9 @@ struct
       | []      -> false
       | r :: rs -> if is_treecons (fst r.lhs.(k)) then true else loop rs in
     loop clauses
+
+  let is_exhausted : rule -> bool = fun { lhs ; _ } ->
+    Array.for_all (fun (e, _) -> not (is_treecons e)) lhs
 
   (** [discard_cons_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns). *)
@@ -364,6 +371,15 @@ struct
     let switchable = List.init ncols (can_switch_on m) in
     let switchable2ind i e = if e then Some(i) else None in
     switchable |> List.filteri_map switchable2ind |> Array.of_list
+
+  (** [yield m] yields a rule to be applied. *)
+  let yield : t -> decision = fun m ->
+    let { clauses ; _ } = m in
+    match List.find_opt is_exhausted clauses with
+    | Some(r) -> Yield(r)
+    | None    -> let kept_cols = discard_cons_free m in
+      let sel_in_partial = pick_best_among m kept_cols in
+      Specialise(kept_cols.(sel_in_partial))
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
@@ -552,7 +568,7 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.var_catalogue = vcat ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
+  | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
            ; Cm.nonlinearity_cstr = _ }) ->
     let f (count, acc) tpos =
       let opslot = SubtMap.find_opt tpos pos2slot in
@@ -567,27 +583,24 @@ let rec compile : Cm.t -> t = fun patterns ->
     assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
     let depth = List.length vcat in
     fetch lhs depth env_builder rhs
-  | None                                                ->
-    let absolute_cind = (* Index of column switched on *)
-      let kept_cols = Cm.discard_cons_free patterns in
-      let sel_in_partial = Cm.pick_best_among patterns kept_cols in
-      kept_cols.(sel_in_partial) in
-    let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
+  | Constrain -> raise Not_implemented
+  | Specialise(cind)                     ->
+    let terms, _ = List.split @@ Cm.get_col cind patterns in
     let store = Cm.in_rhs terms in
     let newcat = (* New var catalogue *)
-      let newvars = Cm.varpos patterns absolute_cind in
+      let newvars = Cm.varpos patterns cind in
       newvars @ patterns.Cm.var_catalogue in
     let spepatts = (* Specialization sub-matrices *)
       let cons = Cm.get_cons terms in
       let f acc (tr_cons, te_cons) =
-        let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
+        let rules = Cm.specialize te_cons cind patterns.clauses in
         let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
         TcMap.add tr_cons ncm acc in
       List.fold_left f TcMap.empty cons in
     let children = TcMap.map compile spepatts in
     let defmat = (* Default matrix *)
-      let rules = Cm.default absolute_cind patterns.clauses in
+      let rules = Cm.default cind patterns.clauses in
       let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
       if Cm.is_empty ncm then None else Some(compile ncm) in
-    Node({ swap = absolute_cind ; store = store ; children = children
+    Node({ swap = cind ; store = store ; children = children
          ; default = defmat })
