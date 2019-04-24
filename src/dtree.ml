@@ -246,7 +246,7 @@ struct
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
-    | Constrain
+    | Constrain of int
     (** Check some constraints on the matrix. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
@@ -374,6 +374,12 @@ struct
     let switchable2ind i e = if e then Some(i) else None in
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
+  (** [is_constrained c n] returns whether component list [c] contains non
+      linearity constraints according to [n]. *)
+  let is_constrained : component list -> SubtSet.t list -> bool =
+    fun cs nlcstrs ->
+    List.exists2 (fun (_, p) nl -> SubtSet.mem p nl) cs nlcstrs
+
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; _ } = m in
@@ -381,7 +387,12 @@ struct
     | Some(r) -> Yield(r)
     | None    -> let kept_cols = discard_cons_free m in
       let sel_in_partial = pick_best_among m kept_cols in
-      Specialise(kept_cols.(sel_in_partial))
+      let cind = kept_cols.(sel_in_partial) in
+      let col = get_col cind m in
+      let nlcstrs = List.map (fun { nonlinearity_cstr = n ; _ } -> n )
+          clauses in
+      let cstr = is_constrained col nlcstrs in
+      if cstr then Constrain(cind) else Specialise(cind)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
@@ -585,7 +596,7 @@ let rec compile : Cm.t -> t = fun patterns ->
     assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
     let depth = List.length vcat in
     fetch lhs depth env_builder rhs
-  | Constrain -> raise Not_implemented
+  | Constrain(_) -> raise Not_implemented
   | Specialise(cind)                     ->
     let terms, _ = List.split @@ Cm.get_col cind patterns in
     let store = Cm.in_rhs terms in
