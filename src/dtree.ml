@@ -251,10 +251,8 @@ struct
 
   (** [flushout_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : term list -> action -> int SubtMap.t = fun lhs rhs ->
-    let nvars = Bindlib.mbinder_arity rhs in
-    let rec loop found st po =
-      if found = nvars then SubtMap.empty else
+  let flushout_vars : term list -> int SubtMap.t = fun lhs ->
+    let rec loop st po =
       match st with
       | [] -> SubtMap.empty
       | x :: xs ->
@@ -262,28 +260,27 @@ struct
            match x with
            | Patt(None, _, _)
            | Vari(_)
-           | Symb(_, _)          -> loop found xs (Subterm.succ po)
+           | Symb(_, _)          -> loop xs (Subterm.succ po)
            | Patt(Some(i), _, _) -> SubtMap.add po i
-              (loop (succ found) xs (Subterm.succ po))
+              (loop xs (Subterm.succ po))
            | Appl(_, _)          -> let _, args = get_args x in
-                                   deepen found args xs po
+                                   deepen args xs po
            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
-                                   deepen found [body] xs po
+                                   deepen [body] xs po
            | _                   -> assert false
          end
-    and deepen found args remain po =
-      let argpos = loop found args (Subterm.sub po) in
+    and deepen args remain po =
+      let argpos = loop args (Subterm.sub po) in
       SubtMap.union (fun _ _ _ -> assert false) argpos
-        (loop found remain (Subterm.succ po))
-    in
+        (loop remain (Subterm.succ po)) in
     (* The terms of the list are the subterms of the head symbol. *)
-    loop 0 lhs (Subterm.succ Subterm.init)
+    loop lhs (Subterm.succ Subterm.init)
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
+      let variables = flushout_vars r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
