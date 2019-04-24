@@ -23,6 +23,8 @@ Structure of directories and files
      - `terms.ml`: internal representation of terms
      - `basics.ml`: basic operations on terms
      - `print.ml`: pretty printing of terms
+     - `treecons.ml`: definitions and types for decision trees
+     - `trees.ml`: decision trees for rewriting
      - `eval.ml`: rewriting engine
      - `unif.ml`: unification algorithm
      - `ctxt.ml`: typing contexts (maps variable -> type)
