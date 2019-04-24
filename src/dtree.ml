@@ -222,9 +222,9 @@ struct
               ; variables : int SubtMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)
-              ; nonlinearity_cstr : SubtSet.t IntMap.t
-              (** Maps a slot in the evaluation environment to a set of
-                  pattern variables attached to this slot. *)}
+              ; nonlinearity_cstr : SubtSet.t
+              (** Contains all positions of variables having non-linearity
+                  constraints *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -294,7 +294,7 @@ struct
   (** [record_nl_constraints l] returns a mapping from the slot in the
       environment to the set of vars in this slot, which must be checked for
       equality. *)
-  let record_nl_constraints : term list -> SubtSet.t IntMap.t = fun lhs ->
+  let record_nl_constraints : term list -> SubtSet.t = fun lhs ->
     let add po i _ _ s =
       let update = function
         | Some(x) -> Some(SubtSet.add po x)
@@ -306,7 +306,9 @@ struct
       let conflict _ s t = Some(SubtSet.union s t) in
       IntMap.union conflict in
     let sl2vars = fold_vars lhs ~add:add ~merge:merge ~init:IntMap.empty in
-    IntMap.filter (fun _ e -> SubtSet.cardinal e > 1) sl2vars
+    IntMap.fold (fun _ e acc ->
+        if SubtSet.cardinal e > 1 then SubtSet.union e acc else acc)
+      sl2vars SubtSet.empty
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
