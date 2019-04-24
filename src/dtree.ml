@@ -360,8 +360,10 @@ struct
       | r :: rs -> if is_treecons (fst r.lhs.(k)) then true else loop rs in
     loop clauses
 
-  let is_exhausted : rule -> bool = fun { lhs ; _ } ->
-    Array.for_all (fun (e, _) -> not (is_treecons e)) lhs
+  (** [is_exhausted r] returns whether [r] can be applied or not. *)
+  let is_exhausted : rule -> bool = fun { lhs ; nonlinearity_cstr ; _ } ->
+    Array.for_all (fun (e, p) -> not (is_treecons e) &&
+                                 not (SubtSet.mem p nonlinearity_cstr)) lhs
 
   (** [discard_cons_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns). *)
