@@ -317,6 +317,9 @@ end
 (** Functional map with [Subterm.t] as keys *)
 module SubtMap = Map.Make(Subterm)
 
+(** Functional set with [Subterm.t] as items. *)
+module SubtSet = Set.Make(Subterm)
+
 (** {3 Operators on trees} *)
 
 (** [iter l n f t] is a generic iterator on trees; with

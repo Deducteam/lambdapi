@@ -221,7 +221,10 @@ struct
               (** Right hand side of a rule. *)
               ; variables : int SubtMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
-                  slot in a term env. *)}
+                  slot in a term env. *)
+              ; nonlinearity_cstr : SubtSet.t IntMap.t
+              (** Maps a slot in the evaluation environment to a set of
+                  pattern variables attached to this slot. *)}
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -288,14 +291,33 @@ struct
     let merge = SubtMap.union (fun _ _ _ -> assert false) in
     fold_vars lhs ~add:add ~merge:merge ~init:SubtMap.empty
 
+  (** [record_nl_constraints l] returns a mapping from the slot in the
+      environment to the set of vars in this slot, which must be checked for
+      equality. *)
+  let record_nl_constraints : term list -> SubtSet.t IntMap.t = fun lhs ->
+    let add po i _ _ s =
+      let update = function
+        | Some(x) -> Some(SubtSet.add po x)
+        | None    -> Some(SubtSet.singleton po) in
+      match i with
+      | Some(sl) -> IntMap.update sl update s
+      | None     -> s in
+    let merge =
+      let conflict _ s t = Some(SubtSet.union s t) in
+      IntMap.union conflict in
+    let sl2vars = fold_vars lhs ~add:add ~merge:merge ~init:IntMap.empty in
+    IntMap.filter (fun _ e -> SubtSet.cardinal e > 1) sl2vars
+
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let variables = record_vars r.Terms.lhs in
+      let nlcstr = record_nl_constraints r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = variables} in
+      ; variables = variables
+      ; nonlinearity_cstr = nlcstr } in
     { clauses = List.map r2r rs ; var_catalogue = [] }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -528,7 +550,8 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.var_catalogue = vcat ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot }) ->
+  | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
+           ; Cm.nonlinearity_cstr = _ }) ->
     let f (count, acc) tpos =
       let opslot = SubtMap.find_opt tpos pos2slot in
       match opslot with
