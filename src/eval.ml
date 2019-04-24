@@ -35,6 +35,11 @@ type tree_mode =
 (** [with_trees] contains whether trees are used for pattern matching. *)
 let with_trees : tree_mode Pervasives.ref = Pervasives.ref Tm_Without
 
+(** [fallback_trees f g] tries to apply [f] and if it fails with
+    [Not_implemented], applies [g]. *)
+let fallback_trees : (unit -> 'a) -> (unit -> 'a) -> 'a = fun f g ->
+  try f () with Dtree.Not_implemented -> g ()
+
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -352,8 +357,8 @@ let whnf : term -> term = fun t ->
   match Pervasives.(!with_trees) with
   | Tm_Full     -> whnf_tree t
   | Tm_Without  -> legacy ()
-  | Tm_Fallback -> try whnf_tree t
-    with Dtree.Not_implemented -> legacy ()
+  | Tm_Fallback -> let f () = whnf_tree t in
+    fallback_trees f legacy
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
