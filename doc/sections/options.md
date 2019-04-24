@@ -91,7 +91,7 @@ be used. The command is expected to behave as follows:
 As an example,  `echo MAYBE` is the simplest possible (valid)
 termination-check that one may use.
 
-As far as we now, [`SizeChangeTool`]
+As far as we know, [`SizeChangeTool`]
 (https://github.com/Deducteam/SizeChangeTool) is the only termination checker
 compatible with all `lambdapi` features.
 It can be called in the following way.
@@ -116,7 +116,7 @@ There are currently two rewriting engines available.
    order, left-linear rewriting rules.
 
 Decision trees are usually faster (especially on symbols with many
-rewrite rules).  To use them, to modes are available,
+rewrite rules).  To use them, two modes are available,
  - `--trees` enforce using decision trees; rewriting will fail on
    higher order patterns, and the behaviour is not defined on non
    left-linear patterns;
