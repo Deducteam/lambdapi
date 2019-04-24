@@ -209,6 +209,15 @@ type term =
 
 (** {3 Decision trees for rewriting} *)
 
+(** Constraints among elements of the tree. *)
+and tree_constraint =
+  | TcstrEq of int
+  (** [TcstrEq(i)] ensures that the examined term is convertible with term at
+      slot [i] of the environment. *)
+  | TcstrFreeVars of term Bindlib.var list
+  (** [TcstrFreeVars(v)] ensures the examined contains only free variables
+      that are in [v]. *)
+
 (** Trees are used to efficiently choose a rewriting rule given a list of
     terms (beginning with a symbol) to be rewritten.  The left-hand side
     of the rule is spread across the {!constructor:Node}s of the tree.  Hence,
@@ -229,7 +238,20 @@ type term =
       pattern.  Briefly, a {!constructor:Node} contains one subtree per
       possible switch, plus possibly a default case and an abstraction
       case. *)
+  | Condition of condition_data
+  (** Binary node with branching depending on a boolean condition on a term. *)
   | Fail
+
+(** Data needed to carry out a condition verification during evaluation. *)
+ and condition_data =
+  { cond_swap : int
+  (** On which term of the stack the condition is to be checked. *)
+  ; ok : tree
+  (** Tree branched on if the condition is verified. *)
+  ; condition : tree_constraint
+  (** Type of the condition. *)
+  ; fail : tree
+  (** Tree branched on if the condition is not verified. *)}
 
 (** Data contained in a node of a tree.  A node allows to filter the possible
     rules by branching on a child node. *)

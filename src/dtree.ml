@@ -163,6 +163,16 @@ let to_dot : string -> t -> unit = fun fname tree ->
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
       TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
       Option.iter (write_tree tag DotDefa) default ;
+    | Condition(cdata) ->
+      let { cond_swap ; ok ; condition ; fail } = cdata in
+      incr nodecount ;
+      let tag = !nodecount in
+      F.fprintf ppf "@ %d [label=\"%s↓%d\" shape=\"diamond\"];" tag
+        (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) -> "FV")
+        cond_swap ;
+      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
+      write_tree tag DotDefa ok ;
+      write_tree tag DotDefa fail ;
     | Fail               ->
       incr nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
