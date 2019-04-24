@@ -249,38 +249,50 @@ struct
       (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
 
-  (** [flushout_vars l] returns a mapping from position of variables into [l]
-      to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : term list -> int SubtMap.t = fun lhs ->
+  (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
+      When a {!constructor:Patt} is found in any subterm of [l], function [f]
+      is applied on the pattern variable and an accumulator.  Function [m] is
+      used to combine the returned values on different subterms. *)
+  let fold_vars : term list ->
+    add:(Subterm.t -> int option -> string -> term array -> 'a -> 'a) ->
+    merge:('a -> 'a -> 'a) ->
+    init:'a -> 'a = fun lhs ~add ~merge ~init ->
     let rec loop st po =
       match st with
-      | [] -> SubtMap.empty
+      | [] -> init
       | x :: xs ->
          begin
            match x with
            | Patt(None, _, _)
            | Vari(_)
-           | Symb(_, _)          -> loop xs (Subterm.succ po)
-           | Patt(Some(i), _, _) -> SubtMap.add po i
-              (loop xs (Subterm.succ po))
-           | Appl(_, _)          -> let _, args = get_args x in
-                                   deepen args xs po
-           | Abst(_, b)          -> let _, body = Bindlib.unbind b in
-                                   deepen [body] xs po
-           | _                   -> assert false
+           | Symb(_, _)    -> loop xs (Subterm.succ po)
+           | Patt(i, s, e) -> add po i s e (loop xs (Subterm.succ po))
+           | Appl(_, _)    -> let _, args = get_args x in
+             deepen args xs po
+           | Abst(_, b)    -> let _, body = Bindlib.unbind b in
+             deepen [body] xs po
+           | _             -> assert false
          end
     and deepen args remain po =
       let argpos = loop args (Subterm.sub po) in
-      SubtMap.union (fun _ _ _ -> assert false) argpos
-        (loop remain (Subterm.succ po)) in
+      merge argpos (loop remain (Subterm.succ po)) in
     (* The terms of the list are the subterms of the head symbol. *)
     loop lhs (Subterm.succ Subterm.init)
+
+  (** [record_vars l] returns a mapping from position of variables into [l]
+      to the slot assigned to each variable in a {!type:term_env}. *)
+  let record_vars : term list -> int SubtMap.t = fun lhs ->
+    let add po i _ _ m = match i with
+      | Some(sl) -> SubtMap.add po sl m
+      | None     -> m in
+    let merge = SubtMap.union (fun _ _ _ -> assert false) in
+    fold_vars lhs ~add:add ~merge:merge ~init:SubtMap.empty
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let variables = flushout_vars r.Terms.lhs in
+      let variables = record_vars r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
       ; variables = variables} in
