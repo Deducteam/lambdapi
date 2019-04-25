@@ -263,6 +263,20 @@ struct
       (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
 
+  (** [pp_data o m] prints auxiliary data of matrix [m] to out channel [o]. *)
+  let pp_data : t pp = fun oc { clauses ; _ } ->
+    let module F = Format in
+    let pp_rule oc (nonlin, _) =
+      F.fprintf oc "@[<h>" ;
+      F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";@ ")
+        Subterm.pp oc (nonlin |> SubtSet.to_seq |> List.of_seq) ;
+      F.fprintf oc "@]" in
+    F.fprintf oc "{*@[<v>@," ;
+    F.pp_print_list ~pp_sep:F.pp_print_cut pp_rule oc
+      (List.map
+         (fun { variables ; nonlin ; _ } -> (nonlin, variables)) clauses) ;
+    F.fprintf oc "@.*}@,"
+
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
       is applied on the pattern variable and an accumulator.  Function [m] is
