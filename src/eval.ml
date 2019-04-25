@@ -326,9 +326,13 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       let { cond_swap ; ok ; condition ; fail } = cdata in
       let _, examined, _ = R.destruct stk cond_swap in
       begin match condition with
-        | TcstrEq(slot) -> if eq_modulo examined vars.(slot)
-          then walk ok stk cursor
-          else walk fail stk cursor
+        | TcstrEq(slot) ->
+          begin match vars.(slot) with
+          | Kind -> walk ok stk cursor
+          | t    ->
+            if eq_modulo examined t then walk ok stk cursor
+            else walk fail stk cursor
+          end
         | TcstrFreeVars(_)                   -> raise Dtree.Not_implemented
       end
     | Node({swap; children; store; default}) ->
