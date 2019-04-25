@@ -1,6 +1,6 @@
 require open tests.OK.nat
 
-definition upper ≔ 2000
+definition upper ≔ 3000
 
 symbol loop : N ⇒ N ⇒ N
 rule loop (s &x) 0      → loop &x upper
