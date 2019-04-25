@@ -379,8 +379,8 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; _ } ->
-    Array.for_all
-      (fun (e, _) -> not (is_treecons e) && SubtSet.is_empty nonlin) lhs
+    Array.for_all (fun (e, _) -> not (is_treecons e)) lhs &&
+      SubtSet.is_empty nonlin
 
   (** [discard_cons_free m] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns). *)
