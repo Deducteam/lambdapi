@@ -503,6 +503,30 @@ struct
         let postfix = Array.drop (ci + 1) lhs in
          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
       | _                -> assert false) filtered
+
+  (** [nl_succeed c s r] computes the matrix containing rules from [r] that
+      verify a non-linearity constraint on column [c] regarding slot [s]. *)
+  let nl_succeed : int -> int -> rule list -> rule list = fun ci slot ->
+    let f r =
+      let { lhs ; nonlin ; _ } = r in
+      let t, p = lhs.(ci) in
+      let nonlin =
+        match t with
+        | Patt(Some(i), _, _) -> if i = slot
+          then SubtSet.remove p nonlin else nonlin
+        | _                   -> nonlin in
+      { r with nonlin } in
+    List.map f
+
+  (** [nl_fail c s r] computes the matrix containing rules not failing a
+      non-linearity constraint on column [c] regarding slot [s]. *)
+  let nl_fail : int -> int -> rule list -> rule list = fun ci slot ->
+    let f { lhs ; nonlin ; _ } =
+      let t, p = lhs.(ci) in
+      match t with
+      | Patt(Some(i), _, _) -> not (i = slot && SubtSet.mem p nonlin)
+      | _                   -> true in
+    List.filter f
 end
 
 module Cm = ClauseMat
@@ -600,7 +624,13 @@ let rec compile : Cm.t -> t = fun patterns ->
     assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
     let depth = List.length vcat in
     fetch lhs depth env_builder rhs
-  | NlConstrain(_, _) -> raise Not_implemented
+  | NlConstrain(cind, slot) ->
+     let ok = let clauses = Cm.nl_succeed cind slot patterns.clauses in
+       compile { patterns with Cm.clauses = clauses } in
+     let fail = let clauses = Cm.nl_fail cind slot patterns.clauses in
+       compile {patterns with Cm.clauses = clauses } in
+     let condition = TcstrEq(slot) in
+     Condition({ cond_swap = cind ; ok ; condition ; fail })
   | Specialise(cind)                     ->
     let terms, _ = List.split @@ Cm.get_col cind patterns in
     let store = Cm.in_rhs terms in
