@@ -279,76 +279,75 @@ and eq_modulo : term -> term -> bool = fun a b ->
     elements to be put in the stack are returned along the tree. *)
 and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
   fun examined children default ->
-  (* [choose t] chooses a tree among {!val:children} when term [t] is examined
-     and returns the new head of stack. *)
-  let choose t =
-    let r_ex = tref_val examined in
-    let h, args = get_args t in
-    match h with
-    | Symb(s, _)  ->
-      let args = List.map ensure_tref args in
-      let c_ari = List.length args in
-      r_ex := Some(add_args h args) ;
-      let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
-      let matched = TcMap.find_opt cons children in
-      if matched = None then (default, []) else (matched, args)
-    | _           -> raise Dtree.Not_implemented in
-  if TcMap.is_empty children then (default, [])
-  else choose (whnf_tree examined)
+    (* [choose t] chooses a tree among {!val:children} when term [t] is
+       examined and returns the new head of stack. *)
+    let choose t =
+      let r_ex = tref_val examined in
+      let h, args = get_args t in
+      match h with
+      | Symb(s, _)  ->
+          let args = List.map ensure_tref args in
+          let c_ari = List.length args in
+          r_ex := Some(add_args h args) ;
+          let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+          let matched = TcMap.find_opt cons children in
+          if matched = None then (default, []) else (matched, args)
+      | _           -> raise Dtree.Not_implemented in
+    if TcMap.is_empty children then (default, [])
+    else choose (whnf_tree examined)
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
-  let vars = Array.make capa Kind in (* dummy terms *)
-  let fill_vars store t slot =
-    if store then (vars.(slot) <- t ; succ slot) else slot in
-  let module R = Dtree.ReductionStack in
-  let stk = R.of_list stk in
+    let vars = Array.make capa Kind in (* dummy terms *)
+    let fill_vars store t slot =
+      if store then (vars.(slot) <- t ; succ slot) else slot in
+    let module R = Dtree.ReductionStack in
+    let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
      indicating where to write in the [env] array described in {!module:Terms}
      as the environment of the RHS during matching. *)
-  let rec walk tree stk cursor =
-    match tree with
-    | Fail                                   -> None
-    | Leaf(env_builder, act)                 ->
+    let rec walk tree stk cursor =
+      match tree with
+      | Fail                                             -> None
+      | Leaf(env_builder, act)                           ->
         (* Allocate an environment for the action. *)
-        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+          let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn (pos, slot) =
-          let t = unfold vars.(pos) in
-          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-          env.(slot) <- TE_Some(b) in
-        List.iter fn env_builder;
+          let fn (pos, slot) =
+            let t = unfold vars.(pos) in
+            let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+            env.(slot) <- TE_Some(b) in
+          List.iter fn env_builder;
         (* Actually perform the action. *)
-        Some(Bindlib.msubst act env, R.to_list stk)
-    | Condition(cdata)                       ->
-      let { cond_swap ; ok ; condition ; fail } = cdata in
-      let _, examined, _ = R.destruct stk cond_swap in
-      begin match condition with
-        | TcstrEq(slot) ->
-          begin match vars.(slot) with
-          | Kind -> walk ok stk cursor
-          | t    ->
-            if eq_modulo examined t then walk ok stk cursor
-            else walk fail stk cursor
+          Some(Bindlib.msubst act env, R.to_list stk)
+      | Condition({ cond_swap ; ok ; condition ; fail }) ->
+          let _, examined, _ = R.destruct stk cond_swap in
+          begin match condition with
+          | TcstrEq(slot)    ->
+              begin match vars.(slot) with
+              | Kind -> walk ok stk cursor
+              | t    ->
+                  if eq_modulo examined t then walk ok stk cursor
+                  else walk fail stk cursor
+              end
+          | TcstrFreeVars(_) -> raise Dtree.Not_implemented
           end
-        | TcstrFreeVars(_)                   -> raise Dtree.Not_implemented
-      end
-    | Node({swap; children; store; default}) ->
+      | Node({swap; children; store; default})           ->
         (* Pick the right term in the stack. *)
-        begin try
-            let left, examined, right = R.destruct stk swap in
-            (* Store hd of stack if needed *)
-            let cursor = fill_vars store examined cursor in
-            let matched, args = branch examined children default in
-            let next child =
-              let stk = R.restruct left args right in
-              walk child stk cursor in
-            Option.bind next matched
-          with Not_found -> None
-        end in
-  walk tree stk 0
+          begin
+            try let left, examined, right = R.destruct stk swap in
+              (* Store hd of stack if needed *)
+                let cursor = fill_vars store examined cursor in
+                let matched, args = branch examined children default in
+                let next child =
+                  let stk = R.restruct left args right in
+                  walk child stk cursor in
+                Option.bind next matched
+            with Not_found -> None
+          end in
+    walk tree stk 0
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.
