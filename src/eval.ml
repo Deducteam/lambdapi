@@ -35,11 +35,6 @@ type tree_mode =
 (** [with_trees] contains whether trees are used for pattern matching. *)
 let with_trees : tree_mode Pervasives.ref = Pervasives.ref Tm_Without
 
-(** [fallback_trees f g] tries to apply [f] and if it fails with
-    [Not_implemented], applies [g]. *)
-let fallback_trees : (unit -> 'a) -> (unit -> 'a) -> 'a = fun f g ->
-  try f () with Dtree.Not_implemented -> g ()
-
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -67,7 +62,8 @@ let to_term : term -> stack -> term = fun t args ->
     | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
   in to_term t args
 
-(** Evaluation step counter. *)
+(** Evaluation step counter.  Allow to conserve physical equality in
+    {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
@@ -113,8 +109,10 @@ let rec whnf_legacy : term -> term = fun t ->
     trees. *)
 and whnf_tree : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating (trees) [%a]" pp t ;
+  let s = Pervasives.(!steps) in
+  let t = unfold t in
   let u, stk = whnf_stk_tree t [] in
-  add_args u stk
+  if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
@@ -124,17 +122,19 @@ and whnf_stk_tree : term -> term list -> term * term list = fun t stk ->
   (* Push argument to the stack. *)
   | Appl(u, v), stk       -> whnf_stk_tree u (ensure_tref v :: stk)
   (* Beta reduction. *)
-  | Abst(_, f), u :: stk  -> let t = Bindlib.subst f u in
+  | Abst(_, f), u :: stk  ->
+    Pervasives.incr steps ;
+    let t = Bindlib.subst f u in
     whnf_stk_tree t stk
   (* Try to rewrite. *)
   | Symb(s, _), stk       ->
     begin match !(s.sym_def) with
-      | Some(t) -> whnf_stk_tree t stk
+      | Some(t) -> Pervasives.incr steps ; whnf_stk_tree t stk
       | None    ->
       match find_rule_tree s stk with
       (* If no rule is found, return the original term *)
       | None         -> st
-      | Some(t, stk) -> whnf_stk_tree t stk
+      | Some(t, stk) -> Pervasives.incr steps ; whnf_stk_tree t stk
     end
   (* In head normal form. *)
   | _         , _         -> st
@@ -360,14 +360,13 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
-  let legacy () =
-    let u = whnf_legacy t in
-    if Pervasives.(!steps = 0) then t else u in
-  match Pervasives.(!with_trees) with
-  | Tm_Full     -> whnf_tree t
-  | Tm_Without  -> legacy ()
-  | Tm_Fallback -> let f () = whnf_tree t in
-    fallback_trees f legacy
+  let reduced =
+    match Pervasives.(!with_trees) with
+    | Tm_Full     -> whnf_tree t
+    | Tm_Without  -> whnf_legacy t
+    | Tm_Fallback -> try whnf_tree t
+      with Dtree.Not_implemented -> whnf_legacy t in
+  if Pervasives.(!steps) <> 0 then reduced else t
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
