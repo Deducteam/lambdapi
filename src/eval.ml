@@ -324,10 +324,10 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
         Some(Bindlib.msubst act env, R.to_list stk)
     | Condition(cdata)                       ->
       let { cond_swap ; ok ; condition ; fail } = cdata in
-      let left, examined, right = R.destruct stk cond_swap in
+      let _, examined, _ = R.destruct stk cond_swap in
       begin match condition with
         | TcstrEq(slot) -> if eq_modulo examined vars.(slot)
-          then walk ok (R.restruct left [] right) cursor
+          then walk ok stk cursor
           else walk fail stk cursor
         | TcstrFreeVars(_)                   -> raise Dtree.Not_implemented
       end
