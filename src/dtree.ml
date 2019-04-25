@@ -145,38 +145,37 @@ let to_dot : string -> t -> unit = fun fname tree ->
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit =
     fun father_l swon tree ->
-    match tree with
-    | Leaf(_, a)         ->
-      incr nodecount ;
-      let _, acte = Bindlib.unmbind a in
-      F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
-      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
-        swon
-    | Node(ndata)        ->
-      let { swap ; children ; store ; default } = ndata in
-      incr nodecount ;
-      let tag = !nodecount in
-      (* Create node *)
-      F.fprintf ppf "@ %d [label=\"%d\"%s];" tag swap
-        (if store then " shape=\"box\"" else "") ;
-      (* Create edge *)
-      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
-      TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
-      Option.iter (write_tree tag DotDefa) default ;
-    | Fail               ->
-      incr nodecount ;
-      F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
+      match tree with
+      | Leaf(_, a)         -> incr nodecount ;
+        let _, acte = Bindlib.unmbind a in
+        F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
+        F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
+          swon
+      | Node(ndata)        ->
+          let { swap ; children ; store ; default } = ndata in
+          incr nodecount ;
+          let tag = !nodecount in
+         (* Create node *)
+          F.fprintf ppf "@ %d [label=\"%d\"%s];" tag swap
+            (if store then " shape=\"box\"" else "") ;
+         (* Create edge *)
+          F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm
+            swon ;
+          TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+          Option.iter (write_tree tag DotDefa) default ;
+      | Fail               -> incr nodecount ;
+        F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
   in
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
     | Node({ swap ; children = ch ; store ; default }) ->
-       F.fprintf ppf "@ 0 [label=\"%d\"%s];"
-         swap (if store then " shape=\"box\"" else "") ;
-       TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
-       (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
-    | Leaf(_)                                -> ()
-    | _                                      -> assert false
+        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
+          swap (if store then " shape=\"box\"" else "") ;
+      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
+      (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
+    | Leaf(_)                                          -> ()
+    | _                                                -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
@@ -205,13 +204,14 @@ struct
       be used because {!val:pick_best_among} goes through all items of a rule
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
-  type rule = { lhs : component array
-              (** Left hand side of a rule.   *)
-              ; rhs : action
-              (** Right hand side of a rule. *)
-              ; variables : int SubtMap.t
-              (** Mapping from positions of variable subterms in [lhs] to a
-                  slot in a term env. *)}
+  type rule =
+    { lhs : component array
+    (** Left hand side of a rule.   *)
+    ; rhs : action
+    (** Right hand side of a rule. *)
+    ; variables : int SubtMap.t
+    (** Mapping from positions of variable subterms in [lhs] to a slot in a
+        term env. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -245,27 +245,25 @@ struct
     let nvars = Bindlib.mbinder_arity rhs in
     let rec loop found st po =
       if found = nvars then SubtMap.empty else
-      match st with
-      | [] -> SubtMap.empty
-      | x :: xs ->
-         begin
-           match x with
-           | Patt(None, _, _)
-           | Vari(_)
-           | Symb(_, _)          -> loop found xs (Subterm.succ po)
-           | Patt(Some(i), _, _) -> SubtMap.add po i
-              (loop (succ found) xs (Subterm.succ po))
-           | Appl(_, _)          -> let _, args = get_args x in
-                                   deepen found args xs po
-           | Abst(_, b)          -> let _, body = Bindlib.unbind b in
-                                   deepen found [body] xs po
-           | _                   -> assert false
-         end
+        match st with
+        | [] -> SubtMap.empty
+        | x :: xs ->
+            begin match x with
+            | Patt(None, _, _)
+            | Vari(_)
+            | Symb(_, _)          -> loop found xs (Subterm.succ po)
+            | Patt(Some(i), _, _) -> SubtMap.add po i
+                (loop (succ found) xs (Subterm.succ po))
+            | Appl(_, _)          -> let _, args = get_args x in
+                                    deepen found args xs po
+            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
+                                    deepen found [body] xs po
+            | _                   -> assert false
+            end
     and deepen found args remain po =
       let argpos = loop found args (Subterm.sub po) in
       SubtMap.union (fun _ _ _ -> assert false) argpos
-        (loop found remain (Subterm.succ po))
-    in
+        (loop found remain (Subterm.succ po)) in
     (* The terms of the list are the subterms of the head symbol. *)
     loop 0 lhs (Subterm.succ Subterm.init)
 
@@ -353,8 +351,8 @@ struct
       | _                   -> false in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    get_col ci pm |> List.filter is_var |> List.split |> snd
-                  |> List.sort_uniq Subterm.compare
+    get_col ci pm |> List.filter is_var |> List.split |> snd |>
+        List.sort_uniq Subterm.compare
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
@@ -367,34 +365,33 @@ struct
     | Symb(_, _), Symb(_, _)
     | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
     | _         , Patt(_, _, e) ->
-       if args <> [] then invalid_arg "ClauseMat.spec_filter" else
-       let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
-       Bindlib.is_closed b
+        if args <> [] then invalid_arg "ClauseMat.spec_filter" else
+        let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
+        Bindlib.is_closed b
     | _         , _             -> false
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
       specializing against pattern [p]. *)
   let spec_transform : term -> component -> component array =
     fun pat (t, p) ->
-    let h, args = Basics.get_args t in
-    match h with
-    | Symb(_, _)
-    | Vari(_)       ->
-      let np = Subterm.sub p in
-      args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
-    | Patt(_, _, e) ->
-      let arity = pat |> Basics.get_args |> snd |> List.length in
-      Seq.make arity (Patt(None, "", e))
-        |> Subterm.tag
-        |> Seq.map (fun (te, po) -> (te, Subterm.prefix p po))
-        |> Array.of_seq
-    | _             -> assert false
+      let h, args = Basics.get_args t in
+      match h with
+      | Symb(_, _)
+      | Vari(_)       ->
+          let np = Subterm.sub p in
+          args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
+      | Patt(_, _, e) ->
+          let arity = pat |> Basics.get_args |> snd |> List.length in
+          Seq.make arity (Patt(None, "", e)) |> Subterm.tag |>
+              Seq.map (fun (te, po) -> (te, Subterm.prefix p po)) |>
+              Array.of_seq
+      | _             -> assert false
 
-(** [specialize p c m] specializes the matrix [m] when matching pattern [p]
-    against column [c].  A matrix can be specialized by a user defined symbol.
-    In case an {!constructor:Appl} is given as pattern [p], only terms having
-    the same number of arguments and the same leftmost {e non}
-    {!constructor:Appl} term match. *)
+  (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
+      against column [c].  A matrix can be specialized by a user defined
+      symbol.  In case an {!constructor:Appl} is given as pattern [p], only
+      terms having the same number of arguments and the same leftmost {e non}
+      {!constructor:Appl} term match. *)
   let specialize : term -> int -> rule list -> rule list = fun p ci rs ->
     let filtered = List.filter (fun { lhs ; _} ->
       spec_filter p (fst lhs.(ci))) rs in
@@ -424,8 +421,8 @@ struct
       let { lhs ; _ } = rul in
       match lhs.(ci) with
       | Patt(_, _, _), _ ->
-        let postfix = Array.drop (ci + 1) lhs in
-         { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
+          let postfix = Array.drop (ci + 1) lhs in
+          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
       | _                -> assert false) filtered
 end
 
@@ -483,24 +480,24 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
     let rec loop telst added env_builder =
       match telst with
       | []       ->
-        if added <> missing then Fail else Leaf(env_builder, rhs)
+          if added <> missing then Fail else Leaf(env_builder, rhs)
       | te :: tl ->
-         let h, args = get_args te in
-         let atl = args @ tl in
-         begin match h with
-         | Patt(Some(i), _, _) ->
-            let neb = (depth + added, i) :: env_builder in
-            let child = loop atl (succ added) neb in
-            Node( { defnd with store = true ; default = Some(child) })
-         | Abst(_, b)          ->
-            let _, body = Bindlib.unbind b in
-            let child = loop (body :: atl) added env_builder in
-            Node({ defnd with default = Some(child) })
-         | Patt(None, _, _)    ->
-            let child = loop atl added env_builder in
-            Node({ defnd with default = Some(child) })
-         | _                   -> Fail
-         end in
+          let h, args = get_args te in
+          let atl = args @ tl in
+          begin match h with
+          | Patt(Some(i), _, _) ->
+              let neb = (depth + added, i) :: env_builder in
+              let child = loop atl (succ added) neb in
+              Node( { defnd with store = true ; default = Some(child) })
+          | Abst(_, b)          ->
+              let _, body = Bindlib.unbind b in
+              let child = loop (body :: atl) added env_builder in
+              Node({ defnd with default = Some(child) })
+          | Patt(None, _, _)    ->
+              let child = loop atl added env_builder in
+              Node({ defnd with default = Some(child) })
+          | _                   -> Fail
+          end in
     loop terms 0 env_builder
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
@@ -510,40 +507,40 @@ let rec compile : Cm.t -> t = fun patterns ->
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot }) ->
-    let f (count, acc) tpos =
-      let opslot = SubtMap.find_opt tpos pos2slot in
-      match opslot with
-      | None     -> succ count, acc
+      let f (count, acc) tpos =
+        let opslot = SubtMap.find_opt tpos pos2slot in
+        match opslot with
+        | None     -> succ count, acc
       (* ^ Discard useless variables *)
-      | Some(sl) -> succ count, (count, sl) :: acc in
-    let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
+        | Some(sl) -> succ count, (count, sl) :: acc in
+      let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
     (* ^ For now, [env_builder] contains only the variables encountered
        while choosing the rule.  Other pattern variables needed in the
        rhs, which are still in the [lhs] will now be fetched. *)
-    assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
-    let depth = List.length vcat in
-    fetch lhs depth env_builder rhs
+      assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
+      let depth = List.length vcat in
+      fetch lhs depth env_builder rhs
   | None                                                ->
-    let absolute_cind = (* Index of column switched on *)
-      let kept_cols = Cm.discard_cons_free patterns in
-      let sel_in_partial = Cm.pick_best_among patterns kept_cols in
-      kept_cols.(sel_in_partial) in
-    let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
-    let store = Cm.in_rhs terms in
-    let newcat = (* New var catalogue *)
-      let newvars = Cm.varpos patterns absolute_cind in
-      newvars @ patterns.Cm.var_catalogue in
-    let spepatts = (* Specialization sub-matrices *)
-      let cons = Cm.get_cons terms in
-      let f acc (tr_cons, te_cons) =
-        let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
+      let absolute_cind = (* Index of column switched on *)
+        let kept_cols = Cm.discard_cons_free patterns in
+        let sel_in_partial = Cm.pick_best_among patterns kept_cols in
+        kept_cols.(sel_in_partial) in
+      let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
+      let store = Cm.in_rhs terms in
+      let newcat = (* New var catalogue *)
+        let newvars = Cm.varpos patterns absolute_cind in
+        newvars @ patterns.Cm.var_catalogue in
+      let spepatts = (* Specialization sub-matrices *)
+        let cons = Cm.get_cons terms in
+        let f acc (tr_cons, te_cons) =
+          let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
+          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+          TcMap.add tr_cons ncm acc in
+        List.fold_left f TcMap.empty cons in
+      let children = TcMap.map compile spepatts in
+      let defmat = (* Default matrix *)
+        let rules = Cm.default absolute_cind patterns.clauses in
         let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-        TcMap.add tr_cons ncm acc in
-      List.fold_left f TcMap.empty cons in
-    let children = TcMap.map compile spepatts in
-    let defmat = (* Default matrix *)
-      let rules = Cm.default absolute_cind patterns.clauses in
-      let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-      if Cm.is_empty ncm then None else Some(compile ncm) in
-    Node({ swap = absolute_cind ; store = store ; children = children
-         ; default = defmat })
+        if Cm.is_empty ncm then None else Some(compile ncm) in
+      Node({ swap = absolute_cind ; store = store ; children = children
+           ; default = defmat })

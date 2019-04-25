@@ -327,14 +327,14 @@ let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~fail t ->
-  let rec loop = function
-    | Leaf(pa, a)                                 -> do_leaf pa a
-    | Fail                                        -> fail
-    | Node({ swap ; store ; children ; default }) ->
-       do_node swap store
-         (TcMap.map loop children)
-         (Option.map loop default) in
-  loop t
+    let rec loop = function
+      | Leaf(pa, a)                                 -> do_leaf pa a
+      | Fail                                        -> fail
+      | Node({ swap ; store ; children ; default }) ->
+          do_node swap store
+            (TcMap.map loop children)
+            (Option.map loop default) in
+    loop t
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
     terms that are being filtered by the patterns have to be saved in order to
@@ -372,6 +372,6 @@ let treecons_of_term : term -> treecons = fun te ->
   let arity = List.length args in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
-     { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
+      { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
   | _                                    -> assert false
 

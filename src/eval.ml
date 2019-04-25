@@ -279,22 +279,22 @@ and eq_modulo : term -> term -> bool = fun a b ->
     elements to be put in the stack are returned along the tree. *)
 and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
   fun examined children default ->
-  (* [choose t] chooses a tree among {!val:children} when term [t] is examined
-     and returns the new head of stack. *)
-  let choose t =
-    let r_ex = tref_val examined in
-    let h, args = get_args t in
-    match h with
-    | Symb(s, _)  ->
-      let args = List.map ensure_tref args in
-      let c_ari = List.length args in
-      r_ex := Some(add_args h args) ;
-      let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
-      let matched = TcMap.find_opt cons children in
-      if matched = None then (default, []) else (matched, args)
-    | _           -> raise Dtree.Not_implemented in
-  if TcMap.is_empty children then (default, [])
-  else choose (whnf_tree examined)
+    (* [choose t] chooses a tree among {!val:children} when term [t] is
+       examined and returns the new head of stack. *)
+    let choose t =
+      let r_ex = tref_val examined in
+      let h, args = get_args t in
+      match h with
+      | Symb(s, _)  ->
+          let args = List.map ensure_tref args in
+          let c_ari = List.length args in
+          r_ex := Some(add_args h args) ;
+          let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+          let matched = TcMap.find_opt cons children in
+          if matched = None then (default, []) else (matched, args)
+      | _           -> raise Dtree.Not_implemented in
+    if TcMap.is_empty children then (default, [])
+    else choose (whnf_tree examined)
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
@@ -324,9 +324,10 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
         Some(Bindlib.msubst act env, R.to_list stk)
     | Node({swap; children; store; default}) ->
         (* Pick the right term in the stack. *)
-        begin try
+        begin
+          try
             let left, examined, right = R.destruct stk swap in
-            (* Store hd of stack if needed *)
+                (* Store hd of stack if needed *)
             let cursor = fill_vars store examined cursor in
             let matched, args = branch examined children default in
             let next child =
