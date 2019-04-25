@@ -399,18 +399,32 @@ struct
       else None in
     List.map_find f
 
+  (** [seek_nl_constraint r] returns the column and slot of a non linearity
+      constraint. *)
+  let seek_nl_constraint : rule list -> (int * int) option = fun rules ->
+    let col_of : Subterm.t -> component array -> int = fun p lhs ->
+      Array.search (fun (_, q) -> Subterm.compare q p) lhs in
+    let f { lhs ; nonlin ; variables ; _ } =
+      let p = SubtSet.choose_opt nonlin in
+      Option.map (fun p -> (col_of p lhs, SubtMap.find p variables)) p in
+    List.map_find f rules
+
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; _ } = m in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    -> let kept_cols = discard_cons_free m in
-      let sel_in_partial = pick_best_among m kept_cols in
-      let cind = kept_cols.(sel_in_partial) in
-      let cstr = find_nl_constraint cind clauses in
-      match cstr with
-      | Some(slot) -> NlConstrain(cind, slot)
-      | None       -> Specialise(cind)
+      if kept_cols <> [||] then
+        let sel_in_partial = pick_best_among m kept_cols in
+        let cind = kept_cols.(sel_in_partial) in
+        let cstr = find_nl_constraint cind clauses in
+        match cstr with
+        | Some(slot) -> NlConstrain(cind, slot)
+        | None       -> Specialise(cind)
+      else match seek_nl_constraint clauses with
+      | Some(cind, slot) -> NlConstrain(cind, slot)
+      | None             -> assert false
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
@@ -620,7 +634,7 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t = fun patterns ->
-  let { Cm.var_catalogue = vcat ; _ } = patterns in
+  let { Cm.var_catalogue = vcat ; clauses ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
@@ -639,10 +653,10 @@ let rec compile : Cm.t -> t = fun patterns ->
     let depth = List.length vcat in
     fetch lhs depth env_builder rhs
   | NlConstrain(cind, slot) ->
-     let ok = let clauses = Cm.nl_succeed cind slot patterns.clauses in
-       compile { patterns with Cm.clauses = clauses } in
-     let fail = let clauses = Cm.nl_fail cind slot patterns.clauses in
-       compile {patterns with Cm.clauses = clauses } in
+     let ok = let nclauses = Cm.nl_succeed cind slot clauses in
+       compile { patterns with Cm.clauses = nclauses } in
+     let fail = let nclauses = Cm.nl_fail cind slot clauses in
+       compile {patterns with Cm.clauses = nclauses } in
      let condition = TcstrEq(slot) in
      Condition({ cond_swap = cind ; ok ; condition ; fail })
   | Specialise(cind)                     ->
@@ -654,13 +668,13 @@ let rec compile : Cm.t -> t = fun patterns ->
     let spepatts = (* Specialization sub-matrices *)
       let cons = Cm.get_cons terms in
       let f acc (tr_cons, te_cons) =
-        let rules = Cm.specialize te_cons cind patterns.clauses in
+        let rules = Cm.specialize te_cons cind clauses in
         let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
         TcMap.add tr_cons ncm acc in
       List.fold_left f TcMap.empty cons in
     let children = TcMap.map compile spepatts in
     let defmat = (* Default matrix *)
-      let rules = Cm.default cind patterns.clauses in
+      let rules = Cm.default cind clauses in
       let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
       if Cm.is_empty ncm then None else Some(compile ncm) in
     Node({ swap = cind ; store = store ; children = children
