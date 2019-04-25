@@ -157,7 +157,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
       incr nodecount ;
       let tag = !nodecount in
       (* Create node *)
-      F.fprintf ppf "@ %d [label=\"%d\"%s];" tag swap
+      F.fprintf ppf "@ %d [label=\"@%d\"%s];" tag swap
         (if store then " shape=\"box\"" else "") ;
       (* Create edge *)
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
@@ -167,14 +167,16 @@ let to_dot : string -> t -> unit = fun fname tree ->
       let { cond_swap ; ok ; condition ; fail } = cdata in
       incr nodecount ;
       let tag = !nodecount in
-      F.fprintf ppf "@ %d [label=\"%s↓%d\" shape=\"diamond\"];" tag
+      F.fprintf ppf "@ %d [label=<%s<sub>%d</sub>@%d> shape=\"diamond\"];" tag
         (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) -> "FV")
+        (match condition with TcstrEq(i) -> i | TcstrFreeVars(_) -> 0)
         cond_swap ;
       F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
       write_tree tag DotDefa ok ;
       write_tree tag DotDefa fail ;
     | Fail               ->
       incr nodecount ;
+      F.fprintf ppf "@ %d [label=<!>];" !nodecount ;
       F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
   in
   begin
