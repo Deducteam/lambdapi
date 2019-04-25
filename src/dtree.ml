@@ -609,11 +609,9 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
     let defnd = { swap = 0 ; store = false ; children = TcMap.empty
                 ; default = None } in
     let terms, _ = Array.split line in
-    let missing = Bindlib.mbinder_arity rhs - (List.length env_builder) in
     let rec loop telst added env_builder =
       match telst with
-      | []       ->
-        if added <> missing then Fail else Leaf(env_builder, rhs)
+      | []       -> Leaf(env_builder, rhs)
       | te :: tl ->
          let h, args = get_args te in
          let atl = args @ tl in
