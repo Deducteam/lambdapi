@@ -24,10 +24,10 @@ exception Not_implemented
 
     A possible tree might be
     {v
-+–?–∘–Z–∘     → n
-├–Z–∘–Z–∘     → n
-|   └–S–∘–?–∘ → S m
-└–S–∘–Z–∘     → n
+    +–?–∘–Z–∘     → n
+    ├–Z–∘–Z–∘     → n
+    |   └–S–∘–?–∘ → S m
+    └–S–∘–Z–∘     → n
     └–S–∘–?–∘ → S (S m)
     v}
     with [∘] being a node (with a label not shown here) and [–u–]
@@ -39,8 +39,8 @@ exception Not_implemented
 (** Element consumed when reducing terms.  When reducing, we must have
     - fast access to any element in the substrate (for swaps)
     - fast replacement of an element and extension to replace an element of
-      the substrate by its reduced form, or an unfolding of
-      {!constructor:Appl} nodes. *)
+    the substrate by its reduced form, or an unfolding of
+    {!constructor:Appl} nodes. *)
 module type Reduction_substrate =
 sig
   (** Type of a substrate of ['a]. *)
@@ -145,50 +145,54 @@ let to_dot : string -> t -> unit = fun fname tree ->
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit =
     fun father_l swon tree ->
-    match tree with
-    | Leaf(_, a)         ->
-      incr nodecount ;
-      let _, acte = Bindlib.unmbind a in
-      F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
-      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
-        swon
-    | Node(ndata)        ->
-      let { swap ; children ; store ; default } = ndata in
-      incr nodecount ;
-      let tag = !nodecount in
-      (* Create node *)
-      F.fprintf ppf "@ %d [label=\"@%d\"%s];" tag swap
-        (if store then " shape=\"box\"" else "") ;
-      (* Create edge *)
-      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
-      TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
-      Option.iter (write_tree tag DotDefa) default ;
-    | Condition(cdata) ->
-      let { cond_swap ; ok ; condition ; fail } = cdata in
-      incr nodecount ;
-      let tag = !nodecount in
-      F.fprintf ppf "@ %d [label=<%s<sub>%d</sub>@%d> shape=\"diamond\"];" tag
-        (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) -> "FV")
-        (match condition with TcstrEq(i) -> i | TcstrFreeVars(_) -> 0)
-        cond_swap ;
-      F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
-      write_tree tag DotDefa ok ;
-      write_tree tag DotDefa fail ;
-    | Fail               ->
-      incr nodecount ;
-      F.fprintf ppf "@ %d [label=<!>];" !nodecount ;
-      F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
+      match tree with
+      | Leaf(_, a)         ->
+          incr nodecount ;
+        let _, acte = Bindlib.unmbind a in
+        F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
+        F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount
+          pp_dotterm swon
+      | Node(ndata)        ->
+          let { swap ; children ; store ; default } = ndata in
+          incr nodecount ;
+          let tag = !nodecount in
+          (* Create node *)
+          F.fprintf ppf "@ %d [label=\"@%d\"%s];" tag swap
+            (if store then " shape=\"box\"" else "") ;
+          (* Create edge *)
+          F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm
+            swon ;
+          TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+          Option.iter (write_tree tag DotDefa) default ;
+      | Condition(cdata) ->
+          let { cond_swap ; ok ; condition ; fail } = cdata in
+          incr nodecount ;
+          let tag = !nodecount in
+          F.fprintf ppf
+            "@ %d [label=<%s<sub>%d</sub>@%d> shape=\"diamond\"];" tag
+            (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) ->
+              "FV")
+            (match condition with TcstrEq(i) -> i | TcstrFreeVars(_) -> 0)
+            cond_swap ;
+          F.fprintf ppf
+            "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
+          write_tree tag DotDefa ok ;
+          write_tree tag DotDefa fail ;
+      | Fail               ->
+          incr nodecount ;
+        F.fprintf ppf "@ %d [label=<!>];" !nodecount ;
+        F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
   in
   begin
     match tree with
     (* First step must be done to avoid drawing a top node. *)
     | Node({ swap ; children = ch ; store ; default }) ->
-       F.fprintf ppf "@ 0 [label=\"%d\"%s];"
-         swap (if store then " shape=\"box\"" else "") ;
-       TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
-       (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
-    | Leaf(_)                                -> ()
-    | _                                      -> assert false
+        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
+          swap (if store then " shape=\"box\"" else "") ;
+        TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
+        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
+    | Leaf(_)                                          -> ()
+    | _                                                -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
@@ -225,8 +229,8 @@ struct
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)
               ; nonlin : SubtSet.t
-              (** Contains all positions of variables having non-linearity
-                  constraints *) }
+                  (** Contains all positions of variables having non-linearity
+                      constraints *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -237,9 +241,9 @@ struct
     (** Say {i (Mₙ)ₙ} is a finite sequence of clause matrices, where {i Mₙ₊₁}
         is either the specialisation or the default case of {i Mₙ}.  Let {i L}
         be the last matrix of the sequence.  Then {!field:var_catalogue} of {i
-        L} contains positions of terms in any {!field:lhs} of any
-        matrix of {i (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix
-        in {i (Mₙ)ₙ}). *) }
+        L} contains positions of terms in any {!field:lhs} of any matrix of {i
+        (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix in {i
+        (Mₙ)ₙ}). *) }
 
   (** Operations embedded in the tree *)
   type decision =
@@ -287,27 +291,26 @@ struct
     add:(Subterm.t -> int option -> string -> term array -> 'a -> 'a) ->
     merge:('a -> 'a -> 'a) ->
     init:'a -> 'a = fun lhs ~add ~merge ~init ->
-    let rec loop st po =
-      match st with
-      | [] -> init
-      | x :: xs ->
-         begin
-           match x with
-           | Patt(None, _, _)
-           | Vari(_)
-           | Symb(_, _)    -> loop xs (Subterm.succ po)
-           | Patt(i, s, e) -> add po i s e (loop xs (Subterm.succ po))
-           | Appl(_, _)    -> let _, args = get_args x in
-             deepen args xs po
-           | Abst(_, b)    -> let _, body = Bindlib.unbind b in
-             deepen [body] xs po
-           | _             -> assert false
-         end
-    and deepen args remain po =
-      let argpos = loop args (Subterm.sub po) in
-      merge argpos (loop remain (Subterm.succ po)) in
-    (* The terms of the list are the subterms of the head symbol. *)
-    loop lhs (Subterm.succ Subterm.init)
+      let rec loop st po =
+        match st with
+        | [] -> init
+        | x :: xs ->
+            begin match x with
+            | Patt(None, _, _)
+            | Vari(_)
+            | Symb(_, _)    -> loop xs (Subterm.succ po)
+            | Patt(i, s, e) -> add po i s e (loop xs (Subterm.succ po))
+            | Appl(_, _)    -> let _, args = get_args x in
+                              deepen args xs po
+            | Abst(_, b)    -> let _, body = Bindlib.unbind b in
+                              deepen [body] xs po
+            | _             -> assert false
+            end
+      and deepen args remain po =
+        let argpos = loop args (Subterm.sub po) in
+        merge argpos (loop remain (Subterm.succ po)) in
+      (* The terms of the list are the subterms of the head symbol. *)
+      loop lhs (Subterm.succ Subterm.init)
 
   (** [record_vars l] returns a mapping from position of variables into [l]
       to the slot assigned to each variable in a {!type:term_env}. *)
@@ -334,7 +337,7 @@ struct
       IntMap.union conflict in
     let sl2vars = fold_vars lhs ~add:add ~merge:merge ~init:IntMap.empty in
     IntMap.fold (fun _ e acc ->
-        if SubtSet.cardinal e > 1 then SubtSet.union e acc else acc)
+      if SubtSet.cardinal e > 1 then SubtSet.union e acc else acc)
       sl2vars SubtSet.empty
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
@@ -416,17 +419,18 @@ struct
     let { clauses ; _ } = m in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
-    | None    -> let kept_cols = discard_cons_free m in
-      if kept_cols <> [||] then
-        let sel_in_partial = pick_best_among m kept_cols in
-        let cind = kept_cols.(sel_in_partial) in
-        let cstr = find_nl_constraint cind clauses in
-        match cstr with
-        | Some(slot) -> NlConstrain(cind, slot)
-        | None       -> Specialise(cind)
-      else match seek_nl_constraint clauses with
-      | Some(cind, slot) -> NlConstrain(cind, slot)
-      | None             -> assert false
+    | None    ->
+        let kept_cols = discard_cons_free m in
+        if kept_cols <> [||] then
+          let sel_in_partial = pick_best_among m kept_cols in
+          let cind = kept_cols.(sel_in_partial) in
+          let cstr = find_nl_constraint cind clauses in
+          match cstr with
+          | Some(slot) -> NlConstrain(cind, slot)
+          | None       -> Specialise(cind)
+        else match seek_nl_constraint clauses with
+        | Some(cind, slot) -> NlConstrain(cind, slot)
+        | None             -> assert false
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
@@ -459,13 +463,13 @@ struct
       | _                   -> false in
     (* We do not care about keeping the order of the new variables in [vars]
        since for any rule, at most one of them will be chosen. *)
-    get_col ci pm |> List.filter is_var |> List.split |> snd
-                  |> List.sort_uniq Subterm.compare
+    get_col ci pm |> List.filter is_var |> List.split |> snd |>
+        List.sort_uniq Subterm.compare
 
-(** [spec_filter p e] returns whether a line been inspected on element [e]
-    (from a pattern matrix) must be kept when specializing the matrix on
-    pattern [p].
-    @raise Invalid_argument when the element [e] is ill formed. *)
+  (** [spec_filter p e] returns whether a line been inspected on element [e]
+      (from a pattern matrix) must be kept when specializing the matrix on
+      pattern [p].
+      @raise Invalid_argument when the element [e] is ill formed. *)
   let spec_filter : term -> term -> bool = fun pat hd ->
     let h, args = get_args hd in
     let ph, pargs = get_args pat in
@@ -473,34 +477,33 @@ struct
     | Symb(_, _), Symb(_, _)
     | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
     | _         , Patt(_, _, e) ->
-       if args <> [] then invalid_arg "ClauseMat.spec_filter" else
-       let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
-       Bindlib.is_closed b
+        if args <> [] then invalid_arg "ClauseMat.spec_filter" else
+          let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
+          Bindlib.is_closed b
     | _         , _             -> false
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
       specializing against pattern [p]. *)
   let spec_transform : term -> component -> component array =
     fun pat (t, p) ->
-    let h, args = Basics.get_args t in
-    match h with
-    | Symb(_, _)
-    | Vari(_)       ->
-      let np = Subterm.sub p in
-      args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
-    | Patt(_, _, e) ->
-      let arity = pat |> Basics.get_args |> snd |> List.length in
-      Seq.make arity (Patt(None, "", e))
-        |> Subterm.tag
-        |> Seq.map (fun (te, po) -> (te, Subterm.prefix p po))
-        |> Array.of_seq
-    | _             -> assert false
+      let h, args = Basics.get_args t in
+      match h with
+      | Symb(_, _)
+      | Vari(_)       ->
+          let np = Subterm.sub p in
+          args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
+      | Patt(_, _, e) ->
+          let arity = pat |> Basics.get_args |> snd |> List.length in
+          Seq.make arity (Patt(None, "", e)) |> Subterm.tag |>
+              Seq.map (fun (te, po) -> (te, Subterm.prefix p po)) |>
+              Array.of_seq
+      | _             -> assert false
 
-(** [specialize p c m] specializes the matrix [m] when matching pattern [p]
-    against column [c].  A matrix can be specialized by a user defined symbol.
-    In case an {!constructor:Appl} is given as pattern [p], only terms having
-    the same number of arguments and the same leftmost {e non}
-    {!constructor:Appl} term match. *)
+  (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
+      against column [c].  A matrix can be specialized by a user defined
+      symbol.  In case an {!constructor:Appl} is given as pattern [p], only
+      terms having the same number of arguments and the same leftmost {e non}
+      {!constructor:Appl} term match. *)
   let specialize : term -> int -> rule list -> rule list = fun p ci rs ->
     let filtered = List.filter (fun { lhs ; _} ->
       spec_filter p (fst lhs.(ci))) rs in
@@ -530,8 +533,8 @@ struct
       let { lhs ; _ } = rul in
       match lhs.(ci) with
       | Patt(_, _, _), _ ->
-        let postfix = Array.drop (ci + 1) lhs in
-         { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
+          let postfix = Array.drop (ci + 1) lhs in
+          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
       | _                -> assert false) filtered
 
   (** [nl_succeed c s r] computes the matrix containing rules from [r] that
@@ -542,8 +545,8 @@ struct
       let t, p = lhs.(ci) in
       let nonlin =
         match t with
-        | Patt(Some(i), _, _) -> if i = slot
-          then SubtSet.remove p nonlin else nonlin
+        | Patt(Some(i), _, _) ->
+            if i = slot then SubtSet.remove p nonlin else nonlin
         | _                   -> nonlin in
       { r with nonlin } in
     List.map f
@@ -613,22 +616,22 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
       match telst with
       | []       -> Leaf(env_builder, rhs)
       | te :: tl ->
-         let h, args = get_args te in
-         let atl = args @ tl in
-         begin match h with
-         | Patt(Some(i), _, _) ->
-            let neb = (depth + added, i) :: env_builder in
-            let child = loop atl (succ added) neb in
-            Node( { defnd with store = true ; default = Some(child) })
-         | Abst(_, b)          ->
-            let _, body = Bindlib.unbind b in
-            let child = loop (body :: atl) added env_builder in
-            Node({ defnd with default = Some(child) })
-         | Patt(None, _, _)    ->
-            let child = loop atl added env_builder in
-            Node({ defnd with default = Some(child) })
-         | _                   -> Fail
-         end in
+          let h, args = get_args te in
+          let atl = args @ tl in
+          begin match h with
+          | Patt(Some(i), _, _) ->
+              let neb = (depth + added, i) :: env_builder in
+              let child = loop atl (succ added) neb in
+              Node( { defnd with store = true ; default = Some(child) })
+          | Abst(_, b)          ->
+              let _, body = Bindlib.unbind b in
+              let child = loop (body :: atl) added env_builder in
+              Node({ defnd with default = Some(child) })
+          | Patt(None, _, _)    ->
+              let child = loop atl added env_builder in
+              Node({ defnd with default = Some(child) })
+          | _                   -> Fail
+          end in
     loop terms 0 env_builder
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
@@ -638,44 +641,44 @@ let rec compile : Cm.t -> t = fun patterns ->
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
-           ; Cm.nonlin = _ }) ->
-    let f (count, acc) tpos =
-      let opslot = SubtMap.find_opt tpos pos2slot in
-      match opslot with
-      | None     -> succ count, acc
+          ; Cm.nonlin = _ }) ->
+      let f (count, acc) tpos =
+        let opslot = SubtMap.find_opt tpos pos2slot in
+        match opslot with
+        | None     -> succ count, acc
       (* ^ Discard useless variables *)
-      | Some(sl) -> succ count, (count, sl) :: acc in
-    let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
+        | Some(sl) -> succ count, (count, sl) :: acc in
+      let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
     (* ^ For now, [env_builder] contains only the variables encountered
        while choosing the rule.  Other pattern variables needed in the
        rhs, which are still in the [lhs] will now be fetched. *)
-    assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
-    let depth = List.length vcat in
-    fetch lhs depth env_builder rhs
+      assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
+      let depth = List.length vcat in
+      fetch lhs depth env_builder rhs
   | NlConstrain(cind, slot) ->
-     let ok = let nclauses = Cm.nl_succeed cind slot clauses in
-       compile { patterns with Cm.clauses = nclauses } in
-     let fail = let nclauses = Cm.nl_fail cind slot clauses in
-       compile {patterns with Cm.clauses = nclauses } in
-     let condition = TcstrEq(slot) in
-     Condition({ cond_swap = cind ; ok ; condition ; fail })
+      let ok = let nclauses = Cm.nl_succeed cind slot clauses in
+               compile { patterns with Cm.clauses = nclauses } in
+      let fail = let nclauses = Cm.nl_fail cind slot clauses in
+                 compile {patterns with Cm.clauses = nclauses } in
+      let condition = TcstrEq(slot) in
+      Condition({ cond_swap = cind ; ok ; condition ; fail })
   | Specialise(cind)                     ->
-    let terms, _ = List.split @@ Cm.get_col cind patterns in
-    let store = Cm.in_rhs terms in
-    let newcat = (* New var catalogue *)
-      let newvars = Cm.varpos patterns cind in
-      newvars @ patterns.Cm.var_catalogue in
-    let spepatts = (* Specialization sub-matrices *)
-      let cons = Cm.get_cons terms in
-      let f acc (tr_cons, te_cons) =
-        let rules = Cm.specialize te_cons cind clauses in
+      let terms, _ = List.split @@ Cm.get_col cind patterns in
+      let store = Cm.in_rhs terms in
+      let newcat = (* New var catalogue *)
+        let newvars = Cm.varpos patterns cind in
+        newvars @ patterns.Cm.var_catalogue in
+      let spepatts = (* Specialization sub-matrices *)
+        let cons = Cm.get_cons terms in
+        let f acc (tr_cons, te_cons) =
+          let rules = Cm.specialize te_cons cind clauses in
+          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+          TcMap.add tr_cons ncm acc in
+        List.fold_left f TcMap.empty cons in
+      let children = TcMap.map compile spepatts in
+      let defmat = (* Default matrix *)
+        let rules = Cm.default cind clauses in
         let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-        TcMap.add tr_cons ncm acc in
-      List.fold_left f TcMap.empty cons in
-    let children = TcMap.map compile spepatts in
-    let defmat = (* Default matrix *)
-      let rules = Cm.default cind clauses in
-      let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
-      if Cm.is_empty ncm then None else Some(compile ncm) in
-    Node({ swap = cind ; store = store ; children = children
-         ; default = defmat })
+        if Cm.is_empty ncm then None else Some(compile ncm) in
+      Node({ swap = cind ; store = store ; children = children
+           ; default = defmat })

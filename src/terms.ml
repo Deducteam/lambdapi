@@ -239,7 +239,8 @@ and tree_constraint =
       possible switch, plus possibly a default case and an abstraction
       case. *)
   | Condition of condition_data
-  (** Binary node with branching depending on a boolean condition on a term. *)
+  (** Binary node with branching depending on a boolean condition on a
+      term. *)
   | Fail
 
 (** Data needed to carry out a condition verification during evaluation. *)

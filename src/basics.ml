@@ -331,17 +331,17 @@ let tree_iter :
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
   do_condition:('a -> int -> tree_constraint -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
-  let rec loop = function
-    | Leaf(pa, a)                                 -> do_leaf pa a
-    | Fail                                        -> fail
-    | Condition(cdata)                            ->
-      let { cond_swap ; condition ; ok ; fail } = cdata in
-      do_condition (loop ok) cond_swap condition (loop fail)
-    | Node({ swap ; store ; children ; default }) ->
-       do_node swap store
-         (TcMap.map loop children)
-         (Option.map loop default) in
-  loop t
+    let rec loop = function
+      | Leaf(pa, a)                                 -> do_leaf pa a
+      | Fail                                        -> fail
+      | Condition(cdata)                            ->
+          let { cond_swap ; condition ; ok ; fail } = cdata in
+          do_condition (loop ok) cond_swap condition (loop fail)
+      | Node({ swap ; store ; children ; default }) ->
+          do_node swap store
+            (TcMap.map loop children)
+            (Option.map loop default) in
+    loop t
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
     terms that are being filtered by the patterns have to be saved in order to
@@ -364,7 +364,7 @@ let capacity : tree -> int =
 (** {3 Tree constructor conversion} *)
 
 (** [is_treecons t] returns whether a term [t] is considered as a
-     constructor. *)
+    constructor. *)
 let rec is_treecons : term -> bool = function
   | Appl(u, _)    -> is_treecons u
   | Meta(_, _)
@@ -381,6 +381,6 @@ let treecons_of_term : term -> treecons = fun te ->
   let arity = List.length args in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
-     { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
+      { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
   | _                                    -> assert false
 

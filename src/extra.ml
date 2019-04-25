@@ -84,23 +84,23 @@ module List =
       function
       | []     -> []
       | h :: t ->
-        begin match f h with
+          begin match f h with
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
-        end
+          end
 
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
     let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list =
       fun f l ->
-      let rec loop k = function
-        | [] -> []
-        | h :: t ->
-          begin match f k h with
-            | Some(x) -> x :: loop (succ k) t
-            | None    -> loop (succ k) t
-          end in
-      loop 0 l
+        let rec loop k = function
+          | [] -> []
+          | h :: t ->
+              begin match f k h with
+              | Some(x) -> x :: loop (succ k) t
+              | None    -> loop (succ k) t
+              end in
+        loop 0 l
 
     (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
         [max (List.length l) k] and [l1 @ l2] is equal to [l]. *)
