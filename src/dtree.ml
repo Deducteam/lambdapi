@@ -149,8 +149,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
       | Leaf(_, a)         -> incr nodecount ;
         let _, acte = Bindlib.unmbind a in
         F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
-        F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount pp_dotterm
-          swon
+        F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount
+          pp_dotterm swon
       | Node(ndata)        ->
           let { swap ; children ; store ; default } = ndata in
           incr nodecount ;
