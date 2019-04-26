@@ -372,9 +372,9 @@ struct
       let c = get_col ci mat in score c) columns in
     Array.argmax (<=) wild_pc
 
-  (** [can_switch_on p k] returns whether a switch can be carried out on
-      column [k] in matrix [p] *)
-  let can_switch_on : t -> int -> bool = fun { clauses ; _ } k ->
+  (** [can_switch_on r k] returns whether a switch can be carried out on
+      column [k] of rules [r]. *)
+  let can_switch_on : rule list -> int -> bool = fun  clauses k ->
     let rec loop : rule list -> bool = function
       | []      -> false
       | r :: rs -> if is_treecons (fst r.lhs.(k)) then true else loop rs in
@@ -385,12 +385,13 @@ struct
     Array.for_all (fun (e, _) -> not (is_treecons e)) lhs &&
       SubtSet.is_empty nonlin
 
-  (** [discard_cons_free m] returns the list of indexes of columns containing
-      terms that can be matched against (discard constructor-free columns). *)
-  let discard_cons_free : t -> int array = fun m ->
+  (** [discard_cons_free r] returns the list of indexes of columns containing
+      terms that can be matched against (discard constructor-free columns) in
+      rules [r]. *)
+  let discard_cons_free : rule list -> int array = fun clauses ->
     let ncols = List.extremum (>)
-      (List.map (fun { lhs ; _ } -> Array.length lhs) m.clauses) in
-    let switchable = List.init ncols (can_switch_on m) in
+      (List.map (fun { lhs ; _ } -> Array.length lhs) clauses) in
+    let switchable = List.init ncols (can_switch_on clauses) in
     let switchable2ind i e = if e then Some(i) else None in
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
@@ -420,7 +421,7 @@ struct
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
-        let kept_cols = discard_cons_free m in
+        let kept_cols = discard_cons_free clauses in
         if kept_cols <> [||] then
           let sel_in_partial = pick_best_among m kept_cols in
           let cind = kept_cols.(sel_in_partial) in
@@ -663,7 +664,7 @@ let rec compile : Cm.t -> t = fun patterns ->
       let condition = TcstrEq(slot) in
       Condition({ cond_swap = cind ; ok ; condition ; fail })
   | Specialise(cind)                     ->
-      let terms, _ = List.split @@ Cm.get_col cind patterns in
+      let terms, _ = List.split (Cm.get_col cind patterns) in
       let store = Cm.in_rhs terms in
       let newcat = (* New var catalogue *)
         let newvars = Cm.varpos patterns cind in
