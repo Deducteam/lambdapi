@@ -327,7 +327,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           begin match condition with
           | TcstrEq(slot)    ->
               begin match vars.(slot) with
-              | Kind -> walk ok stk cursor
+              | Kind -> vars.(slot) <- examined ; walk ok stk cursor
               | t    ->
                   if eq_modulo examined t then walk ok stk cursor
                   else walk fail stk cursor
@@ -335,11 +335,9 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           | TcstrFreeVars(_) -> raise Dtree.Not_implemented
           end
       | Node({swap; children; store; default})           ->
-        (* Pick the right term in the stack. *)
           begin
             try
               let left, examined, right = R.destruct stk swap in
-                (* Store hd of stack if needed *)
               let cursor = fill_vars store examined cursor in
               let matched, args = branch examined children default in
               let next child =
