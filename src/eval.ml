@@ -312,15 +312,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       match tree with
       | Fail                                             -> None
       | Leaf(env_builder, act)                           ->
-        (* Allocate an environment for the action. *)
+          (* Allocate an environment for the action. *)
           let env = Array.make (Bindlib.mbinder_arity act) TE_None in
-        (* Retrieve terms needed in the action from the [vars] array. *)
+          (* Retrieve terms needed in the action from the [vars] array. *)
           let fn (pos, slot) =
             let t = unfold vars.(pos) in
             let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
             env.(slot) <- TE_Some(b) in
           List.iter fn env_builder;
-        (* Actually perform the action. *)
+          (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
       | Condition({ cond_swap ; ok ; condition ; fail }) ->
           let _, examined, _ = R.destruct stk cond_swap in
@@ -337,14 +337,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       | Node({swap; children; store; default})           ->
         (* Pick the right term in the stack. *)
           begin
-            try let left, examined, right = R.destruct stk swap in
-              (* Store hd of stack if needed *)
-                let cursor = fill_vars store examined cursor in
-                let matched, args = branch examined children default in
-                let next child =
-                  let stk = R.restruct left args right in
-                  walk child stk cursor in
-                Option.bind next matched
+            try
+              let left, examined, right = R.destruct stk swap in
+                (* Store hd of stack if needed *)
+              let cursor = fill_vars store examined cursor in
+              let matched, args = branch examined children default in
+              let next child =
+                let stk = R.restruct left args right in
+                walk child stk cursor in
+              Option.bind next matched
             with Not_found -> None
           end in
     walk tree stk 0
