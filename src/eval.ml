@@ -257,7 +257,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf_hybrid a, whnf_hybrid b) with
+    let a, b = match Pervasives.(!with_trees) with
+      | Tm_Full     -> whnf_tree a, whnf_tree b
+      | Tm_Fallback -> whnf_hybrid a, whnf_hybrid b
+      | Tm_Without  -> whnf_legacy a, whnf_legacy b in
+    match (a, b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
