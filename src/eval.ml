@@ -114,6 +114,11 @@ and whnf_tree : term -> term = fun t ->
   let u, stk = whnf_stk_tree t [] in
   if Pervasives.(!steps) <> s then add_args u stk else t
 
+(** [whnf_hybrid t] tries using trees first and falls back to legacy if it
+    fails. *)
+and whnf_hybrid : term -> term = fun t ->
+  try whnf_tree t with Dtree.Not_implemented -> whnf_legacy t
+
 (** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
 and whnf_stk_tree : term -> term list -> term * term list = fun t stk ->
@@ -252,7 +257,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf_legacy a, whnf_legacy b) with
+    match (whnf_hybrid a, whnf_hybrid b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
