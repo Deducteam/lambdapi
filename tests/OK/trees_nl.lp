@@ -11,12 +11,11 @@ rule eq_nl (s &x) (s &x) → true
 
 assert eq_nl 3 3 ≡ true
 
-symbol f : N ⇒ N ⇒ B
-rule f (&x + 2) &x → true
- and f (&x + 1) &x → false
-
-compute f 2 0
-compute f 1 0
+symbol f : N ⇒ N ⇒ N ⇒ B
+rule f &x &x _  → true
+ and f _  &x &x → false
+compute f 4 4 11
+compute f 4 11 11
 
 symbol g : N ⇒ N ⇒ B
 rule g &x &x → true
