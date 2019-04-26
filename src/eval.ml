@@ -125,24 +125,24 @@ and whnf_stk_tree : term -> term list -> term * term list = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
-  | Appl(u, v), stk       -> whnf_stk_tree u (ensure_tref v :: stk)
+  | Appl(u, v), stk      -> whnf_stk_tree u (ensure_tref v :: stk)
   (* Beta reduction. *)
-  | Abst(_, f), u :: stk  ->
-    Pervasives.incr steps ;
-    let t = Bindlib.subst f u in
-    whnf_stk_tree t stk
+  | Abst(_, f), u :: stk ->
+      Pervasives.incr steps ;
+      let t = Bindlib.subst f u in
+      whnf_stk_tree t stk
   (* Try to rewrite. *)
-  | Symb(s, _), stk       ->
-    begin match !(s.sym_def) with
+  | Symb(s, _), stk      ->
+      begin match !(s.sym_def) with
       | Some(t) -> Pervasives.incr steps ; whnf_stk_tree t stk
       | None    ->
       match find_rule_tree s stk with
       (* If no rule is found, return the original term *)
       | None         -> st
       | Some(t, stk) -> Pervasives.incr steps ; whnf_stk_tree t stk
-    end
+      end
   (* In head normal form. *)
-  | _         , _         -> st
+  | _         , _        -> st
 
 (** [whnf_stk_legacy t stk] computes the weak head normal form of [t] applied
     to the argument list (or stack) [stk]. Note that the normalisation is done
