@@ -197,6 +197,49 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
+(** {3 Constraint structure} *)
+module IntPair =
+struct
+  type t = int * int
+  let compare : t -> t -> int = fun (i, i') (j, j') ->
+    match Int.compare i j with
+    | 0 -> Int.compare i' j'
+    | k -> k
+end
+
+module IntPairSet = Set.Make(IntPair)
+
+(** Manages non linearity constraints *)
+module NlConstraints =
+struct
+
+  type t =
+    { pool : SubtSet.t list
+    (** Set of path that are still subject to non linearity constraints. *)
+    ; partial : int SubtMap.t
+    (** A tuple [(p, h)] of this mapping indicates that path [p] in the
+        arguments has a non linearity constraint with term store at position
+        [h] of the {!val:vars} array. *)
+    ; activable : IntPairSet.t
+    (** Pairs of this set are checkable constraints, i.e. the two integers
+        refer to available positions in the {!val:vars} array. *) }
+
+  let preactivate : Subterm.t -> int -> SubtSet.t -> int SubtMap.t =
+    fun path height subpool ->
+    if SubtSet.mem path subpool
+    then SubtSet.fold (fun e -> SubtMap.add e height) subpool SubtMap.empty
+    else SubtMap.empty
+
+  (** [introduce p h c] sets path [p] as seen and stored at height [h] in
+      constraint [c], possibly activating or partialising constraints. *)
+  let introduce : Subterm.t -> int -> t -> t = fun path height cstr ->
+    let u _ _ _ = assert false in
+    let partial = List.fold_right
+        (fun e -> SubtMap.union u (preactivate path height e))
+        cstr.pool cstr.partial in
+    { cstr with partial }
+end
+
 (** {3 Clause matrix and pattern matching problem} *)
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix {i
