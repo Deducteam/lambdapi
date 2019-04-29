@@ -288,6 +288,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     elements to be put in the stack are returned along the tree. *)
 and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
   fun examined children default ->
+    if !log_enabled then log_eval "branching on [%a]" pp examined ;
     (* [choose t] chooses a tree among {!val:children} when term [t] is
        examined and returns the new head of stack. *)
     let choose t =
@@ -302,8 +303,12 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
           let matched = TcMap.find_opt cons children in
           if matched = None then (default, []) else (matched, args)
       | _           -> raise Dtree.Not_implemented in
-    if TcMap.is_empty children then (default, [])
-    else choose (whnf_tree examined)
+    let r = if TcMap.is_empty children then (default, [])
+      else choose (whnf_tree examined) in
+    if !log_enabled
+    then log_eval (r_or_g (r != (default, [])) "branching on [%a]")
+      pp examined ;
+    r
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
@@ -359,13 +364,16 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.
-    - The first of type {!type:stack} contains the arguments of a symbol that
-      are being matched against the rules of the symbol in order to rewrite
-      those arguments to a right hand side.
-    - The other of type {!type:term array} is filled during the matching and
-      contains the terms from the input stack that have been matched against a
-      pattern variable {!constructor:Patt} in some lhs.  The terms in this
-      stack might be substituted in the right hand side of the rule. *)
+    - The first of type {!type:term list} contains the arguments of a symbol
+      that are being matched against its rules in order to rewrite those
+      arguments to a right hand side.
+    - The other, named {!val:vars} of type {!type:term array} is filled during
+      the matching and contains the terms from the input stack that have been
+      matched against a pattern variable {!constructor:Patt} in some lhs.
+      A term might be in {!val:vars} either because it will be substituted in
+      the rhs, and we thus have to save them; or the term is matched against a
+      non linear {!constructor:Patt}, which may or may not be used in the
+      rhs. See {!module:Terms}, {!type:term} for more information. *)
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
