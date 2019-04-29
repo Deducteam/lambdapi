@@ -304,3 +304,16 @@ hence a priority can (almost) always be inserted between two different levels.
 **Warning:** No check is done on the syntax of the symbol that is
 defined. As a consequence, it is very easy to break the system by redefining a
 keyword or a common symbol (e.g., `"("`, `")"` or `"symbol"`).
+
+**Prover config**:
+In order to use the `why3` tactic, a prover should be set using:
+```
+set prover "Eprover"
+```
+*Alt-Ergo* is set by default if the user didn't specify a prover.
+
+The user can also specifies the time limit (in seconds) of the prover:
+```
+set prover_limit 60
+```
+The default time limit of a prover is set to 10 seconds.

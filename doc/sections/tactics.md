@@ -76,6 +76,29 @@ goals `?0` of type `TO`, ..., `?n` of type `Tn` if `t` is of type
 `∀x1:T1,..,∀xn:Tn,?0` and `t ?1 .. ?n` is of type `T`.
 
 <!---------------------------------------------------------------------------->
+### `why3`
+
+The tactic `why3` calls a prover (using the why3 platform) to solve the
+current goal. The user can specify the prover in two ways :
+- by using the command `set prover` (described in [commands](commands.md))
+- by the tactic `why3 "<prover_name>"` if the user want to change the prover inside an interactive mode.
+
+A default prover `Alt-Ergo` is set by default.
+
+A set of symbols should be defined in order to use the `why3` tactic.
+The user should define those symbols using builtins as follow :
+```
+set builtin "T"     ≔ T       // : U ⇒ TYPE
+set builtin "P"     ≔ P       // : Prop ⇒ TYPE
+set builtin "bot"   ≔ bot     // : Prop
+set builtin "top"   ≔ top     // : Prop
+set builtin "imp"   ≔ imp     // : Prop ⇒ Prop ⇒ Prop
+set builtin "and"   ≔ {|and|} // : Prop ⇒ Prop ⇒ Prop
+set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
+set builtin "not"   ≔ not     // : Prop ⇒ Prop
+```
+
+<!---------------------------------------------------------------------------->
 ### Tactics on equality
 
 The tactics `refl`, `sym` and `rewrite` below assumes the existence of
