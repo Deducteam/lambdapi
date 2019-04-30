@@ -209,6 +209,7 @@ struct
     (** Left hand side of a rule.   *)
     ; rhs : action
     (** Right hand side of a rule. *)
+    ; env_builder : (int * int) list
     ; variables : int SubtMap.t
     (** Mapping from positions of variable subterms in [lhs] to a slot in a
         term env. *) }
@@ -218,13 +219,7 @@ struct
   type t =
     { clauses : rule list
     (** The rules. *)
-    ; var_catalogue : Subterm.t list
-    (** Say {i (Mₙ)ₙ} is a finite sequence of clause matrices, where {i Mₙ₊₁}
-        is either the specialisation or the default case of {i Mₙ}.  Let {i L}
-        be the last matrix of the sequence.  Then {!field:var_catalogue} of {i
-        L} contains positions of terms in any {!field:lhs} of any
-        matrix of {i (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix
-        in {i (Mₙ)ₙ}). *) }
+    ; var_met : int }
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
@@ -274,8 +269,8 @@ struct
       let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = variables} in
-    { clauses = List.map r2r rs ; var_catalogue = [] }
+      ; variables = variables ; env_builder = [] } in
+    { clauses = List.map r2r rs ; var_met = 0 }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
@@ -349,6 +344,16 @@ struct
     | []                       -> false
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
+
+  (** [enrich_env_builder c v r] adds an entry into the environment builder of
+      [r] based on the nature of term at column [c] and with [v] variables met
+      so far. *)
+  let enrich_env_builder : int -> int -> rule -> rule = fun ci var_met r ->
+    let t, _ = r.lhs.(ci) in
+    match fst (get_args t) with
+    | Patt(Some(i), _, _) ->
+        { r with env_builder = (var_met, i) :: r.env_builder}
+    | _                   -> r
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
@@ -499,44 +504,37 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t = fun patterns ->
-  let { Cm.var_catalogue = vcat ; _ } = patterns in
+  let { Cm.var_met ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot }) ->
-      let f (count, acc) tpos =
-        let opslot = SubtMap.find_opt tpos pos2slot in
-        match opslot with
-        | None     -> succ count, acc
-      (* ^ Discard useless variables *)
-        | Some(sl) -> succ count, (count, sl) :: acc in
-      let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
-    (* ^ For now, [env_builder] contains only the variables encountered
-       while choosing the rule.  Other pattern variables needed in the
-       rhs, which are still in the [lhs] will now be fetched. *)
-      assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
-      let depth = List.length vcat in
-      fetch lhs depth env_builder rhs
+    | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = _
+           ; Cm.env_builder ; _ }) ->
+      fetch lhs var_met env_builder rhs
   | None                                                ->
       let absolute_cind = (* Index of column switched on *)
         let kept_cols = Cm.discard_cons_free patterns in
         let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         kept_cols.(sel_in_partial) in
-      let terms, position =
+      let terms, _ =
         let t, p = List.split (Cm.get_col absolute_cind patterns) in
         t, List.hd p in(* All positions in p are identical *)
-      let vcat = if Cm.contains_var terms then position :: vcat else vcat in
+      let nvm = if Cm.contains_var terms then succ var_met else var_met in
       let store = Cm.in_rhs terms in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
-          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
+          let rules = patterns.clauses |>
+                      List.map (Cm.enrich_env_builder absolute_cind var_met) |>
+                      Cm.specialize te_cons absolute_cind in
+          let ncm = { Cm.clauses = rules ; Cm.var_met = nvm } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let defmat = (* Default matrix *)
-        let rules = Cm.default absolute_cind patterns.clauses in
-        let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
+        let rules = patterns.clauses |>
+                    List.map (Cm.enrich_env_builder absolute_cind var_met) |>
+                    Cm.default absolute_cind in
+        let ncm = { Cm.clauses = rules ; Cm.var_met = nvm } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap = absolute_cind ; store = store ; children = children
            ; default = defmat })
