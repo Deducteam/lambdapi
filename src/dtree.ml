@@ -209,10 +209,7 @@ struct
     (** Left hand side of a rule.   *)
     ; rhs : action
     (** Right hand side of a rule. *)
-    ; env_builder : (int * int) list
-    ; variables : int SubtMap.t
-    (** Mapping from positions of variable subterms in [lhs] to a slot in a
-        term env. *) }
+    ; env_builder : (int * int) list }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -234,42 +231,12 @@ struct
       (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
 
-  (** [flushout_vars l] returns a mapping from position of variables into [l]
-      to the slot assigned to each variable in a {!type:term_env}. *)
-  let flushout_vars : term list -> action -> int SubtMap.t = fun lhs rhs ->
-    let nvars = Bindlib.mbinder_arity rhs in
-    let rec loop found st po =
-      if found = nvars then SubtMap.empty else
-        match st with
-        | [] -> SubtMap.empty
-        | x :: xs ->
-            begin match x with
-            | Patt(None, _, _)
-            | Vari(_)
-            | Symb(_, _)          -> loop found xs (Subterm.succ po)
-            | Patt(Some(i), _, _) -> SubtMap.add po i
-                (loop (succ found) xs (Subterm.succ po))
-            | Appl(_, _)          -> let _, args = get_args x in
-                                    deepen found args xs po
-            | Abst(_, b)          -> let _, body = Bindlib.unbind b in
-                                    deepen found [body] xs po
-            | _                   -> assert false
-            end
-    and deepen found args remain po =
-      let argpos = loop found args (Subterm.sub po) in
-      SubtMap.union (fun _ _ _ -> assert false) argpos
-        (loop found remain (Subterm.succ po)) in
-    (* The terms of the list are the subterms of the head symbol. *)
-    loop 0 lhs (Subterm.succ Subterm.init)
-
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
-    let r2r : Terms.rule -> rule = fun r ->
-      let variables = flushout_vars r.Terms.lhs r.Terms.rhs in
+    let r2r r = 
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
-      { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = variables ; env_builder = [] } in
+      { lhs = term_pos ; rhs = r.Terms.rhs ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -507,9 +474,8 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.var_met ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-    | Some({ Cm.rhs ; Cm.lhs ; Cm.variables = _
-           ; Cm.env_builder ; _ }) ->
-      fetch lhs var_met env_builder rhs
+    | Some({ Cm.rhs ; Cm.lhs ; Cm.env_builder ; _ }) ->
+        fetch lhs var_met env_builder rhs
   | None                                                ->
       let absolute_cind = (* Index of column switched on *)
         let kept_cols = Cm.discard_cons_free patterns in
