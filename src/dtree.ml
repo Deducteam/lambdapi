@@ -232,6 +232,11 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
+  (** [instantiate p q] instantiates path [p] in pool [q], that is, make a
+      constraint partially instantiated if none of the paths were instantiated
+      or make it available if one path was already instantiated. *)
+  val instantiate : Subterm.t -> t -> t
+
   (** [to_varindexes c] returns the indexes containing terms bound by a
       constraint in the [vars] array. *)
   val to_varindexes : cstr -> int * int
@@ -510,6 +515,11 @@ struct
     | Patt(Some(i), _, _) ->
         { r with env_builder = (var_met, i) :: r.env_builder}
     | _                   -> r
+
+  let update_nlconstraints : Subterm.t -> rule -> rule = fun pos r ->
+    let { nonlin ; _ } = r in
+    let nonlin = NlConstraints.instantiate pos nonlin in
+    { r with nonlin }
 
   (** [spec_filter p e] returns whether a line been inspected on element [e]
       (from a pattern matrix) must be kept when specializing the matrix on
