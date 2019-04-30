@@ -336,16 +336,12 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           List.iter fn env_builder;
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
-      | Condition({ cond_swap ; ok ; condition ; fail }) ->
-          let _, examined, _ = R.destruct stk cond_swap in
+      | Condition({ ok ; condition ; fail }) ->
           begin match condition with
-          | TcstrEq(slot)    ->
-              begin match vars.(slot) with
-              | Kind -> vars.(slot) <- examined ; walk ok stk cursor
-              | t    ->
-                  if eq_modulo examined t then walk ok stk cursor
-                  else walk fail stk cursor
-              end
+          | TcstrEq(i, j)    ->
+              if eq_modulo vars.(i) vars.(j)
+              then walk ok stk cursor
+              else walk fail stk cursor
           | TcstrFreeVars(_) -> raise Dtree.Not_implemented
           end
       | Node({swap; children; store; default})           ->
