@@ -470,12 +470,12 @@ let rec compile : Cm.t -> t = fun patterns ->
   | Some({ Cm.rhs ; Cm.lhs ; Cm.env_builder ; _ }) ->
       fetch lhs var_met env_builder rhs
   | None                                                ->
-      let absolute_cind = (* Index of column switched on *)
+      let cind = (* Index of column switched on *)
         let kept_cols = Cm.discard_cons_free patterns in
         let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         kept_cols.(sel_in_partial) in
       let terms, _ =
-        let t, p = List.split (Cm.get_col absolute_cind patterns) in
+        let t, p = List.split (Cm.get_col cind patterns) in
         t, List.hd p in(* All positions in p are identical *)
       let nvm = if Cm.contains_var terms then succ var_met else var_met in
       let store = Cm.in_rhs terms in
@@ -483,17 +483,17 @@ let rec compile : Cm.t -> t = fun patterns ->
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
           let rules = patterns.clauses |>
-                      List.map (Cm.enrich_env_builder absolute_cind var_met) |>
-                      Cm.specialize te_cons absolute_cind in
+                      List.map (Cm.enrich_env_builder cind var_met) |>
+                      Cm.specialize te_cons cind in
           let ncm = { Cm.clauses = rules ; Cm.var_met = nvm } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let defmat = (* Default matrix *)
         let rules = patterns.clauses |>
-                    List.map (Cm.enrich_env_builder absolute_cind var_met) |>
-                    Cm.default absolute_cind in
+                    List.map (Cm.enrich_env_builder cind var_met) |>
+                    Cm.default cind in
         let ncm = { Cm.clauses = rules ; Cm.var_met = nvm } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
-      Node({ swap = absolute_cind ; store = store ; children = children
+      Node({ swap = cind ; store = store ; children = children
            ; default = defmat })
