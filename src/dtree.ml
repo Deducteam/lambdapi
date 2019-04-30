@@ -336,23 +336,19 @@ struct
     | Abst(_, _) :: _  -> true
     | _          :: xs -> contains_abst xs
 
+  (** [contains_var l] returns whether list of terms [l] contains a pattern
+      variable with a slot assigned. *)
+  let rec contains_var : term list -> bool = function
+    | []                        -> false
+    | Patt(Some(_), _, _) :: _  -> true
+    | _                   :: xs -> contains_var xs
+
   (** [in_rhs] returns whether a list of term contains a term needed in the
       right hand side of a rule. *)
   let rec in_rhs : term list -> bool = function
     | []                       -> false
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
-
-  (** [varpos p c] returns the list of positions of pattern variables in
-      column [c] of [p]. *)
-  let varpos : t -> int -> Subterm.t list = fun pm ci ->
-    let is_var (te, _) = match te with
-      | Patt(Some(_), _, _) -> true
-      | _                   -> false in
-    (* We do not care about keeping the order of the new variables in [vars]
-       since for any rule, at most one of them will be chosen. *)
-    get_col ci pm |> List.filter is_var |> List.split |> snd |>
-        List.sort_uniq Subterm.compare
 
 (** [spec_filter p e] returns whether a line been inspected on element [e]
     (from a pattern matrix) must be kept when specializing the matrix on
@@ -525,22 +521,22 @@ let rec compile : Cm.t -> t = fun patterns ->
         let kept_cols = Cm.discard_cons_free patterns in
         let sel_in_partial = Cm.pick_best_among patterns kept_cols in
         kept_cols.(sel_in_partial) in
-      let terms, _ = List.split @@ Cm.get_col absolute_cind patterns in
+      let terms, position =
+        let t, p = List.split (Cm.get_col absolute_cind patterns) in
+        t, List.hd p in(* All positions in p are identical *)
+      let vcat = if Cm.contains_var terms then position :: vcat else vcat in
       let store = Cm.in_rhs terms in
-      let newcat = (* New var catalogue *)
-        let newvars = Cm.varpos patterns absolute_cind in
-        newvars @ patterns.Cm.var_catalogue in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
           let rules = Cm.specialize te_cons absolute_cind patterns.clauses in
-          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let defmat = (* Default matrix *)
         let rules = Cm.default absolute_cind patterns.clauses in
-        let ncm = { Cm.clauses = rules ; Cm.var_catalogue = newcat } in
+        let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap = absolute_cind ; store = store ; children = children
            ; default = defmat })
