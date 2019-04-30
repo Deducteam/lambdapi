@@ -209,14 +209,16 @@ struct
     (** Left hand side of a rule.   *)
     ; rhs : action
     (** Right hand side of a rule. *)
-    ; env_builder : (int * int) list }
+    ; env_builder : (int * int) list
+    (** Maps an index int the {!val:vars} array to a slot. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
   type t =
     { clauses : rule list
     (** The rules. *)
-    ; var_met : int }
+    ; var_met : int
+    (** Number of variables encountered so far. *) }
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
@@ -234,7 +236,7 @@ struct
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
-    let r2r r = 
+    let r2r r =
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       { lhs = term_pos ; rhs = r.Terms.rhs ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
@@ -411,26 +413,17 @@ module Cm = ClauseMat
     Efficiency is managed thanks to heuristics handled by the {!val:score}
     function.
 
-    The last is managed by the {!val:env_builder} as follows.  The matching
-    process uses, along with the tree, an array to store terms that may be
-    used in a candidate {!field:rhs}.  Terms are stored while parsing if the
-    {!constructor:Node} has its {!field:store} at {!val:true}.  To know when
-    to store variables, each rule is first parsed with {!val:Cm.flushout_vars}
-    to get the positions of {!constructor:Patt} in each {!field:lhs}.  Once
-    these positions are known, the {!field:Cm.var_catalogue} can be built.  A
-    {!field:Cm.var_catalogue} contains the accumulation of the positions of
-    terms used in {!field:rhs}s encountered so far during successive
-    branchings.  Once a rule can be triggered, {!field:Cm.var_catalogue}
-    contains, in the order they appear during matching, all the terms the
-    rule can use, that are the terms {e that have been inspected}.  There
-    may remain terms that haven't been inspected (because they are not needed
-    to decide which rule to apply), but that are nevertheless needed in the
-    {!field:rhs}.  Note that the {!field:Cm.var_catalogue} contains useless
-    variables as well: these may have been needed by other rules, when several
-    rules were still candidates.  The {!val:env_builder} is then initialized
-    and contains only essential terms from the catalogue for the rule to
-    apply.  The remaining variables, which will remain in the input stack will
-    be fetched thanks to a subtree built by {!val:fetch}. *)
+    The last is managed by the {!val:env_builder} as follows.
+    The evaluation process uses, along with the tree, an array [vars] to store
+    terms matched against a pattern variable which is used in some
+    {!field:rhs}.  Each rule has an {!val:env_builder} mapping a index in the
+    [vars] array to a slot in the final environment (the slot [i] of a
+    [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
+    are useless for the rule that is applied, as terms might have been saved
+    because needed by another rule which is not the one applied.  The
+    {!field:var_met} keeps track of how many variables have been encountered
+    so far and thus indicates the index in [vars] that will be used by the
+    next variable. *)
 
 (** [fetch l d e r] consumes [l] until environment builder [e] contains as
     many elements as the number of variables in [r].  The environment builder
@@ -474,8 +467,8 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.var_met ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-    | Some({ Cm.rhs ; Cm.lhs ; Cm.env_builder ; _ }) ->
-        fetch lhs var_met env_builder rhs
+  | Some({ Cm.rhs ; Cm.lhs ; Cm.env_builder ; _ }) ->
+      fetch lhs var_met env_builder rhs
   | None                                                ->
       let absolute_cind = (* Index of column switched on *)
         let kept_cols = Cm.discard_cons_free patterns in
