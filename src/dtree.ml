@@ -165,15 +165,14 @@ let to_dot : string -> t -> unit = fun fname tree ->
           TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
           Option.iter (write_tree tag DotDefa) default ;
       | Condition(cdata) ->
-          let { cond_swap ; ok ; condition ; fail } = cdata in
+          let { ok ; condition ; fail } = cdata in
           incr nodecount ;
           let tag = !nodecount in
           F.fprintf ppf
-            "@ %d [label=<%s<sub>%d</sub>@%d> shape=\"diamond\"];" tag
+            "@ %d [label=<%s<sub>%d</sub>> shape=\"diamond\"];" tag
             (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) ->
               "FV")
-            (match condition with TcstrEq(i) -> i | TcstrFreeVars(_) -> 0)
-            cond_swap ;
+            (match condition with TcstrEq(i, _) -> i | TcstrFreeVars(_) -> 0) ;
           F.fprintf ppf
             "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
           write_tree tag DotDefa ok ;
@@ -209,8 +208,37 @@ end
 
 module IntPairSet = Set.Make(IntPair)
 
+module type BinConstraintPoolSig =
+sig
+  (** Set of constraints declared, either available or not. *)
+  type t
+
+  (** A unique instantiated constraint. *)
+  type cstr
+
+  (** The empty set of constraints. *)
+  val empty : t
+
+  (** [is_empty p] returns whether pool [p] is empty. *)
+  val is_empty : t -> bool
+
+  (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
+  val has : cstr -> t -> bool
+
+  (** [choose p] returns the constraint with the highest priority in [p] along
+      with its score. *)
+  val choose : t list -> cstr * int
+
+  (** [remove c p] removes constraint [c] from pool [p]. *)
+  val remove : cstr -> t -> t
+
+  (** [to_varindexes c] returns the indexes containing terms bound by a
+      constraint in the [vars] array. *)
+  val to_varindexes : cstr -> int * int
+end
+
 (** Manages non linearity constraints *)
-module NlConstraints =
+module NlConstraints : BinConstraintPoolSig =
 struct
 
   type t =
@@ -220,109 +248,23 @@ struct
     (** A tuple [(p, h)] of this mapping indicates that path [p] in the
         arguments has a non linearity constraint with term store at position
         [h] of the {!val:vars} array. *)
-    ; activable : IntPairSet.t
+    ; available : IntPairSet.t
     (** Pairs of this set are checkable constraints, i.e. the two integers
         refer to available positions in the {!val:vars} array. *) }
 
-  let preactivate : Subterm.t -> int -> SubtSet.t -> int SubtMap.t =
-    fun path height subpool ->
-    if SubtSet.mem path subpool
-    then SubtSet.fold (fun e -> SubtMap.add e height) subpool SubtMap.empty
-    else SubtMap.empty
+  type cstr = int * int
 
-  (** [introduce p h c] sets path [p] as seen and stored at height [h] in
-      constraint [c], possibly activating or partialising constraints. *)
-  let introduce : Subterm.t -> int -> t -> t = fun path height cstr ->
-    let u _ _ _ = assert false in
-    let partial = List.fold_right
-        (fun e -> SubtMap.union u (preactivate path height e))
-        cstr.pool cstr.partial in
-    { cstr with partial }
-end
+  let empty = { pool = []
+              ; partial = SubtMap.empty
+              ; available = IntPairSet.empty }
 
-(** {3 Clause matrix and pattern matching problem} *)
+  let is_empty = (=) empty
 
-(** A clause matrix encodes a pattern matching problem.  The clause matrix {i
-    C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
-    A} is a column of {e actions}.  Each line of a pattern matrix is a pattern
-    to which is attached an action.  When reducing a term, if a line filters
-    the term, or equivalently the term matches the pattern, the term is
-    rewritten to the action. *)
-module ClauseMat =
-struct
-  (** A component of the matrix, a term along with its position in the top
-      term. *)
-  type component = term * Subterm.t
+  let choose _ = (0, 0), 0
 
-  (** [pp_component o c] prints component [c] to channel [o]. *)
-  let pp_component : component pp = fun oc (te, pos) ->
-    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
-
-  (** A redefinition of the rule type.
-
-      {b Note} that {!type:array} is used while {!module:ReductionStack} could
-      be used because {!val:pick_best_among} goes through all items of a rule
-      anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
-      the matrix, we favour quick access with {!type:array}. *)
-  type rule = { lhs : component array
-              (** Left hand side of a rule.   *)
-              ; rhs : action
-              (** Right hand side of a rule. *)
-              ; variables : int SubtMap.t
-              (** Mapping from positions of variable subterms in [lhs] to a
-                  slot in a term env. *)
-              ; env_builder : (int * int) list
-              (** Maps a place in {!val:vars} array used during eval to a
-                  slot. *)
-              ; nonlin : SubtSet.t
-                  (** Contains all positions of variables having non-linearity
-                      constraints *) }
-
-  (** Type of a matrix of patterns.  Each line is a row having an attached
-      action. *)
-  type t =
-    { clauses : rule list
-    (** The rules. *)
-    ; var_met : int
-    (** Number of variables met so far. *) }
-
-  (** Operations embedded in the tree *)
-  type decision =
-    | Yield of rule
-    (** Apply a rule. *)
-    | Specialise of int
-    (** Further specialise the matrix against constructors of a given
-        column. *)
-    | NlConstrain of int * int
-    (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
-        regarding slot [s]. *)
-
-  (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { clauses ; _ } ->
-    let module F = Format in
-    let pp_line oc l =
-      F.fprintf oc "@[<h>" ;
-      F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
-        pp_component oc (Array.to_list l) ;
-      F.fprintf oc "@]" in
-    F.fprintf oc "{@[<v>@," ;
-    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
-      (List.map (fun { lhs ; _ } -> lhs) clauses) ;
-    F.fprintf oc "@.}@,"
-
-  (** [pp_data o m] prints auxiliary data of matrix [m] to out channel [o]. *)
-  let pp_data : t pp = fun oc { clauses ; _ } ->
-    let module F = Format in
-    let pp_rule oc (nonlin, _) =
-      F.fprintf oc "@[<h>" ;
-      F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";@ ")
-        Subterm.pp oc (nonlin |> SubtSet.to_seq |> List.of_seq) ;
-      F.fprintf oc "@]" in
-    F.fprintf oc "{*@[<v>@," ;
-    F.pp_print_list ~pp_sep:F.pp_print_cut pp_rule oc
-      (List.map
-         (fun { variables ; nonlin ; _ } -> (nonlin, variables)) clauses) ;
-    F.fprintf oc "@.*}@,"
+  let has _ _ = false
+  let remove _ pool = pool
+  let to_varindexes _ = (0, 0)
 
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
@@ -381,15 +323,93 @@ struct
       if SubtSet.cardinal e > 1 then SubtSet.union e acc else acc)
       sl2vars SubtSet.empty
 
+  let preactivate : Subterm.t -> int -> SubtSet.t -> int SubtMap.t =
+    fun path height subpool ->
+    if SubtSet.mem path subpool
+    then SubtSet.fold (fun e -> SubtMap.add e height) subpool SubtMap.empty
+    else SubtMap.empty
+
+  (** [introduce p h c] sets path [p] as seen and stored at height [h] in
+      constraint [c], possibly activating or partialising constraints. *)
+  let introduce : Subterm.t -> int -> t -> t = fun path height cstr ->
+    let u _ _ _ = assert false in
+    let partial = List.fold_right
+        (fun e -> SubtMap.union u (preactivate path height e))
+        cstr.pool cstr.partial in
+    { cstr with partial }
+end
+
+(** {3 Clause matrix and pattern matching problem} *)
+
+(** A clause matrix encodes a pattern matching problem.  The clause matrix {i
+    C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
+    A} is a column of {e actions}.  Each line of a pattern matrix is a pattern
+    to which is attached an action.  When reducing a term, if a line filters
+    the term, or equivalently the term matches the pattern, the term is
+    rewritten to the action. *)
+module ClauseMat =
+struct
+  (** A component of the matrix, a term along with its position in the top
+      term. *)
+  type component = term * Subterm.t
+
+  (** [pp_component o c] prints component [c] to channel [o]. *)
+  let pp_component : component pp = fun oc (te, pos) ->
+    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
+
+  (** A redefinition of the rule type.
+
+      {b Note} that {!type:array} is used while {!module:ReductionStack} could
+      be used because {!val:pick_best_among} goes through all items of a rule
+      anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
+      the matrix, we favour quick access with {!type:array}. *)
+  type rule =
+    { lhs : component array
+    (** Left hand side of a rule.   *)
+    ; rhs : action
+    (** Right hand side of a rule. *)
+    ; env_builder : (int * int) list
+    ; nonlin : NlConstraints.t }
+
+  (** Type of a matrix of patterns.  Each line is a row having an attached
+      action. *)
+  type t =
+    { clauses : rule list
+    (** The rules. *)
+    ; var_met : int
+    (** Number of variables met so far. *) }
+
+  (** Operations embedded in the tree *)
+  type decision =
+    | Yield of rule
+    (** Apply a rule. *)
+    | Specialise of int
+    (** Further specialise the matrix against constructors of a given
+        column. *)
+    | NlConstrain of NlConstraints.cstr
+    (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
+        regarding slot [s]. *)
+
+  (** [pp o m] prints matrix [m] to out channel [o]. *)
+  let pp : t pp = fun oc { clauses ; _ } ->
+    let module F = Format in
+    let pp_line oc l =
+      F.fprintf oc "@[<h>" ;
+      F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
+        pp_component oc (Array.to_list l) ;
+      F.fprintf oc "@]" in
+    F.fprintf oc "{@[<v>@," ;
+    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
+      (List.map (fun { lhs ; _ } -> lhs) clauses) ;
+    F.fprintf oc "@.}@,"
+
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
-      let variables = record_vars r.Terms.lhs in
-      let nlcstr = record_nl_constraints r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
-      { lhs = term_pos ; rhs = r.Terms.rhs ; variables = variables
-      ; nonlin = nlcstr ; env_builder = [] } in
+      { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin = NlConstraints.empty
+      ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -406,11 +426,12 @@ struct
     | _ :: xs                         -> succ (score xs)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c] according to a heuristic. *)
-  let pick_best_among : t -> int array -> int = fun mat columns->
+      among columns [c] according to a heuristic, along with the score. *)
+  let pick_best_among : t -> int array -> int * int = fun mat columns->
     let wild_pc = Array.map (fun ci ->
       let c = get_col ci mat in score c) columns in
-    Array.argmax (<=) wild_pc
+    let index = Array.argmax (<=) wild_pc in
+    (index, wild_pc.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of rules [r]. *)
@@ -423,7 +444,7 @@ struct
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; _ } ->
     Array.for_all (fun (e, _) -> not (is_treecons e)) lhs &&
-      SubtSet.is_empty nonlin
+    NlConstraints.is_empty nonlin
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
@@ -435,43 +456,20 @@ struct
     let switchable2ind i e = if e then Some(i) else None in
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
-  (** [find_nl_constraint c r] returns the slot concerned by a non linearity
-      constraint on column [c] among rules [r]. *)
-  let find_nl_constraint : int -> rule list -> int option = fun ci ->
-    let f { lhs ; nonlin ; variables ; _ } =
-      let _, p = lhs.(ci) in
-      if SubtSet.mem p nonlin
-      then Some(SubtMap.find p variables)
-      else None in
-    List.map_find f
-
-  (** [seek_nl_constraint r] returns the column and slot of a non linearity
-      constraint. *)
-  let seek_nl_constraint : rule list -> (int * int) option = fun rules ->
-    let col_of : Subterm.t -> component array -> int = fun p lhs ->
-      Array.search (fun (_, q) -> Subterm.compare q p) lhs in
-    let f { lhs ; nonlin ; variables ; _ } =
-      let p = SubtSet.choose_opt nonlin in
-      Option.map (fun p -> (col_of p lhs, SubtMap.find p variables)) p in
-    List.map_find f rules
-
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; _ } = m in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
+        let cstr, scorecstr =
+          NlConstraints.choose (List.map (fun r -> r.nonlin) clauses) in
         let kept_cols = discard_cons_free clauses in
         if kept_cols <> [||] then
-          let sel_in_partial = pick_best_among m kept_cols in
+          let sel_in_partial, scorecol = pick_best_among m kept_cols in
           let cind = kept_cols.(sel_in_partial) in
-          let cstr = find_nl_constraint cind clauses in
-          match cstr with
-          | Some(slot) -> NlConstrain(cind, slot)
-          | None       -> Specialise(cind)
-        else match seek_nl_constraint clauses with
-        | Some(cind, slot) -> NlConstrain(cind, slot)
-        | None             -> assert false
+          if scorecstr > scorecol then NlConstrain(cstr) else Specialise(cind)
+        else NlConstrain(cstr)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
@@ -584,28 +582,19 @@ struct
           { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
       | _                -> assert false) filtered
 
-  (** [nl_succeed c s r] computes the matrix containing rules from [r] that
-      verify a non-linearity constraint on column [c] regarding slot [s]. *)
-  let nl_succeed : int -> int -> rule list -> rule list = fun ci slot ->
+  (** [nl_succeed c r] computes the rule list from [r] that verify a
+      non-linearity constraint [c]. *)
+  let nl_succeed : NlConstraints.cstr -> rule list -> rule list = fun c ->
     let f r =
-      let { lhs ; nonlin ; _ } = r in
-      let t, p = lhs.(ci) in
-      let nonlin =
-        match t with
-        | Patt(Some(i), _, _) ->
-            if i = slot then SubtSet.remove p nonlin else nonlin
-        | _                   -> nonlin in
+      let { nonlin ; _ } = r in
+      let nonlin = NlConstraints.remove c nonlin in
       { r with nonlin } in
     List.map f
 
-  (** [nl_fail c s r] computes the matrix containing rules not failing a
-      non-linearity constraint on column [c] regarding slot [s]. *)
-  let nl_fail : int -> int -> rule list -> rule list = fun ci slot ->
-    let f { lhs ; nonlin ; _ } =
-      let t, p = lhs.(ci) in
-      match t with
-      | Patt(Some(i), _, _) -> not (i = slot && SubtSet.mem p nonlin)
-      | _                   -> true in
+  (** [nl_fail c r] computes the rules not failing a non-linearity constraint
+      [c] among rules [r]. *)
+  let nl_fail : NlConstraints.cstr -> rule list -> rule list = fun c ->
+    let f { nonlin ; _ } = not (NlConstraints.has c nonlin) in
     List.filter f
 end
 
@@ -687,16 +676,17 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.clauses ; Cm.var_met } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = _
-          ; Cm.nonlin = _ ; env_builder }) ->
+  | Yield({ Cm.rhs ; Cm.lhs ; Cm.nonlin = _
+            ; env_builder }) ->
       fetch lhs var_met env_builder rhs
-  | NlConstrain(cind, slot) ->
-      let ok = let nclauses = Cm.nl_succeed cind slot clauses in
+  | NlConstrain(constr) ->
+      let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
-      let fail = let nclauses = Cm.nl_fail cind slot clauses in
+      let fail = let nclauses = Cm.nl_fail constr clauses in
                  compile {patterns with Cm.clauses = nclauses } in
-      let condition = TcstrEq(slot) in
-      Condition({ cond_swap = cind ; ok ; condition ; fail })
+      let vi, vj = NlConstraints.to_varindexes constr in
+      let condition = TcstrEq(vi, vj) in
+      Condition({ ok ; condition ; fail })
   | Specialise(cind)                     ->
       let terms, _ =
         let t, p = List.split (Cm.get_col cind patterns) in

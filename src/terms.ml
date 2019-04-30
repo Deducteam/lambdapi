@@ -211,9 +211,9 @@ type term =
 
 (** Constraints among elements of the tree. *)
 and tree_constraint =
-  | TcstrEq of int
-  (** [TcstrEq(i)] ensures that the examined term is convertible with term at
-      slot [i] of the environment. *)
+  | TcstrEq of int * int
+  (** [TcstrEq(i, j)] ensures that the terms at indexes [i] and [j] are
+      convertible. *)
   | TcstrFreeVars of term Bindlib.var list
   (** [TcstrFreeVars(v)] ensures the examined contains only free variables
       that are in [v]. *)
@@ -245,9 +245,7 @@ and tree_constraint =
 
 (** Data needed to carry out a condition verification during evaluation. *)
  and condition_data =
-  { cond_swap : int
-  (** On which term of the stack the condition is to be checked. *)
-  ; ok : tree
+  { ok : tree
   (** Tree branched on if the condition is verified. *)
   ; condition : tree_constraint
   (** Type of the condition. *)

@@ -329,14 +329,14 @@ module SubtSet = Set.Make(Subterm)
 let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
-  do_condition:('a -> int -> tree_constraint -> 'a -> 'a) ->
+  do_condition:('a -> tree_constraint -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
     let rec loop = function
       | Leaf(pa, a)                                 -> do_leaf pa a
       | Fail                                        -> fail
       | Condition(cdata)                            ->
-          let { cond_swap ; condition ; ok ; fail } = cdata in
-          do_condition (loop ok) cond_swap condition (loop fail)
+          let { condition ; ok ; fail } = cdata in
+          do_condition (loop ok) condition (loop fail)
       | Node({ swap ; store ; children ; default }) ->
           do_node swap store
             (TcMap.map loop children)
@@ -357,7 +357,7 @@ let capacity : tree -> int =
     let _, chdepths = List.split (TcMap.bindings ch) in
     let dedepth = Option.get de 0 in
     List.extremum (>) (dedepth :: chdepths) + (if st then 1 else 0) in
-  let do_condition t _ _ f = max t f in
+  let do_condition t _ f = max t f in
   tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
     ~do_condition:do_condition
 
