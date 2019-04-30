@@ -271,6 +271,9 @@ struct
               ; variables : int SubtMap.t
               (** Mapping from positions of variable subterms in [lhs] to a
                   slot in a term env. *)
+              ; env_builder : (int * int) list
+              (** Maps a place in {!val:vars} array used during eval to a
+                  slot. *)
               ; nonlin : SubtSet.t
                   (** Contains all positions of variables having non-linearity
                       constraints *) }
@@ -280,13 +283,8 @@ struct
   type t =
     { clauses : rule list
     (** The rules. *)
-    ; var_catalogue : Subterm.t list
-    (** Say {i (Mₙ)ₙ} is a finite sequence of clause matrices, where {i Mₙ₊₁}
-        is either the specialisation or the default case of {i Mₙ}.  Let {i L}
-        be the last matrix of the sequence.  Then {!field:var_catalogue} of {i
-        L} contains positions of terms in any {!field:lhs} of any matrix of {i
-        (Mₙ)ₙ} that can be used in a {!field:rhs} (of any matrix in {i
-        (Mₙ)ₙ}). *) }
+    ; var_met : int
+    (** Number of variables met so far. *) }
 
   (** Operations embedded in the tree *)
   type decision =
@@ -390,10 +388,9 @@ struct
       let variables = record_vars r.Terms.lhs in
       let nlcstr = record_nl_constraints r.Terms.lhs in
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
-      { lhs = term_pos ; rhs = r.Terms.rhs
-      ; variables = variables
-      ; nonlin = nlcstr } in
-    { clauses = List.map r2r rs ; var_catalogue = [] }
+      { lhs = term_pos ; rhs = r.Terms.rhs ; variables = variables
+      ; nonlin = nlcstr ; env_builder = [] } in
+    { clauses = List.map r2r rs ; var_met = 0 }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
@@ -505,6 +502,16 @@ struct
     | []                       -> false
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
+
+  (** [enrich_env_builder c v r] adds an entry into the environment builder of
+      [r] based on the nature of term at column [c] and with [v] variables met
+      so far. *)
+  let enrich_env_builder : int -> int -> rule -> rule = fun ci var_met r ->
+    let t, _ = r.lhs.(ci) in
+    match fst (get_args t) with
+    | Patt(Some(i), _, _) ->
+        { r with env_builder = (var_met, i) :: r.env_builder}
+    | _                   -> r
 
   (** [spec_filter p e] returns whether a line been inspected on element [e]
       (from a pattern matrix) must be kept when specializing the matrix on
@@ -677,24 +684,12 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t = fun patterns ->
-  let { Cm.var_catalogue = vcat ; clauses ; _ } = patterns in
+  let { Cm.clauses ; Cm.var_met } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = pos2slot
-          ; Cm.nonlin = _ }) ->
-      let f (count, acc) tpos =
-        let opslot = SubtMap.find_opt tpos pos2slot in
-        match opslot with
-        | None     -> succ count, acc
-      (* ^ Discard useless variables *)
-        | Some(sl) -> succ count, (count, sl) :: acc in
-      let _, env_builder = List.fold_left f (0, []) (List.rev vcat) in
-    (* ^ For now, [env_builder] contains only the variables encountered
-       while choosing the rule.  Other pattern variables needed in the
-       rhs, which are still in the [lhs] will now be fetched. *)
-      assert (List.length env_builder <= SubtMap.cardinal pos2slot) ;
-      let depth = List.length vcat in
-      fetch lhs depth env_builder rhs
+  | Yield({ Cm.rhs ; Cm.lhs ; Cm.variables = _
+          ; Cm.nonlin = _ ; env_builder }) ->
+      fetch lhs var_met env_builder rhs
   | NlConstrain(cind, slot) ->
       let ok = let nclauses = Cm.nl_succeed cind slot clauses in
                compile { patterns with Cm.clauses = nclauses } in
@@ -703,22 +698,25 @@ let rec compile : Cm.t -> t = fun patterns ->
       let condition = TcstrEq(slot) in
       Condition({ cond_swap = cind ; ok ; condition ; fail })
   | Specialise(cind)                     ->
-      let terms, position =
+      let terms, _ =
         let t, p = List.split (Cm.get_col cind patterns) in
         t, List.hd p in (* All positions are identical in [p]. *)
       let store = Cm.in_rhs terms in
-      let vcat = if Cm.contains_var terms then position :: vcat else vcat in
+      let nvm = if Cm.contains_var terms then succ var_met else var_met in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = Cm.specialize te_cons cind clauses in
-          let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
+          let rules = clauses |>
+                      List.map (Cm.enrich_env_builder cind var_met) |>
+                      Cm.specialize te_cons cind in
+          let ncm = { Cm.clauses = rules ; var_met = nvm } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let defmat = (* Default matrix *)
-        let rules = Cm.default cind clauses in
-        let ncm = { Cm.clauses = rules ; Cm.var_catalogue = vcat } in
+        let rules = clauses |> List.map (Cm.enrich_env_builder cind var_met) |>
+                    Cm.default cind in
+        let ncm = { Cm.clauses = rules ; var_met = nvm } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap = cind ; store = store ; children = children
            ; default = defmat })
