@@ -237,6 +237,9 @@ sig
       or make it available if one path was already instantiated. *)
   val instantiate : Subterm.t -> t -> t
 
+  (** [of_rules] extracts constraints of a rule. *)
+  val of_rules : Terms.rule -> t
+
   (** [to_varindexes c] returns the indexes containing terms bound by a
       constraint in the [vars] array. *)
   val to_varindexes : cstr -> int * int
@@ -270,6 +273,8 @@ struct
   let has _ _ = false
   let remove _ pool = pool
   let to_varindexes _ = (0, 0)
+  let instantiate _ x = x
+  let of_rules _ = empty
 
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
@@ -354,13 +359,10 @@ end
     rewritten to the action. *)
 module ClauseMat =
 struct
+
   (** A component of the matrix, a term along with its position in the top
       term. *)
   type component = term * Subterm.t
-
-  (** [pp_component o c] prints component [c] to channel [o]. *)
-  let pp_component : component pp = fun oc (te, pos) ->
-    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
 
   (** A redefinition of the rule type.
 
@@ -394,6 +396,10 @@ struct
     | NlConstrain of NlConstraints.cstr
     (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
         regarding slot [s]. *)
+
+  (** [pp_component o c] prints component [c] to channel [o]. *)
+  let pp_component : component pp = fun oc (te, pos) ->
+    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
@@ -515,11 +521,6 @@ struct
     | Patt(Some(i), _, _) ->
         { r with env_builder = (var_met, i) :: r.env_builder}
     | _                   -> r
-
-  let update_nlconstraints : Subterm.t -> rule -> rule = fun pos r ->
-    let { nonlin ; _ } = r in
-    let nonlin = NlConstraints.instantiate pos nonlin in
-    { r with nonlin }
 
   (** [spec_filter p e] returns whether a line been inspected on element [e]
       (from a pattern matrix) must be kept when specializing the matrix on
