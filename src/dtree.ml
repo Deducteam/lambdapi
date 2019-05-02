@@ -197,17 +197,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
   close_out ochan
 
 (** {3 Constraint structure} *)
-module IntPair =
-struct
-  type t = int * int
-  let compare : t -> t -> int = fun (i, i') (j, j') ->
-    match Int.compare i j with
-    | 0 -> Int.compare i' j'
-    | k -> k
-end
-
-module IntPairSet = Set.Make(IntPair)
-
 module type BinConstraintPoolSig =
 sig
   (** Set of constraints declared, either available or not. *)
@@ -232,10 +221,12 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
-  (** [instantiate p q] instantiates path [p] in pool [q], that is, make a
+  (** [instantiate p i q] instantiates path [p] in pool [q], that is, make a
       constraint partially instantiated if none of the paths were instantiated
-      or make it available if one path was already instantiated. *)
-  val instantiate : Subterm.t -> t -> t
+      or make it available if one path was already instantiated.  Uses index
+      [i] as support of the constraint.
+      @raise Not_found if [p] is not part of any constraint in [q]. *)
+  val instantiate : Subterm.t -> int -> t -> t
 
   (** [of_terms r] returns nonlinearity constraints induced by terms in
       [r]. *)
@@ -249,6 +240,17 @@ end
 (** Manages non linearity constraints *)
 module NlConstraints : BinConstraintPoolSig =
 struct
+
+  module IntPair =
+  struct
+    type t = int * int
+    let compare : t -> t -> int = fun (i, i') (j, j') ->
+      match Int.compare i j with
+      | 0 -> Int.compare i' j'
+      | k -> k
+  end
+
+  module IntPairSet = Set.Make(IntPair)
 
   type t =
     { pool : (int * SubtSet.t) list
@@ -273,10 +275,22 @@ struct
 
   let choose _ = (0, 0), 0
 
-  let has _ _ = false
-  let remove _ pool = pool
-  let to_varindexes _ = (0, 0)
-  let instantiate _ x = x
+  let has pair { available ; _ } = IntPairSet.mem pair available
+  let remove pair pool = { pool with
+                           available = IntPairSet.remove pair pool.available }
+  let to_varindexes pair = pair
+  let instantiate path i pool =
+    match SubtMap.find_opt path pool.partial with
+    | Some(j) ->
+        let npartial = SubtMap.remove path pool.partial in
+        let navailable = IntPairSet.add (i, j) pool.available in
+        { pool with partial = npartial ; available = navailable }
+    | None    ->
+        let (k, set) = List.find (fun (_, s) -> SubtSet.mem path s) pool.pool in
+        let npool = List.remove_assoc k pool.pool in
+        let npartial = SubtSet.fold (fun pth -> SubtMap.add pth i) set
+            pool.partial in
+        { pool with partial = npartial ; pool = npool }
 
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
@@ -398,8 +412,8 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
-      { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin = NlConstraints.empty
-      ; env_builder = [] } in
+      let nonlin = NlConstraints.of_terms r.lhs in
+      { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
