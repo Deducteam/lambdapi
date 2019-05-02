@@ -277,37 +277,38 @@ struct
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
   let pp oc pool =
+    let module F = Format in
     let pp_subtset oc ss =
-      Format.fprintf oc "@[<h>" ;
-      Format.pp_print_list ~pp_sep:(fun oc () -> Format.pp_print_string oc ";")
+      F.fprintf oc "@[<h>" ;
+      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
         Subterm.pp oc (SubtSet.elements ss) ;
-      Format.fprintf oc "@]" in
+      F.fprintf oc "@]" in
     let pp_int_subtset oc (i, ss) =
-      Format.fprintf oc "@[<h>(%d, %a)@]" i pp_subtset ss in
+      F.fprintf oc "@[<h>(%d, %a)@]" i pp_subtset ss in
     let pp_pool oc ppool =
-      Format.pp_print_string oc "pool:" ;
-      Format.fprintf oc "@[<v 2>" ;
-      Format.pp_print_list ~pp_sep:(Format.pp_print_cut) pp_int_subtset oc
+      F.pp_print_string oc "pool:" ;
+      F.fprintf oc "@[<v 2>" ;
+      F.pp_print_list ~pp_sep:(F.pp_print_cut) pp_int_subtset oc
         ppool ;
-      Format.pp_close_box oc () in
+      F.pp_close_box oc () in
     let pp_subterm_int oc (st, i) =
-      Format.fprintf oc "@[<h>(%a, %d)@]" Subterm.pp st i in
+      F.fprintf oc "@[<h>(%a, %d)@]" Subterm.pp st i in
     let pp_partial oc ism =
-      Format.fprintf oc "partial: @[<h>" ;
-      Format.pp_print_list ~pp_sep:(fun oc () -> Format.pp_print_string oc ";")
+      F.fprintf oc "partial: @[<h>" ;
+      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
         pp_subterm_int oc (SubtMap.bindings ism) ;
-      Format.pp_close_box oc () in
-    let pp_int_int oc (i, j) = Format.fprintf oc "@[<h>(%d, %d)@]" i j in
+      F.pp_close_box oc () in
+    let pp_int_int oc (i, j) = F.fprintf oc "@[<h>(%d, %d)@]" i j in
     let pp_available oc ips =
-      Format.fprintf oc "available: @[<h>" ;
-      Format.pp_print_list ~pp_sep:(fun oc () -> Format.pp_print_string oc ";")
+      F.fprintf oc "available: @[<h>" ;
+      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
         pp_int_int oc (IntPairSet.elements ips) ;
-      Format.pp_close_box oc () in
-    Format.fprintf oc "{@[<v 2>" ;
-    Format.fprintf oc "@[<h>%a@]@," pp_pool pool.pool ;
-    Format.fprintf oc "@[<h>%a@]@," pp_partial pool.partial ;
-    Format.fprintf oc "@[<h>%a@]@," pp_available pool.available ;
-    Format.fprintf oc "@]}"
+      F.pp_close_box oc () in
+    F.fprintf oc "{@[<v>@," ;
+    F.fprintf oc "@[<h>%a@]@," pp_pool pool.pool ;
+    F.fprintf oc "@[<h>%a@]@," pp_partial pool.partial ;
+    F.fprintf oc "@[<h>%a@]@," pp_available pool.available ;
+    F.fprintf oc "@.}"
 
   let empty = { pool = []
               ; partial = SubtMap.empty
@@ -472,6 +473,7 @@ struct
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       let nonlin = NlConstraints.of_terms r.lhs in
+      Format.printf "%a\n" NlConstraints.pp nonlin ;
       { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
 
