@@ -237,8 +237,9 @@ sig
       or make it available if one path was already instantiated. *)
   val instantiate : Subterm.t -> t -> t
 
-  (** [of_rules] extracts constraints of a rule. *)
-  val of_rules : Terms.rule -> t
+  (** [of_terms r] returns nonlinearity constraints induced by terms in
+      [r]. *)
+  val of_terms : term list -> t
 
   (** [to_varindexes c] returns the indexes containing terms bound by a
       constraint in the [vars] array. *)
@@ -250,8 +251,10 @@ module NlConstraints : BinConstraintPoolSig =
 struct
 
   type t =
-    { pool : SubtSet.t list
-    (** Set of path that are still subject to non linearity constraints. *)
+    { pool : (int * SubtSet.t) list
+    (** Set of path that are still subject to non linearity constraints.  An
+        element [(i, C)] is a slot [i] along with all the positions of the
+        variables sharing this slot. *)
     ; partial : int SubtMap.t
     (** A tuple [(p, h)] of this mapping indicates that path [p] in the
         arguments has a non linearity constraint with term store at position
@@ -274,7 +277,6 @@ struct
   let remove _ pool = pool
   let to_varindexes _ = (0, 0)
   let instantiate _ x = x
-  let of_rules _ = empty
 
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
@@ -301,52 +303,29 @@ struct
             end
       and deepen args remain po =
         let argpos = loop args (Subterm.sub po) in
-        merge argpos (loop remain (Subterm.succ po)) in
+        let next = loop remain (Subterm.succ po) in
+        merge argpos next in
       (* The terms of the list are the subterms of the head symbol. *)
       loop lhs (Subterm.succ Subterm.init)
 
-  (** [record_vars l] returns a mapping from position of variables into [l]
-      to the slot assigned to each variable in a {!type:term_env}. *)
-  let record_vars : term list -> int SubtMap.t = fun lhs ->
-    let add po i _ _ m = match i with
-      | Some(sl) -> SubtMap.add po sl m
-      | None     -> m in
-    let merge = SubtMap.union (fun _ _ _ -> assert false) in
-    fold_vars lhs ~add:add ~merge:merge ~init:SubtMap.empty
-
-  (** [record_nl_constraints l] returns a mapping from the slot in the
-      environment to the set of vars in this slot, which must be checked for
-      equality. *)
-  let record_nl_constraints : term list -> SubtSet.t = fun lhs ->
-    let add po i _ _ s =
-      let update = function
-        | Some(x) -> Some(SubtSet.add po x)
-        | None    -> Some(SubtSet.singleton po) in
-      match i with
-      | Some(sl) -> IntMap.update sl update s
-      | None     -> s in
-    let merge =
-      let conflict _ s t = Some(SubtSet.union s t) in
-      IntMap.union conflict in
-    let sl2vars = fold_vars lhs ~add:add ~merge:merge ~init:IntMap.empty in
-    IntMap.fold (fun _ e acc ->
-      if SubtSet.cardinal e > 1 then SubtSet.union e acc else acc)
-      sl2vars SubtSet.empty
-
-  let preactivate : Subterm.t -> int -> SubtSet.t -> int SubtMap.t =
-    fun path height subpool ->
-    if SubtSet.mem path subpool
-    then SubtSet.fold (fun e -> SubtMap.add e height) subpool SubtMap.empty
-    else SubtMap.empty
-
-  (** [introduce p h c] sets path [p] as seen and stored at height [h] in
-      constraint [c], possibly activating or partialising constraints. *)
-  let introduce : Subterm.t -> int -> t -> t = fun path height cstr ->
-    let u _ _ _ = assert false in
-    let partial = List.fold_right
-        (fun e -> SubtMap.union u (preactivate path height e))
-        cstr.pool cstr.partial in
-    { cstr with partial }
+  (** [of_terms r] returns the non linearity set of constraints associated to
+      list of terms [r]. *)
+  let of_terms r =
+    (* [extract_nl r] builds the initial pool of constraints from [r]. *)
+    let extract_nl : term list -> (int * SubtSet.t) list = fun lhs ->
+      let add po io _ _ acc =
+        match io with
+        | None     -> acc
+        | Some(sl) ->
+            List.modify_opt sl
+              (function None      -> SubtSet.singleton po
+                      | Some(set) -> SubtSet.add po set)
+              acc in
+      let merge ala alb = List.assoc_merge SubtSet.union SubtSet.empty
+          (ala @ alb) in
+      fold_vars lhs ~add:add ~merge:merge ~init:[] in
+    let nlcons = extract_nl r in
+    { pool = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty }
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
