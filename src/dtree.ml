@@ -523,14 +523,15 @@ struct
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
 
-  (** [enrich_env_builder c v r] adds an entry into the environment builder of
-      [r] based on the nature of term at column [c] and with [v] variables met
-      so far. *)
-  let enrich_env_builder : int -> int -> rule -> rule = fun ci var_met r ->
-    let t, _ = r.lhs.(ci) in
+  (** [update_aux c v r] returns rule [r] with auxiliary data updated
+      (i.e. non linearity constraints and environment builder). *)
+  let update_aux : int -> int -> rule -> rule = fun ci var_met r ->
+    let t, p = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(Some(i), _, _) ->
-        { r with env_builder = (var_met, i) :: r.env_builder}
+        let env_builder = (var_met, i) :: r.env_builder in
+        let nonlin = NlConstraints.instantiate p var_met r.nonlin in
+        { r with env_builder ; nonlin }
     | _                   -> r
 
   (** [spec_filter p e] returns whether a line been inspected on element [e]
@@ -719,14 +720,14 @@ let rec compile : Cm.t -> t = fun patterns ->
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
           let rules = clauses |>
-                      List.map (Cm.enrich_env_builder cind var_met) |>
+                      List.map (Cm.update_aux cind var_met) |>
                       Cm.specialize te_cons cind in
           let ncm = { Cm.clauses = rules ; var_met = nvm } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let defmat = (* Default matrix *)
-        let rules = clauses |> List.map (Cm.enrich_env_builder cind var_met) |>
+        let rules = clauses |> List.map (Cm.update_aux cind var_met) |>
                     Cm.default cind in
         let ncm = { Cm.clauses = rules ; var_met = nvm } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
