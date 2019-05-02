@@ -385,8 +385,9 @@ struct
   (** [of_terms r] returns the non linearity set of constraints associated to
       list of terms [r]. *)
   let of_terms r =
-    (* [extract_nl r] builds the initial pool of constraints from [r]. *)
-    let extract_nl : term list -> (int * SubtSet.t) list = fun lhs ->
+    (* [groupby_slot r] returns an associative list mapping final environment
+       slot to subterm position in [r]. *)
+    let groupby_slot: term list -> (int * SubtSet.t) list = fun lhs ->
       let add po io _ _ acc =
         match io with
         | None     -> acc
@@ -398,7 +399,8 @@ struct
       let merge ala alb = List.assoc_merge SubtSet.union SubtSet.empty
           (ala @ alb) in
       fold_vars lhs ~add:add ~merge:merge ~init:[] in
-    let nlcons = extract_nl r in
+    let sl2pos = groupby_slot r in
+    let nlcons = List.filter (fun (_, s) -> SubtSet.cardinal s > 1) sl2pos in
     { pool = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty }
 end
 
