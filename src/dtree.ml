@@ -251,6 +251,7 @@ struct
   end
 
   module IntPairSet = Set.Make(IntPair)
+  module IntPairMap = Map.Make(IntPair)
 
   type t =
     { pool : (int * SubtSet.t) list
@@ -273,17 +274,34 @@ struct
 
   let is_empty = (=) empty
 
-  let choose _ = (0, 0), 0
+  let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
+
+  (* Choose the constraint appearing the most in the list of constraints. *)
+  let choose cstrs =
+    let availables = List.map (fun x -> x.available) cstrs in
+    let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t =
+      IntPairSet.fold (fun pair occ ->
+          let pair = normalize pair in
+          IntPairMap.update pair
+            (function None    -> Some(1)
+                    | Some(c) -> Some(succ c))
+            occ) cset occ in
+    let occ = List.fold_left add IntPairMap.empty availables in
+    IntPairMap.fold (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms))
+      occ (IntPairMap.choose occ)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
+
   let remove pair pool = { pool with
                            available = IntPairSet.remove pair pool.available }
+
   let to_varindexes pair = pair
+
   let instantiate path i pool =
     match SubtMap.find_opt path pool.partial with
     | Some(j) ->
         let npartial = SubtMap.remove path pool.partial in
-        let navailable = IntPairSet.add (i, j) pool.available in
+        let navailable = IntPairSet.add (normalize (i, j)) pool.available in
         { pool with partial = npartial ; available = navailable }
     | None    ->
         let (k, set) = List.find (fun (_, s) -> SubtSet.mem path s) pool.pool in
