@@ -217,6 +217,9 @@ sig
   (** [is_empty p] returns whether pool [p] is empty. *)
   val is_empty : t -> bool
 
+  (** [concerns p q] @return whether position [p] is constrained in pool [q]. *)
+  val concerns : Subterm.t -> t -> bool
+
   (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
   val has : cstr -> t -> bool
 
@@ -260,7 +263,9 @@ struct
   module IntPairMap = Map.Make(IntPair)
 
   type t =
-    { groups : (int * SubtSet.t) list
+    { concerned : SubtSet.t
+    (** All the positions concerned by non linear constraints. *)
+    ; groups : (int * SubtSet.t) list
     (** Set of path that are still subject to non linearity constraints.  An
         element [(i, C)] is a slot [i] along with all the positions of the
         variables sharing this slot. *)
@@ -310,7 +315,8 @@ struct
     F.fprintf oc "@[<h>%a@]@," pp_available pool.available ;
     F.fprintf oc "@.}"
 
-  let empty = { groups = []
+  let empty = { concerned = SubtSet.empty
+              ; groups = []
               ; partial = SubtMap.empty
               ; available = IntPairSet.empty }
 
@@ -333,6 +339,8 @@ struct
       occ (IntPairMap.choose occ)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
+
+  let concerns p q = SubtSet.mem p q.concerned
 
   let remove pair pool = { pool with
                            available = IntPairSet.remove pair pool.available }
@@ -401,9 +409,12 @@ struct
       let merge ala alb = List.assoc_merge SubtSet.union SubtSet.empty
           (ala @ alb) in
       fold_vars lhs ~add:add ~merge:merge ~init:[] in
-    let sl2pos = groupby_slot r in
-    let nlcons = List.filter (fun (_, s) -> SubtSet.cardinal s > 1) sl2pos in
-    { groups = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty }
+    let nlcons = groupby_slot r |>
+                 List.filter (fun (_, s) -> SubtSet.cardinal s > 1) in
+    let everyone = List.fold_right
+        (fun (_, v) -> SubtSet.union v) nlcons SubtSet.empty in
+    { groups = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty
+    ; concerned = everyone }
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
@@ -577,7 +588,9 @@ struct
     match fst (get_args t) with
     | Patt(Some(i), _, _) ->
         let env_builder = (var_met, i) :: r.env_builder in
-        let nonlin = NlConstraints.instantiate p var_met r.nonlin in
+        let nonlin = if NlConstraints.concerns p r.nonlin
+          then NlConstraints.instantiate p var_met r.nonlin
+          else r.nonlin in
         { r with env_builder ; nonlin }
     | _                   -> r
 
