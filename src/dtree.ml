@@ -312,8 +312,8 @@ struct
     F.fprintf oc "{@[<v>@," ;
     F.fprintf oc "@[<h>%a@]@," pp_groups pool.groups ;
     F.fprintf oc "@[<h>%a@]@," pp_partial pool.partial ;
-    F.fprintf oc "@[<h>%a@]@," pp_available pool.available ;
-    F.fprintf oc "@.}"
+    F.fprintf oc "@[<h>%a@]" pp_available pool.available ;
+    F.fprintf oc "@.@]}"
 
   let empty = { concerned = SubtSet.empty
               ; groups = []
@@ -540,26 +540,27 @@ struct
     let switchable2ind i e = if e then Some(i) else None in
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
+  (** [choose m] returns the index of column to switch on. *)
+  let choose : t -> (int * int) option = fun m ->
+    let kept = discard_cons_free m.clauses in
+    if kept = [||] then None else
+    let sel_partial, score = pick_best_among m kept in
+    let cind = kept.(sel_partial) in
+    Some(cind, score)
+
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; _ } = m in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
-        let cstr_scorecstr =
-          NlConstraints.choose (List.map (fun r -> r.nonlin) clauses) in
-        let kept_cols = discard_cons_free clauses in
-        match cstr_scorecstr, kept_cols with
-        | None               , [||] -> assert false
-        | None               , kc   ->
-            let sel_in_partial, _ = pick_best_among m kc in
-            let cind = kept_cols.(sel_in_partial) in
-            Specialise(cind)
-        | Some(cstr, _)      , [||] -> NlConstrain(cstr)
-        | Some(cstr, scorect), kc   ->
-            let sel_in_partial, scorecol = pick_best_among m kc in
-            let cind = kept_cols.(sel_in_partial) in
-            if scorect > scorecol then NlConstrain(cstr) else Specialise(cind)
+        let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
+        match NlConstraints.choose nlcstrs, choose m with
+        | None         , None          -> assert false
+        | None         , Some(ci, _)   -> Specialise(ci)
+        | Some(cs, _)  , None          -> NlConstrain(cs)
+        | Some(cs, ssc), Some(ci, lsc) ->
+            if ssc > lsc then NlConstrain(cs) else Specialise(ci)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
