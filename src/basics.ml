@@ -301,6 +301,10 @@ let rec to_closed : (sym option) array -> term -> tbox
   | Patt _            -> raise Not_FO
   | _                 -> assert false
 
+(** [is_new_symb s] checks if [s] is a function symbol created for checking
+    SR. *)
+let is_new_symb s = s.sym_name.[0] = '{'
+
 (** [distinct_vars_opt ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
 let distinct_vars_opt : term array -> tvar array option =
