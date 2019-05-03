@@ -246,8 +246,8 @@ sig
   type decision =
     | Solve of cstr * int
     (** A constraint to apply along with its heuristic score. *)
-    | Instantiate of int * int
-    (** Carry out a switch on a column to fully instantiate a constraint. *)
+    | Instantiate of Subterm.t * int
+    (** Carry out a switch on a term specified by its position, score. *)
     | Unavailable
     (** No non linearity constraint available. *)
 
@@ -294,7 +294,7 @@ struct
 
   type decision =
     | Solve of cstr * int
-    | Instantiate of int * int
+    | Instantiate of Subterm.t * int
     | Unavailable
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
@@ -346,20 +346,51 @@ struct
 
   (* Choose the constraint appearing the most in the list of constraints. *)
   let choose cstrs =
+    let rec pick_inst : t list -> cstr option = function
+      | []      -> None
+      | c :: cs ->
+          match IntPairSet.choose_opt c.available with
+          | None -> pick_inst cs
+          | x    -> x in
+    let rec pick_partial : t list -> Subterm.t option = function
+      | []      -> None
+      | c :: cs ->
+          match SubtMap.choose_opt c.partial with
+          | None       -> pick_partial cs
+          | Some(p, _) -> Some(p) in
+    let rec pick_fromgroups = function
+      | []           -> None
+      | (_, g) :: gs ->
+          match SubtSet.choose_opt g with
+          | None -> pick_fromgroups gs
+          | x    -> x in
+    let rec pick_uninst : t list -> Subterm.t = function
+      | []      -> raise Not_found
+      | c :: cs ->
+          match pick_fromgroups c.groups with
+          | None    -> pick_uninst cs
+          | Some(p) -> p in
     if List.for_all is_empty cstrs then Unavailable else
-    let availables = List.map (fun x -> x.available) cstrs in
-    let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t =
-      IntPairSet.fold (fun pair occ ->
-          let pair = normalize pair in
-          IntPairMap.update pair
-            (function None    -> Some(1)
-                    | Some(c) -> Some(succ c))
-            occ) cset occ in
-    let occ = List.fold_left add IntPairMap.empty availables in
-    let c, s = IntPairMap.fold
-        (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms))
-        occ (IntPairMap.choose occ) in
-    Solve(c, s)
+    match pick_inst cstrs with
+    | Some(cstr) -> Solve(cstr, 1)
+    | None       ->
+        match pick_partial cstrs with
+        | Some(p) -> Instantiate(p, 1)
+        | None    -> Instantiate(pick_uninst cstrs, 1)
+    (* if List.for_all is_empty cstrs then Unavailable else *)
+    (* let availables = List.map (fun x -> x.available) cstrs in *)
+    (* let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t = *)
+    (*   IntPairSet.fold (fun pair occ -> *)
+    (*       let pair = normalize pair in *)
+    (*       IntPairMap.update pair *)
+    (*         (function None    -> Some(1) *)
+    (*                 | Some(c) -> Some(succ c)) *)
+    (*         occ) cset occ in *)
+    (* let occ = List.fold_left add IntPairMap.empty availables in *)
+    (* let c, s = IntPairMap.fold *)
+    (*     (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms)) *)
+    (*     occ (IntPairMap.choose occ) in *)
+    (* Solve(c, s) *)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
 
@@ -569,6 +600,8 @@ struct
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; _ } = m in
+    let positions = (List.hd m.clauses).lhs |> Array.split |>
+                       snd |> Array.of_list in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
@@ -576,9 +609,13 @@ struct
         match NlConstraints.choose nlcstrs, choose m with
         | Unavailable  , None        -> assert false
         | Unavailable  , Some(ci, _) -> Specialise(ci)
-        | Instantiate(ci, _), None   -> Specialise(ci)
-        | Instantiate(cii, sci), Some(_, scc)
-          when sci > scc             -> Specialise(cii)
+        | Instantiate(p, _), None    ->
+            let col = Array.search (Subterm.compare p) positions in
+            Specialise(col)
+        | Instantiate(p, sci), Some(_, scc)
+          when sci > scc             ->
+            let col = Array.search (Subterm.compare p) positions in
+            Specialise(col)
         | Instantiate(_, sci), Some(cic, scc)
           when sci <= scc            -> Specialise(cic)
         | Solve(c, _), None          -> NlConstrain(c)
