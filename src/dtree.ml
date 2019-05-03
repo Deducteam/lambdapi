@@ -346,37 +346,25 @@ struct
 
   (* Choose the constraint appearing the most in the list of constraints. *)
   let choose cstrs =
-    let rec pick_inst : t list -> cstr option = function
-      | []      -> None
-      | c :: cs ->
-          match IntPairSet.choose_opt c.available with
-          | None -> pick_inst cs
-          | x    -> x in
-    let rec pick_partial : t list -> Subterm.t option = function
-      | []      -> None
-      | c :: cs ->
-          match SubtMap.choose_opt c.partial with
-          | None       -> pick_partial cs
-          | Some(p, _) -> Some(p) in
-    let rec pick_fromgroups = function
-      | []           -> None
-      | (_, g) :: gs ->
-          match SubtSet.choose_opt g with
-          | None -> pick_fromgroups gs
-          | x    -> x in
-    let rec pick_uninst : t list -> Subterm.t = function
-      | []      -> raise Not_found
-      | c :: cs ->
-          match pick_fromgroups c.groups with
-          | None    -> pick_uninst cs
-          | Some(p) -> p in
-    if List.for_all is_empty cstrs then Unavailable else
-    match pick_inst cstrs with
-    | Some(cstr) -> Solve(cstr, 1)
-    | None       ->
-        match pick_partial cstrs with
-        | Some(p) -> Instantiate(p, 1)
-        | None    -> Instantiate(pick_uninst cstrs, 1)
+    let available = List.fold_right (fun c -> IntPairSet.union c.available)
+        cstrs IntPairSet.empty in
+    match IntPairSet.choose_opt available with
+    | Some(c) -> Solve(c, 1)
+    | None    ->
+        let positions = List.fold_right
+            (fun c -> c.partial |> SubtMap.bindings |> List.split |> fst |>
+                      List.append) cstrs [] |> List.sort_uniq Subterm.compare in
+        match positions with
+        | x :: _ -> Instantiate(x, 1)
+        | []     ->
+            Format.printf "Last chance\n%!" ;
+            let g2s sl2po = List.fold_right (fun (_, ps) -> SubtSet.union ps)
+                sl2po SubtSet.empty in
+            let positions = List.fold_right
+                (fun c -> c.groups |> g2s |> SubtSet.union)
+                cstrs SubtSet.empty in
+            let p = SubtSet.choose positions in
+            Instantiate(p, 1)
     (* if List.for_all is_empty cstrs then Unavailable else *)
     (* let availables = List.map (fun x -> x.available) cstrs in *)
     (* let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t = *)
@@ -610,11 +598,11 @@ struct
         | Unavailable  , None        -> assert false
         | Unavailable  , Some(ci, _) -> Specialise(ci)
         | Instantiate(p, _), None    ->
-            let col = Array.search (Subterm.compare p) positions in
+            let col, _ = Subterm.nearest positions p in
             Specialise(col)
         | Instantiate(p, sci), Some(_, scc)
           when sci > scc             ->
-            let col = Array.search (Subterm.compare p) positions in
+            let col, _ = Subterm.nearest positions p in
             Specialise(col)
         | Instantiate(_, sci), Some(cic, scc)
           when sci <= scc            -> Specialise(cic)
@@ -837,6 +825,7 @@ let rec compile : Cm.t -> t = fun patterns ->
             ; env_builder }) ->
       fetch lhs var_met env_builder rhs
   | NlConstrain(constr) ->
+      Format.printf "nlco\n%!" ;
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
@@ -845,6 +834,7 @@ let rec compile : Cm.t -> t = fun patterns ->
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
   | Specialise(cind)                     ->
+      Format.printf "spec\n%!" ;
       let terms, _ =
         let t, p = List.split (Cm.get_col cind patterns) in
         t, List.hd p in (* All positions are identical in [p]. *)
