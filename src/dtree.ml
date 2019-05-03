@@ -223,10 +223,6 @@ sig
   (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
   val has : cstr -> t -> bool
 
-  (** [choose p] returns the constraint with the highest priority in [p] along
-      with its score. *)
-  val choose : t list -> (cstr * int) option
-
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
@@ -240,6 +236,23 @@ sig
   (** [of_terms r] returns nonlinearity constraints induced by terms in
       [r]. *)
   val of_terms : term list -> t
+end
+
+module type NlConstraintSig =
+sig
+  include BinConstraintPoolSig
+
+  (** Action to perform. *)
+  type decision =
+    | Solve of cstr * int
+    (** A constraint to apply along with its heuristic score. *)
+    | Instantiate of int * int
+    (** Carry out a switch on a column to fully instantiate a constraint. *)
+    | Unavailable
+    (** No non linearity constraint available. *)
+
+  (** [choose p] returns the constraint with the highest priority in [p]. *)
+  val choose : t list -> decision
 
   (** [to_varindexes c] returns the indexes containing terms bound by a
       constraint in the [vars] array. *)
@@ -247,7 +260,7 @@ sig
 end
 
 (** Manages non linearity constraints *)
-module NlConstraints : BinConstraintPoolSig =
+module NlConstraints : NlConstraintSig =
 struct
 
   module IntPair =
@@ -278,6 +291,11 @@ struct
         refer to available positions in the {!val:vars} array. *) }
 
   type cstr = int * int
+
+  type decision =
+    | Solve of cstr * int
+    | Instantiate of int * int
+    | Unavailable
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
@@ -320,15 +338,15 @@ struct
               ; partial = SubtMap.empty
               ; available = IntPairSet.empty }
 
-  let is_empty = (=) empty
+  let is_empty { groups ; partial ; available ; concerned = _ } =
+    groups = empty.groups && partial = empty.partial &&
+    available = empty.available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
   (* Choose the constraint appearing the most in the list of constraints. *)
   let choose cstrs =
-    let tot = List.fold_right
-        (fun c -> (+) (IntPairSet.cardinal c.available)) cstrs 0 in
-    if tot = 0 then None else
+    if List.for_all is_empty cstrs then Unavailable else
     let availables = List.map (fun x -> x.available) cstrs in
     let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t =
       IntPairSet.fold (fun pair occ ->
@@ -338,10 +356,10 @@ struct
                     | Some(c) -> Some(succ c))
             occ) cset occ in
     let occ = List.fold_left add IntPairMap.empty availables in
-    let r = IntPairMap.fold
+    let c, s = IntPairMap.fold
         (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms))
         occ (IntPairMap.choose occ) in
-    Some(r)
+    Solve(c, s)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
 
@@ -556,11 +574,19 @@ struct
     | None    ->
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         match NlConstraints.choose nlcstrs, choose m with
-        | None         , None          -> assert false
-        | None         , Some(ci, _)   -> Specialise(ci)
-        | Some(cs, _)  , None          -> NlConstrain(cs)
-        | Some(cs, ssc), Some(ci, lsc) ->
-            if ssc > lsc then NlConstrain(cs) else Specialise(ci)
+        | Unavailable  , None        -> assert false
+        | Unavailable  , Some(ci, _) -> Specialise(ci)
+        | Instantiate(ci, _), None   -> Specialise(ci)
+        | Instantiate(cii, sci), Some(_, scc)
+          when sci > scc             -> Specialise(cii)
+        | Instantiate(_, sci), Some(cic, scc)
+          when sci <= scc            -> Specialise(cic)
+        | Solve(c, _), None          -> NlConstrain(c)
+        | Solve(c, scs), Some(_, scc)
+          when scs > scc             -> NlConstrain(c)
+        | Solve(_, scs), Some(cic, scc)
+          when scs <= scc            -> Specialise(cic)
+        | _            , _           -> assert false
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
