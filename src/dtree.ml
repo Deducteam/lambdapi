@@ -225,7 +225,7 @@ sig
 
   (** [choose p] returns the constraint with the highest priority in [p] along
       with its score. *)
-  val choose : t list -> cstr * int
+  val choose : t list -> (cstr * int) option
 
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
@@ -326,6 +326,9 @@ struct
 
   (* Choose the constraint appearing the most in the list of constraints. *)
   let choose cstrs =
+    let tot = List.fold_right
+        (fun c -> (+) (IntPairSet.cardinal c.available)) cstrs 0 in
+    if tot = 0 then None else
     let availables = List.map (fun x -> x.available) cstrs in
     let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t =
       IntPairSet.fold (fun pair occ ->
@@ -335,8 +338,10 @@ struct
                     | Some(c) -> Some(succ c))
             occ) cset occ in
     let occ = List.fold_left add IntPairMap.empty availables in
-    IntPairMap.fold (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms))
-      occ (IntPairMap.choose occ)
+    let r = IntPairMap.fold
+        (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms))
+        occ (IntPairMap.choose occ) in
+    Some(r)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
 
@@ -488,7 +493,6 @@ struct
     let r2r : Terms.rule -> rule = fun r ->
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       let nonlin = NlConstraints.of_terms r.lhs in
-      Format.printf "%a\n" NlConstraints.pp nonlin ;
       { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     { clauses = List.map r2r rs ; var_met = 0 }
 
@@ -542,14 +546,20 @@ struct
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
-        let cstr, scorecstr =
+        let cstr_scorecstr =
           NlConstraints.choose (List.map (fun r -> r.nonlin) clauses) in
         let kept_cols = discard_cons_free clauses in
-        if kept_cols <> [||] then
-          let sel_in_partial, scorecol = pick_best_among m kept_cols in
-          let cind = kept_cols.(sel_in_partial) in
-          if scorecstr > scorecol then NlConstrain(cstr) else Specialise(cind)
-        else NlConstrain(cstr)
+        match cstr_scorecstr, kept_cols with
+        | None               , [||] -> assert false
+        | None               , kc   ->
+            let sel_in_partial, _ = pick_best_among m kc in
+            let cind = kept_cols.(sel_in_partial) in
+            Specialise(cind)
+        | Some(cstr, _)      , [||] -> NlConstrain(cstr)
+        | Some(cstr, scorect), kc   ->
+            let sel_in_partial, scorecol = pick_best_among m kc in
+            let cind = kept_cols.(sel_in_partial) in
+            if scorect > scorecol then NlConstrain(cstr) else Specialise(cind)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
