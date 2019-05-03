@@ -260,7 +260,7 @@ struct
   module IntPairMap = Map.Make(IntPair)
 
   type t =
-    { pool : (int * SubtSet.t) list
+    { groups : (int * SubtSet.t) list
     (** Set of path that are still subject to non linearity constraints.  An
         element [(i, C)] is a slot [i] along with all the positions of the
         variables sharing this slot. *)
@@ -285,11 +285,11 @@ struct
       F.fprintf oc "@]" in
     let pp_int_subtset oc (i, ss) =
       F.fprintf oc "@[<h>(%d, %a)@]" i pp_subtset ss in
-    let pp_pool oc ppool =
-      F.pp_print_string oc "pool:" ;
+    let pp_groups oc pgroups =
+      F.pp_print_string oc "groups:" ;
       F.fprintf oc "@[<v 2>" ;
       F.pp_print_list ~pp_sep:(F.pp_print_cut) pp_int_subtset oc
-        ppool ;
+        pgroups ;
       F.pp_close_box oc () in
     let pp_subterm_int oc (st, i) =
       F.fprintf oc "@[<h>(%a, %d)@]" Subterm.pp st i in
@@ -305,12 +305,12 @@ struct
         pp_int_int oc (IntPairSet.elements ips) ;
       F.pp_close_box oc () in
     F.fprintf oc "{@[<v>@," ;
-    F.fprintf oc "@[<h>%a@]@," pp_pool pool.pool ;
+    F.fprintf oc "@[<h>%a@]@," pp_groups pool.groups ;
     F.fprintf oc "@[<h>%a@]@," pp_partial pool.partial ;
     F.fprintf oc "@[<h>%a@]@," pp_available pool.available ;
     F.fprintf oc "@.}"
 
-  let empty = { pool = []
+  let empty = { groups = []
               ; partial = SubtMap.empty
               ; available = IntPairSet.empty }
 
@@ -346,11 +346,13 @@ struct
         let navailable = IntPairSet.add (normalize (i, j)) pool.available in
         { pool with partial = npartial ; available = navailable }
     | None    ->
-        let (k, set) = List.find (fun (_, s) -> SubtSet.mem path s) pool.pool in
-        let npool = List.remove_assoc k pool.pool in
+        let (k, set) = List.find
+            (fun (_, s) -> SubtSet.mem path s)
+            pool.groups in
+        let ngroups = List.remove_assoc k pool.groups in
         let npartial = SubtSet.fold (fun pth -> SubtMap.add pth i) set
             pool.partial in
-        { pool with partial = npartial ; pool = npool }
+        { pool with partial = npartial ; groups = ngroups }
 
   (** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
       When a {!constructor:Patt} is found in any subterm of [l], function [f]
@@ -401,7 +403,7 @@ struct
       fold_vars lhs ~add:add ~merge:merge ~init:[] in
     let sl2pos = groupby_slot r in
     let nlcons = List.filter (fun (_, s) -> SubtSet.cardinal s > 1) sl2pos in
-    { pool = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty }
+    { groups = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty }
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
