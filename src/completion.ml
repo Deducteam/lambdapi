@@ -21,14 +21,14 @@ let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
         | None   -> 1
         | Some g ->
             match ord f g with
-            | 1 ->
+            | k when k > 0 ->
                 if List.for_all (fun x -> lpo ord t1 x > 0) args' then 1
                 else -1
-            | 0 ->
+            | 0            ->
                 if List.for_all (fun x -> lpo ord t1 x > 0) args' then
                   Ord.ord_lex (lpo ord) args args'
                 else -1
-            | _ -> -1
+            | _            -> -1
 
 (** [to_rule (lhs, rhs)] tranlates the pair [(lhs, rhs)] of closed terms into
     a rule. *)
@@ -41,6 +41,120 @@ let to_rule : term * term -> sym * rule = fun (lhs, rhs) ->
       let vs = Bindlib.new_mvar te_mkfree [||] in
       let rhs = Bindlib.unbox (Bindlib.bind_mvar vs (lift rhs)) in
       s, { lhs = args ; rhs = rhs ; arity = List.length args ; vars = [||] }
+
+(** [find_deps eqs] returns a pair [(symbs, deps)], where [symbs] is a list of
+    (names of) new symbols and [deps] is a list of pairs of symbols. (s, t)
+    is added into [deps] iff there is a equation (l, r) in [eqs] such that
+    (l = s and t is a proper subterm of r) or (r = s and t is a proper subterm
+    of l). In this case, we also add s and t into [symbs]. *)
+let find_deps : (term * term) list -> string list * (string * string) list
+  = fun eqs ->
+  let deps = ref [] in
+  let symbs = ref [] in
+  let add_symb name =
+    if not (List.mem name !symbs) then symbs := name :: !symbs in
+  let add_dep dep =
+    if not (List.mem dep !deps) then deps := dep :: !deps in
+  let find_dep_aux (t1, t2) =
+    match get_symb t1 with
+    | Some sym ->
+        if is_new_symb sym then
+          let check_root t =
+            let g, _ = get_args t in
+            match get_symb g with
+            | Some sym' when is_new_symb sym' ->
+                add_dep (sym.sym_name, sym'.sym_name);
+                add_symb sym.sym_name;
+                add_symb sym'.sym_name;
+            | _                           -> () in
+          let _, args = get_args t2 in
+          List.iter (Basics.iter check_root) args
+    | None     -> () in
+  List.iter
+    (fun (t1, t2) -> find_dep_aux (t1, t2); find_dep_aux (t2, t1)) eqs;
+  (!symbs, !deps)
+
+module StrMap = Map.Make(struct
+  type t = string
+  let compare = compare
+end)
+
+exception Not_DAG
+
+(** [topo_sort symbs edges] computes a topological sort on the directed graph
+    [(symbs, edges)]. *)
+let topo_sort : string list -> (string * string) list -> int StrMap.t
+  = fun symbs edges ->
+  let n = List.length symbs in
+  let i = ref (-1) in
+  let name_map =
+    List.fold_left
+      (fun map s -> incr i; StrMap.add s !i map) StrMap.empty symbs in
+  let adj = Array.make_matrix n n 0 in
+  let incoming = Array.make n 0 in
+  List.iter
+    (fun (s1, s2) ->
+      let i1 = StrMap.find s1 name_map in
+      let i2 = StrMap.find s2 name_map in
+      adj.(i1).(i2) <- 1 + adj.(i1).(i2);
+      incoming.(i2) <- 1 + incoming.(i2)) edges;
+  let no_incoming = ref [] in
+  let remove_edge (i, j) =
+    if adj.(i).(j) <> 0 then begin
+      adj.(i).(j) <- 0;
+      incoming.(j) <- incoming.(j) - 1;
+      if incoming.(j) = 0 then no_incoming := j :: !no_incoming
+    end
+  in
+  Array.iteri
+    (fun i incoming ->
+      if incoming = 0 then no_incoming := i :: !no_incoming) incoming;
+  let ord = ref 0 in
+  let ord_array = Array.make n (-1) in
+  while !no_incoming <> [] do
+    let s = List.hd !no_incoming in
+    ord_array.(s) <- !ord;
+    incr ord;
+    no_incoming := List.tl !no_incoming;
+    for i = 0 to n-1 do
+      remove_edge (s, i)
+    done;
+  done;
+  if Array.exists (fun x -> x > 0) incoming then raise Not_DAG
+  else
+    List.fold_left
+      (fun map s ->
+        let i = StrMap.find s name_map in
+        StrMap.add s (ord_array.(i)) map) StrMap.empty symbs
+
+(** [ord_from_eqs eqs s1 s2] computes the order induced by the equations
+    [eqs]. We first use [find_deps] to find the dependency between the new
+    symbols (symbols introduced for checking SR) and compute its corresponding
+    DAG. The order obtained satisfies the following property:
+    1. New symbols are always larger than the orginal ones.
+    2. If [s1] and [s2] are not new symbols, then we use the usual
+       lexicographic order.
+    3. If [s1] and [s2] are new symbols, then if the topological order is well
+       defined then we compare their positions in this latter one. Otherwise,
+       we use the usual lexicographic order. *)
+let ord_from_eqs : (term * term) list -> sym Ord.cmp = fun eqs ->
+  let symbs, deps = find_deps eqs in
+  try
+    let ord = topo_sort symbs deps in
+    fun s1 s2 ->
+      match (is_new_symb s1, is_new_symb s2) with
+      | true, true   ->
+          if s1 == s2 then 0
+          else begin
+            try
+              StrMap.find s2.sym_name ord - StrMap.find s1.sym_name ord
+            with _ -> Pervasives.compare s1.sym_name s2.sym_name
+          end
+      | true, false  -> 1
+      | false, true  -> -1
+      | false, false -> Pervasives.compare s1.sym_name s2.sym_name
+  with Not_DAG ->
+    fun s1 s2 -> Pervasives.compare s1.sym_name s2.sym_name
 
 (** [completion eqs ord] returns the convergent rewrite system obtained from
     the completion procedure on the set of equations [eqs] using the LPO
