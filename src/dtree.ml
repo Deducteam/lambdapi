@@ -302,10 +302,10 @@ struct
   let pp oc pool =
     let module F = Format in
     let pp_subtset oc ss =
-      F.fprintf oc "@[<h>" ;
+      F.fprintf oc "@[<h>{" ;
       F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
         Subterm.pp oc (SubtSet.elements ss) ;
-      F.fprintf oc "@]" in
+      F.fprintf oc "}@]" in
     let pp_int_subtset oc (i, ss) =
       F.fprintf oc "@[<h>(%d, %a)@]" i pp_subtset ss in
     let pp_groups oc pgroups =
@@ -344,8 +344,8 @@ struct
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
-  (* Choose the constraint appearing the most in the list of constraints. *)
   let choose cstrs =
+    if List.for_all is_empty cstrs then Unavailable else
     let available = List.fold_right (fun c -> IntPairSet.union c.available)
         cstrs IntPairSet.empty in
     match IntPairSet.choose_opt available with
@@ -357,7 +357,6 @@ struct
         match positions with
         | x :: _ -> Instantiate(x, 1)
         | []     ->
-            Format.printf "Last chance\n%!" ;
             let g2s sl2po = List.fold_right (fun (_, ps) -> SubtSet.union ps)
                 sl2po SubtSet.empty in
             let positions = List.fold_right
@@ -365,20 +364,6 @@ struct
                 cstrs SubtSet.empty in
             let p = SubtSet.choose positions in
             Instantiate(p, 1)
-    (* if List.for_all is_empty cstrs then Unavailable else *)
-    (* let availables = List.map (fun x -> x.available) cstrs in *)
-    (* let add (occ:int IntPairMap.t) (cset:IntPairSet.t) : int IntPairMap.t = *)
-    (*   IntPairSet.fold (fun pair occ -> *)
-    (*       let pair = normalize pair in *)
-    (*       IntPairMap.update pair *)
-    (*         (function None    -> Some(1) *)
-    (*                 | Some(c) -> Some(succ c)) *)
-    (*         occ) cset occ in *)
-    (* let occ = List.fold_left add IntPairMap.empty availables in *)
-    (* let c, s = IntPairMap.fold *)
-    (*     (fun p s (mp, ms) -> if s > ms then (p, s) else (mp, ms)) *)
-    (*     occ (IntPairMap.choose occ) in *)
-    (* Solve(c, s) *)
 
   let has pair { available ; _ } = IntPairSet.mem pair available
 
@@ -400,6 +385,8 @@ struct
             (fun (_, s) -> SubtSet.mem path s)
             pool.groups in
         let ngroups = List.remove_assoc k pool.groups in
+        (* Don't put the examined position in partial *)
+        let set = SubtSet.remove path set in
         let npartial = SubtSet.fold (fun pth -> SubtMap.add pth i) set
             pool.partial in
         { pool with partial = npartial ; groups = ngroups }
@@ -598,14 +585,13 @@ struct
         | Unavailable  , None        -> assert false
         | Unavailable  , Some(ci, _) -> Specialise(ci)
         | Instantiate(p, _), None    ->
-            let col, _ = Subterm.nearest positions p in
+            let col = Array.search (fun x -> Subterm.compare x p)
+                        positions in
             Specialise(col)
-        | Instantiate(p, sci), Some(_, scc)
-          when sci > scc             ->
-            let col, _ = Subterm.nearest positions p in
-            Specialise(col)
-        | Instantiate(_, sci), Some(cic, scc)
-          when sci <= scc            -> Specialise(cic)
+        | Instantiate(_, _), Some(cic, _) -> Specialise(cic)
+        (* A case should be added when instantiate score is higher, this would
+           imply that a non linear constraint can motivate a specialisation in
+           order to reach a constraint. *)
         | Solve(c, _), None          -> NlConstrain(c)
         | Solve(c, scs), Some(_, scc)
           when scs > scc             -> NlConstrain(c)
@@ -825,7 +811,6 @@ let rec compile : Cm.t -> t = fun patterns ->
             ; env_builder }) ->
       fetch lhs var_met env_builder rhs
   | NlConstrain(constr) ->
-      Format.printf "nlco\n%!" ;
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
@@ -834,7 +819,6 @@ let rec compile : Cm.t -> t = fun patterns ->
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
   | Specialise(cind)                     ->
-      Format.printf "spec\n%!" ;
       let terms, _ =
         let t, p = List.split (Cm.get_col cind patterns) in
         t, List.hd p in (* All positions are identical in [p]. *)
