@@ -464,6 +464,9 @@ struct
       term. *)
   type component = term * Subterm.t
 
+  (** For convenience. *)
+  type subt_imap = Subterm.t IntMap.t
+
   (** A redefinition of the rule type.
 
       {b Note} that {!type:array} is used while {!module:ReductionStack} could
@@ -488,8 +491,9 @@ struct
     (** The rules. *)
     ; var_met : int
     (** Number of variables met so far. *)
-    ; positions : Subterm.t list
-    (** Positions of the elements of the matrix in the initial term. *) }
+    ; positions : subt_imap
+    (** Positions of the elements of the matrix in the initial term.  We rely
+        on the order relation used in sets. *) }
 
   (** Operations embedded in the tree *)
   type decision =
@@ -527,8 +531,11 @@ struct
       let nonlin = NlConstraints.of_terms r.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     let positions = match rs with
-      | []   -> []
-      | r::_ -> Subterm.sequence (List.length r.lhs) in
+      | []   -> IntMap.empty
+      | r::_ ->
+          Subterm.sequence (List.length r.lhs) |>
+          Seq.mapi (fun i e -> (i, e)) |>
+          IntMap.of_seq in
     { clauses = List.map r2r rs ; var_met = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -691,7 +698,8 @@ struct
       symbol.  In case an {!constructor:Appl} is given as pattern [p], only
       terms having the same number of arguments and the same leftmost {e non}
       {!constructor:Appl} term match. *)
-  let specialize : term -> int -> rule list -> rule list = fun p ci rs ->
+  let specialize : term -> int -> subt_imap -> rule list -> rule list =
+    fun p ci _ rs ->
     let filtered = List.filter (fun { lhs ; _} ->
       spec_filter p (fst lhs.(ci))) rs in
     let newcith = List.map (fun { lhs ; _ } -> spec_transform p lhs.(ci))
@@ -707,22 +715,25 @@ struct
 
   (** [default c m] computes the default matrix containing what remains to be
       matched in case the pattern used is not in the column [c]. *)
-  let default : int -> rule list -> rule list = fun ci rs ->
+  let default : int -> subt_imap -> rule list -> subt_imap * rule list =
+    fun ci pos rs ->
+    let pos = IntMap.remove ci pos in
     let filtered = List.filter (fun { lhs ; _ } ->
-      match fst @@ lhs.(ci) with
+      match fst (lhs.(ci)) with
       | Patt(_ , _, _) -> true
       | Symb(_, _)
       | Abst(_, _)
       | Vari(_)
       | Appl(_, _)     -> false
       | _              -> assert false) rs in
-    List.map (fun rul ->
-      let { lhs ; _ } = rul in
-      match lhs.(ci) with
-      | Patt(_, _, _), _ ->
-          let postfix = Array.drop (ci + 1) lhs in
-          { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
-      | _                -> assert false) filtered
+    let rules = List.map (fun rul ->
+        let { lhs ; _ } = rul in
+        match lhs.(ci) with
+        | Patt(_, _, _), _ ->
+            let postfix = Array.drop (ci + 1) lhs in
+            { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
+        | _                -> assert false) filtered in
+    pos, rules
 
   (** [nl_succeed c r] computes the rule list from [r] that verify a
       non-linearity constraint [c]. *)
@@ -826,13 +837,13 @@ let rec compile : Cm.t -> t = fun patterns ->
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = Cm.specialize te_cons swap updated in
+          let rules = Cm.specialize te_cons swap patterns.positions updated in
           let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let default = (* Default child *)
-        let rules = Cm.default swap updated in
+        let _, rules = Cm.default swap patterns.positions updated in
         let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap ; store ; children ; default })

@@ -303,11 +303,11 @@ struct
 
   (** [sequence ?from n] returns a sequence of [n] consecutive positions
       starting from [from]. *)
-  let sequence : ?from:t -> int -> t list = fun ?from n ->
+  let sequence : ?from:t -> int -> t Seq.t = fun ?from n ->
     let start, p = match from with
       | None | Some([]) -> 0, empty
       | Some(s :: p)    -> s, p in
-    List.init n (fun i -> prefix p [i + start])
+    Seq.init n (fun i -> prefix p [i + start])
 
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
