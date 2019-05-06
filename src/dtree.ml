@@ -487,7 +487,9 @@ struct
     { clauses : rule list
     (** The rules. *)
     ; var_met : int
-    (** Number of variables met so far. *) }
+    (** Number of variables met so far. *)
+    ; positions : Subterm.t list
+    (** Positions of the elements of the matrix in the initial term. *) }
 
   (** Operations embedded in the tree *)
   type decision =
@@ -524,7 +526,10 @@ struct
       let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
       let nonlin = NlConstraints.of_terms r.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
-    { clauses = List.map r2r rs ; var_met = 0 }
+    let positions = match rs with
+      | []   -> []
+      | r::_ -> Subterm.sequence (List.length r.lhs) in
+    { clauses = List.map r2r rs ; var_met = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
@@ -800,7 +805,7 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t = fun patterns ->
-  let { Cm.clauses ; Cm.var_met } = patterns in
+  let { Cm.clauses ; Cm.var_met ; _ } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Yield({ Cm.rhs ; Cm.lhs ; env_builder ; _ }) ->
@@ -822,12 +827,12 @@ let rec compile : Cm.t -> t = fun patterns ->
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
           let rules = Cm.specialize te_cons swap updated in
-          let ncm = { Cm.clauses = rules ; Cm.var_met } in
+          let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let default = (* Default child *)
         let rules = Cm.default swap updated in
-        let ncm = { Cm.clauses = rules ; Cm.var_met } in
+        let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap ; store ; children ; default })
