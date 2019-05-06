@@ -79,7 +79,8 @@ sig
 end
 
 (** Naive implementation based on lists.  Appeared to be faster than tree
-    based structures (except when having rules with {e a lot} of arguments). *)
+    based structures (except when having rules with {e a lot} of
+    arguments). *)
 module RedListStack : Reduction_substrate =
 struct
   type 'a t = 'a list
@@ -147,8 +148,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | TcstrFreeVars(_) -> raise Not_implemented in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
-  let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon tree ->
-    match tree with
+  let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon ->
+    function
     | Leaf(_, a)       ->
         incr nodecount ;
         let _, acte = Bindlib.unmbind a in
@@ -355,8 +356,8 @@ struct
     | Some(c) -> Solve(c, 1)
     | None    ->
         let positions = List.fold_right
-            (fun c -> c.partial |> SubtMap.bindings |> List.split |> fst |>
-                      List.append) cstrs [] |> List.sort_uniq Subterm.compare in
+            (fun c -> c.partial |> SubtMap.bindings |> List.map fst |> (@))
+            cstrs [] |> List.sort_uniq Subterm.compare in
         match positions with
         | x :: _ -> Instantiate(x, 1)
         | []     ->
