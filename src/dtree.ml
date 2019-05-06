@@ -215,7 +215,8 @@ sig
   (** [is_empty p] returns whether pool [p] is empty. *)
   val is_empty : t -> bool
 
-  (** [concerns p q] @return whether position [p] is constrained in pool [q]. *)
+  (** [concerns p q] returns whether position [p] is constrained in pool
+      [q]. *)
   val concerns : Subterm.t -> t -> bool
 
   (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
@@ -231,11 +232,12 @@ sig
       @raise Not_found if [p] is not part of any constraint in [q]. *)
   val instantiate : Subterm.t -> int -> t -> t
 
-  (** [of_terms r] returns nonlinearity constraints induced by terms in
-      [r]. *)
+  (** [of_terms r] returns constraint pool induced by terms in [r]. *)
   val of_terms : term list -> t
 end
 
+(** Non linearity constraints signature.  Defines the possible actions that a
+    non linear constraint can trigger. *)
 module type NlConstraintSig =
 sig
   include BinConstraintPoolSig
@@ -245,7 +247,9 @@ sig
     | Solve of cstr * int
     (** A constraint to apply along with its heuristic score. *)
     | Instantiate of Subterm.t * int
-    (** Carry out a switch on a term specified by its position, score. *)
+    (** Carry out a switch on a term specified by its position.  A switch can
+        be performed to expose a pattern variable having a non linear
+        constraint.  The [int] is the heuristic score. *)
     | Unavailable
     (** No non linearity constraint available. *)
 
