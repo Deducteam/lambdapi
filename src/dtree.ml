@@ -13,8 +13,7 @@ type t = tree
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** An exception raised if trying to match an abstraction or a left non linear
-    variable. *)
+(** An exception raised if trying to match an abstraction. *)
 exception Not_implemented
 
 (** {b Example} Given a rewrite system for a symbol [f] given as
@@ -28,7 +27,7 @@ exception Not_implemented
     ├–Z–∘–Z–∘     → n
     |   └–S–∘–?–∘ → S m
     └–S–∘–Z–∘     → n
-    └–S–∘–?–∘ → S (S m)
+    └–S–∘–?–∘     → S (S m)
     v}
     with [∘] being a node (with a label not shown here) and [–u–]
     being an edge with a matching on symbol [u] or a variable or wildcard when
@@ -36,11 +35,12 @@ exception Not_implemented
 
 (** {3 Reduction substrate} *)
 
-(** Element consumed when reducing terms.  When reducing, we must have
-    - fast access to any element in the substrate (for swaps)
-    - fast replacement of an element and extension to replace an element of
-    the substrate by its reduced form, or an unfolding of
-    {!constructor:Appl} nodes. *)
+(** Data structure used when reducing terms. When reducing, we must have
+    - fast access to any element in the substrate: for swaps
+    - fast split and merge: to remove an element (the inspected one), reduce
+      it, or unfold it (if an {!constructor:Appl} node) and then reinsert
+      it.
+    Otherwise, it behaves like a stack. *)
 module type Reduction_substrate =
 sig
   (** Type of a substrate of ['a]. *)
@@ -49,21 +49,22 @@ sig
   (** The empty substrate. *)
   val empty : 'a t
 
-  (** [is_empty v] returns whether a stack is empty. *)
+  (** [is_empty v] returns whether a substrate is empty. *)
   val is_empty : 'a t -> bool
 
-  (** [of_list l] returns a stack containing the elements of [l]. *)
+  (** [of_list l] returns a substrate containing the elements of [l]. *)
   val of_list : 'a list -> 'a t
 
-  (** [to_list s] returns a list containing the elements of the stack [s]. *)
+  (** [to_list s] returns a list containing the elements of the substrate
+      [s]. *)
   val to_list : 'a t -> 'a list
 
   (** [length v] is the number of elements in [v]. *)
   val length : 'a t -> int
 
-  (** Prefix and suffix of the substrate. *)
   type 'a prefix
   type 'a suffix
+  (** Prefix and suffix of the substrate. *)
 
   (** [destruct v i] returns a triplet [(l, m, r)] with [l]eft being the
       elements from 0 to [i - 1], [m]iddle the [i]th element and [r]ight the
@@ -72,13 +73,13 @@ sig
       @raise Not_found when [i ≥ length v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
-  (** [restruct r n o] is the concatenation of three stacks [r] [n] and
-      [o]. *)
+  (** [restruct l m r] is the concatenation of three substrates [l] [m] and
+      [r]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
 end
 
 (** Naive implementation based on lists.  Appeared to be faster than tree
-    based structures (like ropes). *)
+    based structures (except when having rules with {e a lot} of arguments). *)
 module RedListStack : Reduction_substrate =
 struct
   type 'a t = 'a list
@@ -103,7 +104,7 @@ struct
     in
     destruct [] i e
 
-  (** [restruct l c r] complexity in [Θ(length l)]*)
+  (** [restruct l c r] complexity in [Θ(length (l @ c))]*)
   let restruct l c r =
     let rec insert acc l =
       match l with
@@ -141,57 +142,54 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
     | DotCons(t) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari in
+  let pp_tcstr : tree_constraint pp = fun oc -> function
+    | TcstrEq(i, j)    -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
+    | TcstrFreeVars(_) -> raise Not_implemented in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
-  let rec write_tree : int -> dot_term -> t -> unit =
-    fun father_l swon tree ->
-      match tree with
-      | Leaf(_, a)         ->
-          incr nodecount ;
+  let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon tree ->
+    match tree with
+    | Leaf(_, a)       ->
+        incr nodecount ;
         let _, acte = Bindlib.unmbind a in
         F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte ;
-        F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l !nodecount
-          pp_dotterm swon
-      | Node(ndata)        ->
-          let { swap ; children ; store ; default } = ndata in
-          incr nodecount ;
-          let tag = !nodecount in
-          (* Create node *)
-          F.fprintf ppf "@ %d [label=\"@%d\"%s];" tag swap
-            (if store then " shape=\"box\"" else "") ;
-          (* Create edge *)
-          F.fprintf ppf "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm
-            swon ;
-          TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
-          Option.iter (write_tree tag DotDefa) default ;
-      | Condition(cdata) ->
-          let { ok ; condition ; fail } = cdata in
-          incr nodecount ;
-          let tag = !nodecount in
-          F.fprintf ppf
-            "@ %d [label=<%s<sub>%d</sub>> shape=\"diamond\"];" tag
-            (match condition with TcstrEq(_) -> "≡" | TcstrFreeVars(_) ->
-              "FV")
-            (match condition with TcstrEq(i, _) -> i | TcstrFreeVars(_) -> 0) ;
-          F.fprintf ppf
-            "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon ;
-          write_tree tag DotDefa ok ;
-          write_tree tag DotDefa fail ;
-      | Fail               ->
-          incr nodecount ;
+        F.fprintf ppf "@ %d -- %d [label=<%a>];"
+          father_l !nodecount pp_dotterm swon
+    | Node(ndata)      ->
+        let { swap ; children ; store ; default } = ndata in
+        incr nodecount ;
+        let tag = !nodecount in
+        (* Create node *)
+        F.fprintf ppf "@ %d [label=\"@%d\"%s];"
+          tag swap (if store then " shape=\"box\"" else "") ;
+        (* Create edge *)
+        F.fprintf ppf "@ %d -- %d [label=<%a>];"
+          father_l tag pp_dotterm swon ;
+        TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+        Option.iter (write_tree tag DotDefa) default ;
+    | Condition(cdata) ->
+        let { ok ; condition ; fail } = cdata in
+        incr nodecount ;
+        let tag = !nodecount in
+        F.fprintf ppf "@ %d [label=<%a> shape=\"diamond\"];"
+          tag pp_tcstr condition ;
+        F.fprintf ppf "@ %d -- %d [label=<%a>];"
+          father_l tag pp_dotterm swon ;
+        write_tree tag DotDefa ok ;
+        write_tree tag DotDefa fail ;
+    | Fail             ->
+        incr nodecount ;
         F.fprintf ppf "@ %d [label=<!>];" !nodecount ;
-        F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
-  in
-  begin
-    match tree with
-    (* First step must be done to avoid drawing a top node. *)
-    | Node({ swap ; children = ch ; store ; default }) ->
-        F.fprintf ppf "@ 0 [label=\"%d\"%s];"
-          swap (if store then " shape=\"box\"" else "") ;
-        TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
-        (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
-    | Leaf(_)                                          -> ()
-    | _                                                -> assert false
+        F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount in
+  begin match tree with
+  (* First step must be done to avoid drawing a top node. *)
+  | Node({ swap ; children = ch ; store ; default }) ->
+      F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
+        swap (if store then " shape=\"box\"" else "") ;
+      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
+      (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
+  | Leaf(_)                                          -> ()
+  | _                                                -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
