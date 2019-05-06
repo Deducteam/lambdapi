@@ -219,8 +219,9 @@ sig
       [q]. *)
   val concerns : Subterm.t -> t -> bool
 
-  (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
-  val has : cstr -> t -> bool
+  (** [has c p] returns whether pool [p] has constraint [c] totally or
+      partially instantiated. *)
+  val is_instantiated : cstr -> t -> bool
 
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
@@ -367,7 +368,11 @@ struct
             let p = SubtSet.choose positions in
             Instantiate(p, 1)
 
-  let has pair { available ; _ } = IntPairSet.mem pair available
+  let is_instantiated pair { available ; partial ; _ } =
+    IntPairSet.mem pair available ||
+    let slots = SubtMap.to_seq partial |> Seq.map snd |> IntSet.of_seq in
+    IntSet.mem (fst pair) slots || IntSet.mem (snd pair) slots
+
 
   let concerns p q = SubtSet.mem p q.concerned
 
@@ -719,15 +724,14 @@ struct
       non-linearity constraint [c]. *)
   let nl_succeed : NlConstraints.cstr -> rule list -> rule list = fun c ->
     let f r =
-      let { nonlin ; _ } = r in
-      let nonlin = NlConstraints.remove c nonlin in
+      let nonlin = NlConstraints.remove c r.nonlin in
       { r with nonlin } in
     List.map f
 
   (** [nl_fail c r] computes the rules not failing a non-linearity constraint
       [c] among rules [r]. *)
   let nl_fail : NlConstraints.cstr -> rule list -> rule list = fun c ->
-    let f { nonlin ; _ } = not (NlConstraints.has c nonlin) in
+    let f { nonlin ; _ } = not (NlConstraints.is_instantiated c nonlin) in
     List.filter f
 end
 

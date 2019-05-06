@@ -277,6 +277,9 @@ module Seq =
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
+(* Functional sets of [int]s. *)
+module IntSet = Set.Make(Int)
+
 (* Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
