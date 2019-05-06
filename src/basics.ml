@@ -312,17 +312,6 @@ struct
       | None | Some([]) -> 0, init
       | Some(s :: p)    -> s, p in
     Seq.mapi (fun i e -> (e, prefix p [i + start])) xs
-
-  (** [nearest a p] returns the index of the position in [a] having the
-      longest common prefix with [p] along with the element. *)
-  let nearest : t array -> t -> int * t = fun haystack needle ->
-    (* Common prefix length *)
-    let cpl needle hay = List.fold_left2
-        (fun len needlep hayp -> if needlep = hayp then 1 else 0 + len)
-        0 needle hay in
-    let cpls = List.map (fun hay -> cpl needle hay) (Array.to_list haystack)  in
-    let ind = Array.argmax (>) (Array.of_list cpls) in
-    ind, haystack.(ind)
 end
 
 (** Functional map with [Subterm.t] as keys *)
