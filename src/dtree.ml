@@ -813,22 +813,21 @@ let rec compile : Cm.t -> t = fun patterns ->
       let vi, vj = NlConstraints.to_varindexes constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
-  | Specialise(cind)                             ->
-      let terms = Cm.get_col cind patterns |> List.split |> fst in
+  | Specialise(swap)                             ->
+      let terms = Cm.get_col swap patterns |> List.split |> fst in
       let store = Cm.in_rhs terms in
-      let nvm = if Cm.contains_var terms then succ var_met else var_met in
+      let updated = List.map (Cm.update_aux swap var_met) clauses in
+      let var_met = if Cm.contains_var terms then succ var_met else var_met in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = List.map (Cm.update_aux cind var_met) clauses |>
-                      Cm.specialize te_cons cind in
-          let ncm = { Cm.clauses = rules ; var_met = nvm } in
+          let rules = Cm.specialize te_cons swap updated in
+          let ncm = { Cm.clauses = rules ; Cm.var_met } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
-      let default = (* Default matrix *)
-        let rules = List.map (Cm.update_aux cind var_met) clauses |>
-                    Cm.default cind in
-        let ncm = { Cm.clauses = rules ; var_met = nvm } in
+      let default = (* Default child *)
+        let rules = Cm.default swap updated in
+        let ncm = { Cm.clauses = rules ; Cm.var_met } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
-      Node({ swap = cind ; store ; children ; default })
+      Node({ swap ; store ; children ; default })
