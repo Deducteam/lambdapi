@@ -220,8 +220,7 @@ sig
       [q]. *)
   val concerns : Subterm.t -> t -> bool
 
-  (** [has c p] returns whether pool [p] has constraint [c] totally or
-      partially instantiated. *)
+  (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
   val is_instantiated : cstr -> t -> bool
 
   (** [remove c p] removes constraint [c] from pool [p]. *)
@@ -369,10 +368,7 @@ struct
             let p = SubtSet.choose positions in
             Instantiate(p, 1)
 
-  let is_instantiated pair { available ; partial ; _ } =
-    IntPairSet.mem pair available ||
-    let slots = SubtMap.to_seq partial |> Seq.map snd |> IntSet.of_seq in
-    IntSet.mem (fst pair) slots || IntSet.mem (snd pair) slots
+  let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
   let concerns p q = SubtSet.mem p q.concerned
 
