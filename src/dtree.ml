@@ -480,7 +480,10 @@ struct
     ; rhs : action
     (** Right hand side of a rule. *)
     ; env_builder : (int * int) list
-    ; nonlin : NlConstraints.t }
+    (** Maps slots of the {!val:vars} array to a slot of the final
+        environment used to build the {!field:rhs}. *)
+    ; nonlin : NlConstraints.t
+    (** Non linearity constraints attached to this rule. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
