@@ -1,4 +1,3 @@
-set debug +re
 require open tests.OK.nat
 require open tests.OK.bool
 
