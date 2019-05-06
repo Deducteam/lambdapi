@@ -422,7 +422,7 @@ struct
         let next = loop remain (Subterm.succ po) in
         merge argpos next in
       (* The terms of the list are the subterms of the head symbol. *)
-      loop lhs (Subterm.succ Subterm.init)
+      loop lhs (Subterm.succ Subterm.empty)
 
   (** [of_terms r] returns the non linearity set of constraints associated to
       list of terms [r]. *)
@@ -673,7 +673,7 @@ struct
       | Symb(_, _)
       | Vari(_)       ->
           let np = Subterm.sub p in
-          args |> List.to_seq |> Subterm.tag ~empty:np |> Array.of_seq
+          args |> List.to_seq |> Subterm.tag ~from:np |> Array.of_seq
       | Patt(_, _, e) ->
           let arity = pat |> Basics.get_args |> snd |> List.length in
           Seq.make arity (Patt(None, "", e)) |> Subterm.tag |>

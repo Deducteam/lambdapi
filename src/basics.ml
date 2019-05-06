@@ -287,13 +287,13 @@ struct
     | x  -> List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev x)
 
   (** Initial position. *)
-  let init = []
+  let empty : t = []
 
   (** [succ p] returns the successor of position [p].  For instance, if
       [p = [1 ; 1]], [succ p = [2 ; 1]].  The succ of the initial position is
       the first subterm of this position. *)
   let succ = function
-    | []      -> 0 :: init
+    | []      -> 0 :: empty
     | x :: xs -> succ x :: xs
 
   (** [prefix p q] sets position [p] as prefix of position [q], for instance,
@@ -301,15 +301,23 @@ struct
       is [[4;3;1]]. *)
   let prefix : t -> t -> t = fun p q -> q @ p
 
+  (** [sequence ?from n] returns a sequence of [n] consecutive positions
+      starting from [from]. *)
+  let sequence : ?from:t -> int -> t list = fun ?from n ->
+    let start, p = match from with
+      | None | Some([]) -> 0, empty
+      | Some(s :: p)    -> s, p in
+    List.init n (fun i -> prefix p [i + start])
+
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
-  (** [tag ?empty s] attaches the positions to a sequence of terms [s] as if
-      they were the subterms of a same term.  If [?empty] is supplied, the
-      first element of the list is at position [empty]. *)
-  let tag : ?empty:t -> term Seq.t -> (term * t) Seq.t = fun ?empty xs ->
-    let start, p = match empty with
-      | None | Some([]) -> 0, init
+  (** [tag ?from s] attaches the positions to a sequence of terms [s] as if
+      they were the subterms of a same term.  If [?from] is supplied, the
+      first element of the list is at position [from]. *)
+  let tag : ?from:t -> term Seq.t -> (term * t) Seq.t = fun ?from xs ->
+    let start, p = match from with
+      | None | Some([]) -> 0, empty
       | Some(s :: p)    -> s, p in
     Seq.mapi (fun i e -> (e, prefix p [i + start])) xs
 end
