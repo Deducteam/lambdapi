@@ -807,10 +807,9 @@ let rec compile : Cm.t -> t = fun patterns ->
   let { Cm.clauses ; Cm.var_met } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Yield({ Cm.rhs ; Cm.lhs ; Cm.nonlin = _
-            ; env_builder }) ->
+  | Yield({ Cm.rhs ; Cm.lhs ; env_builder ; _ }) ->
       fetch lhs var_met env_builder rhs
-  | NlConstrain(constr) ->
+  | NlConstrain(constr)                          ->
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
@@ -818,26 +817,22 @@ let rec compile : Cm.t -> t = fun patterns ->
       let vi, vj = NlConstraints.to_varindexes constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
-  | Specialise(cind)                     ->
-      let terms, _ =
-        let t, p = List.split (Cm.get_col cind patterns) in
-        t, List.hd p in (* All positions are identical in [p]. *)
+  | Specialise(cind)                             ->
+      let terms = Cm.get_col cind patterns |> List.split |> fst in
       let store = Cm.in_rhs terms in
       let nvm = if Cm.contains_var terms then succ var_met else var_met in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = clauses |>
-                      List.map (Cm.update_aux cind var_met) |>
+          let rules = List.map (Cm.update_aux cind var_met) clauses |>
                       Cm.specialize te_cons cind in
           let ncm = { Cm.clauses = rules ; var_met = nvm } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
-      let defmat = (* Default matrix *)
-        let rules = clauses |> List.map (Cm.update_aux cind var_met) |>
+      let default = (* Default matrix *)
+        let rules = List.map (Cm.update_aux cind var_met) clauses |>
                     Cm.default cind in
         let ncm = { Cm.clauses = rules ; var_met = nvm } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
-      Node({ swap = cind ; store = store ; children = children
-           ; default = defmat })
+      Node({ swap = cind ; store ; children ; default })
