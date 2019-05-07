@@ -281,6 +281,10 @@ sig
 
   val choose : t list -> decision
 
+  (** [update s v p] adds variable [v] to the constraint {e not yet
+      available} concerning [s] in pool [p]. *)
+  val update : Subterm.t -> tvar -> t -> t
+
   val to_tvars_index : cstr -> int * tvar list
 end
 
@@ -508,9 +512,11 @@ struct
 
   let to_tvars_index x = x
 
-  let of_terms _ = empty
+  let of_terms _ = assert false
 
-  let choose _ = Unavailable
+  let choose _ = assert false
+
+  let update _ _ _ = assert false
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
