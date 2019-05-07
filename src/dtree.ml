@@ -482,11 +482,28 @@ struct
 
   let to_tvars_index x = x
 
-  let of_terms _ = assert false
+  let of_terms tes =
+    let add po io _ e acc =
+      if e = [||] then acc else
+      match io with
+      | None    -> acc
+      | Some(_) ->
+          let vars = Array.to_seq e |> Seq.map to_tvar |> List.of_seq in
+          SubtMap.add po vars acc in
+    let merge = SubtMap.union (fun _ _ _ -> assert false) in
+    let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtMap.empty in
+    { empty with involved }
 
-  let choose _ = assert false
+  let rec choose = function
+    | []      -> Unavailable
+    | p :: ps ->
+        match IntMap.choose_opt p.available with
+        | None -> choose ps
+        | Some(i, x) -> Solve((i, x), 1)
 
-  let update _ _ _ = assert false
+  let update sub var pool =
+    let vars = var :: SubtMap.find sub pool.involved in
+    { pool with involved = SubtMap.add sub vars pool.involved }
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
