@@ -319,6 +319,36 @@ module SubtMap = Map.Make(Subterm)
 (** Functional set with [Subterm.t] as items. *)
 module SubtSet = Set.Make(Subterm)
 
+(** [fold_vars l f m i] is a fold-like function on pattern variables in [l].
+    When a {!constructor:Patt} is found in any subterm of [l], function [f]
+    is applied on the pattern variable and an accumulator.  Function [m] is
+    used to combine the returned values on different subterms. *)
+let fold_vars : term list ->
+  add:(Subterm.t -> int option -> string -> term array -> 'a -> 'a) ->
+  merge:('a -> 'a -> 'a) ->
+  init:'a -> 'a = fun lhs ~add ~merge ~init ->
+  let rec loop st po =
+    match st with
+    | [] -> init
+    | x :: xs ->
+        begin match x with
+        | Patt(None, _, _)
+        | Vari(_)
+        | Symb(_, _)    -> loop xs (Subterm.succ po)
+        | Patt(i, s, e) -> add po i s e (loop xs (Subterm.succ po))
+        | Appl(_, _)    -> let _, args = get_args x in
+            deepen args xs po
+        | Abst(_, b)    -> let _, body = Bindlib.unbind b in
+            deepen [body] xs po
+        | _             -> assert false
+        end
+  and deepen args remain po =
+    let argpos = loop args (Subterm.sub po) in
+    let next = loop remain (Subterm.succ po) in
+    merge argpos next in
+  (* The terms of the list are the subterms of the head symbol. *)
+  loop lhs (Subterm.succ Subterm.empty)
+
 (** {3 Operators on trees} *)
 
 (** [iter l n f t] is a generic iterator on trees; with
