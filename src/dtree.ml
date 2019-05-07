@@ -469,10 +469,6 @@ end
 module ClauseMat =
 struct
 
-  (** A component of the matrix, a term along with its position in the top
-      term. *)
-  type component = term * Subterm.t
-
   (** For convenience. *)
   type subt_rs = Subterm.t ReductionStack.t
 
@@ -514,10 +510,6 @@ struct
     | NlConstrain of NlConstraints.cstr
     (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
         regarding slot [s]. *)
-
-  (** [pp_component o c] prints component [c] to channel [o]. *)
-  let pp_component : component pp = fun oc (te, pos) ->
-    Format.fprintf oc "@[<h>%a@ %@@ %a@]" Print.pp te Subterm.pp pos
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; _ } ->
@@ -654,7 +646,9 @@ struct
     | _ :: xs                  -> in_rhs xs
 
   (** [update_aux c p v r] returns rule [r] with auxiliary data updated
-      (i.e. non linearity constraints and environment builder). *)
+      (i.e. non linearity constraints and environment builder) when inspecting
+      column [c] having argument at position [p] and having met [v] vars until
+      now. *)
   let update_aux : int -> Subterm.t -> int -> rule -> rule =
     fun ci pos var_met r ->
     let t = r.lhs.(ci) in
@@ -696,11 +690,11 @@ struct
           Array.make arity (Patt(None, "", e))
       | _             -> assert false
 
-  (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
-      against column [c].  A matrix can be specialized by a user defined
-      symbol.  In case an {!constructor:Appl} is given as pattern [p], only
-      terms having the same number of arguments and the same leftmost {e non}
-      {!constructor:Appl} term match. *)
+  (** [specialize p c s r] specializes the rules [r] when matching pattern [p]
+      against column [c] with positions [s].  A matrix can be specialized by a
+      user defined symbol.  In case an {!constructor:Appl} is given as pattern
+      [p], only terms having the same number of arguments and the same
+      leftmost {e non} {!constructor:Appl} term match. *)
   let specialize : term -> int -> subt_rs -> rule list ->
     subt_rs * rule list = fun p ci pos rs ->
     let pos =
@@ -722,8 +716,9 @@ struct
       { rul with lhs = newline }) newcith filtered in
     pos, clauses
 
-  (** [default c m] computes the default matrix containing what remains to be
-      matched in case the pattern used is not in the column [c]. *)
+  (** [default c s r] computes the default rules from [r] that remain to be
+      matched in case the pattern used is not in the column [c]. [s] is the
+      list of positions of the elements in each rule. *)
   let default : int -> subt_rs -> rule list -> subt_rs * rule list =
     fun ci pos rs ->
     let pos =
