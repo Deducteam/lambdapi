@@ -338,11 +338,16 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           Some(Bindlib.msubst act env, R.to_list stk)
       | Condition({ ok ; condition ; fail }) ->
           begin match condition with
-          | TcstrEq(i, j)    ->
+          | TcstrEq(i, j)        ->
               if eq_modulo vars.(i) vars.(j)
               then walk ok stk cursor
               else walk fail stk cursor
-          | TcstrFreeVars(_) -> raise Dtree.Not_implemented
+          | TcstrFreeVars(xs, i) ->
+              let b = lift vars.(i) in
+              let bound = Bindlib.bind_mvar (Array.of_list xs) b in
+              if Bindlib.is_closed bound
+              then walk ok stk cursor
+              else walk fail stk cursor
           end
       | Node({swap; children; store; default})           ->
           begin

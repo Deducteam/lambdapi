@@ -214,9 +214,9 @@ and tree_constraint =
   | TcstrEq of int * int
   (** [TcstrEq(i, j)] ensures that the terms at indexes [i] and [j] are
       convertible. *)
-  | TcstrFreeVars of term Bindlib.var list
-  (** [TcstrFreeVars(v)] ensures the examined contains only free variables
-      that are in [v]. *)
+  | TcstrFreeVars of term Bindlib.var list * int
+  (** [TcstrFreeVars(v, i)] ensures the term at slot [i] of {!val:vars}
+      contain only free variables that are in [v]. *)
 
 (** Trees are used to efficiently choose a rewriting rule given a list of
     terms (beginning with a symbol) to be rewritten.  The left-hand side
