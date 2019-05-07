@@ -574,6 +574,9 @@ struct
     | NlConstrain of NlConstraints.cstr
     (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
         regarding slot [s]. *)
+    | FvConstrain of FvConstraints.cstr
+    (** Free variables constraint: the term matched must contain {e at most} a
+        specified set of variables. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; positions ; _ } ->
@@ -902,6 +905,8 @@ let rec compile : Cm.t -> t = fun patterns ->
       let vi, vj = NlConstraints.to_varindexes constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
+  | FvConstrain(_)                          ->
+      assert false
   | Specialise(swap)                             ->
       let _, pos, _ = ReductionStack.destruct positions swap in
       let terms = Cm.get_col swap patterns in
