@@ -79,6 +79,9 @@ sig
 
   (** [of_seq s] returns a list containing elements of sequence [s]. *)
   val of_seq : 'a Seq.t -> 'a t
+
+  (** [to_seq s] converts substrate [s] to a sequence. *)
+  val to_seq : 'a t -> 'a Seq.t
 end
 
 (** Naive implementation based on lists.  Appeared to be faster than tree
@@ -118,6 +121,7 @@ struct
     insert (c @ r) l
 
   let of_seq = List.of_seq
+  let to_seq = List.to_seq
 end
 
 module ReductionStack = RedListStack
@@ -479,7 +483,7 @@ struct
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
   type rule =
-    { lhs : component array
+    { lhs : term array
     (** Left hand side of a rule.   *)
     ; rhs : action
     (** Right hand side of a rule. *)
@@ -521,7 +525,7 @@ struct
     let pp_line oc l =
       F.fprintf oc "@[<h>" ;
       F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
-        pp_component oc (Array.to_list l) ;
+        Print.pp oc (Array.to_list l) ;
       F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
@@ -532,9 +536,9 @@ struct
       rules. *)
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r r =
-      let term_pos = List.to_seq r.Terms.lhs |> Subterm.tag |> Array.of_seq in
+      let lhs = Array.of_list r.Terms.lhs in
       let nonlin = NlConstraints.of_terms r.lhs in
-      { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
+      { lhs ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     let positions = match rs with
       | []   -> ReductionStack.empty
       | r::_ ->
@@ -546,14 +550,14 @@ struct
   let is_empty : t -> bool = fun m -> m.clauses = []
 
   (** [get_col n m] retrieves column [n] of matrix [m]. *)
-  let get_col : int -> t -> component list = fun ind { clauses ; _ } ->
+  let get_col : int -> t -> term list = fun ind { clauses ; _ } ->
     List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
 
   (** [score c] returns the score heuristic for column [c]. *)
-  let rec score : component list -> int = function
-    | []                              -> 0
-    | (x, _) :: xs when is_treecons x -> score xs
-    | _ :: xs                         -> succ (score xs)
+  let rec score : term list -> int = function
+    | []                         -> 0
+    | x :: xs when is_treecons x -> score xs
+    | _ :: xs                    -> succ (score xs)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic, along with the score. *)
@@ -568,12 +572,12 @@ struct
   let can_switch_on : rule list -> int -> bool = fun  clauses k ->
     let rec loop : rule list -> bool = function
       | []      -> false
-      | r :: rs -> if is_treecons (fst r.lhs.(k)) then true else loop rs in
+      | r :: rs -> if is_treecons r.lhs.(k) then true else loop rs in
     loop clauses
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; _ } ->
-    Array.for_all (fun (e, _) -> not (is_treecons e)) lhs &&
+    Array.for_all (fun e -> not (is_treecons e)) lhs &&
     NlConstraints.is_empty nonlin
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
@@ -596,9 +600,7 @@ struct
 
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
-    let { clauses ; _ } = m in
-    let positions = (List.hd m.clauses).lhs |> Array.split |>
-                       snd |> Array.of_list in
+    let { clauses ; positions ; _ } = m in
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
@@ -608,7 +610,7 @@ struct
         | Unavailable  , Some(ci, _) -> Specialise(ci)
         | Instantiate(p, _), None    ->
             let col = Array.search (fun x -> Subterm.compare x p)
-                        positions in
+                        (ReductionStack.to_seq positions |> Array.of_seq) in
             Specialise(col)
         | Instantiate(_, _), Some(cic, _) -> Specialise(cic)
         (* A case should be added when instantiate score is higher, this would
@@ -651,15 +653,16 @@ struct
     | Patt(Some(_), _, _) :: _ -> true
     | _ :: xs                  -> in_rhs xs
 
-  (** [update_aux c v r] returns rule [r] with auxiliary data updated
+  (** [update_aux c p v r] returns rule [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder). *)
-  let update_aux : int -> int -> rule -> rule = fun ci var_met r ->
-    let t, p = r.lhs.(ci) in
+  let update_aux : int -> Subterm.t -> int -> rule -> rule =
+    fun ci pos var_met r ->
+    let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(Some(i), _, _) ->
         let env_builder = (var_met, i) :: r.env_builder in
-        let nonlin = if NlConstraints.concerns p r.nonlin
-          then NlConstraints.instantiate p var_met r.nonlin
+        let nonlin = if NlConstraints.concerns pos r.nonlin
+          then NlConstraints.instantiate pos var_met r.nonlin
           else r.nonlin in
         { r with env_builder ; nonlin }
     | _                   -> r
@@ -682,19 +685,15 @@ struct
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
       specializing against pattern [p]. *)
-  let spec_transform : term -> component -> component array =
-    fun pat (t, p) ->
+  let spec_transform : term -> term -> term array =
+    fun pat t ->
       let h, args = Basics.get_args t in
       match h with
       | Symb(_, _)
-      | Vari(_)       ->
-          let np = Subterm.sub p in
-          args |> List.to_seq |> Subterm.tag ~from:np |> Array.of_seq
+      | Vari(_)       -> Array.of_list args
       | Patt(_, _, e) ->
           let arity = pat |> Basics.get_args |> snd |> List.length in
-          Seq.make arity (Patt(None, "", e)) |> Subterm.tag |>
-              Seq.map (fun (te, po) -> (te, Subterm.prefix p po)) |>
-              Array.of_seq
+          Array.make arity (Patt(None, "", e))
       | _             -> assert false
 
   (** [specialize p c m] specializes the matrix [m] when matching pattern [p]
@@ -705,12 +704,12 @@ struct
   let specialize : term -> int -> subt_rs -> rule list ->
     subt_rs * rule list = fun p ci pos rs ->
     let pos =
-      let nargs = get_args p |> snd |> List.length in
       let l, m, r = ReductionStack.destruct pos ci in
+      let nargs = get_args p |> snd |> List.length in
       let replace = Subterm.sequence ~from:(Subterm.sub m) nargs in
       ReductionStack.restruct l (List.of_seq replace) r in
     let filtered = List.filter (fun { lhs ; _} ->
-      spec_filter p (fst lhs.(ci))) rs in
+      spec_filter p lhs.(ci)) rs in
     let newcith = List.map (fun { lhs ; _ } -> spec_transform p lhs.(ci))
       filtered in
     let clauses = List.map2 (fun newcith rul ->
@@ -731,7 +730,7 @@ struct
       let l, _, r = ReductionStack.destruct pos ci in
       ReductionStack.restruct l [] r in
     let filtered = List.filter (fun { lhs ; _ } ->
-      match fst (lhs.(ci)) with
+      match lhs.(ci) with
       | Patt(_ , _, _) -> true
       | Symb(_, _)
       | Abst(_, _)
@@ -741,10 +740,10 @@ struct
     let rules = List.map (fun rul ->
         let { lhs ; _ } = rul in
         match lhs.(ci) with
-        | Patt(_, _, _), _ ->
+        | Patt(_, _, _) ->
             let postfix = Array.drop (ci + 1) lhs in
             { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
-        | _                -> assert false) filtered in
+        | _             -> assert false) filtered in
     pos, rules
 
   (** [nl_succeed c r] computes the rule list from [r] that verify a
@@ -798,11 +797,11 @@ module Cm = ClauseMat
 
     The remaining terms are all consumed to expunge the stack during
     evaluation. *)
-let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
+let fetch : term array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
     let defnd = { swap = 0 ; store = false ; children = TcMap.empty
                 ; default = None } in
-    let terms, _ = Array.split line in
+    let terms = Array.to_list line in
     let rec loop telst added env_builder =
       match telst with
       | []       -> Leaf(env_builder, rhs)
@@ -828,7 +827,7 @@ let fetch : Cm.component array -> int -> (int * int) list -> action -> t =
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t = fun patterns ->
-  let { Cm.clauses ; Cm.var_met ; _ } = patterns in
+  let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Yield({ Cm.rhs ; Cm.lhs ; env_builder ; _ }) ->
@@ -842,9 +841,10 @@ let rec compile : Cm.t -> t = fun patterns ->
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                             ->
-      let terms = Cm.get_col swap patterns |> List.split |> fst in
+      let _, pos, _ = ReductionStack.destruct positions swap in
+      let terms = Cm.get_col swap patterns in
       let store = Cm.in_rhs terms in
-      let updated = List.map (Cm.update_aux swap var_met) clauses in
+      let updated = List.map (Cm.update_aux swap pos var_met) clauses in
       let var_met = if Cm.contains_var terms then succ var_met else var_met in
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
