@@ -76,6 +76,9 @@ sig
   (** [restruct l m r] is the concatenation of three substrates [l] [m] and
       [r]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
+
+  (** [of_seq s] returns a list containing elements of sequence [s]. *)
+  val of_seq : 'a Seq.t -> 'a t
 end
 
 (** Naive implementation based on lists.  Appeared to be faster than tree
@@ -113,6 +116,8 @@ struct
       | x::l -> insert (x :: acc) l
     in
     insert (c @ r) l
+
+  let of_seq = List.of_seq
 end
 
 module ReductionStack = RedListStack
@@ -465,7 +470,7 @@ struct
   type component = term * Subterm.t
 
   (** For convenience. *)
-  type subt_imap = Subterm.t IntMap.t
+  type subt_rs = Subterm.t ReductionStack.t
 
   (** A redefinition of the rule type.
 
@@ -491,7 +496,7 @@ struct
     (** The rules. *)
     ; var_met : int
     (** Number of variables met so far. *)
-    ; positions : subt_imap
+    ; positions : subt_rs
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
 
@@ -531,11 +536,10 @@ struct
       let nonlin = NlConstraints.of_terms r.lhs in
       { lhs = term_pos ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
     let positions = match rs with
-      | []   -> IntMap.empty
+      | []   -> ReductionStack.empty
       | r::_ ->
           Subterm.sequence (List.length r.lhs) |>
-          Seq.mapi (fun i e -> (i, e)) |>
-          IntMap.of_seq in
+          ReductionStack.of_seq in
     { clauses = List.map r2r rs ; var_met = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -698,26 +702,34 @@ struct
       symbol.  In case an {!constructor:Appl} is given as pattern [p], only
       terms having the same number of arguments and the same leftmost {e non}
       {!constructor:Appl} term match. *)
-  let specialize : term -> int -> subt_imap -> rule list -> rule list =
-    fun p ci _ rs ->
+  let specialize : term -> int -> subt_rs -> rule list ->
+    subt_rs * rule list = fun p ci pos rs ->
+    let pos =
+      let nargs = get_args p |> snd |> List.length in
+      let l, m, r = ReductionStack.destruct pos ci in
+      let replace = Subterm.sequence ~from:(Subterm.sub m) nargs in
+      ReductionStack.restruct l (List.of_seq replace) r in
     let filtered = List.filter (fun { lhs ; _} ->
       spec_filter p (fst lhs.(ci))) rs in
     let newcith = List.map (fun { lhs ; _ } -> spec_transform p lhs.(ci))
       filtered in
-    List.map2 (fun newcith rul ->
+    let clauses = List.map2 (fun newcith rul ->
       let { lhs ; _ } = rul in
       let postfix = Array.drop (ci + 1) lhs in
       let newline = Array.concat
-        [ Array.sub lhs 0 ci
-        ; newcith
-        ; postfix ] in
-      { rul with lhs = newline }) newcith filtered
+          [ Array.sub lhs 0 ci
+          ; newcith
+          ; postfix ] in
+      { rul with lhs = newline }) newcith filtered in
+    pos, clauses
 
   (** [default c m] computes the default matrix containing what remains to be
       matched in case the pattern used is not in the column [c]. *)
-  let default : int -> subt_imap -> rule list -> subt_imap * rule list =
+  let default : int -> subt_rs -> rule list -> subt_rs * rule list =
     fun ci pos rs ->
-    let pos = IntMap.remove ci pos in
+    let pos =
+      let l, _, r = ReductionStack.destruct pos ci in
+      ReductionStack.restruct l [] r in
     let filtered = List.filter (fun { lhs ; _ } ->
       match fst (lhs.(ci)) with
       | Patt(_ , _, _) -> true
@@ -837,13 +849,14 @@ let rec compile : Cm.t -> t = fun patterns ->
       let spepatts = (* Specialization sub-matrices *)
         let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let rules = Cm.specialize te_cons swap patterns.positions updated in
-          let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
+          let positions, rules =
+            Cm.specialize te_cons swap patterns.positions updated in
+          let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       let default = (* Default child *)
-        let _, rules = Cm.default swap patterns.positions updated in
-        let ncm = { patterns with Cm.clauses = rules ; Cm.var_met } in
+        let positions, rules = Cm.default swap patterns.positions updated in
+        let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       Node({ swap ; store ; children ; default })
