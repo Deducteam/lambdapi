@@ -271,6 +271,19 @@ sig
   val to_varindexes : cstr -> int * int
 end
 
+module type FvConstraintSig =
+sig
+  include BinConstraintPoolSig
+
+  type decision =
+    | Solve of cstr * int
+    | Unavailable
+
+  val choose : t list -> decision
+
+  val to_tvars_index : cstr -> int * tvar list
+end
+
 (** Manages non linearity constraints *)
 module NlConstraints : NlConstraintSig =
 struct
@@ -456,6 +469,48 @@ struct
         (fun (_, v) -> SubtSet.union v) nlcons SubtSet.empty in
     { groups = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty
     ; concerned = everyone }
+end
+
+module FvConstraint : FvConstraintSig =
+struct
+  type t = { involved : (tvar list) SubtMap.t
+           ; available : (tvar list) IntMap.t }
+
+  type cstr = int * tvar list
+
+  type decision =
+    | Solve of cstr * int
+    | Unavailable
+
+  let pp_cstr oc (sl, vars) =
+    let module F = Format in
+    Format.fprintf oc "%d: {@[<h>%a@]}" sl
+      (Format.pp_print_list
+         ~pp_sep:(fun oc () -> Format.pp_print_string oc "; ") Print.pp_tvar)
+      vars
+
+  let pp _ _ = ()
+
+  let empty = { involved = SubtMap.empty ; available = IntMap.empty }
+
+  let is_empty = (=) empty
+
+  let concerns s p = SubtMap.mem s p.involved
+
+  let is_instantiated (sl, _) p = IntMap.mem sl p.available
+
+  let remove (sl, _) p = { p with available = IntMap.remove sl p.available }
+
+  let instantiate s sl p =
+    let vars = SubtMap.find s p.involved in
+    { involved = SubtMap.remove s p.involved
+    ; available = IntMap.add sl vars p.available }
+
+  let to_tvars_index x = x
+
+  let of_terms _ = empty
+
+  let choose _ = Unavailable
 end
 
 (** {3 Clause matrix and pattern matching problem} *)
