@@ -475,7 +475,7 @@ struct
     ; concerned = everyone }
 end
 
-module FvConstraint : FvConstraintSig =
+module FvConstraints : FvConstraintSig =
 struct
   type t = { involved : (tvar list) SubtMap.t
            ; available : (tvar list) IntMap.t }
@@ -548,7 +548,9 @@ struct
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:rhs}. *)
     ; nonlin : NlConstraints.t
-    (** Non linearity constraints attached to this rule. *) }
+    (** Non linearity constraints attached to this rule. *)
+    ; freevars : FvConstraints.t
+    (** Free variables constraints attached to the rule. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -594,7 +596,8 @@ struct
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
       let nonlin = NlConstraints.of_terms r.lhs in
-      { lhs ; rhs = r.Terms.rhs ; nonlin ; env_builder = [] } in
+      let freevars = FvConstraints.of_terms r.lhs in
+      { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let positions = match rs with
       | []   -> ReductionStack.empty
       | r::_ ->
