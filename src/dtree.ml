@@ -495,7 +495,8 @@ struct
     { clauses : rule list
     (** The rules. *)
     ; var_met : int
-    (** Number of variables met so far. *)
+    (** Number of variables met so far; index of next slot in {!val:vars}
+        array to be used. *)
     ; positions : subt_rs
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
@@ -512,7 +513,7 @@ struct
         regarding slot [s]. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { clauses ; _ } ->
+  let pp : t pp = fun oc { clauses ; positions ; _ } ->
     let module F = Format in
     let pp_line oc l =
       F.fprintf oc "@[<h>" ;
@@ -520,6 +521,8 @@ struct
         Print.pp oc (Array.to_list l) ;
       F.fprintf oc "@]" in
     F.fprintf oc "{@[<v>@," ;
+    F.pp_print_list ~pp_sep:F.pp_print_cut Subterm.pp oc
+      (ReductionStack.to_list positions) ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
       (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
