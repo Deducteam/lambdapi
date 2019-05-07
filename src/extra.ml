@@ -206,12 +206,12 @@ module Array =
       Array.length a1 = Array.length a2 && for_all2 eq a1 a2
 
     (** [argmax ?init e a] finds the index of the maximum according to
-        equality function [e] in array [a] with initial value [?init].  If
+        inequality function [e] in array [a] with initial value [?init].  If
         [?init] is not provided, the first element of [a] is used. *)
-    let argmax : ?init:'a -> 'a eq -> 'a array -> int = fun ?init eq arr ->
+    let argmax : ?init:'a -> 'a eq -> 'a array -> int = fun ?init ineq arr ->
       let start = Option.get init arr.(0) in
       let r, _, _ = Array.fold_left (fun (mi, m, i) elt ->
-        if eq elt m then (i, elt, succ i) else (mi, m, succ i))
+        if ineq elt m then (i, elt, succ i) else (mi, m, succ i))
         (0, start, 0) arr in
       r
 
