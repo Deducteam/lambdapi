@@ -311,15 +311,6 @@ struct
 
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
-
-  (** [tag ?from s] attaches the positions to a sequence of terms [s] as if
-      they were the subterms of a same term.  If [?from] is supplied, the
-      first element of the list is at position [from]. *)
-  let tag : ?from:t -> term Seq.t -> (term * t) Seq.t = fun ?from xs ->
-    let start, p = match from with
-      | None | Some([]) -> 0, empty
-      | Some(s :: p)    -> s, p in
-    Seq.mapi (fun i e -> (e, prefix p [i + start])) xs
 end
 
 (** Functional map with [Subterm.t] as keys *)
