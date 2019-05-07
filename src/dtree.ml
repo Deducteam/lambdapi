@@ -625,9 +625,10 @@ struct
     loop clauses
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
-  let is_exhausted : rule -> bool = fun { lhs ; nonlin ; _ } ->
+  let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
     Array.for_all (fun e -> not (is_treecons e)) lhs &&
-    NlConstraints.is_empty nonlin
+    NlConstraints.is_empty nonlin &&
+    FvConstraints.is_empty freevars
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
