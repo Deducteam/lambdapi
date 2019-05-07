@@ -824,6 +824,20 @@ struct
   let nl_fail : NlConstraints.cstr -> rule list -> rule list = fun c ->
     let f { nonlin ; _ } = not (NlConstraints.is_instantiated c nonlin) in
     List.filter f
+
+  (** [fv_suceed c r] computes the rules from [r] that verify a free variables
+      constraint [c]. *)
+  let fv_succeed : FvConstraints.cstr -> rule list -> rule list = fun c ->
+    let f r =
+      let freevars = FvConstraints.remove c r.freevars in
+      { r with freevars } in
+    List.map f
+
+  (** [fv_fail c r] computes the rules not failing a free variable constraint
+  [c] among rules [r]. *)
+  let fv_fail : FvConstraints.cstr -> rule list -> rule list = fun c ->
+    let f { freevars ; _ } = not (FvConstraints.is_instantiated c freevars) in
+    List.filter f
 end
 
 module Cm = ClauseMat
@@ -905,8 +919,14 @@ let rec compile : Cm.t -> t = fun patterns ->
       let vi, vj = NlConstraints.to_varindexes constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
-  | FvConstrain(_)                          ->
-      assert false
+  | FvConstrain(constr)                          ->
+      let ok = let clauses = Cm.fv_succeed constr clauses in
+        compile { patterns with Cm.clauses } in
+      let fail = let clauses = Cm.fv_fail constr clauses in
+        compile { patterns with Cm.clauses } in
+      let slot, vars = FvConstraints.to_tvars_index constr in
+      let condition = TcstrFreeVars(vars, slot) in
+      Condition({ ok ; condition ; fail })
   | Specialise(swap)                             ->
       let _, pos, _ = ReductionStack.destruct positions swap in
       let terms = Cm.get_col swap patterns in
