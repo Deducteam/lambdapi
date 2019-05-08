@@ -215,6 +215,14 @@ module Array =
         (0, start, 0) arr in
       r
 
+    (** [max e a] returns the higher element according to inequality function
+        [e] in arra [a].  For instance, the maximum in [a] is found with
+        [max (>) a]. *)
+    let max : 'a eq -> 'a array -> 'a = fun ineq arr ->
+      if arr = [||] then invalid_arg "Extra.Array.max" else
+      Array.fold_left (fun acc elt -> if ineq elt acc then elt else acc)
+        arr.(0) arr
+
     (** [split a] is {!val:List.split}[Array.to_list a]. *)
     let split : ('a * 'b) array -> ('a list) * ('b list) = fun a ->
       Array.fold_right (fun (el, er) (accl, accr) -> (el :: accl, er :: accr))

@@ -205,6 +205,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
   close_out ochan
 
 (** {3 Constraint structure} *)
+
 module type BinConstraintPoolSig =
 sig
   (** Set of constraints declared, either available or not. *)
@@ -212,6 +213,17 @@ sig
 
   (** A unique instantiated constraint. *)
   type cstr
+
+  (** Action to perform. *)
+  type decision =
+    | Solve of cstr * int
+    (** A constraint to apply along with its heuristic score. *)
+    | Instantiate of Subterm.t * int
+    (** Carry out a switch on a term specified by its position.  A switch can
+        be performed to expose a pattern variable having a non linear
+        constraint.  The [int] is the heuristic score. *)
+    | Unavailable
+    (** No non linearity constraint available. *)
 
   (** [pp_cstr o c] prints constraint [c] to channel [o]. *)
   val pp_cstr : cstr pp
@@ -242,6 +254,9 @@ sig
       @raise Not_found if [p] is not part of any constraint in [q]. *)
   val instantiate : Subterm.t -> int -> t -> t
 
+  (** [choose p] returns the constraint with the highest priority in [p]. *)
+  val choose : t list -> decision
+
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
   val of_terms : term list -> t
 end
@@ -252,20 +267,6 @@ module type NlConstraintSig =
 sig
   include BinConstraintPoolSig
 
-  (** Action to perform. *)
-  type decision =
-    | Solve of cstr * int
-    (** A constraint to apply along with its heuristic score. *)
-    | Instantiate of Subterm.t * int
-    (** Carry out a switch on a term specified by its position.  A switch can
-        be performed to expose a pattern variable having a non linear
-        constraint.  The [int] is the heuristic score. *)
-    | Unavailable
-    (** No non linearity constraint available. *)
-
-  (** [choose p] returns the constraint with the highest priority in [p]. *)
-  val choose : t list -> decision
-
   (** [to_varindexes c] returns the indexes containing terms bound by a
       constraint in the [vars] array. *)
   val to_varindexes : cstr -> int * int
@@ -274,12 +275,6 @@ end
 module type FvConstraintSig =
 sig
   include BinConstraintPoolSig
-
-  type decision =
-    | Solve of cstr * int
-    | Unavailable
-
-  val choose : t list -> decision
 
   (** [update s v p] adds variable [v] to the constraint {e not yet
       available} concerning [s] in pool [p]. *)
@@ -321,10 +316,9 @@ struct
 
   type cstr = int * int
 
-  type decision =
-    | Solve of cstr * int
-    | Instantiate of Subterm.t * int
-    | Unavailable
+  type decision = Solve of cstr * int
+                | Instantiate of Subterm.t * int
+                | Unavailable
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
@@ -452,9 +446,9 @@ struct
 
   type cstr = int * tvar list
 
-  type decision =
-    | Solve of cstr * int
-    | Unavailable
+  type decision = Solve of cstr * int
+                | Instantiate of Subterm.t * int
+                | Unavailable
 
   let pp_cstr oc (sl, vars) =
     let module F = Format in
@@ -505,6 +499,13 @@ struct
     let vars = var :: SubtMap.find sub pool.involved in
     { pool with involved = SubtMap.add sub vars pool.involved }
 end
+
+(** A helper type to process [choose] results uniformly. *)
+type bin_cstr = Fv of FvConstraints.cstr
+              | Nl of NlConstraints.cstr
+              | Instantiate of Subterm.t
+              | Sp of int
+              | Unavailable
 
 (** {3 Clause matrix and pattern matching problem} *)
 
@@ -654,24 +655,34 @@ struct
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
+        (* All below could be simplified using either a functor or gadt. *)
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
-        match NlConstraints.choose nlcstrs, choose m with
-        | Unavailable  , None        -> assert false
-        | Unavailable  , Some(ci, _) -> Specialise(ci)
-        | Instantiate(p, _), None    ->
+        let rnl = match NlConstraints.choose nlcstrs with
+          | NlConstraints.Solve(c, i)       -> (Nl(c), i)
+          | NlConstraints.Instantiate(s, i) -> (Instantiate(s), i)
+          | NlConstraints.Unavailable       -> (Unavailable, min_int) in
+        let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
+        let rfv = match FvConstraints.choose fvcstrs with
+          | FvConstraints.Solve(c, i)       -> (Fv(c), i)
+          | FvConstraints.Instantiate(s, i) -> (Instantiate(s), i)
+          | FvConstraints.Unavailable       -> (Unavailable, min_int) in
+        let rs = match choose m with
+          | None       -> (Unavailable, min_int)
+          | Some(c, i) -> (Sp(c), i) in
+        let r = [| rnl ; rfv ; rs |] in
+        let best =
+          if Array.for_all (fun (x, _) -> x = Unavailable) r
+          then (Unavailable, min_int)
+          else Array.max (fun (_, x) (_, y) -> x >= y) r in
+        match fst best with
+        | Nl(c)          -> NlConstrain(c)
+        | Fv(c)          -> FvConstrain(c)
+        | Sp(c)          -> Specialise(c)
+        | Instantiate(p) ->
             let col = Array.search (fun x -> Subterm.compare x p)
                         (ReductionStack.to_seq positions |> Array.of_seq) in
             Specialise(col)
-        | Instantiate(_, _), Some(cic, _) -> Specialise(cic)
-        (* A case should be added when instantiate score is higher, this would
-           imply that a non linear constraint can motivate a specialisation in
-           order to reach a constraint. *)
-        | Solve(c, _), None          -> NlConstrain(c)
-        | Solve(c, scs), Some(_, scc)
-          when scs > scc             -> NlConstrain(c)
-        | Solve(_, scs), Some(cic, scc)
-          when scs <= scc            -> Specialise(cic)
-        | _            , _           -> assert false
+        | Unavailable    -> assert false
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
