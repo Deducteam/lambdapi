@@ -679,8 +679,10 @@ struct
         | Fv(c)          -> FvConstrain(c)
         | Sp(c)          -> Specialise(c)
         | Instantiate(p) ->
-            let col = Array.search (fun x -> Subterm.compare x p)
-                        (ReductionStack.to_seq positions |> Array.of_seq) in
+            let ls_rs = ReductionStack.to_seq positions |> List.of_seq in
+            let plcp = Subterm.lcp p ls_rs in
+            let col = Array.search (fun x -> Subterm.compare x plcp)
+                        (Array.of_list ls_rs) in
             Specialise(col)
         | Unavailable    -> assert false
 

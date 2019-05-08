@@ -311,6 +311,24 @@ struct
 
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
+
+  (** [lcp x y] returns the {e l}ongest {e c}ommon {e p}refix of [x] in list
+      [y].  For instance, using mathematical notations,
+      [lcp {0.0.1} [{0.0}, {0.1}, {1}] = {0.0}].
+      @raise Invalid_argument if [x] is shallower than elements of [y]. *)
+  let lcp : t -> t list -> t = fun x ys ->
+    let xr = List.rev x in
+    let ysr = List.map List.rev ys in
+    let rec loop (x:t) (ys:t list) (acc:t) : t = match x, ys with
+      | _     , [[]] -> acc
+      | xh::xt, ys   ->
+          let f (s:t) : t option =
+            if List.hd s = xh then Some(List.tl s) else None in
+          let sp = List.filter_map f ys |> List.sort_uniq (compare) in
+          loop xt sp (xh::acc)
+      | []    , _::_ -> invalid_arg "Subterm.lcp"
+      | _     , []   -> assert false in
+    loop xr ysr []
 end
 
 (** Functional map with [Subterm.t] as keys *)
