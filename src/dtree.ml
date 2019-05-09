@@ -588,11 +588,11 @@ struct
       F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
         Print.pp oc (Array.to_list l) ;
       F.fprintf oc "@]" in
-    F.fprintf oc "{@[<v>@," ;
-    F.fprintf oc "@[<h> @@:" ;
-    F.pp_print_list ~pp_sep:F.pp_print_space Subterm.pp oc
+    F.fprintf oc "Positions @@ @[<h>" ;
+    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Subterm.pp oc
       (ReductionStack.to_list positions) ;
     F.fprintf oc "@]@," ;
+    F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
       (List.map (fun { lhs ; _ } -> lhs) clauses) ;
     F.fprintf oc "@.}@,"
@@ -938,6 +938,7 @@ let fetch : term array -> int -> (int * int) list -> action -> t =
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
   fun patterns ->
+  Format.printf "%a\n" Cm.pp patterns ;
   let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
