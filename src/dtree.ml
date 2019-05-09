@@ -636,7 +636,8 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    Array.for_all (fun e -> not (is_treecons e)) lhs &&
+    let is_abst = function Abst(_, _) -> true | _ -> false in
+    Array.for_all (fun e -> not (is_treecons e) && not (is_abst e)) lhs &&
     NlConstraints.is_empty nonlin &&
     FvConstraints.is_empty freevars
 
@@ -938,7 +939,6 @@ let fetch : term array -> int -> (int * int) list -> action -> t =
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
   fun patterns ->
-  Format.printf "%a" Cm.pp patterns ;
   let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
