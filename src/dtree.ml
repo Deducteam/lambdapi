@@ -504,8 +504,13 @@ struct
         | None -> choose ps
         | Some(i, x) -> Solve((i, x), 1)
 
+  (* FIXME the None case here shouldn't exist: even not used variables ought
+     to have a slot assigned to be able to check their free variables. *)
   let update sub var pool =
-    let vars = var :: SubtMap.find sub pool.involved in
+    let prev = match SubtMap.find_opt sub pool.involved with
+      | Some(v) -> v
+      | None    -> [] in
+    let vars = var::prev in
     { pool with involved = SubtMap.add sub vars pool.involved }
 end
 
@@ -705,13 +710,6 @@ struct
       if is_treecons e then Some(treecons_of_term e, e) else None in
     let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
     telst |> List.filter_map keep_treecons |> List.sort_uniq tc_fst_cmp
-
-  (** [contains_abst l] returns whether list of terms [l] contains an
-      abstraction. *)
-  let rec contains_abst : term list -> bool = function
-    | [] -> false
-    | Abst(_, _) :: _  -> true
-    | _          :: xs -> contains_abst xs
 
   (** [contains_var l] returns whether list of terms [l] contains a pattern
       variable with a slot assigned. *)
@@ -969,7 +967,7 @@ let rec compile : Cm.t -> t =
       let var_met = if Cm.contains_var terms then succ var_met else var_met in
       let cons = Cm.get_cons terms in
       (* Constructors specialisation *)
-      let spepatts = (* Specialization sub-matrices *)
+      let spepatts =
         let f acc (tr_cons, te_cons) =
           if tr_cons = TcAbst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
