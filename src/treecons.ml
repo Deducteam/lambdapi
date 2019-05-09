@@ -1,4 +1,5 @@
-(** Tree constructors. *)
+(** Tree constructors: a simpler representation of terms to be used by a
+    decision tree. *)
 
 open Extra
 
@@ -14,7 +15,9 @@ type treecons =
       (** Arity of the considered constructor.  A same symbol representation may
           generate several constructors with different arities. *) }
   | TcAbst
+  (** An abstraction*)
   | TcVari of string
+  (** A free variable with a name. *)
 
 (** [pp_treecons o c] prints tree constructor [c] to output channel [o]. *)
 let pp_treecons : treecons pp = fun oc -> function
