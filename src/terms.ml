@@ -266,6 +266,9 @@ and tree_constraint =
       rules.  Maps representation of constructors as strings built with
       {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to
       trees resulting from a specialisation on the key. *)
+  ; abstraction : (term Bindlib.var * tree) option
+  (** Specialisation by an abstraction along with the free variable
+      involved. *)
   ; default : tree option
   (** If a wildcard is among the patterns, this subtree is used when the term
       matched isn't a constructor among the {!field:children} terms. *)}

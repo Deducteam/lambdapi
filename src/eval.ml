@@ -349,7 +349,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               then walk ok stk cursor
               else walk fail stk cursor
           end
-      | Node({swap; children; store; default})           ->
+      | Node({swap; children; store; default; _})         ->
           begin
             try
               let left, examined, right = R.destruct stk swap in

@@ -375,7 +375,8 @@ let fold_vars : term list ->
     - [f] returned in case of {!constructor:Fail} on tree [t]. *)
 let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
-  do_node:(int -> bool -> 'a TcMap.t -> 'a option -> 'a) ->
+  do_node:(int -> bool -> 'a TcMap.t -> (tvar * 'a ) option -> 'a option ->
+           'a) ->
   do_condition:('a -> tree_constraint -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
     let rec loop = function
@@ -384,9 +385,10 @@ let tree_iter :
       | Condition(cdata)                            ->
           let { condition ; ok ; fail } = cdata in
           do_condition (loop ok) condition (loop fail)
-      | Node({ swap ; store ; children ; default }) ->
+      | Node({ swap ; store ; children ; abstraction ; default }) ->
           do_node swap store
             (TcMap.map loop children)
+            (Option.map (fun (v, x) -> (v, loop x)) abstraction)
             (Option.map loop default) in
     loop t
 
@@ -400,10 +402,11 @@ let tree_iter :
 let capacity : tree -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
-  let do_node _ st ch de =
+  let do_node _ st ch ab de =
     let _, chdepths = List.split (TcMap.bindings ch) in
     let dedepth = Option.get de 0 in
-    List.extremum (>) (dedepth :: chdepths) + (if st then 1 else 0) in
+    let abdepth = match ab with Some(_, n) -> n | None -> 0 in
+    List.extremum (>) (abdepth::dedepth::chdepths) + (if st then 1 else 0) in
   let do_condition t _ f = max t f in
   tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
     ~do_condition:do_condition

@@ -166,7 +166,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l !nodecount pp_dotterm swon
     | Node(ndata)      ->
-        let { swap ; children ; store ; default } = ndata in
+        let { swap ; children ; store ; default ; _ } = ndata in
         incr nodecount ;
         let tag = !nodecount in
         (* Create node *)
@@ -193,7 +193,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount in
   begin match tree with
   (* First step must be done to avoid drawing a top node. *)
-  | Node({ swap ; children = ch ; store ; default }) ->
+  | Node({ swap ; children = ch ; store ; default ; _ }) ->
       F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
         swap (if store then " shape=\"box\"" else "") ;
       TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
@@ -455,8 +455,6 @@ struct
   type decision = Solve of cstr * int
                 | Instantiate of Subterm.t * int
                 | Unavailable
-
-  type eval_data = int * tvar list
 
   let pp_cstr oc (sl, vars) =
     let module F = Format in
@@ -915,7 +913,7 @@ module Cm = ClauseMat
 let fetch : term array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
     let defnd = { swap = 0 ; store = false ; children = TcMap.empty
-                ; default = None } in
+                ; default = None ; abstraction = None } in
     let terms = Array.to_list line in
     let rec loop telst added env_builder =
       match telst with
@@ -982,4 +980,10 @@ let rec compile : Cm.t -> t = fun patterns ->
         let positions, rules = Cm.default swap patterns.positions updated in
         let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
-      Node({ swap ; store ; children ; default })
+      let abstraction =
+        if not (Cm.contains_abst terms) then None else
+        let var = Bindlib.new_var mkfree "v" in
+        let positions, rules = Cm.abstract swap var positions updated in
+        let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
+        Some(var, compile ncm) in
+      Node({ swap ; store ; children ; abstraction ; default })
