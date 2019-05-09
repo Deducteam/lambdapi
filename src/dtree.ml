@@ -939,7 +939,9 @@ let fetch : term array -> int -> (int * int) list -> action -> t =
 
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
-let rec compile : Cm.t -> t = fun patterns ->
+let rec compile : Cm.t -> t =
+  let varcount = ref 0 in
+  fun patterns ->
   let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
@@ -982,7 +984,8 @@ let rec compile : Cm.t -> t = fun patterns ->
         if Cm.is_empty ncm then None else Some(compile ncm) in
       let abstraction =
         if not (Cm.contains_abst terms) then None else
-        let var = Bindlib.new_var mkfree "v" in
+        let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
+        incr varcount ;
         let positions, rules = Cm.abstract swap var positions updated in
         let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
         Some(var, compile ncm) in
