@@ -802,22 +802,15 @@ struct
     let pos =
       let l, _, r = ReductionStack.destruct pos ci in
       ReductionStack.restruct l [] r in
-    let filtered = List.filter (fun { lhs ; _ } ->
-      match lhs.(ci) with
-      | Patt(_ , _, _) -> true
-      | Symb(_, _)
-      | Abst(_, _)
-      | Vari(_)
-      | Appl(_, _)     -> false
-      | _              -> assert false) rs in
-    let rules = List.map (fun rul ->
-        let { lhs ; _ } = rul in
-        match lhs.(ci) with
-        | Patt(_, _, _) ->
-            let postfix = Array.drop (ci + 1) lhs in
-            { rul with lhs = Array.append (Array.sub lhs 0 ci) postfix  }
-        | _             -> assert false) filtered in
-    pos, rules
+    let transf r =
+      match r.lhs.(ci) with
+      | Patt(_, _, _) ->
+          let lhs = Array.append (Array.sub r.lhs 0 ci)
+              (Array.drop (ci + 1) r.lhs) in
+          Some({ r with lhs })
+      | Symb(_, _) | Abst(_, _) | Vari(_) | Appl(_, _) -> None
+      | _ -> assert false in
+    (pos, List.filter_map transf rs)
 
   (** [abstract c v p r] computes the rules resulting from the specialisation
       by an abstraction.  Note that the pattern can't be an applied lambda
