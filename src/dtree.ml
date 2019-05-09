@@ -207,8 +207,37 @@ let to_dot : string -> t -> unit = fun fname tree ->
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
 
-(** {3 Constraint structure} *)
+(** {3 Binary constraints nodes} *)
 
+(** Binary constraints allow to check properties on terms during evaluation.
+    A constraint is binary as it gives birth to two trees, one used if the
+    constraint is satisfied and the other used if not.
+
+    Currently, binary constraints are used
+    - to check non linear constraints in the left hand side of a rule (e.g. in
+      presence of the rule like [f &X &X (s &Y) → &Y]).  In this case, the
+      constraint node created will force the rewriting engine to verify that
+      the terms at position {0} and {1} are convertible.
+    - to verify which variables are free in a term.  If there is a rule of the
+      form [f &X[x, y] &Y[y] → &Y], then the rewriting engine must verify that
+      the term at position {0} depends only on free variables [x] and [y] and
+      that the term at position {1} depends only on free variable [y].
+
+    Constraints depends heavily on the {!val:vars} array used to store terms
+    during evaluation as it is the only way to have access to terms matched
+    while evaluating.  The term {i slot} refers to a position in this array.
+    The slot is determined via the {!field:var_met} which is incremented each
+    time a {!constructor:Patt} is encountered. *)
+
+(** A general type for a pool of constraints.  Constraints are first parsed
+    from lhs and stored using their position.  At the beginning, constraints
+    are not available for checking, as at the beginning of evaluation, the
+    terms are not yet known.  During tree build, a constraint is {e
+    instantiated} if the position to which it refers is inspected (chosen for
+    specialisation).  When a constraint is fully instantiated, it is marked as
+    available which means that the rewriting engine is able to verify the
+    constraint (because the concerned terms from the term stack have been
+    parsed). *)
 module type BinConstraintPoolSig =
 sig
   (** Set of constraints declared, either available or not. *)
@@ -223,10 +252,10 @@ sig
     (** A constraint to apply along with its heuristic score. *)
     | Instantiate of Subterm.t * int
     (** Carry out a switch on a term specified by its position.  A switch can
-        be performed to expose a pattern variable having a non linear
-        constraint.  The [int] is the heuristic score. *)
+        be performed to expose a pattern variable having a constraint.  The
+        [int] is the heuristic score. *)
     | Unavailable
-    (** No non linearity constraint available. *)
+    (** No constraint available. *)
 
   (** [pp_cstr o c] prints constraint [c] to channel [o]. *)
   val pp_cstr : cstr pp
@@ -240,24 +269,29 @@ sig
   (** [is_empty p] returns whether pool [p] is empty. *)
   val is_empty : t -> bool
 
-  (** [concerns p q] returns whether position [p] is constrained in pool
-      [q]. *)
+  (** [concerns p q] returns true if position [p] hasn't been instantiated yet
+      in pool [q] and if [p] is involved in a constraint. *)
   val concerns : Subterm.t -> t -> bool
 
-  (** [has c p] returns whether pool [p] has constraint [c] instantiated. *)
+  (** [is_instantiated c p] returns whether pool [p] has constraint [c]
+      instantiated. *)
   val is_instantiated : cstr -> t -> bool
 
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
-  (** [instantiate p i q] instantiates path [p] in pool [q], that is, make a
-      constraint partially instantiated if none of the paths were instantiated
-      or make it available if one path was already instantiated.  Uses index
-      [i] as support of the constraint.
+  (** [instantiate p i q] instantiates path [p] in pool [q] using index [i],
+      that is, mark a path as {i seen} in the constraints.  Typically, if a
+      constraint involves only one variable, then instantiating a variable is
+      equivalent to instantiating a constraint.  However, if a constraint
+      involves several variables, then instantiating a variable will promote
+      the constraint to a {e partially instantiated state}, and will be
+      completely instantiated when all the variables are instantiated.
       @raise Not_found if [p] is not part of any constraint in [q]. *)
   val instantiate : Subterm.t -> int -> t -> t
 
-  (** [choose p] returns the constraint with the highest priority in [p]. *)
+  (** [choose p] returns the best action to perform considering a list of
+      constraints [p]. *)
   val choose : t list -> decision
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
@@ -268,8 +302,8 @@ sig
   val export : cstr -> 'a
 end
 
-(** Non linearity constraints signature.  Defines the possible actions that a
-    non linear constraint can trigger. *)
+(** Non linearity constraints signature.  A non linearity constraint involves
+    at least two variables. *)
 module type NlConstraintSig =
 sig
   include BinConstraintPoolSig
@@ -279,6 +313,8 @@ sig
   val export : cstr -> int * int
 end
 
+(** Free variables constraints.  Such a constraint involves only one variable,
+    but it requires the list of variables that may appear free in the term. *)
 module type FvConstraintSig =
 sig
   include BinConstraintPoolSig
@@ -287,13 +323,14 @@ sig
       might appear free in it. *)
   val export : cstr -> int * tvar list
 
-  (** [update s v p] adds variable [v] to the constraint {e not yet
-      available} concerning [s] in pool [p].  Use it when matching a
-      {!constructor:Patt} when specialising against an abstraction. *)
+  (** [update s v p] removes the instantiated constraint related to position
+      [s] fomr pool [p] to put it back into available constraints at position
+      [Subterm.sub s] and adding variable [v] to the list of free
+      variables.  This function is used when specialising against an
+      abstraction on a {!constructor:Patt}. *)
   val update : Subterm.t -> tvar -> t -> t
 end
 
-(** Manages non linearity constraints *)
 module NlConstraints : NlConstraintSig =
 struct
 
@@ -509,9 +546,9 @@ struct
         | None -> choose ps
         | Some(i, x) -> Solve((i, x), 1)
 
-  (** The goal of [update] is to remove the instantiated constraint concerning
-      positions [sub], and put it back into {!field:involved} with the new
-      variable [var]. *)
+  (* The goal of [update] is to remove the instantiated constraint concerning
+     positions [sub], and put it back into {!field:involved} with the new
+     variable [var]. *)
 
   let update sub var { involved ; transit ; available } =
     let slot = SubtMap.find sub transit in
