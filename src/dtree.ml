@@ -166,7 +166,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l !nodecount pp_dotterm swon
     | Node(ndata)      ->
-        let { swap ; children ; store ; default ; _ } = ndata in
+        let { swap ; children ; store ; abstraction ; default } = ndata in
         incr nodecount ;
         let tag = !nodecount in
         (* Create node *)
@@ -176,6 +176,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon ;
         TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+        Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t) abstraction ;
         Option.iter (write_tree tag DotDefa) default ;
     | Condition(cdata) ->
         let { ok ; condition ; fail } = cdata in
