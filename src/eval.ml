@@ -299,7 +299,8 @@ and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
           let args = List.map ensure_tref args in
           let c_ari = List.length args in
           r_ex := Some(add_args h args) ;
-          let cons = { c_sym = s.sym_name ; c_mod = s.sym_path ; c_ari} in
+          let cons = TcSymb({ c_sym = s.sym_name ; c_mod = s.sym_path
+                            ; c_ari}) in
           let matched = TcMap.find_opt cons children in
           if matched = None then (default, []) else (matched, args)
       | _           -> raise Dtree.Not_implemented in

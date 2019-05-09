@@ -5,24 +5,31 @@ open Extra
 (** A constructor is the representation of a symbol along with the number of
     arguments to which it is applied. *)
 type treecons =
-  { c_mod : string list
-  (** Module name where the symbol of the constructor is defined. *)
-  ; c_sym : string
-  (** Symbol of the constructor. *)
-  ; c_ari : int
-  (** Arity of the considered constructor.  A same symbol representation may
-      generate several constructors with different arities. *) }
+  | TcSymb of
+      { c_mod : string list
+      (** Module name where the symbol of the constructor is defined. *)
+      ; c_sym : string
+      (** Symbol of the constructor. *)
+      ; c_ari : int
+      (** Arity of the considered constructor.  A same symbol representation may
+          generate several constructors with different arities. *) }
+  | TcAbst
+  | TcVari of string
 
 (** [tc_compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
 let tc_compare : treecons -> treecons -> int = fun ca cb ->
-  match Int.compare ca.c_ari cb.c_ari with
-  | 0 ->
-    begin match String.compare ca.c_sym cb.c_sym with
-      | 0 -> Pervasives.compare ca.c_mod cb.c_mod
+  match ca, cb with
+  | TcSymb(a), TcSymb(b) ->
+      begin match Int.compare a.c_ari b.c_ari with
+      | 0 ->
+          begin match String.compare a.c_sym b.c_sym with
+          | 0 -> Pervasives.compare a.c_mod b.c_mod
+          | x -> x
+          end
       | x -> x
-    end
-  | x -> x
+      end
+  | x, y                 -> Pervasives.compare x y
 
 (** [tc_eq c d] returns true iff [c] and [d] are equal regarding
     [tc_compare]. *)

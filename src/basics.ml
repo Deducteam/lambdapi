@@ -418,9 +418,9 @@ let capacity : tree -> int =
 let rec is_treecons : term -> bool = function
   | Appl(u, _)    -> is_treecons u
   | Meta(_, _)
-  | Abst(_, _)
   | Patt(_, _, _) -> false
   | Vari(_)
+  | Abst(_, _)
   | Symb(_, _)    -> true
   | _             -> assert false
 
@@ -431,6 +431,8 @@ let treecons_of_term : term -> treecons = fun te ->
   let arity = List.length args in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
-      { c_mod = sym_path ; c_sym = sym_name ; c_ari = arity }
+      TcSymb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
+  | Abst(_, _)                           -> TcAbst
+  | Vari(x)                              -> TcVari(Bindlib.name_of x)
   | _                                    -> assert false
 

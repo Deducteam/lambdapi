@@ -151,7 +151,12 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(t) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari in
+    | DotCons(t) ->
+        begin match t with
+        | TcSymb(t) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
+        | TcAbst    -> F.fprintf oc "λ"
+        | TcVari(s) -> F.fprintf oc "%s" s
+        end in
   let pp_tcstr : tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)    -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(_) -> raise Not_implemented in
@@ -636,8 +641,7 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    let is_abst = function Abst(_, _) -> true | _ -> false in
-    Array.for_all (fun e -> not (is_treecons e) && not (is_abst e)) lhs &&
+    Array.for_all (fun e -> not (is_treecons e)) lhs &&
     NlConstraints.is_empty nonlin &&
     FvConstraints.is_empty freevars
 
