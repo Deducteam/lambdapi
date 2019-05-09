@@ -151,12 +151,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(t) ->
-        begin match t with
-        | TcSymb(t) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
-        | TcAbst    -> F.fprintf oc "λ"
-        | TcVari(s) -> F.fprintf oc "%s" s
-        end in
+    | DotCons(TcSymb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
+    | DotCons(TcVari(s)) -> F.fprintf oc "%s" s
+    | DotCons(TcAbst)    -> assert false in
   let pp_tcstr : tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)    -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(_) -> raise Not_implemented in
@@ -970,11 +967,11 @@ let rec compile : Cm.t -> t =
       let store = Cm.in_rhs terms in
       let updated = List.map (Cm.update_aux swap pos var_met) clauses in
       let var_met = if Cm.contains_var terms then succ var_met else var_met in
+      let cons = Cm.get_cons terms in
       let spepatts = (* Specialization sub-matrices *)
-        let cons = Cm.get_cons terms in
         let f acc (tr_cons, te_cons) =
-          let positions, rules =
-            Cm.specialize te_cons swap patterns.positions updated in
+          if tr_cons = TcAbst then acc else
+          let positions, rules = Cm.specialize te_cons swap positions updated in
           let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
@@ -984,7 +981,7 @@ let rec compile : Cm.t -> t =
         let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       let abstraction =
-        if not (Cm.contains_abst terms) then None else
+        if List.for_all (fun (x, _) -> x <> TcAbst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, rules = Cm.abstract swap var positions updated in
