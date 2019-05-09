@@ -968,23 +968,27 @@ let rec compile : Cm.t -> t =
       let updated = List.map (Cm.update_aux swap pos var_met) clauses in
       let var_met = if Cm.contains_var terms then succ var_met else var_met in
       let cons = Cm.get_cons terms in
+      (* Constructors specialisation *)
       let spepatts = (* Specialization sub-matrices *)
         let f acc (tr_cons, te_cons) =
           if tr_cons = TcAbst then acc else
-          let positions, rules = Cm.specialize te_cons swap positions updated in
-          let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
+          let positions, clauses = Cm.specialize te_cons swap positions
+              updated in
+          let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
-      let default = (* Default child *)
-        let positions, rules = Cm.default swap patterns.positions updated in
-        let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
+      (* Default child *)
+      let default =
+        let positions, clauses = Cm.default swap positions updated in
+        let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
+      (* Abstraction specialisation*)
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TcAbst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
-        let positions, rules = Cm.abstract swap var positions updated in
-        let ncm = { Cm.clauses = rules ; Cm.var_met ; Cm.positions } in
+        let positions, clauses = Cm.abstract swap var positions updated in
+        let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
         Some(var, compile ncm) in
       Node({ swap ; store ; children ; abstraction ; default })
