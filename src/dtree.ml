@@ -812,6 +812,37 @@ struct
         | _             -> assert false) filtered in
     pos, rules
 
+  (** [abstract c v p r] computes the rules resulting from the specialisation
+      by an abstraction.  Note that the pattern can't be an applied lambda
+      since the lhs is in normal form. *)
+  let abstract : int -> tvar -> subt_rs -> rule list -> subt_rs * rule list =
+    fun ci v pos rules ->
+    let l, p, r = ReductionStack.destruct pos ci in
+    let p = Subterm.sub p in (* Position of term inside lambda. *)
+    let pos = ReductionStack.restruct l [p] r in
+    let insert r e = [ Array.sub r.lhs 0 ci
+                     ; [| e |]
+                     ; Array.drop (ci + 1) r.lhs ] in
+    let fil (r:rule) =
+      match r.lhs.(ci) with
+      | Patt(_, _, _) | Abst(_, _) -> true
+      | Symb(_, _)    | Vari(_)    -> false
+      | _                          -> assert false in
+    let transf (r:rule) =
+      match r.lhs.(ci) with
+      | Abst(_, b)     ->
+          let b = Bindlib.subst b (mkfree v) in
+          let lhs = Array.concat (insert r b) in
+          { r with lhs }
+      | Patt(io, n, e) ->
+          let freevars = FvConstraints.update p v r.freevars in
+          let env = Array.append e [| mkfree v |] in
+          let lhs = Array.concat (insert r (Patt(io, n, env))) in
+          { r with lhs ; freevars }
+      | _              -> assert false in
+    let combine r = if fil r then Some(transf r) else None in
+    (pos, List.filter_map combine rules)
+
   (** [nl_succeed c r] computes the rule list from [r] that verify a
       non-linearity constraint [c]. *)
   let nl_succeed : NlConstraints.cstr -> rule list -> rule list = fun c ->
