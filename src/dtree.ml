@@ -288,7 +288,8 @@ sig
   val export : cstr -> int * tvar list
 
   (** [update s v p] adds variable [v] to the constraint {e not yet
-      available} concerning [s] in pool [p]. *)
+      available} concerning [s] in pool [p].  Use it when matching a
+      {!constructor:Patt} when specialising against an abstraction. *)
   val update : Subterm.t -> tvar -> t -> t
 end
 
@@ -451,6 +452,8 @@ end
 module FvConstraints : FvConstraintSig =
 struct
   type t = { involved : (tvar list) SubtMap.t
+           ; transit : int SubtMap.t
+           (* Mark instantiation to be able to roll back *)
            ; available : (tvar list) IntMap.t }
 
   type cstr = int * tvar list
@@ -468,9 +471,10 @@ struct
 
   let pp _ _ = ()
 
-  let empty = { involved = SubtMap.empty ; available = IntMap.empty }
+  let empty = { involved = SubtMap.empty ; available = IntMap.empty
+              ; transit = SubtMap.empty }
 
-  let is_empty = (=) empty
+  let is_empty p = p.involved = empty.involved && p.available = empty.available
 
   let concerns s p = SubtMap.mem s p.involved
 
@@ -481,7 +485,8 @@ struct
   let instantiate s sl p =
     let vars = SubtMap.find s p.involved in
     { involved = SubtMap.remove s p.involved
-    ; available = IntMap.add sl vars p.available }
+    ; available = IntMap.add sl vars p.available
+    ; transit = SubtMap.add s sl p.transit }
 
   let export x = x
 
@@ -504,15 +509,18 @@ struct
         | None -> choose ps
         | Some(i, x) -> Solve((i, x), 1)
 
-  (* FIXME the None case here shouldn't exist: even not used variables ought
-     to have a slot assigned to be able to check their free variables. *)
-  let update sub var pool =
-    let prev = match SubtMap.find_opt sub pool.involved with
-      | Some(v) -> v
-      | None    -> [] in
-    let vars = var::prev in
-    { pool with involved = SubtMap.add sub vars pool.involved }
-end
+  (** The goal of [update] is to remove the instantiated constraint concerning
+      positions [sub], and put it back into {!field:involved} with the new
+      variable [var]. *)
+
+  let update sub var { involved ; transit ; available } =
+    let slot = SubtMap.find sub transit in
+    let vs = IntMap.find slot available in
+    { involved = SubtMap.add sub (var::vs) involved
+    ; transit = SubtMap.remove sub transit
+    ; available = IntMap.remove slot available }
+
+  end
 
 (** A helper type to process [choose] results uniformly. *)
 type bin_cstr = Fv of FvConstraints.cstr
@@ -738,7 +746,10 @@ struct
         let nonlin = if NlConstraints.concerns pos r.nonlin
           then NlConstraints.instantiate pos var_met r.nonlin
           else r.nonlin in
-        { r with env_builder ; nonlin }
+        let freevars = if FvConstraints.concerns pos r.freevars
+          then FvConstraints.instantiate pos var_met r.freevars
+          else r.freevars in
+        { r with env_builder ; nonlin ; freevars }
     | _                   -> r
 
   (** [spec_filter p e] returns whether a line been inspected on element [e]
@@ -938,7 +949,6 @@ let fetch : term array -> int -> (int * int) list -> action -> t =
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
   fun patterns ->
-  Format.printf "%a\n" Cm.pp patterns ;
   let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
