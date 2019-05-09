@@ -762,10 +762,8 @@ struct
     match ph, h with
     | Symb(_, _), Symb(_, _)
     | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
-    | _         , Patt(_, _, e) ->
-        if args <> [] then invalid_arg "ClauseMat.spec_filter" else
-          let b = Bindlib.bind_mvar (Array.map to_tvar e) (lift ph) in
-          Bindlib.is_closed b
+    | _         , Patt(_, _, _) ->
+        if args <> [] then invalid_arg "ClauseMat.spec_filter" else true
     | _         , _             -> false
 
   (** [spec_transform p e] transform element [e] (from a lhs) when
