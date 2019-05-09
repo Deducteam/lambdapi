@@ -16,6 +16,12 @@ type treecons =
   | TcAbst
   | TcVari of string
 
+(** [pp_treecons o c] prints tree constructor [c] to output channel [o]. *)
+let pp_treecons : treecons pp = fun oc -> function
+  | TcAbst    -> Format.fprintf oc "λ"
+  | TcVari(s) -> Format.pp_print_string oc s
+  | TcSymb(t) -> Format.fprintf oc "%s<:%d" t.c_sym t.c_ari
+
 (** [tc_compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
 let tc_compare : treecons -> treecons -> int = fun ca cb ->
