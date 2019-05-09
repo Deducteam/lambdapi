@@ -259,6 +259,10 @@ sig
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
   val of_terms : term list -> t
+
+  (** [export c] returns the data needed for evaluation from a constraint
+      [c].  The return type is to be defined by the implementations. *)
+  val export : cstr -> 'a
 end
 
 (** Non linearity constraints signature.  Defines the possible actions that a
@@ -267,20 +271,22 @@ module type NlConstraintSig =
 sig
   include BinConstraintPoolSig
 
-  (** [to_varindexes c] returns the indexes containing terms bound by a
-      constraint in the [vars] array. *)
-  val to_varindexes : cstr -> int * int
+  (** [export c] returns the two slots containing the terms that must be
+      convertible. *)
+  val export : cstr -> int * int
 end
 
 module type FvConstraintSig =
 sig
   include BinConstraintPoolSig
 
+  (** [export c] returns the slot of a term along with the free variables that
+      might appear free in it. *)
+  val export : cstr -> int * tvar list
+
   (** [update s v p] adds variable [v] to the constraint {e not yet
       available} concerning [s] in pool [p]. *)
   val update : Subterm.t -> tvar -> t -> t
-
-  val to_tvars_index : cstr -> int * tvar list
 end
 
 (** Manages non linearity constraints *)
@@ -395,7 +401,7 @@ struct
   let remove pair pool = { pool with
                            available = IntPairSet.remove pair pool.available }
 
-  let to_varindexes pair = pair
+  let export pair = pair
 
   let instantiate path i pool =
     match SubtMap.find_opt path pool.partial with
@@ -450,6 +456,8 @@ struct
                 | Instantiate of Subterm.t * int
                 | Unavailable
 
+  type eval_data = int * tvar list
+
   let pp_cstr oc (sl, vars) =
     let module F = Format in
     Format.fprintf oc "%d: {@[<h>%a@]}" sl
@@ -474,7 +482,7 @@ struct
     { involved = SubtMap.remove s p.involved
     ; available = IntMap.add sl vars p.available }
 
-  let to_tvars_index x = x
+  let export x = x
 
   let of_terms tes =
     let add po io _ e acc =
@@ -948,7 +956,7 @@ let rec compile : Cm.t -> t = fun patterns ->
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
                  compile {patterns with Cm.clauses = nclauses } in
-      let vi, vj = NlConstraints.to_varindexes constr in
+      let vi, vj = NlConstraints.export constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
   | FvConstrain(constr)                          ->
@@ -956,7 +964,7 @@ let rec compile : Cm.t -> t = fun patterns ->
         compile { patterns with Cm.clauses } in
       let fail = let clauses = Cm.fv_fail constr clauses in
         compile { patterns with Cm.clauses } in
-      let slot, vars = FvConstraints.to_tvars_index constr in
+      let slot, vars = FvConstraints.export constr in
       let condition = TcstrFreeVars(vars, slot) in
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                             ->
