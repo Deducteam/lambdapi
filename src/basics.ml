@@ -414,7 +414,10 @@ let capacity : tree -> int =
 (** {3 Tree constructor conversion} *)
 
 (** [is_treecons t] returns whether a term [t] is considered as a
-    constructor. *)
+    tree constructor.  Tree constructors are
+    - abstractions,
+    - symbols,
+    - free variables. *)
 let rec is_treecons : term -> bool = function
   | Appl(u, _)    -> is_treecons u
   | Meta(_, _)
