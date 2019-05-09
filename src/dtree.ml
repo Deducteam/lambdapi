@@ -831,25 +831,21 @@ struct
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.lhs ] in
-    let fil (r:rule) =
-      match r.lhs.(ci) with
-      | Patt(_, _, _) | Abst(_, _) -> true
-      | Symb(_, _)    | Vari(_)    -> false
-      | _                          -> assert false in
     let transf (r:rule) =
       match r.lhs.(ci) with
       | Abst(_, b)     ->
           let b = Bindlib.subst b (mkfree v) in
           let lhs = Array.concat (insert r b) in
-          { r with lhs }
+          Some({ r with lhs })
       | Patt(io, n, e) ->
           let freevars = FvConstraints.update p v r.freevars in
           let env = Array.append e [| mkfree v |] in
           let lhs = Array.concat (insert r (Patt(io, n, env))) in
-          { r with lhs ; freevars }
+          Some({ r with lhs ; freevars })
+      | Symb(_, _)
+      | Vari(_)        -> None
       | _              -> assert false in
-    let combine r = if fil r then Some(transf r) else None in
-    (pos, List.filter_map combine rules)
+    (pos, List.filter_map transf rules)
 
   (** [nl_succeed c r] computes the rule list from [r] that verify a
       non-linearity constraint [c]. *)
