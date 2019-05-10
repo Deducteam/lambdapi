@@ -686,12 +686,6 @@ struct
       | r :: rs -> if is_treecons r.lhs.(k) then true else loop rs in
     loop clauses
 
-  (** [is_exhausted r] returns whether [r] can be applied or not. *)
-  let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    Array.for_all (fun e -> not (is_treecons e)) lhs &&
-    NlConstraints.is_empty nonlin &&
-    FvConstraints.is_empty freevars
-
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
       rules [r]. *)
@@ -709,6 +703,12 @@ struct
     let sel_partial, score = pick_best_among m kept in
     let cind = kept.(sel_partial) in
     Some(cind, score)
+
+  (** [is_exhausted r] returns whether [r] can be applied or not. *)
+  let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
+    Array.for_all (fun e -> not (is_treecons e)) lhs &&
+    NlConstraints.is_empty nonlin &&
+    FvConstraints.is_empty freevars
 
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
@@ -789,58 +789,38 @@ struct
         { r with env_builder ; nonlin ; freevars }
     | _                   -> r
 
-  (** [spec_filter p e] returns whether a line been inspected on element [e]
-      (from a pattern matrix) must be kept when specializing the matrix on
-      pattern [p].
-      @raise Invalid_argument when the element [e] is ill formed. *)
-  let spec_filter : term -> term -> bool = fun pat hd ->
-    let h, args = get_args hd in
-    let ph, pargs = get_args pat in
-    match ph, h with
-    | Symb(_, _), Symb(_, _)
-    | Vari(_)   , Vari(_)       -> List.same_length args pargs && eq ph h
-    | _         , Patt(_, _, _) ->
-        if args <> [] then invalid_arg "ClauseMat.spec_filter" else true
-    | _         , _             -> false
-
-  (** [spec_transform p e] transform element [e] (from a lhs) when
-      specializing against pattern [p]. *)
-  let spec_transform : term -> term -> term array =
-    fun pat t ->
-      let h, args = Basics.get_args t in
-      match h with
-      | Symb(_, _)
-      | Vari(_)       -> Array.of_list args
-      | Patt(_, _, e) ->
-          let arity = pat |> Basics.get_args |> snd |> List.length in
-          Array.make arity (Patt(None, "", e))
-      | _             -> assert false
-
   (** [specialize p c s r] specializes the rules [r] when matching pattern [p]
       against column [c] with positions [s].  A matrix can be specialized by a
       user defined symbol.  In case an {!constructor:Appl} is given as pattern
       [p], only terms having the same number of arguments and the same
       leftmost {e non} {!constructor:Appl} term match. *)
   let specialize : term -> int -> subt_rs -> rule list ->
-    subt_rs * rule list = fun p ci pos rs ->
+    subt_rs * rule list = fun pat ci pos rs ->
     let pos =
       let l, m, r = ReductionStack.destruct pos ci in
-      let nargs = get_args p |> snd |> List.length in
+      let nargs = get_args pat |> snd |> List.length in
       let replace = Subterm.sequence ~from:(Subterm.sub m) nargs in
       ReductionStack.restruct l (List.of_seq replace) r in
-    let filtered = List.filter (fun { lhs ; _} ->
-      spec_filter p lhs.(ci)) rs in
-    let newcith = List.map (fun { lhs ; _ } -> spec_transform p lhs.(ci))
-      filtered in
-    let clauses = List.map2 (fun newcith rul ->
-      let { lhs ; _ } = rul in
-      let postfix = Array.drop (ci + 1) lhs in
-      let newline = Array.concat
-          [ Array.sub lhs 0 ci
-          ; newcith
-          ; postfix ] in
-      { rul with lhs = newline }) newcith filtered in
-    pos, clauses
+    let ph, pargs = get_args pat in
+    let insert r e = Array.concat [ Array.sub r.lhs 0 ci
+                                  ; e
+                                  ; Array.drop (ci + 1) r.lhs ] in
+    let filtrans r =
+      let insert = insert r in
+      let h, args = get_args r.lhs.(ci) in
+      match ph, h with
+      | Symb(_, _), Symb(_, _)
+      | Vari(_), Vari(_) ->
+          if List.same_length args pargs && eq ph h
+          then Some({r with lhs = insert (Array.of_list args)})
+          else None
+      | _, Patt(_, _, e) ->
+          let arity = List.length pargs in
+          let e = Array.make arity (Patt(None, "", e)) in
+          Some({ r with lhs = insert e })
+      | _, _ -> assert false in
+    let clauses = List.filter_map filtrans rs in
+    (pos, clauses)
 
   (** [default c s r] computes the default rules from [r] that remain to be
       matched in case the pattern used is not in the column [c]. [s] is the
