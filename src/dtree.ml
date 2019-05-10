@@ -812,6 +812,7 @@ struct
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with lhs = insert e })
+      | _         , Abst(_, _)    -> None
       | _         , _             -> assert false in
     (pos, List.filter_map filtrans rs)
 
