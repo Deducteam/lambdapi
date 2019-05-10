@@ -4,10 +4,8 @@ def h : (A -> A) -> (A -> A) -> A -> A.
 
 def id := x : A => x.
 
-[] h (x => id x) id --> id.
-
-[aa, ab] h aa (x => ab x) --> aa.
-
+[] h (x => id x) id --> id
+[aa, ab] h aa (x => ab x) --> aa
 [aa, ab] h (x => aa x) ab --> ab.
 
 #EVAL[SNF] h (x => x) (y => (u => u) y).
