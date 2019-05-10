@@ -756,19 +756,14 @@ struct
     let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
     telst |> List.filter_map keep_treecons |> List.sort_uniq tc_fst_cmp
 
-  (** [contains_var l] returns whether list of terms [l] contains a pattern
-      variable with a slot assigned. *)
-  let rec contains_var : term list -> bool = function
-    | []                        -> false
-    | Patt(Some(_), _, _) :: _  -> true
-    | _                   :: xs -> contains_var xs
-
-  (** [in_rhs] returns whether a list of term contains a term needed in the
-      right hand side of a rule. *)
-  let rec in_rhs : term list -> bool = function
-    | []                       -> false
-    | Patt(Some(_), _, _) :: _ -> true
-    | _ :: xs                  -> in_rhs xs
+  (** [store m c] returns whether the inspected term on column [c] of matrix
+      [m] needs to be stored during evaluation*)
+  let store : t -> int -> bool = fun cm ci ->
+    let _, pos, _ = ReductionStack.destruct cm.positions ci in
+    let st_r r =
+      FvConstraints.concerns pos r.freevars ||
+      (match r.lhs.(ci) with Patt(Some(_), _, _) -> true | _ -> false) in
+    List.exists st_r cm.clauses
 
   (** [update_aux c p v r] returns rule [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
@@ -988,10 +983,10 @@ let rec compile : Cm.t -> t =
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                             ->
       let _, pos, _ = ReductionStack.destruct positions swap in
-      let terms = Cm.get_col swap patterns in
-      let store = Cm.in_rhs terms in
+      let store = Cm.store patterns swap in
       let updated = List.map (Cm.update_aux swap pos var_met) clauses in
-      let var_met = if Cm.contains_var terms then succ var_met else var_met in
+      let var_met = if store then succ var_met else var_met in
+      let terms = Cm.get_col swap patterns in
       let cons = Cm.get_cons terms in
       (* Constructors specialisation *)
       let spepatts =
