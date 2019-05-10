@@ -226,7 +226,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     Constraints depends heavily on the {!val:vars} array used to store terms
     during evaluation as it is the only way to have access to terms matched
     while evaluating.  The term {i slot} refers to a position in this array.
-    The slot is determined via the {!field:var_met} which is incremented each
+    The slot is determined via the {!field:slot} which is incremented each
     time a {!constructor:Patt} is encountered. *)
 
 (** A general type for a pool of constraints.  Constraints are first parsed
@@ -604,9 +604,8 @@ struct
   type t =
     { clauses : rule list
     (** The rules. *)
-    ; var_met : int
-    (** Number of variables met so far; index of next slot in {!val:vars}
-        array to be used. *)
+    ; slot : int
+    (** Index of next slot to use in {!val:vars} array to store variables. *)
     ; positions : subt_rs
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
@@ -655,7 +654,7 @@ struct
       | r::_ ->
           Subterm.sequence (List.length r.lhs) |>
           ReductionStack.of_seq in
-    { clauses = List.map r2r rs ; var_met = 0 ; positions }
+    { clauses = List.map r2r rs ; slot = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
@@ -770,16 +769,16 @@ struct
       column [c] having argument at position [p] and having met [v] vars until
       now. *)
   let update_aux : int -> Subterm.t -> int -> rule -> rule =
-    fun ci pos var_met r ->
+    fun ci pos slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(Some(i), _, _) ->
-        let env_builder = (var_met, i) :: r.env_builder in
+        let env_builder = (slot, i) :: r.env_builder in
         let nonlin = if NlConstraints.concerns pos r.nonlin
-          then NlConstraints.instantiate pos var_met r.nonlin
+          then NlConstraints.instantiate pos slot r.nonlin
           else r.nonlin in
         let freevars = if FvConstraints.concerns pos r.freevars
-          then FvConstraints.instantiate pos var_met r.freevars
+          then FvConstraints.instantiate pos slot r.freevars
           else r.freevars in
         { r with env_builder ; nonlin ; freevars }
     | _                   -> r
@@ -917,7 +916,7 @@ module Cm = ClauseMat
     [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
     are useless for the rule that is applied, as terms might have been saved
     because needed by another rule which is not the one applied.  The
-    {!field:var_met} keeps track of how many variables have been encountered
+    {!field:slot} keeps track of how many variables have been encountered
     so far and thus indicates the index in [vars] that will be used by the
     next variable. *)
 
@@ -960,11 +959,11 @@ let fetch : term array -> int -> (int * int) list -> action -> t =
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
   fun patterns ->
-  let { Cm.clauses ; Cm.var_met ; Cm.positions } = patterns in
+  let { Cm.clauses ; Cm.slot ; Cm.positions } = patterns in
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
   | Yield({ Cm.rhs ; Cm.lhs ; env_builder ; _ }) ->
-      fetch lhs var_met env_builder rhs
+      fetch lhs slot env_builder rhs
   | NlConstrain(constr)                          ->
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
@@ -984,24 +983,23 @@ let rec compile : Cm.t -> t =
   | Specialise(swap)                             ->
       let _, pos, _ = ReductionStack.destruct positions swap in
       let store = Cm.store patterns swap in
-      let updated = List.map (Cm.update_aux swap pos var_met) clauses in
-      let var_met = if store then succ var_met else var_met in
-      let terms = Cm.get_col swap patterns in
-      let cons = Cm.get_cons terms in
+      let updated = List.map (Cm.update_aux swap pos slot) clauses in
+      let slot = if store then succ slot else slot in
+      let cons = Cm.get_col swap patterns |> Cm.get_cons in
       (* Constructors specialisation *)
       let spepatts =
         let f acc (tr_cons, te_cons) =
           if tr_cons = TcAbst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
-          let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
+          let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
           TcMap.add tr_cons ncm acc in
         List.fold_left f TcMap.empty cons in
       let children = TcMap.map compile spepatts in
       (* Default child *)
       let default =
         let positions, clauses = Cm.default swap positions updated in
-        let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
+        let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
         if Cm.is_empty ncm then None else Some(compile ncm) in
       (* Abstraction specialisation*)
       let abstraction =
@@ -1009,6 +1007,6 @@ let rec compile : Cm.t -> t =
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, clauses = Cm.abstract swap var positions updated in
-        let ncm = { Cm.clauses ; Cm.var_met ; Cm.positions } in
+        let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
         Some(var, compile ncm) in
       Node({ swap ; store ; children ; abstraction ; default })
