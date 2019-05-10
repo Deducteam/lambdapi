@@ -810,17 +810,16 @@ struct
       let h, args = get_args r.lhs.(ci) in
       match ph, h with
       | Symb(_, _), Symb(_, _)
-      | Vari(_), Vari(_) ->
+      | Vari(_)   , Vari(_)       ->
           if List.same_length args pargs && eq ph h
           then Some({r with lhs = insert (Array.of_list args)})
           else None
-      | _, Patt(_, _, e) ->
+      | _         , Patt(_, _, e) ->
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", e)) in
           Some({ r with lhs = insert e })
-      | _, _ -> assert false in
-    let clauses = List.filter_map filtrans rs in
-    (pos, clauses)
+      | _         , _             -> assert false in
+    (pos, List.filter_map filtrans rs)
 
   (** [default c s r] computes the default rules from [r] that remain to be
       matched in case the pattern used is not in the column [c]. [s] is the
@@ -832,11 +831,13 @@ struct
       ReductionStack.restruct l [] r in
     let transf r =
       match r.lhs.(ci) with
-      | Patt(_, _, _) ->
-          let lhs = Array.append (Array.sub r.lhs 0 ci)
+      | Patt(_, _, _)           ->
+          let lhs = Array.append
+              (Array.sub r.lhs 0 ci)
               (Array.drop (ci + 1) r.lhs) in
           Some({ r with lhs })
-      | Symb(_, _) | Abst(_, _) | Vari(_) | Appl(_, _) -> None
+      | Symb(_, _) | Abst(_, _)
+      | Vari(_)    | Appl(_, _) -> None
       | _ -> assert false in
     (pos, List.filter_map transf rs)
 
