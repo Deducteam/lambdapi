@@ -808,9 +808,9 @@ struct
           if List.same_length args pargs && eq ph h
           then Some({r with lhs = insert (Array.of_list args)})
           else None
-      | _         , Patt(_, _, e) ->
+      | _         , Patt(_, _, _) ->
           let arity = List.length pargs in
-          let e = Array.make arity (Patt(None, "", e)) in
+          let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with lhs = insert e })
       | _         , _             -> assert false in
     (pos, List.filter_map filtrans rs)
