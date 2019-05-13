@@ -196,13 +196,15 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount in
   begin match tree with
   (* First step must be done to avoid drawing a top node. *)
-  | Node({ swap ; children = ch ; store ; default ; _ }) ->
+  | Node({ swap ; store ; children ;
+           default ; abstraction }) ->
       F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
         swap (if store then " shape=\"box\"" else "") ;
-      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) ch ;
-      (match default with None -> () | Some(tr) -> write_tree 0 DotDefa tr)
-  | Leaf(_)                                          -> ()
-  | _                                                -> assert false
+      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children ;
+      Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction ;
+      Option.iter (fun t -> write_tree 0 DotDefa t) default
+  | Leaf(_)                         -> ()
+  | _                               -> assert false
   end ;
   F.fprintf ppf "@.}@\n@?" ;
   close_out ochan
@@ -854,10 +856,9 @@ struct
           let lhs = Array.concat (insert r b) in
           Some({ r with lhs })
       | Patt(io, n, e) ->
-          let freevars = FvConstraints.update p v r.freevars in
           let env = Array.append e [| mkfree v |] in
           let lhs = Array.concat (insert r (Patt(io, n, env))) in
-          Some({ r with lhs ; freevars })
+          Some({ r with lhs })
       | Symb(_, _)
       | Vari(_)        -> None
       | _              -> assert false in
