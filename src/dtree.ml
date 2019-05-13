@@ -155,8 +155,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotCons(TcVari(s)) -> F.fprintf oc "%s" s
     | DotCons(TcAbst)    -> assert false in
   let pp_tcstr : tree_constraint pp = fun oc -> function
-    | TcstrEq(i, j)    -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
-    | TcstrFreeVars(_) -> raise Not_implemented in
+    | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
+    | TcstrFreeVars(vs, i) ->
+        F.fprintf oc "%a@@%d" (F.pp_print_list P.pp_tvar) vs i in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon ->
