@@ -350,7 +350,6 @@ let fold_vars : term list ->
     | [] -> init
     | x :: xs ->
         begin match x with
-        | Patt(None, _, _)
         | Vari(_)
         | Symb(_, _)    -> loop xs (Subterm.succ po)
         | Patt(i, s, e) -> add po i s e (loop xs (Subterm.succ po))
