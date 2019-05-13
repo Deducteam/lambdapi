@@ -286,24 +286,36 @@ and eq_modulo : term -> term -> bool = fun a b ->
 (** [branch t c d]returns the subtree in children [c] resulting from matching
     on term [t].  If no tree is found in [c], [d] is returned.  The new
     elements to be put in the stack are returned along the tree. *)
-and branch : term -> tree TcMap.t -> tree option -> tree option * term list =
-  fun examined children default ->
+and branch : term -> tree TcMap.t -> (tvar * tree) option -> tree option ->
+  tree option * term list =
+  fun examined children abstraction default ->
     if !log_enabled then log_eval "branching on [%a]" pp examined ;
     (* [choose t] chooses a tree among {!val:children} when term [t] is
        examined and returns the new head of stack. *)
     let choose t =
       let r_ex = tref_val examined in
       let h, args = get_args t in
+      let args = List.map ensure_tref args in
+      r_ex := Some(add_args h args) ;
       match h with
       | Symb(s, _)  ->
-          let args = List.map ensure_tref args in
           let c_ari = List.length args in
-          r_ex := Some(add_args h args) ;
           let cons = TcSymb({ c_sym = s.sym_name ; c_mod = s.sym_path
                             ; c_ari}) in
           let matched = TcMap.find_opt cons children in
           if matched = None then (default, []) else (matched, args)
-      | _           -> raise Dtree.Not_implemented in
+      | Vari(x)     ->
+          let cons = TcVari(Bindlib.name_of x) in
+          let matched = TcMap.find_opt cons children in
+          if matched = None then (default, []) else (matched, args)
+      | Abst(_, b)  ->
+          begin match abstraction with
+          | None         -> (default, [])
+          | Some(fv, tr) ->
+              let bound = Bindlib.subst b (mkfree fv) in
+              (Some(tr), ensure_tref bound::args)
+          end
+      | _           -> assert false in
     let r = if TcMap.is_empty children then (default, [])
       else choose (whnf_tree examined) in
     if !log_enabled
@@ -350,12 +362,13 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               then walk ok stk cursor
               else walk fail stk cursor
           end
-      | Node({swap; children; store; default; _})         ->
+      | Node({swap; children; store; abstraction; default })         ->
           begin
             try
               let left, examined, right = R.destruct stk swap in
               let cursor = fill_vars store examined cursor in
-              let matched, args = branch examined children default in
+              let matched, args = branch examined children
+                  abstraction default in
               let next child =
                 let stk = R.restruct left args right in
                 walk child stk cursor in
