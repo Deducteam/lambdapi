@@ -549,12 +549,20 @@ struct
     let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtMap.empty in
     { empty with involved }
 
-  let rec choose = function
+  let rec choose = fun cs ->
+    let r = match cs with
     | []      -> Unavailable
     | p :: ps ->
-        match IntMap.choose_opt p.available with
-        | None -> choose ps
-        | Some(i, x) -> Solve((i, x), 1)
+    match IntMap.choose_opt p.available with
+    | None       -> choose ps
+    | Some(i, x) -> Solve((i, x), 1) in
+    if r <> Unavailable then r else
+    match cs with
+    | []    -> Unavailable
+    | p::ps ->
+    match SubtMap.choose_opt p.involved with
+    | None         -> choose ps
+    | Some(sub, _) -> Instantiate(sub, 1)
 
 end
 
@@ -721,6 +729,8 @@ struct
           | NlConstraints.Instantiate(s, i) -> (Instantiate(s), i)
           | NlConstraints.Unavailable       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
+        List.iter (fun r -> FvConstraints.pp Format.std_formatter r.freevars)
+          m.clauses ;
         let rfv = match FvConstraints.choose fvcstrs with
           | FvConstraints.Solve(c, i)       -> (Fv(c), i)
           | FvConstraints.Instantiate(s, i) -> (Instantiate(s), i)
