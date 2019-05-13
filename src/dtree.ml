@@ -729,8 +729,6 @@ struct
           | NlConstraints.Instantiate(s, i) -> (Instantiate(s), i)
           | NlConstraints.Unavailable       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
-        List.iter (fun r -> FvConstraints.pp Format.std_formatter r.freevars)
-          m.clauses ;
         let rfv = match FvConstraints.choose fvcstrs with
           | FvConstraints.Solve(c, i)       -> (Fv(c), i)
           | FvConstraints.Instantiate(s, i) -> (Instantiate(s), i)
@@ -781,14 +779,17 @@ struct
     fun ci pos slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
-    | Patt(Some(i), _, _) ->
-        let env_builder = (slot, i) :: r.env_builder in
-        let nonlin = if NlConstraints.concerns pos r.nonlin
-          then NlConstraints.instantiate pos slot r.nonlin
-          else r.nonlin in
+    | Patt(i, _, _) ->
         let freevars = if FvConstraints.concerns pos r.freevars
           then FvConstraints.instantiate pos slot r.freevars
           else r.freevars in
+        let nonlin = if NlConstraints.concerns pos r.nonlin
+          then NlConstraints.instantiate pos slot r.nonlin
+          else r.nonlin in
+        let env_builder =
+          match i with
+          | Some(i) -> (slot, i) :: r.env_builder
+          | None    -> r.env_builder in
         { r with env_builder ; nonlin ; freevars }
     | _                   -> r
 
