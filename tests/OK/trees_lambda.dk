@@ -9,3 +9,8 @@ def id := x : A => x.
 [aa, ab] h (x => aa x) ab --> ab.
 
 #EVAL[SNF] h (x => x) (y => (u => u) y).
+
+a : A.
+def g : (A -> A) -> A.
+
+[f] g (x => f x) --> a.
