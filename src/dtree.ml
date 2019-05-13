@@ -485,8 +485,6 @@ end
 module FvConstraints : FvConstraintSig =
 struct
   type t = { involved : (tvar list) SubtMap.t
-           ; transit : int SubtMap.t
-           (* Mark instantiation to be able to roll back *)
            ; available : (tvar list) IntMap.t }
 
   type cstr = int * tvar list
@@ -504,8 +502,7 @@ struct
 
   let pp _ _ = ()
 
-  let empty = { involved = SubtMap.empty ; available = IntMap.empty
-              ; transit = SubtMap.empty }
+  let empty = { involved = SubtMap.empty ; available = IntMap.empty }
 
   let is_empty p = p.involved = empty.involved && p.available = empty.available
 
@@ -518,8 +515,7 @@ struct
   let instantiate s sl p =
     let vars = SubtMap.find s p.involved in
     { involved = SubtMap.remove s p.involved
-    ; available = IntMap.add sl vars p.available
-    ; transit = SubtMap.add s sl p.transit }
+    ; available = IntMap.add sl vars p.available }
 
   let export x = x
 
