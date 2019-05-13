@@ -368,36 +368,40 @@ struct
   let pp oc pool =
     let module F = Format in
     let pp_subtset oc ss =
-      F.fprintf oc "@[<h>{" ;
-      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
-        Subterm.pp oc (SubtSet.elements ss) ;
-      F.fprintf oc "}@]" in
+      F.fprintf oc "@[{%a}@]"
+        (F.pp_print_list
+           ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
+           Subterm.pp)
+        (SubtSet.elements ss) in
     let pp_int_subtset oc (i, ss) =
-      F.fprintf oc "@[<h>(%d, %a)@]" i pp_subtset ss in
+      F.fprintf oc "@[(%d, %a)@]" i pp_subtset ss in
     let pp_groups oc pgroups =
-      F.pp_print_string oc "groups:" ;
-      F.fprintf oc "@[<v 2>" ;
-      F.pp_print_list ~pp_sep:(F.pp_print_cut) pp_int_subtset oc
-        pgroups ;
-      F.pp_close_box oc () in
+      F.fprintf oc "@[groups: @[<v 2>%a@]@]"
+        (F.pp_print_list
+           ~pp_sep:(F.pp_print_cut)
+           pp_int_subtset)
+        pgroups in
     let pp_subterm_int oc (st, i) =
-      F.fprintf oc "@[<h>(%a, %d)@]" Subterm.pp st i in
+      F.fprintf oc "@[(%a, %d)@]" Subterm.pp st i in
     let pp_partial oc ism =
-      F.fprintf oc "partial: @[<h>" ;
-      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
-        pp_subterm_int oc (SubtMap.bindings ism) ;
-      F.pp_close_box oc () in
-    let pp_int_int oc (i, j) = F.fprintf oc "@[<h>(%d, %d)@]" i j in
+      F.fprintf oc "@[partial: %a@]"
+        (F.pp_print_list
+           ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
+           pp_subterm_int)
+        (SubtMap.bindings ism) in
+    let pp_int_int oc (i, j) = F.fprintf oc "@[(%d, %d)@]" i j in
     let pp_available oc ips =
-      F.fprintf oc "available: @[<h>" ;
-      F.pp_print_list ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
-        pp_int_int oc (IntPairSet.elements ips) ;
-      F.pp_close_box oc () in
-    F.fprintf oc "{@[<v>@," ;
-    F.fprintf oc "@[<h>%a@]@," pp_groups pool.groups ;
-    F.fprintf oc "@[<h>%a@]@," pp_partial pool.partial ;
-    F.fprintf oc "@[<h>%a@]" pp_available pool.available ;
-    F.fprintf oc "@.@]}"
+      F.fprintf oc "@[available: %a@]"
+        (F.pp_print_list
+           ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
+           pp_int_int)
+        (IntPairSet.elements ips) in
+    F.fprintf oc "Nl constraints:@," ;
+    F.fprintf oc "@[<v>" ;
+    F.fprintf oc "%a@," pp_groups pool.groups ;
+    F.fprintf oc "%a@," pp_partial pool.partial ;
+    F.fprintf oc "%a@," pp_available pool.available ;
+    F.fprintf oc "@]"
 
   let empty = { concerned = SubtSet.empty
               ; groups = []
