@@ -315,6 +315,7 @@ and branch : term -> tree TcMap.t -> (tvar * tree) option -> tree option ->
               let bound = Bindlib.subst b (mkfree fv) in
               (Some(tr), ensure_tref bound::args)
           end
+      | Meta(_, _)  -> (default, [])
       | _           -> assert false in
     let r = if TcMap.is_empty children then (default, [])
       else choose (whnf_tree examined) in
