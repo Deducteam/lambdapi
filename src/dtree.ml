@@ -537,13 +537,10 @@ struct
   let export x = x
 
   let of_terms tes =
-    let add po io _ e acc =
+    let add po _ _ e acc =
       if e = [||] then acc else
-      match io with
-      | None    -> acc
-      | Some(_) ->
-          let vars = Array.to_seq e |> Seq.map to_tvar |> List.of_seq in
-          SubtMap.add po vars acc in
+      let vars = Array.to_seq e |> Seq.map to_tvar |> List.of_seq in
+      SubtMap.add po vars acc in
     let merge = SubtMap.union (fun _ _ _ -> assert false) in
     let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtMap.empty in
     { empty with involved }
