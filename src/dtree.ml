@@ -325,12 +325,6 @@ sig
       might appear free in it. *)
   val export : cstr -> int * tvar list
 
-  (** [update s v p] removes the instantiated constraint related to position
-      [s] fomr pool [p] to put it back into available constraints at position
-      [Subterm.sub s] and adding variable [v] to the list of free
-      variables.  This function is used when specialising against an
-      abstraction on a {!constructor:Patt}. *)
-  val update : Subterm.t -> tvar -> t -> t
 end
 
 module NlConstraints : NlConstraintSig =
@@ -548,18 +542,7 @@ struct
         | None -> choose ps
         | Some(i, x) -> Solve((i, x), 1)
 
-  (* The goal of [update] is to remove the instantiated constraint concerning
-     positions [sub], and put it back into {!field:involved} with the new
-     variable [var]. *)
-
-  let update sub var { involved ; transit ; available } =
-    let slot = SubtMap.find sub transit in
-    let vs = IntMap.find slot available in
-    { involved = SubtMap.add sub (var::vs) involved
-    ; transit = SubtMap.remove sub transit
-    ; available = IntMap.remove slot available }
-
-  end
+end
 
 (** A helper type to process [choose] results uniformly. *)
 type bin_cstr = Fv of FvConstraints.cstr
