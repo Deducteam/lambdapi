@@ -500,7 +500,24 @@ struct
          ~pp_sep:(fun oc () -> Format.pp_print_string oc "; ") Print.pp_tvar)
       vars
 
-  let pp _ _ = ()
+  let pp oc { available ; involved } =
+    let module F = Format in
+    let pp_tvs : tvar list pp = F.pp_print_list
+        ~pp_sep:(fun oc () -> F.fprintf oc "; ")
+        Print.pp_tvar in
+    let ppst : (Subterm.t * tvar list) pp = fun oc (a, b) ->
+      F.fprintf oc "@[(%a, %a)@]" Subterm.pp a pp_tvs b in
+    let ppit : (int * tvar list) pp = fun oc (a, b) ->
+      F.fprintf oc "@[(%d, %a)@]" a pp_tvs b in
+    F.fprintf oc "Fv constraints:@," ;
+    F.fprintf oc "@[<v>" ;
+    F.fprintf oc "@[involved: %a@]@,"
+      (F.pp_print_list ppst)
+      (SubtMap.bindings involved) ;
+    F.fprintf oc "@[available: %a@]@,"
+      (F.pp_print_list ppit)
+      (IntMap.bindings available) ;
+    F.fprintf oc "@]@."
 
   let empty = { involved = SubtMap.empty ; available = IntMap.empty }
 
