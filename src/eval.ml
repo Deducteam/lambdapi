@@ -338,8 +338,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
      as the environment of the RHS during matching. *)
     let rec walk tree stk cursor =
       match tree with
-      | Fail                                             -> None
-      | Leaf(env_builder, act)                           ->
+      | Fail                                                -> None
+      | Leaf(env_builder, act)                              ->
           (* Allocate an environment for the action. *)
           let env = Array.make (Bindlib.mbinder_arity act) TE_None in
           (* Retrieve terms needed in the action from the [vars] array. *)
@@ -351,19 +351,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
       | Condition({ ok ; condition ; fail }) ->
-          begin match condition with
-          | TcstrEq(i, j)        ->
-              if eq_modulo vars.(i) vars.(j)
-              then walk ok stk cursor
-              else walk fail stk cursor
-          | TcstrFreeVars(xs, i) ->
-              let b = lift vars.(i) in
-              let bound = Bindlib.bind_mvar (Array.of_list xs) b in
-              if Bindlib.is_closed bound
-              then walk ok stk cursor
-              else walk fail stk cursor
-          end
-      | Node({swap; children; store; abstraction; default })         ->
+          let next = match condition with
+            | TcstrEq(i, j)        ->
+                if eq_modulo vars.(i) vars.(j) then ok else fail
+            | TcstrFreeVars(xs, i) ->
+                let b = lift vars.(i) in
+                let bound = Bindlib.bind_mvar (Array.of_list xs) b in
+                if Bindlib.is_closed bound then ok else fail in
+          walk next stk cursor
+      | Node({swap; children; store; abstraction; default}) ->
           begin
             try
               let left, examined, right = R.destruct stk swap in
