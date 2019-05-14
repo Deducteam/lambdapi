@@ -865,8 +865,7 @@ struct
           let lhs = Array.concat (insert r b) in
           Some({ r with lhs })
       | Patt(io, n, e) ->
-          let env = Array.append e [| mkfree v |] in
-          let lhs = Array.concat (insert r (Patt(io, n, env))) in
+          let lhs = Array.concat (insert r (Patt(io, n, e))) in
           Some({ r with lhs })
       | Symb(_, _)
       | Vari(_)        -> None
