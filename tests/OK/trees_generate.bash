@@ -5,9 +5,11 @@
 # + autogen_many_args.lp
 
 # Boilerplate code
-natural_prelude="require open nat
+natural_prelude="require open tests.OK.nat
 "
-rm 'autogen'*
+if [[ -e 'autogen'* ]]; then
+    rm 'autogen'*
+fi
 
 ## Many rules on one symbol
 ## Create a function defined on each integer and compute the sum
@@ -16,7 +18,7 @@ fname="autogen_many_symb.lp"
 touch "$fname"
 echo "$natural_prelude" >> "$fname"
 
-echo "symbol f : Nat ⇒ Nat" >> "$fname"
+echo "symbol f : N ⇒ N" >> "$fname"
 # Define rules: if n pair, f n → n /2 else f n → 0
 echo "rule f 0 → 0" >> "$fname"
 for i in $(seq 1 $nrules) ; do
@@ -28,8 +30,8 @@ for i in $(seq 1 $nrules) ; do
     fi
 done
 # Define function summing values of f
-sum_of_effs="symbol sof : Nat ⇒ Nat
-rule sof (S &n) → plus (f (S &n)) (sof &n)"
+sum_of_effs="symbol sof : N ⇒ N
+rule sof (s &n) → (f (s &n)) + (sof &n)"
 echo "$sum_of_effs" >> "$fname"
 
 # Computation
@@ -48,15 +50,15 @@ echo "$natural_prelude" >> "$fname"
 funtype=""
 nargs=400
 for i in {1..nargs}; do
-    funtype="Nat ⇒ $funtype"
+    funtype="N ⇒ $funtype"
 done
-funtype+="Nat"
+funtype+="N"
 
 funtype=""
 for i in $(seq 0 $nargs); do
-    funtype+="Nat ⇒ "
+    funtype+="N ⇒ "
 done
-funtype+="Nat"
+funtype+="N"
 echo "symbol f : $funtype" >> "$fname"
 # [all_except_one i] returns a line of zeros with [i] at the [i]th
 # position
