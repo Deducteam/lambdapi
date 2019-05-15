@@ -283,15 +283,16 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
-  (** [instantiate p i q] instantiates path [p] in pool [q] using index [i],
+  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
       that is, mark a path as {i seen} in the constraints.  Typically, if a
       constraint involves only one variable, then instantiating a variable is
       equivalent to instantiating a constraint.  However, if a constraint
       involves several variables, then instantiating a variable will promote
       the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.
+      completely instantiated when all the variables are instantiated.  The
+      [d] is some additional data needed.
       @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> t -> t
+  val instantiate : Subterm.t -> int -> 'a -> t -> t
 
   (** [choose p] returns the best action to perform considering a list of
       constraints [p]. *)
@@ -314,6 +315,8 @@ sig
   (** [export c] returns the two slots containing the terms that must be
       convertible. *)
   val export : cstr -> int * int
+
+  val instantiate : Subterm.t -> int -> unit -> t -> t
 end
 
 (** Free variables constraints.  Such a constraint involves only one variable,
@@ -326,7 +329,7 @@ sig
       might appear free in it. *)
   val export : cstr -> int * tvar list
 
-  val instantiate' : Subterm.t -> int -> tvar list -> t -> t
+  val instantiate : Subterm.t -> int -> tvar list -> t -> t
 
 end
 
@@ -447,7 +450,7 @@ struct
 
   let export pair = pair
 
-  let instantiate path i pool =
+  let instantiate path i () pool =
     match SubtMap.find_opt path pool.partial with
     | Some(j) ->
         let npartial = SubtMap.remove path pool.partial in
@@ -534,9 +537,7 @@ struct
 
   let remove (sl, _) p = { p with available = IntMap.remove sl p.available }
 
-  let instantiate _ _ _ = assert false
-
-  let instantiate' path slot vars pool =
+  let instantiate path slot vars pool =
     { involved = SubtSet.remove path pool.involved
     ; available = IntMap.add slot vars pool.available }
 
@@ -782,12 +783,12 @@ struct
     match fst (get_args t) with
     | Patt(i, _, e) ->
         let freevars = if FvConstraints.concerns pos r.freevars
-          then FvConstraints.instantiate' pos slot
+          then FvConstraints.instantiate pos slot
               (Array.to_seq e |> Seq.map to_tvar |> List.of_seq)
               r.freevars
           else r.freevars in
         let nonlin = if NlConstraints.concerns pos r.nonlin
-          then NlConstraints.instantiate pos slot r.nonlin
+          then NlConstraints.instantiate pos slot () r.nonlin
           else r.nonlin in
         let env_builder =
           match i with
