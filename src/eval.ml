@@ -283,12 +283,13 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [branch t c d]returns the subtree in children [c] resulting from matching
-    on term [t].  If no tree is found in [c], [d] is returned.  The new
-    elements to be put in the stack are returned along the tree. *)
-and branch : term -> tree TcMap.t -> (tvar * tree) option -> tree option ->
-  tree option * term list =
-  fun examined children abstraction default ->
+(** [branch t s c d]returns the subtree in children [c] resulting from
+    matching on term [t].  If no tree is found in [c], [d] is returned.  The
+    new elements to be put in the stack are returned along the tree. [s] is
+    the stamp used to mark variables. *)
+and branch : term -> int -> tree TcMap.t -> (tvar * tree) option ->
+  tree option -> tree option * term list =
+  fun examined stamp children abstraction default ->
     if !log_enabled then log_eval "branching on [%a]" pp examined ;
     (* [choose t] chooses a tree among {!val:children} when term [t] is
        examined and returns the new head of stack. *)
@@ -312,6 +313,7 @@ and branch : term -> tree TcMap.t -> (tvar * tree) option -> tree option ->
           begin match abstraction with
           | None         -> (default, [])
           | Some(fv, tr) ->
+              let fv = stamp_tvar stamp fv in
               let bound = Bindlib.subst b (mkfree fv) in
               (Some(tr), ensure_tref bound::args)
           end
@@ -327,7 +329,9 @@ and branch : term -> tree TcMap.t -> (tvar * tree) option -> tree option ->
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
+  let stamp = ref 0 in
   fun tree capa stk ->
+    incr stamp ;
     let vars = Array.make capa Kind in (* dummy terms *)
     let fill_vars store t slot =
       if store then (vars.(slot) <- t ; succ slot) else slot in
@@ -356,7 +360,9 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 if eq_modulo vars.(i) vars.(j) then ok else fail
             | TcstrFreeVars(xs, i) ->
                 let b = lift vars.(i) in
-                let bound = Bindlib.bind_mvar (Array.of_list xs) b in
+                let vars = List.to_seq xs |> Seq.map (stamp_tvar !stamp) |>
+                           Array.of_seq in
+                let bound = Bindlib.bind_mvar vars b in
                 if Bindlib.is_closed bound then ok else fail in
           walk next stk cursor
       | Node({swap; children; store; abstraction; default}) ->
@@ -364,7 +370,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             try
               let left, examined, right = R.destruct stk swap in
               let cursor = fill_vars store examined cursor in
-              let matched, args = branch examined children
+              let matched, args = branch examined !stamp children
                   abstraction default in
               let next child =
                 let stk = R.restruct left args right in
