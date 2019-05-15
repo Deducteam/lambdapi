@@ -322,7 +322,8 @@ and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
           end
       | Meta(_, _)  -> (default, [], to_stamped)
       | _           -> assert false in
-    let r = if TcMap.is_empty children then (default, [], to_stamped)
+    let r = if TcMap.is_empty children && abstraction = None
+      then (default, [], to_stamped)
       else choose (whnf_tree examined) in
     if !log_enabled
     then log_eval (r_or_g (r != (default, [], to_stamped)) "branching on [%a]")
@@ -337,7 +338,11 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
     incr stamp ;
     let vars = Array.make capa Kind in (* dummy terms *)
     let fill_vars store t slot =
-      if store then (vars.(slot) <- t ; succ slot) else slot in
+      if store
+      then (if !log_enabled then log_eval "storing [%a]" pp t ;
+            vars.(slot) <- t ;
+            succ slot)
+      else slot in
     let module R = Dtree.ReductionStack in
     let stk = R.of_list stk in
   (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
