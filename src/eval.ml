@@ -332,7 +332,7 @@ and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
-  let stamp = ref 0 in
+  let stamp = ref 1 in (* Start at 1 as Bindlib considers 00 to be 0 *)
   fun tree capa stk ->
     incr stamp ;
     let vars = Array.make capa Kind in (* dummy terms *)
