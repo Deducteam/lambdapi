@@ -326,6 +326,8 @@ sig
       might appear free in it. *)
   val export : cstr -> int * tvar list
 
+  val instantiate' : Subterm.t -> int -> tvar list -> t -> t
+
 end
 
 module NlConstraints : NlConstraintSig =
@@ -489,7 +491,7 @@ end
 
 module FvConstraints : FvConstraintSig =
 struct
-  type t = { involved : (tvar list) SubtMap.t
+  type t = { involved : SubtSet.t
            ; available : (tvar list) IntMap.t }
 
   type cstr = int * tvar list
@@ -510,44 +512,42 @@ struct
     let pp_tvs : tvar list pp = F.pp_print_list
         ~pp_sep:(fun oc () -> F.fprintf oc "; ")
         Print.pp_tvar in
-    let ppst : (Subterm.t * tvar list) pp = fun oc (a, b) ->
-      F.fprintf oc "@[(%a, %a)@]" Subterm.pp a pp_tvs b in
     let ppit : (int * tvar list) pp = fun oc (a, b) ->
       F.fprintf oc "@[(%d, %a)@]" a pp_tvs b in
     F.fprintf oc "Fv constraints:@," ;
     F.fprintf oc "@[<v>" ;
     F.fprintf oc "@[involved: %a@]@,"
-      (F.pp_print_list ppst)
-      (SubtMap.bindings involved) ;
+      (F.pp_print_list ~pp_sep:(F.pp_print_space) Subterm.pp)
+      (SubtSet.to_seq involved |> List.of_seq) ;
     F.fprintf oc "@[available: %a@]@,"
       (F.pp_print_list ppit)
       (IntMap.bindings available) ;
     F.fprintf oc "@]@."
 
-  let empty = { involved = SubtMap.empty ; available = IntMap.empty }
+  let empty = { involved = SubtSet.empty ; available = IntMap.empty }
 
   let is_empty p = p.involved = empty.involved && p.available = empty.available
 
-  let concerns s p = SubtMap.mem s p.involved
+  let concerns s p = SubtSet.mem s p.involved
 
   let is_instantiated (sl, _) p = IntMap.mem sl p.available
 
   let remove (sl, _) p = { p with available = IntMap.remove sl p.available }
 
-  let instantiate s sl p =
-    let vars = SubtMap.find s p.involved in
-    { involved = SubtMap.remove s p.involved
-    ; available = IntMap.add sl vars p.available }
+  let instantiate _ _ _ = assert false
+
+  let instantiate' path slot vars pool =
+    { involved = SubtSet.remove path pool.involved
+    ; available = IntMap.add slot vars pool.available }
 
   let export x = x
 
   let of_terms tes =
     let add po _ _ e acc =
       if e = [||] then acc else
-      let vars = Array.to_seq e |> Seq.map to_tvar |> List.of_seq in
-      SubtMap.add po vars acc in
-    let merge = SubtMap.union (fun _ _ _ -> assert false) in
-    let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtMap.empty in
+      SubtSet.add po acc in
+    let merge = SubtSet.union in
+    let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtSet.empty in
     { empty with involved }
 
   let rec choose = fun cs ->
@@ -561,9 +561,9 @@ struct
     match cs with
     | []    -> Unavailable
     | p::ps ->
-    match SubtMap.choose_opt p.involved with
-    | None         -> choose ps
-    | Some(sub, _) -> Instantiate(sub, 1)
+    match SubtSet.choose_opt p.involved with
+    | None      -> choose ps
+    | Some(sub) -> Instantiate(sub, 1)
 
 end
 
@@ -780,9 +780,11 @@ struct
     fun ci pos slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
-    | Patt(i, _, _) ->
+    | Patt(i, _, e) ->
         let freevars = if FvConstraints.concerns pos r.freevars
-          then FvConstraints.instantiate pos slot r.freevars
+          then FvConstraints.instantiate' pos slot
+              (Array.to_seq e |> Seq.map to_tvar |> List.of_seq)
+              r.freevars
           else r.freevars in
         let nonlin = if NlConstraints.concerns pos r.nonlin
           then NlConstraints.instantiate pos slot r.nonlin
