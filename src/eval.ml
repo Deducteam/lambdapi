@@ -54,6 +54,8 @@ type stack_elt = (bool * term) Pervasives.ref
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = stack_elt list
 
+type storage = (term * (term, term) Bindlib.mbinder)
+
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
@@ -337,6 +339,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
     incr stamp ;
     let vars = Array.make capa Kind in (* dummy terms *)
+    let vars_b = Array.make capa None in
     let fill_vars store t slot =
       if store
       then (if !log_enabled then log_eval "storing [%a]" pp t ;
@@ -357,8 +360,12 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           (* Retrieve terms needed in the action from the [vars] array. *)
           let fn (pos, slot) =
             let t = unfold vars.(pos) in
-            let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-            env.(slot) <- TE_Some(b) in
+            if vars_b.(pos) = None
+            then let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+              env.(slot) <- TE_Some(b)
+            else let b = match vars_b.(pos)
+                   with Some(x) -> x | None -> assert false in
+              env.(slot) <- TE_Some(b) in
           List.iter fn env_builder;
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
@@ -372,7 +379,9 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                            Seq.map (fun e -> VarMap.find e to_stamped) |>
                            Array.of_seq in
                 let bound = Bindlib.bind_mvar vars b in
-                if Bindlib.is_closed bound then ok else fail in
+                if Bindlib.is_closed bound
+                then (vars_b.(i) <- Some(Bindlib.unbox bound) ; ok)
+                else fail in
           walk next stk cursor to_stamped
       | Node({swap; children; store; abstraction; default}) ->
           begin
