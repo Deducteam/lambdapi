@@ -533,9 +533,19 @@ struct
 
   let concerns s p = SubtSet.mem s p.involved
 
-  let is_instantiated (sl, _) p = IntMap.mem sl p.available
+  let is_instantiated (sl, x) p =
+    match IntMap.find_opt sl p.available with
+    | None     -> false
+    | Some(x') -> List.equal Bindlib.eq_vars x x'
 
-  let remove (sl, _) p = { p with available = IntMap.remove sl p.available }
+  let remove (sl, x) p =
+    let available = match IntMap.find_opt sl p.available with
+      | None     -> p.available
+      | Some(x') ->
+          if List.equal (Bindlib.eq_vars) x x'
+          then IntMap.remove sl p.available
+          else p.available in
+    { p with available }
 
   let instantiate path slot vars pool =
     { involved = SubtSet.remove path pool.involved
@@ -636,18 +646,17 @@ struct
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; positions ; _ } ->
     let module F = Format in
-    let pp_line oc l =
-      F.fprintf oc "@[<h>" ;
-      F.pp_print_list ~pp_sep:(fun _ () -> F.fprintf oc ";@ ")
-        Print.pp oc (Array.to_list l) ;
-      F.fprintf oc "@]" in
+    let pp_line oc { lhs ; freevars ; _ } =
+      F.fprintf oc "@[<v>@[%a@]@,@[%a@]@]"
+        (F.pp_print_list ~pp_sep:(Format.pp_print_space) Print.pp)
+        (Array.to_list lhs)
+        FvConstraints.pp freevars in
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Subterm.pp oc
       (ReductionStack.to_list positions) ;
     F.fprintf oc "@]@," ;
     F.fprintf oc "{@[<v>@," ;
-    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc
-      (List.map (fun { lhs ; _ } -> lhs) clauses) ;
+    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
     F.fprintf oc "@.}@,"
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
