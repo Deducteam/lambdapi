@@ -348,9 +348,11 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       else slot in
     let module R = Dtree.ReductionStack in
     let stk = R.of_list stk in
-  (* [walk t s c] where [s] is the stack of terms to match and [c] the cursor
-     indicating where to write in the [env] array described in {!module:Terms}
-     as the environment of the RHS during matching. *)
+    (* [walk t s c m] where [s] is the stack of terms to match and [c] the
+       cursor indicating where to write in the [env] array described in
+       {!module:Terms} as the environment of the RHS during matching.  [m]
+       maps the free variables contained in the tree to the free variables
+       used in this evaluation. *)
     let rec walk tree stk cursor to_stamped =
       match tree with
       | Fail                                                -> None
@@ -359,13 +361,12 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let env = Array.make (Bindlib.mbinder_arity act) TE_None in
           (* Retrieve terms needed in the action from the [vars] array. *)
           let fn (pos, slot) =
-            let t = unfold vars.(pos) in
-            if vars_b.(pos) = None
-            then let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-              env.(slot) <- TE_Some(b)
-            else let b = match vars_b.(pos)
-                   with Some(x) -> x | None -> assert false in
-              env.(slot) <- TE_Some(b) in
+            match vars_b.(pos) with
+            | None ->
+                let t = unfold vars.(pos) in
+                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+                env.(slot) <- TE_Some(b)
+            | Some(x) -> env.(slot) <- TE_Some(x) in
           List.iter fn env_builder;
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
