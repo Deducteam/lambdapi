@@ -99,156 +99,48 @@ let whnf_beta : term -> term = fun t ->
   let u = whnf_beta t in
   if Pervasives.(!steps = 0) then t else u
 
-(** [whnf_legacy t] computes a weak head normal form of the term [t]. *)
-let rec whnf_legacy : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating (legacy) [%a]" pp t;
-  let s = Pervasives.(!steps) in
-  let t = unfold t in
-  let (u, stk) = whnf_stk_legacy t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
-
-(** [whnf_tree t] computes a weak head normal form of term [t] using decision
+(** [whnf t] computes a weak head normal form of term [t] using decision
     trees. *)
-and whnf_tree : term -> term = fun t ->
+let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating (trees) [%a]" pp t ;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  let u, stk = whnf_stk_tree t [] in
+  let u, stk = whnf_stk t [] in
   if Pervasives.(!steps) <> s then add_args u stk else t
 
-(** [whnf_hybrid t] tries using trees first and falls back to legacy if it
-    fails. *)
-and whnf_hybrid : term -> term = fun t ->
-  try whnf_tree t with Dtree.Not_implemented -> whnf_legacy t
-
-(** [whnf_stk_tree t k] computes the weak head normal form of [t] applied to
+(** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
-and whnf_stk_tree : term -> term list -> term * term list = fun t stk ->
+and whnf_stk : term -> term list -> term * term list = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
-  | Appl(u, v), stk      -> whnf_stk_tree u (ensure_tref v :: stk)
+  | Appl(u, v), stk      -> whnf_stk u (ensure_tref v :: stk)
   (* Beta reduction. *)
   | Abst(_, f), u :: stk ->
       Pervasives.incr steps ;
       let t = Bindlib.subst f u in
-      whnf_stk_tree t stk
+      whnf_stk t stk
   (* Try to rewrite. *)
   | Symb(s, _), stk      ->
       begin match !(s.sym_def) with
-      | Some(t) -> Pervasives.incr steps ; whnf_stk_tree t stk
+      | Some(t) -> Pervasives.incr steps ; whnf_stk t stk
       | None    ->
-      match find_rule_tree s stk with
+      match find_rule s stk with
       (* If no rule is found, return the original term *)
       | None         -> st
-      | Some(t, stk) -> Pervasives.incr steps ; whnf_stk_tree t stk
+      | Some(t, stk) -> Pervasives.incr steps ; whnf_stk t stk
       end
   (* In head normal form. *)
   | _         , _        -> st
 
-(** [whnf_stk_legacy t stk] computes the weak head normal form of [t] applied
-    to the argument list (or stack) [stk]. Note that the normalisation is done
-    in the sense of [whnf]. *)
-and whnf_stk_legacy : term -> stack -> term * stack = fun t stk ->
-  let st = (unfold t, stk) in
-  match st with
-  (* Push argument to the stack. *)
-  | (Appl(f,u), stk    ) ->
-      whnf_stk_legacy f (Pervasives.ref (false, u) :: stk)
-  (* Beta reduction. *)
-  | (Abst(_,f), u::stk ) ->
-      Pervasives.incr steps;
-      whnf_stk_legacy (Bindlib.subst f (snd Pervasives.(!u))) stk
-  (* Try to rewrite. *)
-  | (Symb(s,_), stk    ) ->
-      begin
-        match Timed.(!(s.sym_def)) with
-        | Some(t) -> Pervasives.incr steps; whnf_stk_legacy t stk
-        | None    ->
-        match find_rule_legacy s stk with
-        | None        -> st
-        | Some(t,stk) -> Pervasives.incr steps; whnf_stk_legacy t stk
-      end
-  (* In head normal form. *)
-  | (_        , _      ) -> st
-
-(** [find_rule_tree s k] attempts to find a reduction rule of [s] when applied
-    to arguments [k].  Returns the reduced term if a rule if found, [None]
+(** [find_rule s k] attempts to find a reduction rule of [s] when applied to
+    arguments [k].  Returns the reduced term if a rule if found, [None]
     otherwise. *)
-and find_rule_tree : sym -> term list -> (term * term list) option =
+and find_rule : sym -> term list -> (term * term list) option =
   fun s stk ->
   let capa, tr = !(s.sym_tree) in
   let capa, tr = Lazy.force capa, Lazy.force tr in
   tree_walk tr capa stk
-
-(** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
-    under the stack [stk]. If such a rule is found, the machine state produced
-    by its application is returned. *)
-and find_rule_legacy : sym -> stack -> (term * stack) option = fun s stk ->
-  let stk_len = List.length stk in
-  let match_rule r =
-    (* First check that we have enough arguments. *)
-    if r.arity > stk_len then None else
-    (* Substitute the left-hand side of [r] with pattern variables *)
-    let ar = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
-    (* Match each argument of the lhs with the terms in the stack. *)
-    let rec match_args ps ts =
-      match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs ar, ts)
-      | (p::ps, t::ts) -> if matching ar p t then match_args ps ts else None
-      | (_    , _    ) -> assert false (* cannot happen *)
-    in
-    match_args r.lhs stk
-  in
-  List.map_find match_rule Timed.(!(s.sym_rules))
-
-(** [matching ar p t] checks that term [t] matches pattern [p]. The values for
-    pattern variables (using the [ITag] node) are stored in [ar], at the index
-    they denote. In case several different values are found for a same pattern
-    variable, equality modulo is computed to check compatibility. *)
-and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
-  if !log_enabled then
-    log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));
-  let res =
-    (* First handle patterns that do not need the evaluated term. *)
-    match p with
-    | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
-        let fn _ = snd Pervasives.(!t) in
-        let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
-        ar.(i) <- TE_Some(b);
-        true
-    | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        let res = Bindlib.is_closed b in
-        if res then ar.(i) <- TE_Some(Bindlib.unbox b);
-        res
-    | Patt(None   ,_,[||]) -> true
-    | Patt(None   ,_,e   ) ->
-        let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        Bindlib.is_closed b
-    | _                                 ->
-    (* Other cases need the term to be evaluated. *)
-    if not (fst Pervasives.(!t))
-    then Pervasives.(t := (true, whnf_legacy (snd !t)));
-    match (p, snd Pervasives.(!t)) with
-    | (Patt(Some(i),_,e), t            ) -> (* ar.(i) <> TE_None *)
-        let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
-        eq_modulo (Bindlib.msubst b e) t
-    | (Abst(_,t1)       , Abst(_,t2)   ) ->
-        let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
-        matching ar t1 (Pervasives.ref (false, t2))
-    | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
-        matching ar t1 (Pervasives.ref (fst Pervasives.(!t), t2))
-        && matching ar u1 (Pervasives.ref (false, u2))
-    | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Symb(s1,_)       , Symb(s2,_)   ) -> s1 == s2
-    | (_                , _            ) -> false
-  in
-  if !log_enabled then
-    log_eval (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));
-  res
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
@@ -259,11 +151,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    let a, b = match Pervasives.(!with_trees) with
-      | Tm_Full     -> whnf_tree a, whnf_tree b
-      | Tm_Fallback -> whnf_hybrid a, whnf_hybrid b
-      | Tm_Without  -> whnf_legacy a, whnf_legacy b in
-    match (a, b) with
+    match (whnf a, whnf b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -326,7 +214,7 @@ and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
       | _           -> assert false in
     let r = if TcMap.is_empty children && abstraction = None
       then (default, [], to_stamped)
-      else choose (whnf_tree examined) in
+      else choose (whnf examined) in
     if !log_enabled
     then log_eval (r_or_g (r != (default, [], to_stamped)) "branching on [%a]")
       pp examined ;
@@ -417,12 +305,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
-  let reduced =
-    match Pervasives.(!with_trees) with
-    | Tm_Full     -> whnf_tree t
-    | Tm_Without  -> whnf_legacy t
-    | Tm_Fallback -> try whnf_tree t
-      with Dtree.Not_implemented -> whnf_legacy t in
+  let reduced = whnf t in
   if Pervasives.(!steps) <> 0 then reduced else t
 
 (** [simplify t] reduces simple redexes of [t]. *)
