@@ -75,6 +75,7 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
+  (** [score p] returns the action to take regarding pool of constraints [p]. *)
   val score : t -> decision
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
@@ -358,12 +359,22 @@ struct
     | Some(s) -> Instantiate(s, 1)
 end
 
+(** {3 Comparing constraints }*)
+
+(** Type making a module comparable. *)
 module type Scorable = sig
+  (** Type of the element to score. *)
   type t
+
+  (** Result of a comparison. *)
   type decision
+
+  (** [choose x] returns the action with the highest score. *)
   val choose : t list -> decision
 end
 
+(** [MakeScorable(P)] returns a module containing a function to compare list
+    of elements of [P].  Acts as an {e extension} of [P]. *)
 module MakeScorable(BCP:BinConstraintPoolSig)
   : (Scorable with type t := BCP.t and type decision := BCP.decision) =
 struct
@@ -382,21 +393,6 @@ struct
   let choose = function
     | [] -> Unavailable
     | cs -> List.map score cs |> List.extremum score_lt
-end
-
-module type FvScorableSig = sig
-  type t
-  type cstr
-  type decision =
-    | Solve of cstr * int
-    | Instantiate of Subterm.t * int
-    | Unavailable
-
-  include (BinConstraintPoolSig)
-    with type t := t and type cstr := cstr and type decision := decision
-
-  include Scorable
-    with type t := t and type decision := decision
 end
 
 module NlScorable = struct
