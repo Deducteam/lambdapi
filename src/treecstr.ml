@@ -206,32 +206,40 @@ struct
               ; partial = SubtMap.empty
               ; available = IntPairSet.empty }
 
-  let is_empty { groups ; partial ; available ; concerned = _ } =
-    groups = empty.groups && partial = empty.partial &&
-    available = empty.available
+  let is_empty { groups ; partial ; available ; concerned } =
+    SubtSet.is_empty concerned ||
+    groups = [] && SubtMap.is_empty partial && IntPairSet.is_empty available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
-  let choose cstrs =
-    if List.for_all is_empty cstrs then Unavailable else
-    let available = List.fold_right (fun c -> IntPairSet.union c.available)
-        cstrs IntPairSet.empty in
-    match IntPairSet.choose_opt available with
+  let choose_nl_o c =
+    if is_empty c then Unavailable else
+    match IntPairSet.choose_opt c.available with
     | Some(c) -> Solve(c, 1)
     | None    ->
-        let positions = List.fold_right
-            (fun c -> c.partial |> SubtMap.bindings |> List.map fst |> (@))
-            cstrs [] |> List.sort_uniq Subterm.compare in
+        (* Search a position with partially instantiated *)
+        let positions = List.map fst (SubtMap.bindings c.partial) in
         match positions with
-        | x :: _ -> Instantiate(x, 1)
-        | []     ->
-            let g2s sl2po = List.fold_right (fun (_, ps) -> SubtSet.union ps)
-                sl2po SubtSet.empty in
+        | x::_ -> Instantiate(x, 1)
+        | []   ->
             let positions = List.fold_right
-                (fun c -> c.groups |> g2s |> SubtSet.union)
-                cstrs SubtSet.empty in
+                (fun (_, ps) -> SubtSet.union ps) c.groups SubtSet.empty in
             let p = SubtSet.choose positions in
             Instantiate(p, 1)
+
+  let score_lt s1 s2 = match (s1, s2) with
+    | Unavailable, Unavailable -> true
+    | Unavailable, _           -> true
+    | _          , Unavailable -> false
+    | Solve(_, s), Solve(_, t) -> s <= t
+    | Solve(_, _), _           -> false
+    | _          , Solve(_, _) -> true
+    | Instantiate(_, s), Instantiate(_, t) -> s <= t
+
+  let choose = function
+    | [] -> Unavailable
+    | cs ->
+        List.map choose_nl_o cs |> List.extremum score_lt
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
@@ -353,19 +361,21 @@ struct
     let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtSet.empty in
     { empty with involved }
 
-  let rec choose = fun cs ->
+  let rec choose_fv = fun cs ->
     let r = match cs with
     | []      -> Unavailable
     | p :: ps ->
     match IntMap.choose_opt p.available with
-    | None       -> choose ps
+    | None       -> choose_fv ps
     | Some(i, x) -> Solve((i, x), 1) in
     if r <> Unavailable then r else
     match cs with
     | []    -> Unavailable
     | p::ps ->
     match SubtSet.choose_opt p.involved with
-    | None      -> choose ps
+    | None      -> choose_fv ps
     | Some(sub) -> Instantiate(sub, 1)
+
+  let choose = choose_fv
 
 end
