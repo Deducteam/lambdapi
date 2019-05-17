@@ -98,30 +98,30 @@ let rec solve : problems -> unif_constrs = fun p ->
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
-  let (h1, ts1) = Eval.whnf_stk_legacy t1 [] in
-  let (h2, ts2) = Eval.whnf_stk_legacy t2 [] in
+  let (h1, ts1) = Eval.whnf_stk_tree t1 [] in
+  let (h2, ts2) = Eval.whnf_stk_tree t2 [] in
   if !log_enabled then
     begin
-      let t1 = Eval.to_term h1 ts1 in
-      let t2 = Eval.to_term h2 ts2 in
+      let t1 = add_args h1 ts1 in
+      let t2 = add_args h2 ts2 in
       log_solv "solve [%a] [%a]" pp t1 pp t2;
     end;
 
   let exception Unsolvable in
 
   let add_to_unsolved () =
-    let t1 = Eval.to_term h1 ts1 in
-    let t2 = Eval.to_term h2 ts2 in
+    let t1 = add_args h1 ts1 in
+    let t2 = add_args h2 ts2 in
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
   let error () =
-    let t1 = Eval.to_term h1 ts1 in
-    let t2 = Eval.to_term h2 ts2 in
+    let t1 = add_args h1 ts1 in
+    let t2 = add_args h2 ts2 in
     fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
   in
   let decompose () =
-    let add_arg_pb l t1 t2 = Pervasives.(snd !t1, snd !t2)::l in
+    let add_arg_pb l t1 t2 = (t1, t2)::l in
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
       with Invalid_argument _ -> error () in
@@ -168,7 +168,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     | [] -> false
     | e :: _ ->
        begin
-         match unfold (snd Pervasives.(!e)) with
+         match unfold e with
          | Vari x -> not (Bindlib.occur x (lift h))
          | _ -> false
        end
@@ -245,7 +245,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          try
            if s == c.symb_P then
              match ts with
-             | [t] -> solve_aux Pervasives.(snd !t) (inverse c s v) p
+             | [t] -> solve_aux t (inverse c s v) p
              | _ -> raise Unsolvable
            else raise Unsolvable
          with Unsolvable -> add_to_unsolved ()
