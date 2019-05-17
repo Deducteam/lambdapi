@@ -41,6 +41,8 @@ sig
   (** A unique instantiated constraint. *)
   type cstr
 
+  type out
+
   (** Action to perform. *)
   type decision =
     | Solve of cstr * int
@@ -80,17 +82,17 @@ sig
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
   val of_terms : term list -> t
+
+  (** [export c] returns the two slots containing the terms that must be
+      convertible. *)
+  val export : cstr -> out
 end
 
 (** Non linearity constraints signature.  A non linearity constraint involves
     at least two variables. *)
 module type NlConstraintSig =
 sig
-  include BinConstraintPoolSig
-
-  (** [export c] returns the two slots containing the terms that must be
-      convertible. *)
-  val export : cstr -> int * int
+  include BinConstraintPoolSig with type out = int * int
 
   (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
       that is, mark a path as {i seen} in the constraints.  Typically, if a
@@ -108,11 +110,7 @@ end
     but it requires the list of variables that may appear free in the term. *)
 module type FvConstraintSig =
 sig
-  include BinConstraintPoolSig
-
-  (** [export c] returns the slot of a term along with the free variables that
-      might appear free in it. *)
-  val export : cstr -> int * tvar list
+  include BinConstraintPoolSig with type out = int * tvar list
 
   (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
       that is, mark a path as {i seen} in the constraints.  Typically, if a
@@ -162,6 +160,8 @@ struct
   type decision = Solve of cstr * int
                 | Instantiate of Subterm.t * int
                 | Unavailable
+
+  type out = int * int
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
@@ -290,6 +290,8 @@ struct
   type decision = Solve of cstr * int
                 | Instantiate of Subterm.t * int
                 | Unavailable
+
+  type out = int * tvar list
 
   let pp_cstr oc (sl, vars) =
     let module F = Format in
