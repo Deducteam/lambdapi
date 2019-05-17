@@ -361,21 +361,27 @@ struct
     let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtSet.empty in
     { empty with involved }
 
-  let rec choose_fv = fun cs ->
-    let r = match cs with
-    | []      -> Unavailable
-    | p :: ps ->
-    match IntMap.choose_opt p.available with
-    | None       -> choose_fv ps
-    | Some(i, x) -> Solve((i, x), 1) in
-    if r <> Unavailable then r else
-    match cs with
-    | []    -> Unavailable
-    | p::ps ->
-    match SubtSet.choose_opt p.involved with
-    | None      -> choose_fv ps
-    | Some(sub) -> Instantiate(sub, 1)
+  let score_lt s1 s2 = match (s1, s2) with
+    | Unavailable, Unavailable -> true
+    | Unavailable, _           -> true
+    | _          , Unavailable -> false
+    | Solve(_, s), Solve(_, t) -> s <= t
+    | Solve(_, _), _           -> false
+    | _          , Solve(_, _) -> true
+    | Instantiate(_, s), Instantiate(_, t) -> s <= t
 
-  let choose = choose_fv
+  let choose_fv_u c =
+    if is_empty c then Unavailable else
+    match IntMap.choose_opt c.available with
+    | Some(i, x) -> Solve((i, x), 1)
+    | None       ->
+    match SubtSet.choose_opt c.involved with
+    | None    -> Unavailable
+    | Some(s) -> Instantiate(s, 1)
+
+  let choose = function
+    | [] -> Unavailable
+    | cs ->
+        List.map choose_fv_u cs |> List.extremum score_lt
 
 end
