@@ -75,27 +75,10 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
-  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
-      that is, mark a path as {i seen} in the constraints.  Typically, if a
-      constraint involves only one variable, then instantiating a variable is
-      equivalent to instantiating a constraint.  However, if a constraint
-      involves several variables, then instantiating a variable will promote
-      the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.  The
-      [d] is some additional data needed.
-      @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> 'a -> t -> t
-
-  (** [choose p] returns the best action to perform considering a list of
-      constraints [p]. *)
-  val choose : t list -> decision
+  val score : t -> decision
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
   val of_terms : term list -> t
-
-  (** [export c] returns the data needed for evaluation from a constraint
-      [c].  The return type is to be defined by the implementations. *)
-  val export : cstr -> 'a
 end
 
 (** Non linearity constraints signature.  A non linearity constraint involves
@@ -108,6 +91,15 @@ sig
       convertible. *)
   val export : cstr -> int * int
 
+  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
+      that is, mark a path as {i seen} in the constraints.  Typically, if a
+      constraint involves only one variable, then instantiating a variable is
+      equivalent to instantiating a constraint.  However, if a constraint
+      involves several variables, then instantiating a variable will promote
+      the constraint to a {e partially instantiated state}, and will be
+      completely instantiated when all the variables are instantiated.  The
+      [d] is some additional data needed.
+      @raise Not_found if [p] is not part of any constraint in [q]. *)
   val instantiate : Subterm.t -> int -> unit -> t -> t
 end
 
@@ -121,6 +113,15 @@ sig
       might appear free in it. *)
   val export : cstr -> int * tvar list
 
+  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
+      that is, mark a path as {i seen} in the constraints.  Typically, if a
+      constraint involves only one variable, then instantiating a variable is
+      equivalent to instantiating a constraint.  However, if a constraint
+      involves several variables, then instantiating a variable will promote
+      the constraint to a {e partially instantiated state}, and will be
+      completely instantiated when all the variables are instantiated.  The
+      [d] is some additional data needed.
+      @raise Not_found if [p] is not part of any constraint in [q]. *)
   val instantiate : Subterm.t -> int -> tvar list -> t -> t
 
 end
@@ -212,7 +213,7 @@ struct
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
-  let choose_nl_o c =
+  let score c =
     if is_empty c then Unavailable else
     match IntPairSet.choose_opt c.available with
     | Some(c) -> Solve(c, 1)
@@ -226,20 +227,6 @@ struct
                 (fun (_, ps) -> SubtSet.union ps) c.groups SubtSet.empty in
             let p = SubtSet.choose positions in
             Instantiate(p, 1)
-
-  let score_lt s1 s2 = match (s1, s2) with
-    | Unavailable, Unavailable -> true
-    | Unavailable, _           -> true
-    | _          , Unavailable -> false
-    | Solve(_, s), Solve(_, t) -> s <= t
-    | Solve(_, _), _           -> false
-    | _          , Solve(_, _) -> true
-    | Instantiate(_, s), Instantiate(_, t) -> s <= t
-
-  let choose = function
-    | [] -> Unavailable
-    | cs ->
-        List.map choose_nl_o cs |> List.extremum score_lt
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
@@ -361,6 +348,28 @@ struct
     let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtSet.empty in
     { empty with involved }
 
+  let score c =
+    if is_empty c then Unavailable else
+    match IntMap.choose_opt c.available with
+    | Some(i, x) -> Solve((i, x), 1)
+    | None       ->
+    match SubtSet.choose_opt c.involved with
+    | None    -> Unavailable
+    | Some(s) -> Instantiate(s, 1)
+end
+
+module type Scorable = sig
+  type t
+  type decision
+  val choose : t list -> decision
+end
+
+module MakeScorable(BCP:BinConstraintPoolSig)
+  : (Scorable with type t := BCP.t and type decision := BCP.decision) =
+struct
+
+  open BCP
+
   let score_lt s1 s2 = match (s1, s2) with
     | Unavailable, Unavailable -> true
     | Unavailable, _           -> true
@@ -370,18 +379,32 @@ struct
     | _          , Solve(_, _) -> true
     | Instantiate(_, s), Instantiate(_, t) -> s <= t
 
-  let choose_fv_u c =
-    if is_empty c then Unavailable else
-    match IntMap.choose_opt c.available with
-    | Some(i, x) -> Solve((i, x), 1)
-    | None       ->
-    match SubtSet.choose_opt c.involved with
-    | None    -> Unavailable
-    | Some(s) -> Instantiate(s, 1)
-
   let choose = function
     | [] -> Unavailable
-    | cs ->
-        List.map choose_fv_u cs |> List.extremum score_lt
+    | cs -> List.map score cs |> List.extremum score_lt
+end
 
+module type FvScorableSig = sig
+  type t
+  type cstr
+  type decision =
+    | Solve of cstr * int
+    | Instantiate of Subterm.t * int
+    | Unavailable
+
+  include (BinConstraintPoolSig)
+    with type t := t and type cstr := cstr and type decision := decision
+
+  include Scorable
+    with type t := t and type decision := decision
+end
+
+module NlScorable = struct
+  include NlConstraints
+  include MakeScorable(NlConstraints)
+end
+
+module FvScorable = struct
+  include FvConstraints
+  include MakeScorable(FvConstraints)
 end

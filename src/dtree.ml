@@ -214,8 +214,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
 (** {3 Binary constraints nodes} *)
 
 (** A helper type to process [choose] results uniformly. *)
-type bin_cstr = Fv of FvConstraints.cstr
-              | Nl of NlConstraints.cstr
+type bin_cstr = Fv of FvScorable.cstr
+              | Nl of NlScorable.cstr
               | Instantiate of Subterm.t
               | Sp of int
               | Unavailable
@@ -359,8 +359,8 @@ struct
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
     Array.for_all (fun e -> not (is_treecons e)) lhs &&
-    NlConstraints.is_empty nonlin &&
-    FvConstraints.is_empty freevars
+    NlScorable.is_empty nonlin &&
+    FvScorable.is_empty freevars
 
   (** [yield m] yields a rule to be applied. *)
   let yield : t -> decision = fun m ->
@@ -370,12 +370,12 @@ struct
     | None    ->
         (* All below could be simplified using either a functor or gadt. *)
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
-        let rnl = match NlConstraints.choose nlcstrs with
+        let rnl = match NlScorable.choose nlcstrs with
           | NlConstraints.Solve(c, i)       -> (Nl(c), i)
           | NlConstraints.Instantiate(s, i) -> (Instantiate(s), i)
           | NlConstraints.Unavailable       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
-        let rfv = match FvConstraints.choose fvcstrs with
+        let rfv = match FvScorable.choose fvcstrs with
           | FvConstraints.Solve(c, i)       -> (Fv(c), i)
           | FvConstraints.Instantiate(s, i) -> (Instantiate(s), i)
           | FvConstraints.Unavailable       -> (Unavailable, min_int) in
