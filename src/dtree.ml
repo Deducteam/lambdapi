@@ -248,9 +248,9 @@ struct
     ; env_builder : (int * int) list
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:rhs}. *)
-    ; nonlin : NlConstraints.t
+    ; nonlin : NlScorable.t
     (** Non linearity constraints attached to this rule. *)
-    ; freevars : FvConstraints.t
+    ; freevars : FvScorable.t
     (** Free variables constraints attached to the rule. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
@@ -271,10 +271,10 @@ struct
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
-    | NlConstrain of NlConstraints.cstr
+    | NlConstrain of NlScorable.cstr
     (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
         regarding slot [s]. *)
-    | FvConstrain of FvConstraints.cstr
+    | FvConstrain of FvScorable.cstr
     (** Free variables constraint: the term matched must contain {e at most} a
         specified set of variables. *)
 
@@ -285,7 +285,7 @@ struct
       F.fprintf oc "@[<v>@[%a@]@,@[%a@]@]"
         (F.pp_print_list ~pp_sep:(Format.pp_print_space) Print.pp)
         (Array.to_list lhs)
-        FvConstraints.pp freevars in
+        FvScorable.pp freevars in
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Subterm.pp oc
       (ReductionStack.to_list positions) ;
@@ -299,8 +299,8 @@ struct
   let of_rules : Terms.rule list -> t = fun rs ->
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
-      let nonlin = NlConstraints.of_terms r.lhs in
-      let freevars = FvConstraints.of_terms r.lhs in
+      let nonlin = NlScorable.of_terms r.lhs in
+      let freevars = FvScorable.of_terms r.lhs in
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let positions = match rs with
       | []   -> ReductionStack.empty
@@ -371,14 +371,14 @@ struct
         (* All below could be simplified using either a functor or gadt. *)
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         let rnl = match NlScorable.choose nlcstrs with
-          | NlConstraints.Solve(c, i)       -> (Nl(c), i)
-          | NlConstraints.Instantiate(s, i) -> (Instantiate(s), i)
-          | NlConstraints.Unavailable       -> (Unavailable, min_int) in
+          | NlScorable.Solve(c, i)       -> (Nl(c), i)
+          | NlScorable.Instantiate(s, i) -> (Instantiate(s), i)
+          | NlScorable.Unavailable       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
         let rfv = match FvScorable.choose fvcstrs with
-          | FvConstraints.Solve(c, i)       -> (Fv(c), i)
-          | FvConstraints.Instantiate(s, i) -> (Instantiate(s), i)
-          | FvConstraints.Unavailable       -> (Unavailable, min_int) in
+          | FvScorable.Solve(c, i)       -> (Fv(c), i)
+          | FvScorable.Instantiate(s, i) -> (Instantiate(s), i)
+          | FvScorable.Unavailable       -> (Unavailable, min_int) in
         let rs = match choose m with
           | None       -> (Unavailable, min_int)
           | Some(c, i) -> (Sp(c), i) in
@@ -413,7 +413,7 @@ struct
   let store : t -> int -> bool = fun cm ci ->
     let _, pos, _ = ReductionStack.destruct cm.positions ci in
     let st_r r =
-      FvConstraints.concerns pos r.freevars ||
+      FvScorable.concerns pos r.freevars ||
       (match r.lhs.(ci) with Patt(Some(_), _, _) -> true | _ -> false) in
     List.exists st_r cm.clauses
 
@@ -426,13 +426,13 @@ struct
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if FvConstraints.concerns pos r.freevars
-          then FvConstraints.instantiate pos slot
+        let freevars = if FvScorable.concerns pos r.freevars
+          then FvScorable.instantiate pos slot
               (Array.to_seq e |> Seq.map to_tvar |> List.of_seq)
               r.freevars
           else r.freevars in
-        let nonlin = if NlConstraints.concerns pos r.nonlin
-          then NlConstraints.instantiate pos slot () r.nonlin
+        let nonlin = if NlScorable.concerns pos r.nonlin
+          then NlScorable.instantiate pos slot () r.nonlin
           else r.nonlin in
         let env_builder =
           match i with
@@ -521,30 +521,30 @@ struct
 
   (** [nl_succeed c r] computes the rule list from [r] that verify a
       non-linearity constraint [c]. *)
-  let nl_succeed : NlConstraints.cstr -> rule list -> rule list = fun c ->
+  let nl_succeed : NlScorable.cstr -> rule list -> rule list = fun c ->
     let f r =
-      let nonlin = NlConstraints.remove c r.nonlin in
+      let nonlin = NlScorable.remove c r.nonlin in
       { r with nonlin } in
     List.map f
 
   (** [nl_fail c r] computes the rules not failing a non-linearity constraint
       [c] among rules [r]. *)
-  let nl_fail : NlConstraints.cstr -> rule list -> rule list = fun c ->
-    let f { nonlin ; _ } = not (NlConstraints.is_instantiated c nonlin) in
+  let nl_fail : NlScorable.cstr -> rule list -> rule list = fun c ->
+    let f { nonlin ; _ } = not (NlScorable.is_instantiated c nonlin) in
     List.filter f
 
   (** [fv_suceed c r] computes the rules from [r] that verify a free variables
       constraint [c]. *)
-  let fv_succeed : FvConstraints.cstr -> rule list -> rule list = fun c ->
+  let fv_succeed : FvScorable.cstr -> rule list -> rule list = fun c ->
     let f r =
-      let freevars = FvConstraints.remove c r.freevars in
+      let freevars = FvScorable.remove c r.freevars in
       { r with freevars } in
     List.map f
 
   (** [fv_fail c r] computes the rules not failing a free variable constraint
   [c] among rules [r]. *)
-  let fv_fail : FvConstraints.cstr -> rule list -> rule list = fun c ->
-    let f { freevars ; _ } = not (FvConstraints.is_instantiated c freevars) in
+  let fv_fail : FvScorable.cstr -> rule list -> rule list = fun c ->
+    let f { freevars ; _ } = not (FvScorable.is_instantiated c freevars) in
     List.filter f
 end
 
@@ -626,7 +626,7 @@ let rec compile : Cm.t -> t =
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
                  compile {patterns with Cm.clauses = nclauses } in
-      let vi, vj = NlConstraints.export constr in
+      let vi, vj = NlScorable.export constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
   | FvConstrain(constr)                          ->
@@ -634,7 +634,7 @@ let rec compile : Cm.t -> t =
         compile { patterns with Cm.clauses } in
       let fail = let clauses = Cm.fv_fail constr clauses in
         compile { patterns with Cm.clauses } in
-      let slot, vars = FvConstraints.export constr in
+      let slot, vars = FvScorable.export constr in
       let condition = TcstrFreeVars(vars, slot) in
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                             ->

@@ -395,12 +395,40 @@ struct
     | cs -> List.map score cs |> List.extremum score_lt
 end
 
-module NlScorable = struct
+(** Non linearity with score constraints. *)
+module type NlScorableSig = sig
+  type t
+  type cstr
+  type decision = Solve of cstr * int
+                | Instantiate of Subterm.t * int
+                | Unavailable
+  include (NlConstraintSig)
+          with type t := t and type cstr := cstr and type decision := decision
+
+  include Scorable
+      with type t := t and type decision := decision
+end
+
+(** Free variables constraints with score. *)
+module type FvScorableSig = sig
+  type t
+  type cstr
+  type decision = Solve of cstr * int
+                | Instantiate of Subterm.t * int
+                | Unavailable
+  include (FvConstraintSig)
+          with type t := t and type cstr := cstr and type decision := decision
+
+  include Scorable
+      with type t := t and type decision := decision
+end
+
+module NlScorable : NlScorableSig = struct
   include NlConstraints
   include MakeScorable(NlConstraints)
 end
 
-module FvScorable = struct
+module FvScorable : FvScorableSig = struct
   include FvConstraints
   include MakeScorable(FvConstraints)
 end
