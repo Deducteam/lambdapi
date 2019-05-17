@@ -41,7 +41,11 @@ sig
   (** A unique instantiated constraint. *)
   type cstr
 
+  (** Type used for export, to be used during evaluation. *)
   type out
+
+  (** Auxiliary data used to instantiate a constraint. *)
+  type data
 
   (** Action to perform. *)
   type decision =
@@ -70,6 +74,17 @@ sig
       in pool [q] and if [p] is involved in a constraint. *)
   val concerns : Subterm.t -> t -> bool
 
+  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
+      that is, mark a path as {i seen} in the constraints.  Typically, if a
+      constraint involves only one variable, then instantiating a variable is
+      equivalent to instantiating a constraint.  However, if a constraint
+      involves several variables, then instantiating a variable will promote
+      the constraint to a {e partially instantiated state}, and will be
+      completely instantiated when all the variables are instantiated.  The
+      [d] is some additional data needed.
+      @raise Not_found if [p] is not part of any constraint in [q]. *)
+  val instantiate : Subterm.t -> int -> data -> t -> t
+
   (** [is_instantiated c p] returns whether pool [p] has constraint [c]
       instantiated. *)
   val is_instantiated : cstr -> t -> bool
@@ -93,17 +108,7 @@ end
 module type NlConstraintSig =
 sig
   include BinConstraintPoolSig with type out = int * int
-
-  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
-      that is, mark a path as {i seen} in the constraints.  Typically, if a
-      constraint involves only one variable, then instantiating a variable is
-      equivalent to instantiating a constraint.  However, if a constraint
-      involves several variables, then instantiating a variable will promote
-      the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.  The
-      [d] is some additional data needed.
-      @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> unit -> t -> t
+                                and type data = unit
 end
 
 (** Free variables constraints.  Such a constraint involves only one variable,
@@ -111,18 +116,7 @@ end
 module type FvConstraintSig =
 sig
   include BinConstraintPoolSig with type out = int * tvar list
-
-  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
-      that is, mark a path as {i seen} in the constraints.  Typically, if a
-      constraint involves only one variable, then instantiating a variable is
-      equivalent to instantiating a constraint.  However, if a constraint
-      involves several variables, then instantiating a variable will promote
-      the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.  The
-      [d] is some additional data needed.
-      @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> tvar list -> t -> t
-
+                                and type data = tvar list
 end
 
 module NlConstraints : NlConstraintSig =
@@ -162,6 +156,8 @@ struct
                 | Unavailable
 
   type out = int * int
+
+  type data = unit
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
@@ -292,6 +288,8 @@ struct
                 | Unavailable
 
   type out = int * tvar list
+
+  type data = tvar list
 
   let pp_cstr oc (sl, vars) =
     let module F = Format in
