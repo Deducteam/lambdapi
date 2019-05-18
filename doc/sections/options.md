@@ -109,21 +109,6 @@ a dummy termination-checking command as follows.
 lambdapi --termination "cat > output.trs; echo MAYBE" input_file.lp
 ```
 
-#### Rewriting engine
-There are currently two rewriting engines available.
- - The legacy one, which is fully operational and enabled by default.
- - A decision tree based rewriting engine, which only works for first
-   order, left-linear rewriting rules.
-
-Decision trees are usually faster (especially on symbols with many
-rewrite rules).  To use them, two modes are available,
- - `--trees` enforce using decision trees; rewriting will fail on
-   higher order patterns, and the behaviour is not defined on non
-   left-linear patterns;
- - `--trees-hybrid` tries to use trees, and falls back to the legacy
-   process in case of failure; the behaviour is not defined on non
-   left-linear patterns.
-
 #### Debugging flags
 
 The following flags may be useful for debugging:
