@@ -14,9 +14,6 @@ type t = tree
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** An exception raised if trying to match an abstraction. *)
-exception Not_implemented
-
 (** {b Example} Given a rewrite system for a symbol [f] given as
     - [f Z (S m)     → S m]
     - [f n Z         → n]
@@ -306,6 +303,7 @@ struct
       | []   -> ReductionStack.empty
       | r::_ ->
           Subterm.sequence (List.length r.lhs) |>
+            (* [|>] is reverse application, can be thought as a Unix pipe | *)
           ReductionStack.of_seq in
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
