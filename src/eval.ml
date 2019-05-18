@@ -6,7 +6,7 @@ open Console
 open Terms
 open Basics
 open Print
-open Treecons
+module TC = Treecons
 
 (** The head-structure of a term t is:
 - λx:_,h if t=λx:a,u and h is the head-structure of u
@@ -177,7 +177,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     matching on term [t].  If no tree is found in [c], [d] is returned.  The
     new elements to be put in the stack are returned along the tree. [s] is
     the stamp used to mark variables. *)
-and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
+and branch : term -> int -> tvar VarMap.t -> tree TC.Map.t ->
   (tvar * tree) option -> tree option ->
   tree option * term list * (tvar VarMap.t) =
   fun examined stamp to_stamped children abstraction default ->
@@ -192,14 +192,14 @@ and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
       match h with
       | Symb(s, _)  ->
           let c_ari = List.length args in
-          let cons = TcSymb({ c_sym = s.sym_name ; c_mod = s.sym_path
+          let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                             ; c_ari}) in
-          let matched = TcMap.find_opt cons children in
+          let matched = TC.Map.find_opt cons children in
           if matched = None then (default, [], to_stamped)
           else (matched, args, to_stamped)
       | Vari(x)     ->
-          let cons = TcVari(Bindlib.name_of x) in
-          let matched = TcMap.find_opt cons children in
+          let cons = TC.Vari(Bindlib.name_of x) in
+          let matched = TC.Map.find_opt cons children in
           if matched = None then (default, [], to_stamped)
           else (matched, args, to_stamped)
       | Abst(_, b)  ->
@@ -212,7 +212,7 @@ and branch : term -> int -> tvar VarMap.t -> tree TcMap.t ->
           end
       | Meta(_, _)  -> (default, [], to_stamped)
       | _           -> assert false in
-    let r = if TcMap.is_empty children && abstraction = None
+    let r = if TC.Map.is_empty children && abstraction = None
       then (default, [], to_stamped)
       else choose (whnf examined) in
     if !log_enabled

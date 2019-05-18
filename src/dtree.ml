@@ -5,8 +5,8 @@
 open Terms
 open Extra
 open Basics
-open Treecons
 open Treecstr
+module TC = Treecons
 
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
@@ -130,7 +130,7 @@ module ReductionStack = RedListStack
 type dot_term =
   | DotDefa (* Default case *)
   | DotAbst of tvar
-  | DotCons of treecons
+  | DotCons of Treecons.treecons
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
@@ -149,9 +149,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(TcSymb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
-    | DotCons(TcVari(s)) -> F.fprintf oc "%s" s
-    | DotCons(TcAbst)    -> assert false in
+    | DotCons(TC.Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
+    | DotCons(TC.Vari(s)) -> F.fprintf oc "%s" s
+    | DotCons(TC.Abst)    -> assert false in
   let pp_tcstr : tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(vs, i) ->
@@ -176,7 +176,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         (* Create edge *)
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon ;
-        TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+        TC.Map.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
         Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t) abstraction ;
         Option.iter (write_tree tag DotDefa) default ;
     | Condition(cdata) ->
@@ -199,7 +199,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
            default ; abstraction }) ->
       F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
         swap (if store then " shape=\"box\"" else "") ;
-      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children ;
+      TC.Map.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children ;
       Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction ;
       Option.iter (fun t -> write_tree 0 DotDefa t) default
   | Leaf(_)                         -> ()
@@ -399,10 +399,10 @@ struct
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
-  let get_cons : term list -> (treecons * term) list = fun telst ->
+  let get_cons : term list -> (Treecons.treecons * term) list = fun telst ->
     let keep_treecons e =
       if is_treecons e then Some(treecons_of_term e, e) else None in
-    let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
+    let tc_fst_cmp (tca, _) (tcb, _) = Treecons.compare tca tcb in
     telst |> List.filter_map keep_treecons |> List.sort_uniq tc_fst_cmp
 
   (** [store m c] returns whether the inspected term on column [c] of matrix
@@ -587,7 +587,7 @@ module Cm = ClauseMat
     evaluation. *)
 let fetch : term array -> int -> (int * int) list -> action -> t =
   fun line depth env_builder rhs ->
-    let defnd = { swap = 0 ; store = false ; children = TcMap.empty
+    let defnd = { swap = 0 ; store = false ; children = TC.Map.empty
                 ; default = None ; abstraction = None } in
     let terms = Array.to_list line in
     let rec loop telst added env_builder =
@@ -647,13 +647,13 @@ let rec compile : Cm.t -> t =
       (* Constructors specialisation *)
       let spepatts =
         let f acc (tr_cons, te_cons) =
-          if tr_cons = TcAbst then acc else
+          if tr_cons = TC.Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TcMap.add tr_cons ncm acc in
-        List.fold_left f TcMap.empty cons in
-      let children = TcMap.map compile spepatts in
+          TC.Map.add tr_cons ncm acc in
+        List.fold_left f TC.Map.empty cons in
+      let children = TC.Map.map compile spepatts in
       (* Default child *)
       let default =
         let positions, clauses = Cm.default swap positions updated in
@@ -661,7 +661,7 @@ let rec compile : Cm.t -> t =
         if Cm.is_empty ncm then None else Some(compile ncm) in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> TcAbst) cons then None else
+        if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, clauses = Cm.abstract swap var positions updated in

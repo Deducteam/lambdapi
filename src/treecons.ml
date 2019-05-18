@@ -6,7 +6,7 @@ open Extra
 (** A constructor is the representation of a symbol along with the number of
     arguments to which it is applied. *)
 type treecons =
-  | TcSymb of
+  | Symb of
       { c_mod : string list
       (** Module name where the symbol of the constructor is defined. *)
       ; c_sym : string
@@ -14,22 +14,22 @@ type treecons =
       ; c_ari : int
       (** Arity of the considered constructor.  A same symbol representation may
           generate several constructors with different arities. *) }
-  | TcAbst
+  | Abst
   (** An abstraction*)
-  | TcVari of string
+  | Vari of string
   (** A free variable with a name. *)
 
-(** [pp_treecons o c] prints tree constructor [c] to output channel [o]. *)
-let pp_treecons : treecons pp = fun oc -> function
-  | TcAbst    -> Format.fprintf oc "λ"
-  | TcVari(s) -> Format.pp_print_string oc s
-  | TcSymb(t) -> Format.fprintf oc "%s<:%d" t.c_sym t.c_ari
+(** [pp o c] prints tree constructor [c] to output channel [o]. *)
+let pp : treecons pp = fun oc -> function
+  | Abst    -> Format.fprintf oc "λ"
+  | Vari(s) -> Format.pp_print_string oc s
+  | Symb(t) -> Format.fprintf oc "%s<:%d" t.c_sym t.c_ari
 
-(** [tc_compare c d] is a comparison function for constructors; more efficient
+(** [compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
-let tc_compare : treecons -> treecons -> int = fun ca cb ->
+let compare : treecons -> treecons -> int = fun ca cb ->
   match ca, cb with
-  | TcSymb(a), TcSymb(b) ->
+  | Symb(a), Symb(b) ->
       begin match Int.compare a.c_ari b.c_ari with
       | 0 ->
           begin match String.compare a.c_sym b.c_sym with
@@ -40,11 +40,16 @@ let tc_compare : treecons -> treecons -> int = fun ca cb ->
       end
   | x, y                 -> Pervasives.compare x y
 
-(** [tc_eq c d] returns true iff [c] and [d] are equal regarding
-    [tc_compare]. *)
-let tc_eq : treecons eq = fun a b -> tc_compare a b = 0
+(** [eq c d] returns true iff [c] and [d] are equal regarding
+    [compare]. *)
+let eq : treecons eq = fun a b -> compare a b = 0
 
-module type TcMapSig =
+let (=) = eq
+let (<=) = fun a b -> compare a b <= 0
+let (>=) = fun a b -> compare a b >= 0
+(** Some infix operators. *)
+
+module type MapSig =
 sig
   (** Type of keys. *)
   type key = treecons
@@ -80,11 +85,11 @@ end
 (** Implementation of a mapping with {!type:constructor} as keys.  Very small
     mappings are treated differently.  The incentive is to have faster
     evaluation on very simple rules. *)
-module TcMap : TcMapSig =
+module Map : MapSig =
 struct
   module TC = struct
     type t = treecons
-    let compare = tc_compare
+    let compare = compare
   end
   module ConsMap = Map.Make(TC)
 
@@ -116,7 +121,7 @@ struct
       then Heavy(heavy_of_bindings x) else Light(x)
     | Heavy(x) -> Heavy(ConsMap.add k e x)
   let find_opt k = function
-    | Light(x) -> List.assoc_eq tc_eq k x
+    | Light(x) -> List.assoc_eq eq k x
     | Heavy(x) -> ConsMap.find_opt k x
   let bindings = function
     | Light(x) -> x

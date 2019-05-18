@@ -9,7 +9,7 @@
 
 open Extra
 open Timed
-open Treecons
+module TC = Treecons
 
 (** {3 Term (and symbol) representation} *)
 
@@ -261,7 +261,7 @@ and tree_constraint =
   ; store : bool
   (** Whether to store the current term.  Stored terms might be used in the
       right hand side. *)
-  ; children : tree TcMap.t
+  ; children : tree TC.Map.t
   (** Subtrees that represent the matching of a constructor available in the
       rules.  Maps representation of constructors as strings built with
       {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to

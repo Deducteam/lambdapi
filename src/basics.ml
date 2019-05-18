@@ -3,7 +3,7 @@
 open Extra
 open Timed
 open Terms
-open Treecons
+module TC = Treecons
 
 (** Sets and maps of variables. *)
 module Var =
@@ -375,7 +375,7 @@ let fold_vars : term list ->
     - [f] returned in case of {!constructor:Fail} on tree [t]. *)
 let tree_iter :
   do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
-  do_node:(int -> bool -> 'a TcMap.t -> (tvar * 'a ) option -> 'a option ->
+  do_node:(int -> bool -> 'a TC.Map.t -> (tvar * 'a ) option -> 'a option ->
            'a) ->
   do_condition:('a -> tree_constraint -> 'a -> 'a) ->
   fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
@@ -387,7 +387,7 @@ let tree_iter :
           do_condition (loop ok) condition (loop fail)
       | Node({ swap ; store ; children ; abstraction ; default }) ->
           do_node swap store
-            (TcMap.map loop children)
+            (TC.Map.map loop children)
             (Option.map (fun (v, x) -> (v, loop x)) abstraction)
             (Option.map loop default) in
     loop t
@@ -404,7 +404,7 @@ let capacity : tree -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
   let do_node _ st ch ab de =
-    let _, chdepths = List.split (TcMap.bindings ch) in
+    let _, chdepths = List.split (TC.Map.bindings ch) in
     let dedepth = Option.get de 0 in
     let abdepth = match ab with Some(_, n) -> n | None -> 0 in
     List.extremum (>) (abdepth::dedepth::chdepths) + (if st then 1 else 0) in
@@ -430,13 +430,13 @@ let is_treecons : term -> bool = fun t ->
 
 (** [treecons_of_term t] returns the tree constructor representing term
     [t]. *)
-let treecons_of_term : term -> treecons = fun te ->
+let treecons_of_term : term -> TC.treecons = fun te ->
   let hs, args = get_args te in
   let arity = List.length args in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
-      TcSymb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
-  | Abst(_, _)                           -> TcAbst
-  | Vari(x)                              -> TcVari(Bindlib.name_of x)
+      TC.Symb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
+  | Abst(_, _)                           -> TC.Abst
+  | Vari(x)                              -> TC.Vari(Bindlib.name_of x)
   | _                                    -> assert false
 
