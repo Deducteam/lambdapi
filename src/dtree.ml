@@ -462,7 +462,7 @@ struct
       match ph, h with
       | Symb(_, _), Symb(_, _)
       | Vari(_)   , Vari(_)       ->
-          if List.same_length args pargs && eq ph h
+          if List.same_length args pargs && Basics.eq ph h
           then Some({r with lhs = insert (Array.of_list args)})
           else None
       | _         , Patt(_, _, _) ->
@@ -565,17 +565,20 @@ module Cm = ClauseMat
     Efficiency is managed thanks to heuristics handled by the {!val:score}
     function.
 
-    The last is managed by the {!val:env_builder} as follows.
-    The evaluation process uses, along with the tree, an array [vars] to store
-    terms matched against a pattern variable which is used in some
-    {!field:rhs}.  Each clause has an {!val:env_builder} mapping a index in the
-    [vars] array to a slot in the final environment (the slot [i] of a
-    [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
-    are useless for the clause that is applied, as terms might have been saved
-    because needed by another clause which is not the one applied.  The
-    {!field:slot} keeps track of how many variables have been encountered
-    so far and thus indicates the index in [vars] that will be used by the
-    next variable. *)
+    The last is managed by the {!val:env_builder} as follows.  The evaluation
+    process used two arrays, one containing elements, as binders, to be
+    injected in the {!field:rhs}, and another one to memorise terms filtered
+    by a pattern variable {!constructor:Patt}.  A memorised term can be used
+    either to check a constraint, or to be copied in the aforementioned array.
+    The former is called the [env] array while the latter is the [vars] array.
+    To copy correctly the variables from the [vars] to the [env] array, each
+    clause has an {!val:env_builder} mapping a index in the [vars] array to a
+    slot in the [env] (the slot [i] of a [Patt(Some(i), _, _)]).  Note that
+    the [vars] array can contain terms that are useless for the clause that is
+    applied, as terms might have been saved because needed by another clause
+    which is not the one applied.  The {!field:slot} keeps track of how many
+    variables have been encountered so far and thus indicates the index in
+    [vars] that will be used by the next variable. *)
 
 (** [fetch l d e r] consumes [l] until environment builder [e] contains as
     many elements as the number of variables in [r].  The environment builder
