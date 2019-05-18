@@ -394,11 +394,12 @@ let tree_iter :
 
 (** [capacity t] computes the capacity of tree [t].  During evaluation, some
     terms that are being filtered by the patterns have to be saved in order to
-    be bound in the right hand side of the rule.  The capacity is an upper
-    bound of the number of terms to be saved.  Let [P] be the set of all paths
-    from root to leaves in a tree [t].  Let [s: P → N] the function mapping to
-    any path the number of nodes that have the {!field:store} tag to [true].
-    Then the capacity [c] of [t] is [c = max{s(p) | p ∈ P}]. *)
+    be bound in the right hand side of the rule, or because they must verify a
+    constraint.  The capacity is the least upper bound of the number of terms
+    to be saved.  Let [P] be the set of all paths from root to leaves in a
+    tree [t].  Let [s: P → N] be the function mapping to any path the number
+    of nodes that have the {!field:store} tag to [true].  Then the capacity
+    [c] of [t] is [c = max{s(p) | p ∈ P}]. *)
 let capacity : tree -> int =
   let do_leaf _ _ = 0 in
   let fail = 0 in
@@ -418,8 +419,8 @@ let capacity : tree -> int =
     - abstractions,
     - symbols,
     - free variables. *)
-let rec is_treecons : term -> bool = function
-  | Appl(u, _)    -> is_treecons u
+let is_treecons : term -> bool = fun t ->
+  match fst (get_args t) with
   | Meta(_, _)
   | Patt(_, _, _) -> false
   | Vari(_)

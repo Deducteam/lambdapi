@@ -131,7 +131,7 @@ module ReductionStack = RedListStack
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
-  | DotDefa
+  | DotDefa (* Default case *)
   | DotAbst of tvar
   | DotCons of treecons
 
@@ -240,7 +240,7 @@ struct
       be used because {!val:pick_best_among} goes through all items of a rule
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
-  type rule =
+  type clause =
     { lhs : term array
     (** Left hand side of a rule.   *)
     ; rhs : action
@@ -256,7 +256,7 @@ struct
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
   type t =
-    { clauses : rule list
+    { clauses : clause list
     (** The rules. *)
     ; slot : int
     (** Index of next slot to use in {!val:vars} array to store variables. *)
@@ -266,8 +266,8 @@ struct
 
   (** Operations embedded in the tree *)
   type decision =
-    | Yield of rule
-    (** Apply a rule. *)
+    | Yield of clause
+    (** Apply a clause. *)
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
@@ -296,7 +296,7 @@ struct
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
-  let of_rules : Terms.rule list -> t = fun rs ->
+  let of_rules : rule list -> t = fun rs ->
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
       let nonlin = NlScorable.of_terms r.lhs in
@@ -320,28 +320,27 @@ struct
   let rec score : term list -> int = function
     | []                         -> 0
     | x :: xs when is_treecons x -> score xs
-    | _ :: xs                    -> succ (score xs)
+    | _ :: xs                    -> score xs + 1
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic, along with the score. *)
   let pick_best_among : t -> int array -> int * int = fun mat columns->
-    let wild_pc = Array.map (fun ci ->
-      let c = get_col ci mat in score c) columns in
+    let wild_pc = Array.map (fun ci -> score (get_col ci mat)) columns in
     let index = Array.argmax (<=) wild_pc in
     (index, wild_pc.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
-      column [k] of rules [r]. *)
-  let can_switch_on : rule list -> int -> bool = fun  clauses k ->
-    let rec loop : rule list -> bool = function
+      column [k] of clauses [r]. *)
+  let can_switch_on : clause list -> int -> bool = fun  clauses k ->
+    let rec loop : clause list -> bool = function
       | []      -> false
       | r :: rs -> if is_treecons r.lhs.(k) then true else loop rs in
     loop clauses
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
-      rules [r]. *)
-  let discard_cons_free : rule list -> int array = fun clauses ->
+      clauses [r]. *)
+  let discard_cons_free : clause list -> int array = fun clauses ->
     let ncols = List.extremum (>)
       (List.map (fun { lhs ; _ } -> Array.length lhs) clauses) in
     let switchable = List.init ncols (can_switch_on clauses) in
@@ -357,12 +356,12 @@ struct
     Some(cind, score)
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
-  let is_exhausted : rule -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
+  let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
     Array.for_all (fun e -> not (is_treecons e)) lhs &&
     NlScorable.is_empty nonlin &&
     FvScorable.is_empty freevars
 
-  (** [yield m] yields a rule to be applied. *)
+  (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun m ->
     let { clauses ; positions ; _ } = m in
     match List.find_opt is_exhausted clauses with
@@ -417,11 +416,11 @@ struct
       (match r.lhs.(ci) with Patt(Some(_), _, _) -> true | _ -> false) in
     List.exists st_r cm.clauses
 
-  (** [update_aux c p v r] returns rule [r] with auxiliary data updated
+  (** [update_aux c p v r] returns clause [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
       column [c] having argument at position [p] and having met [v] vars until
       now. *)
-  let update_aux : int -> Subterm.t -> int -> rule -> rule =
+  let update_aux : int -> Subterm.t -> int -> clause -> clause =
     fun ci pos slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
@@ -441,13 +440,13 @@ struct
         { r with env_builder ; nonlin ; freevars }
     | _                   -> r
 
-  (** [specialize p c s r] specializes the rules [r] when matching pattern [p]
+  (** [specialize p c s r] specializes the clauses [r] when matching pattern [p]
       against column [c] with positions [s].  A matrix can be specialized by a
       user defined symbol.  In case an {!constructor:Appl} is given as pattern
       [p], only terms having the same number of arguments and the same
       leftmost {e non} {!constructor:Appl} term match. *)
-  let specialize : term -> int -> subt_rs -> rule list ->
-    subt_rs * rule list = fun pat ci pos rs ->
+  let specialize : term -> int -> subt_rs -> clause list ->
+    subt_rs * clause list = fun pat ci pos rs ->
     let pos =
       let l, m, r = ReductionStack.destruct pos ci in
       let nargs = get_args pat |> snd |> List.length in
@@ -474,10 +473,10 @@ struct
       | _         , _             -> assert false in
     (pos, List.filter_map filtrans rs)
 
-  (** [default c s r] computes the default rules from [r] that remain to be
+  (** [default c s r] computes the default clauses from [r] that remain to be
       matched in case the pattern used is not in the column [c]. [s] is the
-      list of positions of the elements in each rule. *)
-  let default : int -> subt_rs -> rule list -> subt_rs * rule list =
+      list of positions of the elements in each clause. *)
+  let default : int -> subt_rs -> clause list -> subt_rs * clause list =
     fun ci pos rs ->
     let pos =
       let l, _, r = ReductionStack.destruct pos ci in
@@ -494,18 +493,19 @@ struct
       | _ -> assert false in
     (pos, List.filter_map transf rs)
 
-  (** [abstract c v p r] computes the rules resulting from the specialisation
+  (** [abstract c v p r] computes the clauses resulting from the specialisation
       by an abstraction.  Note that the pattern can't be an applied lambda
       since the lhs is in normal form. *)
-  let abstract : int -> tvar -> subt_rs -> rule list -> subt_rs * rule list =
-    fun ci v pos rules ->
+  let abstract : int -> tvar -> subt_rs -> clause list ->
+                 subt_rs * clause list =
+    fun ci v pos clauses ->
     let l, p, r = ReductionStack.destruct pos ci in
     let p = Subterm.sub p in (* Position of term inside lambda. *)
     let pos = ReductionStack.restruct l [p] r in
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.lhs ] in
-    let transf (r:rule) =
+    let transf (r:clause) =
       match r.lhs.(ci) with
       | Abst(_, b)     ->
           let b = Bindlib.subst b (mkfree v) in
@@ -517,33 +517,33 @@ struct
       | Symb(_, _)
       | Vari(_)        -> None
       | _              -> assert false in
-    (pos, List.filter_map transf rules)
+    (pos, List.filter_map transf clauses)
 
-  (** [nl_succeed c r] computes the rule list from [r] that verify a
+  (** [nl_succeed c r] computes the clause list from [r] that verify a
       non-linearity constraint [c]. *)
-  let nl_succeed : NlScorable.cstr -> rule list -> rule list = fun c ->
+  let nl_succeed : NlScorable.cstr -> clause list -> clause list = fun c ->
     let f r =
       let nonlin = NlScorable.remove c r.nonlin in
       { r with nonlin } in
     List.map f
 
-  (** [nl_fail c r] computes the rules not failing a non-linearity constraint
-      [c] among rules [r]. *)
-  let nl_fail : NlScorable.cstr -> rule list -> rule list = fun c ->
+  (** [nl_fail c r] computes the clauses not failing a non-linearity constraint
+      [c] among clauses [r]. *)
+  let nl_fail : NlScorable.cstr -> clause list -> clause list = fun c ->
     let f { nonlin ; _ } = not (NlScorable.is_instantiated c nonlin) in
     List.filter f
 
-  (** [fv_suceed c r] computes the rules from [r] that verify a free variables
+  (** [fv_suceed c r] computes the clauses from [r] that verify a free variables
       constraint [c]. *)
-  let fv_succeed : FvScorable.cstr -> rule list -> rule list = fun c ->
+  let fv_succeed : FvScorable.cstr -> clause list -> clause list = fun c ->
     let f r =
       let freevars = FvScorable.remove c r.freevars in
       { r with freevars } in
     List.map f
 
-  (** [fv_fail c r] computes the rules not failing a free variable constraint
-  [c] among rules [r]. *)
-  let fv_fail : FvScorable.cstr -> rule list -> rule list = fun c ->
+  (** [fv_fail c r] computes the clauses not failing a free variable constraint
+  [c] among clauses [r]. *)
+  let fv_fail : FvScorable.cstr -> clause list -> clause list = fun c ->
     let f { freevars ; _ } = not (FvScorable.is_instantiated c freevars) in
     List.filter f
 end
@@ -552,7 +552,7 @@ module Cm = ClauseMat
 
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
-    - accepting constructors and filtering possible rules,
+    - accepting constructors and filtering possible clauses,
     - guiding the matching in order to carry out as few atomic matchings as
       possible by selecting the most appropriate term in the stack,
     - storing terms from the stack that might be used in the right hand side,
@@ -568,11 +568,11 @@ module Cm = ClauseMat
     The last is managed by the {!val:env_builder} as follows.
     The evaluation process uses, along with the tree, an array [vars] to store
     terms matched against a pattern variable which is used in some
-    {!field:rhs}.  Each rule has an {!val:env_builder} mapping a index in the
+    {!field:rhs}.  Each clause has an {!val:env_builder} mapping a index in the
     [vars] array to a slot in the final environment (the slot [i] of a
     [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
-    are useless for the rule that is applied, as terms might have been saved
-    because needed by another rule which is not the one applied.  The
+    are useless for the clause that is applied, as terms might have been saved
+    because needed by another clause which is not the one applied.  The
     {!field:slot} keeps track of how many variables have been encountered
     so far and thus indicates the index in [vars] that will be used by the
     next variable. *)
