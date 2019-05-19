@@ -25,16 +25,6 @@ form.
 A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
-(** A type to specify how trees should be used. *)
-type tree_mode =
-  | Tm_Full     (** Use only trees *)
-  | Tm_Fallback (** Try to use tree and fallback to legacy matching if rules
-                    contain an unimplemented feature. *)
-  | Tm_Without  (** Do not use trees. *)
-
-(** [with_trees] contains whether trees are used for pattern matching. *)
-let with_trees : tree_mode Pervasives.ref = Pervasives.ref Tm_Without
-
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -53,8 +43,6 @@ type stack_elt = (bool * term) Pervasives.ref
 
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = stack_elt list
-
-type storage = (term * (term, term) Bindlib.mbinder)
 
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
