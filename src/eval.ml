@@ -44,6 +44,9 @@ type stack_elt = (bool * term) Pervasives.ref
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = stack_elt list
 
+(** Type of data stored during evaluation. *)
+type storage = term * ((term, term) Bindlib.mbinder option)
+
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
@@ -217,12 +220,11 @@ and branch : term -> tree TC.Map.t ->
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
-    let vars = Array.make capa Kind in (* dummy terms *)
-    let vars_b = Array.make capa None in
+  let vars = Array.make capa (Kind, None)in (* dummy terms *)
     let fill_vars store t slot =
       if store
       then (if !log_enabled then log_eval "storing [%a]" pp t ;
-            vars.(slot) <- t ;
+            vars.(slot) <- (t, None) ;
             succ slot)
       else slot in
     let module R = Dtree.ReductionStack in
@@ -240,25 +242,26 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let env = Array.make (Bindlib.mbinder_arity act) TE_None in
           (* Retrieve terms needed in the action from the [vars] array. *)
           let fn (pos, slot) =
-            match vars_b.(pos) with
-            | None ->
-                let t = unfold vars.(pos) in
+            match vars.(pos) with
+            | t, None ->
+                let t = unfold t in
                 let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
                 env.(slot) <- TE_Some(b)
-            | Some(x) -> env.(slot) <- TE_Some(x) in
+            | _, Some(b) -> env.(slot) <- TE_Some(b) in
           List.iter fn env_builder;
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
       | Condition({ ok ; condition ; fail }) ->
           let next = match condition with
             | TcstrEq(i, j)        ->
-                if eq_modulo vars.(i) vars.(j) then ok else fail
+                if eq_modulo (fst vars.(i)) (fst vars.(j)) then ok else fail
             | TcstrFreeVars(xs, i) ->
-                let b = lift vars.(i) in
-                let vars = Array.map (fun e -> VarMap.find e to_stamped) xs in
-                let bound = Bindlib.bind_mvar vars b in
+                let b = lift (fst vars.(i)) in
+                let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
+                let bound = Bindlib.bind_mvar xs b in
                 if Bindlib.is_closed bound
-                then (vars_b.(i) <- Some(Bindlib.unbox bound) ; ok)
+                then (vars.(i) <- ((fst vars.(i)), Some(Bindlib.unbox bound))
+                     ; ok)
                 else fail in
           walk next stk cursor to_stamped
       | Node({swap; children; store; abstraction; default}) ->
