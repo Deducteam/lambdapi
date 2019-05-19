@@ -264,9 +264,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 if eq_modulo vars.(i) vars.(j) then ok else fail
             | TcstrFreeVars(xs, i) ->
                 let b = lift vars.(i) in
-                let vars = List.to_seq xs |>
-                           Seq.map (fun e -> VarMap.find e to_stamped) |>
-                           Array.of_seq in
+                let vars = Array.map (fun e -> VarMap.find e to_stamped) xs in
                 let bound = Bindlib.bind_mvar vars b in
                 if Bindlib.is_closed bound
                 then (vars_b.(i) <- Some(Bindlib.unbox bound) ; ok)

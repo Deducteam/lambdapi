@@ -155,7 +155,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_tcstr : tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(vs, i) ->
-        F.fprintf oc "%a@@<sub>v</sub>%d" (F.pp_print_list P.pp_tvar) vs i in
+        F.fprintf oc "%a@@<sub>v</sub>%d" (F.pp_print_list P.pp_tvar)
+          (Array.to_list vs) i in
   (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon ->
@@ -425,7 +426,7 @@ struct
     | Patt(i, _, e) ->
         let freevars = if FvScorable.concerns pos r.freevars
           then FvScorable.instantiate pos slot
-              (Array.to_seq e |> Seq.map to_tvar |> List.of_seq)
+              (Array.map to_tvar e)
               r.freevars
           else r.freevars in
         let nonlin = if NlScorable.concerns pos r.nonlin

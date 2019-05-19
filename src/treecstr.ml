@@ -115,8 +115,8 @@ end
     but it requires the list of variables that may appear free in the term. *)
 module type FvConstraintSig =
 sig
-  include BinConstraintPoolSig with type out = int * tvar list
-                                and type data = tvar list
+  include BinConstraintPoolSig with type out = int * tvar array
+                                and type data = tvar array
 end
 
 module NlConstraints : NlConstraintSig =
@@ -279,32 +279,32 @@ end
 module FvConstraints : FvConstraintSig =
 struct
   type t = { involved : SubtSet.t
-           ; available : (tvar list) IntMap.t }
+           ; available : (tvar array) IntMap.t }
 
-  type cstr = int * tvar list
+  type cstr = int * tvar array
 
   type decision = Solve of cstr * int
                 | Instantiate of Subterm.t * int
                 | Unavailable
 
-  type out = int * tvar list
+  type out = int * tvar array
 
-  type data = tvar list
+  type data = tvar array
 
   let pp_cstr oc (sl, vars) =
     let module F = Format in
     Format.fprintf oc "%d: {@[<h>%a@]}" sl
       (Format.pp_print_list
          ~pp_sep:(fun oc () -> Format.pp_print_string oc "; ") Print.pp_tvar)
-      vars
+      (Array.to_list vars)
 
   let pp oc { available ; involved } =
     let module F = Format in
     let pp_tvs : tvar list pp = F.pp_print_list
         ~pp_sep:(fun oc () -> F.fprintf oc "; ")
         Print.pp_tvar in
-    let ppit : (int * tvar list) pp = fun oc (a, b) ->
-      F.fprintf oc "@[(%d, %a)@]" a pp_tvs b in
+    let ppit : (int * tvar array) pp = fun oc (a, b) ->
+      F.fprintf oc "@[(%d, %a)@]" a pp_tvs (Array.to_list b) in
     F.fprintf oc "Fv constraints:@," ;
     F.fprintf oc "@[<v>" ;
     F.fprintf oc "@[involved: %a@]@,"
@@ -324,13 +324,13 @@ struct
   let is_instantiated (sl, x) p =
     match IntMap.find_opt sl p.available with
     | None     -> false
-    | Some(x') -> List.equal Bindlib.eq_vars x x'
+    | Some(x') -> Array.equal Bindlib.eq_vars x x'
 
   let remove (sl, x) p =
     let available = match IntMap.find_opt sl p.available with
       | None     -> p.available
       | Some(x') ->
-          if List.equal (Bindlib.eq_vars) x x'
+          if Array.equal Bindlib.eq_vars x x'
           then IntMap.remove sl p.available
           else p.available in
     { p with available }

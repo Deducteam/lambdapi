@@ -214,7 +214,7 @@ and tree_constraint =
   | TcstrEq of int * int
   (** [TcstrEq(i, j)] ensures that the terms at indexes [i] and [j] are
       convertible. *)
-  | TcstrFreeVars of term Bindlib.var list * int
+  | TcstrFreeVars of term Bindlib.var array * int
   (** [TcstrFreeVars(v, i)] ensures the term at slot [i] of {!val:vars}
       contain only free variables that are in [v]. *)
 
