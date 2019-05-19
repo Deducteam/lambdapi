@@ -389,7 +389,7 @@ struct
         | Fv(c)          -> FvConstrain(c)
         | Sp(c)          -> Specialise(c)
         | Instantiate(p) ->
-            let ls_rs = ReductionStack.to_seq positions |> List.of_seq in
+            let ls_rs = ReductionStack.to_list positions in
             let plcp = Subterm.lcp p ls_rs in
             let col = Array.search (fun x -> Subterm.compare x plcp)
                         (Array.of_list ls_rs) in
@@ -399,11 +399,11 @@ struct
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
-  let get_cons : term list -> (Treecons.treecons * term) list = fun telst ->
+  let get_cons : term list -> (TC.treecons * term) list = fun telst ->
     let keep_treecons e =
       if is_treecons e then Some(treecons_of_term e, e) else None in
-    let tc_fst_cmp (tca, _) (tcb, _) = Treecons.compare tca tcb in
-    telst |> List.filter_map keep_treecons |> List.sort_uniq tc_fst_cmp
+    let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
+    List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
   (** [store m c] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation*)
@@ -436,7 +436,7 @@ struct
           | Some(i) -> (slot, i) :: r.env_builder
           | None    -> r.env_builder in
         { r with env_builder ; nonlin ; freevars }
-    | _                   -> r
+    | _             -> r
 
   (** [specialize p c s r] specializes the clauses [r] when matching pattern [p]
       against column [c] with positions [s].  A matrix can be specialized by a
