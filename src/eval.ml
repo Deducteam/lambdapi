@@ -300,7 +300,7 @@ let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
   let u = whnf t in
-  if Pervasives.(!steps) = 0 then t else u
+  if Pervasives.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
