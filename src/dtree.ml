@@ -178,7 +178,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon ;
         TC.Map.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
-        Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t) abstraction ;
+        Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t)
+          abstraction ;
         Option.iter (write_tree tag DotDefa) default ;
     | Condition(cdata) ->
         let { ok ; condition ; fail } = cdata in
@@ -439,10 +440,10 @@ struct
         { r with env_builder ; nonlin ; freevars }
     | _             -> r
 
-  (** [specialize p c s r] specializes the clauses [r] when matching pattern [p]
-      against column [c] with positions [s].  A matrix can be specialized by a
-      user defined symbol.  In case an {!constructor:Appl} is given as pattern
-      [p], only terms having the same number of arguments and the same
+  (** [specialize p c s r] specializes the clauses [r] when matching pattern
+      [p] against column [c] with positions [s].  A matrix can be specialized
+      by a user defined symbol.  In case an {!constructor:Appl} is given as
+      pattern [p], only terms having the same number of arguments and the same
       leftmost {e non} {!constructor:Appl} term match. *)
   let specialize : term -> int -> subt_rs -> clause list ->
     subt_rs * clause list = fun pat ci pos rs ->
@@ -492,9 +493,9 @@ struct
       | _ -> assert false in
     (pos, List.filter_map transf rs)
 
-  (** [abstract c v p r] computes the clauses resulting from the specialisation
-      by an abstraction.  Note that the pattern can't be an applied lambda
-      since the lhs is in normal form. *)
+  (** [abstract c v p r] computes the clauses resulting from the
+      specialisation by an abstraction.  Note that the pattern can't be an
+      applied lambda since the lhs is in normal form. *)
   let abstract : int -> tvar -> subt_rs -> clause list ->
                  subt_rs * clause list =
     fun ci v pos clauses ->
@@ -526,22 +527,22 @@ struct
       { r with nonlin } in
     List.map f
 
-  (** [nl_fail c r] computes the clauses not failing a non-linearity constraint
-      [c] among clauses [r]. *)
+  (** [nl_fail c r] computes the clauses not failing a non-linearity
+      constraint [c] among clauses [r]. *)
   let nl_fail : NlScorable.cstr -> clause list -> clause list = fun c ->
     let f { nonlin ; _ } = not (NlScorable.is_instantiated c nonlin) in
     List.filter f
 
-  (** [fv_suceed c r] computes the clauses from [r] that verify a free variables
-      constraint [c]. *)
+  (** [fv_suceed c r] computes the clauses from [r] that verify a free
+      variables constraint [c]. *)
   let fv_succeed : FvScorable.cstr -> clause list -> clause list = fun c ->
     let f r =
       let freevars = FvScorable.remove c r.freevars in
       { r with freevars } in
     List.map f
 
-  (** [fv_fail c r] computes the clauses not failing a free variable constraint
-  [c] among clauses [r]. *)
+  (** [fv_fail c r] computes the clauses not failing a free variable
+      constraint [c] among clauses [r]. *)
   let fv_fail : FvScorable.cstr -> clause list -> clause list = fun c ->
     let f { freevars ; _ } = not (FvScorable.is_instantiated c freevars) in
     List.filter f

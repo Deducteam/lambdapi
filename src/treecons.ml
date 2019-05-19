@@ -12,8 +12,8 @@ type treecons =
       ; c_sym : string
       (** Symbol of the constructor. *)
       ; c_ari : int
-      (** Arity of the considered constructor.  A same symbol representation may
-          generate several constructors with different arities. *) }
+      (** Arity of the considered constructor.  A same symbol representation
+          may generate several constructors with different arities. *) }
   | Abst
   (** An abstraction*)
   | Vari of string

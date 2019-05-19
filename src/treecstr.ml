@@ -15,8 +15,8 @@ open Extra
       the terms at position [{0}] and [{1}] are convertible.
     - to verify which variables are free in a term.  If there is a rule of the
       form [f &X[x, y] &Y[y] → &Y], then the rewriting engine must verify that
-      the term at position [{0}] depends only on free variables [x] and [y] and
-      that the term at position [{1}] depends only on free variable [y].
+      the term at position [{0}] depends only on free variables [x] and [y]
+      and that the term at position [{1}] depends only on free variable [y].
 
     Constraints depends heavily on the {!val:vars} array used to store terms
     during evaluation as it is the only way to have access to terms matched
@@ -92,7 +92,8 @@ sig
   (** [remove c p] removes constraint [c] from pool [p]. *)
   val remove : cstr -> t -> t
 
-  (** [score p] returns the action to take regarding pool of constraints [p]. *)
+  (** [score p] returns the action to take regarding pool of constraints
+      [p]. *)
   val score : t -> decision
 
   (** [of_terms r] returns constraint pool induced by terms in [r]. *)
@@ -317,7 +318,8 @@ struct
 
   let empty = { involved = SubtSet.empty ; available = IntMap.empty }
 
-  let is_empty p = p.involved = empty.involved && p.available = empty.available
+  let is_empty p = p.involved = empty.involved &&
+                   p.available = empty.available
 
   let concerns s p = SubtSet.mem s p.involved
 
