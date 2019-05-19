@@ -90,13 +90,12 @@ let whnf_beta : term -> term = fun t ->
   let u = whnf_beta t in
   if Pervasives.(!steps = 0) then t else u
 
-(** [whnf t] computes a weak head normal form of term [t] using decision
-    trees. *)
+(** [whnf t] computes a weak head normal form of term [t]. *)
 let rec whnf : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating (trees) [%a]" pp t ;
+  if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  let u, stk = whnf_stk t [] in
+  let (u, stk) = whnf_stk t [] in
   if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
@@ -105,24 +104,25 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
-  | Appl(u, v), stk      -> whnf_stk u (ensure_tref v :: stk)
+  | (Appl(f,u), stk   ) ->
+      whnf_stk f (ensure_tref u :: stk)
   (* Beta reduction. *)
-  | Abst(_, f), u :: stk ->
+  | (Abst(_,f), u::stk) ->
       Pervasives.incr steps ;
       let t = Bindlib.subst f u in
       whnf_stk t stk
   (* Try to rewrite. *)
-  | Symb(s, _), stk      ->
+  | (Symb(s,_), stk   ) ->
       begin match !(s.sym_def) with
       | Some(t) -> Pervasives.incr steps ; whnf_stk t stk
       | None    ->
       match find_rule s stk with
       (* If no rule is found, return the original term *)
-      | None         -> st
-      | Some(t, stk) -> Pervasives.incr steps ; whnf_stk t stk
+      | None        -> st
+      | Some(t,stk) -> Pervasives.incr steps ; whnf_stk t stk
       end
   (* In head normal form. *)
-  | _         , _        -> st
+  | (_         , _    ) -> st
 
 (** [find_rule s k] attempts to find a reduction rule of [s] when applied to
     arguments [k].  Returns the reduced term if a rule if found, [None]
@@ -299,8 +299,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
 let whnf : term -> term = fun t ->
   Pervasives.(steps := 0);
   let t = unfold t in
-  let reduced = whnf t in
-  if Pervasives.(!steps) <> 0 then reduced else t
+  let u = whnf t in
+  if Pervasives.(!steps) = 0 then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
