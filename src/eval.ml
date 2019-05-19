@@ -173,14 +173,18 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [branch t s c d]returns the subtree in children [c] resulting from
-    matching on term [t].  If no tree is found in [c], [d] is returned.  The
-    new elements to be put in the stack are returned along the tree. [s] is
-    the stamp used to mark variables. *)
-and branch : term -> int -> tvar VarMap.t -> tree TC.Map.t ->
+(** [branch t c a d] returns the subtree in
+    - [c] if [t] is matched against a constructor,
+    - [a] if [t] is matched against an abstraction,
+    - [h] otherwise.
+    The new elements to be put in the stack are returned along the tree.  If
+    [t] is matched against an abstraction, the couple containing the free
+    variable from the tree and the stamped one. *)
+and branch : term -> tree TC.Map.t ->
   (tvar * tree) option -> tree option ->
-  tree option * term list * (tvar VarMap.t) =
-  fun examined stamp to_stamped children abstraction default ->
+  tree option * term list * ((tvar * tvar) option) =
+  let stamp = Pervasives.ref 0 in
+  fun examined children abstraction default ->
     if !log_enabled then log_eval "branching on [%a]" pp examined ;
     (* [choose t] chooses a tree among {!val:children} when term [t] is
        examined and returns the new head of stack. *)
@@ -195,37 +199,36 @@ and branch : term -> int -> tvar VarMap.t -> tree TC.Map.t ->
           let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                             ; c_ari}) in
           let matched = TC.Map.find_opt cons children in
-          if matched = None then (default, [], to_stamped)
-          else (matched, args, to_stamped)
+          if matched = None then (default, [], None)
+          else (matched, args, None)
       | Vari(x)     ->
           let cons = TC.Vari(Bindlib.name_of x) in
           let matched = TC.Map.find_opt cons children in
-          if matched = None then (default, [], to_stamped)
-          else (matched, args, to_stamped)
+          if matched = None then (default, [], None)
+          else (matched, args, None)
       | Abst(_, b)  ->
           begin match abstraction with
-          | None         -> (default, [], to_stamped)
+          | None         -> (default, [], None)
           | Some(fv, tr) ->
-              let nfv = stamp_tvar stamp fv in
+              let nfv = stamp_tvar Pervasives.(!stamp) fv in
+              Pervasives.incr stamp ;
               let bound = Bindlib.subst b (mkfree nfv) in
-              (Some(tr), ensure_tref bound::args, VarMap.add fv nfv to_stamped)
+              (Some(tr), ensure_tref bound::args, Some(fv, nfv))
           end
-      | Meta(_, _)  -> (default, [], to_stamped)
+      | Meta(_, _)  -> (default, [], None)
       | _           -> assert false in
     let r = if TC.Map.is_empty children && abstraction = None
-      then (default, [], to_stamped)
+      then (default, [], None)
       else choose (whnf examined) in
     if !log_enabled
-    then log_eval (r_or_g (r != (default, [], to_stamped)) "branching on [%a]")
+    then log_eval (r_or_g (r != (default, [], None)) "branching on [%a]")
       pp examined ;
     r
 
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
-  let stamp = ref 1 in (* Start at 1 as Bindlib considers 00 to be 0 *)
   fun tree capa stk ->
-    incr stamp ;
     let vars = Array.make capa Kind in (* dummy terms *)
     let vars_b = Array.make capa None in
     let fill_vars store t slot =
@@ -275,9 +278,11 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             try
               let left, examined, right = R.destruct stk swap in
               let cursor = fill_vars store examined cursor in
-              let matched, args, to_stamped =
-                branch examined !stamp to_stamped children abstraction
-                  default in
+              let matched, args, fv_nfv =
+                branch examined children abstraction default in
+              let to_stamped = match fv_nfv with
+                | None      -> to_stamped
+                | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
               let next child =
                 let stk = R.restruct left args right in
                 walk child stk cursor to_stamped in
