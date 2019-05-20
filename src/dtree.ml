@@ -280,11 +280,12 @@ struct
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc { clauses ; positions ; _ } ->
     let module F = Format in
-    let pp_line oc { lhs ; freevars ; _ } =
-      F.fprintf oc "@[<v>@[%a@]@,@[%a@]@]"
+    let pp_line oc { lhs ; freevars ; nonlin ; _ } =
+      F.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
         (F.pp_print_list ~pp_sep:(Format.pp_print_space) Print.pp)
         (Array.to_list lhs)
-        FvScorable.pp freevars in
+        FvScorable.pp freevars
+        NlScorable.pp nonlin in
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Subterm.pp oc
       (ReductionStack.to_list positions) ;
@@ -354,9 +355,7 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    Array.for_all (fun e -> not (is_treecons e)) lhs &&
-    NlScorable.is_empty nonlin &&
-    FvScorable.is_empty freevars
+    lhs = [||] && NlScorable.is_empty nonlin && FvScorable.is_empty freevars
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
@@ -392,7 +391,7 @@ struct
             let col = Array.search (fun x -> Subterm.compare x plcp)
                         (Array.of_list ls_rs) in
             Specialise(col)
-        | Unavailable    -> assert false
+        | Unavailable    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
