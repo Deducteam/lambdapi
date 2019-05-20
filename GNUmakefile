@@ -47,8 +47,7 @@ real_tests: bin
 		$(LAMBDAPI) --verbose 0 $$file 2> /dev/null \
 		&& printf "\033[32mOK\033[0m $$file\n" \
 	  || { printf "\033[31mKO\033[0m $$file\n" \
-		&& $(LAMBDAPI) --verbose 0 $$file ; \
-		exit 1 ; } ; \
+		&& $(LAMBDAPI) --verbose 0 $$file ; exit 1 ; } ; \
 	done
 	@printf "## KO tests ##\n"
 	@for file in $(KO_TESTFILES) ; do \
