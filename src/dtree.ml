@@ -300,7 +300,7 @@ struct
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
       let nonlin = NlScorable.of_terms r.lhs in
-      let freevars = FvScorable.of_terms r.lhs in
+      let freevars = FvScorable.empty in
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -405,10 +405,11 @@ struct
   (** [store m c] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation*)
   let store : t -> int -> bool = fun cm ci ->
-    let _, pos, _ = ReductionStack.destruct cm.positions ci in
     let st_r r =
-      FvScorable.concerns pos r.freevars ||
-      (match r.lhs.(ci) with Patt(Some(_), _, _) -> true | _ -> false) in
+      match r.lhs.(ci) with
+      | Patt(Some(_), _, _)          -> true
+      | Patt(_, _, e) when e <> [||] -> true
+      | _                            -> false in
     List.exists st_r cm.clauses
 
   (** [update_aux c p v r] returns clause [r] with auxiliary data updated
@@ -420,7 +421,7 @@ struct
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if FvScorable.concerns pos r.freevars
+        let freevars = if e <> [||]
           then FvScorable.instantiate pos slot
               (Array.map to_tvar e)
               r.freevars

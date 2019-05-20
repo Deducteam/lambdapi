@@ -279,8 +279,7 @@ end
 
 module FvConstraints : FvConstraintSig =
 struct
-  type t = { involved : SubtSet.t
-           ; available : (tvar array) IntMap.t }
+  type t = (tvar array) IntMap.t
 
   type cstr = int * tvar array
 
@@ -299,7 +298,7 @@ struct
          ~pp_sep:(fun oc () -> Format.pp_print_string oc "; ") Print.pp_tvar)
       (Array.to_list vars)
 
-  let pp oc { available ; involved } =
+  let pp oc available =
     let module F = Format in
     let pp_tvs : tvar list pp = F.pp_print_list
         ~pp_sep:(fun oc () -> F.fprintf oc "; ")
@@ -308,57 +307,42 @@ struct
       F.fprintf oc "@[(%d, %a)@]" a pp_tvs (Array.to_list b) in
     F.fprintf oc "Fv constraints:@," ;
     F.fprintf oc "@[<v>" ;
-    F.fprintf oc "@[involved: %a@]@,"
-      (F.pp_print_list ~pp_sep:(F.pp_print_space) Subterm.pp)
-      (SubtSet.to_seq involved |> List.of_seq) ;
     F.fprintf oc "@[available: %a@]@,"
       (F.pp_print_list ppit)
       (IntMap.bindings available) ;
     F.fprintf oc "@]@."
 
-  let empty = { involved = SubtSet.empty ; available = IntMap.empty }
+  let empty = IntMap.empty
 
-  let is_empty p = p.involved = empty.involved &&
-                   p.available = empty.available
+  let is_empty = IntMap.is_empty
 
-  let concerns s p = SubtSet.mem s p.involved
+  let concerns _ _ = assert false
 
   let is_instantiated (sl, x) p =
-    match IntMap.find_opt sl p.available with
+    match IntMap.find_opt sl p with
     | None     -> false
     | Some(x') -> Array.equal Bindlib.eq_vars x x'
 
   let remove (sl, x) p =
-    let available = match IntMap.find_opt sl p.available with
-      | None     -> p.available
-      | Some(x') ->
-          if Array.equal Bindlib.eq_vars x x'
-          then IntMap.remove sl p.available
-          else p.available in
-    { p with available }
+    match IntMap.find_opt sl p with
+    | None     -> p
+    | Some(x') ->
+        if Array.equal Bindlib.eq_vars x x'
+        then IntMap.remove sl p
+        else p
 
-  let instantiate path slot vars pool =
-    { involved = SubtSet.remove path pool.involved
-    ; available = IntMap.add slot vars pool.available }
+  let instantiate _ slot vars pool =
+    IntMap.add slot vars pool
 
   let export x = x
 
-  let of_terms tes =
-    let add po _ _ e acc =
-      if e = [||] then acc else
-      SubtSet.add po acc in
-    let merge = SubtSet.union in
-    let involved = fold_vars tes ~add:add ~merge:merge ~init:SubtSet.empty in
-    { empty with involved }
+  let of_terms _ = assert false
 
   let score c =
     if is_empty c then Unavailable else
-    match IntMap.choose_opt c.available with
+    match IntMap.choose_opt c with
     | Some(i, x) -> Solve((i, x), 1)
-    | None       ->
-    match SubtSet.choose_opt c.involved with
-    | None    -> Unavailable
-    | Some(s) -> Instantiate(s, 1)
+    | None       -> Unavailable
 end
 
 (** {3 Comparing constraints }*)
