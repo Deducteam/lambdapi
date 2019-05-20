@@ -292,7 +292,7 @@ struct
     F.fprintf oc "@]@," ;
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
-    F.fprintf oc "@.}@,"
+    F.fprintf oc "@.@]}"
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
@@ -575,51 +575,16 @@ module Cm = ClauseMat
     variables have been encountered so far and thus indicates the index in
     [vars] that will be used by the next variable. *)
 
-(** [fetch l d e r] consumes [l] until environment builder [e] contains as
-    many elements as the number of variables in [r].  The environment builder
-    [e] is also enriched.  The tree which allows this consumption is returned,
-    with a leaf holding action [r] and the new environment.
-
-    The remaining terms are all consumed to expunge the stack during
-    evaluation. *)
-let fetch : term array -> int -> (int * int) list -> action -> t =
-  fun line depth env_builder rhs ->
-    let defnd = { swap = 0 ; store = false ; children = TC.Map.empty
-                ; default = None ; abstraction = None } in
-    let terms = Array.to_list line in
-    let rec loop telst added env_builder =
-      match telst with
-      | []       -> Leaf(env_builder, rhs)
-      | te :: tl ->
-          let h, args = get_args te in
-          let atl = args @ tl in
-          begin match h with
-          | Patt(Some(i), _, _) ->
-              let neb = (depth + added, i) :: env_builder in
-              let child = loop atl (succ added) neb in
-              Node( { defnd with store = true ; default = Some(child) })
-          | Abst(_, b)          ->
-              let _, body = Bindlib.unbind b in
-              let child = loop (body :: atl) added env_builder in
-              Node({ defnd with default = Some(child) })
-          | Patt(None, _, _)    ->
-              let child = loop atl added env_builder in
-              Node({ defnd with default = Some(child) })
-          | _                   -> Fail
-          end in
-    loop terms 0 env_builder
-
 (** [compile m] returns the decision tree allowing to parse efficiently the
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
-  fun patterns ->
-  let { Cm.clauses ; Cm.slot ; Cm.positions } = patterns in
+  fun ({ clauses ; positions ; slot } as patterns) ->
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Yield({ Cm.rhs ; Cm.lhs ; env_builder ; _ }) ->
-      fetch lhs slot env_builder rhs
-  | NlConstrain(constr)                          ->
+  | Yield({ Cm.rhs ; env_builder ; _ }) ->
+      Leaf(env_builder, rhs)
+  | NlConstrain(constr)                 ->
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
       let fail = let nclauses = Cm.nl_fail constr clauses in
@@ -627,7 +592,7 @@ let rec compile : Cm.t -> t =
       let vi, vj = NlScorable.export constr in
       let condition = TcstrEq(vi, vj) in
       Condition({ ok ; condition ; fail })
-  | FvConstrain(constr)                          ->
+  | FvConstrain(constr)                 ->
       let ok = let clauses = Cm.fv_succeed constr clauses in
         compile { patterns with Cm.clauses } in
       let fail = let clauses = Cm.fv_fail constr clauses in
@@ -635,7 +600,7 @@ let rec compile : Cm.t -> t =
       let slot, vars = FvScorable.export constr in
       let condition = TcstrFreeVars(vars, slot) in
       Condition({ ok ; condition ; fail })
-  | Specialise(swap)                             ->
+  | Specialise(swap)                    ->
       let _, pos, _ = ReductionStack.destruct positions swap in
       let store = Cm.store patterns swap in
       let updated = List.map (Cm.update_aux swap pos slot) clauses in
