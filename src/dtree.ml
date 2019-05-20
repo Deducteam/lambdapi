@@ -301,12 +301,11 @@ struct
       let nonlin = NlScorable.of_terms r.lhs in
       let freevars = FvScorable.of_terms r.lhs in
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
-    let positions = match rs with
-      | []   -> ReductionStack.empty
-      | r::_ ->
-          Subterm.sequence (List.length r.lhs) |>
-            (* [|>] is reverse application, can be thought as a Unix pipe | *)
-          ReductionStack.of_seq in
+    let size = (* Get length of longest rule *)
+      if rs = [] then 0 else
+      List.extremum (>) (List.map (fun r -> List.length r.Terms.lhs) rs) in
+    let positions = Subterm.sequence size |> ReductionStack.of_seq in
+    (* [|>] is reverse application, can be thought as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -332,10 +331,8 @@ struct
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of clauses [r]. *)
   let can_switch_on : clause list -> int -> bool = fun  clauses k ->
-    let rec loop : clause list -> bool = function
-      | []      -> false
-      | r :: rs -> if is_treecons r.lhs.(k) then true else loop rs in
-    loop clauses
+    List.for_all (fun r -> Array.length r.lhs >= k + 1) clauses &&
+    List.exists (fun r -> is_treecons r.lhs.(k)) clauses
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
@@ -362,8 +359,7 @@ struct
     FvScorable.is_empty freevars
 
   (** [yield m] yields a clause to be applied. *)
-  let yield : t -> decision = fun m ->
-    let { clauses ; positions ; _ } = m in
+  let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
