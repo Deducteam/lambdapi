@@ -299,7 +299,7 @@ struct
   let of_rules : rule list -> t = fun rs ->
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
-      let nonlin = NlScorable.of_terms r.lhs in
+      let nonlin = NlScorable.empty in
       let freevars = FvScorable.empty in
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let size = (* Get length of longest rule *)
@@ -426,9 +426,10 @@ struct
               (Array.map to_tvar e)
               r.freevars
           else r.freevars in
-        let nonlin = if NlScorable.concerns pos r.nonlin
-          then NlScorable.instantiate pos slot () r.nonlin
-          else r.nonlin in
+        let nonlin =
+          match i with
+          | Some(i) -> NlScorable.instantiate pos slot i r.nonlin
+          | None    -> r.nonlin in
         let env_builder =
           match i with
           | Some(i) -> (slot, i) :: r.env_builder
