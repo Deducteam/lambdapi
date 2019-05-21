@@ -1,8 +1,11 @@
 (** This module provides a model of binary constraints to be used in decision
     trees. *)
 open Terms
-open Basics
 open Extra
+
+(** Holds a constraint to solve and its heuristic score, or nothing if there
+    are no constraint availavle. *)
+type 'a cdecision = ('a * int) option
 
 (** Binary constraints allow to check properties on terms during evaluation.
     A constraint is binary as it gives birth to two trees, one used if the
@@ -44,15 +47,7 @@ sig
   type data
 
   (** Action to perform. *)
-  type decision =
-    | Solve of cstr * int
-    (** A constraint to apply along with its heuristic score. *)
-    | Instantiate of Subterm.t * int
-    (** Carry out a switch on a term specified by its position.  A switch can
-        be performed to expose a pattern variable having a constraint.  The
-        [int] is the heuristic score. *)
-    | Unavailable
-    (** No constraint available. *)
+  type decision = cstr cdecision
 
   (** [pp_cstr o c] prints constraint [c] to channel [o]. *)
   val pp_cstr : cstr pp
@@ -123,6 +118,9 @@ struct
   module IntPairSet = Set.Make(IntPair)
   module IntPairMap = Map.Make(IntPair)
 
+  (** Weight given to nl constraints. *)
+  let nl_prio = 1
+
   type t =
     { partial : int IntMap.t
     (** An association [(e, v)] is a slot [e] of the [env] array with a slot
@@ -133,9 +131,7 @@ struct
 
   type cstr = int * int
 
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
 
   type out = int * int
 
@@ -173,10 +169,9 @@ struct
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
   let score c =
-    if is_empty c then Unavailable else
-    match IntPairSet.choose_opt c.available with
-    | Some(c) -> Solve(c, 1)
-    | None    -> Unavailable
+    if is_empty c then None else
+    Option.bind (fun c -> Some(c, nl_prio))
+      (IntPairSet.choose_opt c.available)
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
@@ -203,9 +198,7 @@ struct
 
   type cstr = int * tvar array
 
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
 
   type out = int * tvar array
 
@@ -255,10 +248,10 @@ struct
   let export x = x
 
   let score c =
-    if is_empty c then Unavailable else
+    if is_empty c then None else
     match IntMap.choose_opt c with
-    | Some(i, x) -> Solve((i, x), 1)
-    | None       -> Unavailable
+    | Some(i, x) -> Some((i, x), 1)
+    | None       -> None
 end
 
 (** {3 Comparing constraints }*)
@@ -284,16 +277,12 @@ struct
   open BCP
 
   let score_lt s1 s2 = match (s1, s2) with
-    | Unavailable, Unavailable -> true
-    | Unavailable, _           -> true
-    | _          , Unavailable -> false
-    | Solve(_, s), Solve(_, t) -> s <= t
-    | Solve(_, _), _           -> false
-    | _          , Solve(_, _) -> true
-    | Instantiate(_, s), Instantiate(_, t) -> s <= t
+    | None, _                -> true
+    | Some(_, _), None       -> false
+    | Some(_, x), Some(_, y) -> x <= y
 
   let choose = function
-    | [] -> Unavailable
+    | [] -> None
     | cs -> List.map score cs |> List.extremum score_lt
 end
 
@@ -301,9 +290,7 @@ end
 module type NlScorableSig = sig
   type t
   type cstr
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
   include (NlConstraintSig)
           with type t := t and type cstr := cstr and type decision := decision
 
@@ -315,9 +302,7 @@ end
 module type FvScorableSig = sig
   type t
   type cstr
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
   include (FvConstraintSig)
           with type t := t and type cstr := cstr and type decision := decision
 

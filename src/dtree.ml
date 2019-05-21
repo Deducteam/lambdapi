@@ -365,14 +365,12 @@ struct
         (* All below could be simplified using either a functor or gadt. *)
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         let rnl = match NlScorable.choose nlcstrs with
-          | NlScorable.Solve(c, i)       -> (Nl(c), i)
-          | NlScorable.Instantiate(s, i) -> (Instantiate(s), i)
-          | NlScorable.Unavailable       -> (Unavailable, min_int) in
+          | Some(c, i) -> (Nl(c), i)
+          | None       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
         let rfv = match FvScorable.choose fvcstrs with
-          | FvScorable.Solve(c, i)       -> (Fv(c), i)
-          | FvScorable.Instantiate(s, i) -> (Instantiate(s), i)
-          | FvScorable.Unavailable       -> (Unavailable, min_int) in
+          | Some(c, i) -> (Fv(c), i)
+          | None       -> (Unavailable, min_int) in
         let rs = match choose m with
           | None       -> (Unavailable, min_int)
           | Some(c, i) -> (Sp(c), i) in
