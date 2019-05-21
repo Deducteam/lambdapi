@@ -6,7 +6,7 @@ open Extra
 
 (** Binary constraints allow to check properties on terms during evaluation.
     A constraint is binary as it gives birth to two trees, one used if the
-    constraint is satisfied and the other used if not.
+    constraint is satisfied and the other if not.
 
     Currently, binary constraints are used
     - to check non linear constraints in the left hand side of a rule (e.g. in
@@ -24,15 +24,11 @@ open Extra
     The slot is determined via the {!field:slot} which is incremented each
     time a {!constructor:Patt} is encountered. *)
 
-(** A general type for a pool of constraints.  Constraints are first parsed
-    from lhs and stored using their position.  At the beginning, constraints
-    are not available for checking, as at the beginning of evaluation, the
-    terms are not yet known.  During tree build, a constraint is {e
-    instantiated} if the position to which it refers is inspected (chosen for
-    specialisation).  When a constraint is fully instantiated, it is marked as
-    available which means that the rewriting engine is able to verify the
-    constraint (because the concerned terms from the term stack have been
-    parsed). *)
+(** A general type for a pool of constraints.  Constraints are added on the
+    fly during tree build.  Constraints can involve one or more terms from a
+    lhs.  If a constraint involves more than one variable, on the first var
+    encountered, the constraint is {e partially} instantiated, waiting for
+    another variable to complete the constraint. *)
 module type BinConstraintPoolSig =
 sig
   (** Set of constraints declared, either available or not. *)
@@ -70,20 +66,15 @@ sig
   (** [is_empty p] returns whether pool [p] is empty. *)
   val is_empty : t -> bool
 
-  (** [concerns p q] returns true if position [p] hasn't been instantiated yet
-      in pool [q] and if [p] is involved in a constraint. *)
-  val concerns : Subterm.t -> t -> bool
-
-  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
-      that is, mark a path as {i seen} in the constraints.  Typically, if a
-      constraint involves only one variable, then instantiating a variable is
-      equivalent to instantiating a constraint.  However, if a constraint
-      involves several variables, then instantiating a variable will promote
-      the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.  The
-      [d] is some additional data needed.
+  (** [instantiate i d q] instantiate constraint on slot [i] in pool [q], that
+      is.  Typically, if a constraint involves only one variable, then
+      instantiating a variable is equivalent to instantiating a constraint.
+      However, if a constraint involves several variables, then instantiating
+      a variable will promote the constraint to a {e partially instantiated
+      state}, and will be completely instantiated when all the variables are
+      instantiated.  The [d] is some additional data needed.
       @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> data -> t -> t
+  val instantiate : int -> data -> t -> t
 
   (** [is_instantiated c p] returns whether pool [p] has constraint [c]
       instantiated. *)
@@ -95,9 +86,6 @@ sig
   (** [score p] returns the action to take regarding pool of constraints
       [p]. *)
   val score : t -> decision
-
-  (** [of_terms r] returns constraint pool induced by terms in [r]. *)
-  val of_terms : term list -> t
 
   (** [export c] returns the two slots containing the terms that must be
       convertible. *)
@@ -192,14 +180,12 @@ struct
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
-  let concerns _ _ = assert false
-
   let remove pair pool = { pool with
                            available = IntPairSet.remove pair pool.available }
 
   let export pair = pair
 
-  let instantiate _ vslot esl pool =
+  let instantiate vslot esl pool =
     match IntMap.find_opt esl pool.partial with
     | Some(ovs) ->
         let available = IntPairSet.add (normalize (vslot, ovs))
@@ -209,9 +195,6 @@ struct
         let partial = IntMap.add esl vslot pool.partial in
         { pool with partial }
 
-  (** [of_terms r] returns the non linearity set of constraints associated to
-      list of terms [r]. *)
-  let of_terms _ = assert false
 end
 
 module FvConstraints : FvConstraintSig =
@@ -253,8 +236,6 @@ struct
 
   let is_empty = IntMap.is_empty
 
-  let concerns _ _ = assert false
-
   let is_instantiated (sl, x) p =
     match IntMap.find_opt sl p with
     | None     -> false
@@ -268,12 +249,10 @@ struct
         then IntMap.remove sl p
         else p
 
-  let instantiate _ slot vars pool =
+  let instantiate slot vars pool =
     IntMap.add slot vars pool
 
   let export x = x
-
-  let of_terms _ = assert false
 
   let score c =
     if is_empty c then Unavailable else

@@ -412,23 +412,22 @@ struct
       | _                            -> false in
     List.exists st_r cm.clauses
 
-  (** [update_aux c p v r] returns clause [r] with auxiliary data updated
+  (** [update_aux c v r] returns clause [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
-      column [c] having argument at position [p] and having met [v] vars until
-      now. *)
-  let update_aux : int -> Subterm.t -> int -> clause -> clause =
-    fun ci pos slot r ->
+      column [c] having met [v] vars until now. *)
+  let update_aux : int -> int -> clause -> clause =
+    fun ci slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
         let freevars = if e <> [||]
-          then FvScorable.instantiate pos slot
+          then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
           else r.freevars in
         let nonlin =
           match i with
-          | Some(i) -> NlScorable.instantiate pos slot i r.nonlin
+          | Some(i) -> NlScorable.instantiate slot i r.nonlin
           | None    -> r.nonlin in
         let env_builder =
           match i with
@@ -603,9 +602,8 @@ let rec compile : Cm.t -> t =
       let condition = TcstrFreeVars(vars, slot) in
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                    ->
-      let _, pos, _ = ReductionStack.destruct positions swap in
       let store = Cm.store patterns swap in
-      let updated = List.map (Cm.update_aux swap pos slot) clauses in
+      let updated = List.map (Cm.update_aux swap slot) clauses in
       let slot = if store then succ slot else slot in
       let cons = Cm.get_col swap patterns |> Cm.get_cons in
       (* Constructors specialisation *)
