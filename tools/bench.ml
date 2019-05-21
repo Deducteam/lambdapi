@@ -2,17 +2,20 @@
 #use "topfind"
 #require "unix"
 (* Benchmarks on libraries.  Should be called at the root of the
-   repo. *)
+  repo. *)
 
 open Unix
 
 let libraries =
   [ "dklib"
-  ; "focalide" ]
+  ; "focalide"
+  ; "matita"
+  ; "holide"
+  ; "verine" ]
 
 let prepare lib =
-  putenv "LAMBDAPI" "/bin/true" ;
   chdir "libraries/" ;
+  putenv "LAMBDAPI" "/dev/true" ;
   ignore @@ system ("./" ^ lib ^ ".sh") ;
   chdir "../"
 
