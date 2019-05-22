@@ -215,7 +215,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
 (** A helper type to process [choose] results uniformly. *)
 type bin_cstr = Fv of FvScorable.cstr
               | Nl of NlScorable.cstr
-              | Instantiate of Subterm.t
               | Sp of int
               | Unavailable
 
@@ -358,7 +357,7 @@ struct
     lhs = [||] && NlScorable.is_empty nonlin && FvScorable.is_empty freevars
 
   (** [yield m] yields a clause to be applied. *)
-  let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
+  let yield : t -> decision = fun ({ clauses ; _ } as m) ->
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
@@ -383,12 +382,6 @@ struct
         | Nl(c)          -> NlConstrain(c)
         | Fv(c)          -> FvConstrain(c)
         | Sp(c)          -> Specialise(c)
-        | Instantiate(p) ->
-            let ls_rs = ReductionStack.to_list positions in
-            let plcp = Subterm.lcp p ls_rs in
-            let col = Array.search (fun x -> Subterm.compare x plcp)
-                        (Array.of_list ls_rs) in
-            Specialise(col)
         | Unavailable    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree

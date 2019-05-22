@@ -248,7 +248,6 @@ struct
   let export x = x
 
   let score c =
-    if is_empty c then None else
     match IntMap.choose_opt c with
     | Some(i, x) -> Some((i, x), 1)
     | None       -> None
@@ -276,14 +275,14 @@ struct
 
   open BCP
 
-  let score_lt s1 s2 = match (s1, s2) with
-    | None, _                -> true
-    | Some(_, _), None       -> false
-    | Some(_, x), Some(_, y) -> x <= y
+  let score_gt s1 s2 = match (s1, s2) with
+    | None      , _          -> false
+    | Some(_, _), None       -> true
+    | Some(_, x), Some(_, y) -> x >= y
 
   let choose = function
     | [] -> None
-    | cs -> List.map score cs |> List.extremum score_lt
+    | cs -> List.map score cs |> List.extremum score_gt
 end
 
 (** Non linearity with score constraints. *)
