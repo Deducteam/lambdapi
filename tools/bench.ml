@@ -15,7 +15,7 @@ let libraries =
 
 let prepare lib =
   chdir "libraries/" ;
-  putenv "LAMBDAPI" "/dev/true" ;
+  putenv "LAMBDAPI" "/bin/true" ;
   ignore @@ system ("./" ^ lib ^ ".sh") ;
   chdir "../"
 
