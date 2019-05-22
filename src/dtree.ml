@@ -605,15 +605,14 @@ let rec compile : Cm.t -> t =
       let slot = if store then succ slot else slot in
       let cons = Cm.get_col swap patterns |> Cm.get_cons in
       (* Constructors specialisation *)
-      let spepatts =
+      let children =
         let f acc (tr_cons, te_cons) =
           if tr_cons = TC.Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TC.Map.add tr_cons ncm acc in
+          TC.Map.add tr_cons (compile ncm) acc in
         List.fold_left f TC.Map.empty cons in
-      let children = TC.Map.map compile spepatts in
       (* Default child *)
       let default =
         let positions, clauses = Cm.default swap positions updated in
