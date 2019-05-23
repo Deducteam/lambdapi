@@ -265,21 +265,21 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 else fail in
           walk next stk cursor to_stamped
       | Node({swap; children; store; abstraction; default}) ->
-          begin
-            try
-              let left, examined, right = R.destruct stk swap in
-              let cursor = fill_vars store examined cursor in
-              let matched, args, fv_nfv =
-                branch examined children abstraction default in
-              let to_stamped = match fv_nfv with
-                | None      -> to_stamped
-                | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
-              let next child =
-                let stk = R.restruct left args right in
-                walk child stk cursor to_stamped in
-              Option.bind next matched
-            with Not_found -> None
-          end in
+          let l_e_r =
+            try Some(R.destruct stk swap)
+            with Not_found -> None in
+          match l_e_r with None -> None | Some(l_e_r) ->
+          let left, examined, right = l_e_r in
+          let cursor = fill_vars store examined cursor in
+          let matched, args, fv_nfv =
+            branch examined children abstraction default in
+          let to_stamped = match fv_nfv with
+            | None      -> to_stamped
+            | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
+          let next child =
+            let stk = R.restruct left args right in
+            walk child stk cursor to_stamped in
+          Option.bind next matched in
     walk tree stk 0 (VarMap.empty)
 
 (** {b Note} During the matching with trees, two structures containing terms
