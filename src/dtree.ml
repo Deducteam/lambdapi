@@ -215,7 +215,6 @@ let to_dot : string -> t -> unit = fun fname tree ->
 (** A helper type to process [choose] results uniformly. *)
 type bin_cstr = Fv of FvScorable.cstr
               | Nl of NlScorable.cstr
-              | Instantiate of Subterm.t
               | Sp of int
               | Unavailable
 
@@ -299,7 +298,7 @@ struct
   let of_rules : rule list -> t = fun rs ->
     let r2r r =
       let lhs = Array.of_list r.Terms.lhs in
-      let nonlin = NlScorable.of_terms r.lhs in
+      let nonlin = NlScorable.empty in
       let freevars = FvScorable.empty in
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let size = (* Get length of longest rule *)
@@ -358,21 +357,19 @@ struct
     lhs = [||] && NlScorable.is_empty nonlin && FvScorable.is_empty freevars
 
   (** [yield m] yields a clause to be applied. *)
-  let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
+  let yield : t -> decision = fun ({ clauses ; _ } as m) ->
     match List.find_opt is_exhausted clauses with
     | Some(r) -> Yield(r)
     | None    ->
         (* All below could be simplified using either a functor or gadt. *)
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         let rnl = match NlScorable.choose nlcstrs with
-          | NlScorable.Solve(c, i)       -> (Nl(c), i)
-          | NlScorable.Instantiate(s, i) -> (Instantiate(s), i)
-          | NlScorable.Unavailable       -> (Unavailable, min_int) in
+          | Some(c, i) -> (Nl(c), i)
+          | None       -> (Unavailable, min_int) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
         let rfv = match FvScorable.choose fvcstrs with
-          | FvScorable.Solve(c, i)       -> (Fv(c), i)
-          | FvScorable.Instantiate(s, i) -> (Instantiate(s), i)
-          | FvScorable.Unavailable       -> (Unavailable, min_int) in
+          | Some(c, i) -> (Fv(c), i)
+          | None       -> (Unavailable, min_int) in
         let rs = match choose m with
           | None       -> (Unavailable, min_int)
           | Some(c, i) -> (Sp(c), i) in
@@ -385,12 +382,6 @@ struct
         | Nl(c)          -> NlConstrain(c)
         | Fv(c)          -> FvConstrain(c)
         | Sp(c)          -> Specialise(c)
-        | Instantiate(p) ->
-            let ls_rs = ReductionStack.to_list positions in
-            let plcp = Subterm.lcp p ls_rs in
-            let col = Array.search (fun x -> Subterm.compare x plcp)
-                        (Array.of_list ls_rs) in
-            Specialise(col)
         | Unavailable    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
@@ -412,23 +403,23 @@ struct
       | _                            -> false in
     List.exists st_r cm.clauses
 
-  (** [update_aux c p v r] returns clause [r] with auxiliary data updated
+  (** [update_aux c v r] returns clause [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
-      column [c] having argument at position [p] and having met [v] vars until
-      now. *)
-  let update_aux : int -> Subterm.t -> int -> clause -> clause =
-    fun ci pos slot r ->
+      column [c] having met [v] vars until now. *)
+  let update_aux : int -> int -> clause -> clause =
+    fun ci slot r ->
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
         let freevars = if e <> [||]
-          then FvScorable.instantiate pos slot
+          then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
           else r.freevars in
-        let nonlin = if NlScorable.concerns pos r.nonlin
-          then NlScorable.instantiate pos slot () r.nonlin
-          else r.nonlin in
+        let nonlin =
+          match i with
+          | Some(i) -> NlScorable.instantiate slot i r.nonlin
+          | None    -> r.nonlin in
         let env_builder =
           match i with
           | Some(i) -> (slot, i) :: r.env_builder
@@ -602,21 +593,19 @@ let rec compile : Cm.t -> t =
       let condition = TcstrFreeVars(vars, slot) in
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                    ->
-      let _, pos, _ = ReductionStack.destruct positions swap in
       let store = Cm.store patterns swap in
-      let updated = List.map (Cm.update_aux swap pos slot) clauses in
+      let updated = List.map (Cm.update_aux swap slot) clauses in
       let slot = if store then succ slot else slot in
       let cons = Cm.get_col swap patterns |> Cm.get_cons in
       (* Constructors specialisation *)
-      let spepatts =
+      let children =
         let f acc (tr_cons, te_cons) =
           if tr_cons = TC.Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TC.Map.add tr_cons ncm acc in
+          TC.Map.add tr_cons (compile ncm) acc in
         List.fold_left f TC.Map.empty cons in
-      let children = TC.Map.map compile spepatts in
       (* Default child *)
       let default =
         let positions, clauses = Cm.default swap positions updated in

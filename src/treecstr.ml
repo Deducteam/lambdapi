@@ -1,12 +1,15 @@
 (** This module provides a model of binary constraints to be used in decision
     trees. *)
 open Terms
-open Basics
 open Extra
+
+(** Holds a constraint to solve and its heuristic score, or nothing if there
+    are no constraint availavle. *)
+type 'a cdecision = ('a * int) option
 
 (** Binary constraints allow to check properties on terms during evaluation.
     A constraint is binary as it gives birth to two trees, one used if the
-    constraint is satisfied and the other used if not.
+    constraint is satisfied and the other if not.
 
     Currently, binary constraints are used
     - to check non linear constraints in the left hand side of a rule (e.g. in
@@ -24,15 +27,11 @@ open Extra
     The slot is determined via the {!field:slot} which is incremented each
     time a {!constructor:Patt} is encountered. *)
 
-(** A general type for a pool of constraints.  Constraints are first parsed
-    from lhs and stored using their position.  At the beginning, constraints
-    are not available for checking, as at the beginning of evaluation, the
-    terms are not yet known.  During tree build, a constraint is {e
-    instantiated} if the position to which it refers is inspected (chosen for
-    specialisation).  When a constraint is fully instantiated, it is marked as
-    available which means that the rewriting engine is able to verify the
-    constraint (because the concerned terms from the term stack have been
-    parsed). *)
+(** A general type for a pool of constraints.  Constraints are added on the
+    fly during tree build.  Constraints can involve one or more terms from a
+    lhs.  If a constraint involves more than one variable, on the first var
+    encountered, the constraint is {e partially} instantiated, waiting for
+    another variable to complete the constraint. *)
 module type BinConstraintPoolSig =
 sig
   (** Set of constraints declared, either available or not. *)
@@ -48,15 +47,7 @@ sig
   type data
 
   (** Action to perform. *)
-  type decision =
-    | Solve of cstr * int
-    (** A constraint to apply along with its heuristic score. *)
-    | Instantiate of Subterm.t * int
-    (** Carry out a switch on a term specified by its position.  A switch can
-        be performed to expose a pattern variable having a constraint.  The
-        [int] is the heuristic score. *)
-    | Unavailable
-    (** No constraint available. *)
+  type decision = cstr cdecision
 
   (** [pp_cstr o c] prints constraint [c] to channel [o]. *)
   val pp_cstr : cstr pp
@@ -70,20 +61,15 @@ sig
   (** [is_empty p] returns whether pool [p] is empty. *)
   val is_empty : t -> bool
 
-  (** [concerns p q] returns true if position [p] hasn't been instantiated yet
-      in pool [q] and if [p] is involved in a constraint. *)
-  val concerns : Subterm.t -> t -> bool
-
-  (** [instantiate p i d q] instantiates path [p] in pool [q] using index [i],
-      that is, mark a path as {i seen} in the constraints.  Typically, if a
-      constraint involves only one variable, then instantiating a variable is
-      equivalent to instantiating a constraint.  However, if a constraint
-      involves several variables, then instantiating a variable will promote
-      the constraint to a {e partially instantiated state}, and will be
-      completely instantiated when all the variables are instantiated.  The
-      [d] is some additional data needed.
+  (** [instantiate i d q] instantiate constraint on slot [i] in pool [q], that
+      is.  Typically, if a constraint involves only one variable, then
+      instantiating a variable is equivalent to instantiating a constraint.
+      However, if a constraint involves several variables, then instantiating
+      a variable will promote the constraint to a {e partially instantiated
+      state}, and will be completely instantiated when all the variables are
+      instantiated.  The [d] is some additional data needed.
       @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : Subterm.t -> int -> data -> t -> t
+  val instantiate : int -> data -> t -> t
 
   (** [is_instantiated c p] returns whether pool [p] has constraint [c]
       instantiated. *)
@@ -96,9 +82,6 @@ sig
       [p]. *)
   val score : t -> decision
 
-  (** [of_terms r] returns constraint pool induced by terms in [r]. *)
-  val of_terms : term list -> t
-
   (** [export c] returns the two slots containing the terms that must be
       convertible. *)
   val export : cstr -> out
@@ -109,7 +92,7 @@ end
 module type NlConstraintSig =
 sig
   include BinConstraintPoolSig with type out = int * int
-                                and type data = unit
+                                and type data = int
 end
 
 (** Free variables constraints.  Such a constraint involves only one variable,
@@ -135,58 +118,36 @@ struct
   module IntPairSet = Set.Make(IntPair)
   module IntPairMap = Map.Make(IntPair)
 
+  (** Weight given to nl constraints. *)
+  let nl_prio = 1
+
   type t =
-    { concerned : SubtSet.t
-    (** All the positions concerned by non linear constraints. *)
-    ; groups : (int * SubtSet.t) list
-    (** Set of path that are still subject to non linearity constraints.  An
-        element [(i, C)] is a slot [i] along with all the positions of the
-        variables sharing this slot. *)
-    ; partial : int SubtMap.t
-    (** A tuple [(p, h)] of this mapping indicates that path [p] in the
-        arguments has a non linearity constraint with term store at position
-        [h] of the {!val:vars} array. *)
+    { partial : int IntMap.t
+    (** An association [(e, v)] is a slot [e] of the [env] array with a slot
+        [v] of the [vars] array. *)
     ; available : IntPairSet.t
     (** Pairs of this set are checkable constraints, i.e. the two integers
         refer to available positions in the {!val:vars} array. *) }
 
   type cstr = int * int
 
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
 
   type out = int * int
 
-  type data = unit
+  type data = int
 
   let pp_cstr oc (i, j) = Format.fprintf oc "(%d,%d)" i j
 
   let pp oc pool =
     let module F = Format in
-    let pp_subtset oc ss =
-      F.fprintf oc "@[{%a}@]"
-        (F.pp_print_list
-           ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
-           Subterm.pp)
-        (SubtSet.elements ss) in
-    let pp_int_subtset oc (i, ss) =
-      F.fprintf oc "@[(%d, %a)@]" i pp_subtset ss in
-    let pp_groups oc pgroups =
-      F.fprintf oc "@[groups: @[<v 2>%a@]@]"
-        (F.pp_print_list
-           ~pp_sep:(F.pp_print_cut)
-           pp_int_subtset)
-        pgroups in
-    let pp_subterm_int oc (st, i) =
-      F.fprintf oc "@[(%a, %d)@]" Subterm.pp st i in
+    let pp_int_int oc (i, j) = F.fprintf oc "@[(%d, %d)@]" i j in
     let pp_partial oc ism =
       F.fprintf oc "@[partial: %a@]"
         (F.pp_print_list
            ~pp_sep:(fun oc () -> F.pp_print_string oc ";")
-           pp_subterm_int)
-        (SubtMap.bindings ism) in
-    let pp_int_int oc (i, j) = F.fprintf oc "@[(%d, %d)@]" i j in
+           pp_int_int)
+        (IntMap.bindings ism) in
     let pp_available oc ips =
       F.fprintf oc "@[available: %a@]"
         (F.pp_print_list
@@ -195,86 +156,40 @@ struct
         (IntPairSet.elements ips) in
     F.fprintf oc "Nl constraints:@," ;
     F.fprintf oc "@[<v>" ;
-    F.fprintf oc "%a@," pp_groups pool.groups ;
     F.fprintf oc "%a@," pp_partial pool.partial ;
     F.fprintf oc "%a@," pp_available pool.available ;
     F.fprintf oc "@]"
 
-  let empty = { concerned = SubtSet.empty
-              ; groups = []
-              ; partial = SubtMap.empty
+  let empty = { partial = IntMap.empty
               ; available = IntPairSet.empty }
 
-  let is_empty { groups ; partial ; available ; concerned } =
-    SubtSet.is_empty concerned ||
-    groups = [] && SubtMap.is_empty partial && IntPairSet.is_empty available
+  let is_empty { available ; _ } =
+    IntPairSet.is_empty available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
   let score c =
-    if is_empty c then Unavailable else
-    match IntPairSet.choose_opt c.available with
-    | Some(c) -> Solve(c, 1)
-    | None    ->
-        (* Search a position with partially instantiated *)
-        let positions = List.map fst (SubtMap.bindings c.partial) in
-        match positions with
-        | x::_ -> Instantiate(x, 1)
-        | []   ->
-            let positions = List.fold_right
-                (fun (_, ps) -> SubtSet.union ps) c.groups SubtSet.empty in
-            let p = SubtSet.choose positions in
-            Instantiate(p, 1)
+    if is_empty c then None else
+    Option.bind (fun c -> Some(c, nl_prio))
+      (IntPairSet.choose_opt c.available)
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
-
-  let concerns p q = SubtSet.mem p q.concerned
 
   let remove pair pool = { pool with
                            available = IntPairSet.remove pair pool.available }
 
   let export pair = pair
 
-  let instantiate path i () pool =
-    match SubtMap.find_opt path pool.partial with
-    | Some(j) ->
-        let npartial = SubtMap.remove path pool.partial in
-        let navailable = IntPairSet.add (normalize (i, j)) pool.available in
-        { pool with partial = npartial ; available = navailable }
-    | None    ->
-        let (k, set) = List.find
-            (fun (_, s) -> SubtSet.mem path s)
-            pool.groups in
-        let ngroups = List.remove_assoc k pool.groups in
-        (* Don't put the examined position in partial *)
-        let set = SubtSet.remove path set in
-        let npartial = SubtSet.fold (fun pth -> SubtMap.add pth i) set
-            pool.partial in
-        { pool with partial = npartial ; groups = ngroups }
+  let instantiate vslot esl pool =
+    match IntMap.find_opt esl pool.partial with
+    | Some(ovs) ->
+        let available = IntPairSet.add (normalize (vslot, ovs))
+            pool.available in
+        { pool with available }
+    | None     ->
+        let partial = IntMap.add esl vslot pool.partial in
+        { pool with partial }
 
-  (** [of_terms r] returns the non linearity set of constraints associated to
-      list of terms [r]. *)
-  let of_terms r =
-    (* [groupby_slot r] returns an associative list mapping final environment
-       slot to subterm position in [r]. *)
-    let groupby_slot: term list -> (int * SubtSet.t) list = fun lhs ->
-      let add po io _ _ acc =
-        match io with
-        | None     -> acc
-        | Some(sl) ->
-            List.modify_opt sl
-              (function None      -> SubtSet.singleton po
-                      | Some(set) -> SubtSet.add po set)
-              acc in
-      let merge ala alb = List.assoc_merge SubtSet.union SubtSet.empty
-          (ala @ alb) in
-      fold_vars lhs ~add:add ~merge:merge ~init:[] in
-    let nlcons = groupby_slot r |>
-                 List.filter (fun (_, s) -> SubtSet.cardinal s > 1) in
-    let everyone = List.fold_right
-        (fun (_, v) -> SubtSet.union v) nlcons SubtSet.empty in
-    { groups = nlcons ; partial = SubtMap.empty ; available = IntPairSet.empty
-    ; concerned = everyone }
 end
 
 module FvConstraints : FvConstraintSig =
@@ -283,9 +198,7 @@ struct
 
   type cstr = int * tvar array
 
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
 
   type out = int * tvar array
 
@@ -316,8 +229,6 @@ struct
 
   let is_empty = IntMap.is_empty
 
-  let concerns _ _ = assert false
-
   let is_instantiated (sl, x) p =
     match IntMap.find_opt sl p with
     | None     -> false
@@ -331,18 +242,15 @@ struct
         then IntMap.remove sl p
         else p
 
-  let instantiate _ slot vars pool =
+  let instantiate slot vars pool =
     IntMap.add slot vars pool
 
   let export x = x
 
-  let of_terms _ = assert false
-
   let score c =
-    if is_empty c then Unavailable else
     match IntMap.choose_opt c with
-    | Some(i, x) -> Solve((i, x), 1)
-    | None       -> Unavailable
+    | Some(i, x) -> Some((i, x), 1)
+    | None       -> None
 end
 
 (** {3 Comparing constraints }*)
@@ -367,27 +275,21 @@ struct
 
   open BCP
 
-  let score_lt s1 s2 = match (s1, s2) with
-    | Unavailable, Unavailable -> true
-    | Unavailable, _           -> true
-    | _          , Unavailable -> false
-    | Solve(_, s), Solve(_, t) -> s <= t
-    | Solve(_, _), _           -> false
-    | _          , Solve(_, _) -> true
-    | Instantiate(_, s), Instantiate(_, t) -> s <= t
+  let score_gt s1 s2 = match (s1, s2) with
+    | None      , _          -> false
+    | Some(_, _), None       -> true
+    | Some(_, x), Some(_, y) -> x >= y
 
   let choose = function
-    | [] -> Unavailable
-    | cs -> List.map score cs |> List.extremum score_lt
+    | [] -> None
+    | cs -> List.map score cs |> List.extremum score_gt
 end
 
 (** Non linearity with score constraints. *)
 module type NlScorableSig = sig
   type t
   type cstr
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
   include (NlConstraintSig)
           with type t := t and type cstr := cstr and type decision := decision
 
@@ -399,9 +301,7 @@ end
 module type FvScorableSig = sig
   type t
   type cstr
-  type decision = Solve of cstr * int
-                | Instantiate of Subterm.t * int
-                | Unavailable
+  type decision = cstr cdecision
   include (FvConstraintSig)
           with type t := t and type cstr := cstr and type decision := decision
 

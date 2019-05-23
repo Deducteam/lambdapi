@@ -235,20 +235,6 @@ module Array =
       if n >= l then [||]
       else let suffix = Array.sub a n (l - n) in suffix
 
-    (** [search c a] is a binary search for element [e] such that [c e = 0] in
-        [a].  [c] is a [cmp] function partially applied, i.e. [cmp e < 0] if
-        [e] is too small, [cmp e > 0] if [e] is too big.  [a] must be
-        sorted.
-        @raise Not_found if there is no element in [a] such that [c e = 0]. *)
-    let search : ('a -> int) -> 'a array -> int = fun cmp a ->
-      let rec loop l u =
-        if l = u then (if cmp a.(l) <> 0 then raise Not_found else l) else
-        let mid = (l + u) / 2 in
-        let med = a.(mid) in
-        if cmp med = 0 then mid
-        else if cmp med < 0 then loop (mid + 1) u else loop l (mid - 1) in
-      loop 0 (Array.length a - 1)
-
     (** [of_seq s] converts sequence [s] to an array.  The pervasive function
         doesn't keep the order of the sequence. *)
     let of_seq : 'a Seq.t -> 'a array = fun s ->
