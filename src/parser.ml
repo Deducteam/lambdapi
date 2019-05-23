@@ -199,27 +199,37 @@ let regular_ident =
   in
   Earley.black_box fn head_cs false "<r-ident>"
 
-(** Escaped identifier (regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]). *)
-let escaped_ident =
+(** [escaped_ident with_delim] is a parser for a single escaped identifier. An
+    escaped identifier corresponds to an arbitrary sequence of characters that
+    starts with ["{|"], ends with ["|}"], and does not contain ["|}"]. Or said
+    otherwise, they are recognised by regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]. If
+    [with_delim] is [true] then the returned string includes both the starting
+    and the ending delimitors. They are otherwise omited. *)
+let escaped_ident : bool -> string Earley.grammar = fun with_delim ->
   let fn buf pos =
     let s = Buffer.create 20 in
     (* Check start marker. *)
     let (c, buf, pos) = Input.read buf (pos + 1) in
     if c <> '|' then Earley.give_up ();
-    Buffer.add_string s "{|";
+    if with_delim then Buffer.add_string s "{|";
     (* Accumulate until end marker. *)
     let rec work buf pos =
       let (c, buf, pos) = Input.read buf pos in
       let next_c = Input.get buf pos in
-      if c = '|' && next_c = '}' then (Buffer.add_string s "|}"; (buf, pos+1))
+      if c = '|' && next_c = '}' then (buf, pos+1)
       else if c <> '\255' then (Buffer.add_char s c; work buf pos)
       else Earley.give_up ()
     in
     let (buf, pos) = work buf pos in
+    if with_delim then Buffer.add_string s "|}";
     (* Return the contents. *)
     (Buffer.contents s, buf, pos)
   in
-  Earley.black_box fn (Charset.singleton '{') false "<e-ident>"
+  let p_name = if with_delim then "{|<e-ident>|}" else "<e-ident>" in
+  Earley.black_box fn (Charset.singleton '{') false p_name
+
+let escaped_ident_no_delim = escaped_ident false
+let escaped_ident = escaped_ident true
 
 (** Any identifier (regular or escaped). *)
 let parser any_ident =
@@ -241,8 +251,13 @@ let parser meta =
 let parser patt =
   | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
 
+(** Any path member identifier (escaped idents are stripped). *)
+let parser path_elem =
+  | id:regular_ident -> KW.check id; id
+  | id:escaped_ident_no_delim -> id
+
 (** Module path (dot-separated identifiers. *)
-let parser path = m:any_ident ms:{"." any_ident}* $ -> m::ms
+let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
 let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
