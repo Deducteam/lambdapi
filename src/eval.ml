@@ -177,6 +177,7 @@ and branch : term -> tree TC.Map.t ->
   let stamp = Pervasives.ref 0 in
   fun examined children abstraction default ->
     if !log_enabled then log_eval "branching on [%a]" pp examined ;
+    let defret = (default, [], None) in
     (* [choose t] chooses a tree among {!val:children} when term [t] is
        examined and returns the new head of stack. *)
     let choose t =
@@ -185,34 +186,33 @@ and branch : term -> tree TC.Map.t ->
       let args = List.map ensure_tref args in
       r_ex := Some(add_args h args) ;
       match h with
-      | Symb(s, _)  ->
+      | Symb(s, _) ->
           let c_ari = List.length args in
           let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                             ; c_ari}) in
           let matched = TC.Map.find_opt cons children in
-          if matched = None then (default, [], None)
+          if matched = None then defret
           else (matched, args, None)
-      | Vari(x)     ->
+      | Vari(x)    ->
           let cons = TC.Vari(Bindlib.name_of x) in
           let matched = TC.Map.find_opt cons children in
-          if matched = None then (default, [], None)
+          if matched = None then defret
           else (matched, args, None)
-      | Abst(_, b)  ->
+      | Abst(_, b) ->
           begin match abstraction with
-          | None         -> (default, [], None)
+          | None         -> defret
           | Some(fv, tr) ->
               let nfv = stamp_tvar Pervasives.(!stamp) fv in
               Pervasives.incr stamp ;
               let bound = Bindlib.subst b (mkfree nfv) in
               (Some(tr), ensure_tref bound::args, Some(fv, nfv))
           end
-      | Meta(_, _)  -> (default, [], None)
-      | _           -> assert false in
+      | Meta(_, _) -> defret
+      | _          -> assert false in
     let r = if TC.Map.is_empty children && abstraction = None
-      then (default, [], None)
-      else choose (whnf examined) in
+      then defret else choose (whnf examined) in
     if !log_enabled
-    then log_eval (r_or_g (r != (default, [], None)) "branching on [%a]")
+    then log_eval (r_or_g (r != defret) "branching on [%a]")
       pp examined ;
     r
 
@@ -280,7 +280,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             let stk = R.restruct left args right in
             walk child stk cursor to_stamped in
           Option.bind next matched in
-    walk tree stk 0 (VarMap.empty)
+    walk tree stk 0 VarMap.empty
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.
