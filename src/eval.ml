@@ -90,7 +90,7 @@ let whnf_beta : term -> term = fun t ->
   let u = whnf_beta t in
   if Pervasives.(!steps = 0) then t else u
 
-(** [whnf t] computes a weak head normal form of term [t]. *)
+(** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
@@ -167,10 +167,10 @@ and eq_modulo : term -> term -> bool = fun a b ->
 (** [branch t c a d] returns the subtree in
     - [c] if [t] is matched against a constructor,
     - [a] if [t] is matched against an abstraction,
-    - [h] otherwise.
+    - [d] otherwise.
     The new elements to be put in the stack are returned along the tree.  If
     [t] is matched against an abstraction, the couple containing the free
-    variable from the tree and the stamped one. *)
+    variable from the tree and the stamped one is returned as well. *)
 and branch : term -> tree TC.Map.t ->
   (tvar * tree) option -> tree option ->
   tree option * term list * ((tvar * tvar) option) =
@@ -220,7 +220,7 @@ and branch : term -> tree TC.Map.t ->
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
-  let vars = Array.make capa (Kind, None)in (* dummy terms *)
+  let vars = Array.make capa (Kind, None) in (* dummy terms *)
     let fill_vars store t slot =
       if store
       then (if !log_enabled then log_eval "storing [%a]" pp t ;
