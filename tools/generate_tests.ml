@@ -1,4 +1,6 @@
 #!/usr/bin/env ocaml
+(** Generates tests files in [../tests/OK/].  Tests mainly concern
+    performance of rule filetering. *)
 
 module F = Filename
 module P = Printf
@@ -19,8 +21,7 @@ let testdir = "../tests/OK/"
 
 let natural_prelude = "require open tests.OK.nat"
 
-(** [large_thump n] builds a tree of depth one but with many
-    branches. *)
+(** [thump n] builds a tree of depth one with [n] branches. *)
 let thump n =
   let fname = F.concat testdir "thump.lp" in
   let ochan = open_out fname in
@@ -29,8 +30,8 @@ let thump n =
     P.fprintf ochan "symbol s%d : N\n" i
   done ;
   P.fprintf ochan "symbol thump : N ⇒ N\n" ;
-  P.fprintf ochan "rule thump s0 → s0\n" ;
-  for i = 0 to n do
+  P.fprintf ochan "rule thump s0 → 0\n" ;
+  for i = 1 to n do
     P.fprintf ochan "and thump s%d → 0\n" i
   done ;
   for i = 0 to n do
@@ -59,6 +60,6 @@ assert collect %d ≡ %d
 
 let () =
   let usage = Printf.sprintf "Usage: %s [-c <int>] [-t <int>]" Sys.argv.(0) in
-  Arg.parse speclist (fun _ -> Arg.usage speclist usage) usage ;
+  Arg.parse speclist (fun _ -> raise @@ Arg.Bad "no anon args") usage ;
   thump !p_thump ;
   comb !p_comb
