@@ -20,9 +20,9 @@ symbol add : N ⇒ N ⇒ N
 set infix left 6 "+" ≔ add
 
 rule z      + &n     → &n
-rule (s &m) + &n     → s (&m + &n)
-rule &m     + z      → &m
-rule &m     + (s &n) → s (&m + &n)
+ and (s &m) + &n     → s (&m + &n)
+ and &m     + z      → &m
+ and &m     + (s &n) → s (&m + &n)
 
 // Multiplication function.
 
@@ -30,9 +30,9 @@ symbol mul : N ⇒ N ⇒ N
 set infix left 7 "×" ≔ mul
 
 rule z      × _      → z
-rule (s &m) × &n     → &n + &m × &n
-rule _      × z      → z
-rule &m     × (s &n) → &m + &m × &n
+ and (s &m) × &n     → &n + &m × &n
+ and _      × z      → z
+ and &m     × (s &n) → &m + &m × &n
 
 // Doubling function.
 
@@ -43,14 +43,14 @@ definition double n ≔ mul n 2
 symbol eq_nat : N ⇒ N ⇒ B
 
 rule eq_nat z      z      → true
-rule eq_nat (s &m) (s &n) → eq_nat &m &n
-rule eq_nat z      (s _)  → false
-rule eq_nat (s _)  z      → false
+ and eq_nat (s &m) (s &n) → eq_nat &m &n
+ and eq_nat z      (s _)  → false
+ and eq_nat (s _)  z      → false
 
 // Less than function.
 
 symbol le_nat : N ⇒ N ⇒ B
 
 rule le_nat z      z      → false
-rule le_nat z      (s _)  → true
-rule le_nat (s &m) (s &n) → le_nat &m &n
+ and le_nat z      (s _)  → true
+ and le_nat (s &m) (s &n) → le_nat &m &n

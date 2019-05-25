@@ -10,25 +10,25 @@ symbol const false : B
 symbol bool_neg : B ⇒ B
 
 rule bool_neg true  → false
-rule bool_neg false → true
+ and bool_neg false → true
 
 // Boolean disjunction.
 
 symbol bool_or : B ⇒ B ⇒ B
 
 rule bool_or true  _     → true
-rule bool_or false &b    → &b
-rule bool_or _     true  → true
-rule bool_or &b    false → &b
+ and bool_or false &b    → &b
+ and bool_or _     true  → true
+ and bool_or &b    false → &b
 
 // Boolean conjunction.
 
 symbol bool_and : B ⇒ B ⇒ B
 
 rule bool_and true  &b    → &b
-rule bool_and false _     → false
-rule bool_and &b    true  → &b
-rule bool_and _     false → false
+ and bool_and false _     → false
+ and bool_and &b    true  → &b
+ and bool_and _     false → false
 
 // More connectives.
 
