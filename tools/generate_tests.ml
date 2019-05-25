@@ -5,29 +5,47 @@
 open Unix
 module P = Printf
 
+let t_param = 1000
+let c_param = 1000
+
 let testdir = "../tests/OK/"
 
 let natural_prelude = "require open tests.OK.nat"
 
-let rec triangle n = if n = 0 then 0 else triangle (n - 1) + n
-
 (** [large_thump n] builds a tree of depth one but with many
     branches. *)
-let large_thump n =
+let thump n =
   let ochan = open_out (testdir ^ "large_thump.lp") in
-  for i = 1 to n do
+  P.fprintf ochan "%s\n" natural_prelude ;
+  for i = 0 to n do
     P.fprintf ochan "symbol s%d : N\n" i
   done ;
-  P.fprintf ochan "symbol f : N ⇒ N" ;
-  P.fprintf ochan "rule f 0 → 0\n" ;
+  P.fprintf ochan "symbol f : N ⇒ N\n" ;
+  P.fprintf ochan "rule f s0 → s0\n" ;
   for i = 1 to n do
-    P.fprintf ochan "and f s%d → %d\n" i i
+    P.fprintf ochan "and f s%d → 0\n" i
+  done ;
+  for i = 1 to n do
+    P.fprintf ochan "assert f s%d ≡ 0\n" i
+  done ;
+  close_out ochan
+
+(** [comb n] creates a comb, that is a unbalanced tree with each node
+    having a child on [s] and a rule on [z]. *)
+let comb n =
+  let ochan = open_out (testdir ^ "comb.lp") in
+  P.fprintf ochan "%s\n" natural_prelude ;
+  P.fprintf ochan "symbol comb : N ⇒ N\n" ;
+  P.fprintf ochan "rule comb 0 → 0\n" ;
+  for i = 1 to n do
+    P.fprintf ochan "and comb %d → %d\n" i i
   done ;
   P.fprintf ochan
-    "symbol sof : N ⇒ N
-     rule sof (s &n) → (f (s &n)) + (sof &n)
-     assert sof %d ≡ %d" n (triangle n) ;
+  "symbol sof : N ⇒ N
+rule sof (&n + 1) → (comb (&n + 1)) + (sof &n)
+compute sof %d\n" n ;
   close_out ochan
 
 let () =
-  large_thump 1000
+  thump t_param ;
+  comb c_param
