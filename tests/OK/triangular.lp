@@ -5,4 +5,4 @@ symbol triangle : N ⇒ N
 rule triangle (s &n) → (s &n) + (triangle &n)
  and triangle z      → z
 
-compute triangle 300
+assert triangle 300 ≡ 45150
