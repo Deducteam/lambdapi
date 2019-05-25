@@ -5,8 +5,17 @@
 open Unix
 module P = Printf
 
-let t_param = 1000
-let c_param = 1000
+let p_thump = ref 20
+let p_comb = ref 20
+
+let speclist = Arg.align
+  [ ( "-t"
+    , Arg.Int ((:=) p_thump)
+    , " Width of thump." )
+  ; ( "-c"
+    , Arg.Int ((:=) p_comb)
+    , " Depth of comb.")
+  ]
 
 let testdir = "../tests/OK/"
 
@@ -47,5 +56,7 @@ compute sof %d\n" n ;
   close_out ochan
 
 let () =
-  thump t_param ;
-  comb c_param
+  let usage = Printf.sprintf "Usage: %s [-c <int>] [-t <int>]" Sys.argv.(0) in
+  Arg.parse speclist (fun _ -> Arg.usage speclist usage) usage ;
+  thump !p_thump ;
+  comb !p_comb
