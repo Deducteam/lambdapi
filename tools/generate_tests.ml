@@ -21,6 +21,8 @@ let testdir = "../tests/OK/"
 
 let natural_prelude = "require open tests.OK.nat"
 
+let rec triangle n = if n = 0 then 0 else n + (triangle (n - 1))
+
 (** [large_thump n] builds a tree of depth one but with many
     branches. *)
 let thump n =
@@ -51,8 +53,10 @@ let comb n =
   done ;
   P.fprintf ochan
   "symbol sof : N ⇒ N
-rule sof (&n + 1) → (comb (&n + 1)) + (sof &n)
-compute sof %d\n" n ;
+rule sof (s &n) → (comb (s &n)) + (sof &n)
+ and sof 0      → 0
+assert sof %d ≡ %d
+" n (triangle n) ;
   close_out ochan
 
 let () =
