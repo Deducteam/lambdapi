@@ -1,3 +1,4 @@
+// Tests correctness of rewriting engine on left non linear rules
 require open tests.OK.nat
 require open tests.OK.bool
 

@@ -1,3 +1,4 @@
+// Performance on non linear tests.
 require open tests.OK.nat
 
 definition upper ≔ 500

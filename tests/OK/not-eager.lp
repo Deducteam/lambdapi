@@ -1,3 +1,4 @@
+// Tests evaluation laziness.  If too eager, 99! will be computed...
 require open tests.OK.nat
 
 symbol l : N ⇒ N ⇒ N

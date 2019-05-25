@@ -1,3 +1,4 @@
+// A simple test on abstractions, taken from the [miller] tests.
 symbol R : TYPE
 
 symbol flip : (R ⇒ R ⇒ R) ⇒ (R ⇒ R ⇒ R)

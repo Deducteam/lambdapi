@@ -1,3 +1,4 @@
+// A simple loop to benchmark the rewriting engine
 require open tests.OK.nat
 
 definition upper ≔ 3000

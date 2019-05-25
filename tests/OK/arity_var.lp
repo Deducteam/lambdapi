@@ -1,3 +1,4 @@
+// Test on variable arity
 require open tests.OK.nat
 
 symbol F : N ⇒ TYPE
