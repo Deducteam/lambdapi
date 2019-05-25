@@ -21,8 +21,6 @@ let testdir = "../tests/OK/"
 
 let natural_prelude = "require open tests.OK.nat"
 
-let rec triangle n = if n = 0 then 0 else n + (triangle (n - 1))
-
 (** [large_thump n] builds a tree of depth one but with many
     branches. *)
 let thump n =
@@ -41,7 +39,7 @@ let thump n =
   done ;
   close_out ochan
 
-(** [comb n] creates a comb, that is a unbalanced tree with each node
+(** [comb n] creates a comb, that is an unbalanced tree with each node
     having a child on [s] and a rule on [z]. *)
 let comb n =
   let ochan = open_out (testdir ^ "comb.lp") in
@@ -49,14 +47,14 @@ let comb n =
   P.fprintf ochan "symbol comb : N ⇒ N\n" ;
   P.fprintf ochan "rule comb 0 → 0\n" ;
   for i = 1 to n do
-    P.fprintf ochan "and comb %d → %d\n" i i
+    P.fprintf ochan "and comb %d → z\n" i
   done ;
   P.fprintf ochan
-  "symbol sof : N ⇒ N
-rule sof (s &n) → (comb (s &n)) + (sof &n)
- and sof 0      → 0
-assert sof %d ≡ %d
-" n (triangle n) ;
+  "symbol collect : N ⇒ N
+rule collect (s &n) → (comb (s &n)) + (collect &n)
+ and collect 0      → 0
+assert collect %d ≡ %d
+"  n 0;
   close_out ochan
 
 let () =
