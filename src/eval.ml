@@ -260,7 +260,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
                 let bound = Bindlib.bind_mvar xs b in
                 if Bindlib.is_closed bound
-                then (vars.(i) <- ((fst vars.(i)), Some(Bindlib.unbox bound))
+                then ( vars.(i) <- ((fst vars.(i)), Some(Bindlib.unbox bound))
                      ; ok)
                 else fail in
           walk next stk cursor to_stamped

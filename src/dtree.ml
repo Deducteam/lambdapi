@@ -398,9 +398,9 @@ struct
   let store : t -> int -> bool = fun cm ci ->
     let st_r r =
       match r.lhs.(ci) with
-      | Patt(Some(_), _, _)          -> true
+      | Patt(Some(_), _, _)        -> true
       | Patt(_, _, e) when e <> [||] -> true
-      | _                            -> false in
+      | _                          -> false in
     List.exists st_r cm.clauses
 
   (** [update_aux c v r] returns clause [r] with auxiliary data updated
@@ -494,16 +494,15 @@ struct
                      ; Array.drop (ci + 1) r.lhs ] in
     let transf (r:clause) =
       match r.lhs.(ci) with
-      | Abst(_, b)     ->
+      | Abst(_, b)           ->
           let b = Bindlib.subst b (mkfree v) in
           let lhs = Array.concat (insert r b) in
           Some({ r with lhs })
-      | Patt(io, n, e) ->
-          let lhs = Array.concat (insert r (Patt(io, n, e))) in
+      | Patt(_, _, _) as pat ->
+          let lhs = Array.concat (insert r pat) in
           Some({ r with lhs })
-      | Symb(_, _)
-      | Vari(_)        -> None
-      | _              -> assert false in
+      | Symb(_, _) | Vari(_) -> None
+      | _                    -> assert false in
     (pos, List.filter_map transf clauses)
 
   (** [nl_succeed c r] computes the clause list from [r] that verify a
