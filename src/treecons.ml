@@ -100,7 +100,7 @@ struct
     | Heavy of 'a ConsMap.t
 
   let heavy_of_bindings : (key * 'a) list -> 'a ConsMap.t = fun x ->
-    ConsMap.of_seq @@ List.to_seq x
+    List.fold_left (fun hacc (k, e) -> ConsMap.add k e hacc) ConsMap.empty x
 
   (** A mapping is considered {i big} if the number of bindings exceeds the
       threshold.  The threshold [t] should be such that
