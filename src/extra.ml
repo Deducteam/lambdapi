@@ -235,37 +235,6 @@ module Array =
       if n >= l then [||]
       else let suffix = Array.sub a n (l - n) in suffix
 
-    (** [of_seq s] converts sequence [s] to an array.  The pervasive function
-        doesn't keep the order of the sequence. *)
-    let of_seq : 'a Seq.t -> 'a array = fun s ->
-      s |> List.of_seq |> Array.of_list
-
-  end
-
-module Seq =
-  struct
-    include Seq
-
-    (** [mapi f s] lazily maps elements of [s] into a new sequence using
-        [f] whose arguments are the index and the element. *)
-    let mapi : (int -> 'a -> 'b) -> 'a Seq.t -> 'b Seq.t = fun f s ->
-      let rec mapi i s () = match s () with
-        | Nil -> Nil
-        | Cons(x, s) -> Cons(f i x, mapi (succ i) s) in
-      mapi 0 s
-
-    (** [init n f] is like [List.init n f |> List.to_seq]. *)
-    let init : int -> (int -> 'a) -> 'a Seq.t = fun n f ->
-      let rec aux i () =
-        if i = n then Nil else Cons(f i, aux (i + 1)) in
-      if n < 0 then invalid_arg "Seq.init" else aux 0
-
-    (** [make n e] is like [List.make n e |> List.to_seq]. *)
-    let make : int -> 'a -> 'a Seq.t = fun n e ->
-      let rec aux i () =
-        if i = n then Nil else Cons(e, aux (i + 1)) in
-      if n < 0 then invalid_arg "Seq.make" else aux 0
-
   end
 
 (* Functional maps with [int] keys. *)

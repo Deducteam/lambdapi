@@ -74,12 +74,6 @@ sig
   (** [restruct l m r] is the concatenation of three substrates [l] [m] and
       [r]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
-
-  (** [of_seq s] returns a list containing elements of sequence [s]. *)
-  val of_seq : 'a Seq.t -> 'a t
-
-  (** [to_seq s] converts substrate [s] to a sequence. *)
-  val to_seq : 'a t -> 'a Seq.t
 end
 
 (** Naive implementation based on lists.  Appeared to be faster than tree
@@ -117,9 +111,6 @@ struct
       | x::l -> insert (x :: acc) l
     in
     insert (c @ r) l
-
-  let of_seq = List.of_seq
-  let to_seq = List.to_seq
 end
 
 module ReductionStack = RedListStack
@@ -304,7 +295,7 @@ struct
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
       List.extremum (>) (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Subterm.sequence size |> ReductionStack.of_seq in
+    let positions = Subterm.sequence size |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
@@ -438,7 +429,7 @@ struct
       let l, m, r = ReductionStack.destruct pos ci in
       let nargs = get_args pat |> snd |> List.length in
       let replace = Subterm.sequence ~from:(Subterm.sub m) nargs in
-      ReductionStack.restruct l (List.of_seq replace) r in
+      ReductionStack.restruct l replace r in
     let ph, pargs = get_args pat in
     let insert r e = Array.concat [ Array.sub r.lhs 0 ci
                                   ; e
