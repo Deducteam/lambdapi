@@ -12,7 +12,6 @@ env:
   - OPAMVERBOSE="true"
   - TEST_TARGETS="unit_tests real_tests"
   matrix:
-  - OCAML_VERSION=4.05.0
   - OCAML_VERSION=4.06.0
   - OCAML_VERSION=4.06.1
   - OCAML_VERSION=4.07.0
