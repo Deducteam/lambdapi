@@ -326,7 +326,7 @@ struct
       among columns [c] according to a heuristic, along with the score. *)
   let pick_best_among : t -> int array -> int * float = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
-    let index = Array.argmax (<=) scores in
+    let index = Array.argmax ~cmp:Float.compare scores in
     (index, scores.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on

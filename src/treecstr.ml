@@ -278,7 +278,7 @@ struct
   let score_gt s1 s2 = match (s1, s2) with
     | None      , _          -> -1
     | Some(_, x), None       -> max (int_of_float x) 1
-    | Some(_, x), Some(_, y) -> Pervasives.compare x y
+    | Some(_, x), Some(_, y) -> Float.compare x y
 
   let choose = function
     | [] -> None
