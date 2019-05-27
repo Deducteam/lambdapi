@@ -294,7 +294,8 @@ struct
       { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] } in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
-      List.extremum (>) (List.map (fun r -> List.length r.Terms.lhs) rs) in
+      List.max ~cmp:Int.compare
+        (List.map (fun r -> List.length r.Terms.lhs) rs) in
     let positions = Subterm.sequence size |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
@@ -329,7 +330,7 @@ struct
       terms that can be matched against (discard constructor-free columns) in
       clauses [r]. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
-    let ncols = List.extremum (>)
+    let ncols = List.max ~cmp:Int.compare
       (List.map (fun { lhs ; _ } -> Array.length lhs) clauses) in
     let switchable = List.init ncols (can_switch_on clauses) in
     let switchable2ind i e = if e then Some(i) else None in
@@ -356,19 +357,19 @@ struct
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         let rnl = match NlScorable.choose nlcstrs with
           | Some(c, i) -> (Nl(c), i)
-          | None       -> (Unavailable, min_int) in
+          | None       -> (Unavailable, 0) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
         let rfv = match FvScorable.choose fvcstrs with
           | Some(c, i) -> (Fv(c), i)
-          | None       -> (Unavailable, min_int) in
+          | None       -> (Unavailable, 0) in
         let rs = match choose m with
-          | None       -> (Unavailable, min_int)
+          | None       -> (Unavailable, 0)
           | Some(c, i) -> (Sp(c), i) in
         let r = [| rnl ; rfv ; rs |] in
         let best =
           if Array.for_all (fun (x, _) -> x = Unavailable) r
           then (Unavailable, min_int)
-          else Array.max (fun (_, x) (_, y) -> x >= y) r in
+          else Array.max ~cmp:(fun (_, x) (_, y) -> Int.compare x y) r in
         match fst best with
         | Nl(c)          -> NlConstrain(c)
         | Fv(c)          -> FvConstrain(c)

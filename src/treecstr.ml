@@ -276,13 +276,13 @@ struct
   open BCP
 
   let score_gt s1 s2 = match (s1, s2) with
-    | None      , _          -> false
-    | Some(_, _), None       -> true
-    | Some(_, x), Some(_, y) -> x >= y
+    | None      , _          -> -1
+    | Some(_, x), None       -> x
+    | Some(_, x), Some(_, y) -> Int.compare x y
 
   let choose = function
     | [] -> None
-    | cs -> List.map score cs |> List.extremum score_gt
+    | cs -> List.map score cs |> List.max ~cmp:score_gt
 end
 
 (** Non linearity with score constraints. *)

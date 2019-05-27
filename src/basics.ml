@@ -362,7 +362,8 @@ let capacity : tree -> int =
     let _, chdepths = List.split (TC.Map.bindings ch) in
     let dedepth = Option.get de 0 in
     let abdepth = match ab with Some(_, n) -> n | None -> 0 in
-    List.extremum (>) (abdepth::dedepth::chdepths) + (if st then 1 else 0) in
+    List.max ~cmp:Int.compare (abdepth::dedepth::chdepths) +
+    (if st then 1 else 0) in
   let do_condition t _ f = max t f in
   tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
     ~do_condition:do_condition

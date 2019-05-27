@@ -134,14 +134,16 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [extremum ?init c l] finds the max of list [l] with compare function
-        [c] with [?init] as default value if given, else the head of [l] is
-        used.  For a max function, [c] is [(>)].  *)
-    let extremum : ?init:'a -> ('a -> 'a -> bool) -> 'a list -> 'a = fun ?init
-      cmp li ->
-        let start = Option.get init (List.hd li) in
-        List.fold_left (fun acc elt -> if cmp elt acc then elt else acc)
-          start li
+    (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
+        defaulting to [Pervasives.compare].
+        @raise Invalid_argument if [l] is empty. *)
+    let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
+      fun ?(cmp=Pervasives.compare) li ->
+      match li with
+      | []   -> invalid_arg "Extra.List.max"
+      | h::t -> List.fold_left
+                  (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
+                  h t
 
     (** [assoc_eq e k l] is [List.assoc k l] with equality function [e]. *)
     let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option = fun eq k l ->
@@ -215,12 +217,13 @@ module Array =
         (0, start, 0) arr in
       r
 
-    (** [max e a] returns the higher element according to inequality function
-        [e] in arra [a].  For instance, the maximum in [a] is found with
-        [max (>) a]. *)
-    let max : 'a eq -> 'a array -> 'a = fun ineq arr ->
+    (** [max ?cmp a] returns the higher element according to comparison
+        function [?cmp], using [Pervasives.compare] if not given, in array
+        [a]. *)
+    let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
+      fun ?(cmp=Pervasives.compare) arr ->
       if arr = [||] then invalid_arg "Extra.Array.max" else
-      Array.fold_left (fun acc elt -> if ineq elt acc then elt else acc)
+      Array.fold_left (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
         arr.(0) arr
 
     (** [split a] is {!val:List.split}[Array.to_list a]. *)
