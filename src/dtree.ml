@@ -376,9 +376,9 @@ struct
           | Some(c, i) -> (Sp(c), i) in
         let r = [| rnl ; rfv ; rs |] in
         let best =
-          if Array.for_all (fun (x, _) -> x = Unavailable) r
-          then (Unavailable, 0.)
-          else Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r in
+          if Array.for_all (fun (x, _) -> x = Unavailable) r then
+            (Unavailable, 0.) else
+            Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r in
         match fst best with
         | Nl(c)          -> NlConstrain(c)
         | Fv(c)          -> FvConstrain(c)
