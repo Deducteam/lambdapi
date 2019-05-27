@@ -307,18 +307,26 @@ struct
   let get_col : int -> t -> term list = fun ind { clauses ; _ } ->
     List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
 
-  (** [score c] returns the score heuristic for column [c]. *)
-  let rec score : term list -> int = function
-    | []                         -> 0
-    | x :: xs when is_treecons x -> score xs
-    | _ :: xs                    -> score xs + 1
+  (** [score c] returns the score heuristic for column [c].  The score is a
+      tuple containing the number of constructors and the number of storage
+      required. *)
+  let score : term list -> int * int =
+    let rec loop ((ncons, nst) as acc) = function
+      | []                 -> acc
+      | x :: xs
+        when is_treecons x    -> loop (ncons + 1, nst) xs
+      | Patt(Some(_),_,_)::xs -> loop (ncons, nst + 1) xs
+      | Patt(_,_,e)      ::xs
+        when e <> [||]        -> loop (ncons, nst + 1) xs
+      | _ :: xs               -> loop acc xs in
+    loop (0, 0)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic, along with the score. *)
   let pick_best_among : t -> int array -> int * int = fun mat columns->
-    let wild_pc = Array.map (fun ci -> score (get_col ci mat)) columns in
-    let index = Array.argmax (<=) wild_pc in
-    (index, wild_pc.(index))
+    let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
+    let index = Array.argmax (<=) scores in
+    (index, fst scores.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of clauses [r]. *)
