@@ -310,7 +310,7 @@ struct
   (** [score c] returns the score heuristic for column [c].  The score is a
       tuple containing the number of constructors and the number of storage
       required. *)
-  let score : term list -> int * int =
+  let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
       | []                 -> acc
       | x :: xs
@@ -319,14 +319,15 @@ struct
       | Patt(_,_,e)      ::xs
         when e <> [||]        -> loop (ncons, nst + 1) xs
       | _ :: xs               -> loop acc xs in
-    loop (0, 0)
+    let nc, ns = loop (0, 0) ts in
+    float_of_int nc /. (float_of_int ns)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic, along with the score. *)
-  let pick_best_among : t -> int array -> int * int = fun mat columns->
+  let pick_best_among : t -> int array -> int * float = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
     let index = Array.argmax (<=) scores in
-    (index, fst scores.(index))
+    (index, scores.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of clauses [r]. *)
@@ -345,7 +346,7 @@ struct
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
   (** [choose m] returns the index of column to switch on. *)
-  let choose : t -> (int * int) option = fun m ->
+  let choose : t -> (int * float) option = fun m ->
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else
     let sel_partial, score = pick_best_among m kept in
@@ -365,19 +366,19 @@ struct
         let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
         let rnl = match NlScorable.choose nlcstrs with
           | Some(c, i) -> (Nl(c), i)
-          | None       -> (Unavailable, 0) in
+          | None       -> (Unavailable, 0.) in
         let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
         let rfv = match FvScorable.choose fvcstrs with
           | Some(c, i) -> (Fv(c), i)
-          | None       -> (Unavailable, 0) in
+          | None       -> (Unavailable, 0.) in
         let rs = match choose m with
-          | None       -> (Unavailable, 0)
+          | None       -> (Unavailable, 0.)
           | Some(c, i) -> (Sp(c), i) in
         let r = [| rnl ; rfv ; rs |] in
         let best =
           if Array.for_all (fun (x, _) -> x = Unavailable) r
-          then (Unavailable, min_int)
-          else Array.max ~cmp:(fun (_, x) (_, y) -> Int.compare x y) r in
+          then (Unavailable, 0.)
+          else Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r in
         match fst best with
         | Nl(c)          -> NlConstrain(c)
         | Fv(c)          -> FvConstrain(c)

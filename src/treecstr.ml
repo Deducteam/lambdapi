@@ -5,7 +5,7 @@ open Extra
 
 (** Holds a constraint to solve and its heuristic score, or nothing if there
     are no constraint availavle. *)
-type 'a cdecision = ('a * int) option
+type 'a cdecision = ('a * float) option
 
 (** Binary constraints allow to check properties on terms during evaluation.
     A constraint is binary as it gives birth to two trees, one used if the
@@ -119,7 +119,7 @@ struct
   module IntPairMap = Map.Make(IntPair)
 
   (** Weight given to nl constraints. *)
-  let nl_prio = 1
+  let nl_prio = 1.
 
   type t =
     { partial : int IntMap.t
@@ -249,7 +249,7 @@ struct
 
   let score c =
     match IntMap.choose_opt c with
-    | Some(i, x) -> Some((i, x), 1)
+    | Some(i, x) -> Some((i, x), 1.)
     | None       -> None
 end
 
@@ -277,8 +277,8 @@ struct
 
   let score_gt s1 s2 = match (s1, s2) with
     | None      , _          -> -1
-    | Some(_, x), None       -> x
-    | Some(_, x), Some(_, y) -> Int.compare x y
+    | Some(_, x), None       -> max (int_of_float x) 1
+    | Some(_, x), Some(_, y) -> Pervasives.compare x y
 
   let choose = function
     | [] -> None
