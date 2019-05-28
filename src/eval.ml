@@ -262,7 +262,9 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 let r = Bindlib.is_closed bound in
                 if !log_enabled then
                   log_eval (r_or_g r "free var verification on [%a]")
-                    (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_tvar)
+                    (Format.pp_print_list
+                       ~pp_sep:Format.pp_print_space
+                       pp_tvar)
                     (Array.to_list xs) ;
                 if r then
                   ( vars.(i) <- ((fst vars.(i)), Some(Bindlib.unbox bound))
