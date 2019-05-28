@@ -153,12 +153,14 @@ module List =
                   (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
                   h t
 
-    (** [assoc_eq e k l] is [List.assoc k l] with equality function [e]. *)
-    let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b option = fun eq k l ->
+    (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
+        @raise Not_found if [k] is not a key of [l]. *)
+    let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k l ->
       let rec loop = function
-        | []                      -> None
-        | (x, e) :: _ when eq x k -> Some(e)
-        | _      :: t             -> loop t in
+        | []          -> raise Not_found
+        | (x, e) :: _
+          when eq x k -> e
+        | _      :: t -> loop t in
       loop l
 
     (** [modify_opt k f l] returns [l] with binding [(k, e)] replaced by

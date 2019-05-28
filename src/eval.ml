@@ -190,14 +190,14 @@ and branch : term -> tree TC.Map.t ->
           let c_ari = List.length args in
           let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                             ; c_ari}) in
-          let matched = TC.Map.find_opt cons children in
-          if matched = None then defret
-          else (matched, args, None)
+          begin try let matched = TC.Map.find cons children in
+            (Some(matched), args, None)
+          with Not_found -> defret end
       | Vari(x)    ->
           let cons = TC.Vari(Bindlib.name_of x) in
-          let matched = TC.Map.find_opt cons children in
-          if matched = None then defret
-          else (matched, args, None)
+          begin try let matched = TC.Map.find cons children in
+            (Some(matched), args, None)
+          with Not_found -> defret end
       | Abst(_, b) ->
           begin match abstraction with
           | None         -> defret

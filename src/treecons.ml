@@ -71,9 +71,10 @@ sig
       element. *)
   val bindings : 'a t -> (key * 'a) list
 
-  (** [find_opt k m] returns [Some(e)] with [e] the element mapped by [k]
-      through [m] and [None] if [k] is not in [m]. *)
-  val find_opt : key -> 'a t -> 'a option
+  (** [find k m] returns the element mapped by [k]
+      through [m].
+      @raise Not_found if [k] is not a key of [m]. *)
+  val find : key -> 'a t -> 'a
 
   (** [iter f m] iters function [f] on mapping [m]. *)
   val iter : (key -> 'a -> unit) -> 'a t -> unit
@@ -120,9 +121,9 @@ struct
       if List.length x > threshold
       then Heavy(heavy_of_bindings x) else Light(x)
     | Heavy(x) -> Heavy(ConsMap.add k e x)
-  let find_opt k = function
+  let find k = function
     | Light(x) -> List.assoc_eq eq k x
-    | Heavy(x) -> ConsMap.find_opt k x
+    | Heavy(x) -> ConsMap.find k x
   let bindings = function
     | Light(x) -> x
     | Heavy(x) -> ConsMap.bindings x
