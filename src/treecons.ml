@@ -44,11 +44,6 @@ let compare : treecons -> treecons -> int = fun ca cb ->
     [compare]. *)
 let eq : treecons eq = fun a b -> compare a b = 0
 
-let (=) = eq
-let (<=) = fun a b -> compare a b <= 0
-let (>=) = fun a b -> compare a b >= 0
-(** Some infix operators. *)
-
 module type MapSig =
 sig
   (** Type of keys. *)

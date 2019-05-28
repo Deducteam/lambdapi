@@ -12,6 +12,12 @@ module Int =
     let compare = (-)
   end
 
+module Float =
+struct
+  type t = float
+  let compare : t -> t -> int = Pervasives.compare
+end
+
 module String =
   struct
     include String
@@ -163,35 +169,6 @@ module List =
         | _      :: t -> loop t in
       loop l
 
-    (** [modify_opt k f l] returns [l] with binding [(k, e)] replaced by
-        [(k, f Some(e))], or [(k, f None)] if the binding does not exist in
-        [l]. *)
-    let modify_opt : 'a -> ('b option -> 'b) -> ('a * 'b) list ->
-      ('a * 'b) list = fun key f al ->
-      let rec goto left right = match right with
-        | (k, e) :: rs when k = key -> left, Some(e), rs
-        | a      :: rs              -> goto (a :: left) rs
-        | []                        -> left, None, [] in
-      match goto [] al with
-      | _, None, _     -> (key, f None) :: al
-      | left, e, right -> let binding = (key, f e) in
-          List.rev_append (binding :: left) right
-
-    (** [assoc_merge f i l] merges multiple bindings into one in [l] using [f]
-        à la [fold] with initialiser [i].  Complexity [O(length l)]. *)
-    let assoc_merge : ('b -> 'c -> 'c) -> 'c -> ('a * 'b) list ->
-      ('a * 'c) list = fun f init al ->
-      let rec gather k acc nok = function
-        | []                        -> acc, nok
-        | (k', x) :: xs when k = k' -> gather k (x :: acc) nok xs
-        | b       :: xs             -> gather k acc (b :: nok) xs in
-      let rec merge acc = function
-        | []           -> acc
-        | (k, x) :: xs ->
-            let ks, nok = gather k [] [] xs in
-            let merged = List.fold_right f (x :: ks) init in
-            merge ((k, merged) :: acc) nok in
-      merge [] al
   end
 
 module Array =
@@ -250,15 +227,6 @@ module Array =
       else let suffix = Array.sub a n (l - n) in suffix
 
   end
-
-module Float = struct
-
-  type t = float
-
-  (** [compare x y] [Pervasives.compare] but specialiased for floats. *)
-  let compare : t -> t -> int = Pervasives.compare
-
-end
 
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
