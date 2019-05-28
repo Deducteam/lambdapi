@@ -24,6 +24,7 @@ Structure of directories and files
      - `basics.ml`: basic operations on terms
      - `print.ml`: pretty printing of terms
      - `treecons.ml`: definitions and types for decision trees
+     - `treecstr.ml`: constraints used in decision trees
      - `trees.ml`: decision trees for rewriting
      - `eval.ml`: rewriting engine
      - `unif.ml`: unification algorithm
@@ -68,7 +69,9 @@ Structure of directories and files
  * `proofs/`: examples of Lambdapi files with proofs
 
  * `tools/`:
+   - `bench.ml`: to run finer benches on some libraries
    - `deps.ml`: gives the `#REQUIRE` commands that should be added at the beginning of a Dedukti file
+   - `generate_tests.ml`: creates test files in `tests/OK`
    - `listings.tex`: setup of the LaTeX package [listings](https://www.ctan.org/pkg/listings) for including Lambdapi code into a LaTeX document
    - `sanity_check.sh`: script checking some style guidelines below (called by `make sanity_check`)
 
