@@ -171,7 +171,8 @@ struct
   let score c =
     if is_empty c then None else
     Option.bind (fun c -> Some(c, nl_prio))
-      (IntPairSet.choose_opt c.available)
+      (try Some(IntPairSet.choose c.available)
+       with Not_found -> None)
 
   let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
 
@@ -181,14 +182,13 @@ struct
   let export pair = pair
 
   let instantiate vslot esl pool =
-    match IntMap.find_opt esl pool.partial with
-    | Some(ovs) ->
-        let available = IntPairSet.add (normalize (vslot, ovs))
-            pool.available in
-        { pool with available }
-    | None     ->
-        let partial = IntMap.add esl vslot pool.partial in
-        { pool with partial }
+    try
+      let ovs = IntMap.find esl pool.partial in
+      let available = IntPairSet.add (normalize (vslot, ovs))
+          pool.available in
+      { pool with available }
+    with Not_found -> { pool with
+                        partial = IntMap.add esl vslot pool.partial }
 
 end
 
@@ -230,17 +230,17 @@ struct
   let is_empty = IntMap.is_empty
 
   let is_instantiated (sl, x) p =
-    match IntMap.find_opt sl p with
-    | None     -> false
-    | Some(x') -> Array.equal Bindlib.eq_vars x x'
+    try
+      let x' = IntMap.find sl p in
+      Array.equal Bindlib.eq_vars x x'
+    with Not_found -> false
 
   let remove (sl, x) p =
-    match IntMap.find_opt sl p with
-    | None     -> p
-    | Some(x') ->
-        if Array.equal Bindlib.eq_vars x x'
-        then IntMap.remove sl p
-        else p
+    try
+      let x' = IntMap.find sl p in
+      if Array.equal Bindlib.eq_vars x x' then
+        IntMap.remove sl p else p
+    with Not_found -> p
 
   let instantiate slot vars pool =
     IntMap.add slot vars pool
@@ -248,9 +248,8 @@ struct
   let export x = x
 
   let score c =
-    match IntMap.choose_opt c with
-    | Some(i, x) -> Some((i, x), 1.)
-    | None       -> None
+    try Some(IntMap.choose c, 1.)
+    with Not_found -> None
 end
 
 (** {3 Comparing constraints }*)

@@ -359,31 +359,31 @@ struct
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; _ } as m) ->
-    match List.find_opt is_exhausted clauses with
-    | Some(r) -> Yield(r)
-    | None    ->
-        (* All below could be simplified using either a functor or gadt. *)
-        let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
-        let rnl = match NlScorable.choose nlcstrs with
-          | Some(c, i) -> (Nl(c), i)
-          | None       -> (Unavailable, 0.) in
-        let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
-        let rfv = match FvScorable.choose fvcstrs with
-          | Some(c, i) -> (Fv(c), i)
-          | None       -> (Unavailable, 0.) in
-        let rs = match choose m with
-          | None       -> (Unavailable, 0.)
-          | Some(c, i) -> (Sp(c), i) in
-        let r = [| rnl ; rfv ; rs |] in
-        let best =
-          if Array.for_all (fun (x, _) -> x = Unavailable) r then
-            (Unavailable, 0.) else
-            Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r in
-        match fst best with
-        | Nl(c)          -> NlConstrain(c)
-        | Fv(c)          -> FvConstrain(c)
-        | Sp(c)          -> Specialise(c)
-        | Unavailable    -> Specialise(0)
+    try
+      let r = List.find is_exhausted clauses in
+      Yield(r)
+    with Not_found ->
+      let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
+      let rnl = match NlScorable.choose nlcstrs with
+        | Some(c, i) -> (Nl(c), i)
+        | None       -> (Unavailable, 0.) in
+      let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
+      let rfv = match FvScorable.choose fvcstrs with
+        | Some(c, i) -> (Fv(c), i)
+        | None       -> (Unavailable, 0.) in
+      let rs = match choose m with
+        | None       -> (Unavailable, 0.)
+        | Some(c, i) -> (Sp(c), i) in
+      let r = [| rnl ; rfv ; rs |] in
+      let best =
+        if Array.for_all (fun (x, _) -> x = Unavailable) r then
+          (Unavailable, 0.) else
+          Array.max ~cmp:(fun (_, x) (_, y) -> Float.compare x y) r in
+      match fst best with
+      | Nl(c)          -> NlConstrain(c)
+      | Fv(c)          -> FvConstrain(c)
+      | Sp(c)          -> Specialise(c)
+      | Unavailable    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
