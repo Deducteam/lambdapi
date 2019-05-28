@@ -134,6 +134,14 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
+    (** [init n f] returns [[f 0; f 1; ...; f n]].
+        @raise Invalid_argument if [n < 0]. *)
+    let init : int -> (int -> 'a) -> 'a list = fun n f ->
+      if n < 0 then invalid_arg "List.extra.init" else
+      let rec loop k acc =
+        if k = 0 then (f 0) :: acc else loop (k - 1) (f k :: acc) in
+      loop n []
+
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
         defaulting to [Pervasives.compare].
         @raise Invalid_argument if [l] is empty. *)
@@ -240,6 +248,15 @@ module Array =
       else let suffix = Array.sub a n (l - n) in suffix
 
   end
+
+module Float = struct
+
+  type t = float
+
+  (** [compare x y] [Pervasives.compare] but specialiased for floats. *)
+  let compare : t -> t -> int = Pervasives.compare
+
+end
 
 (* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
