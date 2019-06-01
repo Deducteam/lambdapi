@@ -355,7 +355,16 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    lhs = [||] && NlScorable.is_empty nonlin && FvScorable.is_empty freevars
+    let nonl lhs =
+      let slots = Array.to_list lhs
+                 |> List.filter_map
+                      (function Patt(io, _, _) -> io | _ -> None) in
+      List.same_length slots (List.sort_uniq Int.compare slots) in
+    let ripe lhs =
+      Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs
+      && nonl lhs in
+    NlScorable.is_empty nonlin && FvScorable.is_empty freevars
+    && (lhs = [||] || ripe lhs)
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; _ } as m) ->
@@ -537,6 +546,25 @@ end
 
 module Cm = ClauseMat
 
+(** [harvest l r e s] exhausts linearly the stack composed only of pattern
+    variables with no non linear constraints. *)
+let harvest : term array -> action -> (int * int) list -> int -> t =
+  fun lhs rhs env_builder slot ->
+  let default_node = { swap = 0 ; store = false ; children = TC.Map.empty ;
+                       abstraction = None ; default = None } in
+  let rec loop lhs env_builder slot = match lhs with
+    | []                        -> Leaf(env_builder, rhs)
+    | Patt(Some(i), _, _) :: ts ->
+        let env_builder = (slot, i) :: env_builder in
+        let slot = slot + 1 in
+        let child = loop ts env_builder slot in
+        Node { default_node with store = true ; default = Some(child) }
+    | Patt(None, _, _) :: ts    ->
+        let child = loop ts env_builder slot in
+        Node { default_node with default = Some(child) }
+    | _                         -> assert false in
+  loop (Array.to_list lhs) env_builder slot
+
 (** {b Note} The compiling step creates a tree ready to be used for pattern
     matching.  A tree guides the pattern matching by
     - accepting constructors and filtering possible clauses,
@@ -574,8 +602,9 @@ let rec compile : Cm.t -> t =
   fun ({ clauses ; positions ; slot } as patterns) ->
   if Cm.is_empty patterns then Fail
   else match Cm.yield patterns with
-  | Yield({ Cm.rhs ; env_builder ; _ }) ->
-      Leaf(env_builder, rhs)
+  | Yield({ Cm.rhs ; env_builder ; Cm.lhs ; _ }) ->
+      if lhs = [||] then Leaf(env_builder, rhs) else
+      harvest lhs rhs env_builder slot
   | NlConstrain(constr)                 ->
       let ok = let nclauses = Cm.nl_succeed constr clauses in
                compile { patterns with Cm.clauses = nclauses } in
