@@ -221,7 +221,7 @@ module ClauseMat =
 struct
 
   (** For convenience. *)
-  type subt_rs = Subterm.t ReductionStack.t
+  type occur_rs = Occurrence.t ReductionStack.t
 
   (** A redefinition of the rule type.
 
@@ -249,7 +249,7 @@ struct
     (** The rules. *)
     ; slot : int
     (** Index of next slot to use in {!val:vars} array to store variables. *)
-    ; positions : subt_rs
+    ; positions : occur_rs
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
 
@@ -277,7 +277,7 @@ struct
         FvScorable.pp freevars
         NlScorable.pp nonlin in
     F.fprintf oc "Positions @@ @[<h>" ;
-    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Subterm.pp oc
+    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occurrence.pp oc
       (ReductionStack.to_list positions) ;
     F.fprintf oc "@]@," ;
     F.fprintf oc "{@[<v>@," ;
@@ -296,7 +296,7 @@ struct
       if rs = [] then 0 else
       List.max ~cmp:Int.compare
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Subterm.sequence size |> ReductionStack.of_list in
+    let positions = Occurrence.sequence size |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
@@ -448,12 +448,12 @@ struct
       by a user defined symbol.  In case an {!constructor:Appl} is given as
       pattern [p], only terms having the same number of arguments and the same
       leftmost {e non} {!constructor:Appl} term match. *)
-  let specialize : term -> int -> subt_rs -> clause list ->
-    subt_rs * clause list = fun pat ci pos rs ->
+  let specialize : term -> int -> occur_rs -> clause list ->
+    occur_rs * clause list = fun pat ci pos rs ->
     let pos =
       let l, m, r = ReductionStack.destruct pos ci in
       let nargs = get_args pat |> snd |> List.length in
-      let replace = Subterm.sequence ~from:(Subterm.sub m) nargs in
+      let replace = Occurrence.sequence ~from:(Occurrence.sub m) nargs in
       ReductionStack.restruct l replace r in
     let ph, pargs = get_args pat in
     let insert r e = Array.concat [ Array.sub r.lhs 0 ci
@@ -479,7 +479,7 @@ struct
   (** [default c s r] computes the default clauses from [r] that remain to be
       matched in case the pattern used is not in the column [c]. [s] is the
       list of positions of the elements in each clause. *)
-  let default : int -> subt_rs -> clause list -> subt_rs * clause list =
+  let default : int -> occur_rs -> clause list -> occur_rs * clause list =
     fun ci pos rs ->
     let pos =
       let l, _, r = ReductionStack.destruct pos ci in
@@ -499,11 +499,11 @@ struct
   (** [abstract c v p r] computes the clauses resulting from the
       specialisation by an abstraction.  Note that the pattern can't be an
       applied lambda since the lhs is in normal form. *)
-  let abstract : int -> tvar -> subt_rs -> clause list ->
-                 subt_rs * clause list =
+  let abstract : int -> tvar -> occur_rs -> clause list ->
+                 occur_rs * clause list =
     fun ci v pos clauses ->
     let l, p, r = ReductionStack.destruct pos ci in
-    let p = Subterm.sub p in (* Position of term inside lambda. *)
+    let p = Occurrence.sub p in (* Position of term inside lambda. *)
     let pos = ReductionStack.restruct l [p] r in
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]

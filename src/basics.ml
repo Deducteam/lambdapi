@@ -266,12 +266,12 @@ let term_of_rhs : rule -> term = fun r ->
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
 
-(** {3 Subterm position helper module} *)
+(** {3 Occurrences module} *)
 
-(** Some tools to encode the position of a subterm in a term. *)
-module Subterm =
+(** Some tools to encode the position of subterms in a term. *)
+module Occurrence =
 struct
-  (** Each element of the list is a level in the tree of the term.  For
+  (** Each element of the list is a path in the tree of the term.  For
       instance, in the term [Appl(Appl(f, x), Appl(Appl(g, a), b))], the
       subterm [a] has position [1.0], encoded by [[0 ; 1]], [b] has [1.1]
       encoded by [[1 ; 1]] and [x] has [0] encoded by [[0]]. *)
@@ -316,11 +316,11 @@ struct
 
 end
 
-(** Functional map with [Subterm.t] as keys *)
-module SubtMap = Map.Make(Subterm)
+(** Functional map with [Occurrence.t] as keys *)
+module OccurMap = Map.Make(Occurrence)
 
-(** Functional set with [Subterm.t] as items. *)
-module SubtSet = Set.Make(Subterm)
+(** Functional set with [Occurrence.t] as items. *)
+module OccurSet = Set.Make(Occurrence)
 
 (** {3 Operators on trees} *)
 
