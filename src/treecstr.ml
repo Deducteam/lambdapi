@@ -92,7 +92,11 @@ end
 module type NlConstraintSig =
 sig
   include BinConstraintPoolSig with type out = int * int
-                                and type data = int
+                                and type data = int (** Slot of [vars] array. *)
+
+  (** [constrained s p] returns whether slot [s] is constrained in pool
+      [p]. *)
+  val constrained : data -> t -> bool
 end
 
 (** Free variables constraints.  Such a constraint involves only one variable,
@@ -121,6 +125,7 @@ struct
   (** Weight given to nl constraints. *)
   let nl_prio = 1.
 
+  (** When *)
   type t =
     { partial : int IntMap.t
     (** An association [(e, v)] is a slot [e] of the [env] array with a slot
@@ -167,6 +172,9 @@ struct
     IntPairSet.is_empty available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
+
+  let constrained : data -> t -> bool = fun slot pool ->
+    IntMap.mem slot pool.partial
 
   let score c =
     if is_empty c then None else

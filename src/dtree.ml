@@ -355,11 +355,17 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
+    (* Verify that there are no non linearity constraints in the remaining
+       terms.  We must check that there are no constraints in the remaining
+       terms and no constraints left partially instantiated. *)
     let nonl lhs =
       let slots = Array.to_list lhs
                  |> List.filter_map
                       (function Patt(io, _, _) -> io | _ -> None) in
-      List.same_length slots (List.sort_uniq Int.compare slots) in
+      let slots_uniq = List.sort_uniq Int.compare slots in
+      List.same_length slots slots_uniq
+      && not @@ List.exists (fun s -> NlScorable.constrained s nonlin)
+          slots_uniq in
     let ripe lhs =
       Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs
       && nonl lhs in
