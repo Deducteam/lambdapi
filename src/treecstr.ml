@@ -4,7 +4,7 @@ open Terms
 open Extra
 
 (** Holds a constraint to solve and its heuristic score, or nothing if there
-    are no constraint availavle. *)
+    are no constraint available. *)
 type 'a cdecision = ('a * float) option
 
 (** Binary constraints allow to check properties on terms during evaluation.
@@ -21,11 +21,10 @@ type 'a cdecision = ('a * float) option
       the term at position [{0}] depends only on free variables [x] and [y]
       and that the term at position [{1}] depends only on free variable [y].
 
-    Constraints depends heavily on the {!val:vars} array used to store terms
+    Constraints depend heavily on the {!val:vars} array used to store terms
     during evaluation as it is the only way to have access to terms matched
-    while evaluating.  The term {i slot} refers to a position in this array.
-    The slot is determined via the {!field:slot} which is incremented each
-    time a {!constructor:Patt} is encountered. *)
+    while evaluating.  The term {i slot} refers to a position in this
+    array. *)
 
 (** A general type for a pool of constraints.  Constraints are added on the
     fly during tree build.  Constraints can involve one or more terms from a
@@ -91,8 +90,12 @@ end
     at least two variables. *)
 module type NlConstraintSig =
 sig
-  include BinConstraintPoolSig with type out = int * int
-                                and type data = int (** Slot of [vars] array. *)
+  (** Binary constraint with
+      - as {!type:data} a slot of the [vars] array,
+      - as {!type:out} a couple of two slots of the [vars] array. *)
+  include BinConstraintPoolSig
+    with type out = int * int
+     and type data = int
 
   (** [constrained s p] returns whether slot [s] is constrained in pool
       [p]. *)
@@ -103,8 +106,13 @@ end
     but it requires the list of variables that may appear free in the term. *)
 module type FvConstraintSig =
 sig
-  include BinConstraintPoolSig with type out = int * tvar array
-                                and type data = tvar array
+  (** Binary constraint with
+      - as {!type:data} an array of free variables,
+      - as {!type:out} the slot of the [vars] array and an array of variables
+        that may appear free in the term. *)
+  include BinConstraintPoolSig
+    with type out = int * tvar array
+     and type data = tvar array
 end
 
 module NlConstraints : NlConstraintSig =
@@ -298,10 +306,13 @@ module type NlScorableSig = sig
   type cstr
   type decision = cstr cdecision
   include (NlConstraintSig)
-          with type t := t and type cstr := cstr and type decision := decision
+    with type t := t
+     and type cstr := cstr
+     and type decision := decision
 
   include Scorable
-      with type t := t and type decision := decision
+    with type t := t
+     and type decision := decision
 end
 
 (** Free variables constraints with score. *)
@@ -310,10 +321,13 @@ module type FvScorableSig = sig
   type cstr
   type decision = cstr cdecision
   include (FvConstraintSig)
-          with type t := t and type cstr := cstr and type decision := decision
+    with type t := t
+     and type cstr := cstr
+     and type decision := decision
 
   include Scorable
-      with type t := t and type decision := decision
+    with type t := t
+     and type decision := decision
 end
 
 module NlScorable : NlScorableSig = struct
