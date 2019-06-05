@@ -1,0 +1,3 @@
+// some code...
+
+symbol const T : TYPE
