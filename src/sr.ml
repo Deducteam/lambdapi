@@ -2,9 +2,9 @@
 
 open Timed
 open Console
+open Terms
 open Print
 open Extra
-open Terms
 open Basics
 open Pos
 
@@ -52,7 +52,7 @@ let sr_unproved_msg (s, h, r) =
   fatal r.pos "Unable to prove SR for rule [%a]." pp_rule (s, h, r.elt)
 
 let sr_not_preserved_msg (s, h, r) =
-  fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s, h, r.elt)
+  fatal r.pos "Rule [%a] may not preserve typing." pp_rule (s, h, r.elt)
 
 (** [check_eq eq eqs] checks if there exists an equation [eq'] in [eqs] such
     that (t_i == u_i (or u_(1-i)) for i = 0, 1) where [eq] = (t_0, t_1)
@@ -64,7 +64,7 @@ let check_eq eq eqs =
   in
   List.exists (eq_comm eq) eqs
 
-(** [check_rule symbs builtins r] checks whether rule [r] is well-typed. The
+(** [check_rule builtins (s, h, r)] checks whether rule [r] is well-typed. The
     program fails gracefully in case of error. *)
 let check_rule :
   sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
@@ -74,7 +74,7 @@ let check_rule :
     if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
     (* We process the LHS to replace pattern variables by fresh function
        symbols. *)
-    let lhs, rhs = to_closed_terms (s, r.elt) in
+    let lhs, rhs = replace_patt_by_symb_rule (s, r.elt) in
     (* Infer the type of the LHS and the constraints. *)
     match Typing.infer_constr builtins Ctxt.empty lhs with
     | None                       -> wrn r.pos "Untypable LHS."
@@ -85,16 +85,16 @@ let check_rule :
            new symbol and t is a higher-order term), and other equations. *)
         let split_constrs (fo, r_sym_ho, others) (t, u) =
           try
-            Basics.check_fo t;
-            Basics.check_fo u;
+            check_nullary_meta t;
+            check_nullary_meta u;
             (t, u) :: fo, r_sym_ho, others
-          with Not_FO ->
+          with Non_nullary_meta ->
             match (t, u) with
             | Symb (s, _), _ when is_new_symb s ->
-                let r = Completion.to_rule (t, u) in
+                let r = Completion.make_rule (t, u) in
                 fo, r :: r_sym_ho, others
             | _, Symb (s, _) when is_new_symb s ->
-                let r = Completion.to_rule (u, t) in
+                let r = Completion.make_rule (u, t) in
                 fo, r :: r_sym_ho, others
             | _                                 ->
                 fo, r_sym_ho, (t, u) :: others in
@@ -117,15 +117,25 @@ let check_rule :
               let cs = List.filter (fun c -> not (check_eq c others)) cs in
               if cs <> [] then
                 begin
+                  let detect_inj acc (t, u) =
+                    let ht, _ = get_args t in
+                    let hu, _ = get_args u in
+                    match (get_symb ht, get_symb hu) with
+                    | Some s, Some s' when s == s' ->
+                        if List.mem s.sym_name acc then acc
+                        else s.sym_name :: acc
+                    | _                            -> acc in
+                  let ss = List.fold_left detect_inj [] cs in
+                  List.iter (wrn None "Check if [%s] is injective") ss;
                   List.iter unsolved_msg cs;
                   sr_unproved_msg (s, h, r)
                 end
               else Time.restore t1
             else Time.restore t1
         | None    -> sr_not_preserved_msg (s, h, r)
-  with Not_FO ->
+  with Non_nullary_meta ->
     Time.restore t1;
-    let lhs, rhs = to_terms (s, r.elt) in
+    let lhs, rhs = replace_patt_by_meta_rule (s, r.elt) in
     begin match Typing.infer_constr builtins Ctxt.empty lhs with
     | None                       -> wrn r.pos "Untypable LHS"
     | Some (lhs_constrs, ty_lhs) ->

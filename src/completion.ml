@@ -9,8 +9,7 @@ open Timed
     the strict total order [ord] on the set of all function symbols. *)
 let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
   let f, args = get_args t1 in
-  let f = get_symb f in
-  match f with
+  match get_symb f with
   | None   -> if t1 == t2 then 0 else -1
   | Some f ->
       if List.exists (fun x -> lpo ord x t2 >= 0) args then 1
@@ -30,12 +29,11 @@ let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
                 else -1
             | _            -> -1
 
-(** [to_rule (lhs, rhs)] tranlates the pair [(lhs, rhs)] of closed terms into
-    a rule. *)
-let to_rule : term * term -> sym * rule = fun (lhs, rhs) ->
+(** [make_rule (lhs, rhs)] tranlates the pair [(lhs, rhs)] of closed terms
+    into a rule. *)
+let make_rule : term * term -> sym * rule = fun (lhs, rhs) ->
   let (s, args) = get_args lhs in
-  let s = get_symb s in
-  match s with
+  match get_symb s with
   | None   -> assert false
   | Some s ->
       let vs = Bindlib.new_mvar te_mkfree [||] in
@@ -74,11 +72,8 @@ let find_deps : (term * term) list -> string list * (string * string) list
     (fun (t1, t2) -> find_dep_aux (t1, t2); find_dep_aux (t2, t1)) eqs;
   (!symbs, !deps)
 
-module StrMap = Map.Make(struct
-  type t = string
-  let compare = compare
-end)
-
+(** Exception raised by [topo_sort] when the directed graph considered is not
+    a DAG *)
 exception Not_DAG
 
 (** [topo_sort symbs edges] computes a topological sort on the directed graph
@@ -134,27 +129,25 @@ let topo_sort : string list -> (string * string) list -> int StrMap.t
     1. New symbols are always larger than the orginal ones.
     2. If [s1] and [s2] are not new symbols, then we use the usual
        lexicographic order.
-    3. If [s1] and [s2] are new symbols, then if the topological order is well
-       defined then we compare their positions in this latter one. Otherwise,
+    3. If [s1] and [s2] are new symbols and if the topological order is well
+       defined, then we compare their positions in this latter one. Otherwise,
        we use the usual lexicographic order. *)
 let ord_from_eqs : (term * term) list -> sym Ord.cmp = fun eqs ->
   let symbs, deps = find_deps eqs in
-  try
-    let ord = topo_sort symbs deps in
-    fun s1 s2 ->
-      match (is_new_symb s1, is_new_symb s2) with
-      | true, true   ->
-          if s1 == s2 then 0
-          else begin
-            try
-              StrMap.find s2.sym_name ord - StrMap.find s1.sym_name ord
-            with _ -> Pervasives.compare s1.sym_name s2.sym_name
-          end
-      | true, false  -> 1
-      | false, true  -> -1
-      | false, false -> Pervasives.compare s1.sym_name s2.sym_name
-  with Not_DAG ->
-    fun s1 s2 -> Pervasives.compare s1.sym_name s2.sym_name
+  let ord =
+    try topo_sort symbs deps with Not_DAG -> StrMap.empty in
+  fun s1 s2 ->
+    match (is_new_symb s1, is_new_symb s2) with
+    | true, true   ->
+        if s1 == s2 then 0
+        else begin
+          try
+            StrMap.find s2.sym_name ord - StrMap.find s1.sym_name ord
+          with _ -> Pervasives.compare s1.sym_name s2.sym_name
+        end
+    | true, false  -> 1
+    | false, true  -> -1
+    | false, false -> Pervasives.compare s1.sym_name s2.sym_name
 
 (** [completion eqs ord] returns the convergent rewrite system obtained from
     the completion procedure on the set of equations [eqs] using the LPO
@@ -179,8 +172,8 @@ let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
   let orient (t1, t2) =
     match lpo t1 t2 with
     | 0            -> ()
-    | k when k > 0 -> add_rule (to_rule (t1, t2))
-    | _            -> add_rule (to_rule (t2, t1)) in
+    | k when k > 0 -> add_rule (make_rule (t1, t2))
+    | _            -> add_rule (make_rule (t2, t1)) in
   List.iter orient eqs;
   let completion_aux : unit -> bool = fun () ->
     let b = ref false in
@@ -199,7 +192,7 @@ let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
          other than [r]. *)
       let f acc rs' r =
         s.sym_rules := acc @ rs';
-        let (lhs, rhs) = to_terms (s, r) in
+        let lhs, rhs = replace_patt_by_meta_rule (s, r) in
         let lhs' = Eval.snf lhs in
         let rhs' = Eval.snf rhs in
         s.sym_rules := r :: !(s.sym_rules);
@@ -208,10 +201,10 @@ let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
           match lpo lhs' rhs' with
           | 0            -> ()
           | k when k > 0 ->
-              to_add := to_rule (lhs', rhs') :: !to_add;
+              to_add := make_rule (lhs', rhs') :: !to_add;
               b := true;
           | _            ->
-              to_add := to_rule (rhs', lhs') :: !to_add;
+              to_add := make_rule (rhs', lhs') :: !to_add;
               b := true;
         end
       in
