@@ -185,6 +185,7 @@ and branch : term -> tree TC.Map.t ->
       let h, args = get_args t in
       let args = List.map ensure_tref args in
       r_ex := Some(add_args h args) ;
+      (* Update examined term if it has been stored in [walk]. *)
       match h with
       | Symb(s, _) ->
           let c_ari = List.length args in
