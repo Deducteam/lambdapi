@@ -178,40 +178,40 @@ and branch : term -> tree TC.Map.t ->
   fun examined children abstraction default ->
     if !log_enabled then log_eval "branching on [%a]" pp examined ;
     let defret = (default, [], None) in
-    (* [choose t] chooses a tree among {!val:children} when term [t] is
-       examined and returns the new head of stack. *)
-    let choose t =
-      let r_ex = tref_val examined in
-      let h, args = get_args t in
-      let args = List.map ensure_tref args in
-      r_ex := Some(add_args h args) ;
-      (* Update examined term if it has been stored in [walk]. *)
-      match h with
-      | Symb(s, _) ->
-          let c_ari = List.length args in
-          let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                            ; c_ari}) in
-          begin try let matched = TC.Map.find cons children in
-            (Some(matched), args, None)
-          with Not_found -> defret end
-      | Vari(x)    ->
-          let cons = TC.Vari(Bindlib.name_of x) in
-          begin try let matched = TC.Map.find cons children in
-            (Some(matched), args, None)
-          with Not_found -> defret end
-      | Abst(_, b) ->
-          begin match abstraction with
-          | None         -> defret
-          | Some(fv, tr) ->
-              let nfv = stamp_tvar Pervasives.(!stamp) fv in
-              Pervasives.incr stamp ;
-              let bound = Bindlib.subst b (mkfree nfv) in
-              (Some(tr), ensure_tref bound::args, Some(fv, nfv))
-          end
-      | Meta(_, _) -> defret
-      | _          -> assert false in
-    let r = if TC.Map.is_empty children && abstraction = None
-      then defret else choose (whnf examined) in
+    let r = if TC.Map.is_empty children && abstraction = None then
+      defret else
+      let rex = tref_val examined in
+      match !rex with
+      | None    -> assert false
+      | Some(t) ->
+          let t = whnf t in
+          rex := Some(t) ;
+          let h, args = Basics.get_args t in
+          let args = List.map ensure_tref args in
+          match h with
+          | Symb(s, _) ->
+              let c_ari = List.length args in
+              let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
+                                 ; c_ari}) in
+              begin try let matched = TC.Map.find cons children in
+                (Some(matched), args, None)
+              with Not_found -> defret end
+          | Vari(x)    ->
+              let cons = TC.Vari(Bindlib.name_of x) in
+              begin try let matched = TC.Map.find cons children in
+                (Some(matched), args, None)
+              with Not_found -> defret end
+          | Abst(_, b) ->
+              begin match abstraction with
+              | None         -> defret
+              | Some(fv, tr) ->
+                  let nfv = stamp_tvar Pervasives.(!stamp) fv in
+                  Pervasives.incr stamp ;
+                  let bound = Bindlib.subst b (mkfree nfv) in
+                  (Some(tr), ensure_tref bound::args, Some(fv, nfv))
+              end
+          | Meta(_, _) -> defret
+          | _          -> assert false in
     if !log_enabled
     then log_eval (r_or_g (r != defret) "branching on [%a]")
       pp examined ;
