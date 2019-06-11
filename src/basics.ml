@@ -133,7 +133,7 @@ let is_symb : sym -> term -> bool = fun s t ->
 
 (** [sym_cmp s s'] compares symbols [s] and [s']. *)
 let sym_cmp : sym -> sym -> int = fun sa sb ->
-  if sa.sym_def == sb.sym_def then 0 else
+  if sa == sb then 0 else
   match String.compare sa.sym_name sb.sym_name with
   | 0 -> Pervasives.compare sa.sym_path sb.sym_path
   | x -> x
