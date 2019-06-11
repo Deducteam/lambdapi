@@ -196,7 +196,10 @@ let is_meta : term -> bool = fun t ->
   | Meta _ -> true
   | _      -> false
 
-let rec map_meta : (meta -> meta) -> term -> term = fun f t ->
+(** [map_meta f t] returns a new term [t'] obtained from [t] by replacing each
+    metavariable [m[ts]] with [f m ts'] where [ts'] is the array of terms
+    obtained by applying [map_meta f] recursively on [ts]. *)
+let rec map_meta : (meta -> term array -> term) -> term -> term = fun f t ->
   match unfold t with
   | Prod (a, b)  ->
       let x, b' = Bindlib.unbind b in
@@ -209,11 +212,13 @@ let rec map_meta : (meta -> meta) -> term -> term = fun f t ->
         Bindlib.unbox (Bindlib.bind_var x (lift (map_meta f b'))) in
       Abst (map_meta f a, b)
   | Appl (t, u)  -> Appl (map_meta f t, map_meta f u)
-  | Meta (m, ts) -> Meta (f m, Array.map (map_meta f) ts)
+  | Meta (m, ts) -> f m (Array.map (map_meta f) ts)
   | _            -> t
 
 module IntMap = Map.Make(struct type t = int let compare = compare end)
 
+(** [copy_rule (lhs, rhs)] returns a copy (lhs', rhs') of the rule (lhs, rhs)
+    by replacing each metavariable with a fresh metavariable. *)
 let copy_rule : term * term -> term * term = fun (lhs, rhs) ->
   let metamap = IntMap.empty in
   let rec copy_term metamap t =
@@ -258,7 +263,12 @@ let copy_rule : term * term -> term * term = fun (lhs, rhs) ->
     | _            -> t, metamap
   in
   let lhs, metamap = copy_term metamap lhs in
-  lhs, map_meta (fun m -> IntMap.find m.meta_key metamap) rhs
+  let rhs =
+    let fn = fun m ts ->
+      Bindlib.unbox
+        (_Meta (IntMap.find m.meta_key metamap) (Array.map lift ts)) in
+    map_meta fn rhs in
+  lhs, rhs
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
 let occurs : meta -> term -> bool =
@@ -271,15 +281,6 @@ let get_metas : term -> meta list = fun t ->
   let open Pervasives in
   let l = ref [] in
   iter_meta (fun m -> l := m :: !l) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
-
-let get_metas' : term -> meta list = fun t ->
-  let open Pervasives in
-  let l = ref [] in
-  let fn t = match t with
-    | Meta (m, _) -> l := m :: !l
-    | _           -> () in
-  iter fn t;
   List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
 
 (** [has_metas t] checks that there are metavariables in [t]. *)
@@ -449,6 +450,10 @@ let replace_patt_rule :
   let rhs = Bindlib.msubst r.rhs terms_env in
   add_args (symb s) lhs, rhs
 
+(** [replace_patt_by_meta_rule r] translates the rule [r] into a pair of
+    terms. The pattern variables in the LHS are replaced by fresh
+    metavariables. The terms with environment in the RHS are replaced by
+    their corresponding metavariables. *)
 let replace_patt_by_meta_rule =
   let to_term_env m =
     let m = match m with Some m -> m | None -> assert false in
@@ -458,6 +463,10 @@ let replace_patt_by_meta_rule =
     TE_Some (Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ar))) in
   replace_patt_rule (replace_patt_by_meta 0) to_term_env
 
+(** [replace_patt_by_symb_rule r] translates the rule [r] into a pair of
+    terms. The pattern variables in the LHS are replaced by fresh symbols.
+    The terms with environment in the RHS are replaced by their corresponding
+    symbols. *)
 let replace_patt_by_symb_rule =
   let to_term_env s =
     let s = match s with Some s -> s | None -> assert false in
@@ -465,7 +474,8 @@ let replace_patt_by_symb_rule =
   replace_patt_rule replace_patt_by_symb to_term_env
 
 (** [check_nullary_meta t] checks that all the metavariables in [t] are of
-    arity 0. *)
+    arity 0 and raises the exception Non_nullary_meta if it is not the case.
+    *)
 let rec check_nullary_meta : term -> unit = fun t ->
   match t with
   | Type

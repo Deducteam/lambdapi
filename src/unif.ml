@@ -243,7 +243,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
    injective. Currently, it only handles a specific case: when s is the
    builtin P. *)
   let solve_inj s ts v =
-    if !(s.sym_rules) = [] then add_to_unsolved ()
+    if !(s.sym_rules) = [] then error ()
     else
       match Pervasives.(!config) with
       | None -> add_to_unsolved ()
@@ -256,7 +256,6 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
            else raise Unsolvable
          with Unsolvable -> add_to_unsolved ()
   in
-
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
@@ -286,6 +285,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
              if check_inj_sym bls s1 then decompose_part bls ()
              else add_to_unsolved ()
            else error ()
+     else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
