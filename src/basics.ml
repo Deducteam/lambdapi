@@ -35,9 +35,9 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [stamp_tvar v s] creates a fresh variable whose name is the name of [v]
-    with s[s] as suffix.  For instance [stamp_tvar x 13] with [x] having name
-    [x] will result in a variable with name [xs13]. *)
+(** [stamp_tvar s v] creates a fresh variable whose name is the name of [v]
+    with "s[s]" as suffix.  For instance [stamp_tvar 13 x] with [x] having
+    name [c] will result in a variable with name [cs13]. *)
 let stamp_tvar : int -> tvar -> tvar = fun stamp v ->
   let name = Bindlib.name_of v ^ "s" ^ (string_of_int stamp) in
   Bindlib.new_var mkfree name
