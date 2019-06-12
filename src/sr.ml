@@ -76,41 +76,13 @@ let check_rule :
       let t0 = Time.save () in
       if !log_enabled then typ_cond "LHS" ty_lhs lhs_constrs;
       try
-        let fn m =
-          match !(m.meta_value) with
-          | None   ->
-              let n = string_of_int m.meta_key in
-              let term_t_m = !(m.meta_type) in
-              let c_m = new_symb ("{c_" ^ n) term_t_m in
-              if m.meta_arity <> 0 then raise Non_nullary_meta;
-              m.meta_value :=
-                Some
-                  (Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb c_m Nothing)))
-          | Some _ -> ()
-        in
-        let split_constrs (fo, others) (t, u) =
-          try
-            check_nullary_meta t;
-            check_nullary_meta u;
-            (t, u) :: fo, others
-          with Non_nullary_meta ->
-            fo, (t, u) :: others in
-        iter_meta fn lhs;
-        let constrs_fo, others =
-          List.fold_left split_constrs ([], []) lhs_constrs in
-        let t1 = Time.save () in
-        let ord = Completion.ord_from_eqs constrs_fo in
-        let rules_to_add = Completion.completion constrs_fo ord in
-        (* Add the rules obtained by the completion procedure *)
-        Time.restore t1;
-        List.iter
-          (fun (s, rs) -> s.sym_rules := rs @ !(s.sym_rules)) rules_to_add;
+        let constrs = Unif.add_rules_from_constrs lhs_constrs in
         (* Check that the RHS has the same type as the LHS. *)
         let to_solve = Infer.check Ctxt.empty rhs ty_lhs in
         match Unif.(solve builtins false {no_problems with to_solve}) with
         | Some cs ->
             if cs <> [] then
-              let cs = List.filter (fun c -> not (check_eq c others)) cs in
+              let cs = List.filter (fun c -> not (check_eq c constrs)) cs in
               if cs <> [] then raise Non_nullary_meta
               else Time.restore t0
             else Time.restore t0

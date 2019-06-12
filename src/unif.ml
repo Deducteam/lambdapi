@@ -419,14 +419,46 @@ and remove_hypo_inj : sym -> unit = fun s ->
   | Defin   -> ()
   | Injec l -> s.sym_mode <- Injec (List.tl l)
 
-(** [eq_modulo_constrs constrs (t1, t2)] returns if there exists (t1', t2')
-    in [constrs] such that t1 ~ t1' (resp. t2') and t2 ~ t2' (resp. t1'). *)
+(** [eq_modulo_constrs constrs (t1, t2)] returns if t1 ~ t2 or there exists
+    (t1', t2') in [constrs] such that t1 ~ t1' (resp. t2') and t2 ~ t2'
+    (resp. t1'). *)
 and eq_modulo_constrs : unif_constrs -> term * term -> bool
   = fun constrs (t1, t2) ->
   let fn (t1', t2') =
     (eq_modulo t1 t1' && eq_modulo t2 t2') ||
     (eq_modulo t1 t2' && eq_modulo t2 t1') in
-  List.exists fn constrs
+  eq_modulo t1 t2 || List.exists fn constrs
+
+(** [add_rules_from_constrs constrs] first replaces each metavariable in
+    [constrs] with a fresh symbol, then applies the completion procedure on
+    the first-order constraints in [constrs] and returns the rest of it. *)
+and add_rules_from_constrs : unif_constrs -> unif_constrs = fun constrs ->
+  let fn m =
+    match !(m.meta_value) with
+    | None   ->
+        let n = string_of_int m.meta_key in
+        let term_t_m = !(m.meta_type) in
+        let c_m = new_symb ("{c_" ^ n) term_t_m in
+        if m.meta_arity <> 0 then raise Non_nullary_meta;
+        m.meta_value :=
+          Some (Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb c_m Nothing)))
+    | Some _ -> () in
+  let split_constrs (fo, others) (t, u) =
+    try
+      check_nullary_meta t;
+      check_nullary_meta u;
+      iter_meta fn t;
+      iter_meta fn u;
+      (t, u) :: fo, others
+    with Non_nullary_meta -> fo, (t, u) :: others in
+  let constrs_fo, others = List.fold_left split_constrs ([], []) constrs in
+  let t1 = Time.save () in
+  let ord = Completion.ord_from_eqs constrs_fo in
+  let rules_to_add = Completion.completion constrs_fo ord in
+  Time.restore t1;
+  List.iter
+    (fun (s, rs) -> s.sym_rules := rs @ !(s.sym_rules)) rules_to_add;
+  others
 
 (** [check_pair_of_rules bls (lhs1, rhs1) (lhs2, rhs2)] checks if
     the rules [lhs1 -> rhs1] and [lhs2 -> rhs2] satisfy the conditions
@@ -447,14 +479,12 @@ and check_pair_of_rules :
     let to_solve =
       List.map
         snd (List.filter (fun (b, _) -> not b) (List.combine bls args)) in
-    begin try
-      let cs = solve {no_problems with to_solve} in
-      let res =
-        List.for_all (eq_modulo_constrs !constrs) cs in
-      Time.restore t;
-      remove_hypo_inj s;
-      res
-    with Fatal _ -> Time.restore t; remove_hypo_inj s; false end
+    let constrs = add_rules_from_constrs !constrs in
+    let res =
+      List.for_all (eq_modulo_constrs constrs) to_solve in
+    Time.restore t;
+    remove_hypo_inj s;
+    res
   with
   | Fatal _ -> Time.restore t; remove_hypo_inj s; true
   | _       -> Time.restore t; remove_hypo_inj s; false
@@ -487,13 +517,12 @@ and check_single_rule : bool list -> sym -> term * term -> bool
           List.map
             snd (List.filter (fun (b, _) -> not b) (List.combine bls argss))
         in
-        begin try
-          let cs = solve {no_problems with to_solve} in
-          let res =
-            List.for_all (eq_modulo_constrs !constrs) cs in
-          Time.restore t;
-          res
-        with Fatal _ -> Time.restore t; false end
+        let constrs = add_rules_from_constrs !constrs in
+        let res =
+          List.for_all (eq_modulo_constrs constrs) to_solve in
+        Time.restore t;
+        remove_hypo_inj s;
+        res
     | _                                      -> false (* TODO *)
   with
   | Fatal _ -> Time.restore t; true
