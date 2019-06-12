@@ -8,6 +8,8 @@ module P = Printf
 let p_thump = ref 20
 let p_comb = ref 20
 
+let outdir = ref "../tests/OK"
+
 let speclist = Arg.align
   [ ( "-t"
     , Arg.Int ((:=) p_thump)
@@ -15,15 +17,17 @@ let speclist = Arg.align
   ; ( "-c"
     , Arg.Int ((:=) p_comb)
     , " Depth of comb.")
+  ; ( "--outdir"
+    , Arg.Set_string outdir
+    , "Output directory, ../tests/OK by default." )
   ]
 
-let testdir = "../tests/OK/"
 
 let natural_prelude = "require open tests.OK.nat"
 
 (** [thump n] builds a tree of depth one with [n] branches. *)
 let thump n =
-  let fname = F.concat testdir "thump.lp" in
+  let fname = F.concat !outdir "thump.lp" in
   let ochan = open_out fname in
   P.fprintf ochan "%s\n" natural_prelude ;
   for i = 0 to n do
@@ -42,7 +46,7 @@ assert loop 60000 (thump s%d) ≡ loop 0 0" n n ;
 (** [comb n] creates a comb, that is an unbalanced tree with each node
     having a child on [s] and a rule on [z]. *)
 let comb n =
-  let fname = F.concat testdir "comb.lp" in
+  let fname = F.concat !outdir "comb.lp" in
   let ochan = open_out fname in
   P.fprintf ochan "%s\n" natural_prelude ;
   P.fprintf ochan "symbol comb : N ⇒ N\n" ;
