@@ -8,6 +8,7 @@ open Basics
 open Treecstr
 module TC = Treecons
 
+(** Priority on topmost rule if set to true. *)
 let ordered_rules : bool ref = ref false
 
 (** See {!type:tree} in {!module:Terms}. *)
