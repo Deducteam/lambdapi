@@ -105,7 +105,7 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk   ) ->
-      whnf_stk f (ensure_tref u :: stk)
+      whnf_stk f (u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
       Pervasives.incr steps ;
@@ -184,9 +184,9 @@ and branch : term -> tree TC.Map.t ->
       match !rex with
       | None    -> assert false
       | Some(t) ->
-          let t = whnf t in
-          rex := Some(t) ;
-          let h, args = Basics.get_args t in
+          let u = whnf t in
+          rex := Some(u) ;
+          let h, args = Basics.get_args u in
           let args = List.map ensure_tref args in
           match h with
           | Symb(s, _) ->
@@ -278,6 +278,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             with Not_found -> None in
           match l_e_r with None -> None | Some(l_e_r) ->
           let left, examined, right = l_e_r in
+          let examined = ensure_tref examined in
           let cursor = fill_vars store examined cursor in
           let matched, args, fv_nfv =
             branch examined children abstraction default in
