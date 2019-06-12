@@ -29,14 +29,14 @@ let thump n =
   for i = 0 to n do
     P.fprintf ochan "symbol s%d : N\n" i
   done ;
-  P.fprintf ochan "symbol thump : N ⇒ N\n" ;
-  P.fprintf ochan "rule thump s0 → 0\n" ;
+  P.fprintf ochan "symbol thump : N ⇒ N
+rule thump s0 → 0\n" ;
   for i = 1 to n do
     P.fprintf ochan "and thump s%d → 0\n" i
   done ;
-  for i = 0 to n do
-    P.fprintf ochan "assert thump s%d ≡ 0\n" i
-  done ;
+  P.fprintf ochan "symbol loop : N ⇒ N ⇒ N
+rule loop (s &x) 0 → loop &x (thump s%d)
+assert loop 60000 (thump s%d) ≡ loop 0 0" n n ;
   close_out ochan
 
 (** [comb n] creates a comb, that is an unbalanced tree with each node
