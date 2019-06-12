@@ -277,7 +277,7 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
      stored in its dependencies. *)
   let add_rule (s, h, r) =
     out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt) ;
-    s.sym_rules := r.elt :: !(s.sym_rules) ;
+    s.sym_rules := !(s.sym_rules) @ [r.elt] ;
     if s.sym_path <> sign.sign_path then
       let m =
         try PathMap.find s.sym_path !(sign.sign_deps)

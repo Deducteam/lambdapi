@@ -8,6 +8,8 @@ open Basics
 open Treecstr
 module TC = Treecons
 
+let ordered_rules : bool ref = ref false
+
 (** See {!type:tree} in {!module:Terms}. *)
 type t = tree
 
@@ -355,10 +357,10 @@ struct
 
   (** [is_exhausted r] returns whether [r] can be applied or not. *)
   let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
-    (* Verify that there are no non linearity constraints in the remaining
-       terms.  We must check that there are no constraints in the remaining
-       terms and no constraints left partially instantiated. *)
     let nonl lhs =
+      (* Verify that there are no non linearity constraints in the remaining
+         terms.  We must check that there are no constraints in the remaining
+         terms and no constraints left partially instantiated. *)
       let slots = Array.to_list lhs
                  |> List.filter_map
                       (function Patt(io, _, _) -> io | _ -> None) in
@@ -367,6 +369,7 @@ struct
       && not @@ List.exists (fun s -> NlScorable.constrained s nonlin)
           slots_uniq in
     let ripe lhs =
+      (* [ripe l] returns whether [lhs] can be applied. *)
       Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs
       && nonl lhs in
     NlScorable.is_empty nonlin && FvScorable.is_empty freevars
@@ -375,7 +378,10 @@ struct
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; _ } as m) ->
     try
-      let r = List.find is_exhausted clauses in
+      if !ordered_rules
+      then let fc = List.hd clauses in
+        if is_exhausted fc then Yield(fc) else raise Not_found
+      else let r = List.find is_exhausted clauses in
       Yield(r)
     with Not_found ->
       let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in

@@ -92,6 +92,9 @@ let spec =
     ; ( "--write-trees"
       , Arg.Set Sign.write_trees
       , " Write created trees as dot files" )
+    ; ( "--ordered-rules"
+      , Arg.Set Dtree.ordered_rules
+      , " Enforce rule order while reducing" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
