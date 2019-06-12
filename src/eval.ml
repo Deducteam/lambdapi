@@ -180,23 +180,22 @@ and branch : term -> tree TC.Map.t ->
     let defret = (default, [], None) in
     let r = if TC.Map.is_empty children && abstraction = None then
       defret else
-      let h, args = match examined with
+      let h, args, ari = match examined with
         | TRef(rex) ->
             begin match !rex with
             | None    -> assert false
             | Some(t) ->
                 let u = whnf t in
                 if u != t then rex := Some u ;
-                let h, args = get_args u in
-                h, List.map ensure_tref args end
+                let h, args, ari = get_args_len u in
+                h, List.map ensure_tref args, ari end
         | t          ->
             let u = whnf t in
-            get_args u in
+            get_args_len u in
       match h with
       | Symb(s, _) ->
-          let c_ari = List.length args in
           let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                             ; c_ari}) in
+                             ; c_ari = ari }) in
           begin try let matched = TC.Map.find cons children in
             (Some(matched), args, None)
           with Not_found -> defret end
@@ -281,6 +280,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           match l_e_r with None -> None | Some(l_e_r) ->
           let left, examined, right = l_e_r in
           let examined = if store then ensure_tref examined else examined in
+          (* Transform term into reference to benefit from sharing if the term
+             is stored. *)
           let cursor = if store then fill_vars examined cursor else cursor in
           let matched, args, fv_nfv =
             branch examined children abstraction default in
