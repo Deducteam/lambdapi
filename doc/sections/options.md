@@ -121,3 +121,12 @@ The following flags may be useful for debugging:
  - `--too-long <float>` gives a warning for each command (i.e., file item) taking
    more than the given number of seconds to be checked. The given parameter is
    expected to be a floating point number.
+
+#### Rewriting engine
+
+The following options can be used to modify the behaviour of the
+reduction engine,
+ - `--write-trees` outputs the decision trees used for rule filtering,
+   for each symbol `s`, a file `s.gv` is created.
+ - `--ordered-rules` forces the rewriting engine to use in priority
+   the topmost rules.
