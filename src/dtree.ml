@@ -227,8 +227,9 @@ type bin_cstr = Fv of FvScorable.cstr
 module ClauseMat =
 struct
 
-  (** For convenience. *)
-  type occur_rs = Occurrence.t ReductionStack.t
+  (** Reduction stack containing the position of the subterm and the number of
+      abstractions traversed at this position. *)
+  type occur_rs = (Occurrence.t * int) ReductionStack.t
 
   (** A redefinition of the rule type.
 
@@ -285,7 +286,7 @@ struct
         NlScorable.pp nonlin in
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occurrence.pp oc
-      (ReductionStack.to_list positions) ;
+      (ReductionStack.to_list positions |> List.map fst) ;
     F.fprintf oc "@]@," ;
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
@@ -303,7 +304,9 @@ struct
       if rs = [] then 0 else
       List.max ~cmp:Int.compare
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Occurrence.sequence size |> ReductionStack.of_list in
+    let positions = Occurrence.sequence size
+                    |> List.map (fun x -> (x, 0))
+                    |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
@@ -433,12 +436,13 @@ struct
   (** [update_aux c v r] returns clause [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
       column [c] having met [v] vars until now. *)
-  let update_aux : int -> int -> clause -> clause =
-    fun ci slot r ->
+  let update_aux : int -> int -> occur_rs -> clause -> clause =
+    fun ci slot pos r ->
+    let _, (_, depth), _ = ReductionStack.destruct pos ci in
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if e <> [||]
+        let freevars = if depth >= 1
           then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
@@ -463,8 +467,10 @@ struct
     occur_rs * clause list = fun pat ci pos rs ->
     let pos =
       let l, m, r = ReductionStack.destruct pos ci in
+      let occ, depth = m in
       let nargs = get_args pat |> snd |> List.length in
-      let replace = Occurrence.sequence ~from:(Occurrence.sub m) nargs in
+      let replace = Occurrence.sequence ~from:(Occurrence.sub occ) nargs
+                  |> List.map (fun x -> (x, depth)) in
       ReductionStack.restruct l replace r in
     let ph, pargs = get_args pat in
     let insert r e = Array.concat [ Array.sub r.lhs 0 ci
@@ -513,9 +519,9 @@ struct
   let abstract : int -> tvar -> occur_rs -> clause list ->
                  occur_rs * clause list =
     fun ci v pos clauses ->
-    let l, p, r = ReductionStack.destruct pos ci in
-    let p = Occurrence.sub p in (* Position of term inside lambda. *)
-    let pos = ReductionStack.restruct l [p] r in
+    let l, (occ, depth), r = ReductionStack.destruct pos ci in
+    let occ = Occurrence.sub occ in (* Position of term inside lambda. *)
+    let pos = ReductionStack.restruct l [(occ, depth + 1)] r in
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.lhs ] in
@@ -640,7 +646,7 @@ let rec compile : Cm.t -> t =
       Condition({ ok ; condition ; fail })
   | Specialise(swap)                    ->
       let store = Cm.store patterns swap in
-      let updated = List.map (Cm.update_aux swap slot) clauses in
+      let updated = List.map (Cm.update_aux swap slot positions) clauses in
       let slot = if store then succ slot else slot in
       let cons = Cm.get_col swap patterns |> Cm.get_cons in
       (* Constructors specialisation *)
