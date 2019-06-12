@@ -285,14 +285,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let cursor = if store then fill_vars examined cursor else cursor in
           let matched, args, fv_nfv =
             branch examined children abstraction default in
-          let to_stamped = match fv_nfv with
-            | None      -> to_stamped
-            | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
-          let next child =
-            let stk = R.restruct left args right in
-            walk child stk cursor to_stamped in
-          Option.bind next matched in
-    walk tree stk 0 VarMap.empty
+          match matched with
+          | None    -> None
+          | Some(c) ->
+              let to_stamped = match fv_nfv with
+                | None      -> to_stamped
+                | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
+              let stk = R.restruct left args right in
+              walk c stk cursor to_stamped in
+  walk tree stk 0 VarMap.empty
 
 (** {b Note} During the matching with trees, two structures containing terms
     are used.
