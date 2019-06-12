@@ -125,6 +125,8 @@ type dot_term =
   | DotDefa (* Default case *)
   | DotAbst of tvar
   | DotCons of Treecons.treecons
+  | DotSuccess
+  | DotFailure
 
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
@@ -145,7 +147,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotDefa    -> F.fprintf oc "*"
     | DotCons(TC.Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
     | DotCons(TC.Vari(s)) -> F.fprintf oc "%s" s
-    | DotCons(TC.Abst)    -> assert false in
+    | DotCons(TC.Abst)    -> assert false
+    | DotSuccess -> F.fprintf oc "✓"
+    | DotFailure -> F.fprintf oc "✗" in
   let pp_tcstr : tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(vs, i) ->
@@ -183,8 +187,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
           tag pp_tcstr condition ;
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon ;
-        write_tree tag DotDefa ok ;
-        write_tree tag DotDefa fail ;
+        write_tree tag DotSuccess ok ;
+        write_tree tag DotFailure fail ;
     | Fail             ->
         incr nodecount ;
         F.fprintf ppf "@ %d [label=<!>];" !nodecount ;
