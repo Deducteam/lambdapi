@@ -180,38 +180,42 @@ and branch : term -> tree TC.Map.t ->
     let defret = (default, [], None) in
     let r = if TC.Map.is_empty children && abstraction = None then
       defret else
-      let rex = tref_val examined in
-      match !rex with
-      | None    -> assert false
-      | Some(t) ->
-          let u = whnf t in
-          rex := Some(u) ;
-          let h, args = Basics.get_args u in
-          let args = List.map ensure_tref args in
-          match h with
-          | Symb(s, _) ->
-              let c_ari = List.length args in
-              let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                                 ; c_ari}) in
-              begin try let matched = TC.Map.find cons children in
-                (Some(matched), args, None)
-              with Not_found -> defret end
-          | Vari(x)    ->
-              let cons = TC.Vari(Bindlib.name_of x) in
-              begin try let matched = TC.Map.find cons children in
-                (Some(matched), args, None)
-              with Not_found -> defret end
-          | Abst(_, b) ->
-              begin match abstraction with
-              | None         -> defret
-              | Some(fv, tr) ->
-                  let nfv = stamp_tvar Pervasives.(!stamp) fv in
-                  Pervasives.incr stamp ;
-                  let bound = Bindlib.subst b (mkfree nfv) in
-                  (Some(tr), ensure_tref bound::args, Some(fv, nfv))
-              end
-          | Meta(_, _) -> defret
-          | _          -> assert false in
+      let h, args = match examined with
+        | TRef(rex) ->
+            begin match !rex with
+            | None    -> assert false
+            | Some(t) ->
+                let u = whnf t in
+                if u != t then rex := Some u ;
+                let h, args = get_args u in
+                h, List.map ensure_tref args end
+        | t          ->
+            let u = whnf t in
+            get_args u in
+      match h with
+      | Symb(s, _) ->
+          let c_ari = List.length args in
+          let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
+                             ; c_ari}) in
+          begin try let matched = TC.Map.find cons children in
+            (Some(matched), args, None)
+          with Not_found -> defret end
+      | Vari(x)    ->
+          let cons = TC.Vari(Bindlib.name_of x) in
+          begin try let matched = TC.Map.find cons children in
+            (Some(matched), args, None)
+          with Not_found -> defret end
+      | Abst(_, b) ->
+          begin match abstraction with
+          | None         -> defret
+          | Some(fv, tr) ->
+              let nfv = stamp_tvar Pervasives.(!stamp) fv in
+              Pervasives.incr stamp ;
+              let bound = Bindlib.subst b (mkfree nfv) in
+              (Some(tr), ensure_tref bound::args, Some(fv, nfv))
+          end
+      | Meta(_, _) -> defret
+      | _          -> assert false in
     if !log_enabled
     then log_eval (r_or_g (r != defret) "branching on [%a]")
       pp examined ;
@@ -222,12 +226,10 @@ and branch : term -> tree TC.Map.t ->
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
   let vars = Array.make capa (Kind, None) in (* dummy terms *)
-    let fill_vars store t slot =
-      if store
-      then (if !log_enabled then log_eval "storing [%a]" pp t ;
-            vars.(slot) <- (t, None) ;
-            succ slot)
-      else slot in
+    let fill_vars t slot =
+      ( if !log_enabled then log_eval "storing [%a]" pp t
+      ; vars.(slot) <- (t, None)
+      ; succ slot ) in
     let module R = Dtree.ReductionStack in
     let stk = R.of_list stk in
     (* [walk t s c m] where [s] is the stack of terms to match and [c] the
@@ -278,8 +280,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             with Not_found -> None in
           match l_e_r with None -> None | Some(l_e_r) ->
           let left, examined, right = l_e_r in
-          let examined = ensure_tref examined in
-          let cursor = fill_vars store examined cursor in
+          let examined = if store then ensure_tref examined else examined in
+          let cursor = if store then fill_vars examined cursor else cursor in
           let matched, args, fv_nfv =
             branch examined children abstraction default in
           let to_stamped = match fv_nfv with
