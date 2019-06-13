@@ -152,10 +152,6 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
   let vars = Array.make capa Kind in (* dummy terms *)
   let boundv = Array.make capa None in
-    let fill_vars t slot =
-      ( if !log_enabled then log_eval "storing [%a]" pp t
-      ; vars.(slot) <- t
-      ; succ slot ) in
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
@@ -211,16 +207,18 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             match default with
             | None    -> None
             | Some(t) ->
-                let cursor =
-                  if store then fill_vars examined cursor else cursor in
+                let cursor = if store
+                  then ( vars.(cursor) <- examined
+                       ; cursor + 1 )
+                  else cursor in
                 walk t (R.restruct left [] right) cursor to_stamped else
           let t, args = whnf_stk examined [] in
-          let cursor, args =
-            if store then
-                let rargs = List.map ensure_tref args in
-                (* Sharing on args as they might be reused *)
-                fill_vars (add_args t rargs) cursor, rargs
-            else cursor, args in
+          let args = if store then List.map ensure_tref args else args in
+          (* Introduce sharing on arguments *)
+          let cursor = if store
+            then ( vars.(cursor) <- add_args t args
+                 ; cursor + 1 )
+            else cursor in
           let defret = (default, [], None) in
           let matched, args, fv_nfv =
             match t with
@@ -243,7 +241,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                     let nfv = stamp_tvar Pervasives.(!stamp) fv in
                     Pervasives.incr stamp ;
                     let bound = Bindlib.subst b (mkfree nfv) in
-                    (Some(tr), ensure_tref bound::args, Some(fv, nfv))
+                    (Some(tr), bound::args, Some(fv, nfv))
                 end
             | Meta(_, _) -> defret
             | _          -> assert false in
