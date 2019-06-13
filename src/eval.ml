@@ -175,56 +175,56 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       ( if !log_enabled then log_eval "storing [%a]" pp t
       ; vars.(slot) <- t
       ; succ slot ) in
-    let module R = Dtree.ReductionStack in
-    let stk = R.of_list stk in
-    (* [walk t s c m] where [s] is the stack of terms to match and [c] the
-       cursor indicating where to write in the [env] array described in
-       {!module:Terms} as the environment of the RHS during matching.  [m]
-       maps the free variables contained in the tree to the free variables
-       used in this evaluation. *)
-    let rec walk tree stk cursor to_stamped =
-      match tree with
-      | Fail                                                -> None
-      | Leaf(env_builder, act)                              ->
-          (* Allocate an environment for the action. *)
-          let env = Array.make (Bindlib.mbinder_arity act) TE_None in
-          (* Retrieve terms needed in the action from the [vars] array. *)
-          let fn (pos, slot) =
-            match boundv.(pos) with
-            | Some(b) ->
-                env.(slot) <- TE_Some(b)
-            | None    ->
-                let t = unfold vars.(pos) in
-                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-                env.(slot) <- TE_Some(b) in
-          List.iter fn env_builder ;
-          (* Actually perform the action. *)
-          Some(Bindlib.msubst act env, R.to_list stk)
-      | Condition({ ok ; condition ; fail }) ->
-          let next = match condition with
-            | TcstrEq(i, j)        ->
-                if eq_modulo vars.(i) vars.(j) then ok else fail
-            | TcstrFreeVars(xs, i) ->
-                let b = lift vars.(i) in
-                let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
-                let bound = Bindlib.bind_mvar xs b in
-                let r = Bindlib.is_closed bound in
-                if !log_enabled then
-                  log_eval (r_or_g r "free var verification on [%a]")
-                    (Format.pp_print_list
-                       ~pp_sep:Format.pp_print_space
-                       pp_tvar)
-                    (Array.to_list xs) ;
-                if r then
-                  ( boundv.(i) <- Some(Bindlib.unbox bound)
-                  ; ok) else
-                  fail in
-          walk next stk cursor to_stamped
-      | Node({swap; children; store; abstraction; default}) ->
-          let l_e_r =
-            try Some(R.destruct stk swap)
-            with Not_found -> None in
-          match l_e_r with None -> None | Some(l_e_r) ->
+  let module R = Dtree.ReductionStack in
+  let stk = R.of_list stk in
+  (* [walk t s c m] where [s] is the stack of terms to match and [c] the
+     cursor indicating where to write in the [env] array described in
+     {!module:Terms} as the environment of the RHS during matching.  [m]
+     maps the free variables contained in the tree to the free variables
+     used in this evaluation. *)
+  let rec walk tree stk cursor to_stamped =
+    match tree with
+    | Fail                                                -> None
+    | Leaf(env_builder, act)                              ->
+        (* Allocate an environment for the action. *)
+        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+        (* Retrieve terms needed in the action from the [vars] array. *)
+        let fn (pos, slot) =
+          match boundv.(pos) with
+          | Some(b) ->
+              env.(slot) <- TE_Some(b)
+          | None    ->
+              let t = unfold vars.(pos) in
+              let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+              env.(slot) <- TE_Some(b) in
+        List.iter fn env_builder ;
+        (* Actually perform the action. *)
+        Some(Bindlib.msubst act env, R.to_list stk)
+    | Condition({ ok ; condition ; fail }) ->
+        let next = match condition with
+          | TcstrEq(i, j)        ->
+              if eq_modulo vars.(i) vars.(j) then ok else fail
+          | TcstrFreeVars(xs, i) ->
+              let b = lift vars.(i) in
+              let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
+              let bound = Bindlib.bind_mvar xs b in
+              let r = Bindlib.is_closed bound in
+              if !log_enabled then
+                log_eval (r_or_g r "free var verification on [%a]")
+                  (Format.pp_print_list
+                     ~pp_sep:Format.pp_print_space
+                     pp_tvar)
+                  (Array.to_list xs) ;
+              if r then
+                ( boundv.(i) <- Some(Bindlib.unbox bound)
+                ; ok) else
+                fail in
+        walk next stk cursor to_stamped
+    | Node({swap; children; store; abstraction; default}) ->
+        let l_e_r =
+          try Some(R.destruct stk swap)
+          with Not_found -> None in
+        match l_e_r with None -> None | Some(l_e_r) ->
           let left, examined, right = l_e_r in
           let examined = if store then ensure_tref examined else examined in
           (* Transform term into reference to benefit from sharing if the term
