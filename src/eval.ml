@@ -29,6 +29,9 @@ A term t is in strong normal form (snf) if it cannot be reduced further.
     issues. *)
 let stamp = Pervasives.ref 0
 
+(** Used to indicate a default case. *)
+exception Default
+
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -219,40 +222,35 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             then ( vars.(cursor) <- add_args t args
                  ; cursor + 1 )
             else cursor in
-          let defret = (default, [], None) in
-          let matched, args, fv_nfv =
-            match t with
+          try begin match t with
             | Symb(s, _) ->
                 let c_ari = List.length args in
                 let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                                    ; c_ari }) in
-                begin try let matched = TC.Map.find cons children in
-                  (Some(matched), args, None)
-                with Not_found -> defret end
+                let matched = TC.Map.find cons children in
+                walk matched (R.restruct left args right) cursor to_stamped
             | Vari(x)    ->
                 let cons = TC.Vari(Bindlib.name_of x) in
-                begin try let matched = TC.Map.find cons children in
-                  (Some(matched), args, None)
-                with Not_found -> defret end
+                let matched = TC.Map.find cons children in
+                walk matched (R.restruct left args right) cursor to_stamped
             | Abst(_, b) ->
                 begin match abstraction with
-                | None         -> defret
+                | None         -> raise Default
                 | Some(fv, tr) ->
                     let nfv = stamp_tvar Pervasives.(!stamp) fv in
                     Pervasives.incr stamp ;
                     let bound = Bindlib.subst b (mkfree nfv) in
-                    (Some(tr), bound::args, Some(fv, nfv))
+                    let u = bound :: args in
+                    let to_stamped = VarMap.add fv nfv to_stamped in
+                    walk tr (R.restruct left u right) cursor to_stamped
                 end
-            | Meta(_, _) -> defret
-            | _          -> assert false in
-          match matched with
-          | None    -> None
-          | Some(c) ->
-              let to_stamped = match fv_nfv with
-                | None          -> to_stamped
-                | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
-              let stk = R.restruct left args right in
-              walk c stk cursor to_stamped in
+            | Meta(_, _) -> raise Default
+            | _          -> assert false end
+          with Not_found | Default ->
+            begin match default with
+            | None    -> None
+            | Some(d) ->
+                walk d (R.restruct left [] right) cursor to_stamped end in
   walk tree stk 0 VarMap.empty
 
 (** {b Note} During the matching with trees, two structures containing terms
