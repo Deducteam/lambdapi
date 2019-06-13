@@ -165,61 +165,6 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [branch t c a d] returns the subtree in
-    - [c] if [t] is matched against a constructor,
-    - [a] if [t] is matched against an abstraction,
-    - [d] otherwise.
-    The new elements to be put in the stack are returned along the tree.  If
-    [t] is matched against an abstraction, the couple containing the free
-    variable from the tree and the stamped one is returned as well. *)
-and branch : term -> tree TC.Map.t ->
-  (tvar * tree) option -> tree option ->
-  tree option * term list * ((tvar * tvar) option) =
-  fun examined children abstraction default ->
-    if !log_enabled then log_eval "branching on [%a]" pp examined ;
-    let defret = (default, [], None) in
-    let r = if TC.Map.is_empty children && abstraction = None then
-      defret else
-      let h, args, ari = match examined with
-        | TRef(rex) ->
-            begin match !rex with
-            | None    -> assert false
-            | Some(t) ->
-                let u = whnf t in
-                if u != t then rex := Some u ;
-                let h, args, ari = get_args_len u in
-                h, List.map ensure_tref args, ari end
-        | t          ->
-            let u = whnf t in
-            get_args_len u in
-      match h with
-      | Symb(s, _) ->
-          let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                             ; c_ari = ari }) in
-          begin try let matched = TC.Map.find cons children in
-            (Some(matched), args, None)
-          with Not_found -> defret end
-      | Vari(x)    ->
-          let cons = TC.Vari(Bindlib.name_of x) in
-          begin try let matched = TC.Map.find cons children in
-            (Some(matched), args, None)
-          with Not_found -> defret end
-      | Abst(_, b) ->
-          begin match abstraction with
-          | None         -> defret
-          | Some(fv, tr) ->
-              let nfv = stamp_tvar Pervasives.(!stamp) fv in
-              Pervasives.incr stamp ;
-              let bound = Bindlib.subst b (mkfree nfv) in
-              (Some(tr), ensure_tref bound::args, Some(fv, nfv))
-          end
-      | Meta(_, _) -> defret
-      | _          -> assert false in
-    if !log_enabled
-    then log_eval (r_or_g (r != defret) "branching on [%a]")
-      pp examined ;
-    r
-
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
@@ -285,8 +230,48 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           (* Transform term into reference to benefit from sharing if the term
              is stored. *)
           let cursor = if store then fill_vars examined cursor else cursor in
+          if TC.Map.is_empty children && abstraction = None then
+            match default with
+            | None    -> None
+            | Some(t) ->
+                walk t (R.restruct left [] right) cursor to_stamped else
+          let h, args, ari = match examined with
+            | TRef(rex) ->
+                begin match !rex with
+                | None    -> assert false
+                | Some(t) ->
+                    let u = whnf t in
+                    if u != t then rex := Some u ;
+                    let h, args, ari = get_args_len u in
+                    h, List.map ensure_tref args, ari end
+            | t          ->
+                let u = whnf t in
+                get_args_len u in
+          let defret = (default, [], None) in
           let matched, args, fv_nfv =
-            branch examined children abstraction default in
+            match h with
+            | Symb(s, _) ->
+                let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
+                                   ; c_ari = ari }) in
+                begin try let matched = TC.Map.find cons children in
+                  (Some(matched), args, None)
+                with Not_found -> defret end
+            | Vari(x)    ->
+                let cons = TC.Vari(Bindlib.name_of x) in
+                begin try let matched = TC.Map.find cons children in
+                  (Some(matched), args, None)
+                with Not_found -> defret end
+            | Abst(_, b) ->
+                begin match abstraction with
+                | None         -> defret
+                | Some(fv, tr) ->
+                    let nfv = stamp_tvar Pervasives.(!stamp) fv in
+                    Pervasives.incr stamp ;
+                    let bound = Bindlib.subst b (mkfree nfv) in
+                    (Some(tr), ensure_tref bound::args, Some(fv, nfv))
+                end
+            | Meta(_, _) -> defret
+            | _          -> assert false in
           match matched with
           | None    -> None
           | Some(c) ->
