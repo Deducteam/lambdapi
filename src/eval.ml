@@ -215,11 +215,12 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                   if store then fill_vars examined cursor else cursor in
                 walk t (R.restruct left [] right) cursor to_stamped else
           let t, args = whnf_stk examined [] in
-          let cursor =
+          let cursor, args =
             if store then
                 let rargs = List.map ensure_tref args in
-                fill_vars (add_args t rargs) cursor
-            else cursor in
+                (* Sharing on args as they might be reused *)
+                fill_vars (add_args t rargs) cursor, rargs
+            else cursor, args in
           let defret = (default, [], None) in
           let matched, args, fv_nfv =
             match t with
