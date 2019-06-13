@@ -44,9 +44,6 @@ type stack_elt = (bool * term) Pervasives.ref
 (** Representation of a stack for the abstract machine used for evaluation. *)
 type stack = stack_elt list
 
-(** Type of data stored during evaluation. *)
-type storage = term * ((term, term) Bindlib.mbinder option)
-
 (** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
 let to_term : term -> stack -> term = fun t args ->
   let rec to_term t args =
