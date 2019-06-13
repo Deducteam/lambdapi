@@ -37,25 +37,6 @@ let log_eval = log_eval.logger
 let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
 let log_eqmd = log_eqmd.logger
 
-(** Representation of a single stack element (see {!type:stack}). Note that we
-    use a references to allow a form of lazy evaluation when matching patterns
-    (see {!val:matching}). The boolean tells whether a particular argument has
-    already been normalized (to weak head normal form).  Note that an argument
-    (i.e., an element of the stack) does not need to be evaluated when machted
-    against a wildcard or a pattern variable. *)
-type stack_elt = (bool * term) Pervasives.ref
-
-(** Representation of a stack for the abstract machine used for evaluation. *)
-type stack = stack_elt list
-
-(** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
-let to_term : term -> stack -> term = fun t args ->
-  let rec to_term t args =
-    match args with
-    | []      -> t
-    | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
-  in to_term t args
-
 (** Evaluation step counter.  Allow to conserve physical equality in
     {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
@@ -66,21 +47,21 @@ let rec whnf_beta : term -> term = fun t ->
   let s = Pervasives.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_beta_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
    applied to the argument list (or stack) [stk]. Note that the normalisation
    is done in the sense of [whnf]. *)
-and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
+and whnf_beta_stk : term -> term list -> term * term list = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk    ) ->
-      whnf_beta_stk f (Pervasives.ref (false, u) :: stk)
+      whnf_beta_stk f (u :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) ->
       Pervasives.incr steps;
-      whnf_beta_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
+      whnf_beta_stk (Bindlib.subst f u) stk
   (* In head beta normal form. *)
   | (_        , _      ) -> st
 
