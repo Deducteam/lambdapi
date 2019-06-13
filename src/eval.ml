@@ -221,13 +221,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 begin match !rex with
                 | None    -> assert false
                 | Some(t) ->
-                    let u = whnf t in
-                    if u != t then rex := Some u ;
-                    let h, args, ari = get_args_len u in
-                    h, List.map ensure_tref args, ari end
+                    let s = Pervasives.(!steps) in
+                    let u, stk = whnf_stk (unfold t) [] in
+                    if Pervasives.(!steps) <> s then
+                      rex := Some(add_args u stk) ;
+                    let ari = List.length stk in
+                    u, List.map ensure_tref stk, ari end
             | t          ->
-                let u = whnf t in
-                get_args_len u in
+                let u, stk = whnf_stk (unfold t) [] in
+                u, stk, List.length stk in
           let defret = (default, [], None) in
           let matched, args, fv_nfv =
             match h with

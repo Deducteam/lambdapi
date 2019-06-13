@@ -70,15 +70,6 @@ let get_args : term -> term * term list = fun t ->
     | t         -> (t, acc)
   in get_args [] t
 
-(** [get_args_len t] is the same as [get_args t] except that it returns the
-    number of arguments as well. *)
-let get_args_len : term -> term * term list * int = fun t ->
-  let rec get_args_len acc accs t =
-    match unfold t with
-    | Appl(t,u) -> get_args_len (u::acc) (accs + 1) t
-    | t         -> (t, acc, accs) in
-  get_args_len [] 0 t
-
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
