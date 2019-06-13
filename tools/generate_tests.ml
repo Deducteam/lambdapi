@@ -12,10 +12,10 @@ let outdir = ref "../tests/OK"
 
 let speclist = Arg.align
   [ ( "-t"
-    , Arg.Int ((:=) p_thump)
+    , Arg.Set_int p_thump
     , " Width of thump." )
   ; ( "-c"
-    , Arg.Int ((:=) p_comb)
+    , Arg.Set_int p_comb
     , " Depth of comb.")
   ; ( "--outdir"
     , Arg.Set_string outdir
