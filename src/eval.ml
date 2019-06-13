@@ -207,35 +207,26 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           with Not_found -> None in
         match l_e_r with None -> None | Some(l_e_r) ->
           let left, examined, right = l_e_r in
-          let examined = if store then ensure_tref examined else examined in
-          (* Transform term into reference to benefit from sharing if the term
-             is stored. *)
-          let cursor = if store then fill_vars examined cursor else cursor in
           if TC.Map.is_empty children && abstraction = None then
             match default with
             | None    -> None
             | Some(t) ->
+                let cursor =
+                  if store then fill_vars examined cursor else cursor in
                 walk t (R.restruct left [] right) cursor to_stamped else
-          let h, args, ari = match examined with
-            | TRef(rex) ->
-                begin match !rex with
-                | None    -> assert false
-                | Some(t) ->
-                    let s = Pervasives.(!steps) in
-                    let u, stk = whnf_stk (unfold t) [] in
-                    if Pervasives.(!steps) <> s then
-                      rex := Some(add_args u stk) ;
-                    let ari = List.length stk in
-                    u, List.map ensure_tref stk, ari end
-            | t          ->
-                let u, stk = whnf_stk (unfold t) [] in
-                u, stk, List.length stk in
+          let t, args = whnf_stk examined [] in
+          let cursor =
+            if store then
+                let rargs = List.map ensure_tref args in
+                fill_vars (add_args t rargs) cursor
+            else cursor in
           let defret = (default, [], None) in
           let matched, args, fv_nfv =
-            match h with
+            match t with
             | Symb(s, _) ->
+                let c_ari = List.length args in
                 let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                                   ; c_ari = ari }) in
+                                   ; c_ari }) in
                 begin try let matched = TC.Map.find cons children in
                   (Some(matched), args, None)
                 with Not_found -> defret end
