@@ -245,13 +245,14 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let env = Array.make (Bindlib.mbinder_arity act) TE_None in
           (* Retrieve terms needed in the action from the [vars] array. *)
           let fn (pos, slot) =
-            match vars.(pos), boundv.(pos) with
-            | t, None ->
-                let t = unfold t in
-                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+            match boundv.(pos) with
+            | Some(b) ->
                 env.(slot) <- TE_Some(b)
-            | _, Some(b) -> env.(slot) <- TE_Some(b) in
-          List.iter fn env_builder;
+            | None    ->
+                let t = unfold vars.(pos) in
+                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+                env.(slot) <- TE_Some(b) in
+          List.iter fn env_builder ;
           (* Actually perform the action. *)
           Some(Bindlib.msubst act env, R.to_list stk)
       | Condition({ ok ; condition ; fail }) ->
@@ -290,7 +291,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           | None    -> None
           | Some(c) ->
               let to_stamped = match fv_nfv with
-                | None      -> to_stamped
+                | None          -> to_stamped
                 | Some(fv, nfv) -> VarMap.add fv nfv to_stamped in
               let stk = R.restruct left args right in
               walk c stk cursor to_stamped in
