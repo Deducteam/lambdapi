@@ -76,14 +76,6 @@ module List =
       | e::es -> let fn e = Format.fprintf oc "%s%a" sep pp_elt e in
                  pp_elt oc e; iter fn es
 
-    (** [map_find f l] applies [f] to the elements of list [l] (in order), and
-        returns the result of the first application of [f] which result is not
-        [None]. If none is found, [None] is returned. *)
-    let rec map_find : ('a -> 'b option) -> 'a list -> 'b option = fun f l ->
-      match l with
-      | []    -> None
-      | e::es -> match f e with None -> map_find f es | res -> res
-
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)
     let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
