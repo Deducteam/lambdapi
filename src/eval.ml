@@ -201,11 +201,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 fail in
         walk next stk cursor to_stamped
     | Node({swap; children; store; abstraction; default}) ->
-        let l_e_r =
-          try Some(R.destruct stk swap)
-          with Not_found -> None in
-        match l_e_r with None -> None | Some(l_e_r) ->
-          let left, examined, right = l_e_r in
+        try
+          let left, examined, right = R.destruct stk swap in
           if TC.Map.is_empty children && abstraction = None then
             match default with
             | None    -> None
@@ -250,7 +247,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             begin match default with
             | None    -> None
             | Some(d) ->
-                walk d (R.restruct left [] right) cursor to_stamped end in
+                walk d (R.restruct left [] right) cursor to_stamped end
+        with Not_found -> None in
   walk tree stk 0 VarMap.empty
 
 (** {b Note} During the matching with trees, two structures containing terms
