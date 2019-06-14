@@ -195,10 +195,10 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                      ~pp_sep:Format.pp_print_space
                      pp_tvar)
                   (Array.to_list xs) ;
-              if r then
-                ( boundv.(i) <- Some(Bindlib.unbox bound)
-                ; ok) else
-                fail in
+              if r
+              then ( boundv.(i) <- Some(Bindlib.unbox bound)
+                   ; ok )
+              else fail in
         walk next stk cursor to_stamped
     | Node({swap; children; store; abstraction; default}) ->
         try

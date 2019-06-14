@@ -48,11 +48,6 @@ let ensure_tref : term -> term = function
   | TRef(_) as t -> t
   | t            -> TRef(ref (Some t))
 
-(** [tref_val t] returns [r] if [t] is of the form [t = TRef(r)] and fails
-    otherwise. *)
-let tref_val : term -> term option ref = function
-  | TRef(x) -> x | _ -> assert false
-
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->
