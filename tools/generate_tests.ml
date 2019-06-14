@@ -83,11 +83,15 @@ rule flagellum
     P.fprintf ochan "\t_\n"
   done ;
   P.fprintf ochan "\t→ 0\n" ;
-  P.fprintf ochan "assert flagellum\n\tm\n" ;
+  P.fprintf ochan "definition hook ≔\n" ;
+  P.fprintf ochan "\tflagellum\n\tm\n" ;
   for i = 1 to n - 1 do
     P.fprintf ochan "\tm\n"
   done ;
-  P.fprintf ochan "\t≡ 0" ;
+  P.fprintf ochan "assert hook ≡ 0\n" ;
+  P.fprintf ochan "symbol loop : N ⇒ N ⇒ N
+rule loop (s &n) z → loop &n hook\n" ;
+  P.fprintf ochan "assert loop %d hook ≡ loop z z\n" n ;
   close_out ochan
 
 let () =
