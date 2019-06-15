@@ -116,6 +116,13 @@ struct
     insert (c @ r) l
 end
 
+(** Alternatives to a list based implementation would be cat-enable
+    lists/deques, finger trees, random access lists.  One might want to look
+    at
+    - Okasaki, 1996, {i Purely Functional Data Structures},
+    - Paterson and Hinze, {i Finger trees: a simple general purpose data
+      structure}. *)
+
 module ReductionStack = RedListStack
 
 (** {3 Graphviz output} *)
@@ -307,7 +314,7 @@ struct
     let positions = Occurrence.sequence size
                     |> List.map (fun x -> (x, 0))
                     |> ReductionStack.of_list in
-    (* [|>] is reverse application, can be thought as a Unix pipe | *)
+    (* [|>] is reverse application, can be thought of as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
