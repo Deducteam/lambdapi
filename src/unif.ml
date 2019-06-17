@@ -472,14 +472,14 @@ and check_pair_of_rules :
     let _, args1 = get_args lhs1 in
     let _, args2 = get_args lhs2 in
     let args = List.combine args1 args2 in
-    let constrs = ref [] in
-    List.iter2
-      (fun b (arg1, arg2) -> if b then unif constrs arg1 arg2) bls args;
-    unif constrs rhs1 rhs2;
+    let to_solve =
+      (rhs1, rhs2) :: List.map snd (List.filter fst (List.combine bls args))
+    in
+    let constrs = solve {no_problems with to_solve} in
     let to_solve =
       List.map
         snd (List.filter (fun (b, _) -> not b) (List.combine bls args)) in
-    let constrs = add_rules_from_constrs !constrs in
+    let constrs = add_rules_from_constrs constrs in
     let res =
       List.for_all (eq_modulo_constrs constrs) to_solve in
     Time.restore t;
@@ -497,33 +497,37 @@ and check_single_rule : bool list -> sym -> term * term -> bool
   let new_args n =
     List.init n (fun _ -> (Meta (fresh_meta Kind 0, [||]))) in
   let h1, args1 = get_args rhs in
+  let _, args2 = get_args lhs in
+  let new_args = new_args (List.length args2) in
+  let argss = List.combine args2 new_args in
+  let new_term = add_args (Symb (s, Nothing)) new_args in
+  let infer_from_constrs () =
+    hypo_inj bls s;
+    let to_solve =
+      (new_term, rhs) ::
+      List.map snd (List.filter fst (List.combine bls argss)) in
+    let constrs = solve {no_problems with to_solve} in
+    let to_solve =
+      List.map
+        snd (List.filter (fun (b, _) -> not b) (List.combine bls argss))
+    in
+    let constrs = add_rules_from_constrs constrs in
+    let res =
+      List.for_all (eq_modulo_constrs constrs) to_solve in
+    Time.restore t;
+    remove_hypo_inj s;
+    res
+  in
   try match h1 with
-    | Meta (m, _)                            ->
-        let _, args2 = get_args lhs in
+    | Meta (m, _) when args1 = [] ->
         let fn = function
           | Meta (m', _) -> m == m'
           | _            -> false in
-        List.exists2 (fun b arg -> b && fn arg) bls args2
-    | Symb (s', _) when !(s'.sym_rules) = [] -> true
-    | Symb (s', _) when s == s'              ->
-        let _, args2 = get_args lhs in
-        let new_args = new_args (List.length args2) in
-        let constrs = ref [] in
-        List.iter2 (unif constrs) args1 new_args;
-        let argss = List.combine args2 new_args in
-        List.iter2
-          (fun b (arg1, arg2) -> if b then unif constrs arg1 arg2) bls argss;
-        let to_solve =
-          List.map
-            snd (List.filter (fun (b, _) -> not b) (List.combine bls argss))
-        in
-        let constrs = add_rules_from_constrs !constrs in
-        let res =
-          List.for_all (eq_modulo_constrs constrs) to_solve in
-        Time.restore t;
-        remove_hypo_inj s;
-        res
-    | _                                      -> false (* TODO *)
+        if List.exists2 (fun b arg -> b && fn arg) bls args2 then true
+        else infer_from_constrs ()
+    | Symb (s', _) when s == s'   -> infer_from_constrs ()
+    | Symb _                      -> true
+    | _                           -> false (* TODO *)
   with
   | Fatal _ -> Time.restore t; true
   | _       -> Time.restore t; false
@@ -545,10 +549,8 @@ and check_inj_sym : bool list -> sym -> bool = fun bls s ->
             List.fold_left
               (fun acc r' -> acc && check_pair_of_rules bls s r r')
               true rs' in
-      let res =
-        List.for_all (check_single_rule bls s) terms_of_rules &&
-        check_inj_rules terms_of_rules in
-      res
+      List.for_all (check_single_rule bls s) terms_of_rules &&
+      check_inj_rules terms_of_rules
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
    sets the value of [can_instantiate] to [flag].  If there is no solution,
