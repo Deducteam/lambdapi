@@ -7,7 +7,7 @@ open Timed
 
 (** [lpo ord] computes the lexicographic path ordering corresponding to
     the strict total order [ord] on the set of all function symbols. *)
-let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
+let rec lpo : sym cmp -> term cmp = fun ord t1 t2 ->
   let f, args = get_args t1 in
   match get_symb f with
   | None   -> if t1 == t2 then 0 else -1
@@ -25,7 +25,7 @@ let rec lpo : sym Ord.cmp -> term Ord.cmp = fun ord t1 t2 ->
                 else -1
             | 0            ->
                 if List.for_all (fun x -> lpo ord t1 x > 0) args' then
-                  Ord.ord_lex (lpo ord) args args'
+                  ord_lex (lpo ord) args args'
                 else -1
             | _            -> -1
 
@@ -132,7 +132,7 @@ let topo_sort : string list -> (string * string) list -> int StrMap.t
     3. If [s1] and [s2] are new symbols and if the topological order is well
        defined, then we compare their positions in this latter one. Otherwise,
        we use the usual lexicographic order. *)
-let ord_from_eqs : (term * term) list -> sym Ord.cmp = fun eqs ->
+let ord_from_eqs : (term * term) list -> sym cmp = fun eqs ->
   let symbs, deps = find_deps eqs in
   let ord =
     try topo_sort symbs deps with Not_DAG -> StrMap.empty in
@@ -152,7 +152,7 @@ let ord_from_eqs : (term * term) list -> sym Ord.cmp = fun eqs ->
 (** [completion eqs ord] returns the convergent rewrite system obtained from
     the completion procedure on the set of equations [eqs] using the LPO
     [lpo ord]. *)
-let completion : (term * term) list -> sym Ord.cmp -> (sym * rule list) list
+let completion : (term * term) list -> sym cmp -> (sym * rule list) list
   = fun eqs ord ->
   let lpo = lpo ord in
   (* [symbs] is used to store all the symbols appearing in the equations. *)
