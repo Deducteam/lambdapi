@@ -1,6 +1,10 @@
 #!/usr/bin/env ocaml
-(** Generates tests files in [../tests/OK/].  Tests mainly concern
-    performance of rule filetering. *)
+(** Generates tests files in [../tests/OK/] or a specified directory.
+    Tests mainly concern performance of rule filetering.  Three files
+    are created
+    - [comb.lp],
+    - [thump.lp], many small rules;
+    - [flagellum.lp], one rule with high arity. *)
 
 module F = Filename
 module P = Printf
@@ -95,7 +99,9 @@ rule loop (s &n) z → loop &n hook\n" ;
   close_out ochan
 
 let () =
-  let usage = Printf.sprintf "Usage: %s [-c <int>] [-t <int>]" Sys.argv.(0) in
+  let usage = Printf.sprintf
+      "Usage: %s [-c <int>] [-t <int>] [-f <int>] [--outdir <string>]"
+      Sys.argv.(0) in
   Arg.parse speclist (fun _ -> raise @@ Arg.Bad "no anon args") usage ;
   thump !p_thump ;
   comb !p_comb ;
