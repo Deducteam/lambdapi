@@ -42,12 +42,6 @@ let stamp_tvar : int -> tvar -> tvar = fun stamp v ->
   let name = Bindlib.name_of v ^ "s" ^ (string_of_int stamp) in
   Bindlib.new_var mkfree name
 
-(** [ensure_tref t] transforms term [t] to a term with reference if it is not
-    already. *)
-let ensure_tref : term -> term = function
-  | TRef(_) as t -> t
-  | t            -> TRef(ref (Some t))
-
 (** [sensible_tref t] transforms {!constructor:Appl} into references. *)
 let sensible_tref : term -> term = function
   | Appl(_,_) as t -> TRef(ref (Some t))

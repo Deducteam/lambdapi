@@ -90,7 +90,7 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk   ) ->
-      whnf_stk f (u::stk)
+      whnf_stk f (sensible_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
       Pervasives.incr steps ;
@@ -101,10 +101,9 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
       begin match !(s.sym_def) with
       | Some(t) -> Pervasives.incr steps ; whnf_stk t stk
       | None    ->
-      let stk = List.map sensible_tref stk in
       match find_rule s stk with
       (* If no rule is found, return the original term *)
-      | None        -> fst st, stk
+      | None        -> st
       | Some(t,stk) -> Pervasives.incr steps ; whnf_stk t stk
       end
   (* In head normal form. *)
