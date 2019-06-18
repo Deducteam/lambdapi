@@ -266,8 +266,14 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
       matched against a pattern variable {!constructor:Patt} in some lhs.
       A term might be in {!val:vars} either because it will be substituted in
       the rhs, and we thus have to save them; or the term is matched against a
-      non linear {!constructor:Patt}, which may or may not be used in the
+      constrained {!constructor:Patt}, which may or may not be used in the
       rhs. See {!module:Terms}, {!type:term} for more information. *)
+
+(** {b Note} When matching fails, even though {!val:tree_walk} returns
+    {!constructor:None}, the input stack is updated (i.e. terms are possibly
+    reduced) as sharing is used through {!constructor:TRef}.  Consequently,
+    when a term is reduced in {!val:walk} with {!val:whnf_stk}, the term in
+    the input stack is updated as well. *)
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : term -> term = fun t ->
