@@ -212,9 +212,14 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                        ; cursor + 1 )
                   else cursor in
                 walk t (R.restruct left [] right) cursor to_stamped else
+          let s = Pervasives.(!steps) in
           let t, args = whnf_stk examined [] in
           let args = if store then List.map ensure_tref args else args in
           (* Introduce sharing on arguments *)
+          begin if Pervasives.(!steps) <> s then match examined with
+          (* If examined term was shared, update ref *)
+          | TRef(v) -> v := Some(add_args t args)
+          | _       -> () end ;
           let cursor = if store
             then ( vars.(cursor) <- add_args t args
                  ; cursor + 1 )
