@@ -48,6 +48,11 @@ let ensure_tref : term -> term = function
   | TRef(_) as t -> t
   | t            -> TRef(ref (Some t))
 
+(** [sensible_tref t] transforms {!constructor:Appl} into references. *)
+let sensible_tref : term -> term = function
+  | Appl(_,_) as t -> TRef(ref (Some t))
+  | t              -> t
+
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->

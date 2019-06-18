@@ -101,9 +101,10 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
       begin match !(s.sym_def) with
       | Some(t) -> Pervasives.incr steps ; whnf_stk t stk
       | None    ->
+      let stk = List.map sensible_tref stk in
       match find_rule s stk with
       (* If no rule is found, return the original term *)
-      | None        -> st
+      | None        -> fst st, stk
       | Some(t,stk) -> Pervasives.incr steps ; whnf_stk t stk
       end
   (* In head normal form. *)
@@ -214,7 +215,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 walk t (R.restruct left [] right) cursor to_stamped else
           let s = Pervasives.(!steps) in
           let t, args = whnf_stk examined [] in
-          let args = if store then List.map ensure_tref args else args in
+          let args = if store then List.map sensible_tref args else args in
           (* Introduce sharing on arguments *)
           begin if Pervasives.(!steps) <> s then match examined with
           (* If examined term was shared, update ref *)
