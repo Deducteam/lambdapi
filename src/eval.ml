@@ -36,6 +36,13 @@ exception Default
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
 
+(** [le_fvc s x] is a logging function used when verifying a closeness
+    constraint. *)
+let le_fvc : bool -> tvar array -> unit = fun b xs ->
+  log_eval (r_or_g b "free var check on [%a]")
+    (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_tvar)
+    (Array.to_list xs)
+
 (** Logging function for equality modulo rewriting. *)
 let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
 let log_eqmd = log_eqmd.logger
@@ -189,12 +196,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
               let bound = Bindlib.bind_mvar xs b in
               let r = Bindlib.is_closed bound in
-              if !log_enabled then
-                log_eval (r_or_g r "free var verification on [%a]")
-                  (Format.pp_print_list
-                     ~pp_sep:Format.pp_print_space
-                     pp_tvar)
-                  (Array.to_list xs) ;
+              if !log_enabled then le_fvc r xs ;
               if r
               then ( boundv.(i) <- Some(Bindlib.unbox bound)
                    ; ok )
@@ -218,7 +220,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let rebuilt = lazy (add_args t args) in
           (* Introduce sharing on arguments *)
           begin if Pervasives.(!steps) <> s then match examined with
-          (* If examined term was shared, update ref *)
+          (* If examined term was shared, and it has been reduced, update ref *)
           | TRef(v) -> v := Some(Lazy.force rebuilt)
           | _       -> () end ;
           let cursor = if store
