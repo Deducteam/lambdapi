@@ -29,6 +29,14 @@ type state = Time.t * Scope.sig_state
 (** Exception raised by [parse_text] on error. *)
 exception Parse_error of Pos.pos * string
 
+let dummy_pos : Pos.pos = Lazy.from_val Pos.(
+  { fname      = None
+  ; start_line = 1
+  ; start_col  = 0
+  ; end_line   = 1
+  ; end_col    = 80
+  })
+
 let parse_text : state -> string -> string -> Command.t list * state =
     fun (t,st) fname s ->
   let old_syntax = Filename.check_suffix fname Files.legacy_src_extension in
@@ -42,7 +50,8 @@ let parse_text : state -> string -> string -> Command.t list * state =
   with
   | Fatal(Some(Some(pos)), msg) -> raise (Parse_error(pos, msg))
   | Fatal(Some(None)     , _  ) -> assert false (* Should not produce. *)
-  | Fatal(None           , _  ) -> assert false (* Should not produce. *)
+  | Fatal(None           , msg) -> raise (Parse_error(dummy_pos, msg))
+
 
 type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state
 type proof_state = Time.t * Scope.sig_state * Proof.t * proof_finalizer
