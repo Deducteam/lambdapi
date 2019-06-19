@@ -220,7 +220,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           let rebuilt = lazy (add_args t args) in
           (* Introduce sharing on arguments *)
           begin if Pervasives.(!steps) <> s then match examined with
-          (* If examined term was shared, and it has been reduced, update ref *)
+          (* If examined term was shared and has been reduced, update ref *)
           | TRef(v) -> v := Some(Lazy.force rebuilt)
           | _       -> () end ;
           let cursor = if store
