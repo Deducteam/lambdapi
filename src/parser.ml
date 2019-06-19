@@ -453,11 +453,25 @@ let parser proof =
     reference is used to avoid to avoid cyclic dependencies. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
+(** [do_require pos path] is a wrapper for [!require path], that takes care of
+    possible exceptions. Errors are reported at given position [pos],  keeping
+    as much information as possible in the error message. *)
+let do_require : Pos.pos -> Files.module_path -> unit = fun loc path ->
+  let local_fatal fmt =
+    let fmt = "Error when loading module [%a].\n" ^^ fmt in
+    fatal (Some(loc)) fmt Files.pp_path path
+  in
+  try !require path with
+  | Fatal(None     , msg) -> local_fatal "%s" msg
+  | Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
+  | e                     -> local_fatal "Uncaught exception: [%s]"
+                               (Printexc.to_string e)
+
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ o:{_open_ -> true}?[false] ps:path+
-      -> List.iter (fun p -> !require p; if o then get_binops _loc p) ps;
-         P_require(o,ps)
+      -> let fn p = do_require _loc p; if o then get_binops _loc p in
+         List.iter fn ps; P_require(o,ps)
   | _require_ p:path _as_ n:ident
       -> !require p;
          P_require_as(p,n)
