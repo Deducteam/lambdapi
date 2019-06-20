@@ -2,9 +2,14 @@
 open Extra
 open Timed
 open Pos
-open Console
 open Syntax
 open Legacy_lexer
+open Parser
+
+(** {b NOTE} we maintain the invariant described in the [Parser] module: every
+    error should have an attached position.  We do not open [Console] to avoid
+    calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
+    the [parser_fatal] function should be used instead. *)
 
 (** [get_args t] decomposes [t] into a head term and a list of arguments. Note
     that in the returned pair [(h,args)], [h] is never a [P_Appl] node. *)
@@ -30,6 +35,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let (ctx, lhs, rhs) = r.elt in
   (* Check for (deprecated) annotations in the context. *)
   let get_var (x,ao) =
+    let open Console in
     let fn a = wrn a.pos "Ignored type annotation." in
     (if !verbose > 1 then Option.iter fn ao); x
   in
@@ -38,6 +44,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
+  (* Using [fatal] is OK here as long as it is called with term positions. *)
+  let fatal = Console.fatal in
   let arity = Hashtbl.create 7 in
   let rec compute_arities env t =
     let (h, args) = get_args t in
@@ -134,7 +142,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : string -> string option -> Eval.config = fun s1 s2o ->
+let build_config : Pos.pos -> string -> string option -> Eval.config =
+    fun loc s1 s2o ->
   try
     let open Eval in
     let config steps strategy =
@@ -154,7 +163,7 @@ let build_config : string -> string option -> Eval.config = fun s1 s2o ->
     | (i     , Some "WHNF") -> config (Some(i)) WHNF
     | (i     , None       ) -> config (Some(i)) NONE
     | (_     , _          ) -> raise Exit (* captured below *)
-  with _ -> fatal_no_pos "Invalid command configuration."
+  with _ -> parser_fatal loc "Invalid command configuration."
 %}
 
 %token EOF
@@ -248,7 +257,7 @@ line:
       make_pos $loc (P_query q)
     }
   | r=REQUIRE    DOT {
-      Pervasives.(!Parser.require r);
+      do_require (locate $loc) r;
       make_pos $loc (P_require(false,[r]))
     }
   | EOF {
@@ -256,8 +265,8 @@ line:
     }
 
 eval_config:
-  | L_SQB s=ID R_SQB              { build_config s None       }
-  | L_SQB s1=ID COMMA s2=ID R_SQB { build_config s1 (Some s2) }
+  | L_SQB s=ID R_SQB              { build_config (locate $loc) s None       }
+  | L_SQB s1=ID COMMA s2=ID R_SQB { build_config (locate $loc) s1 (Some s2) }
 
 param:
   | L_PAR id=ID COLON te=term R_PAR {
