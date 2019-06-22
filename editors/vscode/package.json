@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "publisher": "MINES ParisTech / INRIA",
   "engines": {
-    "vscode": "^1.30.0"
+    "vscode": "^1.35.0"
   },
   "activationEvents": [
     "onLanguage:lp"
   ],
-  "main": "./src/client",
+  "main": ".out/src/protocol.js",
   "contributes": {
     "languages": [
       {
@@ -33,11 +33,25 @@
     "commands": [
       {
         "command": "vscode-lp.restart",
-        "title": "Start or restart the LP language server"
+        "title": "vscode start"
       }
     ]
   },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "npm run compile && node ./node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "typescript": "^3.3.1",
+    "vscode": "^1.1.28",
+    "tslint": "^5.12.1",
+    "@types/node": "^10.12.21",
+    "@types/mocha": "^2.2.42"
+  },
   "dependencies": {
-    "vscode-languageclient": "^4.1.4"
+    "vscode-languageclient": "5.2.1"
   }
 }

@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "es6",
+		"outDir": "out",
+		"sourceMap": true,
+		"strict": true,
+		//"rootDir": "src"
+	},
+	"files": [
+		"src/protocol.ts"
+	]
+
+	//"exclude": ["node_modules", ".vscode-test"]
+}
