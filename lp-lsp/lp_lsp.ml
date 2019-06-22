@@ -57,6 +57,7 @@ let do_initialize ofmt ~id _params =
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
         ; "hoverProvider", `Bool true
+        ; "definitionProvider", `Bool true
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -126,6 +127,12 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
                   ]
   ]
 
+let mk_definfo file pos =
+  `Assoc [
+      "uri", `String file
+    ; "range", LSP.mk_range pos
+        ]
+
 let kind_of_type tm =
   let open Terms in
   let open Timed in
@@ -155,6 +162,11 @@ let get_docTextPosition params =
   let pos = dict_field "position" params in
   let line, character = int_field "line" pos, int_field "character" pos in
   file, line, character
+
+let get_textPosition params =
+  let pos = dict_field "position" params in
+  let line, character = int_field "line" pos, int_field "character" pos in
+  line, character
 
 let in_range ?loc (line, pos) =
   match loc with
@@ -186,6 +198,79 @@ let do_hover ofmt ~id params =
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
 
+let do_goals ofmt ~id params =
+  let uri, line, pos = get_docTextPosition params in
+    let doc = Hashtbl.find completed_table uri in
+     get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
+      let result = `Assoc [ "contents", `String goals] in
+      let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg)
+
+let get_line lines l =
+  let count = 0 in
+  let rec iter_list count lines l =
+  match lines with
+    | [] -> ""
+    | t::ts -> if count = l then t else iter_list (count+1) ts l in
+    iter_list count lines l
+
+(* "[ ()+.:*='/\"]" *)
+
+let get_token tokens pos =
+  let regexp = Str.regexp "[^a-zA-Z0-9]" in
+  let res_split = Str.full_split regexp tokens in
+  let count = 0 in
+  let rec iter_tokens count tokens pos =
+  match tokens with
+    | [] -> ""
+    | t::ts -> match t with
+      | Str.Text txt -> let new_count = (count + (String.length txt)) in
+        if new_count >= pos then txt else
+          iter_tokens new_count ts pos
+      | Str.Delim s -> if String.equal s "\226" then let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
+          let find_symb ts sym_table =
+            match ts with
+            | [] -> failwith "error1"
+            | _::[] -> failwith "error2"
+            | a::b::tl -> match a,b with
+              | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
+                  iter_tokens new_count tl pos else let new_count = (count + 1) in
+                  iter_tokens new_count ts pos
+              | _ -> failwith "error4"
+
+          in find_symb ts sym_table
+        else let new_count = (count + 1) in
+          iter_tokens new_count ts pos
+  in iter_tokens count res_split pos
+
+let get_symbol text l pos =
+  let lines = String.split_on_char '\n' text in
+  let line = List.nth lines l in
+  get_token line pos
+
+let do_definition ofmt ~id params =
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  LIO.log_error "definition" sym_target;
+
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_info =
+    match Extra.StrMap.find_opt sym_target sym with
+    | None
+    | Some (_, None) -> `Null
+    | Some (_, Some pos) -> mk_definfo file pos
+  in
+  let msg = LSP.mk_reply ~id ~result:sym_info in
+  LIO.send_json ofmt msg
+
 let protect_dispatch p f x =
   try f x
   with
@@ -216,6 +301,12 @@ let dispatch_message ofmt dict =
       (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
+    do_hover ofmt ~id params
+
+  | "textDocument/definition" ->
+    do_definition ofmt ~id params
+
+  | "proof/goals" ->
     do_hover ofmt ~id params
 
   (* Notifications *)
@@ -258,7 +349,7 @@ let lsp_main log_file std =
 
   let oc = F.std_formatter in
 
-  let debug_oc = open_out log_file in
+  let debug_oc = open_out_gen [Open_append;Open_creat] 511 log_file in
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
 
   (* XXX: Capture better / per sentence. *)

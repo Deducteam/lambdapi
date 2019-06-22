@@ -16,6 +16,7 @@ module LSP = Lsp_base
 type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
+  (*; tactics : Proof.Tactic.t list*)
   ; goals : Proof.Goal.t list
   }
 

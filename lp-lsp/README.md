@@ -23,7 +23,7 @@ npm install
 ln -s `pwd` ~/.vscode/extensions/
 ```
 
-You need a recent enough VSCode (>= 1.31)
+You need VSCode (= 1.37)
 
 ## Using with Emacs
 
