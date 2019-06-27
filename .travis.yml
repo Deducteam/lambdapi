@@ -9,7 +9,6 @@ env:
   global:
   - OPAMJOBS="2"
   - OPAMYES="true"
-  - OPAMVERBOSE="true"
   - TEST_TARGETS="unit_tests real_tests"
   matrix:
   - OCAML_VERSION=4.04.1
@@ -19,7 +18,8 @@ env:
   - OCAML_VERSION=4.06.1
   - OCAML_VERSION=4.07.0
   - OCAML_VERSION=4.07.1
-  - OCAML_VERSION=4.07.1 TEST_TARGETS=opam-release EXTRA_OPAM=dune-release
+#  - OCAML_VERSION=4.07.0 TEST_TARGETS=opam-release EXTRA_OPAM=dune-release
+# FIXME
 
 before_install:
   # Obtain and install opam locally.

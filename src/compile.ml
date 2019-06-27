@@ -79,13 +79,14 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
    scope by a “require” command. *)
 let _ =
   let require mp =
-    (* We save the current console state. *)
+    (* Save the current console state. *)
     Console.push_state ();
-    (* We restore the console state to default for compiling. *)
+    (* Restore the console state to default for compiling. *)
     Console.reset_default ();
-    (* We compile the required module path in the default state. *)
-    compile false mp;
-    (* We restore the state to its value before the “require”. *)
-    Console.pop_state ()
+    (* Compile and go back to previous state. *)
+    try
+      compile false mp;
+      try Console.pop_state () with _ -> assert false (* Unreachable. *)
+    with e -> Console.pop_state (); raise e
   in
   Pervasives.(Parser.require := require)

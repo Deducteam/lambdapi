@@ -1,14 +1,22 @@
-(** Parsing functions for the Lambdapi syntax, based on the Earley
-   library. See
-   https://github.com/rlepigre/ocaml-earley/blob/master/README.md for
-   details. *)
+(** Parsing functions for the Lambdapi syntax based on the Earley library. See
+    https://github.com/rlepigre/ocaml-earley/blob/master/README.md for details
+    on using the library and its syntax extension. *)
 
 open Earley_core
 open Extra
-open Console
 open Syntax
 open Files
 open Pos
+
+(** {b NOTE} we maintain the invariant that errors reported by the parser have
+    a position. To help enforce that, we avoid opening the [Console] module so
+    that [Console.fatal] and [Console.fatal_no_pos] are not in scope. To raise
+    an error in the parser, only the following function should be used. *)
+
+(** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
+    the error has an attached source code position. *)
+let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
+  Console.fatal (Some(loc)) fmt
 
 #define LOCATE locate
 
@@ -89,7 +97,7 @@ let binop = Prefix.grammar binops
 let get_binops : Pos.pos -> module_path -> unit = fun loc p ->
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
-      fatal (Some(loc)) "Module [%a] not loaded (used for binops)." pp_path p
+      parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
@@ -453,11 +461,26 @@ let parser proof =
     reference is used to avoid to avoid cyclic dependencies. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
+(** [do_require pos path] is a wrapper for [!require path], that takes care of
+    possible exceptions. Errors are reported at given position [pos],  keeping
+    as much information as possible in the error message. *)
+let do_require : Pos.pos -> Files.module_path -> unit = fun loc path ->
+  let local_fatal fmt =
+    let fmt = "Error when loading module [%a].\n" ^^ fmt in
+    parser_fatal loc fmt Files.pp_path path
+  in
+  (* We attach our position to errors comming from the outside. *)
+  try !require path with
+  | Console.Fatal(None     , msg) -> local_fatal "%s" msg
+  | Console.Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
+  | e                             -> local_fatal "Uncaught exception: [%s]"
+                                       (Printexc.to_string e)
+
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ o:{_open_ -> true}?[false] ps:path+
-      -> List.iter (fun p -> !require p; if o then get_binops _loc p) ps;
-         P_require(o,ps)
+      -> let fn p = do_require _loc p; if o then get_binops _loc p in
+         List.iter fn ps; P_require(o,ps)
   | _require_ p:path _as_ n:ident
       -> !require p;
          P_require_as(p,n)
@@ -487,8 +510,8 @@ let parse_file : string -> ast = fun fname ->
   Prefix.reset binops;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
-    let loc = Some(Pos.locate buf pos buf pos) in
-    fatal loc "Parse error."
+    let loc = Pos.locate buf pos buf pos in
+    parser_fatal loc "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
@@ -499,5 +522,5 @@ let parse_string : string -> string -> ast = fun fname str ->
   Prefix.reset binops;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
-    let loc = Some(Pos.locate buf pos buf pos) in
-    fatal loc "Parse error."
+    let loc = Pos.locate buf pos buf pos in
+    parser_fatal loc "Parse error."

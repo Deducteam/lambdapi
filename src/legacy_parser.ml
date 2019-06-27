@@ -1,4 +1,9 @@
-open Console
+(** Interface for the legacy parser. *)
+
+(** {b NOTE} we maintain the invariant described in the [Parser] module: every
+    error should have an attached position.  We do not open [Console] to avoid
+    calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
+    the [parser_fatal] function should be used instead. *)
 
 let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
   Pervasives.(Legacy_lexer.filename := fname);
@@ -13,8 +18,8 @@ let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
   | End_of_file         -> List.rev !lines
   | Menhir_parser.Error ->
       let loc = Lexing.(lexbuf.lex_start_p) in
-      let loc = Some(Legacy_lexer.locate loc loc) in
-      fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
+      let loc = Legacy_lexer.locate (loc, loc) in
+      Parser.parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
 
 let parse_file : string -> Syntax.ast = fun fname ->
   let ic = open_in fname in
