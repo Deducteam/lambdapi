@@ -7,7 +7,7 @@ open Extra
     arguments to which it is applied. *)
 type treecons =
   | Symb of
-      { c_mod : string list
+      { c_mod : Files.module_path
       (** Module name where the symbol of the constructor is defined. *)
       ; c_sym : string
       (** Symbol of the constructor. *)
@@ -44,6 +44,7 @@ let compare : treecons -> treecons -> int = fun ca cb ->
     [compare]. *)
 let eq : treecons eq = fun a b -> compare a b = 0
 
+(** Subset of a mapping with {!type:constructor} as keys. *)
 module type MapSig =
 sig
   (** Type of keys. *)
@@ -78,9 +79,8 @@ sig
   val map : ('a -> 'b) -> 'a t -> 'b t
 end
 
-(** Implementation of a mapping with {!type:constructor} as keys.  Very small
-    mappings are treated differently.  The incentive is to have faster
-    evaluation on very simple rules. *)
+(** Very small mappings are treated differently.  The incentive is to have
+    faster evaluation on very simple rules. *)
 module Map : MapSig =
 struct
   module TC = struct
