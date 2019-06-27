@@ -70,6 +70,8 @@ assert collect %d ≡ %d
 "  n 0;
   close_out ochan
 
+(** [flagellum n] creates a degenerate tree (i.e. a list) of lenght
+    [n]. *)
 let flagellum n =
   let fname = F.concat !outdir "flagellum.lp" in
   let ochan = open_out fname in
