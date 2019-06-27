@@ -5,7 +5,7 @@ symbol F : N ⇒ TYPE
 rule F 0      → N
  and F (s &n) → N ⇒ F &n
 
-symbol c : ∀(n : N), F n
+symbol c : ∀ n, F n
 
 symbol const R : TYPE
 symbol const r : R
