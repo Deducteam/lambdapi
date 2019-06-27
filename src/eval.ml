@@ -230,7 +230,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           try begin match t with
             | Symb(s, _) ->
                 let c_ari = List.length args in
-                let cons = TC.Symb({ c_sym = s.sym_path @ [s.sym_name]
+                let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                                    ; c_ari }) in
                 let matched = TC.Map.find cons children in
                 walk matched (R.restruct left args right) cursor to_stamped

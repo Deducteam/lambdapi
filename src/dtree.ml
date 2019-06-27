@@ -152,8 +152,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(TC.Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>"
-                               (List.last t.c_sym) t.c_ari
+    | DotCons(TC.Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
     | DotCons(TC.Vari(s)) -> F.fprintf oc "%s" s
     | DotCons(TC.Abst)    -> assert false
     | DotSuccess -> F.fprintf oc "✓"
