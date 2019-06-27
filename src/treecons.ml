@@ -35,18 +35,34 @@ let compare : treecons -> treecons -> int = fun ca cb ->
       end
   | x, y                 -> Pervasives.compare x y
 
-(** [eq c d] returns true iff [c] and [d] are equal regarding
-    [compare]. *)
-let eq : treecons eq = fun a b -> compare a b = 0
+(** A simple comparable type. *)
+module type Comparable =
+sig
+
+  (** Type of data. *)
+  type t
+
+  (** A mapping is considered {i big} if the number of bindings exceeds the
+      threshold.  The threshold [t] should be such that
+      + a {!constructor:Light} mapping with [t - 1] elements should have an
+        access time smaller than a {!constructor:Heavy} one,
+      + a {!constructor:Heavy} mapping with [t + 1] elements should have an
+        access time smaller than a {!constructor:Light} one. *)
+  val threshold : int
+
+  (** [compare x y] is [< 0] if [x < y], [= 0] if [x = y] and [> 0]
+      otherwise. *)
+  val compare : t -> t -> int
+end
 
 (** Subset of a mapping with {!type:constructor} as keys. *)
 module type MapSig =
 sig
   (** Type of keys. *)
-  type key = treecons
+  type key
 
   (** Type of a mapping. *)
-  type 'a t
+  type +'a t
 
   (** The empty map. *)
   val empty : 'a t
@@ -74,32 +90,22 @@ sig
   val map : ('a -> 'b) -> 'a t -> 'b t
 end
 
-(** Very small mappings are treated differently.  The incentive is to have
-    faster evaluation on very simple rules. *)
-module Map : MapSig =
+(** [MkMap(C)] creates a mapping from values of [C].  Very small mappings are
+    treated differently to have faster access. *)
+module MkMap(C:Comparable) : (MapSig with type key = C.t) =
 struct
-  module TC = struct
-    type t = treecons
-    let compare = compare
-  end
-  module ConsMap = Map.Make(TC)
+  module ConsMap = Map.Make(C)
 
-  type key = treecons
+  type key = C.t
 
-  type 'a t =
-    | Light of (treecons * 'a) list
+  type +'a t =
+    | Light of (key * 'a) list
     | Heavy of 'a ConsMap.t
+
+  let eq : key eq = fun x y -> C.compare x y = 0
 
   let heavy_of_bindings : (key * 'a) list -> 'a ConsMap.t = fun x ->
     List.fold_left (fun hacc (k, e) -> ConsMap.add k e hacc) ConsMap.empty x
-
-  (** A mapping is considered {i big} if the number of bindings exceeds the
-      threshold.  The threshold [t] should be such that
-      + a {!constructor:Light} mapping with [t - 1] elements should have an
-        access time smaller than a {!constructor:Heavy} one,
-      + a {!constructor:Heavy} mapping with [t + 1] elements should have an
-        access time smaller than a {!constructor:Light} one. *)
-  let threshold = 4
 
   let empty = Light([])
   let is_empty = function
@@ -108,7 +114,7 @@ struct
     | Heavy(x)       -> ConsMap.is_empty x
   let add k e m = match m with
     | Light(x) -> let x = (k, e) :: x in
-      if List.length x > threshold
+      if List.length x > C.threshold
       then Heavy(heavy_of_bindings x) else Light(x)
     | Heavy(x) -> Heavy(ConsMap.add k e x)
   let find k = function
@@ -124,3 +130,9 @@ struct
     | Light(x) -> List.iter (fun (k, e) -> f k e) x
     | Heavy(x) -> ConsMap.iter f x
 end
+
+(** A mapping on {!type:treecons}. *)
+module Map = MkMap(struct
+    type t = treecons
+    let threshold = 4
+    let compare = compare end)
