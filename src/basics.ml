@@ -371,7 +371,6 @@ let capacity : tree -> int =
     - free variables. *)
 let is_treecons : term -> bool = fun t ->
   match fst (get_args t) with
-  | Meta(_, _)
   | Patt(_, _, _) -> false
   | Vari(_)
   | Abst(_, _)
