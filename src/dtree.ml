@@ -475,21 +475,21 @@ struct
     let pos =
       let l, m, r = ReductionStack.destruct pos ci in
       let occ, depth = m in
-      let nargs = get_args pat |> snd |> List.length in
+      let _, _, nargs = get_args_len pat in
       let replace = Occurrence.sequence ~from:(Occurrence.sub occ) nargs
                   |> List.map (fun x -> (x, depth)) in
       ReductionStack.restruct l replace r in
-    let ph, pargs = get_args pat in
+    let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.lhs 0 ci
                                   ; e
                                   ; Array.drop (ci + 1) r.lhs ] in
     let filtrans r =
       let insert = insert r in
-      let h, args = get_args r.lhs.(ci) in
+      let h, args, lenh = get_args_len r.lhs.(ci) in
       match ph, h with
       | Symb(_, _), Symb(_, _)
       | Vari(_)   , Vari(_)       ->
-          if List.same_length args pargs && Basics.eq ph h
+          if lenh = lenp && Basics.eq ph h
           then Some({r with lhs = insert (Array.of_list args)})
           else None
       | _         , Patt(_, _, _) ->

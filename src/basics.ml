@@ -64,6 +64,15 @@ let get_args : term -> term * term list = fun t ->
     | t         -> (t, acc)
   in get_args [] t
 
+(** [get_args_len t] is the same as [get_args] with the length of the list of
+    arguments returned as well. *)
+let get_args_len : term -> term * term list * int = fun t ->
+  let rec get_args_len acc len t =
+    match unfold t with
+    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
+    | t          -> (t, acc, len) in
+  get_args_len [] 0 t
+
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
@@ -380,10 +389,9 @@ let is_treecons : term -> bool = fun t ->
 (** [treecons_of_term t] returns the tree constructor representing term
     [t]. *)
 let treecons_of_term : term -> TC.treecons = fun te ->
-  let hs, args = get_args te in
+  let hs, _, arity = get_args_len te in
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
-      let arity = List.length args in
       TC.Symb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
   | Abst(_, _)                           -> TC.Abst
   | Vari(x)                              -> TC.Vari(Bindlib.name_of x)
