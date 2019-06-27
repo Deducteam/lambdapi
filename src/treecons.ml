@@ -11,11 +11,12 @@ type treecons =
       (** Fully qualified name of the constructor. *)
       ; c_ari : int
       (** Arity of the considered constructor.  A same symbol representation
-          may generate several constructors with different arities. *) }
+          may generate several constructors with different arities.  See
+          [tests/OK/arity_diff.lp] for an example. *) }
   | Abst
   (** An abstraction*)
   | Vari of string
-  (** A free variable with a name. *)
+  (** A bound variable with a name. *)
 
 (** [pp o c] prints tree constructor [c] to output channel [o]. *)
 let pp : treecons pp = fun oc -> function
