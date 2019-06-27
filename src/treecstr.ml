@@ -13,13 +13,12 @@ type 'a cdecision = ('a * float) option
 
     Currently, binary constraints are used
     - to check non linear constraints in the left hand side of a rule (e.g. in
-      presence of the rule like [f &X &X (s &Y) → &Y]).  In this case, the
+      presence of the rule like [f &X &X (s &Y) → r]).  In this case, the
       constraint node created will force the rewriting engine to verify that
       the terms at position [{0}] and [{1}] are convertible.
     - to verify which variables are free in a term.  If there is a rule of the
-      form [f &X[x, y] &Y[y] → &Y], then the rewriting engine must verify that
-      the term at position [{0}] depends only on free variables [x] and [y]
-      and that the term at position [{1}] depends only on free variable [y].
+      form [f (λ x y, &Y[y]) → &Y], then the rewriting engine must verify that
+      the term at position [{0.0}] depends only on free variable [y].
 
     Constraints depend heavily on the {!val:vars} array used to store terms
     during evaluation as it is the only way to have access to terms matched
