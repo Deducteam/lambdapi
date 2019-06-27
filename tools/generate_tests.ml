@@ -9,6 +9,7 @@
 module F = Filename
 module P = Printf
 
+(** Default parameters. *)
 let p_thump = ref 20
 let p_comb = ref 20
 let p_flagellum = ref 20
@@ -70,7 +71,7 @@ assert collect %d ≡ %d
 "  n 0;
   close_out ochan
 
-(** [flagellum n] creates a degenerate tree (i.e. a list) of lenght
+(** [flagellum n] creates a degenerate tree (i.e. a list) of length
     [n]. *)
 let flagellum n =
   let fname = F.concat !outdir "flagellum.lp" in
