@@ -426,7 +426,15 @@ struct
       {!type:treecons}) is returned along the original term. *)
   let get_cons : term list -> (TC.treecons * term) list = fun telst ->
     let keep_treecons e =
-      if is_treecons e then Some(treecons_of_term e, e) else None in
+      let h, _, arity = get_args_len e in
+      match h with
+      | Symb({ sym_name ; sym_path ; _ }, _) ->
+          Some(TC.Symb({ c_mod = sym_path ; c_sym = sym_name
+                       ; c_ari = arity }), e)
+      | Abst(_, _)                           -> Some(TC.Abst, e)
+      | Vari(x)                              ->
+          Some(TC.Vari(Bindlib.name_of x), e)
+      | _                                    -> None in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 

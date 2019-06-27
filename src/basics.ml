@@ -386,14 +386,3 @@ let is_treecons : term -> bool = fun t ->
   | Symb(_, _)    -> true
   | _             -> assert false
 
-(** [treecons_of_term t] returns the tree constructor representing term
-    [t]. *)
-let treecons_of_term : term -> TC.treecons = fun te ->
-  let hs, _, arity = get_args_len te in
-  match hs with
-  | Symb({ sym_name ; sym_path ; _ }, _) ->
-      TC.Symb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
-  | Abst(_, _)                           -> TC.Abst
-  | Vari(x)                              -> TC.Vari(Bindlib.name_of x)
-  | _                                    -> assert false
-
