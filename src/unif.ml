@@ -40,6 +40,9 @@ type problems =
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
 
+(** Type of a hypothesis on injectivity. *)
+type inj_hypo = sym * bool list
+
 (** Empty problem. *)
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
@@ -88,18 +91,19 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
-let rec solve : problems -> unif_constrs = fun p ->
+let rec solve : problems -> inj_hypo option -> unif_constrs = fun p hypo ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
-     solve {no_problems with to_solve = cs}
+     solve {no_problems with to_solve = cs} hypo
   | { to_solve = []; unsolved = cs; _ } -> cs
-  | { to_solve = (t,u)::to_solve; _ } -> solve_aux t u {p with to_solve}
+  | { to_solve = (t,u)::to_solve; _ } -> solve_aux t u {p with to_solve} hypo
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
-and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
-  if Eval.eq_modulo t1 t2 then solve p else
+and solve_aux : term -> term -> problems -> inj_hypo option -> unif_constrs
+  = fun t1 t2 p hypo ->
+  if Eval.eq_modulo t1 t2 then solve p hypo else
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
@@ -114,8 +118,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let add_to_unsolved () =
     let t1 = Eval.to_term h1 ts1 in
     let t2 = Eval.to_term h2 ts2 in
-    if Eval.eq_modulo t1 t2 then solve p
-    else solve {p with unsolved = (t1,t2) :: p.unsolved}
+    if Eval.eq_modulo t1 t2 then solve p hypo
+    else solve {p with unsolved = (t1,t2) :: p.unsolved} hypo
   in
   let error () =
     let t1 = Eval.to_term h1 ts1 in
@@ -128,7 +132,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve bls (List.combine ts1 ts2)
       with Invalid_argument _ -> error () in
-    solve {p with to_solve}
+    solve {p with to_solve} hypo
   in
   let decompose () =
     let bls = List.map (fun _ -> false) ts1 in
@@ -163,7 +167,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
-      solve_aux t1 t2 p
+      solve_aux t1 t2 p hypo
     with Unsolvable -> add_to_unsolved ()
   in
 
@@ -221,7 +225,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
-    solve_aux t1 t2 p
+    solve_aux t1 t2 p hypo
   in
 
   (* [inverse c s t] computes a term [u] such that [s(u)] reduces to
@@ -251,7 +255,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          try
            if s == c.symb_P then
              match ts with
-             | [t] -> solve_aux Pervasives.(snd !t) (inverse c s v) p
+             | [t] -> solve_aux Pervasives.(snd !t) (inverse c s v) p hypo
              | _ -> raise Unsolvable
            else raise Unsolvable
          with Unsolvable -> add_to_unsolved ()
@@ -259,12 +263,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   match (h1, h2) with
   (* Cases in which [ts1] and [ts2] must be empty due to typing / whnf. *)
   | (Type       , Type       )
-  | (Kind       , Kind       ) -> solve p
+  | (Kind       , Kind       ) -> solve p hypo
 
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-     solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
+     solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve} hypo
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) ->
@@ -282,16 +286,23 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
                    let t = snd Pervasives.(!t) in
                    let u = snd Pervasives.(!u) in
                    Eval.eq_modulo t u) ts1 ts2 in
-             if check_inj_sym bls s1 then decompose_part bls ()
-             else add_to_unsolved ()
+             let check_inj_and_decompose () =
+               if check_inj_sym bls s1 then decompose_part bls ()
+               else add_to_unsolved () in
+             match hypo with
+             | None           -> check_inj_and_decompose ()
+             | Some (s, bls') ->
+                 if s == s1 && inj_incl bls bls' then
+                   decompose_part bls ()
+                 else check_inj_and_decompose ()
            else error ()
      else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
      else add_to_unsolved ()
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
-     solve {p with recompute = true}
+     solve {p with recompute = true} hypo
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
-     solve {p with recompute = true}
+     solve {p with recompute = true} hypo
 
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
@@ -389,35 +400,16 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     Our algorithm consists of checking that every pair of rules is good and
     that every rule is in one of the forms mentioned in the second case. *)
 
-(** [unif constrs t1 t2] attempts to unify [t1] and [t2], and adds the
-    constraints obtained into [constrs]. *)
-and unif : unif_constrs ref -> term -> term -> unit = fun constrs t1 t2 ->
-  let to_solve = [(t1, t2)] in
-  let problems = { no_problems with to_solve } in
-  constrs := (solve problems) @ (!constrs)
+(** [inj_incl bls bls'] checks if bls'_i => bls_i for all i. This
+    corresponds to the property that I-injectivity implies J-injectivity if I
+    is included in J. *)
+and inj_incl : bool list -> bool list -> bool = fun bls bls' ->
+  List.for_all2 (fun b b' -> b || not b') bls bls'
 
-(** [check_incl bls blss] checks if there exists [bls'] in [blss] such that
-    bls'_i => bls_i for all i. This corresponds to the property that
-    I-injectivity implies J-injectivity if I is included in J. *)
-and check_incl : bool list -> bool list list -> bool = fun bls blss ->
-  let check_incl_aux bls' =
-    List.for_all2 (fun b b' -> b || not b') bls bls' in
-  List.exists check_incl_aux blss
-
-(** [hypo_inj bls s] adds the hypothesis that [s] is I-injective where I is
-    represented by [bls]. *)
-and hypo_inj : bool list -> sym -> unit = fun bls s ->
-  match s.sym_mode with
-  | Const   -> ()
-  | Defin   -> s.sym_mode <- Injec [bls]
-  | Injec l -> s.sym_mode <- Injec (bls :: l)
-
-(** [remove_hypo_inj s] removes the last hypothesis on [s]. *)
-and remove_hypo_inj : sym -> unit = fun s ->
-  match s.sym_mode with
-  | Const
-  | Defin   -> ()
-  | Injec l -> s.sym_mode <- Injec (List.tl l)
+(** [inj_incls bls blss] checks if there exists [bls'] in [blss] such that
+    bls'_i => bls_i for all i. *)
+and inj_incls : bool list -> bool list list -> bool = fun bls blss ->
+  List.exists (fun bls' -> inj_incl bls bls') blss
 
 (** [eq_modulo_constrs constrs (t1, t2)] returns if t1 ~ t2 or there exists
     (t1', t2') in [constrs] such that t1 ~ t1' (resp. t2') and t2 ~ t2'
@@ -431,8 +423,8 @@ and eq_modulo_constrs : unif_constrs -> term * term -> bool
 
 (** [add_rules_from_constrs constrs] first replaces each metavariable in
     [constrs] with a fresh symbol, then applies the completion procedure on
-    the first-order constraints in [constrs] and returns the rest of it. *)
-and add_rules_from_constrs : unif_constrs -> unif_constrs = fun constrs ->
+    the first-order constraints in [constrs]. *)
+and add_rules_from_constrs : unif_constrs -> unit = fun constrs ->
   let fn m =
     match !(m.meta_value) with
     | None   ->
@@ -443,22 +435,21 @@ and add_rules_from_constrs : unif_constrs -> unif_constrs = fun constrs ->
         m.meta_value :=
           Some (Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb c_m Nothing)))
     | Some _ -> () in
-  let split_constrs (fo, others) (t, u) =
+  let fo_constrs fo (t, u) =
     try
       check_nullary_meta t;
       check_nullary_meta u;
       iter_meta fn t;
       iter_meta fn u;
-      (t, u) :: fo, others
-    with Non_nullary_meta -> fo, (t, u) :: others in
-  let constrs_fo, others = List.fold_left split_constrs ([], []) constrs in
+      (t, u) :: fo
+    with Non_nullary_meta -> fo in
+  let constrs_fo = List.fold_left fo_constrs [] constrs in
   let t1 = Time.save () in
   let ord = Completion.ord_from_eqs constrs_fo in
   let rules_to_add = Completion.completion constrs_fo ord in
   Time.restore t1;
   List.iter
-    (fun (s, rs) -> s.sym_rules := rs @ !(s.sym_rules)) rules_to_add;
-  others
+    (fun (s, rs) -> s.sym_rules := rs @ !(s.sym_rules)) rules_to_add
 
 (** [check_pair_of_rules bls (lhs1, rhs1) (lhs2, rhs2)] checks if
     the rules [lhs1 -> rhs1] and [lhs2 -> rhs2] satisfy the conditions
@@ -468,26 +459,35 @@ and check_pair_of_rules :
   = fun bls s (lhs1, rhs1) (lhs2, rhs2) ->
   let t = Time.save () in
   try
-    hypo_inj bls s;
     let _, args1 = get_args lhs1 in
     let _, args2 = get_args lhs2 in
     let args = List.combine args1 args2 in
     let to_solve =
       (rhs1, rhs2) :: List.map snd (List.filter fst (List.combine bls args))
     in
-    let constrs = solve {no_problems with to_solve} in
+    let constrs = solve {no_problems with to_solve} (Some (s, bls)) in
     let to_solve =
       List.map
         snd (List.filter (fun (b, _) -> not b) (List.combine bls args)) in
-    let constrs = add_rules_from_constrs constrs in
+    add_rules_from_constrs constrs;
     let res =
       List.for_all (eq_modulo_constrs constrs) to_solve in
     Time.restore t;
-    remove_hypo_inj s;
     res
   with
-  | Fatal _ -> Time.restore t; remove_hypo_inj s; true
-  | _       -> Time.restore t; remove_hypo_inj s; false
+  | Fatal _ -> Time.restore t; true
+  | _       -> Time.restore t; false
+
+(** [non_erasing_rec s] returns true if the normal form of any term [st] is
+    of the form [s't'] with s' <= s. This function only makes sense when there
+    is an order on symbols compatible with their dependency. *)
+and non_erasing_rec : sym -> bool = fun s ->
+  let check_head_of_rule : rule -> bool = fun r ->
+    let h, _ = get_args (term_of_rhs r) in
+    match h with
+    | Symb (s', _) -> s' == s || non_erasing_rec s
+    | _            -> false in
+  List.for_all check_head_of_rule !(s.sym_rules)
 
 (** [check_single_rule bls s (lhs, rhs)] checks if the rule [lhs -> rhs]
     satisfies the conditions mentioned above. *)
@@ -502,20 +502,18 @@ and check_single_rule : bool list -> sym -> term * term -> bool
   let argss = List.combine args2 new_args in
   let new_term = add_args (Symb (s, Nothing)) new_args in
   let infer_from_constrs () =
-    hypo_inj bls s;
     let to_solve =
       (new_term, rhs) ::
       List.map snd (List.filter fst (List.combine bls argss)) in
-    let constrs = solve {no_problems with to_solve} in
+    let constrs = solve {no_problems with to_solve} (Some (s, bls)) in
     let to_solve =
       List.map
         snd (List.filter (fun (b, _) -> not b) (List.combine bls argss))
     in
-    let constrs = add_rules_from_constrs constrs in
+    add_rules_from_constrs constrs;
     let res =
       List.for_all (eq_modulo_constrs constrs) to_solve in
     Time.restore t;
-    remove_hypo_inj s;
     res
   in
   try match h1 with
@@ -526,7 +524,7 @@ and check_single_rule : bool list -> sym -> term * term -> bool
         if List.exists2 (fun b arg -> b && fn arg) bls args2 then true
         else infer_from_constrs ()
     | Symb (s', _) when s == s'   -> infer_from_constrs ()
-    | Symb _                      -> true
+    | Symb (s', _)                -> non_erasing_rec s'
     | _                           -> false (* TODO *)
   with
   | Fatal _ -> Time.restore t; true
@@ -536,7 +534,7 @@ and check_single_rule : bool list -> sym -> term * term -> bool
     I is represented by [bls]. *)
 and check_inj_sym : bool list -> sym -> bool = fun bls s ->
   match s.sym_mode with
-  | Injec l when check_incl bls l -> true
+  | Injec l when inj_incls bls l -> true
   | _                             ->
       let rules = !(s.sym_rules) in
       let terms_of_rules =
@@ -560,5 +558,5 @@ let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
   fun builtins b p ->
   set_config builtins;
   can_instantiate := b;
-  try Some (solve p) with Fatal(_,m) ->
+  try Some (solve p None) with Fatal(_,m) ->
     if !log_enabled then log_solv (red "solve: %s") m; None

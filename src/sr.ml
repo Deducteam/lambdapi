@@ -76,13 +76,14 @@ let check_rule :
       let t0 = Time.save () in
       if !log_enabled then typ_cond "LHS" ty_lhs lhs_constrs;
       try
-        let constrs = Unif.add_rules_from_constrs lhs_constrs in
+        Unif.add_rules_from_constrs lhs_constrs;
         (* Check that the RHS has the same type as the LHS. *)
         let to_solve = Infer.check Ctxt.empty rhs ty_lhs in
         match Unif.(solve builtins false {no_problems with to_solve}) with
         | Some cs ->
             if cs <> [] then
-              let cs = List.filter (fun c -> not (check_eq c constrs)) cs in
+              let cs =
+                List.filter (fun c -> not (check_eq c lhs_constrs)) cs in
               if cs <> [] then raise Non_nullary_meta
               else Time.restore t0
             else Time.restore t0
