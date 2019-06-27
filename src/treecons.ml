@@ -7,10 +7,8 @@ open Extra
     arguments to which it is applied. *)
 type treecons =
   | Symb of
-      { c_mod : Files.module_path
-      (** Module name where the symbol of the constructor is defined. *)
-      ; c_sym : string
-      (** Symbol of the constructor. *)
+      { c_sym : Files.module_path
+      (** Fully qualified name of the constructor. *)
       ; c_ari : int
       (** Arity of the considered constructor.  A same symbol representation
           may generate several constructors with different arities. *) }
@@ -23,7 +21,7 @@ type treecons =
 let pp : treecons pp = fun oc -> function
   | Abst    -> Format.fprintf oc "λ"
   | Vari(s) -> Format.pp_print_string oc s
-  | Symb(t) -> Format.fprintf oc "%s<:%d" t.c_sym t.c_ari
+  | Symb(t) -> Format.fprintf oc "%s<:%d" (List.last t.c_sym) t.c_ari
 
 (** [compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
@@ -31,11 +29,7 @@ let compare : treecons -> treecons -> int = fun ca cb ->
   match ca, cb with
   | Symb(a), Symb(b) ->
       begin match Int.compare a.c_ari b.c_ari with
-      | 0 ->
-          begin match String.compare a.c_sym b.c_sym with
-          | 0 -> Pervasives.compare a.c_mod b.c_mod
-          | x -> x
-          end
+      | 0 -> Pervasives.compare a.c_sym b.c_sym
       | x -> x
       end
   | x, y                 -> Pervasives.compare x y

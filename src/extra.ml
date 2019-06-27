@@ -161,6 +161,12 @@ module List =
         | _      :: t -> loop t in
       loop l
 
+    (** [last l] returns the last element of [l]. *)
+    let rec last : 'a list -> 'a = function
+      | []      -> invalid_arg "List.last"
+      | [x]     -> x
+      | _::y::x -> last (y :: x)
+
   end
 
 module Array =

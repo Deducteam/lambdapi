@@ -385,7 +385,7 @@ let treecons_of_term : term -> TC.treecons = fun te ->
   match hs with
   | Symb({ sym_name ; sym_path ; _ }, _) ->
       let arity = List.length args in
-      TC.Symb({ c_mod = sym_path ; c_sym = sym_name ; c_ari = arity })
+      TC.Symb({ c_sym = sym_path @ [sym_name] ; c_ari = arity })
   | Abst(_, _)                           -> TC.Abst
   | Vari(x)                              -> TC.Vari(Bindlib.name_of x)
   | _                                    -> assert false
