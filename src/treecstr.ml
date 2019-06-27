@@ -132,7 +132,7 @@ struct
   (** Weight given to nl constraints. *)
   let nl_prio = 1.
 
-  (** When *)
+  (** A non linearity constraint. *)
   type t =
     { partial : int IntMap.t
     (** An association [(e, v)] is a slot [e] of the [env] array with a slot
@@ -289,11 +289,14 @@ struct
 
   open BCP
 
+  (** [score_gt s v] is [> 0] if [s] has a higher score than [v], [= 0] if
+      score [s] is equal to score [v] and [< 0] otherwise. *)
   let score_gt s1 s2 = match (s1, s2) with
     | None      , _          -> -1
     | Some(_, x), None       -> max (int_of_float x) 1
     | Some(_, x), Some(_, y) -> Float.compare x y
 
+  (** [choose s] returns the constraint having the highest score in [s]. *)
   let choose = function
     | [] -> None
     | cs -> List.map score cs |> List.max ~cmp:score_gt
