@@ -297,8 +297,8 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
           ( Format.printf "Wrote %s.gv\n" (symb.sym_name)
           ; Dtree.to_dot symb.sym_name (Lazy.force tree) )
     | _     -> () in
-  List.map (fun (e, _, _) -> e) rs |> List.sort_uniq Basics.sym_cmp |>
-  List.iter build_tree
+  let fst3cmp (d, _, _) (e, _, _) = Basics.sym_cmp d e in
+  List.sort_uniq fst3cmp rs |> List.iter (fun (x, _, _) -> build_tree x)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
