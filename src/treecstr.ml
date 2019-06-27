@@ -292,6 +292,7 @@ struct
   (** [score_gt s v] is [> 0] if [s] has a higher score than [v], [= 0] if
       score [s] is equal to score [v] and [< 0] otherwise. *)
   let score_gt s1 s2 = match (s1, s2) with
+    | None      , None       -> 0
     | None      , _          -> -1
     | Some(_, x), None       -> max (int_of_float x) 1
     | Some(_, x), Some(_, y) -> Float.compare x y
