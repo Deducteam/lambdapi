@@ -11,8 +11,9 @@ type treecons =
       (** Fully qualified name of the constructor. *)
       ; c_ari : int
       (** Arity of the considered constructor.  A same symbol representation
-          may generate several constructors with different arities.  See
-          [tests/OK/arity_diff.lp] for an example. *) }
+          may generate several constructors with different arities.  For
+          instance, with [g: N ⇒ N ⇒ N], [rule f g (g &x) → r] uses [g] with
+          arity 1 and 2. *) }
   | Abst
   (** An abstraction*)
   | Vari of string
