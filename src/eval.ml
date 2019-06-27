@@ -36,9 +36,9 @@ exception Default
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
 
-(** [le_fvc s x] is a logging function used when verifying a closeness
+(** [log_fvc s x] is a logging function used when verifying a closedness
     constraint. *)
-let le_fvc : bool -> tvar array -> unit = fun b xs ->
+let log_fvc : bool -> tvar array -> unit = fun b xs ->
   log_eval (r_or_g b "free var check on [%a]")
     (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_tvar)
     (Array.to_list xs)
@@ -196,7 +196,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
               let bound = Bindlib.bind_mvar xs b in
               let r = Bindlib.is_closed bound in
-              if !log_enabled then le_fvc r xs ;
+              if !log_enabled then log_fvc r xs ;
               if r
               then ( boundv.(i) <- Some(Bindlib.unbox bound)
                    ; ok )
