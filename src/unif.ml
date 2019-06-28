@@ -40,7 +40,10 @@ type problems =
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
 
-(** Type of a hypothesis on injectivity. *)
+(** Type of a hypothesis on injectivity. A hypothesis (f, l) means that f is
+    assumed to be I-injective i.e.,
+    (ft ~ fu and ti ~ ui for all i in I) => (ti ~ ui for all i not in I)
+    where I = { i | li = true }. *)
 type inj_hypo = sym * bool list
 
 (** Empty problem. *)
@@ -89,8 +92,8 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
                                 variable of [vs] occurring in [u]. *)
         && (set_meta m (Bindlib.unbox bu); true)
 
-(** [solve cfg p] tries to solve the unification problems of [p] and
-   returns the constraints that could not be solved. *)
+(** [solve p hypo] tries to solve the unification problems of [p] under the
+    hypothesis [hypo] and returns the constraints that could not be solved. *)
 let rec solve : problems -> inj_hypo option -> unif_constrs = fun p hypo ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
@@ -99,8 +102,9 @@ let rec solve : problems -> inj_hypo option -> unif_constrs = fun p hypo ->
   | { to_solve = []; unsolved = cs; _ } -> cs
   | { to_solve = (t,u)::to_solve; _ } -> solve_aux t u {p with to_solve} hypo
 
-(** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
-    the constraint [(t1,t2)], starting with the latter. *)
+(** [solve_aux t1 t2 p hypo] tries to solve the unificaton problem given by
+    [p] and the constraint [(t1,t2)] under the hypothesis [hypo], starting
+    with the latter. Note that [hypo] = None if there is no hypothesis. *)
 and solve_aux : term -> term -> problems -> inj_hypo option -> unif_constrs
   = fun t1 t2 p hypo ->
   if Eval.eq_modulo t1 t2 then solve p hypo else
@@ -531,7 +535,8 @@ and check_single_rule : bool list -> sym -> term * term -> bool
   | _       -> Time.restore t; false
 
 (** [check_inj_sym bls s] checks if the symbol [s] is I-injective, where
-    I is represented by [bls]. *)
+    I is represented by [bls]. Note that this function gives only a
+    sufficient condition. It may returns false whereas [s] is I-injective. *)
 and check_inj_sym : bool list -> sym -> bool = fun bls s ->
   match s.sym_mode with
   | Injec l when inj_incls bls l -> true
