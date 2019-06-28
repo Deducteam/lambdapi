@@ -86,7 +86,8 @@ sig
 end
 
 (** Non linearity constraints signature.  A non linearity constraint involves
-    at least two variables. *)
+    at least two variables.  A specialisation of
+    {!module:BinConstraintPoolSig}. *)
 module type NlConstraintSig =
 sig
   (** Binary constraint with
@@ -102,7 +103,8 @@ sig
 end
 
 (** Free variables constraints.  Such a constraint involves only one variable,
-    but it requires the list of variables that may appear free in the term. *)
+    but it requires the list of variables that may appear free in the term.
+    Specialisation of {!module:BinConstraintPoolSig}. *)
 module type FvConstraintSig =
 sig
   (** Binary constraint with
@@ -267,9 +269,13 @@ struct
     with Not_found -> None
 end
 
-(** {3 Comparing constraints }*)
+(** {3 Comparing constraints } *)
 
-(** Type making a module comparable. *)
+(** This section presents extensions of the previous modules to allow one to
+    compare constraints in order to be able to pick the constraint with
+    highest priority in one or more pools of constraints. *)
+
+(** Module introducing a way to select the "best" element. *)
 module type Scorable = sig
   (** Type of the element to score. *)
   type t
@@ -303,7 +309,7 @@ struct
     | cs -> List.map score cs |> List.max ~cmp:score_gt
 end
 
-(** Non linearity with score constraints. *)
+(** Non linearity constraints pool extended with scoring. *)
 module type NlScorableSig = sig
   type t
   type cstr
@@ -318,7 +324,7 @@ module type NlScorableSig = sig
      and type decision := decision
 end
 
-(** Free variables constraints with score. *)
+(** Free variables constraints pool extended with scoring. *)
 module type FvScorableSig = sig
   type t
   type cstr
