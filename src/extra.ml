@@ -172,3 +172,21 @@ let input_lines : in_channel -> string list = fun ic ->
     done;
     assert false (* Unreachable. *)
   with End_of_file -> List.rev !lines
+
+(** Type of a total ordering function. A total ordering function [f] is a
+        function such that [f x y] is zero if the two elements [x] and [y]
+        are equal, [f x y] is strictly negative if [x] is smaller than [y],
+        and [f x y] is strictly positive if [x] is greater than [y]. *)
+    type 'a cmp = 'a -> 'a -> int
+
+    (** [ord_lex ord] computes the lexicographic order corresponding to the
+        alphabetical order [ord]. *)
+    let rec ord_lex : 'a cmp -> 'a list cmp = fun ord l1 l2 ->
+      match (l1, l2) with
+      | [], []             -> 0
+      | [], _              -> -1
+      | _, []              -> 1
+      | h1 :: t1, h2 :: t2 ->
+          match ord h1 h2 with
+          | 0 -> ord_lex ord t1 t2
+          | x -> x

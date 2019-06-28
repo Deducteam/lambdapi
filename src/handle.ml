@@ -10,6 +10,7 @@ open Pos
 open Files
 open Syntax
 open Scope
+open Basics
 
 (** [check_builtin_nat s] checks that the builtin symbol [s] for
    non-negative literals has a good type. *)
@@ -112,7 +113,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         match ts with
         | []              -> Defin
         | Sym_const :: [] -> Const
-        | Sym_inj   :: [] -> Injec
+        | Sym_inj   :: [] ->
+            Injec [List.init (count_products a) (fun _ -> false)]
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
       (* Actually add the symbol to the signature and the state. *)

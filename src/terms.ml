@@ -65,7 +65,7 @@ type term =
   (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_mode  : sym_mode
+  ; mutable sym_mode : sym_mode
   (** Tells what kind of symbol it is. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
@@ -87,7 +87,7 @@ type term =
   (** The symbol is constant: it has no definition and no rewriting rule. *)
   | Defin
   (** The symbol may have a definition or rewriting rules (but NOT both). *)
-  | Injec
+  | Injec of bool list list
   (** Same as [Defin], but the symbol is considered to be injective. *)
 
 (** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the

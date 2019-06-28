@@ -112,6 +112,13 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
+(** [get_symb t] returns [Some s] if [t] is of the form [Symb (s , _)].
+    Otherwise, it returns [None]. *)
+let get_symb : term -> sym option = fun t ->
+  match unfold t with
+  | Symb (s, _) -> Some s
+  | _           -> None
+
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the
    term, in the reverse order they were given. Free variables that were
@@ -183,6 +190,86 @@ let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
 (** {b NOTE} that {!val:iter_meta} is not implemented using {!val:iter} due to
     the fact this it is performance-critical. *)
 
+(** [is_meta t] checks if [t] is a metavariable. *)
+let is_meta : term -> bool = fun t ->
+  match unfold t with
+  | Meta _ -> true
+  | _      -> false
+
+(** [map_meta f t] returns a new term [t'] obtained from [t] by replacing each
+    metavariable [m[ts]] with [f m ts'] where [ts'] is the array of terms
+    obtained by applying [map_meta f] recursively on [ts]. *)
+let rec map_meta : (meta -> term array -> term) -> term -> term = fun f t ->
+  match unfold t with
+  | Prod (a, b)  ->
+      let x, b' = Bindlib.unbind b in
+      let b =
+        Bindlib.unbox (Bindlib.bind_var x (lift (map_meta f b'))) in
+      Prod (map_meta f a, b)
+  | Abst (a, b)  ->
+      let x, b' = Bindlib.unbind b in
+      let b =
+        Bindlib.unbox (Bindlib.bind_var x (lift (map_meta f b'))) in
+      Abst (map_meta f a, b)
+  | Appl (t, u)  -> Appl (map_meta f t, map_meta f u)
+  | Meta (m, ts) -> f m (Array.map (map_meta f) ts)
+  | _            -> t
+
+module IntMap = Map.Make(struct type t = int let compare = compare end)
+
+(** [copy_rule (lhs, rhs)] returns a copy (lhs', rhs') of the rule (lhs, rhs)
+    by replacing each metavariable with a fresh metavariable. *)
+let copy_rule : term * term -> term * term = fun (lhs, rhs) ->
+  let metamap = IntMap.empty in
+  let rec copy_term metamap t =
+    match unfold t with
+    | Prod (a, b)  ->
+        let a, metamap = copy_term metamap a in
+        let x, b' = Bindlib.unbind b in
+        let b', metamap = copy_term metamap b' in
+        let b =
+          Bindlib.unbox (Bindlib.bind_var x (lift  b')) in
+        Prod (a, b), metamap
+    | Abst (a, b)  ->
+        let a, metamap = copy_term metamap a in
+        let x, b' = Bindlib.unbind b in
+        let b', metamap = copy_term metamap b' in
+        let b =
+          Bindlib.unbox (Bindlib.bind_var x (lift b')) in
+        Abst (a, b), metamap
+    | Appl (t, u)  ->
+        let t, metamap = copy_term metamap t in
+        let u, metamap = copy_term metamap u in
+        Appl (t, u), metamap
+    | Meta (m, ts) ->
+        begin try
+          let new_m = IntMap.find m.meta_key metamap in
+          let ts, metamap =
+            List.fold_right
+              (fun t (acc, metamap) ->
+                let t, metamap = copy_term metamap t in
+                t :: acc, metamap) (Array.to_list ts) ([], metamap) in
+          Meta (new_m, Array.of_list ts), metamap
+        with Not_found ->
+          let new_m = fresh_meta !(m.meta_type) m.meta_arity in
+          let ts, metamap =
+            List.fold_right
+              (fun t (acc, metamap) ->
+                let t, metamap = copy_term metamap t in
+                t :: acc, metamap)
+              (Array.to_list ts) ([], IntMap.add m.meta_key new_m metamap) in
+          Meta (new_m, Array.of_list ts), metamap
+        end
+    | _            -> t, metamap
+  in
+  let lhs, metamap = copy_term metamap lhs in
+  let rhs =
+    let fn = fun m ts ->
+      Bindlib.unbox
+        (_Meta (IntMap.find m.meta_key metamap) (Array.map lift ts)) in
+    map_meta fn rhs in
+  lhs, rhs
+
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
 let occurs : meta -> term -> bool =
   let exception Found in fun m t ->
@@ -200,6 +287,111 @@ let get_metas : term -> meta list = fun t ->
 let has_metas : term -> bool =
   let exception Found in fun t ->
   try iter_meta (fun _ -> raise Found) t; false with Found -> true
+
+(** [build_prod k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), A(k+1)” where
+    “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
+    new metavariable of arity “i-1” and type “∀(x₁:A₂) ⋯ (x(i-1):A(i-1)), TYPE
+    ”. *)
+let build_prod : int -> term = fun k ->
+  assert (k>=0);
+  let vs = Bindlib.new_mvar mkfree (Array.make k "x") in
+  let rec build_prod k p =
+    if k = 0 then p
+    else
+      let k = k-1 in
+      let mk_typ = Bindlib.unbox (build_prod k _Type) in
+      let mk = fresh_meta mk_typ k in
+      let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
+      let b = Bindlib.bind_var vs.(k) p in
+      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
+      build_prod k p
+  in
+  let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
+  let mk = fresh_meta mk_typ k in
+  let tk = _Meta mk (Array.map _Vari vs) in
+  Bindlib.unbox (build_prod k tk)
+
+(** [new_symb name t] returns a new function symbol of name [name] and of
+    type [t]. *)
+let new_symb name t =
+  { sym_name = name ; sym_type = ref t ; sym_path = [] ; sym_def = ref None
+  ; sym_impl = [] ; sym_rules = ref [] ; sym_mode = Const }
+
+(** [replace_patt_by_meta k metas t] computes a new (boxed) term by replacing
+    every pattern variable in [t] by a fresh metavariable and store the latter
+    in [metas], where [k] indicates the order of the term obtained *)
+let rec replace_patt_by_meta : int -> meta option array -> term -> tbox
+  = fun k metas t ->
+  match unfold t with
+  | Vari x         -> _Vari x
+  | Symb (s, h)    -> _Symb s h
+  | Abst (a, t)    ->
+      let (x, t) = Bindlib.unbind t in
+      _Abst (replace_patt_by_meta 0 metas a)
+            (Bindlib.bind_var x (replace_patt_by_meta 0 metas t))
+  | Appl (t, u)    ->
+      _Appl (replace_patt_by_meta (k + 1) metas t)
+            (replace_patt_by_meta 0 metas u)
+  | Patt (i, n, a) ->
+      begin
+        let a = Array.map (replace_patt_by_meta 0 metas) a in
+        let l = Array.length a in
+        match i with
+        | None   ->
+            let m = fresh_meta ~name:n (build_prod (l + k)) l in
+            _Meta m a
+        | Some i ->
+            match metas.(i) with
+            | Some m -> _Meta m a
+            | None   ->
+                let m = fresh_meta ~name:n (build_prod (l + k)) l in
+                metas.(i) <- Some m;
+                _Meta m a
+      end
+  | _              -> assert false
+
+(** Exception raised when a term contains non-nullary metavariables. *)
+exception Non_nullary_meta
+
+(** [replace_patt_by_symb symbs t] computes a new (boxed) term by replacing
+    every pattern variable in [t] by a fresh symbol [c_n] of type [t_n]
+    ([t_n] is another fresh symbol of type [Kind]) and store [c_n] the latter
+    in [symbs]. *)
+let rec replace_patt_by_symb : sym option array -> term -> tbox
+  = fun symbs t ->
+  match unfold t with
+  | Vari x            -> _Vari x
+  | Symb (s, h)       -> _Symb s h
+  | Abst (a, t)       ->
+      let (x, t) = Bindlib.unbind t in
+      _Abst (replace_patt_by_symb symbs a)
+            (Bindlib.bind_var x (replace_patt_by_symb symbs t))
+  | Appl (t, u)       ->
+      _Appl (replace_patt_by_symb symbs t) (replace_patt_by_symb symbs u)
+  | Patt (i, n, [||]) ->
+      begin
+        match i with
+        | None   ->
+            let t_n = new_symb ("{t_" ^ n) Type in
+            let term_t_n = symb t_n in
+            let c_n = new_symb ("{c_" ^ n) term_t_n in
+            _Symb c_n Nothing
+        | Some i ->
+            match symbs.(i) with
+            | Some s -> _Symb s Nothing
+            | None   ->
+                let t_n = new_symb ("{t_" ^ n) Type in
+                let term_t_n = symb t_n in
+                let c_n = new_symb ("{c_" ^ n) term_t_n in
+                symbs.(i) <- Some c_n;
+                _Symb c_n Nothing
+      end
+  | Patt _            -> raise Non_nullary_meta
+  | _                 -> assert false
+
+(** [is_new_symb s] checks if [s] is a function symbol created for checking
+    SR. *)
+let is_new_symb s = s.sym_name.[0] = '{'
 
 (** [distinct_vars_opt ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
@@ -239,3 +431,58 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+
+(** [replace_patt_rule replace_patt to_term_env r] translates the
+    rule [r] into a pair of terms. The pattern variables in the LHS are
+    replaced by fresh metavariables (resp. fresh symbols) if [replace_patt] =
+    [replace_patt_by_meta] (resp. [replace_patt_by_symb]). The terms with
+    environment in the RHS are replaced by their corresponding metavariables
+    (resp. symbols). *)
+let replace_patt_rule :
+  ('a option array -> term -> tbox) -> ('a option -> term_env) ->
+  sym * rule -> term * term
+  = fun replace_patt to_term_env (s, r) ->
+  let arity = Bindlib.mbinder_arity r.rhs in
+  let arr = Array.init arity (fun _ -> None) in
+  let lhs =
+    List.map (fun arg -> Bindlib.unbox (replace_patt arr arg)) r.lhs in
+  let terms_env = Array.map to_term_env arr in
+  let rhs = Bindlib.msubst r.rhs terms_env in
+  add_args (symb s) lhs, rhs
+
+(** [replace_patt_by_meta_rule r] translates the rule [r] into a pair of
+    terms. The pattern variables in the LHS are replaced by fresh
+    metavariables. The terms with environment in the RHS are replaced by
+    their corresponding metavariables. *)
+let replace_patt_by_meta_rule =
+  let to_term_env m =
+    let m = match m with Some m -> m | None -> assert false in
+    let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
+    let xs = Bindlib.new_mvar mkfree xs in
+    let ar = Array.map _Vari xs in
+    TE_Some (Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ar))) in
+  replace_patt_rule (replace_patt_by_meta 0) to_term_env
+
+(** [replace_patt_by_symb_rule r] translates the rule [r] into a pair of
+    terms. The pattern variables in the LHS are replaced by fresh symbols.
+    The terms with environment in the RHS are replaced by their corresponding
+    symbols. *)
+let replace_patt_by_symb_rule =
+  let to_term_env s =
+    let s = match s with Some s -> s | None -> assert false in
+    TE_Some (Bindlib.unbox (Bindlib.bind_mvar [||] (_Symb s Nothing))) in
+  replace_patt_rule replace_patt_by_symb to_term_env
+
+(** [check_nullary_meta t] checks that all the metavariables in [t] are of
+    arity 0 and raises the exception Non_nullary_meta if it is not the case.
+    *)
+let rec check_nullary_meta : term -> unit = fun t ->
+  match t with
+  | Type
+  | Kind
+  | Symb _
+  | Wild
+  | Patt _         -> ()
+  | Meta (_, [||]) -> ()
+  | Appl (u, v)    -> check_nullary_meta u; check_nullary_meta v
+  | _              -> raise Non_nullary_meta
