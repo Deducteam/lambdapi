@@ -6,9 +6,10 @@
     "vscode": "^1.35.0"
   },
   "activationEvents": [
+    "onCommand:getGoals.start",
     "onLanguage:lp"
   ],
-  "main": ".out/src/protocol.js",
+  "main": "out/client.js",
   "contributes": {
     "languages": [
       {
@@ -32,7 +33,7 @@
     ],
     "commands": [
       {
-        "command": "vscode-lp.restart",
+        "command": "getGoals.start",
         "title": "vscode start"
       }
     ]
