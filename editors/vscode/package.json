@@ -34,7 +34,7 @@
     "commands": [
       {
         "command": "getGoals.start",
-        "title": "vscode start"
+        "title": "goals"
       }
     ]
   },

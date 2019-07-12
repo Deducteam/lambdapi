@@ -16,3 +16,6 @@ libraries/verine
 libraries/zenon_modulo
 .merlin
 *.install
+.DS_Store
+*.map
+editors/vscode/out/client.js
