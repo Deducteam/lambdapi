@@ -234,8 +234,8 @@ let dispatch_message ofmt dict =
 
   | "proof/goals" -> 
     let uri, line, pos = get_docTextPosition params in
-    let doc = let doc = Hashtbl.find completed_table uri in
-     get_goals ~doc ~line ~pos in  |> Option.iter (fun goals ->
+    let doc = Hashtbl.find completed_table uri in
+     get_goals ~doc ~line ~poss |> Option.iter (fun goals ->
       let result = `Assoc [ "contents", `String goals] in
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
