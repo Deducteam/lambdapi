@@ -1,14 +1,14 @@
-(************************************************************************)
+(* ********************************************************************** *)
 (* The λΠ-modulo Interactive Proof Assistant                            *)
-(************************************************************************)
+(* ********************************************************************** *)
 
-(************************************************************************)
+(* ********************************************************************** *)
 (* λΠ-modulo serialization Toplevel                                     *)
 (* Copyright 2018 MINES ParisTech -- Dual License LGPL 2.1 / GPL3+      *)
 (* Written by: Emilio J. Gallego Arias                                  *)
-(************************************************************************)
+(* ********************************************************************** *)
 (* Status: Very Experimental                                            *)
-(************************************************************************)
+(* ********************************************************************** *)
 
 open Core
 
@@ -186,6 +186,7 @@ let do_hover ofmt ~id params =
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
 
+
 let protect_dispatch p f x =
   try f x
   with
@@ -230,6 +231,16 @@ let dispatch_message ofmt dict =
   | "textDocument/didClose" ->
     protect_dispatch "didClose"
       (do_close ofmt) params
+
+  | "proof/goals" -> 
+    let uri, line, pos = get_docTextPosition params in
+    let doc = let doc = Hashtbl.find completed_table uri in
+     get_goals ~doc ~line ~pos in  |> Option.iter (fun goals ->
+      let result = `Assoc [ "contents", `String goals] in
+      let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg)
+    (*let msg = LSP.mk_reply ~id ~result:() in
+    LIO.send_json ofmt msg*)
 
   | "exit" ->
     exit 0
