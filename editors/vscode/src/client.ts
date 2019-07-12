@@ -4,6 +4,9 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from 'path';
+import * as fs from 'fs';
+import * as net from 'net';
+import * as child_process from 'child_process';
 import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor } from 'vscode';
 
 
@@ -21,25 +24,34 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
+
+	//create the server
+	
+
 	// The server is implemented in node
-	let serverModule = context.asAbsolutePath(
-		path.join('..', '..', 'lp-lsp', 'lp_lsp.ml')
-		//path.join('server', 'out', 'server.js')
-	);
+	//let serverModule = context.asAbsolutePath(
+	//	path.join('..', '..', 'lp-lsp', 'lp_lsp.ml')
+	//	//path.join('server', 'out', 'server.js')
+	//);
 	
 	// The debug options for the server
 	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+	//let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
 
 	// If the extension is launched in debug mode then the debug server options are used
 	// Otherwise the run options are used
-	let serverOptions: ServerOptions = {
-		run: { module: serverModule, transport: TransportKind.ipc },
-		debug: {
-			module: serverModule,
-			transport: TransportKind.ipc,
-			options: debugOptions
-		}
+	//let serverOptions: ServerOptions = {
+	//	run: { module: serverModule, transport: TransportKind.ipc },
+	//	debug: {
+	//		module: serverModule,
+	//		transport: TransportKind.ipc,
+	//		options: debugOptions
+	//	}
+	//};
+
+	let serverOptions = {
+		command: 'lp-lsp',
+		args: [ '--std' ]
 	};
 
 	// Options to control the language client
