@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as child_process from 'child_process';
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument } from 'vscode';
 
 
 import {
@@ -16,7 +16,8 @@ import {
 	ServerOptions,
 	TransportKind,
 	RequestType,
-	NotificationType
+	NotificationType,
+	TextDocumentIdentifier,
 } from 'vscode-languageclient';
 
 
@@ -50,7 +51,7 @@ export function activate(context: ExtensionContext) {
 	//};
 
 	let serverOptions = {
-		command: 'lp-lsp',
+		command: '/Users/houdamouzoun/.opam/4.05.0/bin/lp-lsp',
 		args: [ '--std' ]
 	};
 
@@ -80,10 +81,35 @@ export function activate(context: ExtensionContext) {
 
 	client.onReady().then(() => {
 
+		const editor = window.activeTextEditor;
+			
+			const doc = editor == undefined? null : editor.document; 
+			const selec = editor == undefined? null : editor.selection;
+			const uri = doc == null? null : doc.uri;
+
+		  // Create and show panel
+			
+			const panel = window.createWebviewPanel(
+				'goals',
+				'Goals',
+				ViewColumn.Two,
+				{}
+			);
+		
+			// And set its HTML content
+			panel.webview.html = getWebviewContent("");
+			window.onDidChangeTextEditorSelection(e => {
+				if (selec != null && uri != null){
+					sendGoalsRequest(selec.active, panel, uri)
+				} 
+			}
+				);
+				
+
 	context.subscriptions.push(
 		commands.registerCommand('getGoals.start', () => {
-
-		  workspace.onDidOpenTextDocument(_ => {
+			// TO delete redundant code
+		  /*workspace.onDidOpenTextDocument(_ => {
 			const editor = window.activeTextEditor;
 			
 			const doc = editor == undefined? null : editor.document; 
@@ -104,8 +130,14 @@ export function activate(context: ExtensionContext) {
 				client.sendNotification(notifChange, uri);
 			}
 			
-
 			
+			
+
+			const editor = window.activeTextEditor;
+			
+			const doc = editor == undefined? null : editor.document; 
+			const selec = editor == undefined? null : editor.selection;
+			const uri = doc == null? null : doc.uri;
 
 		  // Create and show panel
 			
@@ -133,7 +165,7 @@ export function activate(context: ExtensionContext) {
 	
 			
 			});	
-
+			*/
 			
 		})
 
@@ -161,22 +193,24 @@ export function activate(context: ExtensionContext) {
 
 		return htmlPage1.concat(goalsPrint.concat(htmlPage2));
 	}
-		
+
+export interface TextDocumentIdent{
+	uri : String
+}	
+
 export interface ParamsGoals {
-	uri : Uri
-	line : number
-	character : number
+	textDocument : TextDocumentIdent
+	position : Position
 }
 
 	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri){
 		let goalsState : String;
-		let cursor = {uri : uri, line : position.line, character : position.character}; 
-		//---client.onRequest(new RequestType("../../../../../lp-lsp/lp-lsp/getGoals", caret, string))
+		let doc = {uri : uri.toString()}
+		let cursor = {textDocument : doc, position : position}; 
 		const req = new RequestType<ParamsGoals, String, void, void>("proof/goals");
 		client.sendRequest(req, cursor).then((goals) => {
-		//return goals
-		return goals;
-		//panel.webview.html = getWebviewContent(goals);
+		//return goals;
+		panel.webview.html = getWebviewContent(goals);
 		}); 
 	}
 

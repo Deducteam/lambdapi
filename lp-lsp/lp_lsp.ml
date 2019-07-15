@@ -156,6 +156,13 @@ let get_docTextPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   file, line, character
 
+  (*let get_docTxtPosGoals params = 
+  let doc = dict_field "uri" params in
+  let file = string_field "file" doc in
+  let pos = dict_field "position" params in
+  (*let line, character = int_field "line" pos, int_field "character" pos in*)
+  doc,file, pos*)
+
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
@@ -182,6 +189,14 @@ let do_hover ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
   get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
+      let result = `Assoc [ "contents", `String goals] in
+      let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg)
+
+let do_goals ofmt ~id params =
+  let uri, line, pos = get_docTextPosition params in
+    let doc = Hashtbl.find completed_table uri in
+     get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
       let result = `Assoc [ "contents", `String goals] in
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
@@ -233,14 +248,7 @@ let dispatch_message ofmt dict =
       (do_close ofmt) params
 
   | "proof/goals" -> 
-    let uri, line, pos = get_docTextPosition params in
-    let doc = Hashtbl.find completed_table uri in
-     get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
-      let result = `Assoc [ "contents", `String goals] in
-      let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
-    (*let msg = LSP.mk_reply ~id ~result:() in
-    LIO.send_json ofmt msg*)
+    do_hover ofmt ~id params
 
   | "exit" ->
     exit 0
@@ -269,7 +277,7 @@ let lsp_main log_file std =
 
   let oc = F.std_formatter in
 
-  let debug_oc = open_out log_file in
+  let debug_oc = open_out_gen [Open_append;Open_creat] 511 log_file in
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
 
   (* XXX: Capture better / per sentence. *)
