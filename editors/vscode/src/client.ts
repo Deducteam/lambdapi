@@ -18,6 +18,7 @@ import {
 	RequestType,
 	NotificationType,
 	TextDocumentIdentifier,
+	RegistrationRequest,
 } from 'vscode-languageclient';
 
 
@@ -81,7 +82,7 @@ export function activate(context: ExtensionContext) {
 
 	client.onReady().then(() => {
 
-		const editor = window.activeTextEditor;
+			const editor = window.activeTextEditor;
 			
 			const doc = editor == undefined? null : editor.document; 
 			const selec = editor == undefined? null : editor.selection;
@@ -105,7 +106,10 @@ export function activate(context: ExtensionContext) {
 			}
 				);
 				
-
+		window.onDidChangeActiveTextEditor(e =>
+			restart(panel)
+		);
+			
 	context.subscriptions.push(
 		commands.registerCommand('getGoals.start', () => {
 			// TO delete redundant code
@@ -171,6 +175,25 @@ export function activate(context: ExtensionContext) {
 
 	  );
 	});
+
+}
+	
+
+	function restart(panel : WebviewPanel){
+		const editor = window.activeTextEditor;
+			
+			const doc = editor == undefined? null : editor.document; 
+			const selec = editor == undefined? null : editor.selection;
+			const uri = doc == null? null : doc.uri;
+		
+			// And set its HTML content
+			panel.webview.html = getWebviewContent("");
+			window.onDidChangeTextEditorSelection(e => {
+				if (selec != null && uri != null){
+					sendGoalsRequest(selec.active, panel, uri)
+				} 
+			}
+				);
 	}
 	
 	function getWebviewContent(goals : String) {
@@ -220,4 +243,3 @@ export function deactivate(): Thenable<void> | undefined {
 	}
 	return client.stop();
 }
-
