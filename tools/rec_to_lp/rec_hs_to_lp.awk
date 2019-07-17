@@ -1,3 +1,27 @@
+## Removes surrounding parens of string s
+function rm_surr_paren(s) {
+    t = gensub(/(\()*([^\(].*)/, "\\2", 1, s) ;
+    u = gensub(/(.*[^\)])(\))*/, "\\1", 1, t) ;
+    return u ;
+}
+## Remove spaces at the beginning and at the end of a string
+function rm_surr_sp(s) {
+    t = gensub(/^\s(\S.*)$/, "\\1", "1", s) ; # Remove space in front
+    return gensub(/(.*\S)\s*$/, "\\1", "1", t) # Remove space at end
+}
+## Take a dirty identifier (i.e. possibly with a surrounding
+## parenthesis), cleans it and determine whether it is a variable
+function is_var(ident) {
+    # Remove parens around field
+    clean = rm_surr_paren($i) ;
+    # If the first letter is uppercase, identifier is a constructor
+    # defined by a 'data'
+    first_up = match(clean, /[A-Z]/) ;
+    is_constructor = first_up == 1 ;
+    is_special = clean in special ;
+    is_defined = clean in context ;
+    return !is_constructor && !is_special && !is_defined
+}
 BEGIN {
     special["="] = 1
     special["main"] = 1
@@ -17,19 +41,6 @@ BEGIN {
 }
 /print/ { sub(/\s*print/, "compute") ; print }
 
-## Take a dirty identifier (i.e. possibly with a surrounding
-## parenthesis), cleans it and determine whether it is a variable
-function is_var(ident) {
-    # Remove parens around field
-    clean = gensub(/\(?(\w+)\)?/, "\\1", "1", $i) ;
-    # If the first letter is uppercase, identifier is a constructor
-    # defined by a 'data'
-    first_up = match(clean, /[A-Z]/) ;
-    is_constructor = first_up == 1 ;
-    is_special = clean in special ;
-    is_defined = clean in context ;
-    return !is_constructor && !is_special && !is_defined
-}
 ## Rewrite rules
 ## Do not process 'main = do' line
 ($1 !~ /main|data/) && /=/ {
@@ -41,11 +52,6 @@ function is_var(ident) {
                "rule \\1 → \\2", "1") ;
     print t
 }
-## Remove spaces at the beginning and at the end of a string
-function rm_trailing_sp(s) {
-    t = gensub(/^\s(\S.*)$/, "\\1", "1", s) ; # Remove space in front
-    return gensub(/(.*\S)\s*$/, "\\1", "1", t) # Remove space at end
-}
 ## Variant
 ## Pattern describe "data with at least one bar"
 /data [^\|]*\|/ {
@@ -54,7 +60,7 @@ function rm_trailing_sp(s) {
     rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
     split(rhs, sep_constr, "|") ;
     for (c in sep_constr) {
-        clean = rm_trailing_sp(sep_constr[c]) ;
+        clean = rm_surr_sp(sep_constr[c]) ;
         if (match(clean, /\s/) == 0)
             printf("symbol %s : %s\n", clean, type_ident) ;
         else {
