@@ -5,6 +5,7 @@ BEGIN {
     special["data"] = 1
     special["|"] = 1
 }
+
 /::/ {
     sub(/::/, ":") ;
     r = gensub(/^([^:]+) : (.*)$/,
@@ -13,7 +14,7 @@ BEGIN {
     q = gensub(/->/, "⇒", "g", r) ;
     print q
 }
-/print/ { sub(/print/, "compute") ; print }
+/print/ { sub(/\s*print/, "compute") ; print }
 
 ## Take a dirty identifier (i.e. possibly with a surrounding
 ## parenthesis), cleans it and determine whether it is a variable
@@ -28,7 +29,8 @@ function is_var(ident) {
     is_defined = clean in context ;
     return !is_constructor && !is_special && !is_defined
 }
-/=/ {
+## Do no process 'main = do' line
+($1 !~ /main|data/) && /=/ {
     for (i = 1; i <= NF; i++) {
         if (is_var($i))
             $i = "\&"$i
@@ -37,5 +39,7 @@ function is_var(ident) {
                "rule \\1 → \\2", "1") ;
     print t
 }
-/main → do/ { }
+/data/ {
+    print
+}
 END {}
