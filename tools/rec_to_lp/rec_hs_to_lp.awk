@@ -6,6 +6,7 @@ BEGIN {
     special["|"] = 1
 }
 
+## Symbol declaration
 /::/ {
     sub(/::/, ":") ;
     r = gensub(/^([^:]+) : (.*)$/,
@@ -29,7 +30,8 @@ function is_var(ident) {
     is_defined = clean in context ;
     return !is_constructor && !is_special && !is_defined
 }
-## Do no process 'main = do' line
+## Rewrite rules
+## Do not process 'main = do' line
 ($1 !~ /main|data/) && /=/ {
     for (i = 1; i <= NF; i++) {
         if (is_var($i))
@@ -39,7 +41,14 @@ function is_var(ident) {
                "rule \\1 → \\2", "1") ;
     print t
 }
-/data/ {
-    print
+## Variant
+/data [^\|]*\|/ {
+    type_ident = gensub(/^data ([A-Z]\w*) = .*/, "\\1", "1") ;
+    print sprintf("symbol %s : TYPE", type_ident)
+    rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
+    split(rhs, sep_constr, "|") ;
+    for (c in sep_constr) {
+        print sprintf("symbol %s : %s", sep_constr[c], type_ident)
+    }
 }
 END {}
