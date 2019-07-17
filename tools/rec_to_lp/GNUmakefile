@@ -3,4 +3,4 @@ SRC = rec_hs_to_lp.awk
 .PHONY: tests.
 
 tests:
-	$(AWK) -f $(SRC) test/ex.hs
+	$(AWK) -f $(SRC) tests/ex.hs
