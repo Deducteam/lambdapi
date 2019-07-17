@@ -45,18 +45,18 @@ function is_var(ident) {
 ## Pattern describe "data with at least one bar"
 /data [^\|]*\|/ {
     type_ident = gensub(/^data ([A-Z]\w*) = .*/, "\\1", "1") ;
-    print sprintf("symbol %s : TYPE", type_ident)
+    printf("symbol %s : TYPE\n", type_ident)
     rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
     split(rhs, sep_constr, "|") ;
     for (c in sep_constr) {
-        print sprintf("symbol %s : %s", sep_constr[c], type_ident)
+        printf("symbol %s : %s\n", sep_constr[c], type_ident)
     }
 }
 ## Records
 ## Pattern: data with no bars
 /data [^\|]*$/ {
     type_ident = gensub(/^data ([A-Z]\w*) = .*/, "\\1", "1") ;
-    print sprintf("symbol %s : TYPE", type_ident) ;
+    printf("symbol %s : TYPE\n", type_ident) ;
     rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
     # Get record constructor
     rec_constr = gensub(/^(\S+).*/, "\\1", "1", rhs) ;
