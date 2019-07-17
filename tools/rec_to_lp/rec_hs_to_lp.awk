@@ -35,25 +35,34 @@ function is_var(ident) {
 ($1 !~ /main|data/) && /=/ {
     for (i = 1; i <= NF; i++) {
         if (is_var($i))
-            $i = "\&"$i
+            $i = "\&"$i ;
     }
     t = gensub(/^([^=]+) = (.*)$/,
                "rule \\1 → \\2", "1") ;
     print t
 }
+## Remove spaces at the beginning and at the end of a string
 function rm_trailing_sp(s) {
-    return gensub(/^\s*(\S*\S)\s*$/, "\\1", "1", s)
+    t = gensub(/^\s(\S.*)$/, "\\1", "1", s) ; # Remove space in front
+    return gensub(/(.*\S)\s*$/, "\\1", "1", t) # Remove space at end
 }
 ## Variant
 ## Pattern describe "data with at least one bar"
 /data [^\|]*\|/ {
     type_ident = gensub(/^data ([A-Z]\w*) = .*/, "\\1", "1") ;
-    printf("symbol %s : TYPE\n", type_ident)
+    printf("symbol %s : TYPE\n", type_ident) ;
     rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
     split(rhs, sep_constr, "|") ;
     for (c in sep_constr) {
         clean = rm_trailing_sp(sep_constr[c]) ;
-        printf("symbol %s : %s\n", clean, type_ident)
+        if (match(clean, /\s/) == 0)
+            printf("symbol %s : %s\n", clean, type_ident) ;
+        else {
+            constr = gensub(/^(\S+).*/, "\\1", "1", clean) ;
+            args = gensub(/^\S+\s(.*)/, "\\1", "1", clean) ;
+            ctype = gensub(/\s/, " ⇒ ", "g", args) ;
+            printf("symbol %s : %s\n", constr, ctype) ;
+        }
     }
 }
 ## Records
@@ -66,6 +75,6 @@ function rm_trailing_sp(s) {
     rec_constr = gensub(/^(\S+).*/, "\\1", "1", rhs) ;
     fields = gensub(/^\S+\s(.*)$/, "\\1", "1", rhs) ;
     fields_arr = gensub(/\s/, " ⇒ ", "g", fields) ;
-    printf("symbol %s : %s %s\n", rec_constr, fields_arr, type_ident)
+    printf("symbol %s : %s %s\n", rec_constr, fields_arr, type_ident) ;
 }
 END {}
