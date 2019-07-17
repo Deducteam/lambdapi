@@ -68,7 +68,7 @@ BEGIN {
             constr = gensub(/^(\S+).*/, "\\1", "1", clean) ;
             args = gensub(/^\S+\s(.*)/, "\\1", "1", clean) ;
             ctype = gensub(/\s/, " ⇒ ", "g", args) ;
-            printf("symbol %s : %s\n", constr, ctype) ;
+            printf("symbol %s : %s ⇒ %s\n", constr, ctype, type_ident) ;
         }
     }
 }
