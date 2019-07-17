@@ -1,5 +1,11 @@
 data Xbool = Xfalse | Xtrue
     deriving (Show, Eq, Ord)
+
+data Bit = X0 | X1
+  deriving (Show, Eq, Ord)
+
+data Octet = BuildOctet Bit Bit Bit Bit Bit Bit Bit Bit 
+  deriving (Show, Eq, Ord)
     
 notBool :: Xbool -> Xbool
 andBool :: Xbool -> Xbool -> Xbool
