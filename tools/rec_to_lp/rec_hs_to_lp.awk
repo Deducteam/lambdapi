@@ -1,3 +1,4 @@
+#!/usr/bin/awk -f
 ## Removes surrounding parens of string s
 function rm_surr_paren(s) {
     t = gensub(/(\()*([^\(].*)/, "\\2", 1, s) ;
