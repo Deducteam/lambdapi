@@ -41,6 +41,9 @@ function is_var(ident) {
                "rule \\1 → \\2", "1") ;
     print t
 }
+function rm_trailing_sp(s) {
+    return gensub(/^\s*(\S*\S)\s*$/, "\\1", "1", s)
+}
 ## Variant
 ## Pattern describe "data with at least one bar"
 /data [^\|]*\|/ {
@@ -49,7 +52,8 @@ function is_var(ident) {
     rhs = gensub(/[^=]*= (.*)$/, "\\1", "1") ;
     split(rhs, sep_constr, "|") ;
     for (c in sep_constr) {
-        printf("symbol %s : %s\n", sep_constr[c], type_ident)
+        clean = rm_trailing_sp(sep_constr[c]) ;
+        printf("symbol %s : %s\n", clean, type_ident)
     }
 }
 ## Records
