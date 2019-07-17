@@ -1,3 +1,6 @@
+data Nat = D0 | S Nat
+    deriving (Show, Eq, Ord)
+
 data Xbool = Xfalse | Xtrue
     deriving (Show, Eq, Ord)
 
