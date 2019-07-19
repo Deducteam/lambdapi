@@ -194,11 +194,16 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           | TcstrFreeVars(xs, i) ->
               let b = lift vars.(i) in
               let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
-              let bound = Bindlib.bind_mvar xs b in
-              let r = Bindlib.is_closed bound in
+              let _, forbidden = VarMap.partition
+                  (fun v _ -> Array.mem v xs) to_stamped in
+              let r = VarMap.for_all (fun _ sv -> not @@ Bindlib.occur sv b)
+                  forbidden in
+              (* let bound = Bindlib.bind_mvar xs b in *)
+              (* let r = Bindlib.is_closed bound in *)
               if !log_enabled then log_fvc r xs ;
               if r
-              then ( boundv.(i) <- Some(Bindlib.unbox bound)
+              then ( let bound = Bindlib.bind_mvar xs b in
+                     boundv.(i) <- Some(Bindlib.unbox bound)
                    ; ok )
               else fail in
         walk next stk cursor to_stamped
