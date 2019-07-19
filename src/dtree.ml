@@ -541,8 +541,10 @@ struct
                      ; [| e |]
                      ; Array.drop (ci + 1) r.lhs ] in
     let transf (r:clause) =
-      match r.lhs.(ci) with
+      let ph, pargs = get_args r.lhs.(ci) in
+      match ph with
       | Abst(_, b)           ->
+          assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mkfree v) in
           let lhs = Array.concat (insert r b) in
           Some({ r with lhs })
