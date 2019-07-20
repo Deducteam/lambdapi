@@ -99,6 +99,25 @@ let eq : term -> term -> bool = fun a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
+(** [is_closed t] tells whether the term [t], which should not contain pattern
+    variables or term environments, is closed. Note that this function has NOT
+    a constant time complexity: it requires traversing every branch of a term,
+    until a binder is found. *)
+let rec is_closed : term -> bool = fun a ->
+  match unfold a with
+  | Patt(_,_,_)
+  | TEnv(_,_) -> assert false
+  | Prod(a,b)
+  | Abst(a,b) -> is_closed a && Bindlib.binder_closed b
+  | Appl(t,u) -> is_closed t && is_closed u
+  | Meta(_,a) -> Array.for_all is_closed a
+  | Vari(_)   -> false
+  | Type
+  | Kind
+  | Symb(_)
+  | Wild
+  | TRef(_)   -> true
+
 (** [eq_vari t u] checks that [t] and [u] are both variables, and the they are
     pariwise equal. *)
 let eq_vari : term -> term -> bool = fun t u ->

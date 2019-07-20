@@ -51,4 +51,5 @@ def 7 : Nat := S 6.
 
 #ASSERT (plus (fact 5) (fact 4)) == (plus (fact 4) (fact 5)).
 #ASSERT (plus (fact seven) (fact six)) == (plus (fact six) (fact seven)).
-#ASSERT (plus (fact seven) (fact eight)) == (plus (fact eight) (fact seven)).
+(; The following takes a bit too long for regular tests now. ;)
+(;#ASSERT (plus (fact seven) (fact eight)) == (plus (fact eight) (fact seven)).;)

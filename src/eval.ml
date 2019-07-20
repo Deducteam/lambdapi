@@ -133,40 +133,50 @@ and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
     let rec match_args ps ts =
       match (ps, ts) with
       | ([]   , _    ) -> Some(Bindlib.msubst r.rhs ar, ts)
-      | (p::ps, t::ts) -> if matching ar p t then match_args ps ts else None
+      | (p::ps, t::ts) -> if matching [] ar p t then match_args ps ts
+                          else None
       | (_    , _    ) -> assert false (* cannot happen *)
     in
     match_args r.lhs stk
   in
   List.map_find match_rule Timed.(!(s.sym_rules))
 
-(** [matching ar p t] checks that term [t] matches pattern [p]. The values for
-    pattern variables (using the [ITag] node) are stored in [ar], at the index
-    they denote. In case several different values are found for a same pattern
-    variable, equality modulo is computed to check compatibility. *)
-and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
+(** [matching [] ar p t] checks that the term [t] matches the pattern [p]. The
+    values for pattern variables (using the [ITag] node) are stored in [ar] at
+    the index they denote.  If several different values are found for the same
+    pattern variable, equality modulo is computed to check compatibility. Note
+    that the first argument is used for the handling of higher-order patterns,
+    to prevent certain variables to appear in matching terms.  It is only used
+    by the function internally. *)
+and matching : tvar list -> term_env array -> term -> stack_elt -> bool =
+    fun xs ar p t ->
   if !log_enabled then
     log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));
   let res =
     (* First handle patterns that do not need the evaluated term. *)
     match p with
-    | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
-        let fn _ = snd Pervasives.(!t) in
-        let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
-        ar.(i) <- TE_Some(b);
-        true
-    | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
+    | Patt(Some(i),_,e) when ar.(i) = TE_None ->
+        let t = snd (Pervasives.(!t)) in
+        if Array.length e = 0 && is_closed t then
+          let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+          ar.(i) <- TE_Some(b);	true
+        else
+          let vs = Array.map to_tvar e in
+          let b = Bindlib.bind_mvar vs (lift t) in
+          let res = List.for_all (fun x -> not (Bindlib.occur x b)) xs in
+          if res then (ar.(i) <- TE_Some(Bindlib.unbox b); true) else
+          let b = Bindlib.bind_mvar vs (lift (snf t)) in
+          let res = List.for_all (fun x -> not (Bindlib.occur x b)) xs in
+          (if res then ar.(i) <- TE_Some(Bindlib.unbox b)); res
+    | Patt(None   ,_,e)                       ->
+        let t = snd (Pervasives.(!t)) in
+        (Array.length e = 0 && (xs = [] || is_closed t)) ||
         let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        let res = Bindlib.is_closed b in
-        if res then ar.(i) <- TE_Some(Bindlib.unbox b);
-        res
-    | Patt(None   ,_,[||]) -> true
-    | Patt(None   ,_,e   ) ->
-        let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        Bindlib.is_closed b
-    | _                                 ->
+        let b = Bindlib.bind_mvar vs (lift t) in
+        List.for_all (fun x -> not (Bindlib.occur x b)) xs ||
+        let b = Bindlib.bind_mvar vs (lift (snf t)) in
+        List.for_all (fun x -> not (Bindlib.occur x b)) xs
+    | _                                       ->
     (* Other cases need the term to be evaluated. *)
     if not (fst Pervasives.(!t)) then Pervasives.(t := (true, whnf (snd !t)));
     match (p, snd Pervasives.(!t)) with
@@ -174,11 +184,11 @@ and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
         let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
         eq_modulo (Bindlib.msubst b e) t
     | (Abst(_,t1)       , Abst(_,t2)   ) ->
-        let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
-        matching ar t1 (Pervasives.ref (false, t2))
+        let (x,t1,t2) = Bindlib.unbind2 t1 t2 in
+        matching (x::xs) ar t1 (Pervasives.ref (false, t2))
     | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
-        matching ar t1 (Pervasives.ref (fst Pervasives.(!t), t2))
-        && matching ar u1 (Pervasives.ref (false, u2))
+        matching xs ar t1 (Pervasives.ref (fst Pervasives.(!t), t2))
+        && matching xs ar u1 (Pervasives.ref (false, u2))
     | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
     | (Symb(s1,_)       , Symb(s2,_)   ) -> s1 == s2
     | (_                , _            ) -> false
@@ -218,23 +228,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [whnf t] computes a weak head-normal form of [t]. *)
-let whnf : term -> term = fun t ->
-  Pervasives.(steps := 0);
-  let t = unfold t in
-  let u = whnf t in
-  if Pervasives.(!steps = 0) then t else u
-
-(** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : term -> term = fun t ->
-  match get_args (whnf_beta t) with
-  | Prod(a,b), _ ->
-     let x,b = Bindlib.unbind b in
-     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
-  | h, ts -> add_args h (List.map whnf_beta ts)
-
 (** [snf t] computes the strong normal form of the term [t]. *)
-let rec snf : term -> term = fun t ->
+and snf : term -> term = fun t ->
   let h = whnf t in
   match h with
   | Vari(_)     -> h
@@ -257,6 +252,21 @@ let rec snf : term -> term = fun t ->
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
   | TRef(_)     -> assert false
+
+(** [whnf t] computes a weak head-normal form of [t]. *)
+let whnf : term -> term = fun t ->
+  Pervasives.(steps := 0);
+  let t = unfold t in
+  let u = whnf t in
+  if Pervasives.(!steps = 0) then t else u
+
+(** [simplify t] reduces simple redexes of [t]. *)
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
+  | Prod(a,b), _ ->
+     let x,b = Bindlib.unbind b in
+     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
+  | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
