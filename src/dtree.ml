@@ -294,7 +294,11 @@ struct
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occurrence.pp oc
       (ReductionStack.to_list positions |> List.map fst) ;
-    F.fprintf oc "@]@," ;
+    F.fprintf oc "@] -- " ;
+    F.fprintf oc "Depth: @[<h>" ;
+    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") F.pp_print_int oc
+      (ReductionStack.to_list positions |> List.map snd) ;
+    F.fprintf oc "@]@,";
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
     F.fprintf oc "@.@]}"
