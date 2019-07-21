@@ -311,7 +311,7 @@ struct
       if rs = [] then 0 else
       List.max ~cmp:Int.compare
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Occurrence.sequence size
+    let positions = Occurrence.args_of size Occurrence.empty
                     |> List.map (fun x -> (x, 0))
                     |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought of as a Unix pipe | *)

@@ -305,6 +305,12 @@ struct
       is [[4;3;1]]. *)
   let prefix : t -> t -> t = fun p q -> q @ p
 
+  (** [args_of a r] returns the occurrences of the arguments of root [r]
+      considering it has arity [a]. *)
+  let args_of : int -> t -> t list = fun arity root ->
+    if arity = 0 then [] else
+    List.init (arity - 1) (fun i -> prefix root [i])
+
   (** [sequence ?from n] returns a sequence of [n] consecutive positions
       starting from [from]. *)
   let sequence : ?from:t -> int -> t list = fun ?(from=[]) n ->
