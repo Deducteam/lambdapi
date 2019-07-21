@@ -404,7 +404,6 @@ struct
         | Patt(_, _, e) -> Array.length e = de && de = 0
         | _             -> false in
       Array.for_all2 check lhs de
-      (* Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs *)
       && nonl lhs in
     NlScorable.is_empty nonlin && FvScorable.is_empty freevars
     && (lhs = [||] || ripe lhs)
