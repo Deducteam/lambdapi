@@ -394,14 +394,16 @@ struct
     let ripe lhs =
       (* [ripe l] returns whether [lhs] can be applied. *)
       let de = Array.sub depths 0 (Array.length lhs) in
-      Array.for_all2 (fun p d -> match p with
+      let check pt de =
       (* We verify that there are no variable constraints, that is, if
          abstractions are traversed, then variable must be allowed in pattern
          variables.  In addition, care must be taken when checking variable
          permutations, hence the [d = 0] (see [tests/OK/abstractions.lp]).
          See issue #225 on github.*)
-                                 | Patt(_, _, e) -> Array.length e = d && d = 0
-                                 | _             -> false) lhs de
+        match pt with
+        | Patt(_, _, e) -> Array.length e = de && de = 0
+        | _             -> false in
+      Array.for_all2 check lhs de
       (* Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs *)
       && nonl lhs in
     NlScorable.is_empty nonlin && FvScorable.is_empty freevars
