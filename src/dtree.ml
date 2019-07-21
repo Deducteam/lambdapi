@@ -488,7 +488,7 @@ struct
       let l, m, r = ReductionStack.destruct pos ci in
       let occ, depth = m in
       let _, _, nargs = get_args_len pat in
-      let replace = Occurrence.sequence ~from:(Occurrence.sub occ) nargs
+      let replace = Occurrence.args_of nargs occ
                   |> List.map (fun x -> (x, depth)) in
       ReductionStack.restruct l replace r in
     let ph, pargs, lenp = get_args_len pat in

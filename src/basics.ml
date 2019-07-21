@@ -311,14 +311,6 @@ struct
     if arity = 0 then [] else
     List.init (arity - 1) (fun i -> prefix root [i])
 
-  (** [sequence ?from n] returns a sequence of [n] consecutive positions
-      starting from [from]. *)
-  let sequence : ?from:t -> int -> t list = fun ?(from=[]) n ->
-    let start, p = match from with
-      | []     -> 0, empty
-      | s :: p -> s, p in
-    List.init n (fun i -> prefix p [i + start])
-
   (** [sub p] returns the position of the first subterm of [p]. *)
   let sub : t -> t = fun p -> 0 :: p
 
