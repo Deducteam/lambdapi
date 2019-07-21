@@ -374,8 +374,10 @@ struct
     let cind = kept.(sel_partial) in
     Some(cind, score)
 
-  (** [is_exhausted r] returns whether [r] can be applied or not. *)
-  let is_exhausted : clause -> bool = fun { lhs ; nonlin ; freevars ; _ } ->
+  (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
+      the occurrences of the terms in [r]. *)
+  let is_exhausted : occur_rs -> clause -> bool =
+    fun positions { lhs ; nonlin ; freevars ; _ } ->
     let nonl lhs =
       (* Verify that there are no non linearity constraints in the remaining
          terms.  We must check that there are no constraints in the remaining
@@ -387,20 +389,31 @@ struct
       List.same_length slots slots_uniq
       && not @@ List.exists (fun s -> NlScorable.constrained s nonlin)
           slots_uniq in
+    let depths = ReductionStack.to_list positions |> List.map snd
+                 |> Array.of_list in
     let ripe lhs =
       (* [ripe l] returns whether [lhs] can be applied. *)
-      Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs
+      let de = Array.sub depths 0 (Array.length lhs) in
+      Array.for_all2 (fun p d -> match p with
+      (* We verify that there are no variable constraints, that is, if
+         abstractions are traversed, then variable must be allowed in pattern
+         variables.  In addition, care must be taken when checking variable
+         permutations, hence the [d = 0] (see [tests/OK/abstractions.lp]).
+         See issue #225 on github.*)
+                                 | Patt(_, _, e) -> Array.length e = d && d = 0
+                                 | _             -> false) lhs de
+      (* Array.for_all (function Patt(_, _, [||]) -> true | _ -> false) lhs *)
       && nonl lhs in
     NlScorable.is_empty nonlin && FvScorable.is_empty freevars
     && (lhs = [||] || ripe lhs)
 
   (** [yield m] yields a clause to be applied. *)
-  let yield : t -> decision = fun ({ clauses ; _ } as m) ->
+  let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     try
       if !ordered_rules
       then let fc = List.hd clauses in
-        if is_exhausted fc then Yield(fc) else raise Not_found
-      else let r = List.find is_exhausted clauses in
+        if is_exhausted positions fc then Yield(fc) else raise Not_found
+      else let r = List.find (is_exhausted positions) clauses in
       Yield(r)
     with Not_found ->
       let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
@@ -461,7 +474,9 @@ struct
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if depth >= 1
+        let freevars = if (Array.length e) <> depth || depth >= 1
+        (* First clause of disjunction would be enough if we did not consider
+           variable permutations. *)
           then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
