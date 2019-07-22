@@ -49,6 +49,8 @@ type term =
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
+ and dtree = (term, (term_env, term) Bindlib.mbinder) Tree_types.dtree
+
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_mode}).  *)
@@ -65,7 +67,7 @@ type term =
   (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
-  ; sym_tree  : (int Lazy.t * tree Lazy.t) ref
+  ; sym_tree  : dtree ref
   (** Tree for rule selection along with its capacity (see
       {!val:Dtree.capacity}). *)
   ; sym_mode  : sym_mode
@@ -206,72 +208,6 @@ type term =
     can hence be substituted in [r.rhs] with [Bindlib.msubst r.rhs env] to get
     the result of the application of the rule. *)
 
-(** {3 Decision trees for rewriting} *)
-
-(** Constraints among elements of the tree. *)
-and tree_constraint =
-  | TcstrEq of int * int
-  (** [TcstrEq(i, j)] ensures that the terms at indexes [i] and [j] are
-      convertible. *)
-  | TcstrFreeVars of term Bindlib.var array * int
-  (** [TcstrFreeVars(v, i)] ensures the term at slot [i] of {!val:vars}
-      contain only free variables that are in [v]. *)
-
-(** Trees are used to efficiently choose a rewriting rule given a list of
-    terms (beginning with a symbol) to be rewritten.  The left-hand side
-    of the rule is spread across the {!constructor:Node}s of the tree.  Hence,
-    progressing down the tree is equivalent to reducing the set of possible
-    rules.  When a {!constructor:Leaf} is reached, the target is rewritten to
-    the content of the leaf. *)
- and tree =
-  | Leaf of (int * int) list * (term_env, term) Bindlib.mbinder
-  (** Holds the right hand side of a rule.  In a {!constructor:Leaf}[(e, a)],
-      - [e] maps positions in the stack containing terms which stand as
-            pattern variables in some rules to the slot allocated in the
-            {!type:term_env array}.  An associative list is used rather than a
-            mapping because the only operations performed are adding elements
-            and then {!val:List.iter}ing through the whole structure.
-      - [a] is the right-hand side of the rule. *)
-  | Node of node_data
-  (** Nodes allow to perform switches, a switch being the matching of a
-      pattern.  Briefly, a {!constructor:Node} contains one subtree per
-      possible switch, plus possibly a default case and an abstraction
-      case. *)
-  | Condition of condition_data
-  (** Binary node with branching depending on a boolean condition on a
-      term. *)
-  | Fail
-
-(** Data needed to carry out a condition verification during evaluation. *)
- and condition_data =
-  { ok : tree
-  (** Tree branched on if the condition is verified. *)
-  ; condition : tree_constraint
-  (** Type of the condition. *)
-  ; fail : tree
-  (** Tree branched on if the condition is not verified. *)}
-
-(** Data contained in a node of a tree.  A node allows to filter the possible
-    rules by branching on a child node. *)
- and node_data =
-  { swap : int
-  (** Indicates on which term of the input stack (counting from the head), the
-      next switch is to be done. *)
-  ; store : bool
-  (** Whether to store the current term.  Stored terms might be used in the
-      right hand side. *)
-  ; children : tree Treecons.Map.t
-  (** Subtrees that represent the matching of a constructor available in the
-      rules.  Maps representation of constructors as strings built with
-      {!val:add_args_repr} or {!val:symrepr_of_term} from {!module:dtree} to
-      trees resulting from a specialisation on the key. *)
-  ; abstraction : (term Bindlib.var * tree) option
-  (** Specialisation by an abstraction along with the free variable
-      involved. *)
-  ; default : tree option
-  (** If a wildcard is among the patterns, this subtree is used when the term
-      matched isn't a constructor among the {!field:children} terms. *)}
-
 (** {3 Metavariables and related functions} *)
 
 (** Representation of a metavariable,  which corresponds to a place-holder for
@@ -357,7 +293,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_tree = ref (lazy 0, lazy Fail) }
+    ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 

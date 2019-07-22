@@ -324,50 +324,6 @@ module OccurSet = Set.Make(Occurrence)
 
 (** {3 Operators on trees} *)
 
-(** [iter l n f t] is a generic iterator on trees; with
-    - function [l] performed on leaves,
-    - function [n] performed on nodes,
-    - [f] returned in case of {!constructor:Fail} on tree [t]. *)
-let tree_iter :
-  do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
-  do_node:(int -> bool -> 'a TC.Map.t -> (tvar * 'a ) option -> 'a option ->
-           'a) ->
-  do_condition:('a -> tree_constraint -> 'a -> 'a) ->
-  fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
-    let rec loop = function
-      | Leaf(pa, a)                                 -> do_leaf pa a
-      | Fail                                        -> fail
-      | Condition(cdata)                            ->
-          let { condition ; ok ; fail } = cdata in
-          do_condition (loop ok) condition (loop fail)
-      | Node({ swap ; store ; children ; abstraction ; default }) ->
-          do_node swap store
-            (TC.Map.map loop children)
-            (Option.map (fun (v, x) -> (v, loop x)) abstraction)
-            (Option.map loop default) in
-    loop t
-
-(** [capacity t] computes the capacity of tree [t].  During evaluation, some
-    terms that are being filtered by the patterns have to be saved in order to
-    be bound in the right hand side of the rule, or because they must verify a
-    constraint.  The capacity is the least upper bound of the number of terms
-    to be saved.  Let [P] be the set of all paths from root to leaves in a
-    tree [t].  Let [s: P → N] be the function mapping to any path the number
-    of nodes that have the {!field:store} tag to [true].  Then the capacity
-    [c] of [t] is [c = max{s(p) | p ∈ P}]. *)
-let capacity : tree -> int =
-  let do_leaf _ _ = 0 in
-  let fail = 0 in
-  let do_node _ st ch ab de =
-    let _, chdepths = List.split (TC.Map.bindings ch) in
-    let dedepth = Option.get de 0 in
-    let abdepth = match ab with Some(_, n) -> n | None -> 0 in
-    List.max ~cmp:Int.compare (abdepth::dedepth::chdepths) +
-    (if st then 1 else 0) in
-  let do_condition t _ f = max t f in
-  tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
-    ~do_condition:do_condition
-
 (** {3 Tree constructor conversion} *)
 
 (** [is_treecons t] returns whether a term [t] is considered as a

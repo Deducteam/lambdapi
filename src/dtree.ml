@@ -6,16 +6,17 @@ open Terms
 open Extra
 open Basics
 open Treecstr
+open Tree_types
 module TC = Treecons
 
 (** Priority on topmost rule if set to true. *)
 let ordered_rules : bool ref = ref false
 
-(** See {!type:tree} in {!module:Terms}. *)
-type t = tree
-
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
+
+(** See {!type:tree} in {!module:Terms}. *)
+type t = (term, action) tree
 
 (** {b Example} Given a rewrite system for a symbol [f] given as
     - [f Z (S m)     → S m]
@@ -157,7 +158,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotCons(TC.Abst)    -> assert false
     | DotSuccess -> F.fprintf oc "✓"
     | DotFailure -> F.fprintf oc "✗" in
-  let pp_tcstr : tree_constraint pp = fun oc -> function
+  let pp_tcstr : term tree_constraint pp = fun oc -> function
     | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
     | TcstrFreeVars(vs, i) ->
         F.fprintf oc "%a@@<sub>v</sub>%d" (F.pp_print_list P.pp_tvar)

@@ -161,6 +161,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
+  let open Tree_types in
   let vars = Array.make capa Kind in (* dummy terms *)
   let boundv = Array.make capa None in
   let module R = Dtree.ReductionStack in
