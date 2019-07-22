@@ -6,7 +6,6 @@ open Console
 open Terms
 open Basics
 open Print
-module TC = Treecons
 
 (** The head-structure of a term t is:
 - λx:_,h if t=λx:a,u and h is the head-structure of u
@@ -212,7 +211,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
     | Node({swap; children; store; abstraction; default}) ->
         try
           let left, examined, right = R.destruct stk swap in
-          if TC.Map.is_empty children && abstraction = None then
+          if TcMap.is_empty children && abstraction = None then
             match default with
             | None    -> None
             | Some(t) ->
@@ -235,15 +234,15 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                  ; cursor + 1 )
             else cursor in
           try begin match t with
-            | Symb(s, _) ->
+            | Terms.Symb(s, _) ->
                 let c_ari = List.length args in
-                let cons = TC.Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
+                let cons = Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                                    ; c_ari }) in
-                let matched = TC.Map.find cons children in
+                let matched = TcMap.find cons children in
                 walk matched (R.restruct left args right) cursor to_stamped
             | Vari(x)    ->
-                let cons = TC.Vari(Bindlib.name_of x) in
-                let matched = TC.Map.find cons children in
+                let cons = Vari(Bindlib.name_of x) in
+                let matched = TcMap.find cons children in
                 walk matched (R.restruct left args right) cursor to_stamped
             | Abst(_, b) ->
                 begin match abstraction with

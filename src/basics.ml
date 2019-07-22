@@ -3,7 +3,6 @@
 open Extra
 open Timed
 open Terms
-module TC = Treecons
 
 (** Sets and maps of variables. *)
 module Var =
@@ -321,8 +320,6 @@ module OccurMap = Map.Make(Occurrence)
 
 (** Functional set with [Occurrence.t] as items. *)
 module OccurSet = Set.Make(Occurrence)
-
-(** {3 Operators on trees} *)
 
 (** {3 Tree constructor conversion} *)
 

@@ -7,7 +7,6 @@ open Extra
 open Basics
 open Treecstr
 open Tree_types
-module TC = Treecons
 
 (** Priority on topmost rule if set to true. *)
 let ordered_rules : bool ref = ref false
@@ -132,7 +131,7 @@ module ReductionStack = RedListStack
 type dot_term =
   | DotDefa (* Default case *)
   | DotAbst of tvar
-  | DotCons of Treecons.treecons
+  | DotCons of treecons
   | DotSuccess
   | DotFailure
 
@@ -153,9 +152,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(TC.Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
-    | DotCons(TC.Vari(s)) -> F.fprintf oc "%s" s
-    | DotCons(TC.Abst)    -> assert false
+    | DotCons(Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
+    | DotCons(Vari(s)) -> F.fprintf oc "%s" s
+    | DotCons(Abst)    -> assert false
     | DotSuccess -> F.fprintf oc "✓"
     | DotFailure -> F.fprintf oc "✗" in
   let pp_tcstr : term tree_constraint pp = fun oc -> function
@@ -183,7 +182,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
         (* Create edge *)
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon ;
-        TC.Map.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
+        TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children ;
         Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t)
           abstraction ;
         Option.iter (write_tree tag DotDefa) default ;
@@ -207,7 +206,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
            default ; abstraction }) ->
       F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
         swap (if store then " shape=\"box\"" else "") ;
-      TC.Map.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children ;
+      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children ;
       Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction ;
       Option.iter (fun t -> write_tree 0 DotDefa t) default
   | Leaf(_)                         -> ()
@@ -443,18 +442,18 @@ struct
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
-  let get_cons : term list -> (TC.treecons * term) list = fun telst ->
+  let get_cons : term list -> (treecons * term) list = fun telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
       | Symb({ sym_name ; sym_path ; _ }, _) ->
-          Some(TC.Symb({ c_mod = sym_path ; c_sym = sym_name
+          Some(Symb({ c_mod = sym_path ; c_sym = sym_name
                        ; c_ari = arity }), e)
-      | Abst(_, _)                           -> Some(TC.Abst, e)
+      | Abst(_, _)                           -> Some(Abst, e)
       | Vari(x)                              ->
-          Some(TC.Vari(Bindlib.name_of x), e)
+          Some(Vari(Bindlib.name_of x), e)
       | _                                    -> None in
-    let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
+    let tc_fst_cmp (tca, _) (tcb, _) = compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
   (** [store m c] returns whether the inspected term on column [c] of matrix
@@ -611,7 +610,7 @@ module Cm = ClauseMat
     variables with no non linear constraints. *)
 let harvest : term array -> action -> (int * int) list -> int -> t =
   fun lhs rhs env_builder slot ->
-  let default_node = { swap = 0 ; store = false ; children = TC.Map.empty ;
+  let default_node = { swap = 0 ; store = false ; children = TcMap.empty ;
                        abstraction = None ; default = None } in
   let rec loop lhs env_builder slot = match lhs with
     | []                        -> Leaf(env_builder, rhs)
@@ -690,12 +689,12 @@ let rec compile : Cm.t -> t =
       (* Constructors specialisation *)
       let children =
         let f acc (tr_cons, te_cons) =
-          if tr_cons = TC.Abst then acc else
+          if tr_cons = Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TC.Map.add tr_cons (compile ncm) acc in
-        List.fold_left f TC.Map.empty cons in
+          TcMap.add tr_cons (compile ncm) acc in
+        List.fold_left f TcMap.empty cons in
       (* Default child *)
       let default =
         let positions, clauses = Cm.default swap positions updated in
@@ -703,7 +702,7 @@ let rec compile : Cm.t -> t =
         if Cm.is_empty ncm then None else Some(compile ncm) in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
+        if List.for_all (fun (x, _) -> x <> Abst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, clauses = Cm.abstract swap var positions updated in
