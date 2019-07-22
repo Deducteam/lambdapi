@@ -122,7 +122,8 @@ let link : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops) ;
+  StrMap.iter (fun _ (s, _) -> Dtree.update_dtree s) !(sign.sign_symbols)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -131,6 +132,7 @@ let link : t -> unit = fun sign ->
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
+    s.sym_tree := Tree_types.empty_dtree ;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := Kind; s.sym_rules := [])
   in
@@ -282,7 +284,7 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
       sign.sign_deps := PathMap.add s.sym_path m !(sign.sign_deps) in
   List.iter add_rule rs ;
   let fst3cmp (d, _, _) (e, _, _) = Basics.sym_cmp d e in
-  List.sort_uniq fst3cmp rs |> List.iter (fun (x, _, _) -> Dtree.update_dtree x)
+  List.sort_uniq fst3cmp rs |> List.iter (fun (x,_,_) -> Dtree.update_dtree x)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
