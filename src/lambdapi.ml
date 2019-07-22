@@ -90,7 +90,7 @@ let spec =
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--write-trees"
-      , Arg.Set Sign.write_trees
+      , Arg.Set Dtree.write_trees
       , " Write created trees as dot files" )
     ; ( "--ordered-rules"
       , Arg.Set Dtree.ordered_rules

@@ -11,6 +11,10 @@ open Tree_types
 (** Priority on topmost rule if set to true. *)
 let ordered_rules : bool ref = ref false
 
+(** [write_trees] contains whether trees created for rule parsing should be
+    written to disk. *)
+let write_trees : bool Pervasives.ref = Pervasives.ref false
+
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
