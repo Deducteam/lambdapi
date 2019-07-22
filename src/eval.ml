@@ -39,8 +39,9 @@ let log_eval = log_eval.logger
 (** [log_fvc s x] is a logging function used when verifying a closedness
     constraint. *)
 let log_fvc : bool -> tvar array -> unit = fun b xs ->
+  let module F = Format in
   log_eval (r_or_g b "free var check on [%a]")
-    (Format.pp_print_list ~pp_sep:Format.pp_print_space pp_tvar)
+    (F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc "; ") pp_tvar)
     (Array.to_list xs)
 
 (** Logging function for equality modulo rewriting. *)
