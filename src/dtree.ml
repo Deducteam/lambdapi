@@ -713,3 +713,18 @@ let rec compile : Cm.t -> t =
         let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
         Some(var, compile ncm) in
       Node({ swap ; store ; children ; abstraction ; default })
+
+(** [update_dtree s] updates decision tree of symbol [s]. *)
+let update_dtree : sym -> unit = fun symb ->
+  let open Timed in
+  match symb.sym_mode with
+  | Defin
+  | Injec ->
+      let pama = lazy (ClauseMat.of_rules !(symb.sym_rules)) in
+      let tree = lazy (compile @@ Lazy.force pama) in
+      let capacity = lazy (Tree_types.capacity @@ Lazy.force tree) in
+      symb.sym_tree := (capacity, tree) ;
+      if Pervasives.(!write_trees) then
+        ( Format.printf "Wrote %s.gv\n" (symb.sym_name)
+        ; to_dot symb.sym_name (Lazy.force tree) )
+  | _     -> ()

@@ -281,20 +281,8 @@ let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
       let m = (s.sym_name, r.elt) :: m in
       sign.sign_deps := PathMap.add s.sym_path m !(sign.sign_deps) in
   List.iter add_rule rs ;
-  let build_tree symb =
-    match symb.sym_mode with
-    | Defin
-    | Injec ->
-        let pama = lazy (Dtree.ClauseMat.of_rules !(symb.sym_rules)) in
-        let tree = lazy (Dtree.compile @@ Lazy.force pama) in
-        let capacity = lazy (Tree_types.capacity @@ Lazy.force tree) in
-        symb.sym_tree := (capacity, tree) ;
-        if Pervasives.(!Dtree.write_trees) then
-          ( Format.printf "Wrote %s.gv\n" (symb.sym_name)
-          ; Dtree.to_dot symb.sym_name (Lazy.force tree) )
-    | _     -> () in
   let fst3cmp (d, _, _) (e, _, _) = Basics.sym_cmp d e in
-  List.sort_uniq fst3cmp rs |> List.iter (fun (x, _, _) -> build_tree x)
+  List.sort_uniq fst3cmp rs |> List.iter (fun (x, _, _) -> Dtree.update_dtree x)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
