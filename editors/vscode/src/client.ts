@@ -28,28 +28,6 @@ let client: LanguageClient;
 export function activate(context: ExtensionContext) {
 
 	//create the server
-	
-
-	// The server is implemented in node
-	//let serverModule = context.asAbsolutePath(
-	//	path.join('..', '..', 'lp-lsp', 'lp_lsp.ml')
-	//	//path.join('server', 'out', 'server.js')
-	//);
-	
-	// The debug options for the server
-	// --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-	//let debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
-
-	// If the extension is launched in debug mode then the debug server options are used
-	// Otherwise the run options are used
-	//let serverOptions: ServerOptions = {
-	//	run: { module: serverModule, transport: TransportKind.ipc },
-	//	debug: {
-	//		module: serverModule,
-	//		transport: TransportKind.ipc,
-	//		options: debugOptions
-	//	}
-	//};
 
 	let serverOptions = {
 		command: '/Users/houdamouzoun/.opam/4.05.0/bin/lp-lsp',
@@ -58,7 +36,7 @@ export function activate(context: ExtensionContext) {
 
 	// Options to control the language client
 	let clientOptions: LanguageClientOptions = {
-		// Register the server for plain text documents
+		// Register the server for lp documents
 		documentSelector: [{ scheme: 'file', language: 'lp' }],
 		synchronize: {
 			// Notify the server about file changes to '.clientrc files contained in the workspace
@@ -82,12 +60,6 @@ export function activate(context: ExtensionContext) {
 
 	client.onReady().then(() => {
 
-			const editor = window.activeTextEditor;
-			
-			const doc = editor == undefined? null : editor.document; 
-			const selec = editor == undefined? null : editor.selection;
-			const uri = doc == null? null : doc.uri;
-
 		  // Create and show panel
 			
 			const panel = window.createWebviewPanel(
@@ -96,15 +68,14 @@ export function activate(context: ExtensionContext) {
 				ViewColumn.Two,
 				{}
 			);
-		
-			// And set its HTML content
-			panel.webview.html = getWebviewContent("");
-			window.onDidChangeTextEditorSelection(e => {
-				if (selec != null && uri != null){
-					sendGoalsRequest(selec.active, panel, uri)
-				} 
-			}
-				);
+			
+			workspace.onDidOpenTextDocument(e => {
+				if(e.languageId == 'lp'){
+					window.showTextDocument(e, ViewColumn.One, true);
+					restart(panel)
+				}
+			})
+			
 				
 		window.onDidChangeActiveTextEditor(e =>
 			restart(panel)
@@ -112,75 +83,20 @@ export function activate(context: ExtensionContext) {
 			
 	context.subscriptions.push(
 		commands.registerCommand('getGoals.start', () => {
-			// TO delete redundant code
-		  /*workspace.onDidOpenTextDocument(_ => {
-			const editor = window.activeTextEditor;
-			
-			const doc = editor == undefined? null : editor.document; 
-			const selec = editor == undefined? null : editor.selection;
-			const uri = doc == null? null : doc.uri;
-			if(doc != null){
-				window.showTextDocument(doc, ViewColumn.One);
-			}
-			
-			//client.sendNotification(notifOpen, uri);
-			if(uri != null){
-				const notifOpen = new NotificationType<Uri, void>("textDocument/didOpen");
-				client.sendNotification(notifOpen, uri);
-
-				//send initialize
-
-				const notifChange = new NotificationType<Uri, void>("textDocument/didChange");
-				client.sendNotification(notifChange, uri);
-			}
-			
-			
-			
-
-			const editor = window.activeTextEditor;
-			
-			const doc = editor == undefined? null : editor.document; 
-			const selec = editor == undefined? null : editor.selection;
-			const uri = doc == null? null : doc.uri;
-
-		  // Create and show panel
-			
-			const panel = window.createWebviewPanel(
-				'goals',
-				'Goals',
-				ViewColumn.Two,
-				{}
-			);
-		
-			// And set its HTML content
-			panel.webview.html = getWebviewContent("");
-			window.onDidChangeTextEditorSelection(e => {
-				if (selec != null && uri != null){
-					sendGoalsRequest(selec.active, panel, uri)
-				} 
-			}
-				);
-				
-			if(uri != null){
-				const notifClose = new NotificationType<Uri, void>("textDocument/didClose");
-				client.sendNotification(notifClose, uri);
-			}
-			
-	
-			
-			});	
-			*/
 			
 		})
 
-	  );
+	);
+
+
 	});
 
 }
 	
 
 	function restart(panel : WebviewPanel){
-		const editor = window.activeTextEditor;
+		
+			const editor = window.activeTextEditor;
 			
 			const doc = editor == undefined? null : editor.document; 
 			const selec = editor == undefined? null : editor.selection;
@@ -188,8 +104,10 @@ export function activate(context: ExtensionContext) {
 		
 			// And set its HTML content
 			panel.webview.html = getWebviewContent("");
+			window.showInformationMessage('Going to start!');
 			window.onDidChangeTextEditorSelection(e => {
-				if (selec != null && uri != null){
+				let selec = e.textEditor.selection;
+				if (uri != null){
 					sendGoalsRequest(selec.active, panel, uri)
 				} 
 			}
@@ -197,10 +115,10 @@ export function activate(context: ExtensionContext) {
 	}
 	
 	function getWebviewContent(goals : String) {
-		let goalsPrint : string;
-		let htmlPage1 : string;
-		let htmlPage2 : string;
-		goalsPrint = goals == null? `` : goals.toString(); 
+		let goalsPrint : String;
+		let htmlPage1 : String;
+		let htmlPage2 : String;
+		goalsPrint = goals; 
 		htmlPage1 =  `<!DOCTYPE html>
 		<html lang="en">
 		<head>
@@ -210,11 +128,18 @@ export function activate(context: ExtensionContext) {
 		</head>
 		<body>
 			<p> `; 
+		let date = new Date();
+		let datestring = date.toLocaleDateString(undefined, {
+			hour : '2-digit',
+			minute : '2-digit',
+			second : '2-digit'
+		});
 		htmlPage2 =	` </p>
 		</body>
 		</html>`;
+		let datestring1 = '';
 
-		return htmlPage1.concat(goalsPrint.concat(htmlPage2));
+		return htmlPage1+ datestring1+goalsPrint+htmlPage2;
 	}
 
 export interface TextDocumentIdent{
@@ -226,14 +151,19 @@ export interface ParamsGoals {
 	position : Position
 }
 
-	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri){
+export interface GoalResp {
+	contents : String
+}
+
+	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
 		let goalsState : String;
 		let doc = {uri : uri.toString()}
 		let cursor = {textDocument : doc, position : position}; 
-		const req = new RequestType<ParamsGoals, String, void, void>("proof/goals");
+		const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
 		client.sendRequest(req, cursor).then((goals) => {
+		let a = goals.contents;
 		//return goals;
-		panel.webview.html = getWebviewContent(goals);
+		panel.webview.html = getWebviewContent(a);
 		}); 
 	}
 
