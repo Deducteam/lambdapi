@@ -161,6 +161,14 @@ module List =
         | _      :: t -> loop t in
       loop l
 
+    (** [remove_phys_dups l] uniqify list [l] keeping only the last element,
+        using physical equality. *)
+    let rec remove_phys_dups : 'a list -> 'a list = fun l ->
+      match l with
+      | [] -> []
+      | x :: xs -> let xs = remove_phys_dups xs in
+                   if List.memq x xs then xs else x :: xs
+
   end
 
 module Array =

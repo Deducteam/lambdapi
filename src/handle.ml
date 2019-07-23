@@ -129,7 +129,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
-      Sign.add_rules ss.signature rs; (ss, None)
+      let add_rule (s,h,r) =
+        Sign.add_rule ss.signature s r.elt ;
+        out 3 "(rules) %a\n" Print.pp_rule (s,h,r.elt)
+      in
+      List.iter add_rule rs ;
+      List.map (fun (s, _, _) -> s) rs |> List.remove_phys_dups |>
+      List.iter Dtree.update_dtree ;
+      (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
