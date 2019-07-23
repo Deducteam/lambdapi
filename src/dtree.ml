@@ -401,9 +401,9 @@ struct
       let check pt de =
       (* We verify that there are no variable constraints, that is, if
          abstractions are traversed, then variable must be allowed in pattern
-         variables.  In addition, care must be taken when checking variable
-         permutations, hence the [d = 0] (see [tests/OK/abstractions.lp]).
-         See issue #225 on github.*)
+         variables.  In addition, to bind variables correctly in the rhs, we
+         perform a var check each time there is higher order, hence the [d =
+         0] (see [tests/OK/abstractions.lp]).  See issue #225 on github.*)
         match pt with
         | Patt(_, _, e) -> Array.length e = de && de = 0
         | _             -> false in
@@ -481,7 +481,7 @@ struct
     | Patt(i, _, e) ->
         let freevars = if (Array.length e) <> depth || depth >= 1
         (* First clause of disjunction would be enough if we did not consider
-           variable permutations. *)
+           rhs rebinding during evaluation. *)
           then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
