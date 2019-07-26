@@ -170,7 +170,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
      {!module:Terms} as the environment of the RHS during matching.  [m]
      maps the free variables contained in the tree to the free variables
      used in this evaluation. *)
-  let rec walk tree stk cursor to_stamped =
+  let rec walk tree stk cursor to_stamped : (term * term list) option =
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, act)                              ->
