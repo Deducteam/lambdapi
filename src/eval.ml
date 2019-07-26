@@ -162,7 +162,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
   fun tree capa stk ->
   let open Tree_types in
   let vars = Array.make capa Kind in (* dummy terms *)
-  let boundv = Array.make capa None in
+  let boundv = Array.make capa TE_None in
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
@@ -179,22 +179,23 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
         (* Retrieve terms needed in the action from the [vars] array. *)
         let fn (pos, (slot, bd)) =
           match boundv.(pos), bd with
-          | Some(b), _ ->
-              env.(slot) <- TE_Some(b)
-          | None, [||] ->
+          | TE_Some(_), _ ->
+              env.(slot) <- boundv.(pos)
+          | TE_None, [||] ->
               let t = unfold vars.(pos) in
               let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
               env.(slot) <- TE_Some(b)
-          | None, xs   ->
+          | TE_None, xs   ->
               let b = lift vars.(pos) in
               let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
               let bound = Bindlib.bind_mvar xs b in
               env.(slot) <- TE_Some(Bindlib.unbox bound)
+          | TE_Vari(_), _ -> assert false
         in
         List.iter fn env_builder ;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, R.to_list stk)
-    | Condition({ ok ; condition ; fail }) ->
+    | Condition({ ok ; condition ; fail })                ->
         let next = match condition with
           | TcstrEq(i, j)        ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
@@ -210,7 +211,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               if !log_enabled then log_fvc r xs ;
               if r
               then ( let bound = Bindlib.bind_mvar xs b in
-                     boundv.(i) <- Some(Bindlib.unbox bound)
+                     boundv.(i) <- TE_Some(Bindlib.unbox bound)
                    ; ok )
               else fail in
         walk next stk cursor to_stamped
