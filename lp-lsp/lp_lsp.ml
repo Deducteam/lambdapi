@@ -57,6 +57,7 @@ let do_initialize ofmt ~id _params =
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
         ; "hoverProvider", `Bool true
+        ; "definitionProvider", `Bool true
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -156,6 +157,11 @@ let get_docTextPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   file, line, character
 
+let get_textPosition params =
+  let pos = dict_field "position" params in
+  let line, character = int_field "line" pos, int_field "character" pos in
+  line, character
+
   (*let get_docTxtPosGoals params = 
   let doc = dict_field "uri" params in
   let file = string_field "file" doc in
@@ -200,6 +206,54 @@ let do_goals ofmt ~id params =
       let result = `Assoc [ "contents", `String goals] in
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
+
+let get_line lines l = 
+  let count = 0 in 
+  let rec iter_list count lines l =
+  match lines with
+    | [] -> ""
+    | t::ts -> if count = l then t else iter_list (count+1) ts l in
+    iter_list count lines l
+
+let get_token tokens pos =
+  let count = 0 in 
+  let rec iter_tokens count tokens pos =
+  match tokens with
+    | [] -> ""
+    | t::ts -> let new_count = (count + (String.length t)) in
+               if new_count >= pos then t else
+                iter_tokens new_count ts pos in
+                iter_tokens count tokens pos   
+
+
+
+(*let get_symbol text l pos = 
+  let lines = String.split_on_char '\n' text in
+  let line = get_line lines l in
+  let tokens = String.split_on_char ' ' line in
+  get_token tokens pos *)
+
+let get_symbol text l pos = 
+  let lines = String.split_on_char '\n' text in
+  let line = List.nth lines l in
+  let tokens = String.split_on_char ' ' line in
+  get_token tokens pos
+
+
+let do_definition ofmt ~id params =
+  (*let uri, line, pos = get_docTextPosition params in*)
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym = Pure.get_symbols doc.final in
+  let sym_target = get_symbol doc.text line pos in
+  let sym = Extra.StrMap.fold (fun _ (s,p) l ->
+      let open Terms in
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
+      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in
+  let msg = LSP.mk_reply ~id ~result:(`List sym) in
+  LIO.send_json ofmt msg
+    
 
 
 let protect_dispatch p f x =
@@ -246,6 +300,9 @@ let dispatch_message ofmt dict =
   | "textDocument/didClose" ->
     protect_dispatch "didClose"
       (do_close ofmt) params
+
+  | "textDocument/definition" ->
+    do_definition ofmt ~id params
 
   | "proof/goals" -> 
     do_hover ofmt ~id params

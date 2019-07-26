@@ -73,26 +73,26 @@ let focus_goal : proof_state -> Env.t * term = fun ps ->
 let pp_goals : _ pp = fun oc gl ->
   let open Print in
   match gl with
-  | []    -> Format.fprintf oc " No more goals...\n"
+  | []    -> Format.fprintf oc " No more goals...<br/>"
   | g::gs ->
-     Format.fprintf oc "\n== Goals ================================\n";
+     Format.fprintf oc "<br/>== Goals ================================<br/>";
     let (hyps, _) = Goal.get_type g in
     if hyps <> [] then
       begin
         let print_hyp (s,(_,t)) =
-          Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
+          Format.fprintf oc "   %s : %a<br/>" s pp (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);
-        Format.fprintf oc "   --------------------------------------\n"
+        Format.fprintf oc "   --------------------------------------<br/>"
       end;
     let (_, a) = Goal.get_type g in
-    Format.fprintf oc "0. %a\n" pp a;
+    Format.fprintf oc "0. %a<br/>" pp a;
     if gs <> [] then
       begin
-        Format.fprintf oc "\n";
+        Format.fprintf oc "<br/>";
         let print_goal i g =
           let (_, a) = Goal.get_type g in
-          Format.fprintf oc "%i. %a\n" (i+1) pp a
+          Format.fprintf oc "%i. %a<br/>" (i+1) pp a
         in
         List.iteri print_goal gs
       end
