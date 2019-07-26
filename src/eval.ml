@@ -177,14 +177,20 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
         (* Allocate an environment for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn (pos, slot) =
-          match boundv.(pos) with
-          | Some(b) ->
+        let fn (pos, (slot, bd)) =
+          match boundv.(pos), bd with
+          | Some(b), _ ->
               env.(slot) <- TE_Some(b)
-          | None    ->
+          | None, [||] ->
               let t = unfold vars.(pos) in
               let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-              env.(slot) <- TE_Some(b) in
+              env.(slot) <- TE_Some(b)
+          | None, xs   ->
+              let b = lift vars.(pos) in
+              let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
+              let bound = Bindlib.bind_mvar xs b in
+              env.(slot) <- TE_Some(Bindlib.unbox bound)
+        in
         List.iter fn env_builder ;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, R.to_list stk)

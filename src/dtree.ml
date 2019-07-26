@@ -242,6 +242,9 @@ struct
       abstractions traversed at this position. *)
   type occur_rs = (Occurrence.t * int) ReductionStack.t
 
+  (** Data needed to bind terms from the lhs into the rhs. *)
+  type binding_data = term Tree_types.binding_data
+
   (** A redefinition of the rule type.
 
       {b Note} that {!type:array} is used while {!module:ReductionStack} could
@@ -253,7 +256,7 @@ struct
     (** Left hand side of a rule.   *)
     ; rhs : action
     (** Right hand side of a rule. *)
-    ; env_builder : (int * int) list
+    ; env_builder : (int * binding_data) list
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:rhs}. *)
     ; nonlin : NlScorable.t
@@ -401,11 +404,9 @@ struct
       let check pt de =
       (* We verify that there are no variable constraints, that is, if
          abstractions are traversed, then variable must be allowed in pattern
-         variables.  In addition, to bind variables correctly in the rhs, we
-         perform a var check each time there is higher order, hence the [d =
-         0] (see [tests/OK/abstractions.lp]).  See issue #225 on github.*)
+         variables. *)
         match pt with
-        | Patt(_, _, e) -> Array.length e = de && de = 0
+        | Patt(_, _, e) -> Array.length e = de
         | _             -> false in
       Array.for_all2 check lhs de
       && nonl lhs in
@@ -479,9 +480,7 @@ struct
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if (Array.length e) <> depth || depth >= 1
-        (* First clause of disjunction would be enough if we did not consider
-           rhs rebinding during evaluation. *)
+        let freevars = if (Array.length e) <> depth
           then FvScorable.instantiate slot
               (Array.map to_tvar e)
               r.freevars
@@ -492,7 +491,7 @@ struct
           | None    -> r.nonlin in
         let env_builder =
           match i with
-          | Some(i) -> (slot, i) :: r.env_builder
+          | Some(i) -> (slot, (i, Array.map to_tvar e)) :: r.env_builder
           | None    -> r.env_builder in
         { r with env_builder ; nonlin ; freevars }
     | _             -> r
@@ -612,14 +611,14 @@ module Cm = ClauseMat
 
 (** [harvest l r e s] exhausts linearly the stack composed only of pattern
     variables with no non linear constraints. *)
-let harvest : term array -> action -> (int * int) list -> int -> t =
-  fun lhs rhs env_builder slot ->
+let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
+  t = fun lhs rhs env_builder slot ->
   let default_node = { swap = 0 ; store = false ; children = TcMap.empty ;
                        abstraction = None ; default = None } in
   let rec loop lhs env_builder slot = match lhs with
     | []                        -> Leaf(env_builder, rhs)
-    | Patt(Some(i), _, _) :: ts ->
-        let env_builder = (slot, i) :: env_builder in
+    | Patt(Some(i), _, e) :: ts ->
+        let env_builder = (slot, (i, Array.map to_tvar e)) :: env_builder in
         let slot = slot + 1 in
         let child = loop ts env_builder slot in
         Node { default_node with store = true ; default = Some(child) }

@@ -148,11 +148,14 @@ module TcMap = MkMap(struct
 
 (** {3 Decision trees for rewriting} *)
 
+(** Data used to remap terms from lhs to rhs. *)
+type 't binding_data = int * 't Bindlib.var array
+
 (** Definition of a tree parametrised by
     - ['t] the terms in the tree,
     - ['r] the content of the leaves. *)
 type ('t, 'r) tree =
-  | Leaf of (int * int) list * 'r
+  | Leaf of (int * 't binding_data) list * 'r
   (** Holds the right hand side of a rule.  In a {!constructor:Leaf}[(e, a)],
       - [e] maps positions in the stack containing terms which stand as
             pattern variables in some rules to the slot allocated in the
@@ -214,7 +217,7 @@ and ('t, 'r) node_data =
     - function [n] performed on nodes,
     - [f] returned in case of {!constructor:Fail} on tree [t]. *)
 let tree_iter :
-  do_leaf:((int * int) list -> 'r -> 'a) ->
+  do_leaf:((int * (int * 't Bindlib.var array)) list -> 'r -> 'a) ->
   do_node:(int -> bool -> 'a TcMap.t ->
            ('t Bindlib.var * 'a ) option -> 'a option -> 'a) ->
   do_condition:('a -> 't tree_constraint -> 'a -> 'a) ->
