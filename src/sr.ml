@@ -38,15 +38,6 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
 
-(* Does not work in examples/cic.dk
-
-let build_meta_type : int -> term = fun k ->
-  let m' = new_meta Type (*FIXME?*) k in
-  let m_typ = Meta(m',[||]) in
-  let m = new_meta m_typ k in
-  Meta(m,[||])
-*)
-
 (** [build_meta_type k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), B” where
     “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
     new metavar of arity “i-1” and type “∀(x₁:A₁) ⋯ (x(i-1):A(i-1), TYPE”. *)
