@@ -38,9 +38,9 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
 
-(** [build_meta_type k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), B” where
-    “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
-    new metavar of arity “i-1” and type “∀(x₁:A₁) ⋯ (x(i-1):A(i-1), TYPE”. *)
+(** [build_meta_type k] builds the type “∀(x₁:A₁) ⋯ (xk:Ak),A(k+1)” where “x₁”
+   through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a new
+   metavar of arity “i-1” and type “∀(x₁:A₁) ⋯ (x(i-1):A(i-1),TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k>=0);
   let vs = Bindlib.new_mvar mkfree (Array.make k "x") in
