@@ -134,7 +134,9 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
-(** [sym_cmp s s'] compares symbols [s] and [s']. *)
+(** [sym_cmp s s'] compares symbols [s] and [s'].  This function is designed
+    to be efficient, we compare names before module path because it is
+    quicker. *)
 let sym_cmp : sym -> sym -> int = fun sa sb ->
   if sa == sb then 0 else
   match String.compare sa.sym_name sb.sym_name with
