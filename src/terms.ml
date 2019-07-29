@@ -49,6 +49,7 @@ type term =
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
+(** Representation of a decision tree (used for rewriting). *)
  and dtree = (term, (term_env, term) Bindlib.mbinder) Tree_types.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
@@ -68,8 +69,7 @@ type term =
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
-  (** Tree for rule selection along with its capacity (see
-      {!val:Dtree.capacity}). *)
+  (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 

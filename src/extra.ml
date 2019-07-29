@@ -230,7 +230,7 @@ module Array =
 (** Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
-(** Functional sets of [int]s. *)
+(** Functional sets of integers. *)
 module IntSet = Set.Make(Int)
 
 (** Functional maps with [string] keys. *)
