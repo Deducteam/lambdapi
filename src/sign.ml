@@ -268,10 +268,10 @@ let read : string -> t = fun fname ->
    processes running the same binary as the one that produced it. *)
 
 (** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
-    rule does not correspond to a symbol of signature [sign], it is stored in
+    rule does not correspond to a symbol of signature [sign],  it is stored in
     its dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
-  sym.sym_rules := !(sym.sym_rules) @ [r] ;
+  sym.sym_rules := !(sym.sym_rules) @ [r];
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
