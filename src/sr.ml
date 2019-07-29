@@ -38,33 +38,39 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
 
-(** [build_meta_type k] builds the type “∀(x₁:A₁) ⋯ (xk:Ak),A(k+1)” where “x₁”
-   through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a new
-   metavar of arity “i-1” and type “∀(x₁:A₁) ⋯ (x(i-1):A(i-1),TYPE”. *)
+(** [build_meta_type k] builds the type “∀(x1:A1) ⋯ (xk:Ak), A(k+1)” where the
+    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” (which has
+    arity “i-1”). The type of “Mi” is “∀(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
-  assert (k>=0);
-  let xs = Bindlib.new_mvar mkfree (Array.make k "x") in
-  (* [build_prod i p] builds the type “∀(x₁:A₁) ⋯ (xi:Ai),p”. *)
-  let rec build_prod i p =
-    if i = 0 then p
-    else
-      let i = i-1 in
-      let mi_typ = Bindlib.unbox (build_prod i _Type) in
-      let mi = fresh_meta mi_typ i in
-      let ti = _Meta mi (Array.map _Vari (Array.sub xs 0 i)) in
-      let b = Bindlib.bind_var xs.(i) p in
-      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) ti b in
-      build_prod i p
+  assert (k >= 0);
+  (* We create the variables “xi”. *)
+  let xs = Bindlib.new_mvar mkfree (Array.init k (Printf.sprintf "x%i")) in
+  (* We also make a boxed version of the variables. *)
+  let ts = Array.map _Vari xs in
+  (* We create the types for the “Mi” metavariables. *)
+  let ty_m = Array.make (k+1) _Type in
+  for i = 0 to k do
+    for j = (i-1) downto 0 do
+      ty_m.(i) <- _Prod ty_m.(j) (Bindlib.bind_var xs.(j) ty_m.(i))
+    done
+  done;
+  (* We create the “Ai” terms (and the “Mi” metavariables). *)
+  let fn i =
+    let m = fresh_meta (Bindlib.unbox ty_m.(i)) i in
+    _Meta m (Array.sub ts 0 i)
   in
-  let mk_typ = Bindlib.unbox (build_prod k _Type) in
-  let mk = fresh_meta mk_typ k in
-  let tk = _Meta mk (Array.map _Vari xs) in
-  Bindlib.unbox (build_prod k tk)
+  let a = Array.init (k+1) fn in
+  (* We finally construct our type. *)
+  let res = ref a.(k) in
+  for i = k - 1 downto 0 do
+    res := _Prod a.(i) (Bindlib.bind_var xs.(i) !res)
+  done;
+  Bindlib.unbox !res
 
-(** [check_rule builtins r] check whether rule [r] is well-typed. The program
-    fails gracefully in case of error. *)
-let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
-  = fun builtins (s,h,r) ->
+(** [check_rule builtins r] checks whether rule [r] is well-typed. The [Fatal]
+    exception is raised in case of error. *)
+let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
+    fun builtins (s,h,r) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
   (* We process the LHS to replace pattern variables by metavariables. *)
   let binder_arity = Bindlib.mbinder_arity r.elt.rhs in
@@ -117,12 +123,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
-    if !log_enabled then
-      begin
-        log_subj "LHS has type [%a]" pp ty_lhs;
-        let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
-        List.iter fn lhs_constrs
-      end;
+  if !log_enabled then
+    begin
+      log_subj "LHS has type [%a]" pp ty_lhs;
+      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
+      List.iter fn lhs_constrs
+    end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
@@ -141,20 +147,20 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
   | None     ->
       fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
   | Some(cs) ->
-      let is_constr c =
-        let eq_comm (t1,u1) (t2,u2) =
-          (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
-          (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
-        in
-        List.exists (eq_comm c) lhs_constrs
-      in
-      let cs = List.filter (fun c -> not (is_constr c)) cs in
-      if cs <> [] then
-        begin
-          let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
-          List.iter fn cs;
-          fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
-        end;
+  let is_constr c =
+    let eq_comm (t1,u1) (t2,u2) =
+      (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
+      (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
+    in
+    List.exists (eq_comm c) lhs_constrs
+  in
+  let cs = List.filter (fun c -> not (is_constr c)) cs in
+  if cs <> [] then
+    begin
+      let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
+      List.iter fn cs;
+      fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
+    end;
   (* Check that there is no uninstanciated metas left. *)
   let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
   if Basics.has_metas rhs then
