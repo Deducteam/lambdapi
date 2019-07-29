@@ -178,11 +178,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
   (* Scoping function for the domain of functions or products. *)
-  and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
+  and scope_domain : popt -> env -> p_term option -> tbox = fun _ env a ->
     match (a, md) with
     | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)) -> fresh_patt env
-    | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
     | (Some(a), _       ) -> scope env a
     | (None   , _       ) ->
        (* We create a new metavariable [m] of type [TYPE] for the missing
@@ -215,10 +214,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
     | (P_Type          , _        ) -> _Type
     | (P_Iden(qid,_)   , _        ) -> find_qid ss env qid
-    | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
-    | (P_Wild          , M_Term(_)) ->
+    | (P_Wild          , _        ) ->
        (* We create a new metavariable [m1] of type [TYPE] and a new
           metavariable [m2] of type [m1], and return [m2]. *)
         let vs = Env.to_tbox env in

@@ -117,12 +117,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
-  if !log_enabled then
-    begin
-      log_subj "LHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
-      List.iter fn lhs_constrs
-    end;
+    if !log_enabled then
+      begin
+        log_subj "LHS has type [%a]" pp ty_lhs;
+        let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
+        List.iter fn lhs_constrs
+      end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
@@ -138,6 +138,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
     end;
   (* Solving the constraints. *)
   match Unif.(solve builtins false {no_problems with to_solve}) with
+  | None     ->
+      fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
   | Some(cs) ->
       let is_constr c =
         let eq_comm (t1,u1) (t2,u2) =
@@ -152,6 +154,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
           let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
           List.iter fn cs;
           fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
-        end
-  | None     ->
-      fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
+        end;
+  (* Check that there is no uninstanciated metas left. *)
+  let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
+  if Basics.has_metas rhs then
+    fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
+      pp_rule (s,h,r.elt)
