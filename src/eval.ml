@@ -28,9 +28,6 @@ A term t is in strong normal form (snf) if it cannot be reduced further.
     issues. *)
 let stamp = Pervasives.ref 0
 
-(** Used to indicate a default case. *)
-exception Default
-
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
@@ -100,30 +97,21 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
       whnf_stk f (sensible_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
-      Pervasives.incr steps ;
-      let t = Bindlib.subst f u in
-      whnf_stk t stk
+      Pervasives.incr steps;
+      whnf_stk (Bindlib.subst f u) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
       begin match !(s.sym_def) with
-      | Some(t) -> Pervasives.incr steps ; whnf_stk t stk
+      | Some(t) -> Pervasives.incr steps; whnf_stk t stk
       | None    ->
-      match find_rule s stk with
+      match !(s.sym_tree) with (lazy capa, lazy tr) ->
+      match tree_walk tr capa stk with
       (* If no rule is found, return the original term *)
       | None        -> st
-      | Some(t,stk) -> Pervasives.incr steps ; whnf_stk t stk
+      | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
       end
   (* In head normal form. *)
   | (_         , _    ) -> st
-
-(** [find_rule s k] attempts to find a reduction rule of [s] when applied to
-    arguments [k].  Returns the reduced term if a rule if found, [None]
-    otherwise. *)
-and find_rule : sym -> term list -> (term * term list) option =
-  fun s stk ->
-  let capa, tr = !(s.sym_tree) in
-  let capa, tr = Lazy.force capa, Lazy.force tr in
-  tree_walk tr capa stk
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
@@ -240,6 +228,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             then ( vars.(cursor) <- Lazy.force rebuilt
                  ; cursor + 1 )
             else cursor in
+          let exception Default in
           try begin match t with
             | Terms.Symb(s, _) ->
                 let c_ari = List.length args in
