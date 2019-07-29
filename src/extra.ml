@@ -12,12 +12,6 @@ module Int =
     let compare = (-)
   end
 
-module Float =
-struct
-  type t = float
-  let compare : t -> t -> int = Pervasives.compare
-end
-
 module String =
   struct
     include String

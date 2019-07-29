@@ -301,7 +301,7 @@ struct
     | None      , None       -> 0
     | None      , _          -> -1
     | Some(_, x), None       -> max (int_of_float x) 1
-    | Some(_, x), Some(_, y) -> Float.compare x y
+    | Some(_, x), Some(_, y) -> compare x y
 
   (** [choose s] returns the constraint having the highest score in [s]. *)
   let choose = function
