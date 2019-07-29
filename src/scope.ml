@@ -215,8 +215,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
-        (* We create a metavariable [m] of type [m_ty] (itself a metavariables
-           of type [Type]. This case applies both to regular terms, and to the
+        (* We create a metavariable [m] of type [m_ty] (itself a metavariable
+           of type [Type]). This case applies both to regular terms, and to the
            RHS of rewriting rules. *)
         let vs = Env.to_tbox env in
         let m_ty = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
