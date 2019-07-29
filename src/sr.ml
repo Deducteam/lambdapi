@@ -123,12 +123,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(lhs_constrs, ty_lhs) ->
-    if !log_enabled then
-      begin
-        log_subj "LHS has type [%a]" pp ty_lhs;
-        let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
-        List.iter fn lhs_constrs
-      end;
+  if !log_enabled then
+    begin
+      log_subj "LHS has type [%a]" pp ty_lhs;
+      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
+      List.iter fn lhs_constrs
+    end;
   (* Turn constraints into a substitution and apply it. *)
   let (xs,ts) = subst_from_constrs lhs_constrs in
   let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in

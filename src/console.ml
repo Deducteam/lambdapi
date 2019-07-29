@@ -165,16 +165,17 @@ let register_flag : string -> bool -> bool ref = fun id default ->
 let set_flag : string -> bool -> unit = fun id b ->
   snd (StrMap.find id Pervasives.(!boolean_flags)) := b
 
-(** [reset_default ()] resets the verbosity level to [1], disables all loggers
-    and reset boolean flags to their default values. *)
+(** [reset_default ()] resets the verbosity level and the state of the loggers
+    to their default value (configurable by the user with command line flags).
+    The boolean flags are also reset to their default values. *)
 let reset_default : unit -> unit = fun () ->
   (* Reset verbosity level. *)
   verbose := Pervasives.(!default_verbose);
   (* Reset debugging flags. *)
   log_enabled := false;
   let reset l =
-    l.logger_enabled :=
-      String.contains Pervasives.(!default_loggers) l.logger_key
+    let v = String.contains Pervasives.(!default_loggers) l.logger_key in
+    l.logger_enabled := v; if v then log_enabled := true;
   in
   List.iter reset Pervasives.(!loggers);
   (* Reset flags to their default values. *)
@@ -209,9 +210,10 @@ let pop_state : unit -> unit = fun () ->
   (* Reset verbosity level. *)
   verbose := v;
   (* Reset debugging flags. *)
+  log_enabled := false;
   let reset logger =
-    try logger.logger_enabled := List.assoc logger.logger_key l
-    with Not_found -> ()
+    let v = try List.assoc logger.logger_key l with Not_found -> false in
+    logger.logger_enabled := v; if v then log_enabled := true;
   in
   List.iter reset Pervasives.(!loggers);
   (* Reset boolean flags. *)
