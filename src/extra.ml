@@ -147,9 +147,8 @@ module List =
       fun ?(cmp=Pervasives.compare) li ->
       match li with
       | []   -> invalid_arg "Extra.List.max"
-      | h::t -> List.fold_left
-                  (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
-                  h t
+      | h::t -> let max e1 e2 = if cmp e1 e2 >= 0 then e1 else e2 in
+                List.fold_left max h t
 
     (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
         @raise Not_found if [k] is not a key of [l]. *)
@@ -165,7 +164,7 @@ module List =
         using physical equality. *)
     let rec remove_phys_dups : 'a list -> 'a list = fun l ->
       match l with
-      | [] -> []
+      | []      -> []
       | x :: xs -> let xs = remove_phys_dups xs in
                    if List.memq x xs then xs else x :: xs
 
@@ -223,8 +222,7 @@ module Array =
         returned if [n > length a]. *)
     let drop : int -> 'a array -> 'a array = fun n a ->
       let l = length a in
-      if n >= l then [||]
-      else let suffix = Array.sub a n (l - n) in suffix
+      if n >= l then [||] else Array.sub a n (l - n)
 
   end
 
