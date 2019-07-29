@@ -193,7 +193,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               env.(slot) <- TE_Some(Bindlib.unbox bound)
           | TE_Vari(_), _ -> assert false
         in
-        List.iter fn env_builder ;
+        List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, R.to_list stk)
     | Condition({ ok ; condition ; fail })                ->
@@ -207,9 +207,10 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               let r = try
                   VarMap.iter (fun _ sv ->
                       if not (Array.mem sv xs) && Bindlib.occur sv b
-                      then raise Unallowed) to_stamped ; true
-                  with Unallowed -> false in
-              if !log_enabled then log_fvc r xs ;
+                      then raise Unallowed) to_stamped; true
+                with Unallowed -> false
+              in
+              if !log_enabled then log_fvc r xs;
               if r
               then ( let bound = Bindlib.bind_mvar xs b in
                      boundv.(i) <- TE_Some(Bindlib.unbox bound)
@@ -226,7 +227,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 let cursor = if store
                   then ( vars.(cursor) <- examined
                        ; cursor + 1 )
-                  else cursor in
+                  else cursor
+                in
                 walk t (R.restruct left [] right) cursor to_stamped else
           let s = Pervasives.(!steps) in
           let t, args = whnf_stk examined [] in
@@ -236,17 +238,19 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           begin if Pervasives.(!steps) <> s then match examined with
           (* If examined term was shared and has been reduced, update ref *)
           | TRef(v) -> v := Some(Lazy.force rebuilt)
-          | _       -> () end ;
+          | _       -> () end;
           let cursor = if store
             then ( vars.(cursor) <- Lazy.force rebuilt
                  ; cursor + 1 )
-            else cursor in
+            else cursor
+          in
           let exception Default in
           try begin match t with
             | Symb(s, _) ->
                 let c_ari = List.length args in
                 let cons = Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                                   ; c_ari }) in
+                                ; c_ari })
+                in
                 let matched = TcMap.find cons children in
                 walk matched (R.restruct left args right) cursor to_stamped
             | Vari(x)    ->
