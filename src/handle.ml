@@ -169,7 +169,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         begin
           fatal_msg "The definition of [%s] or its type \
                      have unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a ≔ %a." x.elt pp t pp a
+          fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a impl in

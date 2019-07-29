@@ -178,17 +178,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
   (* Scoping function for the domain of functions or products. *)
-  and scope_domain : popt -> env -> p_term option -> tbox = fun _ env a ->
+  and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
     | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)) -> fresh_patt env
     | (Some(a), _       ) -> scope env a
     | (None   , _       ) ->
-       (* We create a new metavariable [m] of type [TYPE] for the missing
-          domain. *)
-       let vs = Env.to_tbox env in
-       let m = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
-       _Meta m vs
+        (* Create a new metavariable of type [TYPE] for the missing domain. *)
+        let vs = Env.to_tbox env in
+        _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
   (* Scoping of a binder (abstraction or product). *)
   and scope_binder cons env xs t =
     let rec aux env xs =
@@ -197,12 +195,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
-          let a = scope_domain None env d in (* FIXME *)
+          let a = scope_domain env d in
           let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
-          let a = scope_domain x.pos env d in
+          let a = scope_domain env d in
           let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
           let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
@@ -217,15 +215,16 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
-       (* We create a new metavariable [m1] of type [TYPE] and a new
-          metavariable [m2] of type [m1], and return [m2]. *)
+        (* We create a metavariable [m] of type [m_ty] (itself a metavariables
+           of type [Type]. This case applies both to regular terms, and to the
+           RHS of rewriting rules. *)
         let vs = Env.to_tbox env in
-        let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
-        let a = Env.to_prod env (_Meta m1 vs) in
-        let m2 = fresh_meta a (Array.length vs) in
-        _Meta m2 vs
+        let m_ty = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+        let a = Env.to_prod env (_Meta m_ty vs) in
+        let m = fresh_meta a (Array.length vs) in
+        _Meta m vs
     | (P_Meta(id,ts)   , M_Term(m)) ->
-       let m2 =
+        let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
