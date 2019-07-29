@@ -461,14 +461,16 @@ struct
     let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
-  (** [store m c] returns whether the inspected term on column [c] of matrix
-      [m] needs to be stored during evaluation*)
+  (** [store m c d] returns whether the inspected term on column [c] of matrix
+      [m] needs to be stored during evaluation. *)
   let store : t -> int -> bool = fun cm ci ->
+    let _, (_, de), _ = ReductionStack.destruct cm.positions ci in
     let st_r r =
       match r.lhs.(ci) with
-      | Patt(Some(_), _, _)        -> true
-      | Patt(_, _, e) when e <> [||] -> true
-      | _                          -> false in
+      | Patt(Some(_), _, _) -> true
+      | Patt(_, _, e)       -> Array.length e < de
+      | _                   -> false
+    in
     List.exists st_r cm.clauses
 
   (** [update_aux c v r] returns clause [r] with auxiliary data updated
