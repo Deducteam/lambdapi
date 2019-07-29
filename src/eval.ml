@@ -144,6 +144,19 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
+(** {b Note} Matching with trees require three collections of terms.
+    1. The stack of arguments, called [stk] of type {!type:term
+       Dtree.ReductionStack.t} contains the terms which are matched against
+       the pattern described by the tree.
+    2. An array [vars] containing variables that are needed either for non
+       linearity checks, or free variable checks or that are used in the
+       right-hand side.
+    3. A mapping from free variables to free variables used to avoid
+       re-intrance issues.
+
+    The [boundv] array is similar to the [vars] array except that it is used
+    to save terms with free variables. *)
+
 (** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
     [c]. *)
 and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
@@ -230,7 +243,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             else cursor in
           let exception Default in
           try begin match t with
-            | Terms.Symb(s, _) ->
+            | Symb(s, _) ->
                 let c_ari = List.length args in
                 let cons = Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
                                    ; c_ari }) in
@@ -245,7 +258,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 | None         -> raise Default
                 | Some(fv, tr) ->
                     let nfv = stamp_tvar Pervasives.(!stamp) fv in
-                    Pervasives.incr stamp ;
+                    Pervasives.incr stamp;
                     let bound = Bindlib.subst b (mkfree nfv) in
                     let u = bound :: args in
                     let to_stamped = VarMap.add fv nfv to_stamped in
@@ -254,25 +267,11 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
             | Meta(_, _) -> raise Default
             | _          -> assert false end
           with Not_found | Default ->
-            begin match default with
-            | None    -> None
-            | Some(d) ->
-                walk d (R.restruct left [] right) cursor to_stamped end
+          match default with
+          | None    -> None
+          | Some(d) -> walk d (R.restruct left [] right) cursor to_stamped
         with Not_found -> None in
   walk tree stk 0 VarMap.empty
-
-(** {b Note} During the matching with trees, two structures containing terms
-    are used.
-    - The first of type {!type:term list} contains the arguments of a symbol
-      that are being matched against its rules in order to rewrite those
-      arguments to a right hand side.
-    - The other, named {!val:vars} of type {!type:term array} is filled during
-      the matching and contains the terms from the input stack that have been
-      matched against a pattern variable {!constructor:Patt} in some lhs.
-      A term might be in {!val:vars} either because it will be substituted in
-      the rhs, and we thus have to save them; or the term is matched against a
-      constrained {!constructor:Patt}, which may or may not be used in the
-      rhs. See {!module:Terms}, {!type:term} for more information. *)
 
 (** {b Note} When matching fails, even though {!val:tree_walk} returns
     {!constructor:None}, the input stack is updated (i.e. terms are possibly
