@@ -240,7 +240,7 @@ struct
 
   (** Reduction stack containing the position of the subterm and the number of
       abstractions traversed at this position. *)
-  type occur_rs = (Occurrence.t * int) ReductionStack.t
+  type occur_rs = (Occur.t * int) ReductionStack.t
 
   (** Data needed to bind terms from the lhs into the rhs. *)
   type binding_data = term Tree_types.binding_data
@@ -299,7 +299,7 @@ struct
         FvScorable.pp freevars
         NlScorable.pp nonlin in
     F.fprintf oc "Positions @@ @[<h>" ;
-    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occurrence.pp oc
+    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occur.pp oc
       (ReductionStack.to_list positions |> List.map fst) ;
     F.fprintf oc "@] -- " ;
     F.fprintf oc "Depth: @[<h>" ;
@@ -322,7 +322,7 @@ struct
       if rs = [] then 0 else
       List.max ~cmp:Int.compare
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Occurrence.args_of size Occurrence.empty
+    let positions = Occur.args_of size Occur.empty
                     |> List.map (fun x -> (x, 0))
                     |> ReductionStack.of_list in
     (* [|>] is reverse application, can be thought of as a Unix pipe | *)
@@ -507,7 +507,7 @@ struct
       let l, m, r = ReductionStack.destruct pos ci in
       let occ, depth = m in
       let _, _, nargs = get_args_len pat in
-      let replace = Occurrence.args_of nargs occ
+      let replace = Occur.args_of nargs occ
                   |> List.map (fun x -> (x, depth)) in
       ReductionStack.restruct l replace r in
     let ph, pargs, lenp = get_args_len pat in
@@ -558,7 +558,7 @@ struct
                  occur_rs * clause list =
     fun ci v pos clauses ->
     let l, (occ, depth), r = ReductionStack.destruct pos ci in
-    let occ = Occurrence.sub occ in (* Position of term inside lambda. *)
+    let occ = Occur.sub occ in (* Position of term inside lambda. *)
     let pos = ReductionStack.restruct l [(occ, depth + 1)] r in
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]

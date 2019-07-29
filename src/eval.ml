@@ -94,7 +94,7 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk   ) ->
-      whnf_stk f (sensible_tref u::stk)
+      whnf_stk f (appl_to_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
       Pervasives.incr steps;
@@ -232,7 +232,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 walk t (R.restruct left [] right) cursor to_stamped else
           let s = Pervasives.(!steps) in
           let t, args = whnf_stk examined [] in
-          let args = if store then List.map sensible_tref args else args in
+          let args = if store then List.map appl_to_tref args else args in
           let rebuilt = lazy (add_args t args) in
           (* Introduce sharing on arguments *)
           begin if Pervasives.(!steps) <> s then match examined with
