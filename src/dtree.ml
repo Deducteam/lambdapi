@@ -9,7 +9,7 @@ open Treecstr
 open Tree_types
 
 (** Priority on topmost rule if set to true. *)
-let ordered_rules : bool ref = ref false
+let rule_order : bool ref = ref false
 
 (** [write_trees] contains whether trees created for rule parsing should be
     written to disk. *)
@@ -416,7 +416,7 @@ struct
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     try
-      if !ordered_rules
+      if !rule_order
       then let fc = List.hd clauses in
         if is_exhausted positions fc then Yield(fc) else raise Not_found
       else let r = List.find (is_exhausted positions) clauses in

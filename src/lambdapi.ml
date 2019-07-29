@@ -91,10 +91,10 @@ let spec =
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--write-trees"
       , Arg.Set Dtree.write_trees
-      , " Write created trees as dot files" )
-    ; ( "--ordered-rules"
-      , Arg.Set Dtree.ordered_rules
-      , " Enforce rule order while reducing" )
+      , " Write decision trees to \".gv\" files" )
+    ; ( "--use-rule-order"
+      , Arg.Set Dtree.rule_order
+      , " Respect the order of definition of the rewriting rules" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )
