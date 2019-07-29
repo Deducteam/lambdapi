@@ -194,16 +194,17 @@ module Array =
     let equal : 'a eq -> 'a array eq = fun eq a1 a2 ->
       Array.length a1 = Array.length a2 && for_all2 eq a1 a2
 
-    (** [argmax ?cmp a] returns the index of the first maximum of array [a]
+    (** [max_index ?cmp a] returns the index of the first maximum of array [a]
         according to comparison [?cmp].  If [cmp] is not given, defaults to
         [Pervasives.compare]. *)
-    let argmax : ?cmp:('a -> 'a -> int) -> 'a array -> int =
+    let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
       fun ?(cmp=Pervasives.compare) arr ->
-      if arr = [||] then invalid_arg "Extra.Array.argmax" else
-      let r, _, _ = Array.fold_left (fun (mi, m, i) elt ->
-        if cmp elt m > 0 then (i, elt, succ i) else (mi, m, succ i))
-        (0, arr.(0), 0) arr in
-      r
+      let len = Array.length arr in
+      if len = 0 then invalid_arg "Extra.Array.max_index" else
+      let max = ref 0 in
+      for i = 1 to len - 1 do
+        if cmp arr.(!max) arr.(i) < 0 then max := i
+      done; !max
 
     (** [max ?cmp a] returns the higher element according to comparison
         function [?cmp], using [Pervasives.compare] if not given, in array
@@ -211,8 +212,7 @@ module Array =
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
       fun ?(cmp=Pervasives.compare) arr ->
       if arr = [||] then invalid_arg "Extra.Array.max" else
-      Array.fold_left (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
-        arr.(0) arr
+      arr.(max_index ~cmp:cmp arr)
 
     (** [split a] is [List.split (Array.to_list a)]. *)
     let split : ('a * 'b) array -> 'a list * 'b list = fun a ->
@@ -227,13 +227,13 @@ module Array =
 
   end
 
-(* Functional maps with [int] keys. *)
+(** Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
-(* Functional sets of [int]s. *)
+(** Functional sets of [int]s. *)
 module IntSet = Set.Make(Int)
 
-(* Functional maps with [string] keys. *)
+(** Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
