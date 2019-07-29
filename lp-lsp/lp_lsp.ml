@@ -222,7 +222,7 @@ let get_token tokens pos =
     | [] -> ""
     | t::ts -> let new_count = (count + (String.length t)) in
                if new_count >= pos then t else
-                iter_tokens new_count ts pos in
+                iter_tokens (new_count + 1) ts pos in
                 iter_tokens count tokens pos   
 
 
@@ -235,24 +235,66 @@ let get_token tokens pos =
 
 let get_symbol text l pos = 
   let lines = String.split_on_char '\n' text in
-  let line = List.nth lines l in
+  let line = List.nth lines (l-1) in
   let tokens = String.split_on_char ' ' line in
   get_token tokens pos
 
 
-let do_definition ofmt ~id params =
+(*let get_symbs ofmt ~id params =
   (*let uri, line, pos = get_docTextPosition params in*)
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym = Pure.get_symbols doc.final in
+  Extra.StrMap.fold (fun _ (s,p) l ->
+      let open Terms in
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
+      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
+      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym [] 
+*)
+
+let do_definition ofmt ~id params =
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  let sym = Pure.get_symbols doc.final in
+  let sym = Extra.StrMap.fold (fun _ (s,p) l ->
+      let open Terms in
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
+      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
+      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l) sym [] in
+  let sym_found = let rec find_sym sym sym_target =
+      match sym with
+      | [] -> failwith ("Sym Not found / " ^ sym_target ) (*("notfound", "not found", 0, {fname = None ;start_line = 0; start_col = 0; end_line = 0; end_col = 0})*)
+      | (sn, sp, kts, p)::ts -> if String.equal sn sym_target then mk_syminfo file (sn, sp, kts, p)
+                                else find_sym ts sym_target in
+                                find_sym sym sym_target in
+  let msg = LSP.mk_reply ~id ~result:(sym_found) in
+  LIO.send_json ofmt msg
+
+  (* let hover_symInfo ofmt ~id params = 
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
   let sym = Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
       option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in
-  let msg = LSP.mk_reply ~id ~result:(`List sym) in
-  LIO.send_json ofmt msg
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
+      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym [] in
+  let sym_found = let rec find_typesym sym sym_target =
+      match sym with
+      | [] -> failwith "Sym Not found / " (*("notfound", "not found", 0, {fname = None ;start_line = 0; start_col = 0; end_line = 0; end_col = 0})*)
+      | (sn, sp, kts, p, st)::ts -> if String.equal sn sym_target then st
+                                else find_typesym ts sym_target in
+                                find_typesym sym sym_target in
+  let sym_def = match !sym_found with
+  | None -> ""
+  | Some d ->  " " in
+  let result = `Assoc [ "contents", `String sym_type] in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg *)
     
 
 

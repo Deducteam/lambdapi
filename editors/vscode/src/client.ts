@@ -30,7 +30,7 @@ export function activate(context: ExtensionContext) {
 	//create the server /Users/houdamouzoun/.opam/4.05.0/bin/lp-lsp
 
 	let serverOptions = {
-		command: '/lp-lsp',
+		command: '/Users/houdamouzoun/.opam/4.05.0/bin/lp-lsp',
 		args: [ '--std' ]
 	};
 
