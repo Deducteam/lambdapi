@@ -82,10 +82,9 @@ module List =
       function
       | []     -> []
       | h :: t ->
-          begin match f h with
+          match f h with
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
-          end
 
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
@@ -94,10 +93,10 @@ module List =
         let rec loop k = function
           | [] -> []
           | h :: t ->
-              begin match f k h with
+              match f k h with
               | Some(x) -> x :: loop (succ k) t
               | None    -> loop (succ k) t
-              end in
+        in
         loop 0 l
 
     (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
@@ -135,10 +134,11 @@ module List =
     (** [init n f] returns [[f 0; f 1; ...; f n]].
         @raise Invalid_argument if [n < 0]. *)
     let init : int -> (int -> 'a) -> 'a list = fun n f ->
-      if n < 0 then invalid_arg "List.extra.init" else
-      let rec loop k acc =
-        if k = 0 then (f 0) :: acc else loop (k - 1) (f k :: acc) in
-      loop n []
+      if n < 0 then invalid_arg "Extra.List.init" else
+      let rec loop k =
+        if k > n then [] else f k :: loop (k + 1)
+      in
+      loop 0
 
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
         defaulting to [Pervasives.compare].
@@ -153,11 +153,12 @@ module List =
     (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
         @raise Not_found if [k] is not a key of [l]. *)
     let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k l ->
-      let rec loop = function
-        | []          -> raise Not_found
-        | (x, e) :: _
-          when eq x k -> e
-        | _      :: t -> loop t in
+      let rec loop l =
+        match l with
+        | []                      -> raise Not_found
+        | (x, e) :: _ when eq x k -> e
+        | _      :: t             -> loop t
+      in
       loop l
 
     (** [remove_phys_dups l] uniqify list [l] keeping only the last element,
