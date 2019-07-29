@@ -38,35 +38,27 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
 
-(* Does not work in examples/cic.dk
-
-let build_meta_type : int -> term = fun k ->
-  let m' = new_meta Type (*FIXME?*) k in
-  let m_typ = Meta(m',[||]) in
-  let m = new_meta m_typ k in
-  Meta(m,[||])
-*)
-
-(** [build_meta_type k] builds the type “∀(x₁:A₁) (x₂:A₂) ⋯ (xk:Ak), B” where
-    “x₁” through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a
-    new metavar of arity “i-1” and type “∀(x₁:A₂) ⋯ (x(i-1):A(i-1), TYPE”. *)
+(** [build_meta_type k] builds the type “∀(x₁:A₁) ⋯ (xk:Ak),A(k+1)” where “x₁”
+   through “xk” are fresh variables, “Ai = Mi[x₁,⋯,x(i-1)]”, “Mi” is a new
+   metavar of arity “i-1” and type “∀(x₁:A₁) ⋯ (x(i-1):A(i-1),TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k>=0);
-  let vs = Bindlib.new_mvar mkfree (Array.make k "x") in
-  let rec build_prod k p =
-    if k = 0 then p
+  let xs = Bindlib.new_mvar mkfree (Array.make k "x") in
+  (* [build_prod i p] builds the type “∀(x₁:A₁) ⋯ (xi:Ai),p”. *)
+  let rec build_prod i p =
+    if i = 0 then p
     else
-      let k = k-1 in
-      let mk_typ = Bindlib.unbox (build_prod k _Type) in
-      let mk = fresh_meta mk_typ k in
-      let tk = _Meta mk (Array.map _Vari (Array.sub vs 0 k)) in
-      let b = Bindlib.bind_var vs.(k) p in
-      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) tk b in
-      build_prod k p
+      let i = i-1 in
+      let mi_typ = Bindlib.unbox (build_prod i _Type) in
+      let mi = fresh_meta mi_typ i in
+      let ti = _Meta mi (Array.map _Vari (Array.sub xs 0 i)) in
+      let b = Bindlib.bind_var xs.(i) p in
+      let p = Bindlib.box_apply2 (fun a b -> Prod(a,b)) ti b in
+      build_prod i p
   in
-  let mk_typ = Bindlib.unbox (build_prod k _Type) (*FIXME?*) in
+  let mk_typ = Bindlib.unbox (build_prod k _Type) in
   let mk = fresh_meta mk_typ k in
-  let tk = _Meta mk (Array.map _Vari vs) in
+  let tk = _Meta mk (Array.map _Vari xs) in
   Bindlib.unbox (build_prod k tk)
 
 (** [check_rule builtins r] check whether rule [r] is well-typed. The program
@@ -75,9 +67,10 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit
   = fun builtins (s,h,r) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
   (* We process the LHS to replace pattern variables by metavariables. *)
-  let arity = Bindlib.mbinder_arity r.elt.rhs in
-  let metas = Array.init arity (fun _ -> None) in
+  let binder_arity = Bindlib.mbinder_arity r.elt.rhs in
+  let metas = Array.make binder_arity None in
   let rec to_m : int -> term -> tbox = fun k t ->
+    (* [k] is the number of arguments to which [m] is applied. *)
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s,h)   -> _Symb s h
