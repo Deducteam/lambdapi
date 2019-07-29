@@ -203,12 +203,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                 with Unallowed -> false
               in
               if !log_enabled then
-                begin
-                  let module F = Format in
-                  let sep oc () = F.fprintf oc "; " in
-                  log_eval (r_or_g r "Free var check on [%a]")
-                    (F.pp_print_list ~pp_sep:sep pp_tvar) (Array.to_list xs)
-                end;
+                log_eval (r_or_g r "Free var check on [%a]")
+                  (Array.pp pp_tvar "; ") xs;
               if r
               then ( let bound = Bindlib.bind_mvar xs b in
                      boundv.(i) <- TE_Some(Bindlib.unbox bound)
