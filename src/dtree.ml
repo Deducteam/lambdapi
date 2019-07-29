@@ -354,7 +354,7 @@ struct
       among columns [c] according to a heuristic, along with the score. *)
   let pick_best_among : t -> int array -> int * float = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
-    let index = Array.max_index ~cmp:Float.compare scores in
+    let index = Array.max_index ~cmp:(Pervasives.compare) scores in
     (index, scores.(index))
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
@@ -437,7 +437,7 @@ struct
       let best =
         if Array.for_all (fun (x, _) -> x = Unavailable) r then
           (Unavailable, 0.) else
-          Array.max ~cmp:(fun (_, x) (_, y) -> Float.compare x y) r in
+          Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r in
       match fst best with
       | Nl(c)          -> NlConstrain(c)
       | Fv(c)          -> FvConstrain(c)
@@ -458,7 +458,7 @@ struct
       | Vari(x)                              ->
           Some(Vari(Bindlib.name_of x), e)
       | _                                    -> None in
-    let tc_fst_cmp (tca, _) (tcb, _) = compare tca tcb in
+    let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
   (** [store m c] returns whether the inspected term on column [c] of matrix

@@ -23,15 +23,15 @@ type treecons =
   | Vari of string
   (** A bound variable with a name. *)
 
-(** [pp o c] prints tree constructor [c] to output channel [o]. *)
-let pp : treecons pp = fun oc -> function
+(** [tc_pp o c] prints tree constructor [c] to output channel [o]. *)
+let tc_pp : treecons pp = fun oc -> function
   | Abst    -> Format.fprintf oc "λ"
   | Vari(s) -> Format.pp_print_string oc s
   | Symb(t) -> Format.fprintf oc "%s<:%d" t.c_sym t.c_ari
 
-(** [compare c d] is a comparison function for constructors; more efficient
+(** [tc_compare c d] is a comparison function for constructors; more efficient
     than the pervasive. *)
-let compare : treecons -> treecons -> int = fun ca cb ->
+let tc_compare : treecons -> treecons -> int = fun ca cb ->
   match ca, cb with
   | Symb(a), Symb(b) ->
       begin match Int.compare a.c_ari b.c_ari with
@@ -144,7 +144,7 @@ end
 module TcMap = MkMap(struct
     type t = treecons
     let threshold = 4
-    let compare = compare end)
+    let compare = tc_compare end)
 
 (** {3 Decision trees for rewriting} *)
 
