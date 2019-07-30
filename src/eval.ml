@@ -194,8 +194,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | TcstrFreeVars(xs, i) ->
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
-              let env_vars = VarMap.fold (fun _ fv acc -> fv :: acc) fresh_vars
-                  []
+              let env_vars = VarMap.fold (fun _ fv acc -> fv :: acc)
+                  fresh_vars []
               in
               let r, b =
                 let b = lift vars.(i) in
