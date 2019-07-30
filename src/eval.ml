@@ -163,7 +163,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
      {!module:Terms} as the environment of the RHS during matching.  [m]
      maps the free variables contained in the tree to the free variables
      used in this evaluation. *)
-  let rec walk tree stk cursor to_stamped : (term * term list) option =
+  let rec walk tree stk cursor fresh_vars : (term * term list) option =
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, act)                              ->
@@ -180,7 +180,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               env.(slot) <- TE_Some(b)
           | TE_None, xs   ->
               let b = lift vars.(pos) in
-              let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
+              let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
               let bound = Bindlib.bind_mvar xs b in
               env.(slot) <- TE_Some(Bindlib.unbox bound)
           | TE_Vari(_), _ -> assert false
@@ -194,12 +194,12 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | TcstrFreeVars(xs, i) ->
               let b = lift vars.(i) in
-              let xs = Array.map (fun e -> VarMap.find e to_stamped) xs in
+              let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
               let exception Unallowed in
               let r = try
                   VarMap.iter (fun _ sv ->
                       if not (Array.mem sv xs) && Bindlib.occur sv b
-                      then raise Unallowed) to_stamped; true
+                      then raise Unallowed) fresh_vars; true
                 with Unallowed -> false
               in
               if !log_enabled then
@@ -210,7 +210,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                      boundv.(i) <- TE_Some(Bindlib.unbox bound)
                    ; ok )
               else fail in
-        walk next stk cursor to_stamped
+        walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         try
           let left, examined, right = R.destruct stk swap in
@@ -223,7 +223,7 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                        ; cursor + 1 )
                   else cursor
                 in
-                walk t (R.restruct left [] right) cursor to_stamped else
+                walk t (R.restruct left [] right) cursor fresh_vars else
           let s = Pervasives.(!steps) in
           let t, args = whnf_stk examined [] in
           let args = if store then List.map appl_to_tref args else args in
@@ -246,28 +246,27 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                                 ; c_ari })
                 in
                 let matched = TcMap.find cons children in
-                walk matched (R.restruct left args right) cursor to_stamped
+                walk matched (R.restruct left args right) cursor fresh_vars
             | Vari(x)    ->
                 let cons = Vari(Bindlib.name_of x) in
                 let matched = TcMap.find cons children in
-                walk matched (R.restruct left args right) cursor to_stamped
+                walk matched (R.restruct left args right) cursor fresh_vars
             | Abst(_, b) ->
                 begin match abstraction with
                 | None         -> raise Default
                 | Some(fv, tr) ->
-                    let nfv = stamp_tvar Pervasives.(!stamp) fv in
-                    Pervasives.incr stamp;
+                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
                     let bound = Bindlib.subst b (mkfree nfv) in
                     let u = bound :: args in
-                    let to_stamped = VarMap.add fv nfv to_stamped in
-                    walk tr (R.restruct left u right) cursor to_stamped
+                    let fresh_vars = VarMap.add fv nfv fresh_vars in
+                    walk tr (R.restruct left u right) cursor fresh_vars
                 end
             | Meta(_, _) -> raise Default
             | _          -> assert false end
           with Not_found | Default ->
           match default with
           | None    -> None
-          | Some(d) -> walk d (R.restruct left [] right) cursor to_stamped
+          | Some(d) -> walk d (R.restruct left [] right) cursor fresh_vars
         with Not_found -> None in
   walk tree stk 0 VarMap.empty
 
