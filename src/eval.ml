@@ -36,6 +36,8 @@ let log_eqmd = log_eqmd.logger
     {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
+type stack = term list
+
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
@@ -47,7 +49,7 @@ let rec whnf_beta : term -> term = fun t ->
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
    applied to the argument list (or stack) [stk]. Note that the normalisation
    is done in the sense of [whnf]. *)
-and whnf_beta_stk : term -> term list -> term * term list = fun t stk ->
+and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
@@ -77,7 +79,7 @@ let rec whnf : term -> term = fun t ->
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
-and whnf_stk : term -> term list -> term * term list = fun t stk ->
+and whnf_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
@@ -147,13 +149,14 @@ and eq_modulo : term -> term -> bool = fun a b ->
     The [boundv] array is similar to the [vars] array except that it is used
     to save terms with free variables. *)
 
-(** [tree_walk t s] tries to match stack [s] against decision tree [t] [c]. *)
-and tree_walk : dtree -> term list -> (term * term list) option =
-  fun dtree stk ->
+(** [tree_walk tree stk] tries to apply a rewriting rule by matching the stack
+    [stk] agains the decision tree [tree]. The resulting state of the abstract
+    machine is returned in case of success. *)
+and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
+  let (lazy capa, lazy tree) = tree in
   let open Tree_types in
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
-  match dtree with (lazy capa, lazy tree) ->
   let vars = Array.make capa Kind in (* dummy terms *)
   let boundv = Array.make capa TE_None in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
@@ -161,113 +164,108 @@ and tree_walk : dtree -> term list -> (term * term list) option =
      {!module:Terms} as the environment of the RHS during matching.  [m]
      maps the free variables contained in the tree to the free variables
      used in this evaluation. *)
-  let rec walk tree stk cursor fresh_vars : (term * term list) option =
+  let rec walk tree stk cursor fresh_vars =
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, act)                              ->
         (* Allocate an environment for the action. *)
         let env = Array.make (Bindlib.mbinder_arity act) TE_None in
         (* Retrieve terms needed in the action from the [vars] array. *)
-        let fn (pos, (slot, bd)) =
-          match boundv.(pos), bd with
-          | TE_Some(_), _ ->
-              env.(slot) <- boundv.(pos)
-          | TE_None, [||] ->
-              let t = unfold vars.(pos) in
-              let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
-              env.(slot) <- TE_Some(b)
-          | TE_None, xs   ->
-              let b = lift vars.(pos) in
-              let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
-              let bound = Bindlib.bind_mvar xs b in
-              env.(slot) <- TE_Some(Bindlib.unbox bound)
-          | TE_Vari(_), _ -> assert false
+        let fn (pos, (slot, xs)) =
+          match boundv.(pos) with
+          | TE_Vari(_) -> assert false
+          | TE_Some(_) -> env.(slot) <- boundv.(pos)
+          | TE_None    ->
+              if Array.length xs = 0 then
+                let t = unfold vars.(pos) in
+                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+                env.(slot) <- TE_Some(b)
+              else
+                let b = lift vars.(pos) in
+                let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+                env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
         List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, R.to_list stk)
     | Condition({ ok ; condition ; fail })                ->
-        let next = match condition with
+        let next =
+          match condition with
           | TcstrEq(i, j)        ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | TcstrFreeVars(xs, i) ->
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
-              let env_vars = VarMap.fold (fun _ fv acc -> fv :: acc)
-                  fresh_vars []
-              in
-              let r, b =
-                let b = lift vars.(i) in
-                if check_allowed_ctxt b xs env_vars then true, b else
-                let b = lift (snf vars.(i)) in
-                check_allowed_ctxt b xs env_vars, b
-              in
-              if !log_enabled then begin
-                log_eval (r_or_g r "Free var check: FV([%a]) ∩ [%a] ⊊ [%a]")
-                  pp_term vars.(i) (List.pp pp_tvar "; ") env_vars
-                  (Array.pp pp_tvar "; ") xs
-              end;
-              if r
-              then ( let bound = Bindlib.bind_mvar xs b in
-                     boundv.(i) <- TE_Some(Bindlib.unbox bound)
-                   ; ok )
-              else fail
+              let env = VarMap.fold (fun _ x xs -> x :: xs) fresh_vars [] in
+              (* We first attempt to match [vars.(i)] directly. *)
+              let b = Bindlib.bind_mvar xs (lift vars.(i)) in
+              let r = List.for_all (fun x -> not (Bindlib.occur x b)) env in
+              if r then (boundv.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              (* As a last resort we try matching the SNF. *)
+              let b = Bindlib.bind_mvar xs (lift (snf vars.(i))) in
+              let r = List.for_all (fun x -> not (Bindlib.occur x b)) env in
+              if r then (boundv.(i) <- TE_Some(Bindlib.unbox b); ok) else fail
         in
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         try
-          let left, examined, right = R.destruct stk swap in
+          let (left, examined, right) = R.destruct stk swap in
           if TcMap.is_empty children && abstraction = None then
             match default with
             | None    -> None
             | Some(t) ->
-                let cursor = if store
-                  then ( vars.(cursor) <- examined
-                       ; cursor + 1 )
+                let cursor =
+                  if store then (vars.(cursor) <- examined; cursor + 1)
                   else cursor
                 in
-                walk t (R.restruct left [] right) cursor fresh_vars else
-          let s = Pervasives.(!steps) in
-          let t, args = whnf_stk examined [] in
-          let args = if store then List.map appl_to_tref args else args in
-          let rebuilt = lazy (add_args t args) in
-          (* Introduce sharing on arguments *)
-          begin if Pervasives.(!steps) <> s then match examined with
-          (* If examined term was shared and has been reduced, update ref *)
-          | TRef(v) -> v := Some(Lazy.force rebuilt)
-          | _       -> () end;
-          let cursor = if store
-            then ( vars.(cursor) <- Lazy.force rebuilt
-                 ; cursor + 1 )
-            else cursor
-          in
-          let exception Default in
-          try begin match t with
-            | Symb(s, _) ->
-                let c_ari = List.length args in
-                let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
-                let matched = TcMap.find cons children in
-                walk matched (R.restruct left args right) cursor fresh_vars
-            | Vari(x)    ->
-                let cons = Treecons.Vari(Bindlib.name_of x) in
-                let matched = TcMap.find cons children in
-                walk matched (R.restruct left args right) cursor fresh_vars
-            | Abst(_, b) ->
-                begin match abstraction with
-                | None         -> raise Default
-                | Some(fv, tr) ->
-                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
-                    let bound = Bindlib.subst b (mkfree nfv) in
-                    let u = bound :: args in
-                    let fresh_vars = VarMap.add fv nfv fresh_vars in
-                    walk tr (R.restruct left u right) cursor fresh_vars
-                end
-            | Meta(_, _) -> raise Default
-            | _          -> assert false end
-          with Not_found | Default ->
-          match default with
-          | None    -> None
-          | Some(d) -> walk d (R.restruct left [] right) cursor fresh_vars
-        with Not_found -> None in
+                walk t (R.restruct left [] right) cursor fresh_vars
+          else
+            let s = Pervasives.(!steps) in
+            let (t, args) = whnf_stk examined [] in
+            let args = if store then List.map appl_to_tref args else args in
+            let rebuilt = lazy (add_args t args) in
+            (* Introduce sharing on arguments *)
+            if Pervasives.(!steps) <> s then
+              begin
+                match examined with
+                (* Update ref if the term was shared and has been reduced. *)
+                | TRef(v) -> v := Some(Lazy.force rebuilt)
+                | _       -> ()
+              end;
+            let cursor =
+              if store then (vars.(cursor) <- Lazy.force rebuilt; cursor + 1)
+              else cursor
+            in
+            let default () =
+              match default with
+              | None    -> None
+              | Some(d) -> walk d (R.restruct left [] right) cursor fresh_vars
+            in
+            try
+              match t with
+              | Symb(s, _) ->
+                  let c_ari = List.length args in
+                  let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
+                  let matched = TcMap.find cons children in
+                  walk matched (R.restruct left args right) cursor fresh_vars
+              | Vari(x)    ->
+                  let cons = Treecons.Vari(Bindlib.name_of x) in
+                  let matched = TcMap.find cons children in
+                  walk matched (R.restruct left args right) cursor fresh_vars
+              | Abst(_, b) ->
+                  begin match abstraction with
+                  | None         -> default ()
+                  | Some(fv, tr) ->
+                      let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
+                      let bound = Bindlib.subst b (mkfree nfv) in
+                      let u = bound :: args in
+                      let fresh_vars = VarMap.add fv nfv fresh_vars in
+                      walk tr (R.restruct left u right) cursor fresh_vars
+                  end
+              | Meta(_, _) -> default ()
+              | _          -> assert false
+            with Not_found -> default ()
+        with Not_found -> None
+  in
   walk tree stk 0 VarMap.empty
 
 (** {b Note} When matching fails, even though {!val:tree_walk} returns
