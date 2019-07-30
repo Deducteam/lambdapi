@@ -63,7 +63,8 @@ let get_args_len : term -> term * term list * int = fun t ->
   let rec get_args_len acc len t =
     match unfold t with
     | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
-    | t          -> (t, acc, len) in
+    | t          -> (t, acc, len)
+  in
   get_args_len [] 0 t
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list

@@ -128,5 +128,5 @@ The following options can be used to modify the behaviour of the
 reduction engine,
  - `--write-trees` writes the decision trees used for rule filtering
    to dot files; for each symbol `s`, a file `s.gv` is created.
- - `--rule-order` forces the rewriting engine to use in priority
+ - `--keep-rule-order` forces the rewriting engine to use in priority
    the topmost rules.

@@ -92,7 +92,7 @@ let spec =
     ; ( "--write-trees"
       , Arg.Set Dtree.write_trees
       , " Write decision trees to \".gv\" files" )
-    ; ( "--use-rule-order"
+    ; ( "--keep-rule-order"
       , Arg.Set Dtree.rule_order
       , " Respect the order of definition of the rewriting rules" )
     ; ( "--too-long"
