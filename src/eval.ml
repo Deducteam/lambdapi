@@ -95,8 +95,7 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
       | Some(t) -> Pervasives.incr steps; whnf_stk t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
-      match !(s.sym_tree) with (lazy capa, lazy tr) ->
-      match tree_walk tr capa stk with
+      match tree_walk !(s.sym_tree) stk with
       (* If no rule is found, return the original term *)
       | None        -> st
       | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
@@ -143,20 +142,20 @@ and eq_modulo : term -> term -> bool = fun a b ->
        linearity checks, or free variable checks or that are used in the
        right-hand side.
     3. A mapping from free variables to free variables used to avoid
-       re-intrance issues.
+       reentrancy issues.
 
     The [boundv] array is similar to the [vars] array except that it is used
     to save terms with free variables. *)
 
-(** [tree_walk t c s] tries to match stack [s] against tree [t] of capacity
-    [c]. *)
-and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
-  fun tree capa stk ->
+(** [tree_walk t s] tries to match stack [s] against decision tree [t] [c]. *)
+and tree_walk : dtree -> term list -> (term * term list) option =
+  fun dtree stk ->
   let open Tree_types in
-  let vars = Array.make capa Kind in (* dummy terms *)
-  let boundv = Array.make capa TE_None in
   let module R = Dtree.ReductionStack in
   let stk = R.of_list stk in
+  match dtree with (lazy capa, lazy tree) ->
+  let vars = Array.make capa Kind in (* dummy terms *)
+  let boundv = Array.make capa TE_None in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
      cursor indicating where to write in the [env] array described in
      {!module:Terms} as the environment of the RHS during matching.  [m]
