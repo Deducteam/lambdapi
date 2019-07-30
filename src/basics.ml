@@ -248,6 +248,17 @@ let distinct_vars : term array -> bool =
     | _ -> raise Not_unique_var
   in try Array.iter check ts; true with Not_unique_var -> false
 
+(** [check_allowed_ctxt b x e] is true if the free variables of term box [b]
+    that are in environment [e] are in [x] as well. *)
+let check_allowed_ctxt : tbox -> tvar array -> tvar list -> bool =
+  fun tb xs env ->
+  let exception Unallowed in
+  let fn v =
+    if not (Array.mem v xs) && Bindlib.occur v tb then raise Unallowed
+  in
+  try List.iter fn env; true
+  with Unallowed -> false
+
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule

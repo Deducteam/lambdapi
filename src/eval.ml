@@ -193,27 +193,27 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
           | TcstrEq(i, j)        ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | TcstrFreeVars(xs, i) ->
-              let b = lift vars.(i) in
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
-              let exception Unallowed in
-              let r = try
-                  VarMap.iter (fun _ sv ->
-                      if not (Array.mem sv xs) && Bindlib.occur sv b
-                      then raise Unallowed) fresh_vars; true
-                with Unallowed -> false
+              let env_vars = VarMap.fold (fun _ fv acc -> fv :: acc) fresh_vars
+                  []
+              in
+              let r, b =
+                let b = lift vars.(i) in
+                if check_allowed_ctxt b xs env_vars then true, b else
+                let b = lift (snf vars.(i)) in
+                check_allowed_ctxt b xs env_vars, b
               in
               if !log_enabled then begin
-                let in_env = VarMap.fold (fun _ v acc -> v::acc) fresh_vars []
-                in
                 log_eval (r_or_g r "Free var check: FV([%a]) ∩ [%a] ⊊ [%a]")
-                  pp_term vars.(i) (List.pp pp_tvar "; ") in_env
+                  pp_term vars.(i) (List.pp pp_tvar "; ") env_vars
                   (Array.pp pp_tvar "; ") xs
               end;
               if r
               then ( let bound = Bindlib.bind_mvar xs b in
                      boundv.(i) <- TE_Some(Bindlib.unbox bound)
                    ; ok )
-              else fail in
+              else fail
+        in
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         try
@@ -280,23 +280,8 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
     when a term is reduced in {!val:walk} with {!val:whnf_stk}, the term in
     the input stack is updated as well. *)
 
-(** [whnf t] computes a weak head-normal form of [t]. *)
-let whnf : term -> term = fun t ->
-  Pervasives.(steps := 0);
-  let t = unfold t in
-  let u = whnf t in
-  if Pervasives.(!steps = 0) then t else u
-
-(** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : term -> term = fun t ->
-  match get_args (whnf_beta t) with
-  | Prod(a,b), _ ->
-     let x,b = Bindlib.unbind b in
-     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
-  | h, ts -> add_args h (List.map whnf_beta ts)
-
 (** [snf t] computes the strong normal form of the term [t]. *)
-let rec snf : term -> term = fun t ->
+and snf : term -> term = fun t ->
   let h = whnf t in
   match h with
   | Vari(_)     -> h
@@ -319,6 +304,21 @@ let rec snf : term -> term = fun t ->
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
   | TRef(_)     -> assert false
+
+(** [whnf t] computes a weak head-normal form of [t]. *)
+let whnf : term -> term = fun t ->
+  Pervasives.(steps := 0);
+  let t = unfold t in
+  let u = whnf t in
+  if Pervasives.(!steps = 0) then t else u
+
+(** [simplify t] reduces simple redexes of [t]. *)
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
+  | Prod(a,b), _ ->
+     let x,b = Bindlib.unbind b in
+     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
+  | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->
