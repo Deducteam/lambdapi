@@ -89,9 +89,12 @@ and whnf_stk : term -> term list -> term * term list = fun t stk ->
       whnf_stk (Bindlib.subst f u) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
-      begin match !(s.sym_def) with
+      begin
+      (* First check for symbol definition. *)
+      match !(s.sym_def) with
       | Some(t) -> Pervasives.incr steps; whnf_stk t stk
       | None    ->
+      (* Otherwise try rewriting using decision tree. *)
       match !(s.sym_tree) with (lazy capa, lazy tr) ->
       match tree_walk tr capa stk with
       (* If no rule is found, return the original term *)
