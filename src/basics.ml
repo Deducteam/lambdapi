@@ -128,15 +128,6 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r,_) -> r == s
   | _         -> false
 
-(** [sym_cmp s s'] compares symbols [s] and [s'].  This function is designed
-    to be efficient, we compare names before module path because it is
-    quicker. *)
-let sym_cmp : sym -> sym -> int = fun sa sb ->
-  if sa == sb then 0 else
-  match String.compare sa.sym_name sb.sym_name with
-  | 0 -> Pervasives.compare sa.sym_path sb.sym_path
-  | x -> x
-
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the
    term, in the reverse order they were given. Free variables that were
@@ -271,19 +262,3 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
-
-(** {3 Tree constructor conversion} *)
-
-(** [is_treecons t] returns whether a term [t] is considered as a
-    tree constructor.  Tree constructors are
-    - abstractions,
-    - symbols,
-    - free variables. *)
-let is_treecons : term -> bool = fun t ->
-  match fst (get_args t) with
-  | Patt(_, _, _) -> false
-  | Vari(_)
-  | Abst(_, _)
-  | Symb(_, _)    -> true
-  | _             -> assert false
-

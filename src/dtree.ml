@@ -38,6 +38,19 @@ type t = (term, action) tree
     being an edge with a matching on symbol [u] or a variable or wildcard when
     [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
 
+(** [is_treecons t] returns whether a term [t] is considered as a
+    tree constructor.  Tree constructors are
+    - abstractions,
+    - symbols,
+    - free variables. *)
+let is_treecons : term -> bool = fun t ->
+  match fst (get_args t) with
+  | Patt(_, _, _) -> false
+  | Vari(_)
+  | Abst(_, _)
+  | Symb(_, _)    -> true
+  | _             -> assert false
+
 (** {3 Reduction substrate} *)
 
 (** Data structure used when reducing terms. When reducing, we must have
