@@ -202,9 +202,13 @@ and tree_walk : Dtree.t -> int -> term list -> (term * term list) option =
                       then raise Unallowed) fresh_vars; true
                 with Unallowed -> false
               in
-              if !log_enabled then
-                log_eval (r_or_g r "Free var check on [%a]")
-                  (Array.pp pp_tvar "; ") xs;
+              if !log_enabled then begin
+                let in_env = VarMap.fold (fun _ v acc -> v::acc) fresh_vars []
+                in
+                log_eval (r_or_g r "Free var check: FV([%a]) ∩ [%a] ⊊ [%a]")
+                  pp_term vars.(i) (List.pp pp_tvar "; ") in_env
+                  (Array.pp pp_tvar "; ") xs
+              end;
               if r
               then ( let bound = Bindlib.bind_mvar xs b in
                      boundv.(i) <- TE_Some(Bindlib.unbox bound)
