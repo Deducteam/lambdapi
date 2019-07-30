@@ -101,6 +101,8 @@ and ('t, 'r) node_data =
   (** If a wildcard is among the patterns, this subtree is used when the term
       matched isn't a constructor among the {!field:children} terms. *)}
 
+(** {3 Functions on trees} *)
+
 (** [iter l n f t] is a generic iterator on trees; with
     - function [l] performed on leaves,
     - function [n] performed on nodes,

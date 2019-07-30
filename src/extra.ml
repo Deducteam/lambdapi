@@ -204,9 +204,7 @@ module Array =
         function [?cmp], using [Pervasives.compare] if not given, in array
         [a]. *)
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
-      fun ?(cmp=Pervasives.compare) arr ->
-      if arr = [||] then invalid_arg "Extra.Array.max" else
-      arr.(max_index ~cmp:cmp arr)
+      fun ?(cmp=Pervasives.compare) arr -> arr.(max_index ~cmp:cmp arr)
 
     (** [split a] is [List.split (Array.to_list a)]. *)
     let split : ('a * 'b) array -> 'a list * 'b list = fun a ->
