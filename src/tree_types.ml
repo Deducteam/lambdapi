@@ -21,17 +21,17 @@ struct
     | Vari of string
     (** A bound variable with a name. *)
 
-  (** [tc_pp o c] prints tree constructor [c] to output channel [o]. *)
+  (** [pp o c] prints tree constructor [c] to output channel [o]. *)
   let pp : t pp = fun oc -> function
     | Abst          -> Format.fprintf oc "λ"
     | Vari(s)       -> Format.pp_print_string oc s
     | Symb(a, n, _) -> Format.fprintf oc "%s %d-ary" n a
 
-  (** [tc_compare c d] is a comparison function for constructors. *)
+  (** [compare c d] is a comparison function for constructors. *)
   let compare : t -> t -> int = Pervasives.compare
 end
 
-(** A mapping on {!type:treecons}. *)
+(** A mapping with {!type:Treecons.t} as keys. *)
 module TcMap = Map.Make(Treecons)
 
 (** {3 Decision trees for rewriting} *)
