@@ -135,7 +135,7 @@ module ReductionStack = RedListStack
 type dot_term =
   | DotDefa (* Default case *)
   | DotAbst of tvar
-  | DotCons of treecons
+  | DotCons of Treecons.t
   | DotSuccess
   | DotFailure
 
@@ -156,9 +156,9 @@ let to_dot : string -> t -> unit = fun fname tree ->
   let pp_dotterm : dot_term pp = fun oc dh -> match dh with
     | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
     | DotDefa    -> F.fprintf oc "*"
-    | DotCons(Symb(t)) -> F.fprintf oc "%s<sub>%d</sub>" t.c_sym t.c_ari
-    | DotCons(Vari(s)) -> F.fprintf oc "%s" s
-    | DotCons(Abst)    -> assert false
+    | DotCons(Symb(a, n, _)) -> F.fprintf oc "%s<sub>%d</sub>" n a
+    | DotCons(Vari(s))       -> F.fprintf oc "%s" s
+    | DotCons(Abst)          -> assert false
     | DotSuccess -> F.fprintf oc "✓"
     | DotFailure -> F.fprintf oc "✗"
   in
@@ -462,19 +462,18 @@ struct
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
-  let get_cons : term list -> (treecons * term) list = fun telst ->
+  let get_cons : term list -> (Treecons.t * term) list = fun telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
       | Symb({ sym_name ; sym_path ; _ }, _) ->
-          Some(Symb({ c_mod = sym_path ; c_sym = sym_name
-                    ; c_ari = arity }), e)
+          Some(Treecons.Symb(arity, sym_name, sym_path), e)
       | Abst(_, _)                           -> Some(Abst, e)
       | Vari(x)                              ->
           Some(Vari(Bindlib.name_of x), e)
       | _                                    -> None
     in
-    let tc_fst_cmp (tca, _) (tcb, _) = tc_compare tca tcb in
+    let tc_fst_cmp (tca, _) (tcb, _) = Treecons.compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
   (** [store m c d] returns whether the inspected term on column [c] of matrix
@@ -726,7 +725,7 @@ let rec compile : Cm.t -> t =
       (* Constructors specialisation *)
       let children =
         let f acc (tr_cons, te_cons) =
-          if tr_cons = Abst then acc else
+          if tr_cons = Treecons.Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
@@ -741,7 +740,7 @@ let rec compile : Cm.t -> t =
       in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> Abst) cons then None else
+        if List.for_all (fun (x, _) -> x <> Treecons.Abst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, clauses = Cm.abstract swap var positions updated in

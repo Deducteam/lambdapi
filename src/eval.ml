@@ -244,13 +244,11 @@ and tree_walk : dtree -> term list -> (term * term list) option =
           try begin match t with
             | Symb(s, _) ->
                 let c_ari = List.length args in
-                let cons = Symb({ c_sym = s.sym_name ; c_mod = s.sym_path
-                                ; c_ari })
-                in
+                let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
                 let matched = TcMap.find cons children in
                 walk matched (R.restruct left args right) cursor fresh_vars
             | Vari(x)    ->
-                let cons = Vari(Bindlib.name_of x) in
+                let cons = Treecons.Vari(Bindlib.name_of x) in
                 let matched = TcMap.find cons children in
                 walk matched (R.restruct left args right) cursor fresh_vars
             | Abst(_, b) ->
