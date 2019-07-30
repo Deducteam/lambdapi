@@ -24,10 +24,6 @@ form.
 A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
-(** Used to distinguish free variables across evaluations, avoid re intrance
-    issues. *)
-let stamp = Pervasives.ref 0
-
 (** Logging function for evaluation. *)
 let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
 let log_eval = log_eval.logger
