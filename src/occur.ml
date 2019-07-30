@@ -2,9 +2,9 @@
 open Extra
 
 (** Each element of the list is a path in the tree of the term.  For instance,
-    in the term [Appl(Appl(f, x), Appl(Appl(g, a), b))], the subterm [a] has
-    position [1.0], encoded by [[0 ; 1]], [b] has [1.1] encoded by [[1 ; 1]]
-    and [x] has [0] encoded by [[0]]. *)
+    in the term [f x (g a b)], the subterm [a] has position [1.0], encoded by
+    [[0 ; 1]], [b] has [1.1] encoded by [[1 ; 1]] and [x] has [0] encoded by
+    [[0]]. *)
 type t = int list
 
 (** [compare a b] implements lexicographic order on positions. *)
