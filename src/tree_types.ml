@@ -27,8 +27,7 @@ struct
     | Vari(s)       -> Format.pp_print_string oc s
     | Symb(a, n, _) -> Format.fprintf oc "%s %d-ary" n a
 
-  (** [tc_compare c d] is a comparison function for constructors; more efficient
-      than the pervasive. *)
+  (** [tc_compare c d] is a comparison function for constructors. *)
   let compare : t -> t -> int = Pervasives.compare
 end
 
