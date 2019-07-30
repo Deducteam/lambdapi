@@ -127,6 +127,12 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
                   ]
   ]
 
+let mk_definfo file pos = 
+  `Assoc [
+      "uri", `String file
+    ; "range", LSP.mk_range pos
+        ]
+
 let kind_of_type tm =
   let open Terms in
   let open Timed in
@@ -216,14 +222,19 @@ let get_line lines l =
     iter_list count lines l
 
 let get_token tokens pos =
+  let regexp = Str.regexp "[ ()+.:/*=\"']" in
+  let res_split = Str.full_split regexp tokens in
   let count = 0 in 
   let rec iter_tokens count tokens pos =
   match tokens with
     | [] -> ""
-    | t::ts -> let new_count = (count + (String.length t)) in
-               if new_count >= pos then t else
-                iter_tokens (new_count + 1) ts pos in
-                iter_tokens count tokens pos   
+    | t::ts -> match t with 
+                | Str.Text txt -> let new_count = (count + (String.length txt)) in
+                              if new_count >= pos then txt else
+                              iter_tokens new_count ts pos
+                | Str.Delim _ -> let new_count = (count + 1) in
+                                iter_tokens new_count ts pos
+    in iter_tokens count res_split pos   
 
 
 
@@ -235,9 +246,8 @@ let get_token tokens pos =
 
 let get_symbol text l pos = 
   let lines = String.split_on_char '\n' text in
-  let line = List.nth lines (l-1) in
-  let tokens = String.split_on_char ' ' line in
-  get_token tokens pos
+  let line = List.nth lines l in
+  get_token line pos
 
 
 (*let get_symbs ofmt ~id params =
@@ -253,7 +263,7 @@ let get_symbol text l pos =
       option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym [] 
 *)
 
-let do_definition ofmt ~id params =
+(*let do_definition ofmt ~id params =
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
@@ -271,6 +281,29 @@ let do_definition ofmt ~id params =
                                 else find_sym ts sym_target in
                                 find_sym sym sym_target in
   let msg = LSP.mk_reply ~id ~result:(sym_found) in
+  LIO.send_json ofmt msg*)
+
+  let do_definition ofmt ~id params =
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  LIO.log_error "definition" sym_target;
+
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_info =
+    match Extra.StrMap.find_opt sym_target sym with
+    | None
+    | Some (_, None) -> `Null
+    | Some (_, Some pos) -> mk_definfo file pos
+  in
+  let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
   (* let hover_symInfo ofmt ~id params = 
