@@ -9,7 +9,7 @@ struct
   (** A constructor is the representation of a symbol along with the number of
       arguments to which it is applied. *)
   type t =
-    | Symb of (int * string * Files.module_path)
+    | Symb of int * string * Files.module_path
     (** 1. Arity of the considered constructor.  A same symbol representation
            may generate several constructors with different arities.  For
            instance, with [g: N ⇒ N ⇒ N], [rule f g (g &x) → r] uses [g] with
