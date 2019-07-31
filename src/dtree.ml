@@ -358,7 +358,7 @@ struct
       required. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
-      | []                 -> acc
+      | []                    -> acc
       | x :: xs
         when is_treecons x    -> loop (ncons + 1, nst) xs
       | Patt(Some(_),_,_)::xs -> loop (ncons, nst + 1) xs
