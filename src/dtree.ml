@@ -140,7 +140,7 @@ end
     - Paterson and Hinze, {i Finger trees: a simple general purpose data
       structure}. *)
 
-module ReductionStack = RedListStack
+module Stack = RedListStack
 
 (** {3 Graphviz output} *)
 
@@ -256,14 +256,14 @@ struct
 
   (** Reduction stack containing the position of the subterm and the number of
       abstractions traversed at this position. *)
-  type occur_rs = (Occur.t * int) ReductionStack.t
+  type occur_rs = (Occur.t * int) Stack.t
 
   (** Data needed to bind terms from the lhs into the rhs. *)
   type binding_data = term Tree_types.binding_data
 
   (** A redefinition of the rule type.
 
-      {b Note} that {!type:array} is used while {!module:ReductionStack} could
+      {b Note} that {!type:array} is used while {!module:Stack} could
       be used because {!val:pick_best_among} goes through all items of a rule
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
@@ -316,11 +316,11 @@ struct
         NlScorable.pp nonlin in
     F.fprintf oc "Positions @@ @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occur.pp oc
-      (ReductionStack.to_list positions |> List.map fst) ;
+      (Stack.to_list positions |> List.map fst) ;
     F.fprintf oc "@] -- " ;
     F.fprintf oc "Depth: @[<h>" ;
     F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") F.pp_print_int oc
-      (ReductionStack.to_list positions |> List.map snd) ;
+      (Stack.to_list positions |> List.map snd) ;
     F.fprintf oc "@]@,";
     F.fprintf oc "{@[<v>@," ;
     F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
@@ -341,7 +341,7 @@ struct
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
     let positions = Occur.args_of size Occur.empty
                     |> List.map (fun x -> (x, 0))
-                    |> ReductionStack.of_list
+                    |> Stack.of_list
     in
     (* [|>] is reverse application, can be thought of as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
@@ -417,7 +417,7 @@ struct
       && not @@ List.exists (fun s -> NlScorable.constrained s nonlin)
         slots_uniq
     in
-    let depths = ReductionStack.to_list positions |> List.map snd
+    let depths = Stack.to_list positions |> List.map snd
                  |> Array.of_list
     in
     let ripe lhs =
@@ -492,7 +492,7 @@ struct
   (** [store m c d] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation. *)
   let store : t -> int -> bool = fun cm ci ->
-    let _, (_, de), _ = ReductionStack.destruct cm.positions ci in
+    let _, (_, de), _ = Stack.destruct cm.positions ci in
     let st_r r =
       match r.lhs.(ci) with
       | Patt(Some(_), _, _) -> true
@@ -506,7 +506,7 @@ struct
       column [c] having met [v] vars until now. *)
   let update_aux : int -> int -> occur_rs -> clause -> clause =
     fun ci slot pos r ->
-    let _, (_, depth), _ = ReductionStack.destruct pos ci in
+    let _, (_, depth), _ = Stack.destruct pos ci in
     let t = r.lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
@@ -537,13 +537,13 @@ struct
   let specialize : term -> int -> occur_rs -> clause list ->
     occur_rs * clause list = fun pat ci pos rs ->
     let pos =
-      let l, m, r = ReductionStack.destruct pos ci in
+      let l, m, r = Stack.destruct pos ci in
       let occ, depth = m in
       let _, _, nargs = get_args_len pat in
       let replace = Occur.args_of nargs occ
                     |> List.map (fun x -> (x, depth))
       in
-      ReductionStack.restruct l replace r in
+      Stack.restruct l replace r in
     let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.lhs 0 ci
                                   ; e
@@ -573,8 +573,8 @@ struct
   let default : int -> occur_rs -> clause list -> occur_rs * clause list =
     fun ci pos rs ->
     let pos =
-      let l, _, r = ReductionStack.destruct pos ci in
-      ReductionStack.restruct l [] r
+      let l, _, r = Stack.destruct pos ci in
+      Stack.restruct l [] r
     in
     let transf r =
       match r.lhs.(ci) with
@@ -594,9 +594,9 @@ struct
   let abstract : int -> tvar -> occur_rs -> clause list ->
                  occur_rs * clause list =
     fun ci v pos clauses ->
-    let l, (occ, depth), r = ReductionStack.destruct pos ci in
+    let l, (occ, depth), r = Stack.destruct pos ci in
     let occ = Occur.sub occ in (* Position of term inside lambda. *)
-    let pos = ReductionStack.restruct l [(occ, depth + 1)] r in
+    let pos = Stack.restruct l [(occ, depth + 1)] r in
     let insert r e = [ Array.sub r.lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.lhs ]
@@ -770,7 +770,7 @@ let update_dtree : sym -> unit = fun symb ->
   | Injec ->
       let pama = lazy (ClauseMat.of_rules !(symb.sym_rules)) in
       let tree = lazy (compile @@ Lazy.force pama) in
-      let capacity = lazy (Tree_types.capacity @@ Lazy.force tree) in
+      let capacity = lazy (Tree_types.tree_capacity @@ Lazy.force tree) in
       symb.sym_tree := (capacity, tree) ;
       if Pervasives.(!write_trees) then
         ( Format.printf "Wrote %s.gv\n" (symb.sym_name)

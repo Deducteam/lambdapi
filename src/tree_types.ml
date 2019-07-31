@@ -126,15 +126,15 @@ let tree_iter :
             (Option.map loop default) in
     loop t
 
-(** [capacity t] computes the capacity of tree [t].  During evaluation, some
+(** [tree_capacity t] computes the capacity of tree [t]. During evaluation the
     terms that are being filtered by the patterns have to be saved in order to
     be bound in the right hand side of the rule, or because they must verify a
-    constraint.  The capacity is the least upper bound of the number of terms
-    to be saved.  Let [P] be the set of all paths from root to leaves in a
-    tree [t].  Let [s: P → N] be the function mapping to any path the number
-    of nodes that have the {!field:store} tag to [true].  Then the capacity
-    [c] of [t] is [c = max{s(p) | p ∈ P}]. *)
-let capacity : ('t, 'r) tree -> int = fun tr ->
+    constraint. The capacity is the maximum number of such terms that may need
+    to be saved. More precisely, let [P] be the set of all paths from the root
+    to leaves in the tree [t], and let [nb_store] be a function mapping a path
+    to the number of nodes that have the {!field:store} tag to [true]. We then
+    define the capacity [c] of [t] is [c = max{nb_store(p) | p ∈ P}]. *)
+let tree_capacity : ('t, 'r) tree -> int = fun tr ->
   let do_leaf _ (_:'r) = 0 in
   let fail = 0 in
   let do_node _ st ch ab de =

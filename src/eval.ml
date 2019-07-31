@@ -32,10 +32,10 @@ let log_eval = log_eval.logger
 let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
 let log_eqmd = log_eqmd.logger
 
-(** Evaluation step counter.  Allow to conserve physical equality in
-    {!val:whnf}. *)
+(** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
+(** Abstract machine stack. *)
 type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
@@ -136,29 +136,29 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** {b Note} Matching with trees require three collections of terms.
-    1. The stack of arguments, called [stk] of type {!type:term
-       Dtree.ReductionStack.t} contains the terms which are matched against
-       the pattern described by the tree.
-    2. An array [vars] containing variables that are needed either for non
-       linearity checks, or free variable checks or that are used in the
-       right-hand side.
-    3. A mapping from free variables to free variables used to avoid
-       reentrancy issues.
+(** {b NOTE} that matching with trees involves three collections of terms.
+    1. The argument stack [stk] of type {!type:Terms.term Dtree.Stack.t} which
+       contains the terms that are matched against the decision tree.
+    2. An array [vars] of variables that are used for non-linearity checks and
+       free variable checks, or that are used in the RHS.
+    3. A mapping [fresh_vars] from (free) variables to (free) variables, which
+       is used to avoid reentrancy issues.
 
     The [boundv] array is similar to the [vars] array except that it is used
     to save terms with free variables. *)
 
 (** [tree_walk tree stk] tries to apply a rewriting rule by matching the stack
     [stk] agains the decision tree [tree]. The resulting state of the abstract
-    machine is returned in case of success. *)
+    machine is returned in case of success. Even if mathching fails, the stack
+    [stk] may be imperatively updated: any reduction step taken in elements of
+    the stack is preserved (this is done using {!constructor:TRef}). *)
 and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
-  let (lazy capa, lazy tree) = tree in
+  let (lazy capacity, lazy tree) = tree in
   let open Tree_types in
-  let module R = Dtree.ReductionStack in
-  let stk = R.of_list stk in
-  let vars = Array.make capa Kind in (* dummy terms *)
-  let boundv = Array.make capa TE_None in
+  let open Dtree in
+  let stk = Stack.of_list stk in
+  let vars = Array.make capacity Kind in (* dummy terms *)
+  let boundv = Array.make capacity TE_None in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
      cursor indicating where to write in the [env] array described in
      {!module:Terms} as the environment of the RHS during matching.  [m]
@@ -187,7 +187,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         in
         List.iter fn env_builder;
         (* Actually perform the action. *)
-        Some(Bindlib.msubst act env, R.to_list stk)
+        Some(Bindlib.msubst act env, Stack.to_list stk)
     | Condition({ ok ; condition ; fail })                ->
         let next =
           match condition with
@@ -208,16 +208,16 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         try
-          let (left, examined, right) = R.destruct stk swap in
+          let (left, examined, right) = Stack.destruct stk swap in
           if TcMap.is_empty children && abstraction = None then
-            match default with
-            | None    -> None
-            | Some(t) ->
-                let cursor =
-                  if store then (vars.(cursor) <- examined; cursor + 1)
-                  else cursor
-                in
-                walk t (R.restruct left [] right) cursor fresh_vars
+            let fn t =
+              let cursor =
+                if store then (vars.(cursor) <- examined; cursor + 1)
+                else cursor
+              in
+              walk t (Stack.restruct left [] right) cursor fresh_vars
+            in
+            Option.map_default fn None default
           else
             let s = Pervasives.(!steps) in
             let (t, args) = whnf_stk examined [] in
@@ -236,9 +236,11 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               else cursor
             in
             let default () =
-              match default with
-              | None    -> None
-              | Some(d) -> walk d (R.restruct left [] right) cursor fresh_vars
+              let fn d =
+                let stk = Stack.restruct left [] right in
+                walk d stk cursor fresh_vars
+              in
+              Option.map_default fn None default
             in
             try
               match t with
@@ -246,11 +248,13 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                   let c_ari = List.length args in
                   let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
                   let matched = TcMap.find cons children in
-                  walk matched (R.restruct left args right) cursor fresh_vars
+                  let stk = Stack.restruct left args right in
+                  walk matched stk cursor fresh_vars
               | Vari(x)    ->
                   let cons = Treecons.Vari(Bindlib.name_of x) in
                   let matched = TcMap.find cons children in
-                  walk matched (R.restruct left args right) cursor fresh_vars
+                  let stk = Stack.restruct left args right in
+                  walk matched stk cursor fresh_vars
               | Abst(_, b) ->
                   begin match abstraction with
                   | None         -> default ()
@@ -259,7 +263,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                       let bound = Bindlib.subst b (mkfree nfv) in
                       let u = bound :: args in
                       let fresh_vars = VarMap.add fv nfv fresh_vars in
-                      walk tr (R.restruct left u right) cursor fresh_vars
+                      walk tr (Stack.restruct left u right) cursor fresh_vars
                   end
               | Meta(_, _) -> default ()
               | _          -> assert false
@@ -267,12 +271,6 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         with Not_found -> None
   in
   walk tree stk 0 VarMap.empty
-
-(** {b Note} When matching fails, even though {!val:tree_walk} returns
-    {!constructor:None}, the input stack is updated (i.e. terms are possibly
-    reduced) as sharing is used through {!constructor:TRef}.  Consequently,
-    when a term is reduced in {!val:walk} with {!val:whnf_stk}, the term in
-    the input stack is updated as well. *)
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 and snf : term -> term = fun t ->

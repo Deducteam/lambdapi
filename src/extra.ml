@@ -36,6 +36,11 @@ module Option =
       | None    -> None
       | Some(e) -> Some(f e)
 
+    let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b = fun f d o ->
+      match o with
+      | None    -> d
+      | Some(e) -> f e
+
     let bind : ('a -> 'b t) -> 'a t -> 'b t = fun f o ->
       match o with
       | None    -> None
