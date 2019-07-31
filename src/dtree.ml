@@ -91,6 +91,11 @@ sig
       @raise Not_found when [i ≥ length v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
+  (** [destruct_opt v i] returns [Some(destruct v i)] if [Not_found] is not
+      raised and [None] otherwise.
+      @raise invalid_arg when [i < 0]. *)
+  val destruct_opt : 'a t -> int -> ('a prefix * 'a * 'a suffix) option
+
   (** [restruct l m r] is the concatenation of three substrates [l] [m] and
       [r]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
@@ -122,6 +127,10 @@ struct
       | (v::r, i) -> destruct (v :: l) (i - 1) r
     in
     destruct [] i e
+
+  let destruct_opt e i =
+    try Some(destruct e i)
+    with Not_found -> None
 
   (** [restruct l c r] complexity in [Θ(length (l @ c))]*)
   let restruct l c r =

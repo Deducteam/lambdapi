@@ -208,68 +208,68 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         in
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
-        try
-          let (left, examined, right) = Stack.destruct stk swap in
-          if TcMap.is_empty children && abstraction = None then
-            let fn t =
-              let cursor =
-                if store then (vars.(cursor) <- examined; cursor + 1)
-                else cursor
-              in
-              walk t (Stack.restruct left [] right) cursor fresh_vars
-            in
-            Option.map_default fn None default
-          else
-            let s = Pervasives.(!steps) in
-            let (t, args) = whnf_stk examined [] in
-            let args = if store then List.map appl_to_tref args else args in
-            let rebuilt = lazy (add_args t args) in
-            (* Introduce sharing on arguments *)
-            if Pervasives.(!steps) <> s then
-              begin
-                match examined with
-                (* Update ref if the term was shared and has been reduced. *)
-                | TRef(v) -> v := Some(Lazy.force rebuilt)
-                | _       -> ()
-              end;
+        match Stack.destruct_opt stk swap with
+        | None                        -> None
+        | Some(left, examined, right) ->
+        if TcMap.is_empty children && abstraction = None then
+          let fn t =
             let cursor =
-              if store then (vars.(cursor) <- Lazy.force rebuilt; cursor + 1)
+              if store then (vars.(cursor) <- examined; cursor + 1)
               else cursor
             in
-            let default () =
-              let fn d =
-                let stk = Stack.restruct left [] right in
-                walk d stk cursor fresh_vars
-              in
-              Option.map_default fn None default
+            walk t (Stack.restruct left [] right) cursor fresh_vars
+          in
+          Option.map_default fn None default
+        else
+          let s = Pervasives.(!steps) in
+          let (t, args) = whnf_stk examined [] in
+          let args = if store then List.map appl_to_tref args else args in
+          let rebuilt = lazy (add_args t args) in
+          (* Introduce sharing on arguments *)
+          if Pervasives.(!steps) <> s then
+            begin
+              match examined with
+              (* Update ref if the term was shared and has been reduced. *)
+              | TRef(v) -> v := Some(Lazy.force rebuilt)
+              | _       -> ()
+            end;
+          let cursor =
+            if store then (vars.(cursor) <- Lazy.force rebuilt; cursor + 1)
+            else cursor
+          in
+          let default () =
+            let fn d =
+              let stk = Stack.restruct left [] right in
+              walk d stk cursor fresh_vars
             in
-            try
-              match t with
-              | Symb(s, _) ->
-                  let c_ari = List.length args in
-                  let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
-                  let matched = TcMap.find cons children in
-                  let stk = Stack.restruct left args right in
-                  walk matched stk cursor fresh_vars
-              | Vari(x)    ->
-                  let cons = Treecons.Vari(Bindlib.name_of x) in
-                  let matched = TcMap.find cons children in
-                  let stk = Stack.restruct left args right in
-                  walk matched stk cursor fresh_vars
-              | Abst(_, b) ->
-                  begin match abstraction with
-                  | None         -> default ()
-                  | Some(fv, tr) ->
-                      let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
-                      let bound = Bindlib.subst b (mkfree nfv) in
-                      let u = bound :: args in
-                      let fresh_vars = VarMap.add fv nfv fresh_vars in
-                      walk tr (Stack.restruct left u right) cursor fresh_vars
-                  end
-              | Meta(_, _) -> default ()
-              | _          -> assert false
-            with Not_found -> default ()
-        with Not_found -> None
+            Option.map_default fn None default
+          in
+          try
+            match t with
+            | Symb(s, _) ->
+                let c_ari = List.length args in
+                let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
+                let matched = TcMap.find cons children in
+                let stk = Stack.restruct left args right in
+                walk matched stk cursor fresh_vars
+            | Vari(x)    ->
+                let cons = Treecons.Vari(Bindlib.name_of x) in
+                let matched = TcMap.find cons children in
+                let stk = Stack.restruct left args right in
+                walk matched stk cursor fresh_vars
+            | Abst(_, b) ->
+                begin match abstraction with
+                | None         -> default ()
+                | Some(fv, tr) ->
+                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
+                    let bound = Bindlib.subst b (mkfree nfv) in
+                    let u = bound :: args in
+                    let fresh_vars = VarMap.add fv nfv fresh_vars in
+                    walk tr (Stack.restruct left u right) cursor fresh_vars
+                end
+            | Meta(_, _) -> default ()
+            | _          -> assert false
+          with Not_found -> default ()
   in
   walk tree stk 0 VarMap.empty
 
