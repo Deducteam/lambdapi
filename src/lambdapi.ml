@@ -90,7 +90,7 @@ let spec =
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--write-trees"
-      , Arg.Set Dtree.write_trees
+      , Arg.Set Handle.write_trees
       , " Write decision trees to \".gv\" files" )
     ; ( "--keep-rule-order"
       , Arg.Set Dtree.rule_order

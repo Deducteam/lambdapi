@@ -114,6 +114,7 @@ distclean: clean
 	@cd libraries && ./zenon_modulo.sh clean
 	@find . -type f -name "*~" -exec rm {} \;
 	@find . -type f -name "*.lpo" -exec rm {} \;
+	@find . -type f -name "*.gv" -exec rm {} \;
 
 .PHONY: fullclean
 fullclean: distclean

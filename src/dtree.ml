@@ -13,10 +13,6 @@ open Tree_types
 (** Priority on topmost rule if set to true. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
-(** [write_trees] contains whether trees created for rule parsing should be
-    written to disk. *)
-let write_trees : bool Pervasives.ref = Pervasives.ref false
-
 (** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
 type action = (term_env, term) Bindlib.mbinder
 
@@ -170,10 +166,11 @@ type dot_term =
     its children represents the term matched to generate the next pattern
     matrix (the one of the child node); and is therefore one of the terms in
     the column of the pattern matrix whose index is the label of the node. *)
-let to_dot : string -> t -> unit = fun fname tree ->
+let to_dot : string -> sym -> unit = fun fname s ->
+  let tree = Lazy.force (snd !(s.sym_tree)) in
   let module F = Format in
   let module P = Print in
-  let ochan = open_out (fname ^ ".gv") in
+  let ochan = open_out fname in
   let ppf = F.formatter_of_out_channel ochan in
   let nodecount = ref 0 in
   F.fprintf ppf "graph {@[<v>";
@@ -629,32 +626,22 @@ struct
   (** [nl_succeed c r] computes the clause list from [r] that verify a
       non-linearity constraint [c]. *)
   let nl_succeed : NLcstr.cstr -> clause list -> clause list = fun c ->
-    let f r =
-      let nonlin = NLcstr.remove c r.nonlin in
-      { r with nonlin }
-    in
-    List.map f
+    List.map (fun r -> {r with nonlin = NLcstr.remove c r.nonlin})
 
   (** [nl_fail c r] computes the clauses not failing a non-linearity
       constraint [c] among clauses [r]. *)
   let nl_fail : NLcstr.cstr -> clause list -> clause list = fun c ->
-    let f { nonlin ; _ } = not (NLcstr.is_instantiated c nonlin) in
-    List.filter f
+    List.filter (fun r -> not (NLcstr.is_instantiated c r.nonlin))
 
   (** [fv_suceed c r] computes the clauses from [r] that verify a free
       variables constraint [c]. *)
   let fv_succeed : FVcstr.cstr -> clause list -> clause list = fun c ->
-    let f r =
-      let freevars = FVcstr.remove c r.freevars in
-      { r with freevars }
-    in
-    List.map f
+    List.map (fun r -> {r with freevars = FVcstr.remove c r.freevars})
 
   (** [fv_fail c r] computes the clauses not failing a free variable
       constraint [c] among clauses [r]. *)
   let fv_fail : FVcstr.cstr -> clause list -> clause list = fun c ->
-    let f { freevars ; _ } = not (FVcstr.is_instantiated c freevars) in
-    List.filter f
+    List.filter (fun r -> not (FVcstr.is_instantiated c r.freevars))
 end
 
 module Cm = ClauseMat
@@ -712,37 +699,27 @@ let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
     pattern matching problem contained in pattern matrix [m]. *)
 let rec compile : Cm.t -> t =
   let varcount = ref 0 in
-  fun ({ clauses ; positions ; slot } as patterns) ->
-  if Cm.is_empty patterns then Fail
-  else match Cm.yield patterns with
+  fun ({ clauses ; positions ; slot } as pats) ->
+  if Cm.is_empty pats then Fail
+  else match Cm.yield pats with
   | Yield({ Cm.rhs ; env_builder ; Cm.lhs ; _ }) ->
       if lhs = [||] then Leaf(env_builder, rhs) else
       harvest lhs rhs env_builder slot
   | NlConstrain(constr)                 ->
-      let ok = let nclauses = Cm.nl_succeed constr clauses in
-        compile { patterns with Cm.clauses = nclauses }
-      in
-      let fail = let nclauses = Cm.nl_fail constr clauses in
-        compile {patterns with Cm.clauses = nclauses }
-      in
-      let vi, vj = NLcstr.export constr in
-      let cond = Constr_Eq(vi, vj) in
-      Cond({ ok ; cond ; fail })
+      let ok = compile {pats with clauses = Cm.nl_succeed constr clauses} in
+      let fail = compile {pats with clauses = Cm.nl_fail constr clauses} in
+      let (vi, vj) = NLcstr.export constr in
+      Cond({ ok ; cond = Constr_Eq(vi,vj) ; fail })
   | FvConstrain(constr)                 ->
-      let ok = let clauses = Cm.fv_succeed constr clauses in
-        compile { patterns with Cm.clauses }
-      in
-      let fail = let clauses = Cm.fv_fail constr clauses in
-        compile { patterns with Cm.clauses }
-      in
-      let slot, vars = FVcstr.export constr in
-      let cond = Constr_FV(vars, slot) in
-      Cond({ ok ; cond ; fail })
+      let ok = compile {pats with clauses = Cm.fv_succeed constr clauses} in
+      let fail = compile {pats with clauses = Cm.fv_fail constr clauses} in
+      let (slot, vars) = FVcstr.export constr in
+      Cond({ ok ; cond = Constr_FV(vars, slot) ; fail })
   | Specialise(swap)                    ->
-      let store = Cm.store patterns swap in
+      let store = Cm.store pats swap in
       let updated = List.map (Cm.update_aux swap slot positions) clauses in
       let slot = if store then succ slot else slot in
-      let cons = Cm.get_col swap patterns |> Cm.get_cons in
+      let cons = Cm.get_col swap pats |> Cm.get_cons in
       (* Constructors specialisation *)
       let children =
         let f acc (tr_cons, te_cons) =
@@ -773,13 +750,8 @@ let rec compile : Cm.t -> t =
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
   match symb.sym_mode with
-  | Defin
-  | Injec ->
-      let pama = lazy (ClauseMat.of_rules !(symb.sym_rules)) in
-      let tree = lazy (compile @@ Lazy.force pama) in
-      let capacity = lazy (Tree_types.tree_capacity @@ Lazy.force tree) in
-      symb.sym_tree := (capacity, tree) ;
-      if Pervasives.(!write_trees) then
-        ( Format.printf "Wrote %s.gv\n" (symb.sym_name)
-        ; to_dot symb.sym_name (Lazy.force tree) )
-  | _     -> ()
+  | Const         -> ()
+  | Defin | Injec ->
+      let tree = lazy (compile (ClauseMat.of_rules !(symb.sym_rules))) in
+      let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
+      symb.sym_tree := (cap, tree)

@@ -11,6 +11,10 @@ open Files
 open Syntax
 open Scope
 
+(** [write_trees] tells whether contains whether graphviz files containing the
+    representation of decision trees should be created. *)
+let write_trees : bool Pervasives.ref = Pervasives.ref false
+
 (** [check_builtin_nat s] checks that the builtin symbol [s] for
    non-negative literals has a good type. *)
 let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
@@ -134,8 +138,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt)
       in
       List.iter add_rule rs;
-      let syms = List.map (fun (s, _, _) -> s) rs in
-      List.iter Dtree.update_dtree (List.remove_phys_dups syms);
+      let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
+      List.iter Dtree.update_dtree syms;
+      (* Writing decision tree if required. *)
+      if Pervasives.(!write_trees) then
+        begin
+          let write_tree s =
+            let fname = String.concat Filename.dir_sep s.sym_path in
+            let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
+            Console.out 3 "Writing file [%s]\n" fname;
+            Dtree.to_dot fname s
+          in
+          List.iter write_tree syms
+        end;
       (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
