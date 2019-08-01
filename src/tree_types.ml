@@ -96,9 +96,8 @@ type ('term, 'rhs) tree =
     define the capacity [c] of [t] is [c = max{nb_store(p) | p ∈ P}]. *)
 let rec tree_capacity : ('t, 'r) tree -> int = fun tr ->
   match tr with
-  | Leaf(_,_)  | Fail                                       -> 0
-  | Cond({ok; fail; _})                                     ->
-      max (tree_capacity ok) (tree_capacity fail)
+  | Leaf(_,_)  | Fail   -> 0
+  | Cond({ok; fail; _}) -> max (tree_capacity ok) (tree_capacity fail)
   | Node({store; children=ch; abstraction=abs; default; _}) ->
       let c_ch = TCMap.fold (fun _ t m -> max m (tree_capacity t)) ch 0 in
       let c_default = Option.map_default tree_capacity 0 default in
@@ -111,4 +110,4 @@ let rec tree_capacity : ('t, 'r) tree -> int = fun tr ->
 type ('term, 'rhs) dtree = int Lazy.t * ('term, 'rhs) tree Lazy.t
 
 (** [empty_dtree] is the empty decision tree. *)
-let empty_dtree : ('term, 'rhs) dtree = lazy 0, lazy Fail
+let empty_dtree : ('term, 'rhs) dtree = (lazy 0, lazy Fail)
