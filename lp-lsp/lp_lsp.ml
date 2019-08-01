@@ -221,8 +221,10 @@ let get_line lines l =
     | t::ts -> if count = l then t else iter_list (count+1) ts l in
     iter_list count lines l
 
+(* "[ ()+.:*='/\"]" *)
+
 let get_token tokens pos =
-  let regexp = Str.regexp "[ ()+.:/*=\"']" in
+  let regexp = Str.regexp "[^a-zA-Z0-9]" in
   let res_split = Str.full_split regexp tokens in
   let count = 0 in 
   let rec iter_tokens count tokens pos =
@@ -232,7 +234,18 @@ let get_token tokens pos =
                 | Str.Text txt -> let new_count = (count + (String.length txt)) in
                               if new_count >= pos then txt else
                               iter_tokens new_count ts pos
-                | Str.Delim _ -> let new_count = (count + 1) in
+                | Str.Delim s -> if String.equal s "\226" then let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
+                                  let find_symb ts sym_table =
+                                    match ts with
+                                      | [] -> failwith "error1"
+                                      | _::[] -> failwith "error2"
+                                      | a::b::tl -> match a,b with
+                                                    | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
+                                                                                  iter_tokens new_count tl pos else failwith "error"
+                                                    | _ -> failwith "error3" 
+    
+                                  in find_symb ts sym_table
+                                else let new_count = (count + 1) in
                                 iter_tokens new_count ts pos
     in iter_tokens count res_split pos   
 
@@ -306,7 +319,7 @@ let get_symbol text l pos =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
-  (* let hover_symInfo ofmt ~id params = 
+(* let hover_symInfo ofmt ~id params = 
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
@@ -322,7 +335,7 @@ let get_symbol text l pos =
       | (sn, sp, kts, p, st)::ts -> if String.equal sn sym_target then st
                                 else find_typesym ts sym_target in
                                 find_typesym sym sym_target in
-  let sym_def = match !sym_found with
+  let sym_type = match !sym_found with
   | None -> ""
   | Some d ->  " " in
   let result = `Assoc [ "contents", `String sym_type] in
