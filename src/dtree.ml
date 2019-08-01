@@ -282,34 +282,28 @@ module CM = struct
         specified set of variables. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc { clauses ; positions ; _ } ->
-    let module F = Format in
-    let pp_line oc { lhs ; freevars ; nonlin ; _ } =
-      F.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
-        (F.pp_print_list ~pp_sep:(Format.pp_print_space) Print.pp)
-        (Array.to_list lhs)
-        FVcstr.pp freevars
-        NLcstr.pp nonlin in
-    F.fprintf oc "Positions @@ @[<h>" ;
-    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") Occur.pp oc
-      (Stack.to_list positions |> List.map fst) ;
-    F.fprintf oc "@] -- " ;
-    F.fprintf oc "Depth: @[<h>" ;
-    F.pp_print_list ~pp_sep:(fun oc () -> F.fprintf oc ";") F.pp_print_int oc
-      (Stack.to_list positions |> List.map snd) ;
-    F.fprintf oc "@]@,";
-    F.fprintf oc "{@[<v>@," ;
-    F.pp_print_list ~pp_sep:F.pp_print_cut pp_line oc clauses ;
-    F.fprintf oc "@.@]}"
+  let pp : t pp = fun oc m ->
+    let pp_line oc r =
+      Format.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
+        (Format.pp_print_list ~pp_sep:Format.pp_print_space Print.pp)
+        (Array.to_list r.lhs) FVcstr.pp r.freevars NLcstr.pp r.nonlin
+    in
+    let out fmt = Format.fprintf oc fmt in
+    let pp_sep oc _ = Format.pp_print_string oc ";" in
+    let (l1, l2) = List.split (Stack.to_list m.positions) in
+    out "Positions @@ @[<h>%a@]"
+      (Format.pp_print_list ~pp_sep Occur.pp) l1;
+    out " -- Depth: @[<h>%a@]@,"
+      (Format.pp_print_list ~pp_sep Format.pp_print_int) l2;
+    out "{@[<v>@,%a@.@]}"
+      (Format.pp_print_list pp_line) m.clauses
 
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r r =
-      let lhs = Array.of_list r.Terms.lhs in
-      let nonlin = NLcstr.empty in
-      let freevars = FVcstr.empty in
-      { lhs ; rhs = r.Terms.rhs ; nonlin ; freevars ; env_builder = [] }
+    let r2r Terms.{rhs; _} =
+      { lhs = Array.of_list rhs ; rhs ; nonlin = NLcstr.empty
+      ; freevars = FVcstr.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -326,8 +320,8 @@ module CM = struct
   let is_empty : t -> bool = fun m -> m.clauses = []
 
   (** [get_col n m] retrieves column [n] of matrix [m]. *)
-  let get_col : int -> t -> term list = fun ind { clauses ; _ } ->
-    List.map (fun { lhs ; _ } -> lhs.(ind)) clauses
+  let get_col : int -> t -> term list = fun ind m ->
+    List.map (fun { lhs ; _ } -> lhs.(ind)) m.clauses
 
   (** [score c] returns the score heuristic for column [c].  The score is a
       tuple containing the number of constructors and the number of storage
