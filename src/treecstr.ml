@@ -168,34 +168,30 @@ end = struct
 
   let empty = { partial = IntMap.empty ; available = IntPairSet.empty }
 
-  let is_empty { available ; _ } = IntPairSet.is_empty available
+  let is_empty c = IntPairSet.is_empty c.available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
   let constrained : data -> t -> bool = fun slot pool ->
     IntMap.mem slot pool.partial
 
-  let score c =
+  let score : t -> decision = fun c ->
     if is_empty c then None else
-    Option.bind (fun c -> Some(c, nl_prio))
-      (try Some(IntPairSet.choose c.available)
-       with Not_found -> None)
+    try Some(IntPairSet.choose c.available, nl_prio) with Not_found -> None
 
-  let is_instantiated pair { available ; _ } = IntPairSet.mem pair available
+  let is_instantiated pair c = IntPairSet.mem pair c.available
 
-  let remove pair pool = { pool with
-                           available = IntPairSet.remove pair pool.available }
+  let remove pair pool =
+    { pool with available = IntPairSet.remove pair pool.available }
 
   let export pair = pair
 
   let instantiate vslot esl pool =
     try
-      let ovs = IntMap.find esl pool.partial in
-      let available = IntPairSet.add (normalize (vslot, ovs))
-          pool.available in
-      { pool with available }
-    with Not_found -> { pool with
-                        partial = IntMap.add esl vslot pool.partial }
+      let e = normalize (vslot, IntMap.find esl pool.partial) in
+      { pool with available = IntPairSet.add e pool.available }
+    with Not_found ->
+      { pool with partial = IntMap.add esl vslot pool.partial }
 
   (** [choose s] returns the constraint having the highest score in [s]. *)
   let choose = choose score
