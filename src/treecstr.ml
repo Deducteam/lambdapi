@@ -83,13 +83,25 @@ sig
   (** [export c] returns the two slots containing the terms that must be
       convertible. *)
   val export : cstr -> out
+
+  (** The following picks the constraint with highest priority. *)
+  val choose : t list -> (cstr * float) option
 end
 
-(** Non linearity constraints signature.  A non linearity constraint involves
-    at least two variables.  A specialisation of
-    {!module:BinConstraintPoolSig}. *)
-module type NlConstraintSig =
-sig
+let choose : ('a -> 'b cdecision) -> 'a list -> 'b cdecision = fun score l ->
+  let cmp s1 s2 =
+    match (s1, s2) with
+    | (None      , None      ) -> 0
+    | (None      , _         ) -> -1
+    | (Some(_, x), None      ) -> max (int_of_float x) 1
+    | (Some(_, x), Some(_, y)) -> compare x y
+  in
+  match l with
+  | [] -> None
+  | _  -> List.max ~cmp (List.map score l)
+
+(** Non linearity constraints involving at least two variables. *)
+module NLcstr : sig
   (** Binary constraint with
       - as {!type:data} a slot of the [vars] array,
       - as {!type:out} a couple of two slots of the [vars] array. *)
@@ -100,25 +112,7 @@ sig
   (** [constrained s p] returns whether slot [s] is constrained in pool
       [p]. *)
   val constrained : data -> t -> bool
-end
-
-(** Free variables constraints.  Such a constraint involves only one variable,
-    but it requires the list of variables that may appear free in the term.
-    Specialisation of {!module:BinConstraintPoolSig}. *)
-module type FvConstraintSig =
-sig
-  (** Binary constraint with
-      - as {!type:data} an array of free variables,
-      - as {!type:out} the slot of the [vars] array and an array of variables
-        that may appear free in the term. *)
-  include BinConstraintPoolSig
-    with type out = int * tvar array
-     and type data = tvar array
-end
-
-module NlConstraints : NlConstraintSig =
-struct
-
+end = struct
   module IntPair =
   struct
     type t = int * int
@@ -174,11 +168,9 @@ struct
     F.fprintf oc "%a@," pp_available pool.available ;
     F.fprintf oc "@]"
 
-  let empty = { partial = IntMap.empty
-              ; available = IntPairSet.empty }
+  let empty = { partial = IntMap.empty ; available = IntPairSet.empty }
 
-  let is_empty { available ; _ } =
-    IntPairSet.is_empty available
+  let is_empty { available ; _ } = IntPairSet.is_empty available
 
   let normalize (i, j) = if Int.compare i j < 0 then (i, j) else (j, i)
 
@@ -207,10 +199,21 @@ struct
     with Not_found -> { pool with
                         partial = IntMap.add esl vslot pool.partial }
 
+  (** [choose s] returns the constraint having the highest score in [s]. *)
+  let choose = choose score
 end
 
-module FvConstraints : FvConstraintSig =
-struct
+(** Free variables constraints.  Such a constraint involves only one variable,
+    but it requires the list of variables that may appear free in the term. *)
+module FVcstr : sig
+  (** Binary constraint with
+      - as {!type:data} an array of free variables,
+      - as {!type:out} the slot of the [vars] array and an array of variables
+        that may appear free in the term. *)
+  include BinConstraintPoolSig
+    with type out = int * tvar array
+     and type data = tvar array
+end = struct
   type t = (tvar array) IntMap.t
 
   type cstr = int * tvar array
@@ -247,104 +250,22 @@ struct
   let is_empty = IntMap.is_empty
 
   let is_instantiated (sl, x) p =
-    try
-      let x' = IntMap.find sl p in
-      Array.equal Bindlib.eq_vars x x'
+    try Array.equal Bindlib.eq_vars x (IntMap.find sl p)
     with Not_found -> false
 
   let remove (sl, x) p =
     try
-      let x' = IntMap.find sl p in
-      if Array.equal Bindlib.eq_vars x x' then
-        IntMap.remove sl p else p
+      if Array.equal Bindlib.eq_vars x (IntMap.find sl p) then
+        IntMap.remove sl p
+      else p
     with Not_found -> p
 
-  let instantiate slot vars pool =
-    IntMap.add slot vars pool
+  let instantiate = IntMap.add
 
   let export x = x
 
-  let score c =
-    try Some(IntMap.choose c, 1.)
-    with Not_found -> None
-end
-
-(** {3 Comparing constraints } *)
-
-(** This section presents extensions of the previous modules to allow one to
-    compare constraints in order to be able to pick the constraint with
-    highest priority in one or more pools of constraints. *)
-
-(** Module introducing a way to select the "best" element. *)
-module type Scorable = sig
-  (** Type of the element to score. *)
-  type t
-
-  (** Result of a comparison. *)
-  type decision
-
-  (** [choose x] returns the action with the highest score. *)
-  val choose : t list -> decision
-end
-
-(** [MakeScorable(P)] returns a module containing a function to compare list
-    of elements of [P].  Acts as an {e extension} of [P]. *)
-module MakeScorable(BCP:BinConstraintPoolSig)
-  : (Scorable with type t := BCP.t and type decision := BCP.decision) =
-struct
-
-  open BCP
-
-  (** [score_gt s v] is [> 0] if [s] has a higher score than [v], [= 0] if
-      score [s] is equal to score [v] and [< 0] otherwise. *)
-  let score_gt s1 s2 = match (s1, s2) with
-    | None      , None       -> 0
-    | None      , _          -> -1
-    | Some(_, x), None       -> max (int_of_float x) 1
-    | Some(_, x), Some(_, y) -> compare x y
+  let score c = try Some(IntMap.choose c, 1.0) with Not_found -> None
 
   (** [choose s] returns the constraint having the highest score in [s]. *)
-  let choose = function
-    | [] -> None
-    | cs -> List.map score cs |> List.max ~cmp:score_gt
-end
-
-(** Non linearity constraints pool extended with scoring. *)
-module type NlScorableSig = sig
-  type t
-  type cstr
-  type decision = cstr cdecision
-  include (NlConstraintSig)
-    with type t := t
-     and type cstr := cstr
-     and type decision := decision
-
-  include Scorable
-    with type t := t
-     and type decision := decision
-end
-
-(** Free variables constraints pool extended with scoring. *)
-module type FvScorableSig = sig
-  type t
-  type cstr
-  type decision = cstr cdecision
-  include (FvConstraintSig)
-    with type t := t
-     and type cstr := cstr
-     and type decision := decision
-
-  include Scorable
-    with type t := t
-     and type decision := decision
-end
-
-module NlScorable : NlScorableSig = struct
-  include NlConstraints
-  include MakeScorable(NlConstraints)
-end
-
-module FvScorable : FvScorableSig = struct
-  include FvConstraints
-  include MakeScorable(FvConstraints)
+  let choose = choose score
 end
