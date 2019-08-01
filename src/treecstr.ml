@@ -113,13 +113,11 @@ module NLcstr : sig
       [p]. *)
   val constrained : data -> t -> bool
 end = struct
-  module IntPair =
-  struct
+  module IntPair = struct
     type t = int * int
-    let compare : t -> t -> int = fun (i, i') (j, j') ->
-      match Int.compare i j with
-      | 0 -> Int.compare i' j'
-      | k -> k
+
+    let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
+      match i1 - j1 with 0 -> i2 - j2 | k -> k
   end
 
   module IntPairSet = Set.Make(IntPair)
