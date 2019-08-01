@@ -224,17 +224,16 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           let s = Pervasives.(!steps) in
           let (t, args) = whnf_stk examined [] in
           let args = if store then List.map appl_to_tref args else args in
-          let rebuilt = lazy (add_args t args) in
           (* Introduce sharing on arguments *)
           if Pervasives.(!steps) <> s then
             begin
               match examined with
               (* Update ref if the term was shared and has been reduced. *)
-              | TRef(v) -> v := Some(Lazy.force rebuilt)
+              | TRef(v) -> v := Some(add_args t args)
               | _       -> ()
             end;
           let cursor =
-            if store then (vars.(cursor) <- Lazy.force rebuilt; cursor + 1)
+            if store then (vars.(cursor) <- add_args t args; cursor + 1)
             else cursor
           in
           let default () =
@@ -258,14 +257,15 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 let stk = Stack.restruct left args right in
                 walk matched stk cursor fresh_vars
             | Abst(_, b) ->
-                begin match abstraction with
-                | None         -> default ()
-                | Some(fv, tr) ->
-                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
-                    let bound = Bindlib.subst b (mkfree nfv) in
-                    let u = bound :: args in
-                    let fresh_vars = VarMap.add fv nfv fresh_vars in
-                    walk tr (Stack.restruct left u right) cursor fresh_vars
+                begin
+                  match abstraction with
+                  | None         -> default ()
+                  | Some(fv, tr) ->
+                      let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
+                      let bound = Bindlib.subst b (mkfree nfv) in
+                      let u = bound :: args in
+                      let fresh_vars = VarMap.add fv nfv fresh_vars in
+                      walk tr (Stack.restruct left u right) cursor fresh_vars
                 end
             | Meta(_, _) -> default ()
             | _          -> assert false
