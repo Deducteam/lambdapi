@@ -25,12 +25,14 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
   let src =
     let src = base ^ src_extension in
-    let legacy_src = base ^ legacy_src_extension in
-    if Sys.file_exists src then src else legacy_src
+    let legacy = base ^ legacy_src_extension in
+    match (Sys.file_exists src, Sys.file_exists legacy) with
+    | (false, false) -> fatal_no_pos "File [%s.{lp|dk}] not found." base
+    | (true , true ) -> fatal_no_pos "Both [%s] and [%s] exist." src legacy
+    | (true , false) -> src
+    | (false, true ) -> legacy
   in
   let obj = base ^ obj_extension in
-  if not (Sys.file_exists src) then
-    fatal_no_pos "File [%s.{lp|dk}] not found." base;
   if List.mem path !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" src;
