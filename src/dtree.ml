@@ -2,14 +2,16 @@
     in order to pattern match the rules efficiently.  The method is based on
     Luc Maranget's {i Compiling Pattern Matching to Good Decision Trees},
     {{:10.1145/1411304.1411311}DOI}. *)
-open Terms
+
+open Timed
 open Extra
+open Terms
 open Basics
 open Treecstr
 open Tree_types
 
 (** Priority on topmost rule if set to true. *)
-let rule_order : bool ref = ref false
+let rule_order : bool Pervasives.ref = Pervasives.ref false
 
 (** [write_trees] contains whether trees created for rule parsing should be
     written to disk. *)
@@ -447,8 +449,8 @@ struct
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     try
-      if !rule_order
-      then let fc = List.hd clauses in
+      if Pervasives.(!rule_order) then
+        let fc = List.hd clauses in
         if is_exhausted positions fc then Yield(fc) else raise Not_found
       else let r = List.find (is_exhausted positions) clauses in
       Yield(r)
@@ -770,7 +772,6 @@ let rec compile : Cm.t -> t =
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
-  let open Timed in
   match symb.sym_mode with
   | Defin
   | Injec ->
