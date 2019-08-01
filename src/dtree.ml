@@ -157,7 +157,7 @@ module Stack = RedListStack
 type dot_term =
   | DotDefa (* Default case *)
   | DotAbst of tvar
-  | DotCons of Treecons.t
+  | DotCons of TC.t
   | DotSuccess
   | DotFailure
 
@@ -185,8 +185,8 @@ let to_dot : string -> t -> unit = fun fname tree ->
     | DotFailure -> F.fprintf oc "✗"
   in
   let pp_tcstr : term tree_constraint pp = fun oc -> function
-    | TcstrEq(i, j)        -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
-    | TcstrFreeVars(vs, i) ->
+    | Constr_Eq(i, j) -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
+    | Constr_FV(vs,i) ->
         F.fprintf oc "%a@@<sub>v</sub>%d" (F.pp_print_list P.pp_tvar)
           (Array.to_list vs) i
   in
@@ -194,14 +194,13 @@ let to_dot : string -> t -> unit = fun fname tree ->
      switch on [u] ({!constructor:None} if default). *)
   let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon ->
     function
-    | Leaf(_, a)       ->
+    | Leaf(_, a)  ->
         incr nodecount;
         let _, acte = Bindlib.unmbind a in
         F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte;
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l !nodecount pp_dotterm swon
-    | Node(ndata)      ->
-        let { swap ; children ; store ; abstraction ; default } = ndata in
+    | Node({swap; children; store; abstraction; default}) ->
         incr nodecount;
         let tag = !nodecount in
         (* Create node *)
@@ -210,21 +209,20 @@ let to_dot : string -> t -> unit = fun fname tree ->
         (* Create edge *)
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon;
-        TcMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
+        TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
         Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t)
           abstraction;
         Option.iter (write_tree tag DotDefa) default;
-    | Condition(cdata) ->
-        let { ok ; condition ; fail } = cdata in
+    | Cond({ ok ; cond ; fail }) ->
         incr nodecount;
         let tag = !nodecount in
         F.fprintf ppf "@ %d [label=<%a> shape=\"diamond\"];"
-          tag pp_tcstr condition;
+          tag pp_tcstr cond;
         F.fprintf ppf "@ %d -- %d [label=<%a>];"
           father_l tag pp_dotterm swon;
         write_tree tag DotSuccess ok;
         write_tree tag DotFailure fail
-    | Fail             ->
+    | Fail        ->
         incr nodecount;
         F.fprintf ppf "@ %d [label=<!>];" !nodecount;
         F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
@@ -235,7 +233,7 @@ let to_dot : string -> t -> unit = fun fname tree ->
            default ; abstraction }) ->
       F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
         swap (if store then " shape=\"box\"" else "");
-      TcMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
+      TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
       Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction;
       Option.iter (fun t -> write_tree 0 DotDefa t) default
   | Leaf(_)                         -> ()
@@ -268,7 +266,7 @@ struct
   type occur_rs = (Occur.t * int) Stack.t
 
   (** Data needed to bind terms from the lhs into the rhs. *)
-  type binding_data = term Tree_types.binding_data
+  type binding_data = int * term Bindlib.mvar
 
   (** A redefinition of the rule type.
 
@@ -484,18 +482,18 @@ struct
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type
       {!type:treecons}) is returned along the original term. *)
-  let get_cons : term list -> (Treecons.t * term) list = fun telst ->
+  let get_cons : term list -> (TC.t * term) list = fun telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
       | Symb({ sym_name ; sym_path ; _ }, _) ->
-          Some(Treecons.Symb(arity, sym_name, sym_path), e)
+          Some(TC.Symb(arity, sym_name, sym_path), e)
       | Abst(_, _)                           -> Some(Abst, e)
       | Vari(x)                              ->
           Some(Vari(Bindlib.name_of x), e)
       | _                                    -> None
     in
-    let tc_fst_cmp (tca, _) (tcb, _) = Treecons.compare tca tcb in
+    let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
 
   (** [store m c d] returns whether the inspected term on column [c] of matrix
@@ -663,19 +661,18 @@ module Cm = ClauseMat
     variables with no non linear constraints. *)
 let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
   t = fun lhs rhs env_builder slot ->
-  let default_node = { swap = 0 ; store = false ; children = TcMap.empty
-                     ; abstraction = None ; default = None }
+  let default_node store child =
+    Node { swap = 0 ; store ; children = TCMap.empty
+         ; abstraction = None ; default = Some(child) }
   in
   let rec loop lhs env_builder slot = match lhs with
     | []                        -> Leaf(env_builder, rhs)
     | Patt(Some(i), _, e) :: ts ->
         let env_builder = (slot, (i, Array.map to_tvar e)) :: env_builder in
         let slot = slot + 1 in
-        let child = loop ts env_builder slot in
-        Node { default_node with store = true ; default = Some(child) }
+        default_node true (loop ts env_builder slot)
     | Patt(None, _, _) :: ts    ->
-        let child = loop ts env_builder slot in
-        Node { default_node with default = Some(child) }
+        default_node false (loop ts env_builder slot)
     | _                         -> assert false in
   loop (Array.to_list lhs) env_builder slot
 
@@ -727,8 +724,8 @@ let rec compile : Cm.t -> t =
         compile {patterns with Cm.clauses = nclauses }
       in
       let vi, vj = NlScorable.export constr in
-      let condition = TcstrEq(vi, vj) in
-      Condition({ ok ; condition ; fail })
+      let cond = Constr_Eq(vi, vj) in
+      Cond({ ok ; cond ; fail })
   | FvConstrain(constr)                 ->
       let ok = let clauses = Cm.fv_succeed constr clauses in
         compile { patterns with Cm.clauses }
@@ -737,8 +734,8 @@ let rec compile : Cm.t -> t =
         compile { patterns with Cm.clauses }
       in
       let slot, vars = FvScorable.export constr in
-      let condition = TcstrFreeVars(vars, slot) in
-      Condition({ ok ; condition ; fail })
+      let cond = Constr_FV(vars, slot) in
+      Cond({ ok ; cond ; fail })
   | Specialise(swap)                    ->
       let store = Cm.store patterns swap in
       let updated = List.map (Cm.update_aux swap slot positions) clauses in
@@ -747,12 +744,12 @@ let rec compile : Cm.t -> t =
       (* Constructors specialisation *)
       let children =
         let f acc (tr_cons, te_cons) =
-          if tr_cons = Treecons.Abst then acc else
+          if tr_cons = TC.Abst then acc else
           let positions, clauses = Cm.specialize te_cons swap positions
               updated in
           let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TcMap.add tr_cons (compile ncm) acc in
-        List.fold_left f TcMap.empty cons
+          TCMap.add tr_cons (compile ncm) acc in
+        List.fold_left f TCMap.empty cons
       in
       (* Default child *)
       let default =
@@ -762,7 +759,7 @@ let rec compile : Cm.t -> t =
       in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> Treecons.Abst) cons then None else
+        if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
         let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
         incr varcount ;
         let positions, clauses = Cm.abstract swap var positions updated in

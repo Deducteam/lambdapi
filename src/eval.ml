@@ -188,12 +188,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, Stack.to_list stk)
-    | Condition({ ok ; condition ; fail })                ->
+    | Cond({ ok ; cond ; fail })                     ->
         let next =
-          match condition with
-          | TcstrEq(i, j)        ->
+          match cond with
+          | Constr_Eq(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
-          | TcstrFreeVars(xs, i) ->
+          | Constr_FV(xs,i) ->
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar xs (lift vars.(i)) in
@@ -211,7 +211,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         match Stack.destruct_opt stk swap with
         | None                        -> None
         | Some(left, examined, right) ->
-        if TcMap.is_empty children && abstraction = None then
+        if TCMap.is_empty children && abstraction = None then
           let fn t =
             let cursor =
               if store then (vars.(cursor) <- examined; cursor + 1)
@@ -248,13 +248,13 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
             match t with
             | Symb(s, _) ->
                 let c_ari = List.length args in
-                let cons = Treecons.Symb(c_ari, s.sym_name, s.sym_path) in
-                let matched = TcMap.find cons children in
+                let cons = TC.Symb(c_ari, s.sym_name, s.sym_path) in
+                let matched = TCMap.find cons children in
                 let stk = Stack.restruct left args right in
                 walk matched stk cursor fresh_vars
             | Vari(x)    ->
-                let cons = Treecons.Vari(Bindlib.name_of x) in
-                let matched = TcMap.find cons children in
+                let cons = TC.Vari(Bindlib.name_of x) in
+                let matched = TCMap.find cons children in
                 let stk = Stack.restruct left args right in
                 walk matched stk cursor fresh_vars
             | Abst(_, b) ->

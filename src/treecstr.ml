@@ -1,7 +1,7 @@
-(** This module provides a model of binary constraints to be used in decision
-    trees. *)
-open Terms
+(** Model of binary constraints to be used in decision trees. *)
+
 open Extra
+open Terms
 
 (** Holds a constraint to solve and its heuristic score, or nothing if there
     are no constraint available. *)
