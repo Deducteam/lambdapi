@@ -131,7 +131,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Adding the rules all at once. *)
       let add_rule (s,h,r) =
         Sign.add_rule ss.signature s r.elt;
-        out 3 "(rules) %a\n" Print.pp_rule (s,h,r.elt)
+        out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt)
       in
       List.iter add_rule rs;
       let syms = List.map (fun (s, _, _) -> s) rs in
