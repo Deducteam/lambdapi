@@ -1,7 +1,9 @@
-(** This module provides functions to compile rewrite rules to decision trees
-    in order to pattern match the rules efficiently.  The method is based on
-    Luc Maranget's {i Compiling Pattern Matching to Good Decision Trees},
-    {{:10.1145/1411304.1411311}DOI}. *)
+(** Compilation of rewriting rules to decision trees.
+
+    This module handles the compilation of rewriting rules to “decision trees”
+    based on the method described by Luc Maranget.
+
+    @see <https://doi.org/10.1145/1411304.1411311> *)
 
 open Timed
 open Extra
@@ -13,34 +15,31 @@ open Tree_types
 (** Priority on topmost rule if set to true. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
-(** Type of the leaves of the tree.  See {!module:Terms}, {!field:rhs}. *)
+(** Type of the leaves of the tree (see {!field:Terms.rhs}). *)
 type action = (term_env, term) Bindlib.mbinder
 
 (** See {!type:tree} in {!module:Terms}. *)
-type t = (term, action) tree
+type t = (term, action) Tree_types.tree
 
-(** {b Example} Given a rewrite system for a symbol [f] given as
-    - [f Z (S m)     → S m]
-    - [f n Z         → n]
-    - [f (S n) (S m) → S (S m)]
+(** {b Example:} let us consider the rewrite system for symbol [f] defined as:
+    - [f Z     (S m) → S m],
+    - [f n     Z     → n] and
+    - [f (S n) (S m) → S (S m)].
 
-    A possible tree might be
+    A possible decision tree might be
     {v
-    +–?–∘–Z–∘     → n
-    ├–Z–∘–Z–∘     → n
-    |   └–S–∘–?–∘ → S m
-    └–S–∘–Z–∘     → n
-    └–S–∘–?–∘     → S (S m)
+    ├─?─∘─Z─∘     → n
+    ├─Z─∘─Z─∘     → n
+    │   └─S─∘─?─∘ → S m
+    ├─S─∘─Z─∘     → n
+    └─S─∘─?─∘     → S (S m)
     v}
-    with [∘] being a node (with a label not shown here) and [–u–]
-    being an edge with a matching on symbol [u] or a variable or wildcard when
-    [?].  Typically, the portion [S–∘–Z] is made possible by a swap. *)
+    with [∘] being a node (with an omitted label) and [─u─] being an edge with
+    a matching on symbol [u] or a variable or wildcard when [?]. Typically the
+    portion [S─∘─Z] is made possible by a swap. *)
 
-(** [is_treecons t] returns whether a term [t] is considered as a
-    tree constructor.  Tree constructors are
-    - abstractions,
-    - symbols,
-    - free variables. *)
+(** [is_treecons t] tells whether the term [t] corresponds to a constructor in
+    the sense of the module {!module:Tree_types.TC}. *)
 let is_treecons : term -> bool = fun t ->
   match fst (get_args t) with
   | Patt(_, _, _) -> false
@@ -51,71 +50,55 @@ let is_treecons : term -> bool = fun t ->
 
 (** {3 Reduction substrate} *)
 
-(** Data structure used when reducing terms. When reducing, we must have
-    - fast access to any element in the substrate: for swaps
-    - fast split and merge: to remove an element (the inspected one), reduce
-      it, or unfold it (if an {!constructor:Appl} node) and then reinsert
-      it.
-    Otherwise, it behaves like a stack. *)
-module type Reduction_substrate =
-sig
-  (** Type of a substrate of ['a]. *)
+(** Data structure used to represent the stack of arguments during the pattern
+    matching operation. *)
+module Stack : sig
+  (** Type of a substrate with elements of type ['a]. *)
   type 'a t
 
   (** The empty substrate. *)
   val empty : 'a t
 
-  (** [is_empty v] returns whether a substrate is empty. *)
+  (** [is_empty v] tells whether a substrate is empty. *)
   val is_empty : 'a t -> bool
 
   (** [of_list l] returns a substrate containing the elements of [l]. *)
   val of_list : 'a list -> 'a t
 
-  (** [to_list s] returns a list containing the elements of the substrate
-      [s]. *)
+  (** [to_list s] returns a list representing the substrate [s]. *)
   val to_list : 'a t -> 'a list
 
-  (** [length v] is the number of elements in [v]. *)
+  (** [length s] gives the number of elements of the substrate [s]. *)
   val length : 'a t -> int
 
+  (** Prefix of a substrate. *)
   type 'a prefix
-  type 'a suffix
-  (** Prefix and suffix of the substrate. *)
 
-  (** [destruct v i] returns a triplet [(l, m, r)] with [l]eft being the
-      elements from 0 to [i - 1], [m]iddle the [i]th element and [r]ight the
-      elements from [i + 1] to the end of [v].
-      @raise invalid_arg when [i < 0]
+  (** Suffix of a substrate. *)
+  type 'a suffix
+
+  (** [destruct s i] splits the substrate [s] into a triple [(l, m, r)], where
+      [l] is the prefix of [s] up to its [i]-th element (excluded), [m] is the
+      [i]-th element of [s], and [r] is the remaining suffix of [m].
+      @raise Invalid_argument when [i < 0].
       @raise Not_found when [i ≥ length v]. *)
   val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
 
-  (** [destruct_opt v i] returns [Some(destruct v i)] if [Not_found] is not
-      raised and [None] otherwise.
-      @raise invalid_arg when [i < 0]. *)
-  val destruct_opt : 'a t -> int -> ('a prefix * 'a * 'a suffix) option
-
-  (** [restruct l m r] is the concatenation of three substrates [l] [m] and
-      [r]. *)
+  (** [restruct l m r] builds a substrate given a prefix [l], a middle list of
+      element [m], and a suffix [r]. We will typically use [destruct] to get a
+      triple [(l,e,r)], and then use [restruct l m r] where the list [m] comes
+      from some operation applied on the element [e]. *)
   val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
-end
-
-(** Naive implementation based on lists.  Appeared to be faster than tree
-    based structures (except when having rules with {e a lot} of
-    arguments). *)
-module RedListStack : Reduction_substrate =
-struct
+end = struct
   type 'a t = 'a list
   type 'a prefix = 'a list
   type 'a suffix = 'a list
   let empty = []
-  let is_empty l = (=) [] l
-  let of_list l = l
-  let to_list s = s
-
-  (** [length l] complexity in [Θ(length l)]. *)
+  let is_empty l = l = []
+  external of_list : 'a list -> 'a t = "%identity"
+  external to_list : 'a t -> 'a list = "%identity"
   let length = List.length
 
-  (** [destruct e i] complexity in [Θ(i)]. *)
   let destruct e i =
     if i < 0 then invalid_arg "RedListStack.destruct" ;
     let rec destruct l i r =
@@ -126,28 +109,18 @@ struct
     in
     destruct [] i e
 
-  let destruct_opt e i =
-    try Some(destruct e i)
-    with Not_found -> None
-
-  (** [restruct l c r] complexity in [Θ(length (l @ c))]*)
-  let restruct l c r =
-    let rec insert acc l =
-      match l with
-      | []   -> acc
-      | x::l -> insert (x :: acc) l
-    in
-    insert (c @ r) l
+  let restruct l m r = List.rev_append l (m @ r)
 end
 
-(** Alternatives to a list based implementation would be cat-enable
-    lists/deques, finger trees, random access lists.  One might want to look
-    at
-    - Okasaki, 1996, {i Purely Functional Data Structures},
-    - Paterson and Hinze, {i Finger trees: a simple general purpose data
-      structure}. *)
-
-module Stack = RedListStack
+(** {b NOTE} we ideally need the {!module:Stack} to provide fast access to any
+    element in the substrate (for swaps) as well as fast {!val:Stack.destruct}
+    and {!val:Stack.restruct} (to inspect a particular element, reduce it, and
+    then reinsert it). In practice, the naive representation based on lists is
+    faster than more elaborate solutions, unless there are rules with {e many}
+    arguments. Alternatives to a list-based implementation would be cat-enable
+    lists / deques, finger trees (Paterson & Hinze) or random access lists. In
+    the current implementation, [destruct e i] has a time complexity of [Θ(i)]
+    and [restruct l m r] has a time complexity of [Θ(length l + length m)]. *)
 
 (** {3 Graphviz output} *)
 
@@ -167,87 +140,86 @@ type dot_term =
     matrix (the one of the child node); and is therefore one of the terms in
     the column of the pattern matrix whose index is the label of the node. *)
 let to_dot : string -> sym -> unit = fun fname s ->
+  let output_tree : t pp = fun oc tree ->
+    let pp_dotterm : dot_term pp = fun oc dh ->
+      let out fmt = Format.fprintf oc fmt in
+      match dh with
+      | DotAbst(v)           -> out "λ%a" Print.pp_tvar v
+      | DotDefa              -> out "*"
+      | DotCons(Symb(a,n,_)) -> out "%s<sub>%d</sub>" n a
+      | DotCons(Vari(s))     -> out "%s" s
+      | DotCons(Abst)        -> assert false
+      | DotSuccess           -> out "✓"
+      | DotFailure           -> out "✗"
+    in
+    let pp_tcstr : term tree_constraint pp = fun oc cstr ->
+      let out fmt = Format.fprintf oc fmt in
+      let pp_ar oc ar =
+        Format.pp_print_list Print.pp_tvar oc (Array.to_list ar)
+      in
+      match cstr with
+      | Constr_Eq(i, j) -> out "@%d≡<sub>v</sub>@%d" i j
+      | Constr_FV(vs,i) -> out "%a@@<sub>v</sub>%d" pp_ar vs i
+    in
+    let out fmt = Format.fprintf oc fmt in
+    let node_count = ref 0 in
+    (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
+       switch on [u] ({!constructor:None} if default). *)
+    let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon t ->
+      incr node_count;
+      match t with
+      | Leaf(_, a)  ->
+          let _, acte = Bindlib.unmbind a in
+          out "@ %d [label=\"%a\"];" !node_count Print.pp acte;
+          out "@ %d -- %d [label=<%a>];" father_l !node_count pp_dotterm swon
+      | Node({swap; children; store; abstraction=abs; default}) ->
+          let tag = !node_count in
+          (* Create node *)
+          out "@ %d [label=\"@%d\"%s];" tag swap
+            (if store then " shape=\"box\"" else "");
+          (* Create edge *)
+          out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
+          TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
+          Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t) abs;
+          Option.iter (write_tree tag DotDefa) default
+      | Cond({ ok ; cond ; fail }) ->
+          let tag = !node_count in
+          out "@ %d [label=<%a> shape=\"diamond\"];" tag pp_tcstr cond;
+          out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
+          write_tree tag DotSuccess ok;
+          write_tree tag DotFailure fail
+      | Fail        ->
+          out "@ %d [label=<!>];" !node_count;
+          out "@ %d -- %d [label=\"!\"];" father_l !node_count
+    in
+    out "graph {@[<v>";
+    begin
+      match tree with
+      (* First step must be done to avoid drawing a top node. *)
+      | Node({ swap ; store ; children; default ; abstraction }) ->
+          out "@ 0 [label=\"@%d\"%s];" swap
+            (if store then " shape=\"box\"" else "");
+          TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
+          Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction;
+          Option.iter (fun t -> write_tree 0 DotDefa t) default
+      | Leaf(_) -> ()
+      | _       -> assert false
+    end;
+    out "@.}@\n@?"
+  in
   let tree = Lazy.force (snd !(s.sym_tree)) in
-  let module F = Format in
-  let module P = Print in
-  let ochan = open_out fname in
-  let ppf = F.formatter_of_out_channel ochan in
-  let nodecount = ref 0 in
-  F.fprintf ppf "graph {@[<v>";
-  let pp_dotterm : dot_term pp = fun oc dh -> match dh with
-    | DotAbst(v) -> F.fprintf oc "λ%a" Print.pp_tvar v
-    | DotDefa    -> F.fprintf oc "*"
-    | DotCons(Symb(a, n, _)) -> F.fprintf oc "%s<sub>%d</sub>" n a
-    | DotCons(Vari(s))       -> F.fprintf oc "%s" s
-    | DotCons(Abst)          -> assert false
-    | DotSuccess -> F.fprintf oc "✓"
-    | DotFailure -> F.fprintf oc "✗"
-  in
-  let pp_tcstr : term tree_constraint pp = fun oc -> function
-    | Constr_Eq(i, j) -> F.fprintf oc "@%d≡<sub>v</sub>@%d" i j
-    | Constr_FV(vs,i) ->
-        F.fprintf oc "%a@@<sub>v</sub>%d" (F.pp_print_list P.pp_tvar)
-          (Array.to_list vs) i
-  in
-  (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
-     switch on [u] ({!constructor:None} if default). *)
-  let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon ->
-    function
-    | Leaf(_, a)  ->
-        incr nodecount;
-        let _, acte = Bindlib.unmbind a in
-        F.fprintf ppf "@ %d [label=\"%a\"];" !nodecount P.pp acte;
-        F.fprintf ppf "@ %d -- %d [label=<%a>];"
-          father_l !nodecount pp_dotterm swon
-    | Node({swap; children; store; abstraction; default}) ->
-        incr nodecount;
-        let tag = !nodecount in
-        (* Create node *)
-        F.fprintf ppf "@ %d [label=\"@%d\"%s];"
-          tag swap (if store then " shape=\"box\"" else "");
-        (* Create edge *)
-        F.fprintf ppf "@ %d -- %d [label=<%a>];"
-          father_l tag pp_dotterm swon;
-        TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
-        Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t)
-          abstraction;
-        Option.iter (write_tree tag DotDefa) default;
-    | Cond({ ok ; cond ; fail }) ->
-        incr nodecount;
-        let tag = !nodecount in
-        F.fprintf ppf "@ %d [label=<%a> shape=\"diamond\"];"
-          tag pp_tcstr cond;
-        F.fprintf ppf "@ %d -- %d [label=<%a>];"
-          father_l tag pp_dotterm swon;
-        write_tree tag DotSuccess ok;
-        write_tree tag DotFailure fail
-    | Fail        ->
-        incr nodecount;
-        F.fprintf ppf "@ %d [label=<!>];" !nodecount;
-        F.fprintf ppf "@ %d -- %d [label=\"!\"];" father_l !nodecount
-  in
-  begin match tree with
-  (* First step must be done to avoid drawing a top node. *)
-  | Node({ swap ; store ; children;
-           default ; abstraction }) ->
-      F.fprintf ppf "@ 0 [label=\"@%d\"%s];"
-        swap (if store then " shape=\"box\"" else "");
-      TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
-      Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction;
-      Option.iter (fun t -> write_tree 0 DotDefa t) default
-  | Leaf(_)                         -> ()
-  | _                               -> assert false
-  end;
-  F.fprintf ppf "@.}@\n@?";
-  close_out ochan
+  let oc = open_out fname in
+  output_tree (Format.formatter_of_out_channel oc) tree;
+  close_out oc
 
 (** {3 Binary constraints nodes} *)
 
 (** A helper type to process [choose] results uniformly. *)
-type bin_cstr = Fv of FVcstr.cstr
-              | Nl of NLcstr.cstr
-              | Sp of int
-              | Unavailable
+type bin_cstr =
+  | Fv of FVcstr.cstr
+  | Nl of NLcstr.cstr
+  | Sp of int
+  | Unavailable
 
 (** {3 Clause matrix and pattern matching problem} *)
 
@@ -257,9 +229,7 @@ type bin_cstr = Fv of FVcstr.cstr
     to which is attached an action.  When reducing a term, if a line filters
     the term, or equivalently the term matches the pattern, the term is
     rewritten to the action. *)
-module ClauseMat =
-struct
-
+module CM = struct
   (** Reduction stack containing the position of the subterm and the number of
       abstractions traversed at this position. *)
   type occur_rs = (Occur.t * int) Stack.t
@@ -644,11 +614,9 @@ struct
     List.filter (fun r -> not (FVcstr.is_instantiated c r.freevars))
 end
 
-module Cm = ClauseMat
-
 (** [harvest l r e s] exhausts linearly the stack composed only of pattern
     variables with no non linear constraints. *)
-let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
+let harvest : term array -> action -> (int * CM.binding_data) list -> int ->
   t = fun lhs rhs env_builder slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
@@ -665,17 +633,16 @@ let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
     | _                         -> assert false in
   loop (Array.to_list lhs) env_builder slot
 
-(** {b Note} The compiling step creates a tree ready to be used for pattern
-    matching.  A tree guides the pattern matching by
+(** {b NOTE} the compiling step builds a decision tree (which can then be used
+    for pattern matching). A tree guides the pattern matching by:
     - accepting constructors and filtering possible clauses,
-    - guiding the matching in order to carry out as few atomic matchings as
-      possible by selecting the most appropriate term in the stack,
-    - storing terms from the stack that might be used in the right hand side,
-      because they match a pattern variable {!constructor:Patt} in the
-      {!field:lhs}.
+    - performing as few atomic matchings as possible (by considering the  most
+      appropriate term in the argument stack),
+    - storing terms that may be needed in the RHS because they match a pattern
+      variable constructor {!constructor:Patt} in the {!field:lhs} field.
 
-    The first bullet is ensured using {!val:specialize}, {!val:default} and
-    {!val:abstract} which allow to create new branches.
+    The first bullet is ensured using {!val:CM.specialize},  {!val:CM.default}
+    and {!val:CM.abstract}, which allow to create new branches.
 
     Efficiency is managed thanks to heuristics handled by the {!val:score}
     function.
@@ -695,63 +662,60 @@ let harvest : term array -> action -> (int * Cm.binding_data) list -> int ->
     variables have been encountered so far and thus indicates the index in
     [vars] that will be used by the next variable. *)
 
-(** [compile m] returns the decision tree allowing to parse efficiently the
-    pattern matching problem contained in pattern matrix [m]. *)
-let rec compile : Cm.t -> t =
-  let varcount = ref 0 in
-  fun ({ clauses ; positions ; slot } as pats) ->
-  if Cm.is_empty pats then Fail
-  else match Cm.yield pats with
-  | Yield({ Cm.rhs ; env_builder ; Cm.lhs ; _ }) ->
+(** [compile m] translates the given pattern matching problem,  encoded by the
+    matrix [m], into a decision tree. *)
+let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
+  if CM.is_empty pats then Fail else
+  match CM.yield pats with
+  | Yield(CM.{rhs ; env_builder ; lhs ; _ }) ->
       if lhs = [||] then Leaf(env_builder, rhs) else
       harvest lhs rhs env_builder slot
-  | NlConstrain(constr)                 ->
-      let ok = compile {pats with clauses = Cm.nl_succeed constr clauses} in
-      let fail = compile {pats with clauses = Cm.nl_fail constr clauses} in
-      let (vi, vj) = NLcstr.export constr in
-      Cond({ ok ; cond = Constr_Eq(vi,vj) ; fail })
-  | FvConstrain(constr)                 ->
-      let ok = compile {pats with clauses = Cm.fv_succeed constr clauses} in
-      let fail = compile {pats with clauses = Cm.fv_fail constr clauses} in
+  | NlConstrain(constr)                      ->
+      let ok = compile {pats with clauses = CM.nl_succeed constr clauses} in
+      let fail = compile {pats with clauses = CM.nl_fail constr clauses} in
+      let (i, j) = NLcstr.export constr in
+      Cond({ ok ; cond = Constr_Eq(i, j) ; fail })
+  | FvConstrain(constr)                      ->
+      let ok = compile {pats with clauses = CM.fv_succeed constr clauses} in
+      let fail = compile {pats with clauses = CM.fv_fail constr clauses} in
       let (slot, vars) = FVcstr.export constr in
       Cond({ ok ; cond = Constr_FV(vars, slot) ; fail })
-  | Specialise(swap)                    ->
-      let store = Cm.store pats swap in
-      let updated = List.map (Cm.update_aux swap slot positions) clauses in
-      let slot = if store then succ slot else slot in
-      let cons = Cm.get_col swap pats |> Cm.get_cons in
+  | Specialise(swap)                         ->
+      let store = CM.store pats swap in
+      let updated = List.map (CM.update_aux swap slot positions) clauses in
+      let slot = if store then slot + 1 else slot in
+      let cons = CM.get_cons (CM.get_col swap pats) in
       (* Constructors specialisation *)
       let children =
-        let f acc (tr_cons, te_cons) =
+        let fn acc (tr_cons, te_cons) =
           if tr_cons = TC.Abst then acc else
-          let positions, clauses = Cm.specialize te_cons swap positions
-              updated in
-          let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-          TCMap.add tr_cons (compile ncm) acc in
-        List.fold_left f TCMap.empty cons
+          let (positions, clauses) =
+            CM.specialize te_cons swap positions updated
+          in
+          TCMap.add tr_cons (compile CM.{clauses ; slot ; positions}) acc
+        in
+        List.fold_left fn TCMap.empty cons
       in
       (* Default child *)
       let default =
-        let positions, clauses = Cm.default swap positions updated in
-        let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-        if Cm.is_empty ncm then None else Some(compile ncm)
+        let (positions, clauses) = CM.default swap positions updated in
+        let ncm = CM.{clauses ; slot ; positions } in
+        if CM.is_empty ncm then None else Some(compile ncm)
       in
       (* Abstraction specialisation*)
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
-        let var = Bindlib.new_var mkfree ("tr" ^ (string_of_int !varcount)) in
-        incr varcount ;
-        let positions, clauses = Cm.abstract swap var positions updated in
-        let ncm = { Cm.clauses ; Cm.slot ; Cm.positions } in
-        Some(var, compile ncm)
+        let var = Bindlib.new_var mkfree "tr" in
+        let (positions, clauses) = CM.abstract swap var positions updated in
+        Some(var, compile CM.{clauses ; slot ; positions})
       in
-      Node({ swap ; store ; children ; abstraction ; default })
+      Node({swap ; store ; children ; abstraction ; default})
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
   match symb.sym_mode with
-  | Const         -> ()
+  | Const         -> () (* Constant symbols do not have rules. *)
   | Defin | Injec ->
-      let tree = lazy (compile (ClauseMat.of_rules !(symb.sym_rules))) in
+      let tree = lazy (compile (CM.of_rules !(symb.sym_rules))) in
       let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
       symb.sym_tree := (cap, tree)
