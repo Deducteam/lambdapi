@@ -99,7 +99,7 @@ let spec =
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
     ; ( "--beautify"
-      , Arg.Unit (fun _ -> mode := Beautify)
+      , Arg.Unit (fun _ -> mode := Beautify; set_default_verbose 0)
       , " Parse input files and pretty-print them (in the new syntax)" )
     ; ( "--timeout"
       , Arg.Int set_timeout

@@ -94,7 +94,8 @@ let binop = Prefix.grammar binops
 (** [get_binops loc p] loads the binary operators associated to module [p] and
     report possible errors at location [loc].  This operation requires the [p]
     to be loaded (i.e., compiled). *)
-let get_binops : Pos.pos -> module_path -> unit = fun loc p ->
+let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
+  let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
       parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
@@ -261,14 +262,14 @@ let parser patt =
 
 (** Any path member identifier (escaped idents are stripped). *)
 let parser path_elem =
-  | id:regular_ident -> KW.check id; id
-  | id:escaped_ident_no_delim -> id
+  | id:regular_ident -> KW.check id; (id, false)
+  | id:escaped_ident_no_delim -> (id, true)
 
 (** Module path (dot-separated identifiers. *)
 let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
-let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
+let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
 (** [symtag] parses a single symbol tag. *)
 let parser symtag =
@@ -464,7 +465,8 @@ let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 (** [do_require pos path] is a wrapper for [!require path], that takes care of
     possible exceptions. Errors are reported at given position [pos],  keeping
     as much information as possible in the error message. *)
-let do_require : Pos.pos -> Files.module_path -> unit = fun loc path ->
+let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
+  let path = List.map fst path in
   let local_fatal fmt =
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
     parser_fatal loc fmt Files.pp_path path
@@ -481,9 +483,9 @@ let parser cmd =
   | _require_ o:{_open_ -> true}?[false] ps:path+
       -> let fn p = do_require _loc p; if o then get_binops _loc p in
          List.iter fn ps; P_require(o,ps)
-  | _require_ p:path _as_ n:ident
-      -> !require p;
-         P_require_as(p,n)
+  | _require_ p:path _as_ n:path_elem
+      -> do_require _loc p;
+         P_require_as(p, Pos.in_pos _loc_n n)
   | _open_ ps:path+
       -> List.iter (get_binops _loc) ps;
          P_open(ps)

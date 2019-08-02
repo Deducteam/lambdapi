@@ -5,8 +5,8 @@ open Pos
 
 let filename = Pervasives.ref ""
 
-let to_module_path : string -> string list =
-  String.split_on_char '.'
+let to_module_path : string -> Syntax.p_module_path = fun mp ->
+  List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
 
 let locate : Lexing.position * Lexing.position -> Pos.pos = fun (p1, p2) ->
   let fname = if !filename = "" then None else Some(!filename) in
@@ -31,9 +31,9 @@ type token =
   (* Identifiers and wildcard. *)
   | WILD
   | ID      of string
-  | QID     of (string list * string)
+  | QID     of (Syntax.p_module_path * string)
   (* Commands. *)
-  | REQUIRE of string list
+  | REQUIRE of Syntax.p_module_path
   | EVAL
   | INFER
   | ASSERT  of bool

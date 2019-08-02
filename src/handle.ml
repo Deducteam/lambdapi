@@ -84,10 +84,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   let scope_basic = Scope.scope_term ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
+     let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_require b cmd.pos) ss ps, None)
   | P_require_as(p,id)         ->
-     (handle_require_as cmd.pos ss p id, None)
+     let id = Pos.make id.pos (fst id.elt) in
+     (handle_require_as cmd.pos ss (List.map fst p) id, None)
   | P_open(ps)                  ->
+     let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ts, x, xs, a)     ->
       (* We check that [x] is not already used. *)
