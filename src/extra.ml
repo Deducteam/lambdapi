@@ -119,6 +119,12 @@ module List =
         elements with [eq]. *)
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
+
+    (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
+        that [Invalid_argument] is raised if [n] is negative. *)
+    let init : int -> (int -> 'a) -> 'a list = fun n f ->
+      if n < 0 then invalid_arg "Extra.List.init" else
+      let rec loop k = if k > n then [] else f k :: loop (k + 1) in loop 0
   end
 
 module Array =
