@@ -241,8 +241,8 @@ let get_token tokens pos =
                                       | _::[] -> failwith "error2"
                                       | a::b::tl -> match a,b with
                                                     | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
-                                                                                  iter_tokens new_count tl pos else failwith "error"
-                                                    | _ -> failwith "error3" 
+                                                                                  iter_tokens new_count tl pos else failwith "error3"
+                                                    | _ -> failwith "error4" 
     
                                   in find_symb ts sym_table
                                 else let new_count = (count + 1) in
@@ -319,28 +319,30 @@ let get_symbol text l pos =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
-(* let hover_symInfo ofmt ~id params = 
+let hover_symInfo ofmt ~id params = 
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
-  let sym = Extra.StrMap.fold (fun _ (s,p) l ->
-      let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
-      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
-      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym [] in
-  let sym_found = let rec find_typesym sym sym_target =
-      match sym with
-      | [] -> failwith "Sym Not found / " (*("notfound", "not found", 0, {fname = None ;start_line = 0; start_col = 0; end_line = 0; end_col = 0})*)
-      | (sn, sp, kts, p, st)::ts -> if String.equal sn sym_target then st
-                                else find_typesym ts sym_target in
-                                find_typesym sym sym_target in
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_found =
+    match Extra.StrMap.find_opt sym_target sym with
+    | None
+    | Some (_, None) -> Terms.TRef (ref None)
+    | Some (sym, Some pos) -> sym.sym_type
+  in
   let sym_type = match !sym_found with
   | None -> ""
-  | Some d ->  " " in
+  | Some d ->  Print.pp_term d |> String.concat "\n" in
   let result = `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg *)
+  LIO.send_json ofmt msg 
     
 
 
