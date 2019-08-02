@@ -111,8 +111,8 @@ let spec =
       , Arg.String (fun cmd -> termination_checker := Some(cmd))
       , "<cmd> Runs the given termination checker" )
     ; ( "--version"
-      , Arg.Unit (fun () -> Printf.printf "%s\n" Version.version; exit 0)
-      , "Print version and exit" )
+      , Arg.Unit (fun () -> out 0 "Lambdapi %s\n%!" Version.version; exit 0)
+      , " Prints the current version number and exits" )
     ; ( "--debug"
       , Arg.String set_default_debug
       , "<flags> Enables given debugging flags by default " ^ debug_flags ) ]

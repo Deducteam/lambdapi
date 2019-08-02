@@ -1,1 +1,1 @@
-let version = "devel"
+let version = "%%VERSION%%"
