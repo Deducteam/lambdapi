@@ -236,8 +236,6 @@ let get_token tokens pos =
   let regexp = Str.regexp "[^a-zA-Z0-9]" in
   let res_split = Str.full_split regexp tokens in
 
-  LIO.log_error "get_token" "After split";
-
   let count = 0 in
   let rec iter_tokens count tokens pos =
     match tokens with
