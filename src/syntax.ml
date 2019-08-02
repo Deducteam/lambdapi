@@ -154,7 +154,9 @@ type p_config =
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
-  (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
+  (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
+  | P_config_ident of string
+  (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
 
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc

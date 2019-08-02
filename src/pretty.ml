@@ -190,9 +190,9 @@ let pp_command : p_command pp = fun oc cmd ->
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt
-  | P_set(P_config_builtin(n,i)  )  ->
+  | P_set(P_config_builtin(n,i))    ->
       out "set builtin %S ≔ %a" n pp_qident i
-  | P_set(P_config_binop(binop)  )  ->
+  | P_set(P_config_binop(binop))    ->
       let (s, a, p, qid) = binop in
       let a =
         match a with
@@ -200,7 +200,9 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_left  -> "l"
         | Assoc_right -> "r"
       in
-      out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+      out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
+  | P_set(P_config_ident(id))       ->
+      out "set declared \"%s\"" id
   | P_query(q)                      ->
      pp_p_query oc q
 

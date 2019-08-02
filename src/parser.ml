@@ -92,6 +92,12 @@ let binops : binop Prefix.t = Prefix.init ()
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
 
+(** Currently defined identifiers. *)
+let declared_ids : string Prefix.t = Prefix.init ()
+
+(** Parser for a declared identifier. *)
+let declared_id = Prefix.grammar declared_ids
+
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
 let forbiden_in_binops =
@@ -101,7 +107,8 @@ let forbiden_in_binops =
 
 (** [get_binops loc p] loads the binary operators associated to module [p] and
     report possible errors at location [loc].  This operation requires the [p]
-    to be loaded (i.e., compiled). *)
+    to be loaded (i.e., compiled). The declared identifiers are also retrieved
+    at the same time. *)
 let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
   let p = List.map fst p in
   let sign =
@@ -109,7 +116,9 @@ let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
       parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, binop) = Prefix.add binops s binop in
-  StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
+  StrMap.iter fn Timed.(!Sign.(sign.sign_binops));
+  let fn s = Prefix.add declared_ids s s in
+  StrSet.iter fn Timed.(!Sign.(sign.sign_idents))
 
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
@@ -162,9 +171,10 @@ let _proofterm_  = KW.create "proofterm"
 let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
 
-(** [binop_sanity_check pos s] checks that the token [s] is appropriate. If it
-    is not the case then the [Fatal] exception is raised. *)
-let binop_sanity_check : Pos.pos -> string -> unit = fun loc s ->
+(** [sanity_check pos s] checks that the token [s] is appropriate for an infix
+    operator or a declared identifier. If it is not the case, then the [Fatal]
+    exception is raised. *)
+let sanity_check : Pos.pos -> string -> unit = fun loc s ->
   (* Of course, the empty string and keywords are forbidden. *)
   if s = "" then parser_fatal loc "Invalid token (empty).";
   if KW.mem s then parser_fatal loc "Invalid token (reserved).";
@@ -271,6 +281,7 @@ let escaped_ident = escaped_ident true
 let parser any_ident =
   | id:regular_ident -> KW.check id; id
   | id:escaped_ident -> id
+  | id:declared_id   -> id
 
 (** Identifier (regular and non-keyword, or escaped). *)
 let parser ident = id:any_ident -> in_pos _loc id
@@ -474,9 +485,13 @@ let parser config =
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
-      binop_sanity_check _loc_s s;
+      sanity_check _loc_s s;
       Prefix.add binops s binop;
       P_config_binop(binop)
+  | "declared" id:string_lit ->
+      sanity_check _loc_id id;
+      Prefix.add declared_ids id id;
+      P_config_ident(id)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
@@ -537,7 +552,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> ast = fun fname ->
-  Prefix.reset binops;
+  Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in
@@ -549,7 +564,7 @@ let parse_file : string -> ast = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
-  Prefix.reset binops;
+  Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in

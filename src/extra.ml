@@ -151,6 +151,9 @@ module IntMap = Map.Make(Int)
 (* Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
 
+(* Functional sets of strings. *)
+module StrSet = Set.Make(String)
+
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
 let time : ('a -> 'b) -> 'a -> float * 'b = fun f x ->
