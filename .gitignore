@@ -1,3 +1,4 @@
+src/version.ml
 log-lp.txt
 log-lsp.txt
 *.dko
