@@ -127,7 +127,7 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
                   ]
   ]
 
-let mk_definfo file pos = 
+let mk_definfo file pos =
   `Assoc [
       "uri", `String file
     ; "range", LSP.mk_range pos
@@ -168,7 +168,7 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
-  (*let get_docTxtPosGoals params = 
+  (*let get_docTxtPosGoals params =
   let doc = dict_field "uri" params in
   let file = string_field "file" doc in
   let pos = dict_field "position" params in
@@ -213,8 +213,8 @@ let do_goals ofmt ~id params =
       let msg = LSP.mk_reply ~id ~result in
       LIO.send_json ofmt msg)
 
-let get_line lines l = 
-  let count = 0 in 
+let get_line lines l =
+  let count = 0 in
   let rec iter_list count lines l =
   match lines with
     | [] -> ""
@@ -223,42 +223,69 @@ let get_line lines l =
 
 (* "[ ()+.:*='/\"]" *)
 
+let to_text (t : Str.split_result) : string =
+  match t with
+  | Str.Text s -> "Text: " ^ s
+  | Str.Delim s -> "Delim: " ^ s
+
+let myfail (msg : string) =
+  LIO.log_error "fail" msg;
+  failwith msg
+
 let get_token tokens pos =
   let regexp = Str.regexp "[^a-zA-Z0-9]" in
   let res_split = Str.full_split regexp tokens in
-  let count = 0 in 
+
+  LIO.log_error "get_token" "After split";
+
+  let count = 0 in
   let rec iter_tokens count tokens pos =
-  match tokens with
+    match tokens with
     | [] -> ""
-    | t::ts -> match t with 
-                | Str.Text txt -> let new_count = (count + (String.length txt)) in
-                              if new_count >= pos then txt else
-                              iter_tokens new_count ts pos
-                | Str.Delim s -> if String.equal s "\226" then let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
-                                  let find_symb ts sym_table =
-                                    match ts with
-                                      | [] -> failwith "error1"
-                                      | _::[] -> failwith "error2"
-                                      | a::b::tl -> match a,b with
-                                                    | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
-                                                                                  iter_tokens new_count tl pos else let new_count = (count + 1) in
-                                iter_tokens new_count ts pos
-                                                    | _ -> failwith "error4" 
-    
-                                  in find_symb ts sym_table
-                                else let new_count = (count + 1) in
-                                iter_tokens new_count ts pos
-    in iter_tokens count res_split pos   
+    | t::ts ->
+      match t with
+      | Str.Text txt ->
+        let new_count = count + (String.length txt) in
+        if new_count >= pos
+        then txt
+        else iter_tokens new_count ts pos
+      | Str.Delim s ->
+        if String.equal s "\226"
+        then
+          let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
+          let find_symb ts sym_table =
+            match ts with
+            | [] ->
+              myfail "error1"
+            | _ :: [] ->
+              myfail "error2"
+            | a::b::tl ->
+              match a,b with
+              | Str.Delim c, Str.Delim d ->
+                if List.mem ("\226"^c^d) sym_table
+                then
+                  let new_count = (count + 1) in
+                  iter_tokens new_count tl pos
+                else
+                  let new_count = (count + 1) in
+                  iter_tokens new_count ts pos
+              | _ ->
+                myfail "error4"
+          in
+          find_symb ts sym_table
+        else
+          let new_count = count + 1 in
+          iter_tokens new_count ts pos
+  in
+  iter_tokens count res_split pos
 
-
-
-(*let get_symbol text l pos = 
+(*let get_symbol text l pos =
   let lines = String.split_on_char '\n' text in
   let line = get_line lines l in
   let tokens = String.split_on_char ' ' line in
   get_token tokens pos *)
 
-let get_symbol text l pos = 
+let get_symbol text l pos =
   let lines = String.split_on_char '\n' text in
   let line = List.nth lines l in
   get_token line pos
@@ -271,10 +298,10 @@ let get_symbol text l pos =
   let sym = Pure.get_symbols doc.final in
   Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type));
       option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
-      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym [] 
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *)
+      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym []
 *)
 
 (*let do_definition ofmt ~id params =
@@ -284,9 +311,9 @@ let get_symbol text l pos =
   let sym = Pure.get_symbols doc.final in
   let sym = Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); 
+      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type));
       option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *) 
+                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *)
       option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l) sym [] in
   let sym_found = let rec find_sym sym sym_target =
       match sym with
@@ -320,7 +347,8 @@ let get_symbol text l pos =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
-(*let hover_symInfo ofmt ~id params = 
+(*
+let hover_symInfo ofmt ~id params =
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
@@ -343,9 +371,8 @@ let get_symbol text l pos =
   | Some d ->  Print.pp_term d |> String.concat "\n" in
   let result = `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg *)
-    
-
+  LIO.send_json ofmt msg
+*)
 
 let protect_dispatch p f x =
   try f x
@@ -395,7 +422,7 @@ let dispatch_message ofmt dict =
   | "textDocument/definition" ->
     do_definition ofmt ~id params
 
-  | "proof/goals" -> 
+  | "proof/goals" ->
     do_hover ofmt ~id params
 
   | "exit" ->
@@ -482,5 +509,3 @@ let main () =
   match Term.eval lsp_cmd with
   | `Error _ -> exit 1
   | _        -> exit 0
-
-let _ = main ()
