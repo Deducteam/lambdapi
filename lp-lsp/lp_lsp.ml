@@ -216,12 +216,21 @@ let get_line lines l =
 
 (* "[ ()+.:*='/\"]" *)
 
+let to_text (t : Str.split_result) : string =
+  match t with
+  | Str.Text s -> "Text: " ^ s
+  | Str.Delim s -> "Delim: " ^ s
+
+let myfail (msg : string) =
+  LIO.log_error "fail" msg;
+  failwith msg
+
 let get_token tokens pos =
   let regexp = Str.regexp "[^a-zA-Z0-9]" in
   let res_split = Str.full_split regexp tokens in
   let count = 0 in
   let rec iter_tokens count tokens pos =
-  match tokens with
+    match tokens with
     | [] -> ""
     | t::ts -> match t with
       | Str.Text txt -> let new_count = (count + (String.length txt)) in
@@ -406,5 +415,3 @@ let main () =
   match Term.eval lsp_cmd with
   | `Error _ -> exit 1
   | _        -> exit 0
-
-let _ = main ()

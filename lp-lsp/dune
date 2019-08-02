@@ -1,5 +1,10 @@
-(executable
- (name lp_lsp)
- (public_name lp-lsp)
+(library
+ (name lp_lsp_lib)
  (modules lsp_base lsp_io lp_doc lp_lsp)
  (libraries lambdapi.pure yojson cmdliner str))
+
+(executable
+ (name lp_lsp_main)
+ (public_name lp-lsp)
+ (modules lp_lsp_main)
+ (libraries lp_lsp_lib))
