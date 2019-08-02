@@ -33,7 +33,7 @@ module Prefix :
     val reset : 'a t -> unit
 
     (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. The key [k] shold
+        a previous value associated to [k]) in the tree [t]. The key [k] should
         not be the empty string, otherwise [Invalid_argument] is raised. *)
     val add : 'a t -> string -> 'a -> unit
 
