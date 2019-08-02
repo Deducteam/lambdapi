@@ -47,8 +47,8 @@ let rec whnf_beta : term -> term = fun t ->
   if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
-   applied to the argument list (or stack) [stk]. Note that the normalisation
-   is done in the sense of [whnf]. *)
+    applied to the argument list (or stack) [stk]. Note that the normalisation
+    is done in the sense of [whnf]. *)
 and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
@@ -187,7 +187,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, Stack.to_list stk)
-    | Cond({ ok ; cond ; fail })                     ->
+    | Cond({ ok ; cond ; fail })                          ->
         let next =
           match cond with
           | Constr_Eq(i, j) ->
