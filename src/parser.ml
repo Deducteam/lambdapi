@@ -33,8 +33,8 @@ module Prefix :
     val reset : 'a t -> unit
 
     (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. The key [k] should
-        not be the empty string, otherwise [Invalid_argument] is raised. *)
+        a previous value associated to [k]) in the tree [t]. Note that key [k]
+        should not be [""], otherwise [Invalid_argument] is raised. *)
     val add : 'a t -> string -> 'a -> unit
 
     (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
