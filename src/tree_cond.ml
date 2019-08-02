@@ -1,5 +1,5 @@
 (** Conditions used for decision trees and heuristics.
- 
+
     The decision trees used for pattern matching include binary nodes carrying
     conditions (see constructor {!constructor:Tree_types.Cond}). We test these
     conditions during evaluation to choose which branch to follow. We have two
@@ -83,7 +83,7 @@ module type Cond_sig = sig
   val choose : t list -> cond choice
 end
 
-(** Module providing convertibility conditions, used to handle rewriting rules 
+(** Module providing convertibility conditions, used to handle rewriting rules
     that are not left-linear, for example [f &x &x (s &y) → r]. Here, we use a
     condition to test whether the terms at position [{0}] and [{1}] are indeed
     convertible. The rule can only apply if that is the case. Of course we may
@@ -107,9 +107,6 @@ end = struct
       let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
         match i1 - j1 with 0 -> i2 - j2 | k -> k
     end)
-
-  (** Weight given to nl constraints. *)
-  let nl_prio = 1.
 
   (** A non linearity constraint. *)
   type t =
@@ -152,8 +149,7 @@ end = struct
     IntMap.mem slot pool.partial
 
   let score : t -> cond choice = fun c ->
-    if is_empty c then None else
-    try Some(IntPairSet.choose c.available, nl_prio) with Not_found -> None
+    try Some(IntPairSet.choose c.available, 1.0) with Not_found -> None
 
   let is_instantiated pair c = IntPairSet.mem pair c.available
 
@@ -169,7 +165,6 @@ end = struct
     with Not_found ->
       { pool with partial = IntMap.add esl vslot pool.partial }
 
-  (** [choose s] returns the constraint having the highest score in [s]. *)
   let choose = choose score
 end
 
@@ -228,6 +223,5 @@ end = struct
 
   let score c = try Some(IntMap.choose c, 1.0) with Not_found -> None
 
-  (** [choose s] returns the constraint having the highest score in [s]. *)
   let choose = choose score
 end
