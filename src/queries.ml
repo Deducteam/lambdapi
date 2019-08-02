@@ -9,6 +9,7 @@ open Scope
 (** [handle_query ss ps q] *)
 let handle_query : sig_state -> Proof.t option -> p_query -> unit =
     fun ss ps q ->
+  out 3 "(query) ";
   let env =
     match ps with
     | None     -> Env.empty
@@ -17,6 +18,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   let scope = scope_term ss env in
   match q.elt with
   | P_query_assert(must_fail, asrt)  ->
+      out 3 "assert\n";
       let result =
         match asrt with
         | P_assert_typing(pt,pa) ->
@@ -38,18 +40,20 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       if result = must_fail then fatal q.pos "Assertion failed."
   | P_query_debug(e,s)     ->
       (* Just update the option, state not modified. *)
-      Console.set_debug e s
+      out 3 "debug\n"; Console.set_debug e s
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
-      Timed.(Console.verbose := i)
+      out 3 "verbose\n"; Timed.(Console.verbose := i)
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
+      out 3 "flag\n";
       begin
         try Console.set_flag id b with Not_found ->
           wrn q.pos "Unknown flag \"%s\"." id
       end
   | P_query_infer(pt, cfg)            ->
       (* Infer the type of [t]. *)
+      out 3 "type\n";
       let t = scope pt in
       let a =
         match Typing.infer ss.builtins (Ctxt.of_env env) t with
@@ -59,6 +63,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       out 3 "(infr) %a : %a\n" pp t pp a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
+      out 3 "compute";
       let t = scope pt in
       let v =
         match Typing.infer ss.builtins (Ctxt.of_env env) t with

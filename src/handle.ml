@@ -120,7 +120,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature m x a impl in
-      out 3 "(symb) %s.\n" s.sym_name;
+      out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
@@ -176,7 +176,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a impl in
-      out 3 "(symb) %s (definition).\n" s.sym_name;
+      out 3 "(symb) %s (definition)\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
@@ -215,7 +215,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
             let s = Sign.add_symbol ss.signature Const x a impl in
-            out 3 "(symb) %s (admit).\n" s.sym_name;
+            out 3 "(symb) %s (admit)\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
         | P_proof_qed   ->
@@ -227,7 +227,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             let s = Sign.add_symbol ss.signature Const x a impl in
-            out 3 "(symb) %s (qed).\n" s.sym_name;
+            out 3 "(symb) %s (qed)\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in
       let data =
@@ -247,12 +247,15 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             check_builtin_nat cmd.pos builtins s sym;
             Rewrite.check_builtin cmd.pos builtins s sym;
             Sign.add_builtin ss.signature s sym;
+            out 3 "(set) builtin %s\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
             let sym, _ = find_sym false ss qid in
-            Sign.add_binop ss.signature s (sym, binop); ss
+            Sign.add_binop ss.signature s (sym, binop);
+            out 3 "(set) infix %s\n" s;
+            ss
       in
       (ss, None)
   | P_query(q)                 ->
