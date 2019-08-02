@@ -247,15 +247,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             check_builtin_nat cmd.pos builtins s sym;
             Rewrite.check_builtin cmd.pos builtins s sym;
             Sign.add_builtin ss.signature s sym;
-            out 3 "(set) builtin %s\n" s;
+            out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
             let sym, _ = find_sym false ss qid in
             Sign.add_binop ss.signature s (sym, binop);
-            out 3 "(set) infix %s\n" s;
-            ss
+            out 3 "(conf) new infix [%s]\n" s; ss
       in
       (ss, None)
   | P_query(q)                 ->
