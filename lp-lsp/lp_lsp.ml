@@ -241,7 +241,8 @@ let get_token tokens pos =
                                       | _::[] -> failwith "error2"
                                       | a::b::tl -> match a,b with
                                                     | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
-                                                                                  iter_tokens new_count tl pos else failwith "error3"
+                                                                                  iter_tokens new_count tl pos else let new_count = (count + 1) in
+                                iter_tokens new_count ts pos
                                                     | _ -> failwith "error4" 
     
                                   in find_symb ts sym_table
@@ -319,7 +320,7 @@ let get_symbol text l pos =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
-let hover_symInfo ofmt ~id params = 
+(*let hover_symInfo ofmt ~id params = 
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
@@ -342,7 +343,7 @@ let hover_symInfo ofmt ~id params =
   | Some d ->  Print.pp_term d |> String.concat "\n" in
   let result = `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg 
+  LIO.send_json ofmt msg *)
     
 
 
