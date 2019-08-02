@@ -301,8 +301,8 @@ module CM = struct
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r Terms.{rhs; _} =
-      { lhs = Array.of_list rhs ; rhs ; nonlin = NLcstr.empty
+    let r2r Terms.{lhs; rhs; _} =
+      { lhs = Array.of_list lhs ; rhs ; nonlin = NLcstr.empty
       ; freevars = FVcstr.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
