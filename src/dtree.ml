@@ -244,13 +244,13 @@ module CM = struct
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
   type clause =
-    { lhs : term array
+    { c_lhs : term array
     (** Left hand side of a rule.   *)
-    ; rhs : action
+    ; c_rhs : action
     (** Right hand side of a rule. *)
     ; env_builder : (int * binding_data) list
     (** Maps slots of the {!val:vars} array to a slot of the final
-        environment used to build the {!field:rhs}. *)
+        environment used to build the {!field:c_rhs}. *)
     ; nonlin : NLcstr.t
     (** Non linearity constraints attached to this rule. *)
     ; freevars : FVcstr.t
@@ -286,7 +286,7 @@ module CM = struct
     let pp_line oc r =
       Format.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space Print.pp)
-        (Array.to_list r.lhs) FVcstr.pp r.freevars NLcstr.pp r.nonlin
+        (Array.to_list r.c_lhs) FVcstr.pp r.freevars NLcstr.pp r.nonlin
     in
     let out fmt = Format.fprintf oc fmt in
     let pp_sep oc _ = Format.pp_print_string oc ";" in
@@ -301,8 +301,8 @@ module CM = struct
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = fun rs ->
-    let r2r Terms.{lhs; rhs; _} =
-      { lhs = Array.of_list lhs ; rhs ; nonlin = NLcstr.empty
+    let r2r {lhs; rhs; _} =
+      { c_lhs = Array.of_list lhs ; c_rhs = rhs ; nonlin = NLcstr.empty
       ; freevars = FVcstr.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
@@ -321,7 +321,7 @@ module CM = struct
 
   (** [get_col n m] retrieves column [n] of matrix [m]. *)
   let get_col : int -> t -> term list = fun ind m ->
-    List.map (fun { lhs ; _ } -> lhs.(ind)) m.clauses
+    List.map (fun {c_lhs ; _} -> c_lhs.(ind)) m.clauses
 
   (** [score c] returns the score heuristic for column [c].  The score is a
       tuple containing the number of constructors and the number of storage
@@ -349,15 +349,15 @@ module CM = struct
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of clauses [r]. *)
   let can_switch_on : clause list -> int -> bool = fun  clauses k ->
-    List.for_all (fun r -> Array.length r.lhs >= k + 1) clauses &&
-    List.exists (fun r -> is_treecons r.lhs.(k)) clauses
+    List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
+    List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
 
   (** [discard_cons_free r] returns the list of indexes of columns containing
       terms that can be matched against (discard constructor-free columns) in
       clauses [r]. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
     let ncols = List.max ~cmp:Int.compare
-        (List.map (fun { lhs ; _ } -> Array.length lhs) clauses)
+        (List.map (fun {c_lhs ; _} -> Array.length c_lhs) clauses)
     in
     let switchable = List.init ncols (can_switch_on clauses) in
     let switchable2ind i e = if e then Some(i) else None in
@@ -374,7 +374,7 @@ module CM = struct
   (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
       the occurrences of the terms in [r]. *)
   let is_exhausted : occur_rs -> clause -> bool =
-    fun positions { lhs ; nonlin ; freevars ; _ } ->
+    fun positions {c_lhs = lhs ; nonlin ; freevars ; _} ->
     let nonl lhs =
       (* Verify that there are no non linearity constraints in the remaining
          terms.  We must check that there are no constraints in the remaining
@@ -464,7 +464,7 @@ module CM = struct
   let store : t -> int -> bool = fun cm ci ->
     let _, (_, de), _ = Stack.destruct cm.positions ci in
     let st_r r =
-      match r.lhs.(ci) with
+      match r.c_lhs.(ci) with
       | Patt(Some(_), _, _) -> true
       | Patt(_, _, e)       -> Array.length e < de
       | _                   -> false
@@ -477,7 +477,7 @@ module CM = struct
   let update_aux : int -> int -> occur_rs -> clause -> clause =
     fun ci slot pos r ->
     let _, (_, depth), _ = Stack.destruct pos ci in
-    let t = r.lhs.(ci) in
+    let t = r.c_lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
         let freevars = if (Array.length e) <> depth
@@ -515,23 +515,23 @@ module CM = struct
       in
       Stack.restruct l replace r in
     let ph, pargs, lenp = get_args_len pat in
-    let insert r e = Array.concat [ Array.sub r.lhs 0 ci
+    let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
                                   ; e
-                                  ; Array.drop (ci + 1) r.lhs ]
+                                  ; Array.drop (ci + 1) r.c_lhs ]
     in
     let filtrans r =
       let insert = insert r in
-      let h, args, lenh = get_args_len r.lhs.(ci) in
+      let h, args, lenh = get_args_len r.c_lhs.(ci) in
       match ph, h with
       | Symb(_, _), Symb(_, _)
       | Vari(_)   , Vari(_)       ->
           if lenh = lenp && Basics.eq ph h
-          then Some({r with lhs = insert (Array.of_list args)})
+          then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | _         , Patt(_, _, _) ->
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
-          Some({ r with lhs = insert e })
+          Some({ r with c_lhs = insert e })
       | _         , Abst(_, _)    -> None
       | _         , _             -> assert false
     in
@@ -547,12 +547,12 @@ module CM = struct
       Stack.restruct l [] r
     in
     let transf r =
-      match r.lhs.(ci) with
+      match r.c_lhs.(ci) with
       | Patt(_, _, _)           ->
-          let lhs = Array.append
-              (Array.sub r.lhs 0 ci)
-              (Array.drop (ci + 1) r.lhs) in
-          Some({ r with lhs })
+          let c_lhs = Array.append
+              (Array.sub r.c_lhs 0 ci)
+              (Array.drop (ci + 1) r.c_lhs) in
+          Some({r with c_lhs})
       | Symb(_, _) | Abst(_, _)
       | Vari(_)    | Appl(_, _) -> None
       | _ -> assert false in
@@ -567,21 +567,19 @@ module CM = struct
     let l, (occ, depth), r = Stack.destruct pos ci in
     let occ = Occur.sub occ in (* Position of term inside lambda. *)
     let pos = Stack.restruct l [(occ, depth + 1)] r in
-    let insert r e = [ Array.sub r.lhs 0 ci
+    let insert r e = [ Array.sub r.c_lhs 0 ci
                      ; [| e |]
-                     ; Array.drop (ci + 1) r.lhs ]
+                     ; Array.drop (ci + 1) r.c_lhs ]
     in
     let transf (r:clause) =
-      let ph, pargs = get_args r.lhs.(ci) in
+      let ph, pargs = get_args r.c_lhs.(ci) in
       match ph with
       | Abst(_, b)           ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mkfree v) in
-          let lhs = Array.concat (insert r b) in
-          Some({ r with lhs })
+          Some({r with c_lhs = Array.concat (insert r b)})
       | Patt(_, _, _) as pat ->
-          let lhs = Array.concat (insert r pat) in
-          Some({ r with lhs })
+          Some({r with c_lhs = Array.concat (insert r pat)})
       | Symb(_, _) | Vari(_) -> None
       | _                    -> assert false
     in
@@ -643,7 +641,7 @@ let harvest : term array -> action -> (int * CM.binding_data) list -> int ->
 
     The last is managed by the {!val:env_builder} as follows.  The evaluation
     process used two arrays, one containing elements, as binders, to be
-    injected in the {!field:rhs}, and another one to memorise terms filtered
+    injected in the {!field:c_rhs}, and another one to memorise terms filtered
     by a pattern variable {!constructor:Patt}.  A memorised term can be used
     either to check a constraint, or to be copied in the aforementioned array.
     The former is called the [env] array while the latter is the [vars] array.
@@ -661,19 +659,19 @@ let harvest : term array -> action -> (int * CM.binding_data) list -> int ->
 let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
-  | Yield(CM.{rhs ; env_builder ; lhs ; _ }) ->
-      if lhs = [||] then Leaf(env_builder, rhs) else
-      harvest lhs rhs env_builder slot
+  | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
+      if c_lhs = [||] then Leaf(env_builder, c_rhs) else
+      harvest c_lhs c_rhs env_builder slot
   | NlConstrain(constr)                      ->
       let ok = compile {pats with clauses = CM.nl_succeed constr clauses} in
       let fail = compile {pats with clauses = CM.nl_fail constr clauses} in
       let (i, j) = NLcstr.export constr in
-      Cond({ ok ; cond = Constr_Eq(i, j) ; fail })
+      Cond({ok ; cond = Constr_Eq(i, j) ; fail})
   | FvConstrain(constr)                      ->
       let ok = compile {pats with clauses = CM.fv_succeed constr clauses} in
       let fail = compile {pats with clauses = CM.fv_fail constr clauses} in
       let (slot, vars) = FVcstr.export constr in
-      Cond({ ok ; cond = Constr_FV(vars, slot) ; fail })
+      Cond({ok ; cond = Constr_FV(vars, slot) ; fail})
   | Specialise(swap)                         ->
       let store = CM.store pats swap in
       let updated = List.map (CM.update_aux swap slot positions) clauses in
