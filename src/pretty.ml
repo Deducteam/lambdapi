@@ -10,8 +10,11 @@ open Files
 open Pos
 open Syntax
 
+let lp_ident_of_dk_ident : string -> string = fun s ->
+  if Parser.KW.mem s then "{|" ^ s ^ "|}" else s
+
 let pp_ident : ident pp = fun oc id ->
-  Format.pp_print_string oc id.elt
+  Format.pp_print_string oc (lp_ident_of_dk_ident id.elt)
 
 let pp_arg_ident : ident option pp = fun oc id ->
   match id with
@@ -19,10 +22,8 @@ let pp_arg_ident : ident option pp = fun oc id ->
   | None     -> Format.pp_print_string oc "_"
 
 let pp_qident : qident pp = fun oc qid ->
-  match qid.elt with
-  | ([], id) -> Format.pp_print_string oc id
-  | (mp, id) -> List.iter (Format.fprintf oc "%s.") mp;
-                Format.pp_print_string oc id
+  let (mp, s) = qid.elt in
+  Format.fprintf oc "%a%s" pp_path mp (lp_ident_of_dk_ident s)
 
 let pp_symtag : symtag pp = fun oc tag ->
   match tag with
@@ -162,20 +163,20 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %s" pp_path p i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" pp_path) ps
-  | P_symbol(tags,s,args,a)         ->
-      out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
+  | P_symbol(tags,id,args,a)         ->
+      out "@[<hov 2>symbol%a %a" pp_symtags tags pp_ident id;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
-  | P_definition(_,s,args,ao,t)     ->
-      out "@[<hov 2>definition %s" s.elt;
+  | P_definition(_,id,args,ao,t)     ->
+      out "@[<hov 2>definition %a" pp_ident id;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(st,ts,e)              ->
-      let (s,args,a) = st.elt in
-      out "@[<hov 2>theorem %s" s.elt;
+      let (id,args,a) = st.elt in
+      out "@[<hov 2>theorem %a" pp_ident id;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
