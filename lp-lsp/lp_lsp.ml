@@ -243,7 +243,7 @@ let get_token tokens pos =
     | t::ts ->
       match t with
       | Str.Text txt ->
-        let new_count = count + (String.length txt) in
+        let new_count = count + String.length txt in
         if new_count >= pos
         then txt
         else iter_tokens new_count ts pos
@@ -262,10 +262,10 @@ let get_token tokens pos =
               | Str.Delim c, Str.Delim d ->
                 if List.mem ("\226"^c^d) sym_table
                 then
-                  let new_count = (count + 1) in
+                  let new_count = count + 1 in
                   iter_tokens new_count tl pos
                 else
-                  let new_count = (count + 1) in
+                  let new_count = count + 1 in
                   iter_tokens new_count ts pos
               | _ ->
                 myfail "error4"
