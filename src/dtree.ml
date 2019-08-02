@@ -9,8 +9,8 @@ open Timed
 open Extra
 open Terms
 open Basics
-open Treecstr
 open Tree_types
+open Tree_cond
 
 (** Priority on topmost rule if set to true. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
@@ -216,8 +216,8 @@ let to_dot : string -> sym -> unit = fun fname s ->
 
 (** A helper type to process [choose] results uniformly. *)
 type bin_cstr =
-  | Fv of FVcstr.cstr
-  | Nl of NLcstr.cstr
+  | Fv of FVCond.cond
+  | Nl of NLCond.cond
   | Sp of int
   | Unavailable
 
@@ -251,9 +251,9 @@ module CM = struct
     ; env_builder : (int * binding_data) list
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:c_rhs}. *)
-    ; nonlin : NLcstr.t
+    ; nonlin : NLCond.t
     (** Non linearity constraints attached to this rule. *)
-    ; freevars : FVcstr.t
+    ; freevars : FVCond.t
     (** Free variables constraints attached to the rule. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
@@ -274,10 +274,10 @@ module CM = struct
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
-    | NlConstrain of NLcstr.cstr
+    | NlConstrain of NLCond.cond
     (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
         regarding slot [s]. *)
-    | FvConstrain of FVcstr.cstr
+    | FvConstrain of FVCond.cond
     (** Free variables constraint: the term matched must contain {e at most} a
         specified set of variables. *)
 
@@ -286,7 +286,7 @@ module CM = struct
     let pp_line oc r =
       Format.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
         (Format.pp_print_list ~pp_sep:Format.pp_print_space Print.pp)
-        (Array.to_list r.c_lhs) FVcstr.pp r.freevars NLcstr.pp r.nonlin
+        (Array.to_list r.c_lhs) FVCond.pp r.freevars NLCond.pp r.nonlin
     in
     let out fmt = Format.fprintf oc fmt in
     let pp_sep oc _ = Format.pp_print_string oc ";" in
@@ -302,8 +302,8 @@ module CM = struct
       rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
-      { c_lhs = Array.of_list lhs ; c_rhs = rhs ; nonlin = NLcstr.empty
-      ; freevars = FVcstr.empty ; env_builder = [] }
+      { c_lhs = Array.of_list lhs ; c_rhs = rhs ; nonlin = NLCond.empty
+      ; freevars = FVCond.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -384,7 +384,7 @@ module CM = struct
                       (function Patt(io, _, _) -> io | _ -> None) in
       let slots_uniq = List.sort_uniq Int.compare slots in
       List.same_length slots slots_uniq
-      && not @@ List.exists (fun s -> NLcstr.constrained s nonlin)
+      && not @@ List.exists (fun s -> NLCond.constrained s nonlin)
         slots_uniq
     in
     let depths = Stack.to_list positions |> List.map snd
@@ -404,7 +404,7 @@ module CM = struct
       Array.for_all2 check lhs de
       && nonl lhs
     in
-    NLcstr.is_empty nonlin && FVcstr.is_empty freevars
+    NLCond.is_empty nonlin && FVCond.is_empty freevars
     && (lhs = [||] || ripe lhs)
 
   (** [yield m] yields a clause to be applied. *)
@@ -417,12 +417,12 @@ module CM = struct
       Yield(r)
     with Not_found ->
       let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
-      let rnl = match NLcstr.choose nlcstrs with
+      let rnl = match NLCond.choose nlcstrs with
         | Some(c, i) -> (Nl(c), i)
         | None       -> (Unavailable, 0.)
       in
       let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
-      let rfv = match FVcstr.choose fvcstrs with
+      let rfv = match FVCond.choose fvcstrs with
         | Some(c, i) -> (Fv(c), i)
         | None       -> (Unavailable, 0.)
       in
@@ -481,14 +481,14 @@ module CM = struct
     match fst (get_args t) with
     | Patt(i, _, e) ->
         let freevars = if (Array.length e) <> depth
-          then FVcstr.instantiate slot
+          then FVCond.instantiate slot
               (Array.map to_tvar e)
               r.freevars
           else r.freevars
         in
         let nonlin =
           match i with
-          | Some(i) -> NLcstr.instantiate slot i r.nonlin
+          | Some(i) -> NLCond.instantiate slot i r.nonlin
           | None    -> r.nonlin
         in
         let env_builder =
@@ -587,23 +587,23 @@ module CM = struct
 
   (** [nl_succeed c r] computes the clause list from [r] that verify a
       non-linearity constraint [c]. *)
-  let nl_succeed : NLcstr.cstr -> clause list -> clause list = fun c ->
-    List.map (fun r -> {r with nonlin = NLcstr.remove c r.nonlin})
+  let nl_succeed : NLCond.cond -> clause list -> clause list = fun c ->
+    List.map (fun r -> {r with nonlin = NLCond.remove c r.nonlin})
 
   (** [nl_fail c r] computes the clauses not failing a non-linearity
       constraint [c] among clauses [r]. *)
-  let nl_fail : NLcstr.cstr -> clause list -> clause list = fun c ->
-    List.filter (fun r -> not (NLcstr.is_instantiated c r.nonlin))
+  let nl_fail : NLCond.cond -> clause list -> clause list = fun c ->
+    List.filter (fun r -> not (NLCond.is_instantiated c r.nonlin))
 
   (** [fv_suceed c r] computes the clauses from [r] that verify a free
       variables constraint [c]. *)
-  let fv_succeed : FVcstr.cstr -> clause list -> clause list = fun c ->
-    List.map (fun r -> {r with freevars = FVcstr.remove c r.freevars})
+  let fv_succeed : FVCond.cond -> clause list -> clause list = fun c ->
+    List.map (fun r -> {r with freevars = FVCond.remove c r.freevars})
 
   (** [fv_fail c r] computes the clauses not failing a free variable
       constraint [c] among clauses [r]. *)
-  let fv_fail : FVcstr.cstr -> clause list -> clause list = fun c ->
-    List.filter (fun r -> not (FVcstr.is_instantiated c r.freevars))
+  let fv_fail : FVCond.cond -> clause list -> clause list = fun c ->
+    List.filter (fun r -> not (FVCond.is_instantiated c r.freevars))
 end
 
 (** [harvest l r e s] exhausts linearly the stack composed only of pattern
@@ -665,12 +665,12 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
   | NlConstrain(constr)                      ->
       let ok = compile {pats with clauses = CM.nl_succeed constr clauses} in
       let fail = compile {pats with clauses = CM.nl_fail constr clauses} in
-      let (i, j) = NLcstr.export constr in
+      let (i, j) = NLCond.export constr in
       Cond({ok ; cond = Constr_Eq(i, j) ; fail})
   | FvConstrain(constr)                      ->
       let ok = compile {pats with clauses = CM.fv_succeed constr clauses} in
       let fail = compile {pats with clauses = CM.fv_fail constr clauses} in
-      let (slot, vars) = FVcstr.export constr in
+      let (slot, vars) = FVCond.export constr in
       Cond({ok ; cond = Constr_FV(vars, slot) ; fail})
   | Specialise(swap)                         ->
       let store = CM.store pats swap in
