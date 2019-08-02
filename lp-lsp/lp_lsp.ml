@@ -235,7 +235,6 @@ let myfail (msg : string) =
 let get_token tokens pos =
   let regexp = Str.regexp "[^a-zA-Z0-9]" in
   let res_split = Str.full_split regexp tokens in
-
   let count = 0 in
   let rec iter_tokens count tokens pos =
     match tokens with
@@ -247,41 +246,26 @@ let get_token tokens pos =
         if new_count >= pos
         then txt
         else iter_tokens new_count ts pos
-      | Str.Delim s ->
-        if String.equal s "\226"
-        then
-          let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
-          let find_symb ts sym_table =
-            match ts with
-            | [] ->
-              myfail "error1"
-            | _ :: [] ->
-              myfail "error2"
-            | a::b::tl ->
-              match a,b with
-              | Str.Delim c, Str.Delim d ->
-                if List.mem ("\226"^c^d) sym_table
-                then
-                  let new_count = count + 1 in
-                  iter_tokens new_count tl pos
-                else
-                  let new_count = count + 1 in
-                  iter_tokens new_count ts pos
-              | _ ->
-                myfail "error4"
-          in
-          find_symb ts sym_table
-        else
-          let new_count = count + 1 in
-          iter_tokens new_count ts pos
+      | Str.Delim s -> let length =
+        match s with 
+          | "\194" -> 2
+          | "\226" -> 3
+          | "\224" -> 3
+          | "\240" -> 4
+          | _ -> 1 in
+            let tailList =
+            let find_count length ts =
+              match length, ts with
+                | 2,[] | 3, [] | 3,_::[] | 4,[] | 4,_::[] | 4,_::_::[] -> myfail "mismatch length 1"
+                | 2, _::q | 3, _::_::q | 4, _::_::_::q ->  q
+                | 1, ts -> ts
+                | _, _ -> myfail "mismatch length 2"
+            in find_count length ts in
+            let new_count = count + 1 in
+            iter_tokens new_count tailList pos
   in
   iter_tokens count res_split pos
 
-(*let get_symbol text l pos =
-  let lines = String.split_on_char '\n' text in
-  let line = get_line lines l in
-  let tokens = String.split_on_char ' ' line in
-  get_token tokens pos *)
 
 let get_symbol text l pos =
   let lines = String.split_on_char '\n' text in
