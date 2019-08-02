@@ -25,6 +25,21 @@ module String =
       let b = Buffer.create 37 in
       List.iter (Buffer.add_char b) l;
       Buffer.contents b
+
+    let is_substring : string -> string -> bool = fun e s ->
+      let len_e = String.length e in
+      let len_s = String.length s in
+      let rec is_sub i =
+        if len_s - i < len_e then false else
+        if String.sub s i len_e = e then true else
+        is_sub (i+1)
+      in
+      is_sub 0
+
+    let for_all : (char -> bool) -> string -> bool = fun p s ->
+      let len_s = String.length s in
+      let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
+      for_all 0
   end
 
 module Option =

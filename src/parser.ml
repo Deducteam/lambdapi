@@ -33,7 +33,8 @@ module Prefix :
     val reset : 'a t -> unit
 
     (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. *)
+        a previous value associated to [k]) in the tree [t]. The key [k] shold
+        not be the empty string, otherwise [Invalid_argument] is raised. *)
     val add : 'a t -> string -> 'a -> unit
 
     (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
@@ -50,6 +51,7 @@ module Prefix :
     let reset : 'a t -> unit = fun t -> t := Node(None, [])
 
     let add : 'a t -> string -> 'a -> unit = fun t k v ->
+      if k = "" then invalid_arg "Prefix.add";
       let rec add i (Node(vo,l)) =
         match try Some(k.[i]) with _ -> None with
         | None    -> Node(Some(v), l)
@@ -81,7 +83,6 @@ module Prefix :
             | Some(best) -> best
         in fn None !t buf pos
       in
-      (* FIXME charset, accept empty ? *)
       Earley.black_box fn Charset.full false "<tree>"
   end
 
@@ -90,6 +91,13 @@ let binops : binop Prefix.t = Prefix.init ()
 
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
+
+(** The following should not appear as substrings of binary operators, as they
+    would introduce ambiguity in the parsing. *)
+let forbiden_in_binops =
+  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; "=" ; ":"; "→"
+  ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
+  @ List.init 10 string_of_int
 
 (** [get_binops loc p] loads the binary operators associated to module [p] and
     report possible errors at location [loc].  This operation requires the [p]
@@ -106,10 +114,13 @@ let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
 
+(** Set of identifier characters. *)
+let id_charset = Charset.from_string "a-zA-Z0-9_'"
+
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
-    let id_charset = Charset.from_string "a-zA-Z0-9_'"
+    let id_charset = id_charset
     let reserved = []
   end)
 
@@ -150,6 +161,22 @@ let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
 let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
+
+(** [binop_sanity_check pos s] checks that the token [s] is appropriate. If it
+    is not the case then the [Fatal] exception is raised. *)
+let binop_sanity_check : Pos.pos -> string -> unit = fun loc s ->
+  (* Of course, the empty string and keywords are forbidden. *)
+  if s = "" then parser_fatal loc "Invalid token (empty).";
+  if KW.mem s then parser_fatal loc "Invalid token (reserved).";
+  (* We forbid valid (non-escaped) identifiers. *)
+  if String.for_all (Charset.mem id_charset) s then
+    parser_fatal loc "Invalid token (only identifier characters).";
+  (* We also reject symbols with certain substrings. *)
+  let check_substring w =
+    if String.is_substring w s then
+      parser_fatal loc "Invalid token (has [%s] as a substring)." w
+  in
+  List.iter check_substring forbiden_in_binops
 
 (** Natural number literal. *)
 let nat_lit =
@@ -447,6 +474,7 @@ let parser config =
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
+      binop_sanity_check _loc_s s;
       Prefix.add binops s binop;
       P_config_binop(binop)
 
