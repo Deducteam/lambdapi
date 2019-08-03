@@ -279,7 +279,17 @@ module Array =
 
   end
 
-(** Functional maps with [int] keys. *)
+module Filename =
+  struct
+    include Filename
+
+    (** [realpath path] returns the absolute canonical path to file [path]. If
+        [path] is invalid (i.e., it does not describe an existing file),  then
+        the exception [Invalid_argument] is raised. *)
+    external realpath : string -> string = "c_realpath"
+  end
+
+(* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
 (** Functional sets of integers. *)
