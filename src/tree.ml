@@ -231,9 +231,6 @@ end
 (** Type of the leaves of the tree (see {!field:Terms.rhs}). *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** Abstract machine stack. *)
-type 'a stack = 'a list
-
 (** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
     (argument [stk] of {!val:Eval.tree_walk}) to provide fast access to any
     element (for swaps) as well as fast {!val:Extra.List.destruct} and
@@ -266,7 +263,9 @@ module CM = struct
       let us consider the term [f x (g a b)]. The subterm [a] is accessed with
       the path [[0 ; 1]] (go under the second argument [g a b] first, and then
       take its first argument). Similarly, [b] is encoded as [[1 ; 1]] and [x]
-      as [[0]]. Note that a value [[]] does not describe a valid path. *)
+      as [[0]]. Note that a value [[]] does not describe a valid path. Also, a
+      [0] index is used when going under abstractions. In that case, the field
+      {!field:arg_rank} is incremented. *)
 
   (** Compile time equivalent of the evaluation time stack of arguments.  The
       [i]th pair [(o, d)] of the stack is the occurrence [o] of type
@@ -346,7 +345,6 @@ module CM = struct
       if size = 0 then []
       else List.init (size - 1) (fun i -> {arg_path = [i]; arg_rank = 0})
     in
-    (* [|>] is reverse application, can be thought of as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
   (** [is_empty m] returns whether matrix [m] is empty. *)
@@ -393,7 +391,7 @@ module CM = struct
     in
     let switchable = List.init ncols (can_switch_on clauses) in
     let switchable2ind i e = if e then Some(i) else None in
-    switchable |> List.filteri_map switchable2ind |> Array.of_list
+    Array.of_list (List.filteri_map switchable2ind switchable)
 
   (** [choose m] returns the index of column to switch on. *)
   let choose : t -> int option = fun m ->
@@ -410,13 +408,13 @@ module CM = struct
       (* Verify that there are no non linearity constraints in the remaining
          terms.  We must check that there are no constraints in the remaining
          terms and no constraints left partially instantiated. *)
-      let slots = Array.to_list lhs
-                 |> List.filter_map
-                      (function Patt(io, _, _) -> io | _ -> None) in
+      let slots =
+        let fn t = match t with Patt(i,_,_) -> i | _ -> None in
+        List.filter_map fn (Array.to_list lhs)
+      in
       let slots_uniq = List.sort_uniq Int.compare slots in
       List.same_length slots slots_uniq
-      && not @@ List.exists (fun s -> NLCond.constrained s nonlin)
-        slots_uniq
+      && not (List.exists (fun s -> NLCond.constrained s nonlin) slots_uniq)
     in
     let depths = Array.of_list (List.map (fun i -> i.arg_rank) positions) in
     let ripe lhs =
@@ -450,10 +448,10 @@ module CM = struct
       match choose m with
       | Some(c) -> Specialise(c)
       | None    ->
-      match NLCond.choose @@ List.map (fun r -> r.nonlin) m.clauses with
+      match NLCond.choose (List.map (fun r -> r.nonlin) m.clauses) with
       | Some(c) -> NlConstrain(c)
       | None    ->
-      match FVCond.choose @@ List.map (fun r -> r.freevars) m.clauses with
+      match FVCond.choose (List.map (fun r -> r.freevars) m.clauses) with
       | Some(c) -> FvConstrain(c)
       | None    -> Specialise(0)
 
@@ -472,7 +470,7 @@ module CM = struct
       | _                                    -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
-    List.filter_map keep_treecons telst |> List.sort_uniq tc_fst_cmp
+    List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
 
   (** [store m c d] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation. *)
