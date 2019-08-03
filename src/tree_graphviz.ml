@@ -49,9 +49,6 @@ open Extra
 open Terms
 open Tree_types
 
-(** The type of trees that are written to files. *)
-type t = Dtree.t
-
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa (* Default case *)
@@ -67,7 +64,7 @@ type dot_term =
     its children represents the term matched to generate the next pattern
     matrix (the one of the child node). *)
 let to_dot : string -> sym -> unit = fun fname s ->
-  let output_tree : t pp = fun oc tree ->
+  let output_tree oc tree =
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
       match dh with
@@ -92,7 +89,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
     let node_count = ref 0 in
     (* [write_tree n u v] writes tree [v] obtained from tree number [n] with a
        switch on [u] ({!constructor:None} if default). *)
-    let rec write_tree : int -> dot_term -> t -> unit = fun father_l swon t ->
+    let rec write_tree father_l swon t =
       incr node_count;
       match t with
       | Leaf(_, a)  ->
