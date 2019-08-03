@@ -10,9 +10,6 @@
 open Extra
 open Terms
 
-(** Representation of a heuristic choice (if any) with its score. *)
-type 'a choice = 'a option
-
 (** Signature for a pool of conditions. Conditions are added on the fly during
     the construction of decision trees. Constraints can involve one or several
     patterns from a rewriting rule LHS (see {!val:instantiate}). *)
@@ -61,9 +58,8 @@ module type Cond_sig = sig
   (** [export cond] returns the exported counterpart of [cond]. *)
   val export : cond -> exported
 
-  (** [choose pools] selects the condition with highest priority among all the
-      given pools [pools]. *)
-  val choose : t list -> cond choice
+  (** [choose pools] selects a condition to verify among [pools]. *)
+  val choose : t list -> cond option
 end
 
 (** Module providing convertibility conditions, used to handle rewriting rules

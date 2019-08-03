@@ -60,15 +60,6 @@ let is_treecons : term -> bool = fun t ->
     complexity of [Θ(i)] and [reconstruct l m r] has a time complexity of
     [Θ(length l + length m)]. *)
 
-(** {3 Binary constraints nodes} *)
-
-(** A helper type to process [choose] results uniformly. *)
-type bin_cstr =
-  | Fv of FVCond.cond
-  | Nl of NLCond.cond
-  | Sp of int
-  | Unavailable
-
 (** {3 Clause matrix and pattern matching problem} *)
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix {i
@@ -187,11 +178,10 @@ module CM = struct
     float_of_int nc /. (float_of_int ns)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c] according to a heuristic, along with the score. *)
-  let pick_best_among : t -> int array -> int * float = fun mat columns->
+      among columns [c] according to a heuristic. *)
+  let pick_best_among : t -> int array -> int = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
-    let index = Array.max_index ~cmp:(Pervasives.compare) scores in
-    (index, scores.(index))
+    Array.max_index ~cmp:(Pervasives.compare) scores
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
       column [k] of clauses [r]. *)
@@ -214,7 +204,7 @@ module CM = struct
   let choose : t -> int option = fun m ->
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else
-    let sel_partial, _ = pick_best_among m kept in
+    let sel_partial = pick_best_among m kept in
     Some(kept.(sel_partial))
 
   (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
