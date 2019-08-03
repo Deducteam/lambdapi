@@ -5,9 +5,9 @@
     the [dot] language that can be interpreted by graphviz.
 
     A [dot] file [tree.gv] can be converted to a [png] file [tree.png] using
-    [dot -Tpng tree.gv > tree.png].  For more output formats, @see
-    <https://graphviz.gitlab.io/_pages/doc/info/output.html>.  To output to
-    [tex], one can use {{:https://dot2tex.readthedocs.io/}dot2tex}. *)
+    [dot -Tpng tree.gv > tree.png].  To output to [tex], one can use
+    {{:https://dot2tex.readthedocs.io/}dot2tex}. For more output formats,
+    @see <https://graphviz.gitlab.io/_pages/doc/info/output.html> *)
 
 (** {b Description of output} we remind that trees are interpreted during
     evaluation of terms to get the correct rule to apply.  A node is thus an
