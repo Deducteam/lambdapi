@@ -105,7 +105,7 @@ let spec =
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
     ; ( "--beautify"
-      , Arg.Unit (fun _ -> mode := Beautify)
+      , Arg.Unit (fun _ -> mode := Beautify; set_default_verbose 0)
       , " Parse input files and pretty-print them (in the new syntax)" )
     ; ( "--timeout"
       , Arg.Int set_timeout
@@ -116,6 +116,9 @@ let spec =
     ; ( "--termination"
       , Arg.String (fun cmd -> termination_checker := Some(cmd))
       , "<cmd> Runs the given termination checker" )
+    ; ( "--version"
+      , Arg.Unit (fun () -> out 0 "Lambdapi %s\n%!" Version.version; exit 0)
+      , " Prints the current version number and exits" )
     ; ( "--debug"
       , Arg.String set_default_debug
       , "<flags> Enables given debugging flags by default " ^ debug_flags ) ]

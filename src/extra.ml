@@ -25,6 +25,21 @@ module String =
       let b = Buffer.create 37 in
       List.iter (Buffer.add_char b) l;
       Buffer.contents b
+
+    let is_substring : string -> string -> bool = fun e s ->
+      let len_e = String.length e in
+      let len_s = String.length s in
+      let rec is_sub i =
+        if len_s - i < len_e then false else
+        if String.sub s i len_e = e then true else
+        is_sub (i+1)
+      in
+      is_sub 0
+
+    let for_all : (char -> bool) -> string -> bool = fun p s ->
+      let len_s = String.length s in
+      let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
+      for_all 0
   end
 
 module Option =
@@ -125,15 +140,6 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [init n f] returns [[f 0; f 1; ...; f n]].
-        @raise Invalid_argument if [n < 0]. *)
-    let init : int -> (int -> 'a) -> 'a list = fun n f ->
-      if n < 0 then invalid_arg "Extra.List.init" else
-      let rec loop k =
-        if k > n then [] else f k :: loop (k + 1)
-      in
-      loop 0
-
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
         defaulting to [Pervasives.compare].
         @raise Invalid_argument if [l] is empty. *)
@@ -185,6 +191,12 @@ module List =
         [m] comes from some operation applied on the element [e]. *)
     let restruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
       List.rev_append l (m @ r)
+
+    (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
+        that [Invalid_argument] is raised if [n] is negative. *)
+    let init : int -> (int -> 'a) -> 'a list = fun n f ->
+      if n < 0 then invalid_arg "Extra.List.init" else
+      let rec loop k = if k > n then [] else f k :: loop (k + 1) in loop 0
   end
 
 module Array =
@@ -249,6 +261,9 @@ module IntSet = Set.Make(Int)
 
 (** Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
+
+(* Functional sets of strings. *)
+module StrSet = Set.Make(String)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)
