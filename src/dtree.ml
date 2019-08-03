@@ -211,12 +211,11 @@ module CM = struct
     switchable |> List.filteri_map switchable2ind |> Array.of_list
 
   (** [choose m] returns the index of column to switch on. *)
-  let choose : t -> (int * float) option = fun m ->
+  let choose : t -> int option = fun m ->
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else
-    let sel_partial, score = pick_best_among m kept in
-    let cind = kept.(sel_partial) in
-    Some(cind, score)
+    let sel_partial, _ = pick_best_among m kept in
+    Some(kept.(sel_partial))
 
   (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
       the occurrences of the terms in [r]. *)
@@ -262,31 +261,17 @@ module CM = struct
       else let r = List.find (is_exhausted positions) clauses in
       Yield(r)
     with Not_found ->
-      let nlcstrs = List.map (fun r -> r.nonlin) m.clauses in
-      let rnl = match NLCond.choose nlcstrs with
-        | Some(c, i) -> (Nl(c), i)
-        | None       -> (Unavailable, 0.)
-      in
-      let fvcstrs = List.map (fun r -> r.freevars) m.clauses in
-      let rfv = match FVCond.choose fvcstrs with
-        | Some(c, i) -> (Fv(c), i)
-        | None       -> (Unavailable, 0.)
-      in
-      let rs = match choose m with
-        | None       -> (Unavailable, 0.)
-        | Some(c, i) -> (Sp(c), i)
-      in
-      let r = [| rnl ; rfv ; rs |] in
-      let best =
-        if Array.for_all (fun (x, _) -> x = Unavailable) r then
-          (Unavailable, 0.) else
-          Array.max ~cmp:(fun (_, x) (_, y) -> Pervasives.compare x y) r
-      in
-      match fst best with
-      | Nl(c)          -> NlConstrain(c)
-      | Fv(c)          -> FvConstrain(c)
-      | Sp(c)          -> Specialise(c)
-      | Unavailable    -> Specialise(0)
+      (* Here is the heuristic: process in priority specialisations, then
+         convertibility constraints, then closedness constraints. *)
+      match choose m with
+      | Some(c) -> Specialise(c)
+      | None    ->
+      match NLCond.choose @@ List.map (fun r -> r.nonlin) m.clauses with
+      | Some(c) -> NlConstrain(c)
+      | None    ->
+      match FVCond.choose @@ List.map (fun r -> r.freevars) m.clauses with
+      | Some(c) -> FvConstrain(c)
+      | None    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
       constructors in [l].  The actual tree constructor (of type

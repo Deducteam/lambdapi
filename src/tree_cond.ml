@@ -11,20 +11,7 @@ open Extra
 open Terms
 
 (** Representation of a heuristic choice (if any) with its score. *)
-type 'a choice = ('a * float) option
-
-(** [choose score pools] returns the heuristic choice with highest score among
-    a list of pools [pools] containing possible choices.  The function [score]
-    is used to find the best heuristic choice in a given pool. *)
-let choose : ('a -> 'b choice) -> 'a list -> 'b choice = fun score l ->
-  let cmp s1 s2 =
-    match (s1, s2) with
-    | (None      , None      ) -> 0
-    | (None      , _         ) -> -1
-    | (_         , None      ) -> 1
-    | (Some(_, x), Some(_, y)) -> compare x y
-  in
-  if l = [] then None else List.max ~cmp (List.map score l)
+type 'a choice = 'a option
 
 (** Signature for a pool of conditions. Conditions are added on the fly during
     the construction of decision trees. Constraints can involve one or several
@@ -70,10 +57,6 @@ module type Cond_sig = sig
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   val remove : cond -> t -> t
-
-  (** [score pool] returns the action to take regarding pool of constraints
-      [p]. *)
-  val score : t -> cond choice
 
   (** [export cond] returns the exported counterpart of [cond]. *)
   val export : cond -> exported
@@ -148,9 +131,6 @@ end = struct
   let constrained : data -> t -> bool = fun slot pool ->
     IntMap.mem slot pool.partial
 
-  let score : t -> cond choice = fun c ->
-    try Some(IntPairSet.choose c.available, 1.0) with Not_found -> None
-
   let is_instantiated pair c = IntPairSet.mem pair c.available
 
   let remove pair pool =
@@ -165,7 +145,12 @@ end = struct
     with Not_found ->
       { pool with partial = IntMap.add esl vslot pool.partial }
 
-  let choose = choose score
+  let rec choose pools =
+    match pools with
+    | p :: t ->
+        if IntPairSet.is_empty p.available then choose t else
+        Some(IntPairSet.choose p.available)
+    | []     -> None
 end
 
 (** Free variable constraints to verify which variables are free in a term. If
@@ -221,7 +206,10 @@ end = struct
 
   let export x = x
 
-  let score c = try Some(IntMap.choose c, 1.0) with Not_found -> None
-
-  let choose = choose score
+  let rec choose pools =
+    match pools with
+    | h :: t ->
+        if IntMap.is_empty h then choose t else
+        Some(IntMap.choose h)
+    | []     -> None
 end
