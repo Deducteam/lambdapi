@@ -255,11 +255,24 @@ type 'a stack = 'a list
     the term, or equivalently the term matches the pattern, the term is
     rewritten to the action. *)
 module CM = struct
+  (** Representation of a subterm in argument position in a pattern. *)
+  type arg =
+    { arg_path : int list (** Reversed path to the subterm. *)
+    ; arg_rank : int      (** Number of abstractions along the path. *) }
+
+  (** {b NOTE} the {!field:arg_path} describes a path to the represented term.
+      The idea is that each index of the list tells under which argument to go
+      next (counting from [0]), starting from the end of the list. For example
+      let us consider the term [f x (g a b)]. The subterm [a] is accessed with
+      the path [[0 ; 1]] (go under the second argument [g a b] first, and then
+      take its first argument). Similarly, [b] is encoded as [[1 ; 1]] and [x]
+      as [[0]]. Note that a value [[]] does not describe a valid path. *)
+
   (** Compile time equivalent of the evaluation time stack of arguments.  The
       [i]th pair [(o, d)] of the stack is the occurrence [o] of type
-      {!type:Occur.t} and the number [d] (for depth) of abstractions traversed
+      {!type:int list} and the number [d] (for depth) of abstractions traversed
       at the [i]th column of th matrix. *)
-  type occur_rs = (Occur.t * int) stack
+  type occur_rs = arg list
 
   (** Data needed to bind terms from the lhs into the rhs. *)
   type binding_data = int * term Bindlib.mvar
@@ -318,23 +331,6 @@ module CM = struct
     | Symb(_, _)    -> true
     | _             -> assert false
 
-  (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp : t pp = fun oc m ->
-    let pp_line oc r =
-      Format.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]"
-        (Format.pp_print_list ~pp_sep:Format.pp_print_space Print.pp)
-        (Array.to_list r.c_lhs) FVCond.pp r.freevars NLCond.pp r.nonlin
-    in
-    let out fmt = Format.fprintf oc fmt in
-    let pp_sep oc _ = Format.pp_print_string oc ";" in
-    let (l1, l2) = List.split m.positions in
-    out "Positions @@ @[<h>%a@]"
-      (Format.pp_print_list ~pp_sep Occur.pp) l1;
-    out " -- Depth: @[<h>%a@]@,"
-      (Format.pp_print_list ~pp_sep Format.pp_print_int) l2;
-    out "{@[<v>@,%a@.@]}"
-      (Format.pp_print_list pp_line) m.clauses
-
   (** [of_rules r] creates the initial pattern matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = fun rs ->
@@ -346,8 +342,9 @@ module CM = struct
       if rs = [] then 0 else
       List.max ~cmp:Int.compare
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
-    let positions = Occur.args_of size Occur.empty
-                    |> List.map (fun x -> (x, 0))
+    let positions =
+      if size = 0 then []
+      else List.init (size - 1) (fun i -> {arg_path = [i]; arg_rank = 0})
     in
     (* [|>] is reverse application, can be thought of as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
@@ -421,8 +418,7 @@ module CM = struct
       && not @@ List.exists (fun s -> NLCond.constrained s nonlin)
         slots_uniq
     in
-    let depths = positions |> List.map snd |> Array.of_list
-    in
+    let depths = Array.of_list (List.map (fun i -> i.arg_rank) positions) in
     let ripe lhs =
       (* [ripe l] returns whether [lhs] can be applied. *)
       let de = Array.sub depths 0 (Array.length lhs) in
@@ -481,11 +477,11 @@ module CM = struct
   (** [store m c d] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation. *)
   let store : t -> int -> bool = fun cm ci ->
-    let _, (_, de), _ = List.destruct cm.positions ci in
+    let (_, a, _) = List.destruct cm.positions ci in
     let st_r r =
       match r.c_lhs.(ci) with
       | Patt(Some(_), _, _) -> true
-      | Patt(_, _, e)       -> Array.length e < de
+      | Patt(_, _, e)       -> Array.length e < a.arg_rank
       | _                   -> false
     in
     List.exists st_r cm.clauses
@@ -495,14 +491,13 @@ module CM = struct
       column [c] having met [v] vars until now. *)
   let update_aux : int -> int -> occur_rs -> clause -> clause =
     fun ci slot pos r ->
-    let _, (_, depth), _ = List.destruct pos ci in
+    let (_, a, _) = List.destruct pos ci in
     let t = r.c_lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars = if (Array.length e) <> depth
-          then FVCond.instantiate slot
-              (Array.map to_tvar e)
-              r.freevars
+        let freevars =
+          if (Array.length e) <> a.arg_rank then
+            FVCond.instantiate slot (Array.map to_tvar e) r.freevars
           else r.freevars
         in
         let nonlin =
@@ -527,12 +522,13 @@ module CM = struct
     occur_rs * clause list = fun pat ci pos rs ->
     let pos =
       let l, m, r = List.destruct pos ci in
-      let occ, depth = m in
       let _, _, nargs = get_args_len pat in
-      let replace = Occur.args_of nargs occ
-                    |> List.map (fun x -> (x, depth))
+      let replace =
+        if nargs = 0 then [] else
+        List.init (nargs - 1) (fun i -> {m with arg_path = i :: m.arg_path})
       in
-      List.reconstruct l replace r in
+      List.reconstruct l replace r
+    in
     let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
                                   ; e
@@ -562,8 +558,8 @@ module CM = struct
   let default : int -> occur_rs -> clause list -> occur_rs * clause list =
     fun ci pos rs ->
     let pos =
-      let l, _, r = List.destruct pos ci in
-      List.reconstruct l [] r
+      let (l, _, r) = List.destruct pos ci in
+      List.rev_append l r
     in
     let transf r =
       match r.c_lhs.(ci) with
@@ -583,9 +579,9 @@ module CM = struct
   let abstract : int -> tvar -> occur_rs -> clause list ->
                  occur_rs * clause list =
     fun ci v pos clauses ->
-    let l, (occ, depth), r = List.destruct pos ci in
-    let occ = Occur.sub occ in (* Position of term inside lambda. *)
-    let pos = List.reconstruct l [(occ, depth + 1)] r in
+    let (l, {arg_path; arg_rank}, r) = List.destruct pos ci in
+    let a = {arg_path = 0 :: arg_path; arg_rank = arg_rank + 1} in
+    let pos = List.rev_append l (a :: r) in
     let insert r e = [ Array.sub r.c_lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.c_lhs ]
@@ -744,9 +740,6 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
-  match symb.sym_mode with
-  | Const         -> () (* Constant symbols do not have rules. *)
-  | Defin | Injec ->
-      let tree = lazy (compile (CM.of_rules !(symb.sym_rules))) in
-      let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
-      symb.sym_tree := (cap, tree)
+  let tree = lazy (compile (CM.of_rules !(symb.sym_rules))) in
+  let cap = lazy (Tree_types.tree_capacity (Lazy.force tree)) in
+  symb.sym_tree := (cap, tree)

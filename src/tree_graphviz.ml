@@ -135,3 +135,21 @@ let to_dot : string -> sym -> unit = fun fname s ->
   let oc = open_out fname in
   output_tree (Format.formatter_of_out_channel oc) tree;
   close_out oc
+
+(** [pp o m] prints matrix [m] to out channel [o]. *)
+let pp_matrix : Tree.CM.t pp = fun oc m ->
+  let open Tree.CM in
+  let pp_line oc r =
+    Format.fprintf oc "@[<v>@[%a@]@,@[%a@]@,@[%a@]@]" (Array.pp Print.pp " ")
+      r.c_lhs Tree.FVCond.pp r.freevars Tree.NLCond.pp r.nonlin
+  in
+  let out fmt = Format.fprintf oc fmt in
+  let l1 = List.map (fun a -> a.arg_path) m.positions in
+  let l2 = List.map (fun a -> a.arg_rank) m.positions in
+  let pp_path oc l =
+    if l = [] then Format.fprintf oc "ε" else
+    List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev l)
+  in
+  out "Positions @@ @[<h>%a@]" (List.pp pp_path ";") l1;
+  out " -- Depth: @[<h>%a@]@," (List.pp Format.pp_print_int ";") l2;
+  out "{@[<v>@,%a@.@]}" (Format.pp_print_list pp_line) m.clauses
