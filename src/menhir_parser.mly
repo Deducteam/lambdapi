@@ -183,13 +183,13 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %token INFER
 %token <bool> ASSERT
 %token WILD
-%token <string list> REQUIRE
+%token <Syntax.p_module_path> REQUIRE
 %token TYPE
 %token KW_DEF
 %token KW_INJ
 %token KW_THM
 %token <string> ID
-%token <string list * string> QID
+%token <Syntax.p_module_path * string> QID
 
 %start line
 %type <Syntax.p_command> line

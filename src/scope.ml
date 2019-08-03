@@ -41,6 +41,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     the [Fatal] exception. *)
 let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let {elt = (mp, s); pos} = qid in
+  let mp = List.map fst mp in
   match mp with
   | []                               -> (* Symbol in scope. *)
       begin
