@@ -267,10 +267,7 @@ module CM = struct
       [0] index is used when going under abstractions. In that case, the field
       {!field:arg_rank} is incremented. *)
 
-  (** Compile time equivalent of the evaluation time stack of arguments.  The
-      [i]th pair [(o, d)] of the stack is the occurrence [o] of type
-      {!type:int list} and the number [d] (for depth) of abstractions traversed
-      at the [i]th column of th matrix. *)
+  (** Compile time counterpart to the argument stack of the head symbol. *)
   type occur_rs = arg list
 
   (** Data needed to bind terms from the lhs into the rhs. *)
