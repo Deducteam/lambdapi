@@ -14,12 +14,13 @@ open Tree_types
 (** Priority on topmost rule if set to true. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
-(** {3 Conditions used for decision trees and heuristics}
+(** {3 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Tree_types.Cond}). We test these
-    conditions during evaluation to choose which branch to follow. We have two
-    forms of conditions in the current implementation.
+    conditions (see constructor {!constructor:Cond} of
+    {!type:Tree_types.tree}). We test these conditions during evaluation to
+    choose which branch to follow. We have two forms of conditions in the
+    current implementation.
     - convertibility conditions (see module {!module:NLCond} below),
     - free variable conditions (see module {!module:FVCond} below). *)
 
@@ -225,40 +226,15 @@ end = struct
   let choose pools = choose IntMap.is_empty IntMap.choose pools
 end
 
+(** {3 Miscellaneous types and definitions} *)
+
 (** Type of the leaves of the tree (see {!field:Terms.rhs}). *)
 type action = (term_env, term) Bindlib.mbinder
 
-(** See {!type:tree} in {!module:Terms}. *)
-type t = (term, action) Tree_types.tree
+(** Abstract machine stack. *)
+type 'a stack = 'a list
 
-(** {b Example:} let us consider the rewrite system for symbol [f] defined as:
-    - [f Z     (S m) → S m],
-    - [f n     Z     → n] and
-    - [f (S n) (S m) → S (S m)].
-
-    A possible decision tree might be
-    {v
-    ├─?─∘─Z─∘     → n
-    ├─Z─∘─Z─∘     → n
-    │   └─S─∘─?─∘ → S m
-    ├─S─∘─Z─∘     → n
-    └─S─∘─?─∘     → S (S m)
-    v}
-    with [∘] being a node (with an omitted label) and [─u─] being an edge with
-    a matching on symbol [u] or a variable or wildcard when [?]. Typically the
-    portion [S─∘─Z] is made possible by a swap. *)
-
-(** [is_treecons t] tells whether the term [t] corresponds to a constructor in
-    the sense of the module {!module:Tree_types.TC}. *)
-let is_treecons : term -> bool = fun t ->
-  match fst (get_args t) with
-  | Patt(_, _, _) -> false
-  | Vari(_)
-  | Abst(_, _)
-  | Symb(_, _)    -> true
-  | _             -> assert false
-
-(** {b NOTE} we ideally need the stack of terms used during evaluation
+(** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
     (argument [stk] of {!val:Eval.tree_walk}) to provide fast access to any
     element (for swaps) as well as fast {!val:Extra.List.destruct} and
     {!val:Extra.List.reconstruct} (to inspect a particular element, reduce it,
@@ -279,16 +255,18 @@ let is_treecons : term -> bool = fun t ->
     the term, or equivalently the term matches the pattern, the term is
     rewritten to the action. *)
 module CM = struct
-  (** Reduction stack containing the position of the subterm and the number of
-      abstractions traversed at this position. *)
-  type occur_rs = (Occur.t * int) list
+  (** Compile time equivalent of the evaluation time stack of arguments.  The
+      [i]th pair [(o, d)] of the stack is the occurrence [o] of type
+      {!type:Occur.t} and the number [d] (for depth) of abstractions traversed
+      at the [i]th column of th matrix. *)
+  type occur_rs = (Occur.t * int) stack
 
   (** Data needed to bind terms from the lhs into the rhs. *)
   type binding_data = int * term Bindlib.mvar
 
   (** A redefinition of the rule type.
 
-      {b Note} that {!type:array} is used while {!module:Stack} could
+      {b Note} that {!type:array} is used while {!type:stack} could
       be used because {!val:pick_best_among} goes through all items of a rule
       anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
       the matrix, we favour quick access with {!type:array}. *)
@@ -329,6 +307,16 @@ module CM = struct
     | FvConstrain of FVCond.cond
     (** Free variables constraint: the term matched must contain {e at most} a
         specified set of variables. *)
+
+  (** [is_treecons t] tells whether the term [t] corresponds to a constructor
+      in the sense of the module {!module:Tree_types.TC}. *)
+  let is_treecons : term -> bool = fun t ->
+    match fst (get_args t) with
+    | Patt(_, _, _) -> false
+    | Vari(_)
+    | Abst(_, _)
+    | Symb(_, _)    -> true
+    | _             -> assert false
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp : t pp = fun oc m ->
@@ -636,6 +624,26 @@ module CM = struct
   let fv_fail : FVCond.cond -> clause list -> clause list = fun c ->
     List.filter (fun r -> not (FVCond.is_instantiated c r.freevars))
 end
+
+(** See {!type:Terms.tree}. *)
+type t = (term, action) Tree_types.tree
+
+(** {b Example:} let us consider the rewrite system for symbol [f] defined as:
+    - [f Z     (S m) → S m],
+    - [f n     Z     → n] and
+    - [f (S n) (S m) → S (S m)].
+
+    A possible decision tree might be
+    {v
+    ├─?─∘─Z─∘     → n
+    ├─Z─∘─Z─∘     → n
+    │   └─S─∘─?─∘ → S m
+    ├─S─∘─Z─∘     → n
+    └─S─∘─?─∘     → S (S m)
+    v}
+    with [∘] being a node (with an omitted label) and [─u─] being an edge with
+    a matching on symbol [u] or a variable or wildcard when [?]. Typically the
+    portion [S─∘─Z] is made possible by a swap. *)
 
 (** [harvest l r e s] exhausts linearly the stack composed only of pattern
     variables with no non linear constraints. *)
