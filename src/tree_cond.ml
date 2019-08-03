@@ -13,11 +13,11 @@ open Terms
 (** [choose e c p] chooses recursively among pools in [p] an available
     condition calling function [c] on each pool, with [e] being the function
     indicating whether a pool is empty. *)
-let rec choose m_is_empty m_choose ps =
+let rec choose : ('a -> bool) -> ('a -> 'b) -> 'a list -> 'b option =
+  fun m_is_empty m_choose ps ->
   match ps with
   | h :: t ->
-      if m_is_empty h then choose m_is_empty m_choose t else
-        Some(m_choose h)
+      if m_is_empty h then choose m_is_empty m_choose t else Some(m_choose h)
   | []     -> None
 
 (** Signature for a pool of conditions. Conditions are added on the fly during
