@@ -625,7 +625,7 @@ module CM = struct
     List.filter (fun r -> not (FVCond.is_instantiated c r.freevars))
 end
 
-(** See {!type:Terms.tree}. *)
+(** See {!type:Terms.dtree}. *)
 type t = (term, action) Tree_types.tree
 
 (** {b Example:} let us consider the rewrite system for symbol [f] defined as:
