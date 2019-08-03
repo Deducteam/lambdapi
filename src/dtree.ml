@@ -48,79 +48,17 @@ let is_treecons : term -> bool = fun t ->
   | Symb(_, _)    -> true
   | _             -> assert false
 
-(** {3 Reduction substrate} *)
-
-(** Data structure used to represent the stack of arguments during the pattern
-    matching operation. *)
-module Stack : sig
-  (** Type of a substrate with elements of type ['a]. *)
-  type 'a t
-
-  (** The empty substrate. *)
-  val empty : 'a t
-
-  (** [is_empty v] tells whether a substrate is empty. *)
-  val is_empty : 'a t -> bool
-
-  (** [of_list l] returns a substrate containing the elements of [l]. *)
-  val of_list : 'a list -> 'a t
-
-  (** [to_list s] returns a list representing the substrate [s]. *)
-  val to_list : 'a t -> 'a list
-
-  (** [length s] gives the number of elements of the substrate [s]. *)
-  val length : 'a t -> int
-
-  (** Prefix of a substrate. *)
-  type 'a prefix
-
-  (** Suffix of a substrate. *)
-  type 'a suffix
-
-  (** [destruct s i] splits the substrate [s] into a triple [(l, m, r)], where
-      [l] is the prefix of [s] up to its [i]-th element (excluded), [m] is the
-      [i]-th element of [s], and [r] is the remaining suffix of [m].
-      @raise Invalid_argument when [i < 0].
-      @raise Not_found when [i ≥ length v]. *)
-  val destruct : 'a t -> int -> 'a prefix * 'a * 'a suffix
-
-  (** [restruct l m r] builds a substrate given a prefix [l], a middle list of
-      element [m], and a suffix [r]. We will typically use [destruct] to get a
-      triple [(l,e,r)], and then use [restruct l m r] where the list [m] comes
-      from some operation applied on the element [e]. *)
-  val restruct : 'a prefix -> 'a list -> 'a suffix -> 'a t
-end = struct
-  type 'a t = 'a list
-  type 'a prefix = 'a list
-  type 'a suffix = 'a list
-  let empty = []
-  let is_empty l = l = []
-  external of_list : 'a list -> 'a t = "%identity"
-  external to_list : 'a t -> 'a list = "%identity"
-  let length = List.length
-
-  let destruct e i =
-    if i < 0 then invalid_arg "RedListStack.destruct" ;
-    let rec destruct l i r =
-      match (r, i) with
-      | ([]  , _) -> raise Not_found
-      | (v::r, 0) -> (l, v, r)
-      | (v::r, i) -> destruct (v :: l) (i - 1) r
-    in
-    destruct [] i e
-
-  let restruct l m r = List.rev_append l (m @ r)
-end
-
-(** {b NOTE} we ideally need the {!module:Stack} to provide fast access to any
-    element in the substrate (for swaps) as well as fast {!val:Stack.destruct}
-    and {!val:Stack.restruct} (to inspect a particular element, reduce it, and
-    then reinsert it). In practice, the naive representation based on lists is
-    faster than more elaborate solutions, unless there are rules with {e many}
-    arguments. Alternatives to a list-based implementation would be cat-enable
-    lists / deques, finger trees (Paterson & Hinze) or random access lists. In
-    the current implementation, [destruct e i] has a time complexity of [Θ(i)]
-    and [restruct l m r] has a time complexity of [Θ(length l + length m)]. *)
+(** {b NOTE} we ideally need the stack of terms used during evaluation
+    (argument [stk] of {!val:Eval.tree_walk}) to provide fast access to any
+    element (for swaps) as well as fast {!val:Extra.List.destruct} and
+    {!val:Extra.List.restruct} (to inspect a particular element, reduce it,
+    and then reinsert it). In practice, the naive representation based on
+    lists is faster than more elaborate solutions, unless there are rules with
+    {e many} arguments.  Alternatives to a list-based implementation would be
+    cat-enable lists / deques, finger trees (Paterson & Hinze) or random
+    access lists. In the current implementation, [destruct e i] has a time
+    complexity of [Θ(i)] and [restruct l m r] has a time complexity of
+    [Θ(length l + length m)]. *)
 
 (** {3 Graphviz output} *)
 
@@ -232,7 +170,7 @@ type bin_cstr =
 module CM = struct
   (** Reduction stack containing the position of the subterm and the number of
       abstractions traversed at this position. *)
-  type occur_rs = (Occur.t * int) Stack.t
+  type occur_rs = (Occur.t * int) list
 
   (** Data needed to bind terms from the lhs into the rhs. *)
   type binding_data = int * term Bindlib.mvar
@@ -290,7 +228,7 @@ module CM = struct
     in
     let out fmt = Format.fprintf oc fmt in
     let pp_sep oc _ = Format.pp_print_string oc ";" in
-    let (l1, l2) = List.split (Stack.to_list m.positions) in
+    let (l1, l2) = List.split m.positions in
     out "Positions @@ @[<h>%a@]"
       (Format.pp_print_list ~pp_sep Occur.pp) l1;
     out " -- Depth: @[<h>%a@]@,"
@@ -311,7 +249,6 @@ module CM = struct
         (List.map (fun r -> List.length r.Terms.lhs) rs) in
     let positions = Occur.args_of size Occur.empty
                     |> List.map (fun x -> (x, 0))
-                    |> Stack.of_list
     in
     (* [|>] is reverse application, can be thought of as a Unix pipe | *)
     { clauses = List.map r2r rs ; slot = 0 ; positions }
@@ -387,8 +324,7 @@ module CM = struct
       && not @@ List.exists (fun s -> NLCond.constrained s nonlin)
         slots_uniq
     in
-    let depths = Stack.to_list positions |> List.map snd
-                 |> Array.of_list
+    let depths = positions |> List.map snd |> Array.of_list
     in
     let ripe lhs =
       (* [ripe l] returns whether [lhs] can be applied. *)
@@ -462,7 +398,7 @@ module CM = struct
   (** [store m c d] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation. *)
   let store : t -> int -> bool = fun cm ci ->
-    let _, (_, de), _ = Stack.destruct cm.positions ci in
+    let _, (_, de), _ = List.destruct cm.positions ci in
     let st_r r =
       match r.c_lhs.(ci) with
       | Patt(Some(_), _, _) -> true
@@ -476,7 +412,7 @@ module CM = struct
       column [c] having met [v] vars until now. *)
   let update_aux : int -> int -> occur_rs -> clause -> clause =
     fun ci slot pos r ->
-    let _, (_, depth), _ = Stack.destruct pos ci in
+    let _, (_, depth), _ = List.destruct pos ci in
     let t = r.c_lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
@@ -507,13 +443,13 @@ module CM = struct
   let specialize : term -> int -> occur_rs -> clause list ->
     occur_rs * clause list = fun pat ci pos rs ->
     let pos =
-      let l, m, r = Stack.destruct pos ci in
+      let l, m, r = List.destruct pos ci in
       let occ, depth = m in
       let _, _, nargs = get_args_len pat in
       let replace = Occur.args_of nargs occ
                     |> List.map (fun x -> (x, depth))
       in
-      Stack.restruct l replace r in
+      List.restruct l replace r in
     let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
                                   ; e
@@ -543,8 +479,8 @@ module CM = struct
   let default : int -> occur_rs -> clause list -> occur_rs * clause list =
     fun ci pos rs ->
     let pos =
-      let l, _, r = Stack.destruct pos ci in
-      Stack.restruct l [] r
+      let l, _, r = List.destruct pos ci in
+      List.restruct l [] r
     in
     let transf r =
       match r.c_lhs.(ci) with
@@ -564,9 +500,9 @@ module CM = struct
   let abstract : int -> tvar -> occur_rs -> clause list ->
                  occur_rs * clause list =
     fun ci v pos clauses ->
-    let l, (occ, depth), r = Stack.destruct pos ci in
+    let l, (occ, depth), r = List.destruct pos ci in
     let occ = Occur.sub occ in (* Position of term inside lambda. *)
-    let pos = Stack.restruct l [(occ, depth + 1)] r in
+    let pos = List.restruct l [(occ, depth + 1)] r in
     let insert r e = [ Array.sub r.c_lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.c_lhs ]

@@ -163,7 +163,6 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
      used in this evaluation. *)
   let rec walk tree stk cursor fresh_vars =
     let open Tree_types in
-    let open Dtree in
     match tree with
     | Fail                                                -> None
     | Leaf(env_builder, act)                              ->
@@ -186,7 +185,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         in
         List.iter fn env_builder;
         (* Actually perform the action. *)
-        Some(Bindlib.msubst act env, Stack.to_list stk)
+        Some(Bindlib.msubst act env, stk)
     | Cond({ ok ; cond ; fail })                          ->
         let next =
           match cond with
@@ -207,7 +206,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         in
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
-        match Stack.destruct stk swap with
+        match List.destruct stk swap with
         | exception Not_found     -> None
         | (left, examined, right) ->
         if TCMap.is_empty children && abstraction = None then
@@ -216,7 +215,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if store then (vars.(cursor) <- examined; cursor + 1)
               else cursor
             in
-            walk t (Stack.restruct left [] right) cursor fresh_vars
+            walk t (List.restruct left [] right) cursor fresh_vars
           in
           Option.map_default fn None default
         else
@@ -236,7 +235,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           in
           let default () =
             let fn d =
-              let stk = Stack.restruct left [] right in
+              let stk = List.restruct left [] right in
               walk d stk cursor fresh_vars
             in
             Option.map_default fn None default
@@ -247,7 +246,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               begin
                 try
                   let matched = TCMap.find cons children in
-                  let stk = Stack.restruct left args right in
+                  let stk = List.restruct left args right in
                   walk matched stk cursor fresh_vars
                 with Not_found -> default ()
               end
@@ -256,7 +255,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               begin
                 try
                   let matched = TCMap.find cons children in
-                  let stk = Stack.restruct left args right in
+                  let stk = List.restruct left args right in
                   walk matched stk cursor fresh_vars
                 with Not_found -> default ()
               end
@@ -269,12 +268,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                     let bound = Bindlib.subst b (mkfree nfv) in
                     let u = bound :: args in
                     let fresh_vars = VarMap.add fv nfv fresh_vars in
-                    walk tr (Stack.restruct left u right) cursor fresh_vars
+                    walk tr (List.restruct left u right) cursor fresh_vars
               end
           | Meta(_, _) -> default ()
           | _          -> assert false
   in
-  walk tree (Dtree.Stack.of_list stk) 0 VarMap.empty
+  walk tree stk 0 VarMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 and snf : term -> term = fun t ->

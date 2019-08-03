@@ -163,6 +163,28 @@ module List =
       | x :: xs -> let xs = remove_phys_dups xs in
                    if List.memq x xs then xs else x :: xs
 
+    (** [destruct s i] splits the substrate [s] into a triple [(l, m, r)],
+        where [l] is the prefix of [s] up to its [i]-th element (excluded),
+        [m] is the [i]-th element of [s], and [r] is the remaining suffix of
+        [m].
+        @raise Invalid_argument when [i < 0].
+        @raise Not_found when [i ≥ length v]. *)
+    let destruct : 'a list -> int -> 'a list * 'a * 'a list = fun e i ->
+      if i < 0 then invalid_arg "Extra.List.destruct" ;
+      let rec destruct l i r =
+        match (r, i) with
+        | ([]  , _) -> raise Not_found
+        | (v::r, 0) -> (l, v, r)
+        | (v::r, i) -> destruct (v :: l) (i - 1) r
+      in
+      destruct [] i e
+
+    (** [restruct l m r] builds a substrate given a prefix [l], a middle list
+        of element [m], and a suffix [r]. We will typically use [destruct] to
+        get a triple [(l,e,r)], and then use [restruct l m r] where the list
+        [m] comes from some operation applied on the element [e]. *)
+    let restruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
+      List.rev_append l (m @ r)
   end
 
 module Array =
