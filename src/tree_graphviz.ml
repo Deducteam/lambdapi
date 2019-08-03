@@ -5,11 +5,21 @@
     the [dot] language that can be interpreted by graphviz.
 
     A [dot] file [tree.gv] can be converted to a [png] file [tree.png] using
-    [dot -Tpng tree.gv > tree.png].  For more output formats,
-    @see <https://graphviz.gitlab.io/_pages/doc/info/output.html>
+    [dot -Tpng tree.gv > tree.png].  For more output formats, @see
+    <https://graphviz.gitlab.io/_pages/doc/info/output.html>.  To output to
+    [tex], one can use {{:https://dot2tex.readthedocs.io/}dot2tex}. *)
 
-    To output to [tex], one can use
-    {{:https://dot2tex.readthedocs.io/}dot2tex}. *)
+(** {b Description of output} we remind that trees are interpreted during
+    evaluation of terms to get the correct rule to apply.  A node is thus an
+    instruction for the evaluation algorithm.  There are three types of
+    labeled nodes, labeled edges and leaves.  A node can be
+    - a regular node, represented by a circle, whose label indicates on which
+      column the next operation to reach the following node will be performed;
+    - a store node, represented by a rectangle, which is the same as a regular
+      node, except that the term at the index of the label is saved into the
+      [vars] array (see {!val:Eval.tree_walk});
+    - a conditional node, represented by a diamond, indicating that a
+      conditional check shall be performed to reach the next node. *)
 
 open Timed
 open Extra
