@@ -10,6 +10,16 @@
 open Extra
 open Terms
 
+(** [choose e c p] chooses recursively among pools in [p] an available
+    condition calling function [c] on each pool, with [e] being the function
+    indicating whether a pool is empty. *)
+let rec choose m_is_empty m_choose ps =
+  match ps with
+  | h :: t ->
+      if m_is_empty h then choose m_is_empty m_choose t else
+        Some(m_choose h)
+  | []     -> None
+
 (** Signature for a pool of conditions. Conditions are added on the fly during
     the construction of decision trees. Constraints can involve one or several
     patterns from a rewriting rule LHS (see {!val:instantiate}). *)
@@ -141,12 +151,9 @@ end = struct
     with Not_found ->
       { pool with partial = IntMap.add esl vslot pool.partial }
 
-  let rec choose pools =
-    match pools with
-    | p :: t ->
-        if IntPairSet.is_empty p.available then choose t else
-        Some(IntPairSet.choose p.available)
-    | []     -> None
+  let choose pools =
+    let avp = List.map (fun x -> x.available) pools in
+    choose IntPairSet.is_empty IntPairSet.choose avp
 end
 
 (** Free variable constraints to verify which variables are free in a term. If
@@ -202,10 +209,5 @@ end = struct
 
   let export x = x
 
-  let rec choose pools =
-    match pools with
-    | h :: t ->
-        if IntMap.is_empty h then choose t else
-        Some(IntMap.choose h)
-    | []     -> None
+  let choose pools = choose IntMap.is_empty IntMap.choose pools
 end
