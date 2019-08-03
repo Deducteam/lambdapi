@@ -1,7 +1,7 @@
 (** Representation of trees as graphviz files.
 
     {{:https://graphviz.org}Graphviz} is a graph visualization software.  This
-    module handle the conversion from {!type:Dtree.t} data structures files in
+    module handle the conversion from {!type:Tree.t} data structures files in
     the [dot] language that can be interpreted by graphviz.
 
     A [dot] file [tree.gv] can be converted to a [png] file [tree.png] using
@@ -31,12 +31,12 @@
 
     The label of an edge is either
     - [*] if the operation to go from a regular or storage node to another
-      node is a {!val:Dtree.CM.default};
+      node is a {!val:Tree.CM.default};
     - [s_n] where [s] is a symbol if the operation to go from a regular or
-      storage node to another node is a {!val:Dtree.CM.specialize} on symbol
+      storage node to another node is a {!val:Tree.CM.specialize} on symbol
       [s] with arity [n];
     - [λx] if the operation to go from a regular or storage node to another
-      node is a specialisation by an abstraction {!val:Dtree.CM.abstract};
+      node is a specialisation by an abstraction {!val:Tree.CM.abstract};
     - [✓] if the operation to go from a conditional node to another node is
       the assumption of satisfaction of the constraint indicated as label of
       the condition node;

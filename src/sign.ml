@@ -125,7 +125,7 @@ let link : t -> unit = fun sign ->
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
   sign.sign_binops := StrMap.map hn !(sign.sign_binops) ;
-  StrMap.iter (fun _ (s, _) -> Dtree.update_dtree s) !(sign.sign_symbols)
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our

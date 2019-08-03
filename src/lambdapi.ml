@@ -93,7 +93,7 @@ let spec =
       , Arg.Set Handle.write_trees
       , " Write decision trees to \".gv\" files" )
     ; ( "--keep-rule-order"
-      , Arg.Set Dtree.rule_order
+      , Arg.Set Tree.rule_order
       , " Respect the order of definition of the rewriting rules" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)

@@ -137,8 +137,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
 (** {b NOTE} that matching with trees involves three collections of terms.
-    1. The argument stack [stk] of type {!type:Terms.term Dtree.Stack.t} which
-       contains the terms that are matched against the decision tree.
+    1. The argument stack [stk] of type {!type:stack} which contains the terms
+       that are matched against the decision tree.
     2. An array [vars] of variables that are used for non-linearity checks and
        free variable checks, or that are used in the RHS.
     3. A mapping [fresh_vars] from (free) variables to (free) variables, which

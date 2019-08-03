@@ -142,7 +142,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
-      List.iter Dtree.update_dtree syms;
+      List.iter Tree.update_dtree syms;
       (* Writing decision tree if required. *)
       if Pervasives.(!write_trees) then
         begin
