@@ -51,13 +51,13 @@ let is_treecons : term -> bool = fun t ->
 (** {b NOTE} we ideally need the stack of terms used during evaluation
     (argument [stk] of {!val:Eval.tree_walk}) to provide fast access to any
     element (for swaps) as well as fast {!val:Extra.List.destruct} and
-    {!val:Extra.List.restruct} (to inspect a particular element, reduce it,
+    {!val:Extra.List.reconstruct} (to inspect a particular element, reduce it,
     and then reinsert it). In practice, the naive representation based on
     lists is faster than more elaborate solutions, unless there are rules with
     {e many} arguments.  Alternatives to a list-based implementation would be
     cat-enable lists / deques, finger trees (Paterson & Hinze) or random
     access lists. In the current implementation, [destruct e i] has a time
-    complexity of [Θ(i)] and [restruct l m r] has a time complexity of
+    complexity of [Θ(i)] and [reconstruct l m r] has a time complexity of
     [Θ(length l + length m)]. *)
 
 (** {3 Binary constraints nodes} *)
@@ -359,7 +359,7 @@ module CM = struct
       let replace = Occur.args_of nargs occ
                     |> List.map (fun x -> (x, depth))
       in
-      List.restruct l replace r in
+      List.reconstruct l replace r in
     let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
                                   ; e
@@ -390,7 +390,7 @@ module CM = struct
     fun ci pos rs ->
     let pos =
       let l, _, r = List.destruct pos ci in
-      List.restruct l [] r
+      List.reconstruct l [] r
     in
     let transf r =
       match r.c_lhs.(ci) with
@@ -412,7 +412,7 @@ module CM = struct
     fun ci v pos clauses ->
     let l, (occ, depth), r = List.destruct pos ci in
     let occ = Occur.sub occ in (* Position of term inside lambda. *)
-    let pos = List.restruct l [(occ, depth + 1)] r in
+    let pos = List.reconstruct l [(occ, depth + 1)] r in
     let insert r e = [ Array.sub r.c_lhs 0 ci
                      ; [| e |]
                      ; Array.drop (ci + 1) r.c_lhs ]

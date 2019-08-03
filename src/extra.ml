@@ -169,14 +169,14 @@ module List =
       | x :: xs -> let xs = remove_phys_dups xs in
                    if List.memq x xs then xs else x :: xs
 
-    (** [destruct s i] splits the substrate [s] into a triple [(l, m, r)],
-        where [l] is the prefix of [s] up to its [i]-th element (excluded),
-        [m] is the [i]-th element of [s], and [r] is the remaining suffix of
-        [m].
+    (** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is
+        the [i]-th element of [l], [left_rev] is the reversed prefix of [l] up
+        to its [i]-th element (excluded),  and [right] is the remaining suffix
+        of [l] (starting at its [i+1]-th element).
         @raise Invalid_argument when [i < 0].
         @raise Not_found when [i ≥ length v]. *)
     let destruct : 'a list -> int -> 'a list * 'a * 'a list = fun e i ->
-      if i < 0 then invalid_arg "Extra.List.destruct" ;
+      if i < 0 then invalid_arg "Extra.List.deconstruct" ;
       let rec destruct l i r =
         match (r, i) with
         | ([]  , _) -> raise Not_found
@@ -185,11 +185,11 @@ module List =
       in
       destruct [] i e
 
-    (** [restruct l m r] builds a substrate given a prefix [l], a middle list
-        of element [m], and a suffix [r]. We will typically use [destruct] to
-        get a triple [(l,e,r)], and then use [restruct l m r] where the list
-        [m] comes from some operation applied on the element [e]. *)
-    let restruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
+    (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l]
+        and [right].  This function will typically be used in combination with
+        {!val:deconstruct} to insert a sublist [l] in the place of the element
+        at the specified position in the specified list. *)
+    let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
       List.rev_append l (m @ r)
 
     (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note

@@ -215,7 +215,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if store then (vars.(cursor) <- examined; cursor + 1)
               else cursor
             in
-            walk t (List.restruct left [] right) cursor fresh_vars
+            walk t (List.reconstruct left [] right) cursor fresh_vars
           in
           Option.map_default fn None default
         else
@@ -235,7 +235,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           in
           let default () =
             let fn d =
-              let stk = List.restruct left [] right in
+              let stk = List.reconstruct left [] right in
               walk d stk cursor fresh_vars
             in
             Option.map_default fn None default
@@ -246,7 +246,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               begin
                 try
                   let matched = TCMap.find cons children in
-                  let stk = List.restruct left args right in
+                  let stk = List.reconstruct left args right in
                   walk matched stk cursor fresh_vars
                 with Not_found -> default ()
               end
@@ -255,7 +255,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               begin
                 try
                   let matched = TCMap.find cons children in
-                  let stk = List.restruct left args right in
+                  let stk = List.reconstruct left args right in
                   walk matched stk cursor fresh_vars
                 with Not_found -> default ()
               end
@@ -268,7 +268,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                     let bound = Bindlib.subst b (mkfree nfv) in
                     let u = bound :: args in
                     let fresh_vars = VarMap.add fv nfv fresh_vars in
-                    walk tr (List.restruct left u right) cursor fresh_vars
+                    walk tr (List.reconstruct left u right) cursor fresh_vars
               end
           | Meta(_, _) -> default ()
           | _          -> assert false
