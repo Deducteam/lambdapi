@@ -6,7 +6,7 @@
 
     A [dot] file [tree.gv] can be converted to a [png] file [tree.png] using
     [dot -Tpng tree.gv > tree.png].  To output to [tex], one can use
-    {{:https://dot2tex.readthedocs.io/}dot2tex}. For more output formats,
+    {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
     @see <https://graphviz.gitlab.io/_pages/doc/info/output.html> *)
 
 (** {b Description of output} we remind that trees are interpreted during
@@ -19,7 +19,30 @@
       node, except that the term at the index of the label is saved into the
       [vars] array (see {!val:Eval.tree_walk});
     - a conditional node, represented by a diamond, indicating that a
-      conditional check shall be performed to reach the next node. *)
+      conditional check shall be performed to reach the next node.
+
+    The label of a node is either
+    - [@n] on a regular or storage node if the algorithm inspects the column
+      [n] to continue evaluation;
+    - [n ≡ m] on a conditional node, meaning that a convertibility check
+      between index [n] and index [m] of the [vars] array must be carried out;
+    - [xs @ n] on a conditional node, meaning that free variables in [xs] are
+      allowed in the term stored at index [n] of the [vars] array.
+
+    The label of an edge is either
+    - [*] if the operation to go from a regular or storage node to another
+      node is a {!val:Dtree.CM.default};
+    - [s_n] where [s] is a symbol if the operation to go from a regular or
+      storage node to another node is a {!val:Dtree.CM.specialize} on symbol
+      [s] with arity [n];
+    - [λx] if the operation to go from a regular or storage node to another
+      node is a specialisation by an abstraction {!val:Dtree.CM.abstract};
+    - [✓] if the operation to go from a conditional node to another node is
+      the assumption of satisfaction of the constraint indicated as label of
+      the condition node;
+    - [✗] if the operation to go form a conditional node to another node is
+      the assumption of failure of satisfaction of the constraint indicated as
+      label of the condition node. *)
 
 open Timed
 open Extra
@@ -40,10 +63,9 @@ type dot_term =
 (** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
     of the tree embodies a pattern matrix.  The label of a node is the
     column index in the matrix on which the matching is performed to give
-    birth to children nodes.  The label on the edge between a node and one of
+    birth to the child node.  The label on the edge between a node and one of
     its children represents the term matched to generate the next pattern
-    matrix (the one of the child node); and is therefore one of the terms in
-    the column of the pattern matrix whose index is the label of the node. *)
+    matrix (the one of the child node). *)
 let to_dot : string -> sym -> unit = fun fname s ->
   let output_tree : t pp = fun oc tree ->
     let pp_dotterm : dot_term pp = fun oc dh ->
