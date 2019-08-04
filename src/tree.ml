@@ -320,6 +320,28 @@ module CM = struct
     (** Free variables constraint: the term matched must contain {e at most} a
         specified set of variables. *)
 
+  (** [pp o m] prints matrix [m] to out channel [o]. *)
+  let pp_matrix : t pp = fun oc m ->
+    let pp_lhs oc lhs =
+      Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
+    in
+    let pp_path oc l =
+      if l = [] then Format.fprintf oc "ε" else
+        List.pp (fun oc -> Format.fprintf oc "%d") "·" oc (List.rev l)
+    in
+    let out fmt = Format.fprintf oc fmt in
+    let lp = List.map (fun a -> a.arg_path) m.positions in
+    let lr = List.map (fun a -> a.arg_rank) m.positions in
+    let llhs = List.map (fun cl -> cl.c_lhs) m.clauses in
+    let seplhs oc () = Format.fprintf oc "@," in
+    out "@[<v 0>### Matrix start ###@,";
+    out "@[<h>%s: @[%a@]@]@,"
+      "Positions" (List.pp pp_path ";") lp;
+    out "@[<h>@<9>%s: @[%a@]@]@,"
+      "Depths" (List.pp Format.pp_print_int ";") lr;
+    out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:seplhs pp_lhs) llhs;
+    out "### Matrix end   ###@]@."
+
   (** [is_treecons t] tells whether the term [t] corresponds to a constructor
       in the sense of the module {!module:Tree_types.TC}. *)
   let is_treecons : term -> bool = fun t ->
