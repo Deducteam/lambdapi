@@ -38,12 +38,12 @@ module TCMap = Map.Make(TC)
 
 (** {3 Decision trees for rewriting} *)
 
-(** Constraints among elements of a decision tree. *)
-type 'term tree_constraint =
-  | Constr_Eq of int * int
-  (** The terms at the given indices must be convertible. *)
-  | Constr_FV of 'term Bindlib.var array * int
-  (** The free variables of the term at given index should be in the array. *)
+(** Representation of a branching conditions. *)
+type 'term tree_cond =
+  | CondNL of int * int
+  (** Are the terms at the given indices convertible? *)
+  | CondFV of 'term Bindlib.var array * int
+  (** Are the free variables of the term at given index in the array? *)
 
 (** Representation of a tree. The definition relies on parameters since module
     {!module:Terms} depends on the current module, and that would thus produce
@@ -63,7 +63,7 @@ type ('term, 'rhs) tree =
   | Cond of
       { ok   : ('term, 'rhs) tree
       (** Branch to follow if the condition is verified. *)
-      ; cond : 'term tree_constraint
+      ; cond : 'term tree_cond
       (** The condition to test. *)
       ; fail : ('term, 'rhs) tree
       (** Branch to follow if the condition is not verified. *) }
