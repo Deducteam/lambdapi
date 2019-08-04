@@ -189,9 +189,9 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
     | Cond({ ok ; cond ; fail })                          ->
         let next =
           match cond with
-          | Constr_Eq(i, j) ->
+          | CondNL(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
-          | Constr_FV(xs,i) ->
+          | CondFV(xs,i) ->
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar xs (lift vars.(i)) in

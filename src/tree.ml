@@ -14,6 +14,14 @@ open Tree_types
 (** Priority on topmost rule if set to true. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
+type tree_cond = term Tree_types.tree_cond
+
+let pp_tree_cond : tree_cond pp = fun oc cond ->
+  match cond with
+  | CondNL(i,j) -> Format.fprintf oc "(%d,%d)" i j
+  | CondFV(a,i) -> Format.fprintf oc "%d: {@[<h>%a@]}" i
+                     (Array.pp Print.pp_tvar "; ") a
+
 (** {3 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
@@ -24,43 +32,51 @@ let rule_order : bool Pervasives.ref = Pervasives.ref false
     - convertibility conditions (see module {!module:NLCond} below),
     - free variable conditions (see module {!module:FVCond} below). *)
 
-(** [choose e c p] chooses recursively among pools in [p] an available
-    condition calling function [c] on each pool, with [e] being the function
-    indicating whether a pool is empty. *)
-let rec choose : ('a -> bool) -> ('a -> 'b) -> 'a list -> 'b option =
-  fun m_is_empty m_choose ps ->
-  match ps with
-  | h :: t ->
-      if m_is_empty h then choose m_is_empty m_choose t else Some(m_choose h)
-  | []     -> None
+(** Module providing convertibility conditions, used to handle rewriting rules
+    that are not left-linear, for example [f &x &x (s &y) → r]. Here, we use a
+    condition to test whether the terms at position [{0}] and [{1}] are indeed
+    convertible. The rule can only apply if that is the case. Of course we may
+    need to check convertibility between more than two terms if a variable has
+    more than two occurences. *)
 
-(** Signature for a pool of conditions. Conditions are added on the fly during
-    the construction of decision trees. Constraints can involve one or several
-    patterns from a rewriting rule LHS (see {!val:instantiate}). *)
-module type Cond_sig = sig
-  (** Pool of constraints. *)
-  type t
+(** Free variable constraints to verify which variables are free in a term. If
+    there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need to check
+    that the term at position [{0.0}] depends only on free variable [y]. *)
 
-  (** Representation of an (instantiated) condition. *)
-  type cond
+(** Condition pool representation. *)
+module CP = struct
+  (** Functional sets of pairs of integers. *)
+  module PSet = Set.Make(
+    struct
+      type t = int * int
 
-  (** Auxiliary data used to instantiate a condition. *)
-  type data
+      let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
+        match i1 - j1 with 0 -> i2 - j2 | k -> k
+    end)
 
-  (** Synonym of {!type:cond}, made concrete in the interface. *)
-  type exported
+  (** A pool of (convertibility and free variable) conditions. *)
+  type cond_pool =
+    { nl_partial : int IntMap.t
+      (** An association [(e, v)] is a slot [e] of the [env] array with a slot
+          [v] of the [vars] array. *)
+    ; nl_available : PSet.t
+    (** Pairs of this set are checkable constraints, i.e. the two integers
+        refer to available positions in the {!val:vars} array. *)
+    ; fv : (tvar array) IntMap.t
+    (** ... *) }
 
-  (** [pp oc pool] prints the pool [pool] to channel [oc]. *)
-  val pp : t pp
+  (** Short synonym of {!type:cond_pool}. *)
+  type t = cond_pool
 
-  (** [pp_cond oc cond] prints condition [cond] to channel [oc]. *)
-  val pp_cond : cond pp
+  (** [empty] is the condition pool holding no condition. *)
+  let empty : cond_pool =
+    { nl_partial = IntMap.empty
+    ; nl_available = PSet.empty
+    ; fv = IntMap.empty }
 
-  (** Empty set of conditions. *)
-  val empty : t
-
-  (** [is_empty pool] tells whether the pool [pool] is empty. *)
-  val is_empty : t -> bool
+  (** [is_empty pool] tells whether the pool of constraints is empty. *)
+  let is_empty pool =
+    PSet.is_empty pool.nl_available && IntMap.is_empty pool.fv
 
   (** [instantiate i d q] instantiate constraint on slot [i] in pool [q], that
       is.  Typically, if a constraint involves only one variable, then
@@ -70,161 +86,68 @@ module type Cond_sig = sig
       state}, and will be completely instantiated when all the variables are
       instantiated.  The [d] is some additional data needed.
       @raise Not_found if [p] is not part of any constraint in [q]. *)
-  val instantiate : int -> data -> t -> t
+  let instantiate_nl : int -> int -> t -> t = fun slot i pool ->
+    let normalize (i, j) = if i < j then (i, j) else (j, i) in
+    try
+      let e = normalize (slot, IntMap.find i pool.nl_partial) in
+      { pool with nl_available = PSet.add e pool.nl_available }
+    with Not_found ->
+      { pool with nl_partial = IntMap.add i slot pool.nl_partial }
+
+  let instantiate_fv : int -> tvar array -> t -> t = fun i vs pool ->
+    { pool with fv = IntMap.add i vs pool.fv }
+
+  (** [constrained_nl slot pool] tells whether slot [slot] is constrained in
+      the constraint pool [pool]. *)
+  let constrained_nl : int -> t -> bool = fun slot pool ->
+    IntMap.mem slot pool.nl_partial
+
 
   (** [is_instantiated cond pool] tells whether the condition [cond] has  been
       instantiated in the pool [pool] *)
-  val is_instantiated : cond -> t -> bool
+  let is_instantiated cond pool =
+    match cond with
+    | CondNL(i,j) -> PSet.mem (i,j) pool.nl_available
+    | CondFV(x,i) -> try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv)
+                     with Not_found -> false
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
-  val remove : cond -> t -> t
-
-  (** [export cond] returns the exported counterpart of [cond]. *)
-  val export : cond -> exported
+  let remove cond pool =
+    match cond with
+    | CondNL(i,j)  ->
+        let nl_available = PSet.remove (i,j) pool.nl_available in
+        {pool with nl_available}
+    | CondFV(xs,i) ->
+        try
+          let ys = IntMap.find i pool.fv in
+          let eq = Array.equal Bindlib.eq_vars xs ys in
+          if eq then {pool with fv = IntMap.remove i pool.fv} else pool
+        with Not_found -> pool
 
   (** [choose pools] selects a condition to verify among [pools]. *)
-  val choose : t list -> cond option
+
+  (** [choose e c p] chooses recursively among pools in [p] an available
+      condition calling function [c] on each pool, with [e] being the function
+      indicating whether a pool is empty. *)
+  let choose : cond_pool list -> tree_cond option = fun pools ->
+    let rec choose_nl pools =
+      let export (i,j) = CondNL(i, j) in
+      match pools with
+      | []      -> None
+      | p :: ps -> try Some(export (PSet.choose p.nl_available))
+                   with Not_found -> choose_nl ps
+    in
+    let rec choose_vf pools =
+      let export (i,vs) = CondFV(vs,i) in
+      match pools with
+      | []      -> None
+      | p :: ps -> try Some(export (IntMap.choose p.fv))
+                   with Not_found -> choose_vf ps
+    in
+    let res = choose_nl pools in
+    if res = None then choose_vf pools else res
 end
 
-(** Module providing convertibility conditions, used to handle rewriting rules
-    that are not left-linear, for example [f &x &x (s &y) → r]. Here, we use a
-    condition to test whether the terms at position [{0}] and [{1}] are indeed
-    convertible. The rule can only apply if that is the case. Of course we may
-    need to check convertibility between more than two terms if a variable has
-    more than two occurences. *)
-module NLCond : sig
-  (** Binary constraint with
-      - as {!type:data} a slot of the [vars] array,
-      - as {!type:out} a couple of two slots of the [vars] array. *)
-  include Cond_sig with
-  type exported = int * int and
-  type data = int
-
-  (** [constrained i p] tells whether slot [i] is constrained in pool [p]. *)
-  val constrained : data -> t -> bool
-end = struct
-  module IntPairSet = Set.Make(
-    struct
-      type t = int * int
-
-      let compare : t -> t -> int = fun (i1,i2) (j1,j2) ->
-        match i1 - j1 with 0 -> i2 - j2 | k -> k
-    end)
-
-  (** A non linearity constraint. *)
-  type t =
-    { partial : int IntMap.t
-    (** An association [(e, v)] is a slot [e] of the [env] array with a slot
-        [v] of the [vars] array. *)
-    ; available : IntPairSet.t
-    (** Pairs of this set are checkable constraints, i.e. the two integers
-        refer to available positions in the {!val:vars} array. *) }
-
-  type cond = int * int
-
-  type exported = cond
-
-  type data = int
-
-  let pp_cond oc (i, j) = Format.fprintf oc "(%d,%d)" i j
-
-  let pp oc pool =
-    let pp_sep oc _ = Format.pp_print_string oc "; " in
-    let pp_int_int oc (i, j) = Format.fprintf oc "@[(%d, %d)@]" i j in
-    let pp_partial oc ism =
-      Format.fprintf oc "@[partial: %a@]"
-        (Format.pp_print_list ~pp_sep pp_int_int) (IntMap.bindings ism)
-    in
-    let pp_available oc ips =
-      Format.fprintf oc "@[available: %a@]"
-        (Format.pp_print_list ~pp_sep pp_int_int) (IntPairSet.elements ips)
-    in
-    Format.fprintf oc "Nl constraints:@,@[<v>%a@,%a@,@]"
-      pp_partial pool.partial pp_available pool.available
-
-  let empty = { partial = IntMap.empty ; available = IntPairSet.empty }
-
-  let is_empty c = IntPairSet.is_empty c.available
-
-  let normalize (i, j) = if i < j then (i, j) else (j, i)
-
-  let constrained : data -> t -> bool = fun slot pool ->
-    IntMap.mem slot pool.partial
-
-  let is_instantiated pair c = IntPairSet.mem pair c.available
-
-  let remove pair pool =
-    { pool with available = IntPairSet.remove pair pool.available }
-
-  let export pair = pair
-
-  let instantiate vslot esl pool =
-    try
-      let e = normalize (vslot, IntMap.find esl pool.partial) in
-      { pool with available = IntPairSet.add e pool.available }
-    with Not_found ->
-      { pool with partial = IntMap.add esl vslot pool.partial }
-
-  let choose pools =
-    let avp = List.map (fun x -> x.available) pools in
-    choose IntPairSet.is_empty IntPairSet.choose avp
-end
-
-(** Free variable constraints to verify which variables are free in a term. If
-    there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need to check
-    that the term at position [{0.0}] depends only on free variable [y]. *)
-module FVCond : sig
-  (** Binary constraint with
-      - as {!type:data} an array of free variables,
-      - as {!type:out} the slot of the [vars] array and an array of variables
-        that may appear free in the term. *)
-  include Cond_sig with
-  type exported = int * tvar array and
-  type data = tvar array
-end = struct
-  type t = (tvar array) IntMap.t
-
-  type cond = int * tvar array
-
-  type exported = cond
-
-  type data = tvar array
-
-  let pp_cond oc (sl, vars) =
-    let pp_sep oc _ = Format.pp_print_string oc "; " in
-    Format.fprintf oc "%d: {@[<h>%a@]}" sl
-      (Format.pp_print_list ~pp_sep Print.pp_tvar) (Array.to_list vars)
-
-  let pp oc available =
-    let pp_sep oc _ = Format.pp_print_string oc "; " in
-    let pp_tvs = Format.pp_print_list ~pp_sep Print.pp_tvar in
-    let ppit oc (a, b) =
-      Format.fprintf oc "@[(%d, %a)@]" a pp_tvs (Array.to_list b)
-    in
-    Format.fprintf oc "Fv constraints:@,@[<v>@[available: %a@]@,@]@."
-      (Format.pp_print_list ppit) (IntMap.bindings available)
-
-  let empty = IntMap.empty
-
-  let is_empty = IntMap.is_empty
-
-  let is_instantiated (sl, x) p =
-    try Array.equal Bindlib.eq_vars x (IntMap.find sl p)
-    with Not_found -> false
-
-  let remove (sl, x) p =
-    try
-      if Array.equal Bindlib.eq_vars x (IntMap.find sl p) then
-        IntMap.remove sl p
-      else p
-    with Not_found -> p
-
-  let instantiate = IntMap.add
-
-  let export x = x
-
-  let choose pools = choose IntMap.is_empty IntMap.choose pools
-end
 
 (** {3 Miscellaneous types and definitions} *)
 
@@ -287,10 +210,8 @@ module CM = struct
     ; env_builder : (int * binding_data) list
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:c_rhs}. *)
-    ; nonlin : NLCond.t
-    (** Non linearity constraints attached to this rule. *)
-    ; freevars : FVCond.t
-    (** Free variables constraints attached to the rule. *) }
+    ; cond_pool : CP.t
+    (** Condition pool with convertibility and free variable constraints. *) }
 
   (** Type of a matrix of patterns.  Each line is a row having an attached
       action. *)
@@ -313,12 +234,10 @@ module CM = struct
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
-    | NlConstrain of NLCond.cond
-    (** [NlConstrain(c, s)] indicates a non-linearity constraint on column [c]
-        regarding slot [s]. *)
-    | FvConstrain of FVCond.cond
-    (** Free variables constraint: the term matched must contain {e at most} a
-        specified set of variables. *)
+    | Condition of tree_cond
+    (** [CondNL(c, s)] indicates a non-linearity constraint on column [c] with
+        respect to slot [s]. [CondFV(vs, i)] says that the free variables of
+        the matched term should be among [vs]. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
   let pp_matrix : t pp = fun oc m ->
@@ -356,8 +275,8 @@ module CM = struct
       rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
-      { c_lhs = Array.of_list lhs ; c_rhs = rhs ; nonlin = NLCond.empty
-      ; freevars = FVCond.empty ; env_builder = [] }
+      { c_lhs = Array.of_list lhs ; c_rhs = rhs
+      ; cond_pool = CP.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
@@ -425,7 +344,7 @@ module CM = struct
   (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
       the occurrences of the terms in [r]. *)
   let is_exhausted : occur_rs -> clause -> bool =
-    fun positions {c_lhs = lhs ; nonlin ; freevars ; _} ->
+    fun positions {c_lhs = lhs ; cond_pool ; _} ->
     let nonl lhs =
       (* Verify that there are no non linearity constraints in the remaining
          terms.  We must check that there are no constraints in the remaining
@@ -435,8 +354,8 @@ module CM = struct
         List.filter_map fn (Array.to_list lhs)
       in
       let slots_uniq = List.sort_uniq Int.compare slots in
-      List.same_length slots slots_uniq
-      && not (List.exists (fun s -> NLCond.constrained s nonlin) slots_uniq)
+      let fn s = CP.constrained_nl s cond_pool in
+      List.same_length slots slots_uniq && not (List.exists fn slots_uniq)
     in
     let depths = Array.of_list (List.map (fun i -> i.arg_rank) positions) in
     let ripe lhs =
@@ -453,8 +372,7 @@ module CM = struct
       Array.for_all2 check lhs de
       && nonl lhs
     in
-    NLCond.is_empty nonlin && FVCond.is_empty freevars
-    && (lhs = [||] || ripe lhs)
+    CP.is_empty cond_pool && (lhs = [||] || ripe lhs)
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
@@ -476,11 +394,8 @@ module CM = struct
       match choose m with
       | Some(c) -> Specialise(c)
       | None    ->
-      match NLCond.choose (List.map (fun r -> r.nonlin) m.clauses) with
-      | Some(c) -> NlConstrain(c)
-      | None    ->
-      match FVCond.choose (List.map (fun r -> r.freevars) m.clauses) with
-      | Some(c) -> FvConstrain(c)
+      match CP.choose (List.map (fun r -> r.cond_pool) m.clauses) with
+      | Some(c) -> Condition(c)
       | None    -> Specialise(0)
 
   (** [get_cons l] extracts, sorts and uniqify terms that are tree
@@ -521,22 +436,22 @@ module CM = struct
     let t = r.c_lhs.(ci) in
     match fst (get_args t) with
     | Patt(i, _, e) ->
-        let freevars =
+        let cond_pool =
           if (Array.length e) <> a.arg_rank then
-            FVCond.instantiate slot (Array.map to_tvar e) r.freevars
-          else r.freevars
+            CP.instantiate_fv slot (Array.map to_tvar e) r.cond_pool
+          else r.cond_pool
         in
-        let nonlin =
+        let cond_pool =
           match i with
-          | Some(i) -> NLCond.instantiate slot i r.nonlin
-          | None    -> r.nonlin
+          | Some(i) -> CP.instantiate_nl slot i cond_pool
+          | None    -> cond_pool
         in
         let env_builder =
           match i with
           | Some(i) -> (slot, (i, Array.map to_tvar e)) :: r.env_builder
           | None    -> r.env_builder
         in
-        { r with env_builder ; nonlin ; freevars }
+        { r with env_builder ; cond_pool }
     | _             -> r
 
   (** [specialize p c s r] specializes the clauses [r] when matching pattern
@@ -626,29 +541,19 @@ module CM = struct
     in
     (pos, List.filter_map transf clauses)
 
-  (** [nl_succeed c r] computes the clause list from [r] that verify a
-      non-linearity constraint [c]. *)
-  let nl_succeed : NLCond.cond -> clause list -> clause list = fun c ->
-    List.map (fun r -> {r with nonlin = NLCond.remove c r.nonlin})
+  (** [cond_ok cond cls] updates the clause list [cls] assuming that condition
+      [cond] is satisfied. *)
+  let cond_ok : tree_cond -> clause list -> clause list = fun cond ->
+    List.map (fun r -> {r with cond_pool = CP.remove cond r.cond_pool})
 
-  (** [nl_fail c r] computes the clauses not failing a non-linearity
-      constraint [c] among clauses [r]. *)
-  let nl_fail : NLCond.cond -> clause list -> clause list = fun c ->
-    List.filter (fun r -> not (NLCond.is_instantiated c r.nonlin))
-
-  (** [fv_suceed c r] computes the clauses from [r] that verify a free
-      variables constraint [c]. *)
-  let fv_succeed : FVCond.cond -> clause list -> clause list = fun c ->
-    List.map (fun r -> {r with freevars = FVCond.remove c r.freevars})
-
-  (** [fv_fail c r] computes the clauses not failing a free variable
-      constraint [c] among clauses [r]. *)
-  let fv_fail : FVCond.cond -> clause list -> clause list = fun c ->
-    List.filter (fun r -> not (FVCond.is_instantiated c r.freevars))
+  (** [cond_fail cond cls]  updates the clause list [cls] with the information
+      that the condition [cond] is not satisfied. *)
+  let cond_fail : tree_cond -> clause list -> clause list = fun cond ->
+    List.filter (fun r -> not (CP.is_instantiated cond r.cond_pool))
 
   (** [empty_stack c] keeps the empty clauses from [c]. *)
   let empty_stack : clause list -> occur_rs * clause list = fun cs ->
-    [], List.filter (fun r -> r.c_lhs = [||]) cs
+    ([], List.filter (fun r -> r.c_lhs = [||]) cs)
 
   (** [not_empty_stack c] keeps the not empty clauses from [c]. *)
   let not_empty_stack : clause list -> clause list =
@@ -731,6 +636,10 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
   | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder slot
+  | Condition(cond)                          ->
+      let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
+      let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
+      Cond({ok ; cond ; fail})
   | Check_stack                              ->
       let left =
         let positions, clauses = CM.empty_stack clauses in
@@ -738,16 +647,6 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
       in
       let right = compile {pats with clauses = CM.not_empty_stack clauses} in
       Eos(left, right)
-  | NlConstrain(constr)                      ->
-      let ok = compile {pats with clauses = CM.nl_succeed constr clauses} in
-      let fail = compile {pats with clauses = CM.nl_fail constr clauses} in
-      let (i, j) = NLCond.export constr in
-      Cond({ok ; cond = Constr_Eq(i, j) ; fail})
-  | FvConstrain(constr)                      ->
-      let ok = compile {pats with clauses = CM.fv_succeed constr clauses} in
-      let fail = compile {pats with clauses = CM.fv_fail constr clauses} in
-      let (slot, vars) = FVCond.export constr in
-      Cond({ok ; cond = Constr_FV(vars, slot) ; fail})
   | Specialise(swap)                         ->
       let store = CM.store pats swap in
       let updated = List.map (CM.update_aux swap slot positions) clauses in
