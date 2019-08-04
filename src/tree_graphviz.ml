@@ -29,8 +29,8 @@
       [n] to continue evaluation;
     - [n ≡ m] on a conditional node, meaning that a convertibility check
       between index [n] and index [m] of the [vars] array must be carried out;
-    - [xs @ n] on a conditional node, meaning that free variables in [xs] are
-      allowed in the term stored at index [n] of the [vars] array.
+    - [xs ⊊ FV(n)] on a conditional node, meaning that free variables in [xs]
+      are allowed in the term stored at index [n] of the [vars] array.
 
     The label of an edge is either
     - [*] if the operation to go from a regular or storage node to another
@@ -85,8 +85,8 @@ let to_dot : string -> sym -> unit = fun fname s ->
         Format.pp_print_list Print.pp_tvar oc (Array.to_list ar)
       in
       match cstr with
-      | Constr_Eq(i, j) -> out "@%d≡<sub>v</sub>@%d" i j
-      | Constr_FV(vs,i) -> out "%a@@<sub>v</sub>%d" pp_ar vs i
+      | Constr_Eq(i, j) -> out "%d ≡ %d" i j
+      | Constr_FV(vs,i) -> out "%a ⊊ FV(%d)" pp_ar vs i
     in
     let out fmt = Format.fprintf oc fmt in
     let node_count = ref 0 in
@@ -117,7 +117,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
           write_tree tag DotFailure fail
       | Eos(l,r)    ->
           let tag = !node_count in
-          out "@ %d [shape=\"triangle\"];" tag;
+          out "@ %d [label=\"\" shape=\"triangle\"];" tag;
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotFailure l;
           write_tree tag DotSuccess r
