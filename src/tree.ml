@@ -307,6 +307,9 @@ module CM = struct
   type decision =
     | Yield of clause
     (** Apply a clause. *)
+    | Check_stack
+    (** Check whether the stack is empty (used to handle multiple arities with
+        the {!val:rule_order} set). *)
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
@@ -433,6 +436,11 @@ module CM = struct
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
+    (* If a line is empty and priority is given to the topmost rule, we have
+       to eliminate ¨empty¨ rules. *)
+    if Pervasives.(!rule_order) && List.exists (fun x -> x.c_lhs = [||]) clauses
+     && List.exists (fun x -> x.c_lhs <> [||]) clauses
+    then Check_stack else
     try
       if Pervasives.(!rule_order) then
         let fc = List.hd clauses in
@@ -614,6 +622,14 @@ module CM = struct
       constraint [c] among clauses [r]. *)
   let fv_fail : FVCond.cond -> clause list -> clause list = fun c ->
     List.filter (fun r -> not (FVCond.is_instantiated c r.freevars))
+
+  (** [empty_stack c] keeps the empty clauses from [c]. *)
+  let empty_stack : clause list -> occur_rs * clause list = fun cs ->
+    [], List.filter (fun r -> r.c_lhs = [||]) cs
+
+  (** [not_empty_stack c] keeps the not empty clauses from [c]. *)
+  let not_empty_stack : clause list -> clause list =
+    List.filter (fun r -> r.c_lhs <> [||])
 end
 
 (** See {!type:Terms.dtree}. *)
@@ -692,6 +708,13 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
   | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder slot
+  | Check_stack                              ->
+      let left =
+        let positions, clauses = CM.empty_stack clauses in
+        compile {pats with clauses; positions}
+      in
+      let right = compile {pats with clauses = CM.not_empty_stack clauses} in
+      Eos(left, right)
   | NlConstrain(constr)                      ->
       let ok = compile {pats with clauses = CM.nl_succeed constr clauses} in
       let fail = compile {pats with clauses = CM.nl_fail constr clauses} in

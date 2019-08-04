@@ -112,6 +112,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotSuccess ok;
           write_tree tag DotFailure fail
+      | Eos(_,_)    -> assert false
       | Fail        ->
           out "@ %d [label=<!>];" !node_count;
           out "@ %d -- %d [label=\"!\"];" father_l !node_count
