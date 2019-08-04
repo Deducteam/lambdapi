@@ -144,35 +144,3 @@ let to_dot : string -> sym -> unit = fun fname s ->
   let oc = open_out fname in
   output_tree (Format.formatter_of_out_channel oc) tree;
   close_out oc
-
-(** {b NOTE} the following functions are not used but they are kept since they
-    may be useful for debugging. *)
-
-(** [pp_cond_pool oc pool] prints condition pool [pool] to channel [oc]. *)
-let pp_cond_pool : Tree.CP.t pp = fun oc pool ->
-  let open Tree.CP in
-  let pp_fv oc fv =
-    let pp_sep oc _ = Format.pp_print_string oc "; " in
-    let pp_tvs = Format.pp_print_list ~pp_sep Print.pp_tvar in
-    let ppit oc (a, b) =
-      Format.fprintf oc "@[(%d, %a)@]" a pp_tvs (Array.to_list b)
-    in
-    Format.fprintf oc "Fv constraints:@,@[<v>@[available: %a@]@,@]@."
-      (Format.pp_print_list ppit) (IntMap.bindings fv)
-  in
-  let pp_nl oc (partial, available) =
-    let pp_sep oc _ = Format.pp_print_string oc "; " in
-    let pp_int_int oc (i, j) = Format.fprintf oc "@[(%d, %d)@]" i j in
-    let pp_partial oc ism =
-      Format.fprintf oc "@[partial: %a@]"
-        (Format.pp_print_list ~pp_sep pp_int_int) (IntMap.bindings ism)
-    in
-    let pp_available oc ips =
-      Format.fprintf oc "@[available: %a@]"
-        (Format.pp_print_list ~pp_sep pp_int_int) (PSet.elements ips)
-    in
-    Format.fprintf oc "Nl constraints:@,@[<v>%a@,%a@,@]"
-      pp_partial partial pp_available available
-  in
-  let nl = (pool.nl_partial, pool.nl_available) in
-  Format.fprintf oc "@[%a@]@,@[%a@]" pp_fv pool.fv pp_nl nl
