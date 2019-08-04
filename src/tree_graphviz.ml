@@ -19,15 +19,18 @@
       node, except that the term at the index of the label is saved into the
       [vars] array (see {!val:Eval.tree_walk});
     - a conditional node, represented by a diamond, indicating that a
-      conditional check shall be performed to reach the next node.
+      conditional check shall be performed to reach the next node;
+    - a stack check node, represented by a triangle, its left child is used if
+      the stack of arguments is empty, otherwise the right child is used; this
+      node only appears when {!val:Tree.rule_order} is set.
 
     The label of a node is either
     - [@n] on a regular or storage node if the algorithm inspects the column
       [n] to continue evaluation;
     - [n ≡ m] on a conditional node, meaning that a convertibility check
       between index [n] and index [m] of the [vars] array must be carried out;
-    - [xs @ n] on a conditional node, meaning that free variables in [xs] are
-      allowed in the term stored at index [n] of the [vars] array.
+    - [xs ⊊ FV(n)] on a conditional node, meaning that free variables in [xs]
+      are allowed in the term stored at index [n] of the [vars] array.
 
     The label of an edge is either
     - [*] if the operation to go from a regular or storage node to another
@@ -82,8 +85,8 @@ let to_dot : string -> sym -> unit = fun fname s ->
         Format.pp_print_list Print.pp_tvar oc (Array.to_list ar)
       in
       match cstr with
-      | CondNL(i, j) -> out "@%d≡<sub>v</sub>@%d" i j
-      | CondFV(vs,i) -> out "%a@@<sub>v</sub>%d" pp_ar vs i
+      | CondNL(i, j) -> out "%d ≡ %d" i j
+      | CondFV(vs,i) -> out "%a ⊊ FV(%d)" pp_ar vs i
     in
     let out fmt = Format.fprintf oc fmt in
     let node_count = ref 0 in
@@ -112,6 +115,12 @@ let to_dot : string -> sym -> unit = fun fname s ->
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotSuccess ok;
           write_tree tag DotFailure fail
+      | Eos(l,r)    ->
+          let tag = !node_count in
+          out "@ %d [label=\"\" shape=\"triangle\"];" tag;
+          out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
+          write_tree tag DotFailure l;
+          write_tree tag DotSuccess r
       | Fail        ->
           out "@ %d [label=<!>];" !node_count;
           out "@ %d -- %d [label=\"!\"];" father_l !node_count

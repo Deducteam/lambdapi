@@ -228,6 +228,9 @@ module CM = struct
   type decision =
     | Yield of clause
     (** Apply a clause. *)
+    | Check_stack
+    (** Check whether the stack is empty (used to handle multiple arities with
+        the {!val:rule_order} set). *)
     | Specialise of int
     (** Further specialise the matrix against constructors of a given
         column. *)
@@ -351,6 +354,12 @@ module CM = struct
 
   (** [yield m] yields a clause to be applied. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
+    (* If a line is empty and priority is given to the topmost rule, we have
+       to eliminate ¨empty¨ rules. *)
+    if Pervasives.(!rule_order)
+       && List.exists (fun x -> x.c_lhs = [||]) clauses
+       && List.exists (fun x -> x.c_lhs <> [||]) clauses
+    then Check_stack else
     try
       if Pervasives.(!rule_order) then
         let fc = List.hd clauses in
@@ -519,6 +528,14 @@ module CM = struct
       that the condition [cond] is not satisfied. *)
   let cond_fail : tree_cond -> clause list -> clause list = fun cond ->
     List.filter (fun r -> not (CP.is_instantiated cond r.cond_pool))
+
+  (** [empty_stack c] keeps the empty clauses from [c]. *)
+  let empty_stack : clause list -> occur_rs * clause list = fun cs ->
+    ([], List.filter (fun r -> r.c_lhs = [||]) cs)
+
+  (** [not_empty_stack c] keeps the not empty clauses from [c]. *)
+  let not_empty_stack : clause list -> clause list =
+    List.filter (fun r -> r.c_lhs <> [||])
 end
 
 (** See {!type:Terms.dtree}. *)
@@ -601,6 +618,13 @@ let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
       let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
       let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
       Cond({ok ; cond ; fail})
+  | Check_stack                              ->
+      let left =
+        let positions, clauses = CM.empty_stack clauses in
+        compile {pats with clauses; positions}
+      in
+      let right = compile {pats with clauses = CM.not_empty_stack clauses} in
+      Eos(left, right)
   | Specialise(swap)                         ->
       let store = CM.store pats swap in
       let updated = List.map (CM.update_aux swap slot positions) clauses in

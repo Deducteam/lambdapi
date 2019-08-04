@@ -68,6 +68,10 @@ type ('term, 'rhs) tree =
       ; fail : ('term, 'rhs) tree
       (** Branch to follow if the condition is not verified. *) }
   (** Conditional branching according to a condition. *)
+  | Eos of ('term, 'rhs) tree * ('term, 'rhs) tree
+  (** End of stack node, branches on left tree if the stack is finished, on
+      the right if it isn't.  Required when there are rules with a lower arity
+      than some other rule above and when {!val:Tree.rule_order} is set. *)
   | Node of
       { swap : int
       (** Indicates on which term of the input stack (counting from the head),
@@ -97,6 +101,7 @@ type ('term, 'rhs) tree =
 let rec tree_capacity : ('t, 'r) tree -> int = fun tr ->
   match tr with
   | Leaf(_,_)  | Fail   -> 0
+  | Eos(l,r)            -> max (tree_capacity l) (tree_capacity r)
   | Cond({ok; fail; _}) -> max (tree_capacity ok) (tree_capacity fail)
   | Node({store; children=ch; abstraction=abs; default; _}) ->
       let c_ch = TCMap.fold (fun _ t m -> max m (tree_capacity t)) ch 0 in

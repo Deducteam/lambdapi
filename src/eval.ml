@@ -205,6 +205,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else fail
         in
         walk next stk cursor fresh_vars
+    | Eos(l, r)                                           ->
+        let next = match stk with
+          | []   -> l
+          | _::_ -> r
+        in
+        walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         match List.destruct stk swap with
         | exception Not_found     -> None
