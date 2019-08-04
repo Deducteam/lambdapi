@@ -438,8 +438,9 @@ module CM = struct
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
-    if Pervasives.(!rule_order) && List.exists (fun x -> x.c_lhs = [||]) clauses
-     && List.exists (fun x -> x.c_lhs <> [||]) clauses
+    if Pervasives.(!rule_order)
+       && List.exists (fun x -> x.c_lhs = [||]) clauses
+       && List.exists (fun x -> x.c_lhs <> [||]) clauses
     then Check_stack else
     try
       if Pervasives.(!rule_order) then
