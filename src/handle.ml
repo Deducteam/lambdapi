@@ -150,7 +150,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let fname = String.concat Filename.dir_sep s.sym_path in
             let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
             Console.out 3 "Writing file [%s]\n" fname;
-            Tree_out.to_dot fname s
+            Tree_graphviz.to_dot fname s
           in
           List.iter write_tree syms
         end;

@@ -1,4 +1,4 @@
-(** Representations of trees as graphviz files and console output
+(** Representation of trees as graphviz files.
 
     {{:https://graphviz.org}Graphviz} is a graph visualization software.  This
     module handle the conversion from {!type:Tree.t} data structures files in
@@ -9,10 +9,10 @@
     {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
     @see <https://graphviz.gitlab.io/_pages/doc/info/output.html> *)
 
-(** {b Description of Graphviz output} we remind that trees are interpreted
-    during evaluation of terms to get the correct rule to apply.  A node is
-    thus an instruction for the evaluation algorithm.  There are three types
-    of labeled nodes, labeled edges and leaves.  A node can be
+(** {b Description of output} we remind that trees are interpreted during
+    evaluation of terms to get the correct rule to apply.  A node is thus an
+    instruction for the evaluation algorithm.  There are three types of
+    labeled nodes, labeled edges and leaves.  A node can be
     - a regular node, represented by a circle, whose label indicates on which
       column the next operation to reach the following node will be performed;
     - a store node, represented by a rectangle, which is the same as a regular
@@ -145,31 +145,8 @@ let to_dot : string -> sym -> unit = fun fname s ->
   output_tree (Format.formatter_of_out_channel oc) tree;
   close_out oc
 
-(** {b NOTE} the following functions concern console output.  Theyare not used
-    but they are kept since they may be useful for debugging. *)
-
-(** [pp o m] prints matrix [m] to out channel [o]. *)
-let pp_matrix : Tree.CM.t pp = fun oc m ->
-  let open Tree.CM in
-  let pp_lhs oc lhs =
-    Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
-  in
-  let pp_path oc l =
-    if l = [] then Format.fprintf oc "ε" else
-      List.pp (fun oc -> Format.fprintf oc "%d") "·" oc (List.rev l)
-  in
-  let out fmt = Format.fprintf oc fmt in
-  let lp = List.map (fun a -> a.arg_path) m.positions in
-  let lr = List.map (fun a -> a.arg_rank) m.positions in
-  let llhs = List.map (fun cl -> cl.c_lhs) m.clauses in
-  let seplhs oc () = Format.fprintf oc "@," in
-  out "@[<v 0>### Matrix start ###@,";
-  out "@[<h>%s: @[%a@]@]@,"
-    "Positions" (List.pp pp_path ";") lp;
-  out "@[<h>@<9>%s: @[%a@]@]@,"
-    "Depths" (List.pp Format.pp_print_int ";") lr;
-  out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:seplhs pp_lhs) llhs;
-  out "### Matrix end   ###@]@."
+(** {b NOTE} the following functions are not used but they are kept since they
+    may be useful for debugging. *)
 
 (** [pp_cond_pool oc pool] prints condition pool [pool] to channel [oc]. *)
 let pp_cond_pool : Tree.CP.t pp = fun oc pool ->
