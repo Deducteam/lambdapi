@@ -268,7 +268,7 @@ module CM = struct
         the matched term should be among [vs]. *)
 
   (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp_matrix : t pp = fun oc m ->
+  let pp_matrix : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
       Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
     in
@@ -280,13 +280,18 @@ module CM = struct
     let lp = List.map (fun a -> a.arg_path) m.positions in
     let lr = List.map (fun a -> a.arg_rank) m.positions in
     let llhs = List.map (fun cl -> cl.c_lhs) m.clauses in
-    let seplhs oc () = Format.fprintf oc "@," in
+    let cut = Format.pp_print_cut in
     out "@[<v 0>### Matrix start ###@,";
     out "@[<h>%s: @[%a@]@]@,"
       "Positions" (List.pp pp_path ";") lp;
     out "@[<h>@<9>%s: @[%a@]@]@,"
       "Depths" (List.pp Format.pp_print_int ";") lr;
-    out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:seplhs pp_lhs) llhs;
+    out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut pp_lhs) llhs;
+    if pp_cond then begin
+        let lcp = List.map (fun cl -> cl.cond_pool) m.clauses in
+        out "@[<v 2>%a@]@,"
+          (Format.pp_print_list ~pp_sep:cut CP.pp_cond_pool) lcp
+      end;
     out "### Matrix end   ###@]@."
 
   (** [is_treecons t] tells whether the term [t] corresponds to a constructor
