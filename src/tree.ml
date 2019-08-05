@@ -60,16 +60,18 @@ type tree = (term, rhs) Tree_types.tree
     - convertibility conditions (see {!constructor:Tree_types.CondNL}),
     - free variable conditions (see {!constructor:Tree_types.CondFV}).
 
-    Convertibility conditions are used we have non left-linear rewriting rules
-    such as [f &x &x (s &y) → r]. In this case we need to test whether the two
-    terms at position [{0}] and [{1}] (corresponding to [&x]) are convertible:
-    the rule can only be apply if that is the case. Note that in general there
-    may be more than two occurrences of a variables. In that case we will need
-    to check convertibility between more than two terms.
+    Convertibility conditions are used whenever we have non left-linear
+    rewriting rules such as [f &x &x (s &y) → r]. In this case we need to test
+    whether the two terms at position [{0}] and [{1}] (corresponding to [&x])
+    are convertible: the rule can only be applied if that is the case. Note
+    that in general there may be more than two occurrences of a variable. In
+    that case we will need to check convertibility between more than two
+    terms.
 
     Free variable constraints are used to verify which variables are free in a
     term. If there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need
-    to check that the term at position [{0.0}] depends only on [y]. *)
+    to check that the term at position [{0.0}] does not depend on on [x] (or
+    that among [x] and [y], only [y] is allowed). *)
 
 (** Module providing a representation for pools of conditions. *)
 module CP = struct
@@ -84,13 +86,15 @@ module CP = struct
 
   (** A pool of (convertibility and free variable) conditions. *)
   type t =
-    { nl_partial : int IntMap.t
-    (** An association [(e, v)] is a slot [e] of the [env] array with a slot
-          [v] of the [vars] array. *)
+    { variables : int IntMap.t
+    (** An association [(e, v)] maps the slot of a pattern variable (the first
+        argument of a {!constructor:Terms.term.Patt}) to its slot in the
+        [vars] array.  It allows to remember non linearity constraints. *)
     ; nl_conds : PSet.t
     (** Set of convertibility constraints that can be checked. *)
     ; fv_conds : (tvar array) IntMap.t
-    (** Set of free variable constraints. *) }
+    (** A mapping [i ↦ xs] allows the free variables in [xs] to appear in the
+        term at slot [i] of the [vars] array. *) }
 
   (** {b NOTE} the integer indices stored in {!field:nl_conds} and the keys of
       in {!field:fv_conds} correspond to (valid) positions in the [vars] array
@@ -98,7 +102,7 @@ module CP = struct
 
   (** [empty] is the condition pool holding no condition. *)
   let empty : t =
-    { nl_partial = IntMap.empty
+    { variables = IntMap.empty
     ; nl_conds = PSet.empty
     ; fv_conds = IntMap.empty }
 
@@ -127,7 +131,7 @@ module CP = struct
         (PSet.elements available)
     in
     Format.fprintf oc "@[<hov>%a/@,%a/@,%a@]" pp_fv pool.fv_conds
-      pp_partials pool.nl_partial pp_available pool.nl_conds
+      pp_partials pool.variables pp_available pool.nl_conds
 
   (** [is_empty pool] tells whether the pool of constraints is empty. *)
   let is_empty : t -> bool = fun pool ->
@@ -135,29 +139,38 @@ module CP = struct
 
   (* TODO cleanup from here. *)
 
-  (** [instantiate i d q] instantiate constraint on slot [i] in pool [q], that
-      is.  Typically, if a constraint involves only one variable, then
-      instantiating a variable is equivalent to instantiating a constraint.
-      However, if a constraint involves several variables, then instantiating
-      a variable will promote the constraint to a {e partially instantiated
-      state}, and will be completely instantiated when all the variables are
-      instantiated.  The [d] is some additional data needed.
-      @raise Not_found if [p] is not part of any constraint in [q]. *)
+  (** [instantiate_nl slot_v slot_e pool] instantiates a convertibility
+      constraint between slots [slot_v] and [slot_e] in pool [pool].  The
+      instantiation of a convertibility constraint is done in two parts.
+      Remember that a non linearity constraints involve two or more variables,
+      that have different slots [slot_v] in the [vars] array but share the
+      same slot [slot_e] in the final environment (the one of the
+      {!type:rhs}).  Assume arguments [sv1 se p], and that there is no
+      variable using slot [se] yet in pool [p].  Then a constraint involving
+      [sv1] will be partially instantiated.  If the function is called again
+      with [sv2 se p], then the variable at slot [sv2] (of [vars]) uses slot
+      [se] as well and must therefore be convertible with the previous
+      variable.  A convertibility condition between [sv1] and [sv2] is thus
+      fully instantiated and can be checked. *)
   let instantiate_nl : int -> int -> t -> t = fun slot i pool ->
     let normalize (i, j) = if i < j then (i, j) else (j, i) in
     try
-      let e = normalize (slot, IntMap.find i pool.nl_partial) in
+      let e = normalize (slot, IntMap.find i pool.variables) in
       { pool with nl_conds = PSet.add e pool.nl_conds }
-    with Not_found ->
-      { pool with nl_partial = IntMap.add i slot pool.nl_partial }
+    with Not_found -> (* If there is no variable constrained with environment
+                         slot [i] in [pool.variables] yet. *)
+      { pool with variables = IntMap.add i slot pool.variables }
 
+  (** [instantiate_fv slot xs pool] activates a free variables condition
+      regarding variables in [xs] on slot [slot] of the [vars] array in pool
+      [pool]. *)
   let instantiate_fv : int -> tvar array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
   (** [constrained_nl slot pool] tells whether slot [slot] is constrained in
       the constraint pool [pool]. *)
   let constrained_nl : int -> t -> bool = fun slot pool ->
-    IntMap.mem slot pool.nl_partial
+    IntMap.mem slot pool.variables
 
 
   (** [is_instantiated cond pool] tells whether the condition [cond] has  been
@@ -183,11 +196,8 @@ module CP = struct
           else pool
         with Not_found -> pool
 
-  (** [choose pools] selects a condition to verify among [pools]. *)
-
-  (** [choose e c p] chooses recursively among pools in [p] an available
-      condition calling function [c] on each pool, with [e] being the function
-      indicating whether a pool is empty. *)
+  (** [choose pools] selects a condition to verify among [pools].  The
+      heuristic is to select in priority a convertibility constraint. *)
   let choose : t list -> tree_cond option = fun pools ->
     let rec choose_nl pools =
       let export (i,j) = CondNL(i, j) in
