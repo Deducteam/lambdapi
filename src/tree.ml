@@ -236,10 +236,10 @@ end
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix {i
     C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
-    A} is a column of {e actions}.  Each line of a pattern matrix is a pattern
-    to which is attached an action.  When reducing a term, if a line filters
-    the term, or equivalently the term matches the pattern, the term is
-    rewritten to the action. *)
+    A} is a column of {e rhs}.  Each line of a pattern matrix is a pattern to
+    which is attached a rhs.  When reducing a term, if a line filters the
+    term, or equivalently the term matches the pattern, the term is rewritten
+    to the rhs. *)
 module CM = struct
   (** Representation of a subterm in argument position in a pattern. *)
   type arg =
@@ -259,54 +259,54 @@ module CM = struct
   (** Compile time counterpart to the argument stack of the head symbol. *)
   type occur_rs = arg list
 
-  (** Data needed to bind terms from the lhs into the rhs. *)
+  (** Data needed to bind terms from the lhs into the rhs.  An element
+      [(sv, (se, xs))] indicates that slot [sv] of the [vars] array will be
+      bound into slot [se] of the environment using free variables [xs]. *)
   type env_builder = (int * (int * term Bindlib.mvar)) list
 
-  (** A redefinition of the rule type.
-
-      {b Note} that {!type:array} is used while {!type:stack} could
-      be used because {!val:pick_best_among} goes through all items of a rule
-      anyway ([max(S) = Θ(|S|)]).  Since heuristics need to access elements of
-      the matrix, we favour quick access with {!type:array}. *)
+  (** A row of a clause matrix, composed of a lhs, a rhs, a pool of conditions
+      and some auxiliary data, can be schematized as
+      [c_lhs → c_rhs if cond_pool] *)
   type clause =
     { c_lhs : term array
-    (** Left hand side of a rule.   *)
+    (** Left hand side of a rule. *)
     ; c_rhs : rhs
     (** Right hand side of a rule. *)
     ; env_builder : env_builder
-    (** Maps slots of the {!val:vars} array to a slot of the final
-        environment used to build the {!field:c_rhs}. *)
+    (** Data needed to build the substitution from terms matched by the lhs to
+        the rhs. *)
     ; cond_pool : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
-  (** Type of a matrix of patterns.  Each line is a row having an attached
-      action. *)
+  (** Type of clause matrices. *)
   type t =
     { clauses : clause list
     (** The rules. *)
     ; slot : int
-    (** Index of next slot to use in {!val:vars} array to store variables. *)
+    (** Index of next slot to use in [vars] array to store variables. *)
     ; positions : occur_rs
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
 
-  (** Operations embedded in the tree *)
+  (** Available operations on clause matrices.  Each operation is an
+      evaluation decision. *)
   type decision =
     | Yield of clause
-    (** Apply a clause. *)
+    (** Rewrite to a rhs when a lhs filters the input. *)
     | Check_stack
     (** Check whether the stack is empty (used to handle multiple arities with
         the {!val:rule_order} set). *)
     | Specialise of int
-    (** Further specialise the matrix against constructors of a given
+    (** Further specialise the matrix against constructors on a given
         column. *)
     | Condition of tree_cond
     (** [CondNL(c, s)] indicates a non-linearity constraint on column [c] with
         respect to slot [s]. [CondFV(vs, i)] says that the free variables of
         the matched term should be among [vs]. *)
 
-  (** [pp o m] prints matrix [m] to out channel [o]. *)
-  let pp_matrix : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
+  (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o].  If
+      [pp_cond] is true, writes the condition pools as well. *)
+  let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
       Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
     in
@@ -332,8 +332,9 @@ module CM = struct
       end;
     out "### Matrix end   ###@]@."
 
-  (** [is_treecons t] tells whether the term [t] corresponds to a constructor
-      in the sense of the module {!module:Tree_types.TC}. *)
+  (** [is_treecons t] returns whether the term [t] corresponds to a
+      constructor (see {!type:Tree_types.TC.t}) against which a specialisation
+      can be carried out. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
     | Patt(_, _, _) -> false
@@ -342,7 +343,7 @@ module CM = struct
     | Symb(_, _)    -> true
     | _             -> assert false
 
-  (** [of_rules r] creates the initial pattern matrix from a list of rewriting
+  (** [of_rules r] creates the initial clause matrix from a list of rewriting
       rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
@@ -359,25 +360,23 @@ module CM = struct
     in
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
-  (** [is_empty m] returns whether matrix [m] is empty. *)
+  (** [is_empty m] returns whether matrix [m] is empty.  A clause matrix is
+      empty when it has {e no} row; not when it has empty rows. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
 
   (** [get_col n m] retrieves column [n] of matrix [m]. *)
   let get_col : int -> t -> term list = fun ind m ->
     List.map (fun {c_lhs ; _} -> c_lhs.(ind)) m.clauses
 
-  (** [score c] returns the score heuristic for column [c].  The score is a
-      tuple containing the number of constructors and the number of storage
-      required. *)
+  (** [score c] returns the score heuristic for column [c].  The score is the
+      number of tree constructors divided by the number of constraints. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
-      | []                    -> acc
-      | x :: xs
-        when is_treecons x    -> loop (ncons + 1, nst) xs
-      | Patt(Some(_),_,_)::xs -> loop (ncons, nst + 1) xs
-      | Patt(_,_,e)      ::xs
-        when e <> [||]        -> loop (ncons, nst + 1) xs
-      | _ :: xs               -> loop acc xs
+      | []                           -> acc
+      | x :: xs when is_treecons x   -> loop (ncons + 1, nst) xs
+      | Patt(Some(_),_,_)::xs        -> loop (ncons, nst + 1) xs
+      | Patt(_,_,e)::xs when e <> [||] -> loop (ncons, nst + 1) xs
+      | _ :: xs                      -> loop acc xs
     in
     let nc, ns = loop (0, 0) ts in
     float_of_int nc /. (float_of_int ns)
