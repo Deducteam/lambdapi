@@ -221,8 +221,6 @@ let get_line lines l =
     | t::ts -> if count = l then t else iter_list (count+1) ts l in
     iter_list count lines l
 
-(* "[ ()+.:*='/\"]" *)
-
 let to_text (t : Str.split_result) : string =
   match t with
   | Str.Text s -> "Text: " ^ s
@@ -233,7 +231,7 @@ let myfail (msg : string) =
   failwith msg
 
 let get_token tokens pos =
-  let regexp = Str.regexp "[^a-zA-Z0-9]" in
+  let regexp = Str.regexp "[^a-zA-Z0-9_]" in
   let res_split = Str.full_split regexp tokens in
   let count = 0 in
   let rec iter_tokens count tokens pos =
@@ -329,9 +327,8 @@ let get_symbol text l pos =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
-(*
 let hover_symInfo ofmt ~id params =
-  let file, _, doc = grab_doc params in
+  let _, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
   let sym_target = get_symbol doc.text line pos in
   let sym = Pure.get_symbols doc.final in
@@ -342,19 +339,16 @@ let hover_symInfo ofmt ~id params =
   in
   LIO.log_error "symbol map" map_pp;
 
-  let sym_found =
+  let sym_found = let open Timed in let open Terms in
     match Extra.StrMap.find_opt sym_target sym with
-    | None
-    | Some (_, None) -> Terms.TRef (ref None)
-    | Some (sym, Some pos) -> sym.sym_type
-  in
-  let sym_type = match !sym_found with
-  | None -> ""
-  | Some d ->  Print.pp_term d |> String.concat "\n" in
+    | None -> myfail "sym not found"
+    | Some (_, None) -> myfail "sym not found"
+    | Some (sym, Some _) -> !(sym.sym_type)
+  in let sym_type : string =
+    Format.asprintf "%a" Print.pp_term sym_found  in
   let result = `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
-*)
 
 let protect_dispatch p f x =
   try f x
@@ -386,7 +380,7 @@ let dispatch_message ofmt dict =
       (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
-    do_hover ofmt ~id params
+    hover_symInfo ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->
