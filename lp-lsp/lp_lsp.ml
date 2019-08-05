@@ -177,7 +177,7 @@ let in_range ?loc (line, pos) =
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
 
-let get_goals ~doc ~line ~pos =
+(*let get_goals ~doc ~line ~pos =
   let open Lp_doc in
   let node =
     List.find_opt (fun { ast; _ } ->
@@ -188,7 +188,26 @@ let get_goals ~doc ~line ~pos =
         res
       ) doc.Lp_doc.nodes in
   Option.map
-    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node
+    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node*)
+
+let get_goals ~doc ~line ~pos =
+  let open Lp_doc in
+  let node =
+    List.find_opt (fun { ast; _ } ->
+        let loc = Pure.Command.get_pos ast in
+        let res = in_range ?loc (line,pos) in
+                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
+        LIO.log_error "get_goals" ("call: "^ls);
+        res
+      ) doc.Lp_doc.nodes in
+  let goalsList = match node with
+    | None -> []
+    | Some n -> n.goals in
+  let goals, _ = List.find (fun (_, loc) ->
+      in_range ?loc (line,pos)
+  ) goalsList in
+  Option.map
+    (fun _ -> Format.asprintf "%a" Proof.pp_goals goals) node
 
 let do_hover ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
@@ -214,8 +233,6 @@ let get_line lines l =
     | t::ts -> if count = l then t else iter_list (count+1) ts l in
     iter_list count lines l
 
-(* "[ ()+.:*='/\"]" *)
-
 let to_text (t : Str.split_result) : string =
   match t with
   | Str.Text s -> "Text: " ^ s
@@ -226,7 +243,7 @@ let myfail (msg : string) =
   failwith msg
 
 let get_token tokens pos =
-  let regexp = Str.regexp "[^a-zA-Z0-9]" in
+  let regexp = Str.regexp "[^a-zA-Z0-9_]" in
   let res_split = Str.full_split regexp tokens in
   let count = 0 in
   let rec iter_tokens count tokens pos =
@@ -280,6 +297,29 @@ let do_definition ofmt ~id params =
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
 
+let hover_symInfo ofmt ~id params =
+  let _, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_found = let open Timed in let open Terms in
+    match Extra.StrMap.find_opt sym_target sym with
+    | None -> myfail "sym not found"
+    | Some (_, None) -> myfail "sym not found"
+    | Some (sym, Some _) -> !(sym.sym_type)
+  in let sym_type : string =
+    Format.asprintf "%a" Print.pp_term sym_found  in
+  let result = `Assoc [ "contents", `String sym_type] in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
+
 let protect_dispatch p f x =
   try f x
   with
@@ -310,7 +350,7 @@ let dispatch_message ofmt dict =
       (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
-    do_hover ofmt ~id params
+    hover_symInfo ofmt ~id params
 
   | "textDocument/definition" ->
     do_definition ofmt ~id params
