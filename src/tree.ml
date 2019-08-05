@@ -11,33 +11,67 @@ open Terms
 open Basics
 open Tree_types
 
-(** Priority on topmost rule if set to true. *)
+(** Flag indicating whether the order of rules in files should be preserved by
+    decision trees. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
+(** {1 Types for decision trees}
+
+    The types involved in the definition of decision trees are given in module
+    {!module:Tree_types} (they could not be defined here as this would lead to
+    a cyclic dependency).
+
+    {b Example:} let us consider the rewrite system for symbol [f] defined as:
+    - [f Z     (S m) → S m],
+    - [f n     Z     → n] and
+    - [f (S n) (S m) → S (S m)].
+
+    A possible decision tree might be
+    {v
+    ├─?─∘─Z─∘     → n
+    ├─Z─∘─Z─∘     → n
+    │   └─S─∘─?─∘ → S m
+    ├─S─∘─Z─∘     → n
+    └─S─∘─?─∘     → S (S m)
+    v}
+    with [∘] being a node (with an omitted label) and [─u─] being an edge with
+    a matching on symbol [u] or a variable or wildcard when [?]. Typically the
+    portion [S─∘─Z] is made possible by a swap. *)
+
+(** Representation of a rewriting rule RHS (or action) as given in the type of
+    rewriting rules (see {!field:Terms.rhs}). In decision trees, we will store
+    a RHS in every leaf since they correspond to matched rules. *)
+type rhs = (term_env, term) Bindlib.mbinder
+
+(** Representation of a branching condition (see {!type:Terms.tree_cond}). *)
 type tree_cond = term Tree_types.tree_cond
 
-(** {3 Conditions for decision trees}
+(** Representation of a tree (see {!type:Terms.tree}). *)
+type tree = (term, rhs) Tree_types.tree
+
+(** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Cond} of
-    {!type:Tree_types.tree}). We test these conditions during evaluation to
-    choose which branch to follow. We have two forms of conditions in the
-    current implementation.
-    - convertibility conditions (see module {!module:NLCond} below),
-    - free variable conditions (see module {!module:FVCond} below). *)
+    conditions (see constructor {!constructor:Cond} of {!type:Tree_types.tree}
+    for more details). These conditions are tested during evaluation to select
+    which of the two subsequent branches to follow.
 
-(** Module providing convertibility conditions, used to handle rewriting rules
-    that are not left-linear, for example [f &x &x (s &y) → r]. Here, we use a
-    condition to test whether the terms at position [{0}] and [{1}] are indeed
-    convertible. The rule can only apply if that is the case. Of course we may
-    need to check convertibility between more than two terms if a variable has
-    more than two occurences. *)
+    There are two forms of conditions:
+    - convertibility conditions (see {!constructor:Tree_types.CondNL}),
+    - free variable conditions (see {!constructor:Tree_types.CondFV}).
 
-(** Free variable constraints to verify which variables are free in a term. If
-    there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need to check
-    that the term at position [{0.0}] depends only on free variable [y]. *)
+    Convertibility conditions are used we have non left-linear rewriting rules
+    such as [f &x &x (s &y) → r]. In this case we need to test whether the two
+    terms at position [{0}] and [{1}] (corresponding to [&x]) are convertible:
+    the rule can only be apply if that is the case. Note that in general there
+    may be more than two occurrences of a variables. In that case we will need
+    to check convertibility between more than two terms.
 
-(** Condition pool representation. *)
+    Free variable constraints are used to verify which variables are free in a
+    term. If there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need
+    to check that the term at position [{0.0}] depends only on [y]. *)
+
+(** Module providing a representation for pools of conditions. *)
 module CP = struct
   (** Functional sets of pairs of integers. *)
   module PSet = Set.Make(
@@ -170,14 +204,11 @@ module CP = struct
 end
 
 
-(** {3 Miscellaneous types and definitions} *)
-
-(** Type of the leaves of the tree (see {!field:Terms.rhs}). *)
-type action = (term_env, term) Bindlib.mbinder
+(** {1 Clause matrix and pattern matching problem} *)
 
 (** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
-    (argument [stk] of {!val:Eval.tree_walk}) to provide fast access to any
-    element (for swaps) as well as fast {!val:Extra.List.destruct} and
+    (argument [stk] of {!val:Eval.tree_walk}) to provide fast element access
+    (for swaps) as well as fast {!val:Extra.List.destruct} and
     {!val:Extra.List.reconstruct} (to inspect a particular element, reduce it,
     and then reinsert it). In practice, the naive representation based on
     lists is faster than more elaborate solutions, unless there are rules with
@@ -186,8 +217,6 @@ type action = (term_env, term) Bindlib.mbinder
     access lists. In the current implementation, [destruct e i] has a time
     complexity of [Θ(i)] and [reconstruct l m r] has a time complexity of
     [Θ(length l + length m)]. *)
-
-(** {3 Clause matrix and pattern matching problem} *)
 
 (** A clause matrix encodes a pattern matching problem.  The clause matrix {i
     C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
@@ -215,7 +244,7 @@ module CM = struct
   type occur_rs = arg list
 
   (** Data needed to bind terms from the lhs into the rhs. *)
-  type binding_data = int * term Bindlib.mvar
+  type env_builder = (int * (int * term Bindlib.mvar)) list
 
   (** A redefinition of the rule type.
 
@@ -226,9 +255,9 @@ module CM = struct
   type clause =
     { c_lhs : term array
     (** Left hand side of a rule.   *)
-    ; c_rhs : action
+    ; c_rhs : rhs
     (** Right hand side of a rule. *)
-    ; env_builder : (int * binding_data) list
+    ; env_builder : env_builder
     (** Maps slots of the {!val:vars} array to a slot of the final
         environment used to build the {!field:c_rhs}. *)
     ; cond_pool : CP.t
@@ -586,30 +615,10 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** See {!type:Terms.dtree}. *)
-type t = (term, action) Tree_types.tree
-
-(** {b Example:} let us consider the rewrite system for symbol [f] defined as:
-    - [f Z     (S m) → S m],
-    - [f n     Z     → n] and
-    - [f (S n) (S m) → S (S m)].
-
-    A possible decision tree might be
-    {v
-    ├─?─∘─Z─∘     → n
-    ├─Z─∘─Z─∘     → n
-    │   └─S─∘─?─∘ → S m
-    ├─S─∘─Z─∘     → n
-    └─S─∘─?─∘     → S (S m)
-    v}
-    with [∘] being a node (with an omitted label) and [─u─] being an edge with
-    a matching on symbol [u] or a variable or wildcard when [?]. Typically the
-    portion [S─∘─Z] is made possible by a swap. *)
-
 (** [harvest l r e s] exhausts linearly the stack composed only of pattern
     variables with no non linear constraints. *)
-let harvest : term array -> action -> (int * CM.binding_data) list -> int ->
-  t = fun lhs rhs env_builder slot ->
+let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
+    fun lhs rhs env_builder slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; default = Some(child) }
@@ -656,7 +665,7 @@ let harvest : term array -> action -> (int * CM.binding_data) list -> int ->
 
 (** [compile m] translates the given pattern matching problem,  encoded by the
     matrix [m], into a decision tree. *)
-let rec compile : CM.t -> t = fun ({clauses ; positions ; slot} as pats) ->
+let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
   | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
