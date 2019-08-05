@@ -83,28 +83,28 @@ module CP = struct
     end)
 
   (** A pool of (convertibility and free variable) conditions. *)
-  type cond_pool =
+  type t =
     { nl_partial : int IntMap.t
-      (** An association [(e, v)] is a slot [e] of the [env] array with a slot
+    (** An association [(e, v)] is a slot [e] of the [env] array with a slot
           [v] of the [vars] array. *)
-    ; nl_available : PSet.t
-    (** Pairs of this set are checkable constraints, i.e. the two integers
-        refer to available positions in the {!val:vars} array. *)
-    ; fv : (tvar array) IntMap.t
-    (** ... *) }
+    ; nl_conds : PSet.t
+    (** Set of convertibility constraints that can be checked. *)
+    ; fv_conds : (tvar array) IntMap.t
+    (** Set of free variable constraints. *) }
 
-  (** Short synonym of {!type:cond_pool}. *)
-  type t = cond_pool
+  (** {b NOTE} the integer indices stored in {!field:nl_conds} and the keys of
+      in {!field:fv_conds} correspond to (valid) positions in the [vars] array
+      of the {!val:Eval.tree_walk} function. *)
 
   (** [empty] is the condition pool holding no condition. *)
-  let empty : cond_pool =
+  let empty : t =
     { nl_partial = IntMap.empty
-    ; nl_available = PSet.empty
-    ; fv = IntMap.empty }
+    ; nl_conds = PSet.empty
+    ; fv_conds = IntMap.empty }
 
-  (** [pp_cond_pool oc pool] prints condition pool [pool] to channel [oc]. *)
-  let pp_cond_pool : t pp = fun oc pool ->
-    let pp_fv oc fv =
+  (** [pp oc pool] prints condition pool [pool] to channel [oc]. *)
+  let pp : t pp = fun oc pool ->
+    let pp_fv oc fv_conds =
       let pp_sep oc () = Format.pp_print_string oc ";" in
       let pp_tvs = Format.pp_print_list ~pp_sep Print.pp_tvar in
       let ppit oc (a, b) =
@@ -112,7 +112,7 @@ module CP = struct
       in
       let pp_sep oc () = Format.pp_print_string oc "::" in
       Format.fprintf oc "@[<v>@[%a@]@]"
-        (Format.pp_print_list ~pp_sep ppit) (IntMap.bindings fv)
+        (Format.pp_print_list ~pp_sep ppit) (IntMap.bindings fv_conds)
     in
     let pp_partials oc partials =
       let pp_sep oc _ = Format.pp_print_string oc ";" in
@@ -126,12 +126,14 @@ module CP = struct
       Format.fprintf oc "@[<hov>%a@]" (Format.pp_print_list ~pp_sep pp_av)
         (PSet.elements available)
     in
-    Format.fprintf oc "@[<hov>%a/@,%a/@,%a@]" pp_fv pool.fv
-      pp_partials pool.nl_partial pp_available pool.nl_available
+    Format.fprintf oc "@[<hov>%a/@,%a/@,%a@]" pp_fv pool.fv_conds
+      pp_partials pool.nl_partial pp_available pool.nl_conds
 
   (** [is_empty pool] tells whether the pool of constraints is empty. *)
-  let is_empty pool =
-    PSet.is_empty pool.nl_available && IntMap.is_empty pool.fv
+  let is_empty : t -> bool = fun pool ->
+    PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
+
+  (* TODO cleanup from here. *)
 
   (** [instantiate i d q] instantiate constraint on slot [i] in pool [q], that
       is.  Typically, if a constraint involves only one variable, then
@@ -145,12 +147,12 @@ module CP = struct
     let normalize (i, j) = if i < j then (i, j) else (j, i) in
     try
       let e = normalize (slot, IntMap.find i pool.nl_partial) in
-      { pool with nl_available = PSet.add e pool.nl_available }
+      { pool with nl_conds = PSet.add e pool.nl_conds }
     with Not_found ->
       { pool with nl_partial = IntMap.add i slot pool.nl_partial }
 
   let instantiate_fv : int -> tvar array -> t -> t = fun i vs pool ->
-    { pool with fv = IntMap.add i vs pool.fv }
+    { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
   (** [constrained_nl slot pool] tells whether slot [slot] is constrained in
       the constraint pool [pool]. *)
@@ -162,21 +164,23 @@ module CP = struct
       instantiated in the pool [pool] *)
   let is_instantiated cond pool =
     match cond with
-    | CondNL(i,j) -> PSet.mem (i,j) pool.nl_available
-    | CondFV(x,i) -> try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv)
-                     with Not_found -> false
+    | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
+    | CondFV(x,i) ->
+        try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv_conds)
+        with Not_found -> false
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
     | CondNL(i,j)  ->
-        let nl_available = PSet.remove (i,j) pool.nl_available in
-        {pool with nl_available}
+        let nl_conds = PSet.remove (i,j) pool.nl_conds in
+        {pool with nl_conds}
     | CondFV(xs,i) ->
         try
-          let ys = IntMap.find i pool.fv in
+          let ys = IntMap.find i pool.fv_conds in
           let eq = Array.equal Bindlib.eq_vars xs ys in
-          if eq then {pool with fv = IntMap.remove i pool.fv} else pool
+          if eq then {pool with fv_conds = IntMap.remove i pool.fv_conds}
+          else pool
         with Not_found -> pool
 
   (** [choose pools] selects a condition to verify among [pools]. *)
@@ -184,19 +188,19 @@ module CP = struct
   (** [choose e c p] chooses recursively among pools in [p] an available
       condition calling function [c] on each pool, with [e] being the function
       indicating whether a pool is empty. *)
-  let choose : cond_pool list -> tree_cond option = fun pools ->
+  let choose : t list -> tree_cond option = fun pools ->
     let rec choose_nl pools =
       let export (i,j) = CondNL(i, j) in
       match pools with
       | []      -> None
-      | p :: ps -> try Some(export (PSet.choose p.nl_available))
+      | p :: ps -> try Some(export (PSet.choose p.nl_conds))
                    with Not_found -> choose_nl ps
     in
     let rec choose_vf pools =
       let export (i,vs) = CondFV(vs,i) in
       match pools with
       | []      -> None
-      | p :: ps -> try Some(export (IntMap.choose p.fv))
+      | p :: ps -> try Some(export (IntMap.choose p.fv_conds))
                    with Not_found -> choose_vf ps
     in
     let res = choose_nl pools in
@@ -309,10 +313,10 @@ module CM = struct
     out "@[<h>@<9>%s: @[%a@]@]@,"
       "Depths" (List.pp Format.pp_print_int ";") lr;
     out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut pp_lhs) llhs;
-    if pp_cond then begin
+    if pp_cond then
+      begin
         let lcp = List.map (fun cl -> cl.cond_pool) m.clauses in
-        out "@[<v 0>%a@]@,"
-          (Format.pp_print_list ~pp_sep:cut CP.pp_cond_pool) lcp
+        out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut CP.pp) lcp
       end;
     out "### Matrix end   ###@]@."
 
