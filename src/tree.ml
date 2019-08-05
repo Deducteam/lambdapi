@@ -52,13 +52,15 @@ type tree = (term, rhs) Tree_types.tree
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Cond} of {!type:Tree_types.tree}
-    for more details). These conditions are tested during evaluation to select
-    which of the two subsequent branches to follow.
+    conditions (see constructor {!constructor:Tree_types.tree.Cond} for more
+    details). These conditions are tested during evaluation to select which of
+    the two subsequent branches to follow.
 
     There are two forms of conditions:
-    - convertibility conditions (see {!constructor:Tree_types.CondNL}),
-    - free variable conditions (see {!constructor:Tree_types.CondFV}).
+    - convertibility conditions (see
+      {!constructor:Tree_types.tree_cond.CondNL}),
+    - free variable conditions (see
+      {!constructor:Tree_types.tree_cond.CondFV}).
 
     Convertibility conditions are used whenever we have non left-linear
     rewriting rules such as [f &x &x (s &y) → r]. In this case we need to test
@@ -525,9 +527,9 @@ module CM = struct
 
   (** [specialize p c s r] specializes the clauses [r] when matching pattern
       [p] against column [c] with positions [s].  A matrix can be specialized
-      by a user defined symbol.  In case an {!constructor:Appl} is given as
-      pattern [p], only terms having the same number of arguments and the same
-      leftmost {e non} {!constructor:Appl} term match. *)
+      by a user defined symbol.  In case an {!constructor:Terms.term.Appl} is
+      given as pattern [p], only terms having the same number of arguments and
+      the same leftmost {e non} {!constructor:Terms.term.Appl} term match. *)
   let specialize : term -> int -> occur_rs -> clause list ->
     occur_rs * clause list = fun pat ci pos rs ->
     let pos =
@@ -654,7 +656,8 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     - performing as few atomic matchings as possible (by considering the  most
       appropriate term in the argument stack),
     - storing terms that may be needed in the RHS because they match a pattern
-      variable constructor {!constructor:Patt} in the {!field:lhs} field.
+      variable constructor {!constructor:Terms.term.Patt} in the {!field:lhs}
+      field.
 
     The first bullet is ensured using {!val:CM.specialize},  {!val:CM.default}
     and {!val:CM.abstract}, which allow to create new branches.
@@ -665,17 +668,18 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     The last is managed by the {!val:env_builder} as follows.  The evaluation
     process used two arrays, one containing elements, as binders, to be
     injected in the {!field:c_rhs}, and another one to memorise terms filtered
-    by a pattern variable {!constructor:Patt}.  A memorised term can be used
-    either to check a constraint, or to be copied in the aforementioned array.
-    The former is called the [env] array while the latter is the [vars] array.
-    To copy correctly the variables from the [vars] to the [env] array, each
-    clause has an {!val:env_builder} mapping a index in the [vars] array to a
-    slot in the [env] (the slot [i] of a [Patt(Some(i), _, _)]).  Note that
-    the [vars] array can contain terms that are useless for the clause that is
-    applied, as terms might have been saved because needed by another clause
-    which is not the one applied.  The {!field:slot} keeps track of how many
-    variables have been encountered so far and thus indicates the index in
-    [vars] that will be used by the next variable. *)
+    by a pattern variable {!constructor:Terms.termPatt}.  A memorised term can
+    be used either to check a constraint, or to be copied in the
+    aforementioned array.  The former is called the [env] array while the
+    latter is the [vars] array.  To copy correctly the variables from the
+    [vars] to the [env] array, each clause has an {!val:env_builder} mapping a
+    index in the [vars] array to a slot in the [env] (the slot [i] of a
+    [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
+    are useless for the clause that is applied, as terms might have been saved
+    because needed by another clause which is not the one applied.  The
+    {!field:slot} keeps track of how many variables have been encountered so
+    far and thus indicates the index in [vars] that will be used by the next
+    variable. *)
 
 (** [compile m] translates the given pattern matching problem,  encoded by the
     matrix [m], into a decision tree. *)
