@@ -206,10 +206,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         in
         walk next stk cursor fresh_vars
     | Eos(l, r)                                           ->
-        let next = match stk with
-          | []   -> l
-          | _::_ -> r
-        in
+        let next = if stk = [] then l else r in
         walk next stk cursor fresh_vars
     | Node({swap; children; store; abstraction; default}) ->
         match List.destruct stk swap with

@@ -52,28 +52,23 @@ type tree = (term, rhs) Tree_types.tree
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
-    conditions (see constructor {!constructor:Tree_types.tree.Cond} for more
-    details). These conditions are tested during evaluation to select which of
-    the two subsequent branches to follow.
+    conditions (see constructor {!constructor:Tree_types.tree.Cond}) that must
+    be tested during evaluation to select which of the two subsequent branches
+    to follow. There are two forms of conditions:
+    - convertibility conditions ({!constructor:Tree_types.tree_cond.CondNL}),
+    - free variable conditions ({!constructor:Tree_types.tree_cond.CondFV}).
 
-    There are two forms of conditions:
-    - convertibility conditions (see
-      {!constructor:Tree_types.tree_cond.CondNL}),
-    - free variable conditions (see
-      {!constructor:Tree_types.tree_cond.CondFV}).
-
-    Convertibility conditions are used whenever we have non left-linear
-    rewriting rules such as [f &x &x (s &y) → r]. In this case we need to test
-    whether the two terms at position [{0}] and [{1}] (corresponding to [&x])
-    are convertible: the rule can only be applied if that is the case. Note
-    that in general there may be more than two occurrences of a variable. In
-    that case we will need to check convertibility between more than two
-    terms.
+    Convertibility conditions are used whenever we try to apply a rule that is
+    not left-linear, for example [f &x &x (s &y) → r]. In this case we need to
+    test whether the two terms at position [{0}] and [{1}] (that correspond to
+    pattern variable [&x]) are convertible: the rule may only apply if that is
+    the case. Note that in general there may be more than two occurrences of a
+    variable, so we may need to check convertibility several times.
 
     Free variable constraints are used to verify which variables are free in a
     term. If there is a rule of the form [f (λ x y, &Y[y]) → &Y], then we need
-    to check that the term at position [{0.0}] does not depend on on [x] (or
-    that among [x] and [y], only [y] is allowed). *)
+    to check that the term at position [{0.0}] does not depend on [x] (or that
+    among [x] and [y], only [y] is allowed). *)
 
 (** Module providing a representation for pools of conditions. *)
 module CP = struct
@@ -90,17 +85,17 @@ module CP = struct
   type t =
     { variables : int IntMap.t
     (** An association [(e, v)] maps the slot of a pattern variable (the first
-        argument of a {!constructor:Terms.term.Patt}) to its slot in the
-        [vars] array.  It allows to remember non linearity constraints. *)
+        argument of a {!constructor:Terms.term.Patt}) to its slot in the array
+        [vars] of the {!val:Eval.tree_walk} function. It is used to remember
+        non linearity constraints. *)
     ; nl_conds : PSet.t
-    (** Set of convertibility constraints that can be checked. *)
+    (** Set of convertibility constraints.  Convertibility constraint [(i, j)]
+        is satisfied when the terms stored at indices [i] and [j] in the array
+        [vars] of the {!val:Eval.tree_walk} function are convertible.*)
     ; fv_conds : (tvar array) IntMap.t
-    (** A mapping [i ↦ xs] allows the free variables in [xs] to appear in the
-        term at slot [i] of the [vars] array. *) }
-
-  (** {b NOTE} the integer indices stored in {!field:nl_conds} and the keys of
-      in {!field:fv_conds} correspond to (valid) positions in the [vars] array
-      of the {!val:Eval.tree_walk} function. *)
+    (** A mapping of [i] to [xs] represents a free variable condition that can
+        only be satisfied if only the free variables of [x] appear in the term
+        stored at slot [i] in the [vars] array of {!val:Eval.tree_walk}. *) }
 
   (** [empty] is the condition pool holding no condition. *)
   let empty : t =
@@ -139,8 +134,6 @@ module CP = struct
   let is_empty : t -> bool = fun pool ->
     PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
 
-  (* TODO cleanup from here. *)
-
   (** [instantiate_nl slot_v slot_e pool] instantiates a convertibility
       constraint between slots [slot_v] and [slot_e] in pool [pool].  The
       instantiation of a convertibility constraint is done in two parts.
@@ -174,7 +167,6 @@ module CP = struct
   let constrained_nl : int -> t -> bool = fun slot pool ->
     IntMap.mem slot pool.variables
 
-
   (** [is_instantiated cond pool] tells whether the condition [cond] has  been
       instantiated in the pool [pool] *)
   let is_instantiated cond pool =
@@ -187,9 +179,7 @@ module CP = struct
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
-    | CondNL(i,j)  ->
-        let nl_conds = PSet.remove (i,j) pool.nl_conds in
-        {pool with nl_conds}
+    | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
     | CondFV(xs,i) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -198,7 +188,7 @@ module CP = struct
           else pool
         with Not_found -> pool
 
-  (** [choose pools] selects a condition to verify among [pools].  The
+  (** [choose pools] selects a condition to verify among [pools]. The
       heuristic is to select in priority a convertibility constraint. *)
   let choose : t list -> tree_cond option = fun pools ->
     let rec choose_nl pools =
@@ -503,8 +493,7 @@ module CM = struct
   let update_aux : int -> int -> occur_rs -> clause -> clause =
     fun ci slot pos r ->
     let (_, a, _) = List.destruct pos ci in
-    let t = r.c_lhs.(ci) in
-    match fst (get_args t) with
+    match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
