@@ -246,10 +246,7 @@ module CM = struct
       [0] index is used when going under abstractions. In that case, the field
       {!field:arg_rank} is incremented. *)
 
-  (** Compile time counterpart to the argument stack of the head symbol. *)
-  type occur_rs = arg list
-
-  (** Data needed to bind terms from the lhs into the rhs.  An element
+  (** Data needed to bind terms from the lhs into the rhs. An element
       [(sv, (se, xs))] indicates that slot [sv] of the [vars] array will be
       bound into slot [se] of the environment using free variables [xs]. *)
   type env_builder = (int * (int * term Bindlib.mvar)) list
@@ -274,7 +271,7 @@ module CM = struct
     (** The rules. *)
     ; slot : int
     (** Index of next slot to use in [vars] array to store variables. *)
-    ; positions : occur_rs
+    ; positions : arg list
     (** Positions of the elements of the matrix in the initial term.  We rely
         on the order relation used in sets. *) }
 
@@ -337,20 +334,20 @@ module CM = struct
       rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
-      { c_lhs = Array.of_list lhs ; c_rhs = rhs
-      ; cond_pool = CP.empty ; env_builder = [] }
+      let c_lhs = Array.of_list lhs in
+      { c_lhs ; c_rhs = rhs ; cond_pool = CP.empty ; env_builder = [] }
     in
     let size = (* Get length of longest rule *)
       if rs = [] then 0 else
-      List.max ~cmp:Int.compare
-        (List.map (fun r -> List.length r.Terms.lhs) rs) in
+      List.max ~cmp:Int.compare (List.map (fun r -> Terms.(r.arity)) rs)
+    in
     let positions =
-      if size = 0 then []
-      else List.init (size - 1) (fun i -> {arg_path = [i]; arg_rank = 0})
+      if size = 0 then [] else
+      List.init (size - 1) (fun i -> {arg_path = [i]; arg_rank = 0})
     in
     { clauses = List.map r2r rs ; slot = 0 ; positions }
 
-  (** [is_empty m] returns whether matrix [m] is empty.  A clause matrix is
+  (** [is_empty m] returns whether matrix [m] is empty.  Note that a matrix is
       empty when it has {e no} row; not when it has empty rows. *)
   let is_empty : t -> bool = fun m -> m.clauses = []
 
@@ -359,7 +356,7 @@ module CM = struct
     List.map (fun {c_lhs ; _} -> c_lhs.(ind)) m.clauses
 
   (** [score c] returns the score heuristic for column [c].  The score is the
-      number of tree constructors divided by the number of constraints. *)
+      number of tree constructors divided by the number of conditions. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
       | []                           -> acc
@@ -373,7 +370,7 @@ module CM = struct
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
       among columns [c] according to a heuristic. *)
-  let pick_best_among : t -> int array -> int = fun mat columns->
+  let pick_best_among : t -> int array -> int = fun mat columns ->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
     Array.max_index ~cmp:(Pervasives.compare) scores
 
@@ -387,8 +384,9 @@ module CM = struct
       terms that can be matched against (discard constructor-free columns) in
       clauses [r]. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
-    let ncols = List.max ~cmp:Int.compare
-        (List.map (fun {c_lhs ; _} -> Array.length c_lhs) clauses)
+    let ncols =
+      let arities = List.map (fun cl -> Array.length cl.c_lhs) clauses in
+      List.max ~cmp:Int.compare arities
     in
     let switchable = List.init ncols (can_switch_on clauses) in
     let switchable2ind i e = if e then Some(i) else None in
@@ -397,13 +395,11 @@ module CM = struct
   (** [choose m] returns the index of column to switch on. *)
   let choose : t -> int option = fun m ->
     let kept = discard_cons_free m.clauses in
-    if kept = [||] then None else
-    let sel_partial = pick_best_among m kept in
-    Some(kept.(sel_partial))
+    if kept = [||] then None else Some(kept.(pick_best_among m kept))
 
   (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
       the occurrences of the terms in [r]. *)
-  let is_exhausted : occur_rs -> clause -> bool =
+  let is_exhausted : arg list -> clause -> bool =
     fun positions {c_lhs = lhs ; cond_pool ; _} ->
     let nonl lhs =
       (* Verify that there are no non linearity constraints in the remaining
@@ -429,8 +425,7 @@ module CM = struct
         | Patt(_, _, e) -> Array.length e = de
         | _             -> false
       in
-      Array.for_all2 check lhs de
-      && nonl lhs
+      Array.for_all2 check lhs de && nonl lhs
     in
     CP.is_empty cond_pool && (lhs = [||] || ripe lhs)
 
@@ -490,7 +485,7 @@ module CM = struct
   (** [update_aux c v r] returns clause [r] with auxiliary data updated
       (i.e. non linearity constraints and environment builder) when inspecting
       column [c] having met [v] vars until now. *)
-  let update_aux : int -> int -> occur_rs -> clause -> clause =
+  let update_aux : int -> int -> arg list -> clause -> clause =
     fun ci slot pos r ->
     let (_, a, _) = List.destruct pos ci in
     match fst (get_args r.c_lhs.(ci)) with
@@ -518,8 +513,8 @@ module CM = struct
       by a user defined symbol.  In case an {!constructor:Terms.term.Appl} is
       given as pattern [p], only terms having the same number of arguments and
       the same leftmost {e non} {!constructor:Terms.term.Appl} term match. *)
-  let specialize : term -> int -> occur_rs -> clause list ->
-    occur_rs * clause list = fun pat ci pos rs ->
+  let specialize : term -> int -> arg list -> clause list ->
+    arg list * clause list = fun pat ci pos rs ->
     let pos =
       let l, m, r = List.destruct pos ci in
       let _, _, nargs = get_args_len pat in
@@ -555,7 +550,7 @@ module CM = struct
   (** [default c s r] computes the default clauses from [r] that remain to be
       matched in case the pattern used is not in the column [c]. [s] is the
       list of positions of the elements in each clause. *)
-  let default : int -> occur_rs -> clause list -> occur_rs * clause list =
+  let default : int -> arg list -> clause list -> arg list * clause list =
     fun ci pos rs ->
     let pos =
       let (l, _, r) = List.destruct pos ci in
@@ -576,8 +571,8 @@ module CM = struct
   (** [abstract c v p r] computes the clauses resulting from the
       specialisation by an abstraction.  Note that the pattern can't be an
       applied lambda since the lhs is in normal form. *)
-  let abstract : int -> tvar -> occur_rs -> clause list ->
-                 occur_rs * clause list =
+  let abstract : int -> tvar -> arg list -> clause list ->
+                 arg list * clause list =
     fun ci v pos clauses ->
     let (l, {arg_path; arg_rank}, r) = List.destruct pos ci in
     let a = {arg_path = 0 :: arg_path; arg_rank = arg_rank + 1} in
@@ -611,7 +606,7 @@ module CM = struct
     List.filter (fun r -> not (CP.is_instantiated cond r.cond_pool))
 
   (** [empty_stack c] keeps the empty clauses from [c]. *)
-  let empty_stack : clause list -> occur_rs * clause list = fun cs ->
+  let empty_stack : clause list -> arg list * clause list = fun cs ->
     ([], List.filter (fun r -> r.c_lhs = [||]) cs)
 
   (** [not_empty_stack c] keeps the not empty clauses from [c]. *)
@@ -707,7 +702,7 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       (* Default child *)
       let default =
         let (positions, clauses) = CM.default swap positions updated in
-        let ncm = CM.{clauses ; slot ; positions } in
+        let ncm = CM.{clauses ; slot ; positions} in
         if CM.is_empty ncm then None else Some(compile ncm)
       in
       (* Abstraction specialisation*)
