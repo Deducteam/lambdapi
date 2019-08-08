@@ -330,7 +330,7 @@ module CM = struct
     | Symb(_, _)    -> true
     | _             -> assert false
 
-  (** [of_rules r] creates the initial clause matrix from a list of rewriting
+  (** [of_rules r] transforms a set of rewriting rules into a clause matrix
       rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
@@ -369,20 +369,21 @@ module CM = struct
     float_of_int nc /. (float_of_int ns)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c] according to a heuristic. *)
-  let pick_best_among : t -> int array -> int = fun mat columns ->
+      among columns [c].  "Best" in the sense of the heuristic implemented in
+      {!val:score}. *)
+  let pick_best_among : t -> int array -> int = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
     Array.max_index ~cmp:(Pervasives.compare) scores
 
   (** [can_switch_on r k] returns whether a switch can be carried out on
-      column [k] of clauses [r]. *)
+      column [k] of list of clauses [r]. *)
   let can_switch_on : clause list -> int -> bool = fun  clauses k ->
     List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
     List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
 
-  (** [discard_cons_free r] returns the list of indexes of columns containing
-      terms that can be matched against (discard constructor-free columns) in
-      clauses [r]. *)
+  (** [discard_cons_free r] returns the indexes of columns that contain terms
+      with symbols on top among clauses [r].  These terms allow to
+      {!val:specialize} on the column. *)
   let discard_cons_free : clause list -> int array = fun clauses ->
     let ncols =
       let arities = List.map (fun cl -> Array.length cl.c_lhs) clauses in
@@ -397,8 +398,8 @@ module CM = struct
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else Some(kept.(pick_best_among m kept))
 
-  (** [is_exhausted p r] returns whether [r] can be applied or not, with [p]
-      the occurrences of the terms in [r]. *)
+  (** [is_exhausted p c] returns whether clause [r] whose terms are at
+      positions in [p] can be applied or not. *)
   let is_exhausted : arg list -> clause -> bool =
     fun positions {c_lhs = lhs ; cond_pool ; _} ->
     let nonl lhs =
@@ -429,7 +430,8 @@ module CM = struct
     in
     CP.is_empty cond_pool && (lhs = [||] || ripe lhs)
 
-  (** [yield m] yields a clause to be applied. *)
+  (** [yield m] returns the next operation to carry out on matrix [m], that
+      is, either specialising, solving a constraint or rewriting to a rule. *)
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
@@ -453,9 +455,8 @@ module CM = struct
       | Some(c) -> Condition(c)
       | None    -> Specialise(0)
 
-  (** [get_cons l] extracts, sorts and uniqify terms that are tree
-      constructors in [l].  The actual tree constructor (of type
-      {!type:treecons}) is returned along the original term. *)
+  (** [get_cons l] returns a list of unique (and sorted) tuples containing
+      tree construcors and the original term. *)
   let get_cons : term list -> (TC.t * term) list = fun telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
@@ -469,6 +470,8 @@ module CM = struct
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
+
+    (* TODO: cleanup doc *)
 
   (** [store m c d] returns whether the inspected term on column [c] of matrix
       [m] needs to be stored during evaluation. *)
