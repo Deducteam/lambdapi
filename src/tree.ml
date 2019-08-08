@@ -636,41 +636,30 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     | _                         -> assert false in
   loop (Array.to_list lhs) env_builder slot
 
-(* TODO cleanup documentation *)
+(** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
+    rules (in practice, they all belong to a same symbol).  This tree is
+    designed to be used in the reduction process, in function
+    {val:Eval.tree_walk}.  The purpose of the trees is to
+    - declare efficiently whether the input term (during evaluation) matches
+      some lhs from the orginal rules (the one from which the tree is built);
+    - build a substitution mapping some (sub) terms of the input term to the
+      rewritten term.
 
-(** {b NOTE} the compiling step builds a decision tree (which can then be used
-    for pattern matching). A tree guides the pattern matching by:
-    - accepting constructors and filtering possible clauses,
-    - performing as few atomic matchings as possible (by considering the  most
-      appropriate term in the argument stack),
-    - storing terms that may be needed in the RHS because they match a pattern
-      variable constructor {!constructor:Terms.term.Patt} in the {!field:lhs}
-      field.
+    The first bullet is handled by the definition of the trees, e.g. if a
+    switch node contains in its mapping a tree constructor [s], then terms
+    having (as head structure) symbol [s] will be accepted.
 
-    The first bullet is ensured using {!val:CM.specialize},  {!val:CM.default}
-    and {!val:CM.abstract}, which allow to create new branches.
+    The second bullet is managed by the environment builder of type
+    {!type:CM.env_builder}.  If a lhs contains a named pattern variable, then
+    it is used in the rhs.  To do that, the term is saved into an array of
+    terms [vars].  When the leaf is reached, the terms from that array are
+    copied into the rhs.  The instructions to save terms are in the field
+    {!field:CM.store}.  The instructions to copy adequately terms from [vars]
+    to the rhs are in an environment builder (of type
+    {!type:CM.env_builder}). *)
 
-    Efficiency is managed thanks to heuristics handled by the {!val:score}
-    function.
-
-    The last is managed by the {!val:env_builder} as follows.  The evaluation
-    process used two arrays, one containing elements, as binders, to be
-    injected in the {!field:c_rhs}, and another one to memorise terms filtered
-    by a pattern variable {!constructor:Terms.termPatt}.  A memorised term can
-    be used either to check a constraint, or to be copied in the
-    aforementioned array.  The former is called the [env] array while the
-    latter is the [vars] array.  To copy correctly the variables from the
-    [vars] to the [env] array, each clause has an {!val:env_builder} mapping a
-    index in the [vars] array to a slot in the [env] (the slot [i] of a
-    [Patt(Some(i), _, _)]).  Note that the [vars] array can contain terms that
-    are useless for the clause that is applied, as terms might have been saved
-    because needed by another clause which is not the one applied.  The
-    {!field:slot} keeps track of how many variables have been encountered so
-    far and thus indicates the index in [vars] that will be used by the next
-    variable. *)
-
-(** [compile m] translates the given pattern matching problem,  encoded by the
-    matrix [m], into a decision tree. *)
+(** [compile m] translates the pattern matching problem encoded by the matrix
+    [m] into a decision tree. *)
 let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
