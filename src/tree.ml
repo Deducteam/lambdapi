@@ -471,10 +471,9 @@ module CM = struct
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
 
-    (* TODO: cleanup doc *)
-
-  (** [store m c d] returns whether the inspected term on column [c] of matrix
-      [m] needs to be stored during evaluation. *)
+  (** [store m c] is true iff a term of column [c] of matrix [m] contains a
+      pattern variable.  In that case, the term needs to be stored into the
+      [vars] array (in order to build the substitution). *)
   let store : t -> int -> bool = fun cm ci ->
     let (_, a, _) = List.destruct cm.positions ci in
     let st_r r =
@@ -485,14 +484,14 @@ module CM = struct
     in
     List.exists st_r cm.clauses
 
-  (** [update_aux c v r] returns clause [r] with auxiliary data updated
-      (i.e. non linearity constraints and environment builder) when inspecting
-      column [c] having met [v] vars until now. *)
+  (** [update_aux col slot clause] updates the fields the condition pool and
+      the environment builder of clause [clause] assuming column [col] is
+      inspected and the next environment slot is [slot]. *)
   let update_aux : int -> int -> arg list -> clause -> clause =
     fun ci slot pos r ->
-    let (_, a, _) = List.destruct pos ci in
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
+        let (_, a, _) = List.destruct pos ci in
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
             CP.instantiate_fv slot (Array.map to_tvar e) r.cond_pool
@@ -511,11 +510,8 @@ module CM = struct
         { r with env_builder ; cond_pool }
     | _             -> r
 
-  (** [specialize p c s r] specializes the clauses [r] when matching pattern
-      [p] against column [c] with positions [s].  A matrix can be specialized
-      by a user defined symbol.  In case an {!constructor:Terms.term.Appl} is
-      given as pattern [p], only terms having the same number of arguments and
-      the same leftmost {e non} {!constructor:Terms.term.Appl} term match. *)
+(* TODO cleanup documentation *)
+
   let specialize : term -> int -> arg list -> clause list ->
     arg list * clause list = fun pat ci pos rs ->
     let pos =
@@ -550,9 +546,6 @@ module CM = struct
     in
     (pos, List.filter_map filtrans rs)
 
-  (** [default c s r] computes the default clauses from [r] that remain to be
-      matched in case the pattern used is not in the column [c]. [s] is the
-      list of positions of the elements in each clause. *)
   let default : int -> arg list -> clause list -> arg list * clause list =
     fun ci pos rs ->
     let pos =
@@ -571,9 +564,6 @@ module CM = struct
       | _ -> assert false in
     (pos, List.filter_map transf rs)
 
-  (** [abstract c v p r] computes the clauses resulting from the
-      specialisation by an abstraction.  Note that the pattern can't be an
-      applied lambda since the lhs is in normal form. *)
   let abstract : int -> tvar -> arg list -> clause list ->
                  arg list * clause list =
     fun ci v pos clauses ->
@@ -617,8 +607,9 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest l r e s] exhausts linearly the stack composed only of pattern
-    variables with no non linear constraints. *)
+(** [harvest l r e s] exhausts linearly the lhs [l] composed only of pattern
+    variables with no constraints, to yield a leaf with rhs [r], environment
+    builder [e] completed. *)
 let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     fun lhs rhs env_builder slot ->
   let default_node store child =
