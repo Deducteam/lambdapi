@@ -639,7 +639,7 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
 (** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
     rules (in practice, they all belong to a same symbol).  This tree is
     designed to be used in the reduction process, in function
-    {val:Eval.tree_walk}.  The purpose of the trees is to
+    {!val:Eval.tree_walk}.  The purpose of the trees is to
     - declare efficiently whether the input term (during evaluation) matches
       some lhs from the orginal rules (the one from which the tree is built);
     - build a substitution mapping some (sub) terms of the input term to the
