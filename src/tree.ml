@@ -510,8 +510,9 @@ module CM = struct
         { r with env_builder ; cond_pool }
     | _             -> r
 
-(* TODO cleanup documentation *)
-
+  (** [specialize pat col pos cl] filters and transforms lhs of [cl] assuming
+      a matching on pattern [pat] on column [col], with [pos] being the
+      position of arguments in clauses. *)
   let specialize : term -> int -> arg list -> clause list ->
     arg list * clause list = fun pat ci pos rs ->
     let pos =
@@ -523,13 +524,13 @@ module CM = struct
       in
       List.reconstruct l replace r
     in
-    let ph, pargs, lenp = get_args_len pat in
     let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
                                   ; e
                                   ; Array.drop (ci + 1) r.c_lhs ]
     in
     let filtrans r =
       let insert = insert r in
+      let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(ci) in
       match ph, h with
       | Symb(_, _), Symb(_, _)
@@ -546,6 +547,10 @@ module CM = struct
     in
     (pos, List.filter_map filtrans rs)
 
+  (** [default col pos cl] selects and transforms clauses [cl] assuming that
+      terms on column [col] does not match any symbol being the head structure
+      of another term in column [col]; [pos] is the positions of terms in
+      clauses. *)
   let default : int -> arg list -> clause list -> arg list * clause list =
     fun ci pos rs ->
     let pos =
@@ -564,6 +569,10 @@ module CM = struct
       | _ -> assert false in
     (pos, List.filter_map transf rs)
 
+  (** [abstract col var pos cl] selects and transforms clauses [cl] assuming
+      that terms in column [col] match an abstraction.  The term under the
+      abstraction has its bound variable substituted by [var]; [pos] is the
+      position of terms in clauses [cl]. *)
   let abstract : int -> tvar -> arg list -> clause list ->
                  arg list * clause list =
     fun ci v pos clauses ->
@@ -616,16 +625,18 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; default = Some(child) }
   in
-  let rec loop lhs env_builder slot = match lhs with
+  let rec loop lhs env_builder slot =
+    match lhs with
     | []                        -> Leaf(env_builder, rhs)
     | Patt(Some(i), _, e) :: ts ->
         let env_builder = (slot, (i, Array.map to_tvar e)) :: env_builder in
-        let slot = slot + 1 in
-        default_node true (loop ts env_builder slot)
+        default_node true (loop ts env_builder (slot + 1))
     | Patt(None, _, _) :: ts    ->
         default_node false (loop ts env_builder slot)
     | _                         -> assert false in
   loop (Array.to_list lhs) env_builder slot
+
+(* TODO cleanup documentation *)
 
 (** {b NOTE} the compiling step builds a decision tree (which can then be used
     for pattern matching). A tree guides the pattern matching by:
