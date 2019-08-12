@@ -184,7 +184,7 @@ let in_range ?loc (line, pos) =
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
 
-let get_goals ~doc ~line ~pos =
+(*let get_goals ~doc ~line ~pos =
   let open Lp_doc in
   let node =
     List.find_opt (fun { ast; _ } ->
@@ -195,7 +195,26 @@ let get_goals ~doc ~line ~pos =
         res
       ) doc.Lp_doc.nodes in
   Option.map
-    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node
+    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node*)
+
+let get_goals ~doc ~line ~pos =
+  let open Lp_doc in
+  let node =
+    List.find_opt (fun { ast; _ } ->
+        let loc = Pure.Command.get_pos ast in
+        let res = in_range ?loc (line,pos) in
+                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
+        LIO.log_error "get_goals" ("call: "^ls);
+        res
+      ) doc.Lp_doc.nodes in
+  let goalsList = match node with
+    | None -> []
+    | Some n -> n.goals in
+  let goals, _ = List.find (fun (_, loc) ->
+      in_range ?loc (line,pos)
+  ) goalsList in
+  Option.map
+    (fun _ -> Format.asprintf "%a" Proof.pp_goals goals) node
 
 let do_hover ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
