@@ -8,6 +8,7 @@
 		//"rootDir": "src"
 	},
 	"files": [
+		"vscode.proposed.d.ts",
 		"src/client.ts"
 	]
 
