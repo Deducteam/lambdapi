@@ -1,7 +1,7 @@
 (** This module provides a function to translate a signature to the XTC format
-   used in the termination competition. @see
-   <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>.
-   *)
+    used in the termination competition.
+    (http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd)
+*)
 
 open Extra
 open Timed

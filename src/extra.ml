@@ -12,12 +12,6 @@ module Int =
     let compare = (-)
   end
 
-module Float =
-struct
-  type t = float
-  let compare : t -> t -> int = Pervasives.compare
-end
-
 module String =
   struct
     include String
@@ -31,6 +25,21 @@ module String =
       let b = Buffer.create 37 in
       List.iter (Buffer.add_char b) l;
       Buffer.contents b
+
+    let is_substring : string -> string -> bool = fun e s ->
+      let len_e = String.length e in
+      let len_s = String.length s in
+      let rec is_sub i =
+        if len_s - i < len_e then false else
+        if String.sub s i len_e = e then true else
+        is_sub (i+1)
+      in
+      is_sub 0
+
+    let for_all : (char -> bool) -> string -> bool = fun p s ->
+      let len_s = String.length s in
+      let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
+      for_all 0
   end
 
 module Option =
@@ -42,9 +51,9 @@ module Option =
       | None    -> None
       | Some(e) -> Some(f e)
 
-    let bind : ('a -> 'b t) -> 'a t -> 'b t = fun f o ->
+    let map_default : ('a -> 'b) -> 'b -> 'a option -> 'b = fun f d o ->
       match o with
-      | None    -> None
+      | None    -> d
       | Some(e) -> f e
 
     let iter : ('a -> unit) -> 'a t -> unit = fun f o ->
@@ -82,10 +91,9 @@ module List =
       function
       | []     -> []
       | h :: t ->
-          begin match f h with
+          match f h with
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
-          end
 
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
@@ -94,10 +102,10 @@ module List =
         let rec loop k = function
           | [] -> []
           | h :: t ->
-              begin match f k h with
+              match f k h with
               | Some(x) -> x :: loop (succ k) t
               | None    -> loop (succ k) t
-              end in
+        in
         loop 0 l
 
     (** [cut l k] returns a pair of lists [(l1, l2)] such that [l1] has length
@@ -132,14 +140,6 @@ module List =
     let equal : 'a eq -> 'a list eq = fun eq l1 l2 ->
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
-    (** [init n f] returns [[f 0; f 1; ...; f n]].
-        @raise Invalid_argument if [n < 0]. *)
-    let init : int -> (int -> 'a) -> 'a list = fun n f ->
-      if n < 0 then invalid_arg "List.extra.init" else
-      let rec loop k acc =
-        if k = 0 then (f 0) :: acc else loop (k - 1) (f k :: acc) in
-      loop n []
-
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
         defaulting to [Pervasives.compare].
         @raise Invalid_argument if [l] is empty. *)
@@ -147,20 +147,56 @@ module List =
       fun ?(cmp=Pervasives.compare) li ->
       match li with
       | []   -> invalid_arg "Extra.List.max"
-      | h::t -> List.fold_left
-                  (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
-                  h t
+      | h::t -> let max e1 e2 = if cmp e1 e2 >= 0 then e1 else e2 in
+                List.fold_left max h t
 
     (** [assoc_eq e k l] is [List.assoc k l] with equality function [e].
         @raise Not_found if [k] is not a key of [l]. *)
     let assoc_eq : 'a eq -> 'a -> ('a * 'b) list -> 'b = fun eq k l ->
-      let rec loop = function
-        | []          -> raise Not_found
-        | (x, e) :: _
-          when eq x k -> e
-        | _      :: t -> loop t in
+      let rec loop l =
+        match l with
+        | []                      -> raise Not_found
+        | (x, e) :: _ when eq x k -> e
+        | _      :: t             -> loop t
+      in
       loop l
 
+    (** [remove_phys_dups l] uniqify list [l] keeping only the last element,
+        using physical equality. *)
+    let rec remove_phys_dups : 'a list -> 'a list = fun l ->
+      match l with
+      | []      -> []
+      | x :: xs -> let xs = remove_phys_dups xs in
+                   if List.memq x xs then xs else x :: xs
+
+    (** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is
+        the [i]-th element of [l], [left_rev] is the reversed prefix of [l] up
+        to its [i]-th element (excluded),  and [right] is the remaining suffix
+        of [l] (starting at its [i+1]-th element).
+        @raise Invalid_argument when [i < 0].
+        @raise Not_found when [i ≥ length v]. *)
+    let destruct : 'a list -> int -> 'a list * 'a * 'a list = fun e i ->
+      if i < 0 then invalid_arg "Extra.List.deconstruct" ;
+      let rec destruct l i r =
+        match (r, i) with
+        | ([]  , _) -> raise Not_found
+        | (v::r, 0) -> (l, v, r)
+        | (v::r, i) -> destruct (v :: l) (i - 1) r
+      in
+      destruct [] i e
+
+    (** [reconstruct left_rev l right] concatenates (reversed) [left_rev], [l]
+        and [right].  This function will typically be used in combination with
+        {!val:deconstruct} to insert a sublist [l] in the place of the element
+        at the specified position in the specified list. *)
+    let reconstruct : 'a list -> 'a list -> 'a list -> 'a list = fun l m r ->
+      List.rev_append l (m @ r)
+
+    (** [init n f] creates a list with [f 0] up to [f n] as its elements. Note
+        that [Invalid_argument] is raised if [n] is negative. *)
+    let init : int -> (int -> 'a) -> 'a list = fun n f ->
+      if n < 0 then invalid_arg "Extra.List.init" else
+      let rec loop k = if k > n then [] else f k :: loop (k + 1) in loop 0
   end
 
 module Array =
@@ -186,48 +222,48 @@ module Array =
     let equal : 'a eq -> 'a array eq = fun eq a1 a2 ->
       Array.length a1 = Array.length a2 && for_all2 eq a1 a2
 
-    (** [argmax ?cmp a] returns the index of the first maximum of array [a]
+    (** [max_index ?cmp a] returns the index of the first maximum of array [a]
         according to comparison [?cmp].  If [cmp] is not given, defaults to
         [Pervasives.compare]. *)
-    let argmax : ?cmp:('a -> 'a -> int) -> 'a array -> int =
+    let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
       fun ?(cmp=Pervasives.compare) arr ->
-      if arr = [||] then invalid_arg "Extra.Array.argmax" else
-      let r, _, _ = Array.fold_left (fun (mi, m, i) elt ->
-        if cmp elt m > 0 then (i, elt, succ i) else (mi, m, succ i))
-        (0, arr.(0), 0) arr in
-      r
+      let len = Array.length arr in
+      if len = 0 then invalid_arg "Extra.Array.max_index" else
+      let max = ref 0 in
+      for i = 1 to len - 1 do
+        if cmp arr.(!max) arr.(i) < 0 then max := i
+      done; !max
 
     (** [max ?cmp a] returns the higher element according to comparison
         function [?cmp], using [Pervasives.compare] if not given, in array
         [a]. *)
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
-      fun ?(cmp=Pervasives.compare) arr ->
-      if arr = [||] then invalid_arg "Extra.Array.max" else
-      Array.fold_left (fun acc elt -> if cmp elt acc >= 0 then elt else acc)
-        arr.(0) arr
+      fun ?(cmp=Pervasives.compare) arr -> arr.(max_index ~cmp:cmp arr)
 
-    (** [split a] is {!val:List.split}[Array.to_list a]. *)
-    let split : ('a * 'b) array -> ('a list) * ('b list) = fun a ->
-      Array.fold_right (fun (el, er) (accl, accr) -> (el :: accl, er :: accr))
-        a ([], [])
+    (** [split a] is [List.split (Array.to_list a)]. *)
+    let split : ('a * 'b) array -> 'a list * 'b list = fun a ->
+      let aux (el, er) (accl, accr) = (el :: accl, er :: accr) in
+      Array.fold_right aux a ([], [])
 
     (** [drop n a] discards the first [n] elements of [a].  The empty array is
         returned if [n > length a]. *)
     let drop : int -> 'a array -> 'a array = fun n a ->
       let l = length a in
-      if n >= l then [||]
-      else let suffix = Array.sub a n (l - n) in suffix
+      if n >= l then [||] else Array.sub a n (l - n)
 
   end
 
-(* Functional maps with [int] keys. *)
+(** Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
-(* Functional sets of [int]s. *)
+(** Functional sets of integers. *)
 module IntSet = Set.Make(Int)
 
-(* Functional maps with [string] keys. *)
+(** Functional maps with [string] keys. *)
 module StrMap = Map.Make(String)
+
+(* Functional sets of strings. *)
+module StrSet = Set.Make(String)
 
 (** [time f x] times the application of [f] to [x], and returns the evaluation
     time in seconds together with the result of the application. *)

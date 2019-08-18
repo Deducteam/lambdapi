@@ -91,16 +91,16 @@ be used. The command is expected to behave as follows:
 As an example,  `echo MAYBE` is the simplest possible (valid)
 termination-check that one may use.
 
-As far as we know, [`SizeChangeTool`]
-(https://github.com/Deducteam/SizeChangeTool) is the only termination checker
-compatible with all `lambdapi` features.
+As far as we know,
+[`SizeChangeTool`](https://github.com/Deducteam/SizeChangeTool) is the
+only termination checker compatible with all `lambdapi` features.
 It can be called in the following way.
 ```bash
 lambdapi --termination "path/to/sct.native -nc --stdin=xml" input_file.lp
 ```
 
-If the file does not contain type-level rewriting, [`Wanda`]
-(http://wandahot.sourceforge.net/) is also compatible.
+If the file does not contain type-level rewriting,
+[`Wanda`](http://wandahot.sourceforge.net/) is also compatible.
 However, it does not offer the possibility to give an input in `stdin`.
 
 To generate the `.xml` file corresponding to some `lambdapi` file, one may use
@@ -126,7 +126,8 @@ The following flags may be useful for debugging:
 
 The following options can be used to modify the behaviour of the
 reduction engine,
- - `--write-trees` outputs the decision trees used for rule filtering,
-   for each symbol `s`, a file `s.gv` is created.
- - `--ordered-rules` forces the rewriting engine to use in priority
+ - `--write-trees` writes the decision trees used for rule filtering
+   to dot files; for each symbol `s`, a file `mod_path/mod_name.s.gv` is
+   generated.
+ - `--keep-rule-order` forces the rewriting engine to use in priority
    the topmost rules.

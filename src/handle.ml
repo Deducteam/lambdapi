@@ -11,6 +11,10 @@ open Files
 open Syntax
 open Scope
 
+(** [write_trees] tells whether contains whether graphviz files containing the
+    representation of decision trees should be created. *)
+let write_trees : bool Pervasives.ref = Pervasives.ref false
+
 (** [check_builtin_nat s] checks that the builtin symbol [s] for
    non-negative literals has a good type. *)
 let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
@@ -84,10 +88,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   let scope_basic = Scope.scope_term ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
+     let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_require b cmd.pos) ss ps, None)
   | P_require_as(p,id)         ->
-     (handle_require_as cmd.pos ss p id, None)
+     let id = Pos.make id.pos (fst id.elt) in
+     (handle_require_as cmd.pos ss (List.map fst p) id, None)
   | P_open(ps)                  ->
+     let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
   | P_symbol(ts, x, xs, a)     ->
       (* We check that [x] is not already used. *)
@@ -117,7 +124,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature m x a impl in
-      out 3 "(symb) %s.\n" s.sym_name;
+      out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
@@ -129,7 +136,25 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
-      Sign.add_rules ss.signature rs; (ss, None)
+      let add_rule (s,h,r) =
+        Sign.add_rule ss.signature s r.elt;
+        out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt)
+      in
+      List.iter add_rule rs;
+      let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
+      List.iter Tree.update_dtree syms;
+      (* Writing decision tree if required. *)
+      if Pervasives.(!write_trees) then
+        begin
+          let write_tree s =
+            let fname = String.concat Filename.dir_sep s.sym_path in
+            let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
+            Console.out 3 "Writing file [%s]\n" fname;
+            Tree_graphviz.to_dot fname s
+          in
+          List.iter write_tree syms
+        end;
+      (ss, None)
   | P_definition(op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -165,11 +190,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         begin
           fatal_msg "The definition of [%s] or its type \
                      have unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a ≔ %a." x.elt pp t pp a
+          fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a impl in
-      out 3 "(symb) %s (definition).\n" s.sym_name;
+      out 3 "(symb) %s (definition)\n" s.sym_name;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
@@ -208,7 +233,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
             let s = Sign.add_symbol ss.signature Const x a impl in
-            out 3 "(symb) %s (admit).\n" s.sym_name;
+            out 3 "(symb) %s (admit)\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
         | P_proof_qed   ->
@@ -220,7 +245,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
               end;
             (* Add a symbol corresponding to the proof. *)
             let s = Sign.add_symbol ss.signature Const x a impl in
-            out 3 "(symb) %s (qed).\n" s.sym_name;
+            out 3 "(symb) %s (qed)\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in
       let data =
@@ -236,16 +261,21 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let builtins = !(ss.signature.sign_builtins) in
             if StrMap.mem s builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
-            let sym, _ = find_sym false ss qid in
+            let (sym, _) = find_sym false ss qid in
             check_builtin_nat cmd.pos builtins s sym;
             Rewrite.check_builtin cmd.pos builtins s sym;
             Sign.add_builtin ss.signature s sym;
+            out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
-            let sym, _ = find_sym false ss qid in
-            Sign.add_binop ss.signature s (sym, binop); ss
+            let (sym, _) = find_sym false ss qid in
+            Sign.add_binop ss.signature s (sym, binop);
+            out 3 "(conf) new infix [%s]\n" s; ss
+        | P_config_ident(id)      ->
+            Sign.add_ident ss.signature id;
+            out 3 "(conf) declared identifier [%s]\n" id; ss
       in
       (ss, None)
   | P_query(q)                 ->

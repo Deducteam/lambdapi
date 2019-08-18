@@ -8,10 +8,6 @@ open Terms
 open Syntax
 open Pos
 
-(** [write_trees] contains whether trees created for rule parsing should be
-    written to disk. *)
-let write_trees : bool Pervasives.ref = Pervasives.ref false
-
 (** [builtin builtins name] finds the builtin symbol named [name]
    in [builtins] if it exists, and fails otherwise. *)
 let builtin : popt -> sym StrMap.t -> string -> sym =
@@ -26,7 +22,8 @@ type t =
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
-  ; sign_binops   : (sym * binop) StrMap.t ref }
+  ; sign_binops   : (sym * binop) StrMap.t ref
+  ; sign_idents   : StrSet.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -36,7 +33,8 @@ type t =
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty }
+  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -126,7 +124,8 @@ let link : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops) ;
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -135,6 +134,7 @@ let link : t -> unit = fun sign ->
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
+    s.sym_tree := Tree_types.empty_dtree ;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := Kind; s.sym_rules := [])
   in
@@ -190,7 +190,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
-    ; sym_tree = ref (lazy 0, lazy Fail) }
+    ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -269,36 +269,18 @@ let read : string -> t = fun fname ->
 (* NOTE here, we rely on the fact that a marshaled closure can only be read by
    processes running the same binary as the one that produced it. *)
 
-(** [add_rules s r] adds a bunch of rules [r] to its attached symbol to the
-    signature [s] and builds decision trees. *)
-let add_rules : t -> (sym * pp_hint * rule loc) list -> unit = fun sign rs ->
-  (* [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When
-     the rule does not correspond to a symbol of signature [sign], it is
-     stored in its dependencies. *)
-  let add_rule (s, h, r) =
-    out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt) ;
-    s.sym_rules := !(s.sym_rules) @ [r.elt] ;
-    if s.sym_path <> sign.sign_path then
-      let m =
-        try PathMap.find s.sym_path !(sign.sign_deps)
-        with Not_found -> assert false in
-      let m = (s.sym_name, r.elt) :: m in
-      sign.sign_deps := PathMap.add s.sym_path m !(sign.sign_deps) in
-  List.iter add_rule rs ;
-  let build_tree symb =
-    match symb.sym_mode with
-    | Defin
-    | Injec ->
-        let pama = lazy (Dtree.ClauseMat.of_rules !(symb.sym_rules)) in
-        let tree = lazy (Dtree.compile @@ Lazy.force pama) in
-        let capacity = lazy (Basics.capacity @@ Lazy.force tree) in
-        symb.sym_tree := (capacity, tree) ;
-        if Pervasives.(!write_trees) then
-          ( Format.printf "Wrote %s.gv\n" (symb.sym_name)
-          ; Dtree.to_dot symb.sym_name (Lazy.force tree) )
-    | _     -> () in
-  let fst3cmp (d, _, _) (e, _, _) = Basics.sym_cmp d e in
-  List.sort_uniq fst3cmp rs |> List.iter (fun (x, _, _) -> build_tree x)
+(** [add_rule sign sym r] adds the new rule [r] to the symbol [sym].  When the
+    rule does not correspond to a symbol of signature [sign],  it is stored in
+    its dependencies. *)
+let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
+  sym.sym_rules := !(sym.sym_rules) @ [r];
+  if sym.sym_path <> sign.sign_path then
+    let m =
+      try PathMap.find sym.sym_path !(sign.sign_deps)
+      with Not_found -> assert false
+    in
+    let m = (sym.sym_name, r) :: m in
+    sign.sign_deps := PathMap.add sym.sym_path m !(sign.sign_deps)
 
 (** [add_builtin sign name sym] binds the builtin name [name] to [sym] (in the
     signature [sign]). The previous binding, if any, is discarded. *)
@@ -309,6 +291,10 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
     If [op] was previously bound, the previous binding is discarded. *)
 let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
   sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
+
+(** [add_ident sign id] add the declared identifier [id] to [sign]. *)
+let add_ident : t -> string -> unit = fun sign id ->
+  sign.sign_idents := StrSet.add id !(sign.sign_idents)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order

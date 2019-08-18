@@ -3,7 +3,6 @@
 open Extra
 open Timed
 open Terms
-module TC = Treecons
 
 (** Sets and maps of variables. *)
 module Var =
@@ -35,15 +34,9 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [stamp_tvar s v] creates a fresh variable whose name is the name of [v]
-    with "s[s]" as suffix.  For instance [stamp_tvar 13 x] with [x] having
-    name [c] will result in a variable with name [cs13]. *)
-let stamp_tvar : int -> tvar -> tvar = fun stamp v ->
-  let name = Bindlib.name_of v ^ "s" ^ (string_of_int stamp) in
-  Bindlib.new_var mkfree name
-
 (** [sensible_tref t] transforms {!constructor:Appl} into references. *)
-let sensible_tref : term -> term = function
+let appl_to_tref : term -> term = fun t ->
+  match t with
   | Appl(_,_) as t -> TRef(ref (Some t))
   | t              -> t
 
@@ -64,13 +57,14 @@ let get_args : term -> term * term list = fun t ->
     | t         -> (t, acc)
   in get_args [] t
 
-(** [get_args_len t] is the same as [get_args] with the length of the list of
-    arguments returned as well. *)
+(** [get_args_len t] is similar to [get_args t] but it also returns the length
+    of the list of arguments. *)
 let get_args_len : term -> term * term list * int = fun t ->
   let rec get_args_len acc len t =
     match unfold t with
     | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
-    | t          -> (t, acc, len) in
+    | t          -> (t, acc, len)
+  in
   get_args_len [] 0 t
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
@@ -133,13 +127,6 @@ let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
   | Symb(r,_) -> r == s
   | _         -> false
-
-(** [sym_cmp s s'] compares symbols [s] and [s']. *)
-let sym_cmp : sym -> sym -> int = fun sa sb ->
-  if sa == sb then 0 else
-  match String.compare sa.sym_name sb.sym_name with
-  | 0 -> Pervasives.compare sa.sym_path sb.sym_path
-  | x -> x
 
 (** [iter_ctxt f t] applies the function [f] to every node of the term [t].
    At each call, the function is given the list of the free variables in the
@@ -268,120 +255,3 @@ let term_of_rhs : rule -> term = fun r ->
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
   Bindlib.msubst r.rhs (Array.mapi fn r.vars)
-
-(** {3 Occurrences module} *)
-
-(** Some tools to encode the position of subterms in a term. *)
-module Occurrence =
-struct
-  (** Each element of the list is a path in the tree of the term.  For
-      instance, in the term [Appl(Appl(f, x), Appl(Appl(g, a), b))], the
-      subterm [a] has position [1.0], encoded by [[0 ; 1]], [b] has [1.1]
-      encoded by [[1 ; 1]] and [x] has [0] encoded by [[0]]. *)
-  type t = int list
-
-  (** [compare a b] implements lexicographic order on positions. *)
-  let compare : t -> t -> int = fun a b ->
-    Pervasives.compare (List.rev a) (List.rev b)
-
-  (** [pp o p] output position [p] to channel [o]. *)
-  let pp : t pp = fun oc pos ->
-    match pos with
-    | [] -> Format.fprintf oc "ε"
-    | x  -> List.pp (fun oc -> Format.fprintf oc "%d") "." oc (List.rev x)
-
-  (** Initial position. *)
-  let empty : t = []
-
-  (** [succ p] returns the successor of position [p].  For instance, if
-      [p = [1 ; 1]], [succ p = [2 ; 1]].  The succ of the initial position is
-      the first subterm of this position. *)
-  let succ = function
-    | []      -> 0 :: empty
-    | x :: xs -> succ x :: xs
-
-  (** [prefix p q] sets position [p] as prefix of position [q], for instance,
-      {i prefix 1 3.4} is {i 1.3.4}; which is represented [prefix [1] [4;3]]
-      is [[4;3;1]]. *)
-  let prefix : t -> t -> t = fun p q -> q @ p
-
-  (** [sequence ?from n] returns a sequence of [n] consecutive positions
-      starting from [from]. *)
-  let sequence : ?from:t -> int -> t list = fun ?(from=[]) n ->
-    let start, p = match from with
-      | []     -> 0, empty
-      | s :: p -> s, p in
-    List.init n (fun i -> prefix p [i + start])
-
-  (** [sub p] returns the position of the first subterm of [p]. *)
-  let sub : t -> t = fun p -> 0 :: p
-
-end
-
-(** Functional map with [Occurrence.t] as keys *)
-module OccurMap = Map.Make(Occurrence)
-
-(** Functional set with [Occurrence.t] as items. *)
-module OccurSet = Set.Make(Occurrence)
-
-(** {3 Operators on trees} *)
-
-(** [iter l n f t] is a generic iterator on trees; with
-    - function [l] performed on leaves,
-    - function [n] performed on nodes,
-    - [f] returned in case of {!constructor:Fail} on tree [t]. *)
-let tree_iter :
-  do_leaf:((int * int) list -> (term_env, term) Bindlib.mbinder -> 'a) ->
-  do_node:(int -> bool -> 'a TC.Map.t -> (tvar * 'a ) option -> 'a option ->
-           'a) ->
-  do_condition:('a -> tree_constraint -> 'a -> 'a) ->
-  fail:'a -> tree -> 'a = fun ~do_leaf ~do_node ~do_condition ~fail t ->
-    let rec loop = function
-      | Leaf(pa, a)                                 -> do_leaf pa a
-      | Fail                                        -> fail
-      | Condition(cdata)                            ->
-          let { condition ; ok ; fail } = cdata in
-          do_condition (loop ok) condition (loop fail)
-      | Node({ swap ; store ; children ; abstraction ; default }) ->
-          do_node swap store
-            (TC.Map.map loop children)
-            (Option.map (fun (v, x) -> (v, loop x)) abstraction)
-            (Option.map loop default) in
-    loop t
-
-(** [capacity t] computes the capacity of tree [t].  During evaluation, some
-    terms that are being filtered by the patterns have to be saved in order to
-    be bound in the right hand side of the rule, or because they must verify a
-    constraint.  The capacity is the least upper bound of the number of terms
-    to be saved.  Let [P] be the set of all paths from root to leaves in a
-    tree [t].  Let [s: P → N] be the function mapping to any path the number
-    of nodes that have the {!field:store} tag to [true].  Then the capacity
-    [c] of [t] is [c = max{s(p) | p ∈ P}]. *)
-let capacity : tree -> int =
-  let do_leaf _ _ = 0 in
-  let fail = 0 in
-  let do_node _ st ch ab de =
-    let _, chdepths = List.split (TC.Map.bindings ch) in
-    let dedepth = Option.get de 0 in
-    let abdepth = match ab with Some(_, n) -> n | None -> 0 in
-    List.max ~cmp:Int.compare (abdepth::dedepth::chdepths) +
-    (if st then 1 else 0) in
-  let do_condition t _ f = max t f in
-  tree_iter ~do_leaf:do_leaf ~fail:fail ~do_node:do_node
-    ~do_condition:do_condition
-
-(** {3 Tree constructor conversion} *)
-
-(** [is_treecons t] returns whether a term [t] is considered as a
-    tree constructor.  Tree constructors are
-    - abstractions,
-    - symbols,
-    - free variables. *)
-let is_treecons : term -> bool = fun t ->
-  match fst (get_args t) with
-  | Patt(_, _, _) -> false
-  | Vari(_)
-  | Abst(_, _)
-  | Symb(_, _)    -> true
-  | _             -> assert false
-
