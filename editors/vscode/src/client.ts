@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as net from 'net';
 import * as child_process from 'child_process';
-import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument } from 'vscode';
+import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument, WebviewEditorInset, Disposable } from 'vscode';
 
 
 import {
@@ -20,17 +20,19 @@ import {
 	TextDocumentIdentifier,
 	RegistrationRequest,
 } from 'vscode-languageclient';
+import { isUndefined } from 'util';
 
 
 
 let client: LanguageClient;
+let disposables : Disposable[] = [];
 
 export function activate(context: ExtensionContext) {
 
 	//create the server
 
 	let serverOptions = {
-		command: 'lp-lsp',
+		command: '/Users/houdamouzoun/.opam/4.05.0/bin/lp-lsp',
 		args: [ '--std' ]
 	};
 
@@ -51,6 +53,7 @@ export function activate(context: ExtensionContext) {
 		serverOptions,
 		clientOptions
 	);
+
 	
 	// Start the client. This will also launch the server
 	client.start();
@@ -70,8 +73,9 @@ export function activate(context: ExtensionContext) {
 			);
 			
 			workspace.onDidOpenTextDocument(e => {
-				if(e.languageId == 'lp'){
+				if(e.languageId === 'lp'){
 					window.showTextDocument(e, ViewColumn.One, true);
+					let wb : WebviewEditorInset;
 					restart(panel)
 				}
 			})
@@ -101,14 +105,23 @@ export function activate(context: ExtensionContext) {
 			const doc = editor == undefined? null : editor.document; 
 			const selec = editor == undefined? null : editor.selection;
 			const uri = doc == null? null : doc.uri;
-		
 			// And set its HTML content
 			panel.webview.html = getWebviewContent("");
 			window.showInformationMessage('Going to start!');
 			window.onDidChangeTextEditorSelection(e => {
+				let oldWB = disposables.pop();
+				if (oldWB)
+					oldWB.dispose();
 				let selec = e.textEditor.selection;
 				if (uri != null){
-					sendGoalsRequest(selec.active, panel, uri)
+					let line = selec.active.line;
+					let height = 5;
+					if(window.activeTextEditor) {
+						let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
+						disposables.push(wb);
+						sendGoalsRequest(selec.active, panel, uri, wb);
+					}
+					
 				} 
 			}
 				);
@@ -155,7 +168,7 @@ export interface GoalResp {
 	contents : String
 }
 
-	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
+	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri, wb : WebviewEditorInset) {
 		let goalsState : String;
 		let doc = {uri : uri.toString()}
 		let cursor = {textDocument : doc, position : position}; 
@@ -164,6 +177,11 @@ export interface GoalResp {
 		let a = goals.contents;
 		//return goals;
 		panel.webview.html = getWebviewContent(a);
+		//display goals in webviewTextEditor
+		wb.onDidDispose(() => {
+			console.log('WEBVIEW disposed...');
+		});
+		wb.webview.html = getWebviewContent(a);
 		}); 
 	}
 
