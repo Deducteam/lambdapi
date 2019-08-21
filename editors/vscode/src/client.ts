@@ -5,6 +5,9 @@
 
 import { workspace, ExtensionContext, Position, Uri, commands, window, WebviewPanel, ViewColumn, TextEditor, TextDocument } from 'vscode';
 
+// Insiders API, disabled
+// import { WebviewEditorInset } from 'vscode';
+
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -119,7 +122,9 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
     const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
         panel.webview.html = buildGoalsContent(goals.contents);
-    });
+        // Disabled as this is experimental
+	// let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
+	// wb.webview.html = panel.webview.html;
     }, () => { panel.webview.html = buildGoalsContent(""); });
 }
 
