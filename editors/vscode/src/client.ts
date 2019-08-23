@@ -72,18 +72,25 @@ export function activate(context: ExtensionContext) {
 				{}
 			);
 			
-			workspace.onDidOpenTextDocument(e => {
+			/*workspace.onDidOpenTextDocument(e => {
+				let oldWB = disposables.pop();
+				if (oldWB)
+					oldWB.dispose();
 				if(e.languageId === 'lp'){
-					window.showTextDocument(e, ViewColumn.One, true);
-					let wb : WebviewEditorInset;
+					//window.showTextDocument(e, ViewColumn.One, true);
 					restart(panel)
 				}
-			})
+			}) */
 			
 				
-		window.onDidChangeActiveTextEditor(e =>
+		window.onDidChangeActiveTextEditor(e => {
+			let oldWB = disposables.pop();
+			while(oldWB) {
+				oldWB.dispose();
+				oldWB = disposables.pop();
+			}
 			restart(panel)
-		);
+		});
 			
 	context.subscriptions.push(
 		commands.registerCommand('getGoals.start', () => {
@@ -110,17 +117,13 @@ export function activate(context: ExtensionContext) {
 			window.showInformationMessage('Going to start!');
 			window.onDidChangeTextEditorSelection(e => {
 				let oldWB = disposables.pop();
-				if (oldWB)
+				while(oldWB) {
 					oldWB.dispose();
+					oldWB = disposables.pop();
+				}
 				let selec = e.textEditor.selection;
 				if (uri != null){
-					let line = selec.active.line;
-					let height = 5;
-					if(window.activeTextEditor) {
-						let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
-						disposables.push(wb);
-						sendGoalsRequest(selec.active, panel, uri, wb);
-					}
+					sendGoalsRequest(selec.active, panel, uri);
 					
 				} 
 			}
@@ -141,18 +144,11 @@ export function activate(context: ExtensionContext) {
 		</head>
 		<body>
 			<p> `; 
-		let date = new Date();
-		let datestring = date.toLocaleDateString(undefined, {
-			hour : '2-digit',
-			minute : '2-digit',
-			second : '2-digit'
-		});
 		htmlPage2 =	` </p>
 		</body>
 		</html>`;
-		let datestring1 = '';
 
-		return htmlPage1+ datestring1+goalsPrint+htmlPage2;
+		return htmlPage1+""+goalsPrint+htmlPage2;
 	}
 
 export interface TextDocumentIdent{
@@ -168,21 +164,56 @@ export interface GoalResp {
 	contents : String
 }
 
-	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri, wb : WebviewEditorInset) {
+	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
 		let goalsState : String;
-		let doc = {uri : uri.toString()}
+		if(window.activeTextEditor){
+			let uri2 = window.activeTextEditor.document.uri.toString();
+			window.showInformationMessage("active Txt Edit : "+ uri2);
+		
+		let doc = {uri : uri2}
 		let cursor = {textDocument : doc, position : position}; 
 		const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
+		//let fail = {contents : ""}
+		window.showInformationMessage(uri.toString()+ " line:" + position.line);
 		client.sendRequest(req, cursor).then((goals) => {
 		let a = goals.contents;
+		let line = position.line;
+		let height = 5;
+	
 		//return goals;
-		panel.webview.html = getWebviewContent(a);
+		let result = getWebviewContent(a);
+		let defaultRslt = getWebviewContent("");
+		
 		//display goals in webviewTextEditor
-		wb.onDidDispose(() => {
-			console.log('WEBVIEW disposed...');
-		});
-		wb.webview.html = getWebviewContent(a);
+		if(window.activeTextEditor && a != "") {
+			if (disposables.length >= 1){
+				window.showInformationMessage('one or more WEBVIEW');
+				let oldWB = disposables.pop();
+				while(oldWB) {
+					oldWB.dispose();
+					oldWB = disposables.pop();
+				}
+			}else {
+				window.showInformationMessage('zero WEBVIEW');
+			}
+			let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
+			wb.webview.html = result;
+			disposables.push(wb);
+			panel.webview.html = result;
+			wb.onDidDispose(() => {
+				console.log('WEBVIEW disposed...');
+			});
+
+			window.showInformationMessage("there are goals");
+		} else {
+			panel.webview.html = defaultRslt;
+			window.showInformationMessage("no goals");
+		}
+		}, (_)=>{
+			let defaultRslt = getWebviewContent("");
+			panel.webview.html = defaultRslt;
 		}); 
+	}
 	}
 
 export function deactivate(): Thenable<void> | undefined {
