@@ -26,6 +26,8 @@ import { isUndefined } from 'util';
 
 let client: LanguageClient;
 let disposables : Disposable[] = [];
+let panel : WebviewPanel;
+let inset : WebviewEditorInset;
 
 export function activate(context: ExtensionContext) {
 
@@ -63,33 +65,24 @@ export function activate(context: ExtensionContext) {
 
 	client.onReady().then(() => {
 
-		  // Create and show panel
-			
-			const panel = window.createWebviewPanel(
-				'goals',
-				'Goals',
-				ViewColumn.Two,
-				{}
-			);
-			
-			/*workspace.onDidOpenTextDocument(e => {
-				let oldWB = disposables.pop();
-				if (oldWB)
-					oldWB.dispose();
-				if(e.languageId === 'lp'){
-					//window.showTextDocument(e, ViewColumn.One, true);
-					restart(panel)
-				}
-			}) */
+		//create and show panel
+		panel = window.createWebviewPanel(
+			'goals',
+			'Goals',
+			ViewColumn.Two,
+			{}
+		);  
 			
 				
 		window.onDidChangeActiveTextEditor(e => {
-			let oldWB = disposables.pop();
-			while(oldWB) {
-				oldWB.dispose();
-				oldWB = disposables.pop();
-			}
-			restart(panel)
+			
+			restartPanel();
+			window.showInformationMessage('Going to start!');
+			window.onDidChangeTextEditorSelection(e => {
+				let selec = e.textEditor.selection;
+				sendGoalsRequest(e.textEditor,selec.active);
+			});
+
 		});
 			
 	context.subscriptions.push(
@@ -103,32 +96,13 @@ export function activate(context: ExtensionContext) {
 	});
 
 }
-	
 
-	function restart(panel : WebviewPanel){
-		
-			const editor = window.activeTextEditor;
-			
-			const doc = editor == undefined? null : editor.document; 
-			const selec = editor == undefined? null : editor.selection;
-			const uri = doc == null? null : doc.uri;
-			// And set its HTML content
-			panel.webview.html = getWebviewContent("");
-			window.showInformationMessage('Going to start!');
-			window.onDidChangeTextEditorSelection(e => {
-				let oldWB = disposables.pop();
-				while(oldWB) {
-					oldWB.dispose();
-					oldWB = disposables.pop();
-				}
-				let selec = e.textEditor.selection;
-				if (uri != null){
-					sendGoalsRequest(selec.active, panel, uri);
-					
-				} 
-			}
-				);
-	}
+function restartPanel(){
+
+	panel.webview.html = getWebviewContent("");
+
+}
+	
 	
 	function getWebviewContent(goals : String) {
 		let goalsPrint : String;
@@ -164,56 +138,35 @@ export interface GoalResp {
 	contents : String
 }
 
-	function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
+	function sendGoalsRequest(editor : TextEditor, position: Position) {
 		let goalsState : String;
-		if(window.activeTextEditor){
-			let uri2 = window.activeTextEditor.document.uri.toString();
-			window.showInformationMessage("active Txt Edit : "+ uri2);
 		
-		let doc = {uri : uri2}
+		let uri = editor.document.uri;
+		let doc = {uri : uri.toString()}
 		let cursor = {textDocument : doc, position : position}; 
 		const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
-		//let fail = {contents : ""}
-		window.showInformationMessage(uri.toString()+ " line:" + position.line);
-		client.sendRequest(req, cursor).then((goals) => {
-		let a = goals.contents;
-		let line = position.line;
-		let height = 5;
-	
-		//return goals;
-		let result = getWebviewContent(a);
-		let defaultRslt = getWebviewContent("");
 		
-		//display goals in webviewTextEditor
-		if(window.activeTextEditor && a != "") {
-			if (disposables.length >= 1){
-				window.showInformationMessage('one or more WEBVIEW');
-				let oldWB = disposables.pop();
-				while(oldWB) {
-					oldWB.dispose();
-					oldWB = disposables.pop();
-				}
-			}else {
-				window.showInformationMessage('zero WEBVIEW');
+		client.sendRequest(req, cursor).then((goals) => {
+			let a = goals.contents;
+			let line = position.line;
+			let height = 5;
+		
+			//return goals;
+			let result = getWebviewContent(a);
+			
+			//display goals in webviewTextEditor
+			if(disposables.length > 0) {
+				let x = disposables.pop();
+				if(x) x.dispose();
 			}
-			let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
-			wb.webview.html = result;
-			disposables.push(wb);
+			let inset = window.createWebviewTextEditorInset(editor, line, height);
+			disposables.push(inset);
+			inset.webview.html = result;
 			panel.webview.html = result;
-			wb.onDidDispose(() => {
-				console.log('WEBVIEW disposed...');
-			});
-
-			window.showInformationMessage("there are goals");
-		} else {
-			panel.webview.html = defaultRslt;
-			window.showInformationMessage("no goals");
-		}
-		}, (_)=>{
-			let defaultRslt = getWebviewContent("");
-			panel.webview.html = defaultRslt;
+			
+		}, _ => {
+			panel.webview.html = getWebviewContent("");
 		}); 
-	}
 	}
 
 export function deactivate(): Thenable<void> | undefined {
