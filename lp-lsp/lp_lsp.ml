@@ -168,13 +168,6 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
-  (*let get_docTxtPosGoals params =
-  let doc = dict_field "uri" params in
-  let file = string_field "file" doc in
-  let pos = dict_field "position" params in
-  (*let line, character = int_field "line" pos, int_field "character" pos in*)
-  doc,file, pos*)
-
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
@@ -184,18 +177,6 @@ let in_range ?loc (line, pos) =
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
 
-(*let get_goals ~doc ~line ~pos =
-  let open Lp_doc in
-  let node =
-    List.find_opt (fun { ast; _ } ->
-        let loc = Pure.Command.get_pos ast in
-        let res = in_range ?loc (line,pos) in
-                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
-        LIO.log_error "get_goals" ("call: "^ls);
-        res
-      ) doc.Lp_doc.nodes in
-  Option.map
-    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node*)
 
 let get_goals ~doc ~line ~pos =
   let open Lp_doc in
@@ -210,27 +191,35 @@ let get_goals ~doc ~line ~pos =
   let goalsList = match node with
     | None -> []
     | Some n -> n.goals in
-  let goals, _ = List.find (fun (_, loc) ->
-      in_range ?loc (line,pos)
-  ) goalsList in
-  Option.map
-    (fun _ -> Format.asprintf "%a" Proof.pp_goals goals) node
+  let goals = match (List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList) with
+    | None -> None
+    | Some (v, _) -> Some v in goals 
+
+
+let do_Gresult ofmt ~id g = 
+  let aux =
+  match g with
+  | None -> `Null
+  | Some v -> `Assoc [ "contents", `String v] in
+  let result =  aux in
+      let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg
 
 let do_hover ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
-  get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
-      let result = `Assoc [ "contents", `String goals] in
-      let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
+  let goals = get_goals ~doc ~line ~pos in
+  let result = LSP.json_of_thm goals in
+  let msg = LSP.mk_reply ~id ~result in
+      LIO.send_json ofmt msg
 
-let do_goals ofmt ~id params =
+(*let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
     let doc = Hashtbl.find completed_table uri in
      get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
       let result = `Assoc [ "contents", `String goals] in
       let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
+      LIO.send_json ofmt msg)*)
 
 let get_line lines l =
   let count = 0 in
@@ -289,40 +278,6 @@ let get_symbol text l pos =
   let line = List.nth lines l in
   get_token line pos
 
-
-(*let get_symbs ofmt ~id params =
-  (*let uri, line, pos = get_docTextPosition params in*)
-  let file, _, doc = grab_doc params in
-  let line, pos = get_textPosition params in
-  let sym = Pure.get_symbols doc.final in
-  Extra.StrMap.fold (fun _ (s,p) l ->
-      let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type));
-      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *)
-      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p, s.sym_type) :: l) p l) sym []
-*)
-
-(*let do_definition ofmt ~id params =
-  let file, _, doc = grab_doc params in
-  let line, pos = get_textPosition params in
-  let sym_target = get_symbol doc.text line pos in
-  let sym = Pure.get_symbols doc.final in
-  let sym = Extra.StrMap.fold (fun _ (s,p) l ->
-      let open Terms in
-      (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type));
-      option_cata (fun p -> if String.equal s.sym_name sym_target then mk_syminfo file
-                      (s.sym_name, s.sym_path, kind_of_type s, p) :: l else l) p l) sym [] in *)
-      option_cata (fun p -> (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l) sym [] in
-  let sym_found = let rec find_sym sym sym_target =
-      match sym with
-      | [] -> failwith ("Sym Not found / " ^ sym_target ) (*("notfound", "not found", 0, {fname = None ;start_line = 0; start_col = 0; end_line = 0; end_col = 0})*)
-      | (sn, sp, kts, p)::ts -> if String.equal sn sym_target then mk_syminfo file (sn, sp, kts, p)
-                                else find_sym ts sym_target in
-                                find_sym sym sym_target in
-  let msg = LSP.mk_reply ~id ~result:(sym_found) in
-  LIO.send_json ofmt msg*)
-
   let do_definition ofmt ~id params =
   let file, _, doc = grab_doc params in
   let line, pos = get_textPosition params in
@@ -360,12 +315,13 @@ let hover_symInfo ofmt ~id params =
 
   let sym_found = let open Timed in let open Terms in
     match Extra.StrMap.find_opt sym_target sym with
-    | None -> myfail "sym not found"
-    | Some (_, None) -> myfail "sym not found"
-    | Some (sym, Some _) -> !(sym.sym_type)
-  in let sym_type : string =
-    Format.asprintf "%a" Print.pp_term sym_found  in
-  let result = `Assoc [ "contents", `String sym_type] in
+    | None -> None
+    | Some (_, None) -> None(*myfail "sym not found"*)
+    | Some (sym, Some _) -> Some !(sym.sym_type)
+  in let result = match sym_found with
+    | None -> `Null
+    | Some s -> let sym_type = Format.asprintf "%a" Print.pp_term s  in
+      `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
 
@@ -401,6 +357,12 @@ let dispatch_message ofmt dict =
   | "textDocument/hover" ->
     hover_symInfo ofmt ~id params
 
+  | "textDocument/definition" ->
+    do_definition ofmt ~id params
+
+  | "proof/goals" ->
+    do_hover ofmt ~id params
+
   (* Notifications *)
   | "textDocument/didOpen" ->
     protect_dispatch "didOpen"
@@ -414,11 +376,7 @@ let dispatch_message ofmt dict =
     protect_dispatch "didClose"
       (do_close ofmt) params
 
-  | "textDocument/definition" ->
-    do_definition ofmt ~id params
-
-  | "proof/goals" ->
-    do_hover ofmt ~id params
+  
 
   | "exit" ->
     exit 0

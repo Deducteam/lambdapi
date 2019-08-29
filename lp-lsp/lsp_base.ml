@@ -34,7 +34,7 @@ let json_of_goal g =
   let open Proof in
   let g_meta = Goal.get_meta g in
   let hyp, typ = Goal.get_type g in
-  let j_env = List.map pr_hyp hyp in
+  let j_env = List.map pr_hyp (List.rev hyp) in
   `Assoc [
     "gid", `Int g_meta.meta_key
   ; "hyps", `List j_env

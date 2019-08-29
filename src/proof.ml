@@ -94,9 +94,12 @@ let pp_goals : _ pp = fun oc gl ->
           let (_, a) = Goal.get_type g in
           Format.fprintf oc "%i. %a<br/>" (i+1) pp a
         in
-        List.iteri print_goal gs
+        List.iteri print_goal gs;
+        Format.fprintf oc "<br/>"
       end
 
 
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
 let pp : t pp = fun oc ps -> pp_goals oc ps.proof_goals
+
+
