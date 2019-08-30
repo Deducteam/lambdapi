@@ -3,25 +3,24 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"type": "extensionHost",
+			"type": "node",
 			"request": "launch",
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"outFiles": ["${workspaceRoot}/out/*.js"],
+			//"outFiles": ["${workspaceRoot}/out/*.js"],
 			"preLaunchTask": {
 				"type": "npm",
 				"script": "watch"
 			}
 		},
 		{
-			"type": "node",
+			"type": "ocaml",
 			"request": "attach",
 			"name": "Attach to Server",
 			"port": 6009,
 			"restart": true,
 			//"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
-			"outFiles": ["${workspaceRoot}/../../lsp-lsp/lp_lsp.ml"]
 		},
 		{
 			"name": "Language Server E2E Test",
