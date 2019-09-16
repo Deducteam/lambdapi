@@ -1,4 +1,4 @@
-data Nat = D0 | S Nat 
+data Nat = D0 | S Nat
   deriving (Show, Eq, Ord)
 
 d1 :: Nat

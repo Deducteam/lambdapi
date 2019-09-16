@@ -5,5 +5,3 @@
   (tuareg-match-clause-indent . 2)
   (tuareg-match-patterns-aligned . t)
   (fill-column . 78)))
-
-
