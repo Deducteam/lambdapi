@@ -134,32 +134,26 @@ module CP = struct
   let is_empty : t -> bool = fun pool ->
     PSet.is_empty pool.nl_conds && IntMap.is_empty pool.fv_conds
 
-  (** [instantiate_nl slot_v slot_e pool] instantiates a convertibility
-      constraint between slots [slot_v] and [slot_e] in pool [pool].  The
-      instantiation of a convertibility constraint is done in two parts.
-      Remember that a non linearity constraints involve two or more variables,
-      that have different slots [slot_v] in the [vars] array but share the
-      same slot [slot_e] in the final environment (the one of the
-      {!type:rhs}).  Assume arguments [sv1 se p], and that there is no
-      variable using slot [se] yet in pool [p].  Then a constraint involving
-      [sv1] will be partially instantiated.  If the function is called again
-      with [sv2 se p], then the variable at slot [sv2] (of [vars]) uses slot
-      [se] as well and must therefore be convertible with the previous
-      variable.  A convertibility condition between [sv1] and [sv2] is thus
-      fully instantiated and can be checked. *)
-  let instantiate_nl : int -> int -> t -> t = fun slot i pool ->
-    let normalize (i, j) = if i < j then (i, j) else (j, i) in
+  (** [register_nl slot i pool] registers the fact that the slot [slot] in the
+      [vars] array correspond to a term stored at index [i] in the environment
+      for the RHS. The first time that such a slot is associated to [i], it is
+      registered to serve as a reference point for testing convertibility when
+      (and if) another such slot is (ever) encountered. When that is the case,
+      a convertibility constraint is registered between the term stored in the
+      slot [slot] and the term stored in the reference slot. *)
+  let register_nl : int -> int -> t -> t = fun slot i pool ->
     try
-      let e = normalize (slot, IntMap.find i pool.variables) in
-      { pool with nl_conds = PSet.add e pool.nl_conds }
-    with Not_found -> (* If there is no variable constrained with environment
-                         slot [i] in [pool.variables] yet. *)
+      (* We obtain the reference slot (if any). *)
+      let r_slot = IntMap.find i pool.variables in
+      let cond = if r_slot < slot then (slot, r_slot) else (r_slot, slot) in
+      { pool with nl_conds = PSet.add cond pool.nl_conds }
+    with Not_found ->
+      (* First occurence of [i], register the slot as a point of reference. *)
       { pool with variables = IntMap.add i slot pool.variables }
 
-  (** [instantiate_fv slot xs pool] activates a free variables condition
-      regarding variables in [xs] on slot [slot] of the [vars] array in pool
-      [pool]. *)
-  let instantiate_fv : int -> tvar array -> t -> t = fun i vs pool ->
+  (** [register_fv slot xs pool] registers a free variables constraint for the
+      variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
+  let register_fv : int -> tvar array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
   (** [constrained_nl slot pool] tells whether slot [slot] is constrained in
@@ -494,12 +488,12 @@ module CM = struct
         let (_, a, _) = List.destruct pos ci in
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
-            CP.instantiate_fv slot (Array.map to_tvar e) r.cond_pool
+            CP.register_fv slot (Array.map to_tvar e) r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
           match i with
-          | Some(i) -> CP.instantiate_nl slot i cond_pool
+          | Some(i) -> CP.register_nl slot i cond_pool
           | None    -> cond_pool
         in
         let env_builder =
