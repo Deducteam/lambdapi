@@ -89,9 +89,9 @@ module CP = struct
         [vars] of the {!val:Eval.tree_walk} function. It is used to remember
         non linearity constraints. *)
     ; nl_conds : PSet.t
-    (** Set of convertibility constraints.  Convertibility constraint [(i, j)]
-        is satisfied when the terms stored at indices [i] and [j] in the array
-        [vars] of the {!val:Eval.tree_walk} function are convertible.*)
+    (** Set of convertibility constraints [(i,j)] with [i < j]. The constraint
+        [(i,j)] is satisfied if the terms stored at indices [i] and [j] in the
+        [vars] array of the {!val:Eval.tree_walk} function are convertible. *)
     ; fv_conds : (tvar array) IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
@@ -145,7 +145,7 @@ module CP = struct
     try
       (* We obtain the reference slot (if any). *)
       let r_slot = IntMap.find i pool.variables in
-      let cond = if r_slot < slot then (slot, r_slot) else (r_slot, slot) in
+      let cond = if r_slot < slot then (r_slot, slot) else (slot, r_slot) in
       { pool with nl_conds = PSet.add cond pool.nl_conds }
     with Not_found ->
       (* First occurence of [i], register the slot as a point of reference. *)
@@ -156,16 +156,16 @@ module CP = struct
   let register_fv : int -> tvar array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
-  (** [constrained_nl slot pool] tells whether slot [slot] is constrained in
-      the constraint pool [pool]. *)
+  (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
+      has already been associated to a variable of the [vars] array. *)
   let constrained_nl : int -> t -> bool = fun slot pool ->
     IntMap.mem slot pool.variables
 
-  (** [is_instantiated cond pool] tells whether the condition [cond] has  been
-      instantiated in the pool [pool] *)
-  let is_instantiated cond pool =
+  (** [is_contained cond pool] tells whether the condition [cond] is contained
+      in the pool [pool]. *)
+  let is_contained : tree_cond -> t -> bool = fun cond pool ->
     match cond with
-    | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
+    | CondNL(i,j) -> PSet.mem (if i < j then (i,j) else (j,i)) pool.nl_conds
     | CondFV(x,i) ->
         try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv_conds)
         with Not_found -> false
@@ -173,7 +173,9 @@ module CP = struct
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
-    | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
+    | CondNL(i,j)  ->
+        let cond = if i < j then (i, j) else (j, i) in
+        {pool with nl_conds = PSet.remove cond pool.nl_conds}
     | CondFV(xs,i) ->
         try
           let ys = IntMap.find i pool.fv_conds in
@@ -182,8 +184,8 @@ module CP = struct
           else pool
         with Not_found -> pool
 
-  (** [choose pools] selects a condition to verify among [pools]. The
-      heuristic is to select in priority a convertibility constraint. *)
+  (** [choose pools] selects a condition to check in the pools of [pools]. The
+      heuristic is to first select convertibility constraints. *)
   let choose : t list -> tree_cond option = fun pools ->
     let rec choose_nl pools =
       let export (i,j) = CondNL(i, j) in
@@ -599,7 +601,7 @@ module CM = struct
   (** [cond_fail cond cls]  updates the clause list [cls] with the information
       that the condition [cond] is not satisfied. *)
   let cond_fail : tree_cond -> clause list -> clause list = fun cond ->
-    List.filter (fun r -> not (CP.is_instantiated cond r.cond_pool))
+    List.filter (fun r -> not (CP.is_contained cond r.cond_pool))
 
   (** [empty_stack c] keeps the empty clauses from [c]. *)
   let empty_stack : clause list -> arg list * clause list = fun cs ->
