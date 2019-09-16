@@ -43,7 +43,14 @@ type 'term tree_cond =
   | CondNL of int * int
   (** Are the terms at the given indices convertible? *)
   | CondFV of 'term Bindlib.var array * int
-  (** Are the free variables of the term at given index in the array? *)
+  (** Are the bound variables (which are free at the time of the checking) of
+      the term at the given index in the array? *)
+
+(** {!b NOTE} that when performing a {!constructor:tree_cond.CondFV} check, we
+    are concerned about variables that were bound in the term being reduced
+    and that may appear free while deconstructing it.  If the term being
+    reduced contains free variables, those can appear in a subterm even if not
+    in the array. *)
 
 (** Representation of a tree. The definition relies on parameters since module
     {!module:Terms} depends on the current module, and that would thus produce
@@ -58,8 +65,8 @@ type ('term, 'rhs) tree =
   (** The value [Leaf(m, rhs)] stores the RHS [rhs] of the rewriting rule that
       can be applied upon reaching the leaf.  The association list [m] is used
       to construct the environment of the RHS. Note that we do not need to use
-      a map here since we only need to insert at the head, an iterate over the
-      elements of the structure. *)
+      a map here since we only need to insert at the head, and iterate over
+      the elements of the structure. *)
   | Cond of
       { ok   : ('term, 'rhs) tree
       (** Branch to follow if the condition is verified. *)
@@ -78,7 +85,7 @@ type ('term, 'rhs) tree =
           the next switch is to be done. *)
       ; store : bool
       (** Whether to store the current term. Stored terms might be used in the
-          right hand side. *)
+          right hand side, are for constraint checks. *)
       ; children : ('term, 'rhs) tree TCMap.t
       (** Subtrees representing the matching of available constructors. *)
       ; abstraction : ('term Bindlib.var * ('term, 'rhs) tree) option
@@ -111,7 +118,9 @@ let rec tree_capacity : ('t, 'r) tree -> int = fun tr ->
       if store then c + 1 else c
 
 (** A tree with its capacity and as lazy structures.  For the definition of
-    the capacity, see {!val:capacity}. *)
+    the capacity, see {!val:capacity}.  Laziness allows to (sometimes) avoid
+    creating several times the same trees when the rules are not given in one
+    go. *)
 type ('term, 'rhs) dtree = int Lazy.t * ('term, 'rhs) tree Lazy.t
 
 (** [empty_dtree] is the empty decision tree. *)
