@@ -3,7 +3,7 @@
     This module handles the compilation of rewriting rules to “decision trees”
     based on the method described by Luc Maranget.
 
-    @see <https://doi.org/10.1145/1411304.1411311> *)
+    @see <https://dblp.uni-trier.de/rec/html/conf/ml/Maranget08> *)
 
 open Timed
 open Extra
