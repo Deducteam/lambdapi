@@ -41,7 +41,9 @@ module TCMap = Map.Make(TC)
 (** Representation of a branching conditions. *)
 type 'term tree_cond =
   | CondNL of int * int
-  (** Are the terms at the given indices convertible? *)
+  (** Are the terms at the given indices convertible? We enforce the invariant
+      that the first element is a point of reference, which appears in all the
+      convertibility conditions involving a given non-linear variable. *)
   | CondFV of 'term Bindlib.var array * int
   (** Are the bound variables (which are free at the time of the checking) of
       the term at the given index in the array? *)

@@ -143,9 +143,8 @@ module CP = struct
       slot [slot] and the term stored in the reference slot. *)
   let register_nl : int -> int -> t -> t = fun slot i pool ->
     try
-      (* We obtain the reference slot (if any). *)
-      let r_slot = IntMap.find i pool.variables in
-      let cond = if r_slot < slot then (r_slot, slot) else (slot, r_slot) in
+      (* We build a new condition if there is already a point of reference. *)
+      let cond = (IntMap.find i pool.variables, slot) in
       { pool with nl_conds = PSet.add cond pool.nl_conds }
     with Not_found ->
       (* First occurence of [i], register the slot as a point of reference. *)
@@ -165,7 +164,7 @@ module CP = struct
       in the pool [pool]. *)
   let is_contained : tree_cond -> t -> bool = fun cond pool ->
     match cond with
-    | CondNL(i,j) -> PSet.mem (if i < j then (i,j) else (j,i)) pool.nl_conds
+    | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
     | CondFV(x,i) ->
         try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv_conds)
         with Not_found -> false
@@ -173,15 +172,12 @@ module CP = struct
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
-    | CondNL(i,j)  ->
-        let cond = if i < j then (i, j) else (j, i) in
-        {pool with nl_conds = PSet.remove cond pool.nl_conds}
+    | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
     | CondFV(xs,i) ->
         try
           let ys = IntMap.find i pool.fv_conds in
-          let eq = Array.equal Bindlib.eq_vars xs ys in
-          if eq then {pool with fv_conds = IntMap.remove i pool.fv_conds}
-          else pool
+          if not (Array.equal Bindlib.eq_vars xs ys) then pool
+          else {pool with fv_conds = IntMap.remove i pool.fv_conds}
         with Not_found -> pool
 
   (** [choose pools] selects a condition to check in the pools of [pools]. The
@@ -209,23 +205,23 @@ end
 (** {1 Clause matrix and pattern matching problem} *)
 
 (** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
-    (argument [stk] of {!val:Eval.tree_walk}) to provide fast element access
-    (for swaps) as well as fast {!val:Extra.List.destruct} and
-    {!val:Extra.List.reconstruct} (to inspect a particular element, reduce it,
-    and then reinsert it). In practice, the naive representation based on
-    lists is faster than more elaborate solutions, unless there are rules with
-    {e many} arguments.  Alternatives to a list-based implementation would be
-    cat-enable lists / deques, finger trees (Paterson & Hinze) or random
-    access lists. In the current implementation, [destruct e i] has a time
-    complexity of [Θ(i)] and [reconstruct l m r] has a time complexity of
-    [Θ(length l + length m)]. *)
+    (argument [stk] of {!val:Eval.tree_walk}) to have fast element access (for
+    swaps) as well as fast destruction and reconstruction operations (for more
+    information on these operations have a look at  {!val:Extra.List.destruct}
+    and {!val:Extra.List.reconstruct}).  These operations are intuitively used
+    to inspect a particular element, reduce it, and then reinsert it. It seems
+    that in practice,  the naive representation based on lists performs better
+    than more elaborate solutions, unless there are rules with many arguments.
+    Alternatives to a list-based implementation would be cat-enable lists  (or
+    deques), finger trees (Paterson & Hinze) or random access lists.  With the
+    current implementation, [destruct e i] has a time complexity of [Θ(i)] and
+    [reconstruct l m r] has a time complexity of [Θ(length l + length m)]. *)
 
-(** A clause matrix encodes a pattern matching problem.  The clause matrix {i
-    C} can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i
-    A} is a column of {e rhs}.  Each line of a pattern matrix is a pattern to
-    which is attached a rhs.  When reducing a term, if a line filters the
-    term, or equivalently the term matches the pattern, the term is rewritten
-    to the rhs. *)
+(** Clause matrices encode pattern matching problems.  The clause matrix {i C}
+    can be denoted {i C = P → A} where {i P} is a {e pattern matrix} and {i A}
+    is a column of {e RHS}.  Each line of a matrix is a pattern to which a RHS
+    is attached. When reducing a term,  if a line filters the term  (i.e., the
+    term matches the pattern) then term is rewritten to the RHS. *)
 module CM = struct
   (** Representation of a subterm in argument position in a pattern. *)
   type arg =
@@ -242,22 +238,20 @@ module CM = struct
       [0] index is used when going under abstractions. In that case, the field
       {!field:arg_rank} is incremented. *)
 
-  (** Data needed to bind terms from the lhs into the rhs. An element
-      [(sv, (se, xs))] indicates that slot [sv] of the [vars] array will be
-      bound into slot [se] of the environment using free variables [xs]. *)
+  (** Data used to effectively apply a rule (i.e., substitute terms matching a
+      variable of the LHS into the RHS). An element [(sv, (se, xs))] indicates
+      that slot [sv] of the [vars] array should be bound at index [se], in the
+      environment using free variables [xs]. *)
   type env_builder = (int * (int * term Bindlib.mvar)) list
 
-  (** A row of a clause matrix, composed of a lhs, a rhs, a pool of conditions
-      and some auxiliary data, can be schematized as
-      [c_lhs → c_rhs if cond_pool] *)
+  (** A clause matrix row (schematically {i c_lhs → c_rhs if cond_pool}). *)
   type clause =
     { c_lhs : term array
     (** Left hand side of a rule. *)
     ; c_rhs : rhs
     (** Right hand side of a rule. *)
     ; env_builder : env_builder
-    (** Data needed to build the substitution from terms matched by the lhs to
-        the rhs. *)
+    (** Data required to apply the rule. *)
     ; cond_pool : CP.t
     (** Condition pool with convertibility and free variable constraints. *) }
 
@@ -268,27 +262,27 @@ module CM = struct
     ; slot : int
     (** Index of next slot to use in [vars] array to store variables. *)
     ; positions : arg list
-    (** Positions of the elements of the matrix in the initial term.  We rely
-        on the order relation used in sets. *) }
+    (** Positions of the elements of the matrix in the initial term. Note that
+        we rely on the order relation used in sets. *) }
 
-  (** Available operations on clause matrices.  Each operation is an
-      evaluation decision. *)
+  (** Available operations on clause matrices.  Every operation corresponds to
+      decision made during evaluation. *)
   type decision =
     | Yield of clause
-    (** Rewrite to a rhs when a lhs filters the input. *)
+    (** Rewrite to a RHS when a LHS filters the input. *)
     | Check_stack
     (** Check whether the stack is empty (used to handle multiple arities with
         the {!val:rule_order} set). *)
     | Specialise of int
-    (** Further specialise the matrix against constructors on a given
-        column. *)
+    (** Specialise the matrix against constructors on a given column. *)
     | Condition of tree_cond
-    (** [CondNL(c, s)] indicates a non-linearity constraint on column [c] with
-        respect to slot [s]. [CondFV(vs, i)] says that the free variables of
-        the matched term should be among [vs]. *)
+    (** Binary decision on the result of the test of a condition.  A condition
+        [CondNL(c, s)] indicates a non-linearity constraint on column [c] with
+        respect to slot [s]. A condition [CondFV(vs, i)] corresponds to a free
+        variable condition: only variables of [vs] are in the matched term. *)
 
-  (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o].  If
-      [pp_cond] is true, writes the condition pools as well. *)
+  (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o]. The flag
+      [pp_cond] indicates whether the condition pull should be printed. *)
   let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
       Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
@@ -315,9 +309,8 @@ module CM = struct
       end;
     out "### Matrix end   ###@]@."
 
-  (** [is_treecons t] returns whether the term [t] corresponds to a
-      constructor (see {!type:Tree_types.TC.t}) against which a specialisation
-      can be carried out. *)
+  (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
+      {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
     | Patt(_, _, _) -> false
@@ -326,8 +319,7 @@ module CM = struct
     | Symb(_, _)    -> true
     | _             -> assert false
 
-  (** [of_rules r] transforms a set of rewriting rules into a clause matrix
-      rules. *)
+  (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
     let r2r {lhs; rhs; _} =
       let c_lhs = Array.of_list lhs in
@@ -351,7 +343,7 @@ module CM = struct
   let get_col : int -> t -> term list = fun ind m ->
     List.map (fun {c_lhs ; _} -> c_lhs.(ind)) m.clauses
 
-  (** [score c] returns the score heuristic for column [c].  The score is the
+  (** [score c] returns the score heuristic for column [c].  This score is the
       number of tree constructors divided by the number of conditions. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
@@ -365,14 +357,13 @@ module CM = struct
     float_of_int nc /. (float_of_int ns)
 
   (** [pick_best_among m c] returns the index of the best column of matrix [m]
-      among columns [c].  "Best" in the sense of the heuristic implemented in
-      {!val:score}. *)
+      among columns [c]. Here, we mean "best" in the sense of {!val:score}. *)
   let pick_best_among : t -> int array -> int = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
     Array.max_index ~cmp:(Pervasives.compare) scores
 
-  (** [can_switch_on r k] returns whether a switch can be carried out on
-      column [k] of list of clauses [r]. *)
+  (** [can_switch_on r k] tells whether we can switch on column [k] of list of
+      clauses [r]. *)
   let can_switch_on : clause list -> int -> bool = fun  clauses k ->
     List.for_all (fun r -> Array.length r.c_lhs >= k + 1) clauses &&
     List.exists (fun r -> is_treecons r.c_lhs.(k)) clauses
@@ -394,8 +385,8 @@ module CM = struct
     let kept = discard_cons_free m.clauses in
     if kept = [||] then None else Some(kept.(pick_best_among m kept))
 
-  (** [is_exhausted p c] returns whether clause [r] whose terms are at
-      positions in [p] can be applied or not. *)
+  (** [is_exhausted p c] tells whether clause [r] whose terms are at positions
+      in [p] can be applied or not. *)
   let is_exhausted : arg list -> clause -> bool =
     fun positions {c_lhs = lhs ; cond_pool ; _} ->
     let nonl lhs =
@@ -506,7 +497,7 @@ module CM = struct
         { r with env_builder ; cond_pool }
     | _             -> r
 
-  (** [specialize pat col pos cl] filters and transforms lhs of [cl] assuming
+  (** [specialize pat col pos cl] filters and transforms LHS of [cl] assuming
       a matching on pattern [pat] on column [col], with [pos] being the
       position of arguments in clauses. *)
   let specialize : term -> int -> arg list -> clause list ->
@@ -612,8 +603,8 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest l r e s] exhausts linearly the lhs [l] composed only of pattern
-    variables with no constraints, to yield a leaf with rhs [r], environment
+(** [harvest l r e s] exhausts linearly the LHS [l] composed only of pattern
+    variables with no constraints, to yield a leaf with RHS [r], environment
     builder [e] completed. *)
 let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     fun lhs rhs env_builder slot ->
@@ -637,7 +628,7 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     designed to be used in the reduction process, in function
     {!val:Eval.tree_walk}.  The purpose of the trees is to
     - declare efficiently whether the input term (during evaluation) matches
-      some lhs from the orginal rules (the one from which the tree is built);
+      some LHS from the orginal rules (the one from which the tree is built);
     - build a substitution mapping some (sub) terms of the input term to the
       rewritten term.
 
@@ -646,12 +637,12 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     having (as head structure) symbol [s] will be accepted.
 
     The second bullet is managed by the environment builder of type
-    {!type:CM.env_builder}.  If a lhs contains a named pattern variable, then
-    it is used in the rhs.  To do that, the term is saved into an array of
+    {!type:CM.env_builder}.  If a LHS contains a named pattern variable, then
+    it is used in the RHS.  To do that, the term is saved into an array of
     terms [vars].  When the leaf is reached, the terms from that array are
-    copied into the rhs.  The instructions to save terms are in the field
+    copied into the RHS.  The instructions to save terms are in the field
     {!field:CM.store}.  The instructions to copy adequately terms from [vars]
-    to the rhs are in an environment builder (of type
+    to the RHS are in an environment builder (of type
     {!type:CM.env_builder}). *)
 
 (** [compile m] translates the pattern matching problem encoded by the matrix
