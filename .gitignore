@@ -16,3 +16,5 @@ libraries/verine
 libraries/zenon_modulo
 .merlin
 *.install
+*.gv
+*.png

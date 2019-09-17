@@ -89,6 +89,12 @@ let spec =
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
+    ; ( "--write-trees"
+      , Arg.Set Handle.write_trees
+      , " Write decision trees to \".gv\" files" )
+    ; ( "--keep-rule-order"
+      , Arg.Set Tree.rule_order
+      , " Respect the order of definition of the rewriting rules" )
     ; ( "--too-long"
       , Arg.Float ((:=) Handle.too_long)
       , "<float> Duration considered too long for a command" )

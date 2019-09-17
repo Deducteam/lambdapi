@@ -32,27 +32,11 @@ let log_eval = log_eval.logger
 let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
 let log_eqmd = log_eqmd.logger
 
-(** Representation of a single stack element (see {!type:stack}). Note that we
-    use a references to allow a form of lazy evaluation when matching patterns
-    (see {!val:matching}). The boolean tells whether a particular argument has
-    already been normalized (to weak head normal form).  Note that an argument
-    (i.e., an element of the stack) does not need to be evaluated when machted
-    against a wildcard or a pattern variable. *)
-type stack_elt = (bool * term) Pervasives.ref
-
-(** Representation of a stack for the abstract machine used for evaluation. *)
-type stack = stack_elt list
-
-(** [to_term t stk] builds a term from an abstract machine state [(t,stk)]. *)
-let to_term : term -> stack -> term = fun t args ->
-  let rec to_term t args =
-    match args with
-    | []      -> t
-    | u::args -> to_term (Appl(t,snd Pervasives.(!u))) args
-  in to_term t args
-
-(** Evaluation step counter. *)
+(** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
+
+(** Abstract machine stack. *)
+type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
@@ -60,21 +44,21 @@ let rec whnf_beta : term -> term = fun t ->
   let s = Pervasives.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_beta_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
-   applied to the argument list (or stack) [stk]. Note that the normalisation
-   is done in the sense of [whnf]. *)
+    applied to the argument list (or stack) [stk]. Note that the normalisation
+    is done in the sense of [whnf]. *)
 and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk    ) ->
-      whnf_beta_stk f (Pervasives.ref (false, u) :: stk)
+      whnf_beta_stk f (u :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) ->
       Pervasives.incr steps;
-      whnf_beta_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
+      whnf_beta_stk (Bindlib.subst f u) stk
   (* In head beta normal form. *)
   | (_        , _      ) -> st
 
@@ -91,101 +75,35 @@ let rec whnf : term -> term = fun t ->
   let s = Pervasives.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then to_term u stk else t
+  if Pervasives.(!steps) <> s then add_args u stk else t
 
-(** [whnf_stk t stk] computes the weak head normal form of  [t] applied to the
-    argument list (or stack) [stk]. Note that the normalisation is done in the
-    sense of [whnf]. *)
+(** [whnf_stk t k] computes the weak head normal form of [t] applied to
+    stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
 and whnf_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
-  | (Appl(f,u), stk    ) ->
-      whnf_stk f (Pervasives.ref (false, u) :: stk)
+  | (Appl(f,u), stk   ) ->
+      whnf_stk f (appl_to_tref u::stk)
   (* Beta reduction. *)
-  | (Abst(_,f), u::stk ) ->
+  | (Abst(_,f), u::stk) ->
       Pervasives.incr steps;
-      whnf_stk (Bindlib.subst f (snd Pervasives.(!u))) stk
+      whnf_stk (Bindlib.subst f u) stk
   (* Try to rewrite. *)
-  | (Symb(s,_), stk    ) ->
+  | (Symb(s,_), stk   ) ->
       begin
-        match Timed.(!(s.sym_def)) with
-        | Some(t) -> Pervasives.incr steps; whnf_stk t stk
-        | None    ->
-        match find_rule s stk with
-        | None        -> st
-        | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
+      (* First check for symbol definition. *)
+      match !(s.sym_def) with
+      | Some(t) -> Pervasives.incr steps; whnf_stk t stk
+      | None    ->
+      (* Otherwise try rewriting using decision tree. *)
+      match tree_walk !(s.sym_tree) stk with
+      (* If no rule is found, return the original term *)
+      | None        -> st
+      | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
       end
   (* In head normal form. *)
-  | (_        , _      ) -> st
-
-(** [find_rule s stk] attempts to find a reduction rule of [s], that may apply
-    under the stack [stk]. If such a rule is found, the machine state produced
-    by its application is returned. *)
-and find_rule : sym -> stack -> (term * stack) option = fun s stk ->
-  let stk_len = List.length stk in
-  let match_rule r =
-    (* First check that we have enough arguments. *)
-    if r.arity > stk_len then None else
-    (* Substitute the left-hand side of [r] with pattern variables *)
-    let ar = Array.make (Bindlib.mbinder_arity r.rhs) TE_None in
-    (* Match each argument of the lhs with the terms in the stack. *)
-    let rec match_args ps ts =
-      match (ps, ts) with
-      | ([]   , _    ) -> Some(Bindlib.msubst r.rhs ar, ts)
-      | (p::ps, t::ts) -> if matching ar p t then match_args ps ts else None
-      | (_    , _    ) -> assert false (* cannot happen *)
-    in
-    match_args r.lhs stk
-  in
-  List.map_find match_rule Timed.(!(s.sym_rules))
-
-(** [matching ar p t] checks that term [t] matches pattern [p]. The values for
-    pattern variables (using the [ITag] node) are stored in [ar], at the index
-    they denote. In case several different values are found for a same pattern
-    variable, equality modulo is computed to check compatibility. *)
-and matching : term_env array -> term -> stack_elt -> bool = fun ar p t ->
-  if !log_enabled then
-    log_eval "[%a] =~= [%a]" pp p pp (snd (Pervasives.(!t)));
-  let res =
-    (* First handle patterns that do not need the evaluated term. *)
-    match p with
-    | Patt(Some(i),_,[||]) when ar.(i) = TE_None ->
-        let fn _ = snd Pervasives.(!t) in
-        let b = Bindlib.raw_mbinder [||] [||] 0 mkfree fn in
-        ar.(i) <- TE_Some(b);
-        true
-    | Patt(Some(i),_,e   ) when ar.(i) = TE_None ->
-        let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        let res = Bindlib.is_closed b in
-        if res then ar.(i) <- TE_Some(Bindlib.unbox b);
-        res
-    | Patt(None   ,_,[||]) -> true
-    | Patt(None   ,_,e   ) ->
-        let vs = Array.map to_tvar e in
-        let b = Bindlib.bind_mvar vs (lift (snd Pervasives.(!t))) in
-        Bindlib.is_closed b
-    | _                                 ->
-    (* Other cases need the term to be evaluated. *)
-    if not (fst Pervasives.(!t)) then Pervasives.(t := (true, whnf (snd !t)));
-    match (p, snd Pervasives.(!t)) with
-    | (Patt(Some(i),_,e), t            ) -> (* ar.(i) <> TE_None *)
-        let b = match ar.(i) with TE_Some(b) -> b | _ -> assert false in
-        eq_modulo (Bindlib.msubst b e) t
-    | (Abst(_,t1)       , Abst(_,t2)   ) ->
-        let (_,t1,t2) = Bindlib.unbind2 t1 t2 in
-        matching ar t1 (Pervasives.ref (false, t2))
-    | (Appl(t1,u1)      , Appl(t2,u2)  ) ->
-        matching ar t1 (Pervasives.ref (fst Pervasives.(!t), t2))
-        && matching ar u1 (Pervasives.ref (false, u2))
-    | (Vari(x1)         , Vari(x2)     ) -> Bindlib.eq_vars x1 x2
-    | (Symb(s1,_)       , Symb(s2,_)   ) -> s1 == s2
-    | (_                , _            ) -> false
-  in
-  if !log_enabled then
-    log_eval (r_or_g res "[%a] =~= [%a]") pp p pp (snd Pervasives.(!t));
-  res
+  | (_         , _    ) -> st
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
@@ -218,23 +136,150 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
 
-(** [whnf t] computes a weak head-normal form of [t]. *)
-let whnf : term -> term = fun t ->
-  Pervasives.(steps := 0);
-  let t = unfold t in
-  let u = whnf t in
-  if Pervasives.(!steps = 0) then t else u
+(** {b NOTE} that matching with trees involves three collections of terms.
+    1. The argument stack [stk] of type {!type:stack} which contains the terms
+       that are matched against the decision tree.
+    2. An array [vars] of variables that are used for non-linearity checks and
+       free variable checks, or that are used in the RHS.
+    3. A mapping [fresh_vars] from (free) variables to (free) variables, which
+       is used to avoid reentrancy issues.
 
-(** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : term -> term = fun t ->
-  match get_args (whnf_beta t) with
-  | Prod(a,b), _ ->
-     let x,b = Bindlib.unbind b in
-     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
-  | h, ts -> add_args h (List.map whnf_beta ts)
+    The [bound] array is similar to the [vars] array except that it is used to
+    save terms with free variables. *)
+
+(** [tree_walk tree stk] tries to apply a rewriting rule by matching the stack
+    [stk] agains the decision tree [tree]. The resulting state of the abstract
+    machine is returned in case of success. Even if mathching fails, the stack
+    [stk] may be imperatively updated: any reduction step taken in elements of
+    the stack is preserved (this is done using {!constructor:TRef}). *)
+and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
+  let (lazy capacity, lazy tree) = tree in
+  let vars = Array.make capacity Kind in (* dummy terms *)
+  let bound = Array.make capacity TE_None in
+  (* [walk t s c m] where [s] is the stack of terms to match and [c] the
+     cursor indicating where to write in the [env] array described in
+     {!module:Terms} as the environment of the RHS during matching.  [m]
+     maps the free variables contained in the tree to the free variables
+     used in this evaluation. *)
+  let rec walk tree stk cursor fresh_vars =
+    let open Tree_types in
+    match tree with
+    | Fail                                                -> None
+    | Leaf(env_builder, act)                              ->
+        (* Allocate an environment for the action. *)
+        let env = Array.make (Bindlib.mbinder_arity act) TE_None in
+        (* Retrieve terms needed in the action from the [vars] array. *)
+        let fn (pos, (slot, xs)) =
+          match bound.(pos) with
+          | TE_Vari(_) -> assert false
+          | TE_Some(_) -> env.(slot) <- bound.(pos)
+          | TE_None    ->
+              if Array.length xs = 0 then
+                let t = unfold vars.(pos) in
+                let b = Bindlib.raw_mbinder [||] [||] 0 mkfree (fun _ -> t) in
+                env.(slot) <- TE_Some(b)
+              else
+                let b = lift vars.(pos) in
+                let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+                env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
+        in
+        List.iter fn env_builder;
+        (* Actually perform the action. *)
+        Some(Bindlib.msubst act env, stk)
+    | Cond({ ok ; cond ; fail })                          ->
+        let next =
+          match cond with
+          | CondNL(i, j) ->
+              if eq_modulo vars.(i) vars.(j) then ok else fail
+          | CondFV(xs,i) ->
+              let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+              (* We first attempt to match [vars.(i)] directly. *)
+              let b = Bindlib.bind_mvar xs (lift vars.(i)) in
+              let fn _ x = not (Bindlib.occur x b) in
+              let r = VarMap.for_all fn fresh_vars in
+              if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              (* As a last resort we try matching the SNF. *)
+              let b = Bindlib.bind_mvar xs (lift (snf vars.(i))) in
+              let fn _ x = not (Bindlib.occur x b) in
+              let r = VarMap.for_all fn fresh_vars in
+              if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else fail
+        in
+        walk next stk cursor fresh_vars
+    | Eos(l, r)                                           ->
+        let next = if stk = [] then l else r in
+        walk next stk cursor fresh_vars
+    | Node({swap; children; store; abstraction; default}) ->
+        match List.destruct stk swap with
+        | exception Not_found     -> None
+        | (left, examined, right) ->
+        if TCMap.is_empty children && abstraction = None then
+          let fn t =
+            let cursor =
+              if store then (vars.(cursor) <- examined; cursor + 1)
+              else cursor
+            in
+            walk t (List.reconstruct left [] right) cursor fresh_vars
+          in
+          Option.map_default fn None default
+        else
+          let s = Pervasives.(!steps) in
+          let (t, args) = whnf_stk examined [] in
+          let args = if store then List.map appl_to_tref args else args in
+          (* Introduce sharing on arguments *)
+          if Pervasives.(!steps) <> s then
+            begin
+              match examined with
+              | TRef(v) -> v := Some(add_args t args)
+              | _       -> ()
+            end;
+          let cursor =
+            if store then (vars.(cursor) <- add_args t args; cursor + 1)
+            else cursor
+          in
+          let default () =
+            let fn d =
+              let stk = List.reconstruct left [] right in
+              walk d stk cursor fresh_vars
+            in
+            Option.map_default fn None default
+          in
+          match t with
+          | Symb(s, _) ->
+              let cons = TC.Symb(List.length args, s.sym_name, s.sym_path) in
+              begin
+                try
+                  let matched = TCMap.find cons children in
+                  let stk = List.reconstruct left args right in
+                  walk matched stk cursor fresh_vars
+                with Not_found -> default ()
+              end
+          | Vari(x)    ->
+              let cons = TC.Vari(Bindlib.name_of x) in
+              begin
+                try
+                  let matched = TCMap.find cons children in
+                  let stk = List.reconstruct left args right in
+                  walk matched stk cursor fresh_vars
+                with Not_found -> default ()
+              end
+          | Abst(_, b) ->
+              begin
+                match abstraction with
+                | None         -> default ()
+                | Some(fv, tr) ->
+                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
+                    let bound = Bindlib.subst b (mkfree nfv) in
+                    let u = bound :: args in
+                    let fresh_vars = VarMap.add fv nfv fresh_vars in
+                    walk tr (List.reconstruct left u right) cursor fresh_vars
+              end
+          | Meta(_, _) -> default ()
+          | _          -> assert false
+  in
+  walk tree stk 0 VarMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
-let rec snf : term -> term = fun t ->
+and snf : term -> term = fun t ->
   let h = whnf t in
   match h with
   | Vari(_)     -> h
@@ -257,6 +302,21 @@ let rec snf : term -> term = fun t ->
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
   | TRef(_)     -> assert false
+
+(** [whnf t] computes a weak head-normal form of [t]. *)
+let whnf : term -> term = fun t ->
+  Pervasives.(steps := 0);
+  let t = unfold t in
+  let u = whnf t in
+  if Pervasives.(!steps = 0) then t else u
+
+(** [simplify t] reduces simple redexes of [t]. *)
+let rec simplify : term -> term = fun t ->
+  match get_args (whnf_beta t) with
+  | Prod(a,b), _ ->
+     let x,b = Bindlib.unbind b in
+     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
+  | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
 let rec hnf : term -> term = fun t ->

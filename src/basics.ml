@@ -34,6 +34,12 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
+(** [sensible_tref t] transforms {!constructor:Appl} into references. *)
+let appl_to_tref : term -> term = fun t ->
+  match t with
+  | Appl(_,_) as t -> TRef(ref (Some t))
+  | t              -> t
+
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->
@@ -50,6 +56,16 @@ let get_args : term -> term * term list = fun t ->
     | Appl(t,u) -> get_args (u::acc) t
     | t         -> (t, acc)
   in get_args [] t
+
+(** [get_args_len t] is similar to [get_args t] but it also returns the length
+    of the list of arguments. *)
+let get_args_len : term -> term * term list * int = fun t ->
+  let rec get_args_len acc len t =
+    match unfold t with
+    | Appl(t, u) -> get_args_len (u::acc) (len + 1) t
+    | t          -> (t, acc, len)
+  in
+  get_args_len [] 0 t
 
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
