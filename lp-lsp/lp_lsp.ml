@@ -309,10 +309,10 @@ let get_symbol text l pos =
   LIO.log_error "symbol map" map_pp;
 
   let sym_info =
-    match Extra.StrMap.find_opt sym_target sym with
-    | None
-    | Some (_, None) -> `Null
-    | Some (_, Some pos) -> mk_definfo file pos
+    match Extra.StrMap.find sym_target sym with
+    | exception Not_found -> `Null
+    | (_, None)           -> `Null
+    | (_, Some pos)       -> mk_definfo file pos
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -332,10 +332,10 @@ let hover_symInfo ofmt ~id params =
   LIO.log_error "symbol map" map_pp;
 
   let sym_found = let open Timed in let open Terms in
-    match Extra.StrMap.find_opt sym_target sym with
-    | None -> None
-    | Some (_, None) -> None(*myfail "sym not found"*)
-    | Some (sym, Some _) -> Some !(sym.sym_type)
+    match Extra.StrMap.find sym_target sym with
+    | exception Not_found -> None
+    | (_  , None  )       -> None(*myfail "sym not found"*)
+    | (sym, Some _)       -> Some !(sym.sym_type)
   in let result = match sym_found with
     | None -> `Null
     | Some s -> let sym_type = Format.asprintf "%a" Print.pp_term s  in
