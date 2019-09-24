@@ -1,6 +1,7 @@
 (** This module provides a function to translate a signature to the HRS format
-   used in the confluence competition. @see
-   <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
+    used in the confluence competition.
+
+    @see <http://project-coco.uibk.ac.at/problems/hrs.php>. *)
 
 open Extra
 open Timed

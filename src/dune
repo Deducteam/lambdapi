@@ -2,17 +2,9 @@
  (name core)
  (public_name lambdapi.core)
  (synopsis "LambdaPi interactive theorem prover [core]")
- (modules :standard \ lambdapi pure)
+ (modules :standard \ lambdapi)
  (preprocess (per_module ((action (run pa_ocaml %{input-file})) parser)))
  (libraries unix timed bindlib earley.core))
-
-(library
- (name pure)
- (public_name lambdapi.pure)
- (inline_tests)
- (modules pure)
- (preprocess (pps ppx_inline_test))
- (libraries core))
 
 (executable
  (name lambdapi)

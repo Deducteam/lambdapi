@@ -19,3 +19,5 @@ libraries/zenon_modulo
 .DS_Store
 *.map
 editors/vscode/out/client.js
+*.gv
+*.png

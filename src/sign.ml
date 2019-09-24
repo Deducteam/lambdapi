@@ -22,7 +22,8 @@ type t =
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
-  ; sign_binops   : (sym * binop) StrMap.t ref }
+  ; sign_binops   : (sym * binop) StrMap.t ref
+  ; sign_idents   : StrSet.t ref }
 
 (* NOTE the [deps] field contains a hashtable binding the [module_path] of the
    external modules on which the current signature depends to an association
@@ -32,7 +33,8 @@ type t =
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty }
+  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty
+  ; sign_idents = ref StrSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -122,7 +124,8 @@ let link : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_binops := StrMap.map hn !(sign.sign_binops)
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops) ;
+  StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
     in the signature [sign]. This function is used to minimize the size of our
@@ -131,6 +134,7 @@ let link : t -> unit = fun sign ->
     signature is invalidated in the process. *)
 let unlink : t -> unit = fun sign ->
   let unlink_sym s =
+    s.sym_tree := Tree_types.empty_dtree ;
     if s.sym_path <> sign.sign_path then
       (s.sym_type := Kind; s.sym_rules := [])
   in
@@ -185,7 +189,8 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode }
+    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
+    ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
@@ -286,6 +291,10 @@ let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
     If [op] was previously bound, the previous binding is discarded. *)
 let add_binop : t -> string -> (sym * binop) -> unit = fun sign s sym ->
   sign.sign_binops := StrMap.add s sym !(sign.sign_binops)
+
+(** [add_ident sign id] add the declared identifier [id] to [sign]. *)
+let add_ident : t -> string -> unit = fun sign id ->
+  sign.sign_idents := StrSet.add id !(sign.sign_idents)
 
 (** [dependencies sign] returns an association list containing (the transitive
     closure of) the dependencies of the signature [sign].  Note that the order
