@@ -7,11 +7,11 @@ open Extra
 open Timed
 open Terms
 
-(** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. The name
-    is prefixed by ["c_"], and modules are separated with ["_"], not ["."]. *)
+(** [print_sym oc s] outputs the fully qualified name of [s] to [oc]. Modules
+    are separated with ["."]. *)
 let print_sym : sym pp = fun oc s ->
-  let print_path = List.pp Format.pp_print_string "_" in
-  Format.fprintf oc "c_%a_%s" print_path s.sym_path s.sym_name
+  let print_path = List.pp Format.pp_print_string "." in
+  Format.fprintf oc "%a.%s" print_path s.sym_path s.sym_name
 
 type symb_status = Object_level | Basic_type | Type_cstr
 
@@ -50,14 +50,6 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
      if ts = [||] then out "<var>%s_%i_%s</var>@." s i n else
        print_term i s oc
          (Array.fold_left (fun t u -> Appl(t,u)) (Patt(j,n,[||])) ts)
-  | Appl(Symb(sy,_),_) as t ->
-     let args = snd (Basics.get_args t) in
-     out "<funapp>@.<name>%a</name>@.%a</funapp>@."
-       print_sym sy
-       (fun oc l ->
-         List.iter
-           (fun x -> Format.fprintf oc "<arg>%a</arg>@." (print_term i s) x) l
-       ) args
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                                  (print_term i s) t (print_term i s) u
   | Abst(a,t)               ->
@@ -80,14 +72,6 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   (* Printing of atoms. *)
   | Type                    -> out "<TYPE/>@."
   | Symb(s,_)               -> out "<basic>%a</basic>@." print_sym s
-  | Appl(Symb(sy,_),_) as t ->
-     let args = snd (Basics.get_args t) in
-     out "<funapp>@.<name>%a</name>@.%a</funapp>@."
-       print_sym sy
-       (fun oc l ->
-         List.iter
-           (fun x -> Format.fprintf oc "<arg>%a</arg>@." (print_term i s) x) l
-       ) args
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                       (print_type i s) t (print_term i s) u
   | Abst(a,t)               ->
