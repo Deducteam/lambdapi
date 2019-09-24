@@ -49,6 +49,9 @@ type term =
     the {!constructor:Patt} constructor to represend wildcards of the concrete
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
+(** Representation of a decision tree (used for rewriting). *)
+ and dtree = (term, (term_env, term) Bindlib.mbinder) Tree_types.dtree
+
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
     be enforced for "mode" consistency (see {!type:sym_mode}).  *)
@@ -65,6 +68,8 @@ type term =
   (** Implicitness of the first arguments ([true] meaning implicit). *)
   ; sym_rules : rule list ref
   (** Rewriting rules for the symbol. *)
+  ; sym_tree  : dtree ref
+  (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *) }
 
@@ -287,7 +292,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "[%s]" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const }
+    ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
+    ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
 

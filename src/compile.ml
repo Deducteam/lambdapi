@@ -25,12 +25,14 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
   let base = String.concat "/" path in
   let src =
     let src = base ^ src_extension in
-    let legacy_src = base ^ legacy_src_extension in
-    if Sys.file_exists src then src else legacy_src
+    let legacy = base ^ legacy_src_extension in
+    match (Sys.file_exists src, Sys.file_exists legacy) with
+    | (false, false) -> fatal_no_pos "File [%s.{lp|dk}] not found." base
+    | (true , true ) -> fatal_no_pos "Both [%s] and [%s] exist." src legacy
+    | (true , false) -> src
+    | (false, true ) -> legacy
   in
   let obj = base ^ obj_extension in
-  if not (Sys.file_exists src) then
-    fatal_no_pos "File [%s.{lp|dk}] not found." base;
   if List.mem path !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" src;
@@ -79,13 +81,14 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
    scope by a “require” command. *)
 let _ =
   let require mp =
-    (* We save the current console state. *)
+    (* Save the current console state. *)
     Console.push_state ();
-    (* We restore the console state to default for compiling. *)
+    (* Restore the console state to default for compiling. *)
     Console.reset_default ();
-    (* We compile the required module path in the default state. *)
-    compile false mp;
-    (* We restore the state to its value before the “require”. *)
-    Console.pop_state ()
+    (* Compile and go back to previous state. *)
+    try
+      compile false mp;
+      try Console.pop_state () with _ -> assert false (* Unreachable. *)
+    with e -> Console.pop_state (); raise e
   in
   Pervasives.(Parser.require := require)

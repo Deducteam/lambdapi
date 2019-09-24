@@ -1,0 +1,160 @@
+data Nat = D0 | S Nat
+  deriving (Show, Eq, Ord)
+
+d1 :: Nat
+d2 :: Nat
+d3 :: Nat
+d4 :: Nat
+d5 :: Nat
+d6 :: Nat
+d7 :: Nat
+plus :: Nat -> Nat -> Nat
+langton :: Nat -> Nat -> Nat -> Nat -> Nat -> Nat
+next :: Nat -> Nat -> Nat -> Nat -> Nat -> Nat
+
+d1 = (S D0)
+d2 = (S (S D0))
+d3 = (S (S (S D0)))
+d4 = (S (S (S (S D0))))
+d5 = (S (S (S (S (S D0)))))
+d6 = (S (S (S (S (S (S D0))))))
+d7 = (S (S (S (S (S (S (S D0)))))))
+plus x D0 = x
+plus (S x) y = (S (plus x y))
+plus x (S y) = (S (plus x y))
+langton D0 (S D0) D0 D0 D0 = d2
+langton D0 (S (S (S (S (S (S D0)))))) D0 D0 D0 = d3
+langton D0 (S (S (S (S (S (S (S D0))))))) D0 D0 D0 = d1
+langton D0 x D0 D0 D0 = D0
+langton D0 (S D0) D0 D0 (S D0) = d2
+langton D0 (S (S D0)) D0 D0 (S D0) = d2
+langton D0 (S (S (S D0))) D0 D0 (S D0) = d2
+langton D0 (S D0) D0 D0 (S (S D0)) = d2
+langton D0 (S (S (S (S (S (S D0)))))) D0 D0 (S (S D0)) = d2
+langton D0 (S (S (S (S (S (S (S D0))))))) D0 D0 (S (S D0)) = d2
+langton D0 (S (S D0)) D0 D0 (S (S (S (S (S D0))))) = d5
+langton D0 (S (S D0)) D0 D0 (S (S (S (S (S (S D0)))))) = d2
+langton D0 (S (S D0)) D0 D0 (S (S (S (S (S (S (S D0))))))) = d2
+langton D0 (S (S D0)) D0 (S D0) D0 = d2
+langton D0 (S (S D0)) D0 (S (S D0)) (S D0) = d5
+langton D0 (S (S D0)) D0 (S (S D0)) (S (S (S D0))) = d2
+langton D0 (S (S D0)) D0 (S (S (S (S (S D0))))) (S (S D0)) = d2
+langton (S D0) (S (S D0)) D0 (S (S D0)) (S (S (S D0))) = d1
+langton (S D0) (S (S D0)) D0 (S (S D0)) (S (S (S (S D0)))) = d1
+langton (S D0) (S (S D0)) D0 (S (S D0)) (S (S (S (S (S D0))))) = d5
+langton (S D0) (S (S D0)) D0 (S (S D0)) (S (S (S (S (S (S D0)))))) = d1
+langton (S D0) (S (S D0)) D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d1
+langton (S D0) (S (S (S (S (S D0))))) D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S D0)))) (S (S D0)) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S D0)))) (S (S (S D0))) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S D0)))) (S (S (S (S D0)))) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S D0)))) (S (S (S (S (S (S (S D0))))))) = d1
+langton (S D0) (S (S (S (S (S D0))))) D0 (S (S (S (S (S (S D0)))))) (S (S D0)) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S (S (S (S D0))))))) (S (S D0)) = d1
+langton (S D0) (S (S (S (S (S D0))))) D0 (S (S (S (S (S (S (S D0))))))) (S (S D0)) = d5
+langton (S D0) (S (S D0)) D0 (S (S (S (S (S (S (S D0))))))) (S (S (S (S (S D0))))) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S (S (S (S D0))))))) (S (S (S (S (S (S D0)))))) = d1
+langton (S D0) (S (S D0)) D0 (S (S (S (S (S (S (S D0))))))) (S (S (S (S (S (S (S D0))))))) = d1
+langton (S (S D0)) (S (S (S (S (S (S (S D0))))))) D0 (S (S (S (S (S D0))))) (S (S D0)) = d1
+langton D0 (S (S (S (S (S (S (S D0))))))) (S D0) D0 D0 = d7
+langton D0 (S (S (S (S D0)))) (S D0) D0 (S (S D0)) = d4
+langton D0 (S (S (S (S (S (S (S D0))))))) (S D0) D0 (S (S D0)) = d7
+langton D0 (S (S (S (S D0)))) (S D0) (S D0) (S (S D0)) = d4
+langton D0 (S (S (S (S (S (S (S D0))))))) (S D0) (S D0) (S (S D0)) = d7
+langton D0 (S (S D0)) (S D0) (S (S D0)) D0 = d6
+langton D0 (S (S (S (S D0)))) (S D0) (S (S D0)) (S (S D0)) = d4
+langton D0 (S (S (S (S (S (S D0)))))) (S D0) (S (S D0)) (S (S D0)) = d3
+langton D0 (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) (S (S D0)) = d7
+langton D0 (S (S D0)) (S D0) (S (S D0)) (S (S (S D0))) = d7
+langton D0 (S (S D0)) (S D0) (S (S D0)) (S (S (S (S D0)))) = d4
+langton D0 (S (S D0)) (S D0) (S (S D0)) (S (S (S (S (S (S D0)))))) = d6
+langton D0 (S (S (S (S D0)))) (S D0) (S (S D0)) (S (S (S (S (S (S D0)))))) = d4
+langton D0 (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) (S (S (S (S (S (S D0)))))) = d7
+langton D0 (S D0) (S D0) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = D0
+langton D0 (S (S D0)) (S D0) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d7
+langton D0 (S (S D0)) (S D0) (S (S (S (S (S D0))))) (S (S (S (S D0)))) = d7
+langton (S D0) (S (S (S (S D0)))) (S D0) (S D0) (S (S D0)) = d4
+langton (S D0) (S (S (S (S (S (S (S D0))))))) (S D0) (S D0) (S (S D0)) = d7
+langton (S D0) (S (S D0)) (S D0) (S D0) (S (S (S (S (S D0))))) = d2
+langton (S D0) (S (S (S (S D0)))) (S D0) (S (S D0)) (S (S D0)) = d4
+langton (S D0) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) (S (S D0)) = d7
+langton (S D0) (S (S D0)) (S D0) (S (S D0)) (S (S (S (S D0)))) = d4
+langton (S D0) (S (S D0)) (S D0) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d7
+langton (S (S D0)) (S (S (S (S D0)))) (S D0) (S (S D0)) (S (S D0)) = d4
+langton (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) (S (S D0)) = d7
+langton (S (S D0)) (S (S (S D0))) (S D0) (S (S D0)) (S (S (S (S D0)))) = d4
+langton (S (S D0)) (S (S (S (S D0)))) (S D0) (S (S D0)) (S (S (S (S (S D0))))) = d7
+langton (S (S D0)) (S (S (S (S D0)))) (S D0) (S (S (S D0))) (S (S D0)) = d4
+langton (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S (S D0))) (S (S D0)) = d7
+langton (S (S D0)) (S (S (S (S (S D0))))) (S D0) (S (S (S (S D0)))) (S (S D0)) = d5
+langton (S (S D0)) (S (S (S (S (S (S D0)))))) (S D0) (S (S (S (S D0)))) (S (S D0)) = d7
+langton (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S (S (S (S D0))))) (S (S D0)) = d5
+langton D0 (S (S (S (S (S (S (S D0))))))) (S (S D0)) D0 D0 = d1
+langton D0 (S (S (S (S (S D0))))) (S (S D0)) D0 (S (S D0)) = D0
+langton D0 (S (S D0)) (S (S D0)) D0 (S (S (S D0))) = d6
+langton D0 (S (S D0)) (S (S D0)) D0 (S (S (S (S D0)))) = d3
+langton D0 (S D0) (S (S D0)) D0 (S (S (S (S (S D0))))) = d7
+langton D0 (S (S (S (S (S (S (S D0))))))) (S (S D0)) D0 (S (S (S (S (S D0))))) = d5
+langton D0 (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S D0)) D0 = d3
+langton D0 (S (S D0)) (S (S D0)) (S (S D0)) (S (S (S D0))) = d1
+langton D0 (S (S D0)) (S (S D0)) (S (S D0)) (S (S (S (S (S D0))))) = D0
+langton D0 (S D0) (S (S D0)) (S (S (S D0))) (S (S D0)) = d6
+langton D0 (S (S D0)) (S (S D0)) (S (S (S D0))) (S (S D0)) = d6
+langton D0 (S (S D0)) (S (S D0)) (S (S (S (S (S D0))))) (S (S (S (S (S D0))))) = d1
+langton D0 (S (S D0)) (S (S D0)) (S (S (S (S (S D0))))) (S (S (S (S (S (S (S D0))))))) = d5
+langton (S D0) (S (S (S (S (S (S D0)))))) (S (S D0)) (S D0) (S (S D0)) = d1
+langton D0 (S (S D0)) (S (S (S D0))) D0 D0 = d2
+langton D0 (S (S (S (S D0)))) (S (S (S D0))) D0 D0 = d1
+langton D0 (S (S (S (S (S (S (S D0))))))) (S (S (S D0))) D0 D0 = d6
+langton D0 (S (S D0)) (S (S (S D0))) D0 (S (S (S (S D0)))) = d1
+langton D0 (S (S D0)) (S (S (S D0))) D0 (S (S (S (S (S (S D0)))))) = d2
+langton D0 (S (S D0)) (S (S (S D0))) (S D0) D0 = d1
+langton D0 (S (S D0)) (S (S (S D0))) (S D0) (S (S D0)) = D0
+langton D0 (S D0) (S (S (S D0))) (S (S D0)) (S (S (S (S (S D0))))) = d1
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S D0) (S D0) = D0
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S D0) (S (S D0)) = D0
+langton D0 (S (S (S (S (S D0))))) (S (S (S (S D0)))) (S D0) (S (S D0)) = D0
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S (S D0)) (S D0) = D0
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S (S D0)) (S (S D0)) = d1
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S (S D0)) (S (S (S D0))) = d6
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S (S D0)) (S (S (S (S (S D0))))) = D0
+langton D0 (S (S D0)) (S (S (S (S D0)))) (S (S (S D0))) (S (S D0)) = d1
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) D0 D0 = d2
+langton D0 (S (S (S D0))) (S (S (S (S (S D0))))) D0 (S (S D0)) = d2
+langton D0 (S (S (S (S (S (S (S D0))))))) (S (S (S (S (S D0))))) D0 (S (S D0)) = d2
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) D0 (S (S (S (S (S D0))))) = D0
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) D0 = d2
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S D0) = d2
+langton D0 (S (S (S (S (S D0))))) (S (S (S (S (S D0))))) (S (S D0)) (S D0) = d2
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S (S D0)) = D0
+langton D0 (S (S (S (S D0)))) (S (S (S (S (S D0))))) (S (S D0)) (S (S D0)) = d4
+langton D0 (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d2
+langton (S D0) (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S D0) = d2
+langton (S D0) (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S (S D0)) = D0
+langton (S D0) (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S (S (S (S D0)))) = d2
+langton (S D0) (S (S D0)) (S (S (S (S (S D0))))) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = d2
+langton D0 (S D0) (S (S (S (S (S (S D0)))))) D0 D0 = d1
+langton D0 (S (S D0)) (S (S (S (S (S (S D0)))))) D0 D0 = d1
+langton D0 (S (S D0)) (S (S (S (S (S (S D0)))))) (S (S D0)) (S D0) = D0
+langton (S D0) (S (S D0)) (S (S (S (S (S (S D0)))))) (S (S D0)) (S D0) = d5
+langton (S D0) (S (S (S D0))) (S (S (S (S (S (S D0)))))) (S (S D0)) (S D0) = d1
+langton (S D0) (S (S D0)) (S (S (S (S (S (S D0)))))) (S (S D0)) (S (S D0)) = d5
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S D0) (S D0) = D0
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) = D0
+langton D0 (S (S (S (S (S D0))))) (S (S (S (S (S (S (S D0))))))) (S D0) (S (S D0)) = D0
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S D0) = D0
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S D0)) = d1
+langton D0 (S (S (S (S (S D0))))) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S D0)) = d1
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S (S D0))) = d1
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S (S (S (S D0))))) = d5
+langton D0 (S (S D0)) (S (S (S (S (S (S (S D0))))))) (S (S D0)) (S (S (S (S (S (S (S D0))))))) = D0
+langton v w x y z = x
+next v w y z (S x) = (plus (langton v w y z (S x)) (next v w y z x))
+next v w y (S x) D0 = (plus (langton v w y (S x) D0) (next v w y x d7))
+next v w (S x) D0 D0 = (plus (langton v w (S x) D0 D0) (next v w x d7 d7))
+next y (S x) D0 D0 D0 = (plus (langton y (S x) D0 D0 D0) (next y x d7 d7 d7))
+next (S x) D0 D0 D0 D0 = (plus (langton (S x) D0 D0 D0 D0) (next x d7 d7 d7 d7))
+next D0 D0 D0 D0 D0 = (langton D0 D0 D0 D0 D0)
+
+main = do
+ print (next d6 d6 d6 d6 d6)

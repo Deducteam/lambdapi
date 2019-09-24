@@ -37,14 +37,13 @@ let to_abst : env -> tbox -> term = fun env t ->
   Bindlib.unbox (List.fold_left fn t env)
 
 (** [vars env] extracts the array of the Bindlib variables in [env]. Note that
-   the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]. *)
+    the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let vars : env -> tvar array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_)) -> x) env)
 
-(** [to_term env] extracts the array of the Bindlib variables in [env] and
-   inject them in the [tbox] type. This is the same as [Array.map _Vari (vars
-   env)]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
-   [|x1;..;xn|]. *)
+(** [to_term env] extracts the array of the variables in [env] and inject them
+    in the [tbox] type. This is the same as [Array.map _Vari (vars env)]. Note
+    that the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let to_tbox : env -> tbox array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env)
 

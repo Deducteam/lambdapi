@@ -117,31 +117,31 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
    (infer ctx t) c]. We however provide some more efficient
    code when [t] is an abstraction, as witnessed by 'make holide':
 
-   Finished in 3:57.79 at 99% with 3179880Kb of RAM
+   Finished in 3:56.61 at 99% with 3180096Kb of RAM
 
-   Finished in 3:39.76 at 99% with 2720708Kb of RAM
+   Finished in 3:46.13 at 99% with 2724844Kb of RAM
 
    This avoids to build a product to destructure it just after. *)
 and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
   match unfold t with
-  | Abst(a,t)   ->
-      (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
-         ----------------------------------------------------
+  (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
+      ----------------------------------------------------
                          ctx ⊢ Abst(a,t) ⇐ c                   *)
-      begin
-        (* We (hopefully) evaluate [c] to a product, and get its body. *)
-        let b =
-          let c = Eval.whnf c in
-          match c with
-          | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
-          | _         -> (* Generate product type with codomain [a]. *)
-              let b = make_meta_codomain ctx a in
-              conv c (Prod(a,b)); b
-        in
-        (* We type-check the body with the codomain. *)
-        let (x,t,ctx') = Ctxt.unbind ctx a t in
-        check ctx' t (Bindlib.subst b (Vari(x)))
-      end
+  | Abst(a,t)   ->
+      (* We ensure that [a] is of type [Type]. *)
+      check ctx a Type;
+      (* We (hopefully) evaluate [c] to a product, and get its body. *)
+      let b =
+        let c = Eval.whnf c in
+        match c with
+        | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
+        | _         -> (* Generate product type with codomain [a]. *)
+           let b = make_meta_codomain ctx a in
+           conv c (Prod(a,b)); b
+      in
+      (* We type-check the body with the codomain. *)
+      let (x,t,ctx') = Ctxt.unbind ctx a t in
+      check ctx' t (Bindlib.subst b (Vari(x)))
   | t           ->
       (*  ctx ⊢ t ⇒ a
          -------------

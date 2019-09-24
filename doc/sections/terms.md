@@ -30,7 +30,7 @@ A user-defined term can be either:
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 
- * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal.
+ * `_` for an unknown term or a term we don't care about. It will be infered by the system or, inside a proof, replaced by a fresh metavariable generating a new subgoal. It is replaced by a metavariable (or a pattern variable in the case of a rule left-hand side) applied to all the variables of the context.
 
  * an integer between 0 and 2^30-1 if the builtins "0" and "+1" are defined (see the [`set`](commands.md) command)
 
