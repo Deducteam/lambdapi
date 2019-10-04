@@ -8,5 +8,5 @@ set prover_limit 2
 theorem test_gamma : ∀ (a : Prop), P a ⇒ P a
 proof
     intro a pa
-    why3 "eprover"
+    why3
 qed
