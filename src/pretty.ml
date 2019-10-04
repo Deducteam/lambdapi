@@ -6,11 +6,13 @@
     the legacy (Dedukti) syntax. *)
 
 open Extra
-open Files
+open Console
 open Pos
 open Syntax
 
 let pp_ident : ident pp = fun oc id ->
+  if Parser.KW.mem id.elt then
+    fatal id.pos "Identifier [%s] is a Lambdapi keyword." id.elt;
   Format.pp_print_string oc id.elt
 
 let pp_arg_ident : ident option pp = fun oc id ->
@@ -18,11 +20,17 @@ let pp_arg_ident : ident option pp = fun oc id ->
   | Some(id) -> pp_ident oc id
   | None     -> Format.pp_print_string oc "_"
 
+let pp_path_elt : Pos.popt -> (string * bool) pp = fun pos oc (s,b) ->
+  if not b && Parser.KW.mem s then
+    fatal pos "Module path member [%s] is a Lambdapi keyword." s;
+  if b then Format.fprintf oc "{|%s|}" s else Format.pp_print_string oc s
+
 let pp_qident : qident pp = fun oc qid ->
-  match qid.elt with
-  | ([], id) -> Format.pp_print_string oc id
-  | (mp, id) -> List.iter (Format.fprintf oc "%s.") mp;
-                Format.pp_print_string oc id
+  List.iter (Format.fprintf oc "%a." (pp_path_elt qid.pos)) (fst qid.elt);
+  pp_ident oc (Pos.make qid.pos (snd qid.elt))
+
+let pp_path : Pos.popt -> p_module_path pp = fun pos ->
+  List.pp (pp_path_elt pos) "."
 
 let pp_symtag : symtag pp = fun oc tag ->
   match tag with
@@ -163,33 +171,34 @@ let pp_command : p_command pp = fun oc cmd ->
   let out fmt = Format.fprintf oc fmt in
   match cmd.elt with
   | P_require(b,ps)             ->
-      out "require%s %a" (if b then " open" else "") (List.pp pp_path " ") ps
+      let op = if b then " open" else "" in
+      out "require%s %a" op (List.pp (pp_path cmd.pos) " ") ps
   | P_require_as(p,i)               ->
-      out "require %a as %s" pp_path p i.elt
+      out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
-      List.iter (out "open %a" pp_path) ps
+      List.iter (out "open %a" (pp_path cmd.pos)) ps
   | P_symbol(tags,s,args,a)         ->
-      out "@[<hov 2>symbol%a %s" pp_symtags tags s.elt;
+      out "@[<hov 2>symbol%a %a" pp_symtags tags pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(_,s,args,ao,t)     ->
-      out "@[<hov 2>definition %s" s.elt;
+      out "@[<hov 2>definition %a" pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(st,ts,e)              ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>theorem %s" s.elt;
+      out "@[<hov 2>theorem %a" pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
       out "%a" pp_p_proof_end e.elt
-  | P_set(P_config_builtin(n,i)  )  ->
+  | P_set(P_config_builtin(n,i))    ->
       out "set builtin %S ≔ %a" n pp_qident i
-  | P_set(P_config_binop(binop)  )  ->
+  | P_set(P_config_binop(binop))    ->
       let (s, a, p, qid) = binop in
       let a =
         match a with
@@ -197,7 +206,9 @@ let pp_command : p_command pp = fun oc cmd ->
         | Assoc_left  -> "l"
         | Assoc_right -> "r"
       in
-      out "set infix%s %f %S ≔ %a" a p s pp_qident qid
+      out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
+  | P_set(P_config_ident(id))       ->
+      out "set declared \"%s\"" id
   | P_query(q)                      ->
      pp_p_query oc q
 

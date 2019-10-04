@@ -1,14 +1,22 @@
-(** Parsing functions for the Lambdapi syntax, based on the Earley
-   library. See
-   https://github.com/rlepigre/ocaml-earley/blob/master/README.md for
-   details. *)
+(** Parsing functions for the Lambdapi syntax based on the Earley library. See
+    https://github.com/rlepigre/ocaml-earley/blob/master/README.md for details
+    on using the library and its syntax extension. *)
 
 open Earley_core
 open Extra
-open Console
 open Syntax
 open Files
 open Pos
+
+(** {b NOTE} we maintain the invariant that errors reported by the parser have
+    a position. To help enforce that, we avoid opening the [Console] module so
+    that [Console.fatal] and [Console.fatal_no_pos] are not in scope. To raise
+    an error in the parser, only the following function should be used. *)
+
+(** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
+    the error has an attached source code position. *)
+let parser_fatal : Pos.pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
+  Console.fatal (Some(loc)) fmt
 
 #define LOCATE locate
 
@@ -25,7 +33,8 @@ module Prefix :
     val reset : 'a t -> unit
 
     (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. *)
+        a previous value associated to [k]) in the tree [t]. Note that key [k]
+        should not be [""], otherwise [Invalid_argument] is raised. *)
     val add : 'a t -> string -> 'a -> unit
 
     (** [grammar t] is an [Earley] grammar parsing the longest possible prefix
@@ -42,6 +51,7 @@ module Prefix :
     let reset : 'a t -> unit = fun t -> t := Node(None, [])
 
     let add : 'a t -> string -> 'a -> unit = fun t k v ->
+      if k = "" then invalid_arg "Prefix.add";
       let rec add i (Node(vo,l)) =
         match try Some(k.[i]) with _ -> None with
         | None    -> Node(Some(v), l)
@@ -73,7 +83,6 @@ module Prefix :
             | Some(best) -> best
         in fn None !t buf pos
       in
-      (* FIXME charset, accept empty ? *)
       Earley.black_box fn Charset.full false "<tree>"
   end
 
@@ -83,24 +92,44 @@ let binops : binop Prefix.t = Prefix.init ()
 (** Parser for a binary operator. *)
 let binop = Prefix.grammar binops
 
+(** Currently defined identifiers. *)
+let declared_ids : string Prefix.t = Prefix.init ()
+
+(** Parser for a declared identifier. *)
+let declared_id = Prefix.grammar declared_ids
+
+(** The following should not appear as substrings of binary operators, as they
+    would introduce ambiguity in the parsing. *)
+let forbiden_in_binops =
+  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; "=" ; ":"; "→"
+  ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
+  @ List.init 10 string_of_int
+
 (** [get_binops loc p] loads the binary operators associated to module [p] and
     report possible errors at location [loc].  This operation requires the [p]
-    to be loaded (i.e., compiled). *)
-let get_binops : Pos.pos -> module_path -> unit = fun loc p ->
+    to be loaded (i.e., compiled). The declared identifiers are also retrieved
+    at the same time. *)
+let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
+  let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
-      fatal (Some(loc)) "Module [%a] not loaded (used for binops)." pp_path p
+      parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, binop) = Prefix.add binops s binop in
-  StrMap.iter fn Timed.(!Sign.(sign.sign_binops))
+  StrMap.iter fn Timed.(!Sign.(sign.sign_binops));
+  let fn s = Prefix.add declared_ids s s in
+  StrSet.iter fn Timed.(!Sign.(sign.sign_idents))
 
 (** Blank function (for comments and white spaces). *)
 let blank = Blanks.line_comments "//"
 
+(** Set of identifier characters. *)
+let id_charset = Charset.from_string "a-zA-Z0-9_'"
+
 (** Keyword module. *)
 module KW = Keywords.Make(
   struct
-    let id_charset = Charset.from_string "a-zA-Z0-9_'"
+    let id_charset = id_charset
     let reserved = []
   end)
 
@@ -142,6 +171,23 @@ let _proofterm_  = KW.create "proofterm"
 let _why3_       = KW.create "why3"
 let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
+
+(** [sanity_check pos s] checks that the token [s] is appropriate for an infix
+    operator or a declared identifier. If it is not the case, then the [Fatal]
+    exception is raised. *)
+let sanity_check : Pos.pos -> string -> unit = fun loc s ->
+  (* Of course, the empty string and keywords are forbidden. *)
+  if s = "" then parser_fatal loc "Invalid token (empty).";
+  if KW.mem s then parser_fatal loc "Invalid token (reserved).";
+  (* We forbid valid (non-escaped) identifiers. *)
+  if String.for_all (Charset.mem id_charset) s then
+    parser_fatal loc "Invalid token (only identifier characters).";
+  (* We also reject symbols with certain substrings. *)
+  let check_substring w =
+    if String.is_substring w s then
+      parser_fatal loc "Invalid token (has [%s] as a substring)." w
+  in
+  List.iter check_substring forbiden_in_binops
 
 (** Natural number literal. *)
 let nat_lit =
@@ -200,32 +246,43 @@ let regular_ident =
   in
   Earley.black_box fn head_cs false "<r-ident>"
 
-(** Escaped identifier (regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]). *)
-let escaped_ident =
+(** [escaped_ident with_delim] is a parser for a single escaped identifier. An
+    escaped identifier corresponds to an arbitrary sequence of characters that
+    starts with ["{|"], ends with ["|}"], and does not contain ["|}"]. Or said
+    otherwise, they are recognised by regexp ["{|\([^|]\|\(|[^}]\)\)|*|}"]. If
+    [with_delim] is [true] then the returned string includes both the starting
+    and the ending delimitors. They are otherwise omited. *)
+let escaped_ident : bool -> string Earley.grammar = fun with_delim ->
   let fn buf pos =
     let s = Buffer.create 20 in
     (* Check start marker. *)
     let (c, buf, pos) = Input.read buf (pos + 1) in
     if c <> '|' then Earley.give_up ();
-    Buffer.add_string s "{|";
+    if with_delim then Buffer.add_string s "{|";
     (* Accumulate until end marker. *)
     let rec work buf pos =
       let (c, buf, pos) = Input.read buf pos in
       let next_c = Input.get buf pos in
-      if c = '|' && next_c = '}' then (Buffer.add_string s "|}"; (buf, pos+1))
+      if c = '|' && next_c = '}' then (buf, pos+1)
       else if c <> '\255' then (Buffer.add_char s c; work buf pos)
       else Earley.give_up ()
     in
     let (buf, pos) = work buf pos in
+    if with_delim then Buffer.add_string s "|}";
     (* Return the contents. *)
     (Buffer.contents s, buf, pos)
   in
-  Earley.black_box fn (Charset.singleton '{') false "<e-ident>"
+  let p_name = if with_delim then "{|<e-ident>|}" else "<e-ident>" in
+  Earley.black_box fn (Charset.singleton '{') false p_name
+
+let escaped_ident_no_delim = escaped_ident false
+let escaped_ident = escaped_ident true
 
 (** Any identifier (regular or escaped). *)
 let parser any_ident =
   | id:regular_ident -> KW.check id; id
   | id:escaped_ident -> id
+  | id:declared_id   -> id
 
 (** Identifier (regular and non-keyword, or escaped). *)
 let parser ident = id:any_ident -> in_pos _loc id
@@ -242,11 +299,16 @@ let parser meta =
 let parser patt =
   | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
 
+(** Any path member identifier (escaped idents are stripped). *)
+let parser path_elem =
+  | id:regular_ident -> KW.check id; (id, false)
+  | id:escaped_ident_no_delim -> (id, true)
+
 (** Module path (dot-separated identifiers. *)
-let parser path = m:any_ident ms:{"." any_ident}* $ -> m::ms
+let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 
 (** [qident] parses a single (possibly qualified) identifier. *)
-let parser qident = mp:{any_ident "."}* id:any_ident -> in_pos _loc (mp,id)
+let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
 (** [symtag] parses a single symbol tag. *)
 let parser symtag =
@@ -429,8 +491,13 @@ let parser config =
       P_config_builtin(s,qid)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
+      sanity_check _loc_s s;
       Prefix.add binops s binop;
       P_config_binop(binop)
+  | "declared" id:string_lit ->
+      sanity_check _loc_id id;
+      Prefix.add declared_ids id id;
+      P_config_ident(id)
 
 let parser statement =
   _theorem_ s:ident al:arg* ":" a:term _proof_ -> Pos.in_pos _loc (s,al,a)
@@ -444,14 +511,30 @@ let parser proof =
     reference is used to avoid to avoid cyclic dependencies. *)
 let require : (Files.module_path -> unit) Pervasives.ref = ref (fun _ -> ())
 
+(** [do_require pos path] is a wrapper for [!require path], that takes care of
+    possible exceptions. Errors are reported at given position [pos],  keeping
+    as much information as possible in the error message. *)
+let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
+  let path = List.map fst path in
+  let local_fatal fmt =
+    let fmt = "Error when loading module [%a].\n" ^^ fmt in
+    parser_fatal loc fmt Files.pp_path path
+  in
+  (* We attach our position to errors comming from the outside. *)
+  try !require path with
+  | Console.Fatal(None     , msg) -> local_fatal "%s" msg
+  | Console.Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
+  | e                             -> local_fatal "Uncaught exception: [%s]"
+                                       (Printexc.to_string e)
+
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ o:{_open_ -> true}?[false] ps:path+
-      -> List.iter (fun p -> !require p; if o then get_binops _loc p) ps;
-         P_require(o,ps)
-  | _require_ p:path _as_ n:ident
-      -> !require p;
-         P_require_as(p,n)
+      -> let fn p = do_require _loc p; if o then get_binops _loc p in
+         List.iter fn ps; P_require(o,ps)
+  | _require_ p:path _as_ n:path_elem
+      -> do_require _loc p;
+         P_require_as(p, Pos.in_pos _loc_n n)
   | _open_ ps:path+
       -> List.iter (get_binops _loc) ps;
          P_open(ps)
@@ -475,11 +558,11 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> ast = fun fname ->
-  Prefix.reset binops;
+  Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
-    let loc = Some(Pos.locate buf pos buf pos) in
-    fatal loc "Parse error."
+    let loc = Pos.locate buf pos buf pos in
+    parser_fatal loc "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
@@ -487,8 +570,8 @@ let parse_file : string -> ast = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
-  Prefix.reset binops;
+  Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
-    let loc = Some(Pos.locate buf pos buf pos) in
-    fatal loc "Parse error."
+    let loc = Pos.locate buf pos buf pos in
+    parser_fatal loc "Parse error."

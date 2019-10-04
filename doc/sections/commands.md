@@ -287,7 +287,7 @@ set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
 set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 ```
 
-**infix symbols** The following code defines infix symbols for
+**Infix symbols** The following code defines infix symbols for
 addition and multiplication. Both are associative to the left, and
 they have priority levels `6` and `7`.
 
@@ -317,3 +317,20 @@ The user can also specifies the time limit (in seconds) of the prover:
 set prover_limit 60
 ```
 The default time limit of a prover is set to 10 seconds.
+
+**Declared identifiers** The following code declares a new valid symbol, that
+can then be used in the place of a symbol or λ-variable.
+
+```
+set declared "ℕ"
+set declared "α"
+set declared "β"
+set declared "γ"
+set declared "x₁"
+set declared "x₂"
+set declared "x₃"
+```
+
+**Warning:** some chacks are performed upon the declaration of infix symbols
+and identifiers, but they are by no means sufficient (it is still possible to
+break the parser by defining well-chosen tokens).

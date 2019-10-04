@@ -1,14 +1,17 @@
 (** Parser-level abstract syntax. *)
 
 open Extra
-open Files
 open Pos
 
 (** Representation of a (located) identifier. *)
 type ident = strloc
 
+(** Parsing representation of a module path. For every path member the boolean
+    indicates whether it was given using the escaped syntax. *)
+type p_module_path = (string * bool) list
+
 (** Representation of a possibly qualified (and located) identifier. *)
-type qident = (module_path * string) loc
+type qident = (p_module_path * string) loc
 
 (** Representation of the associativity of an infix operator. *)
 type assoc =
@@ -158,17 +161,19 @@ type p_config =
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
   | P_config_binop   of binop
-  (** Define (or redefine) a binary operator (e.g., ["+"] or ["×"]). *)
+  (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
+  | P_config_ident of string
+  (** Defines a new, valid identifier (e.g., ["σ"], ["€"] or ["ℕ"]). *)
 
 (** Parser-level representation of a single command. *)
 type p_statement = (ident * p_arg list * p_type) loc
 
 type p_command_aux =
-  | P_require    of bool * module_path list
+  | P_require    of bool * p_module_path list
   (** Require statement (require open if the boolean is true). *)
-  | P_require_as of module_path * ident
+  | P_require_as of p_module_path * (string * bool) loc
   (** Require as statement. *)
-  | P_open       of module_path list
+  | P_open       of p_module_path list
   (** Open statement. *)
   | P_symbol     of symtag list * ident * p_arg list * p_type
   (** Symbol declaration. *)

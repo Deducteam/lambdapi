@@ -34,10 +34,16 @@ reserved "_"
 reserved "type"
 reserved "compute"
 
+<declared_id> ::=
+  | "ℕ"
+  | "α"
+  | ... // whatever has ben defined in the scope.
+
 // Identifier
 <ident> ::=
   | RE("[a-zA-Z_][a-zA-Z0-9_]*")     // Regular identifier
   | RE("{|\([^|]\|\(|[^}]\)\)*|*|}") // Escaped identifier
+  | <declared_id>                    // Declared identifier
 
 // Natural number literal
 <nat_lit> ::=
@@ -154,6 +160,7 @@ reserved "compute"
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "prover" <ident>
   | "set" "prover_limit" <nat_lit>
+  | "set" "declared" <string_lit>
   // Get the type of a term
   | "type" <term>
   // Get the normal form of a term

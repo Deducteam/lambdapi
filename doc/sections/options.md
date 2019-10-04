@@ -13,9 +13,9 @@ stops on the first failure, without going to the next file (if any).
 
 **Important note:** the paths given on the command-line for input files should
 be relative to the current directory. Moreover, they should neither start with
-the `./` current directory marker, nor contain partent directory markers `..`.
-This is due to the fact that the directory structure is significant due to the
-treatment of [modules](module.md).
+the `./` current directory marker, nor contain the parent directory marker
+`../`. This is due to the fact that the directory structure is significant due
+to the treatment of [modules](module.md).
 
 Command line flags can be used to control the behaviour of `lambdapi`. You can
 use `lambdapi --help` to get a short description of the available flags.  The
@@ -91,16 +91,16 @@ be used. The command is expected to behave as follows:
 As an example,  `echo MAYBE` is the simplest possible (valid)
 termination-check that one may use.
 
-As far as we now, [`SizeChangeTool`]
-(https://github.com/Deducteam/SizeChangeTool) is the only termination checker
-compatible with all `lambdapi` features.
+As far as we know,
+[`SizeChangeTool`](https://github.com/Deducteam/SizeChangeTool) is the
+only termination checker compatible with all `lambdapi` features.
 It can be called in the following way.
 ```bash
-lambdapi --termination "path/to/sct.native -nc --stdin=xml" input_file.lp
+lambdapi --termination "path/to/sct.native --no-color --stdin=xml" input_file.lp
 ```
 
-If the file does not contain type-level rewriting, [`Wanda`]
-(http://wandahot.sourceforge.net/) is also compatible.
+If the file does not contain type-level rewriting,
+[`Wanda`](http://wandahot.sourceforge.net/) is also compatible.
 However, it does not offer the possibility to give an input in `stdin`.
 
 To generate the `.xml` file corresponding to some `lambdapi` file, one may use
@@ -121,3 +121,13 @@ The following flags may be useful for debugging:
  - `--too-long <float>` gives a warning for each command (i.e., file item) taking
    more than the given number of seconds to be checked. The given parameter is
    expected to be a floating point number.
+
+#### Rewriting engine
+
+The following options can be used to modify the behaviour of the
+reduction engine,
+ - `--write-trees` writes the decision trees used for rule filtering
+   to dot files; for each symbol `s`, a file `mod_path/mod_name.s.gv` is
+   generated.
+ - `--keep-rule-order` forces the rewriting engine to use in priority
+   the topmost rules.

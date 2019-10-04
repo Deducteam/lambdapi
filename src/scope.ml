@@ -41,6 +41,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     the [Fatal] exception. *)
 let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let {elt = (mp, s); pos} = qid in
+  let mp = List.map fst mp in
   match mp with
   | []                               -> (* Symbol in scope. *)
       begin
@@ -178,18 +179,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* NOTE this could be improved with more general implicits. *)
         fatal loc "More arguments are required to instantiate implicits."
   (* Scoping function for the domain of functions or products. *)
-  and scope_domain : popt -> env -> p_term option -> tbox = fun pos env a ->
+  and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
     | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_)) -> fresh_patt env
-    | (None   , M_RHS(_)) -> fatal pos "Missing type annotation in a RHS."
     | (Some(a), _       ) -> scope env a
     | (None   , _       ) ->
-       (* We create a new metavariable [m] of type [TYPE] for the missing
-          domain. *)
-       let vs = Env.to_tbox env in
-       let m = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
-       _Meta m vs
+        (* Create a new metavariable of type [TYPE] for the missing domain. *)
+        let vs = Env.to_tbox env in
+        _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
   (* Scoping of a binder (abstraction or product). *)
   and scope_binder cons env xs t =
     let rec aux env xs =
@@ -198,12 +196,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
-          let a = scope_domain None env d in (* FIXME *)
+          let a = scope_domain env d in
           let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
-          let a = scope_domain x.pos env d in
+          let a = scope_domain env d in
           let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
           let t = aux env ((l,d,i)::xs) in
           cons a (Bindlib.bind_var v t)
@@ -212,22 +210,23 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
-    | (P_Type          , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
+    | (P_Type          , M_LHS(_) ) ->
+        fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _        ) -> _Type
     | (P_Iden(qid,_)   , _        ) -> find_qid ss env qid
-    | (P_Wild          , M_RHS(_) ) -> fatal t.pos "Not allowed in a RHS."
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
-    | (P_Wild          , M_Term(_)) ->
-       (* We create a new metavariable [m1] of type [TYPE] and a new
-          metavariable [m2] of type [m1], and return [m2]. *)
+    | (P_Wild          , _        ) ->
+        (* We create a metavariable [m] of type [m_ty], which is itself also a
+           metavariable (of type [Type]).  Note that this case applies both to
+           regular terms, and to the RHS of rewriting rules. *)
         let vs = Env.to_tbox env in
-        let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
-        let a = Env.to_prod env (_Meta m1 vs) in
-        let m2 = fresh_meta a (Array.length vs) in
-        _Meta m2 vs
+        let m_ty = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
+        let a = Env.to_prod env (_Meta m_ty vs) in
+        let m = fresh_meta a (Array.length vs) in
+        _Meta m vs
     | (P_Meta(id,ts)   , M_Term(m)) ->
-       let m2 =
+        let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
@@ -240,31 +239,35 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           Pervasives.(m := StrMap.add id.elt m2 !m); m2
         in
         _Meta m2 (Array.map (scope env) ts)
-    | (P_Meta(_,_)     , _        ) -> fatal t.pos "Not allowed in a rule."
+    | (P_Meta(_,_)     , _        ) ->
+        fatal t.pos "Metavariables are not allowed in rewriting rules."
     | (P_Patt(id,ts)   , M_LHS(m) ) ->
-        let i =
-          try Some(List.assoc id.elt m) with Not_found ->
-            if !verbose > 1 then
-              wrn t.pos "Pattern variable not bound in the RHS.";
-            None
-        in
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
           | Vari(x) -> x
-          | _       ->
-             fatal t.pos "Pattern variables can be applied \
-                          to distinct bound variables only."
+          | _       -> fatal t.pos "Only bound variables are allowed in the \
+                                    environment of a &%s." id.elt
         in
         let vs = Array.map scope_var ts in
         (* Check that [vs] are distinct variables. *)
-        for i=1 to Array.length vs - 1 do
-          for j=0 to i-1 do
+        for i = 0 to Array.length vs - 2 do
+          for j = i + 1 to Array.length vs - 1 do
             if Bindlib.eq_vars vs.(i) vs.(j) then
-              fatal t.pos "Pattern variables can be applied \
-                           to distinct bound variables only."
+              let name = Bindlib.name_of vs.(j) in
+              fatal ts.(j).pos "Variable %s appears more than once in the \
+                                environment of &%s." name id.elt
           done
         done;
+        (* Find the reserved index, if any. *)
+        let i =
+          try Some(List.assoc id.elt m) with Not_found ->
+            (* If the pattern variable is applied to every bound variables and
+               if it has no reserved index then it is useless. *)
+            if !verbose > 1 && List.length env = Array.length vs then
+              wrn t.pos "&%s could be replaced by a wildcard." id.elt;
+            None
+        in
         _Patt i id.elt (Array.map Bindlib.box_var vs)
     | (P_Patt(id,ts)   , M_RHS(m) ) ->
         let x =
@@ -272,21 +275,28 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
-    | (P_Patt(_,_)     , _        ) -> fatal t.pos "Only allowed in rules."
+    | (P_Patt(_,_)     , _        ) ->
+        fatal t.pos "Pattern variables are only allowed in rewriting rules."
     | (P_Appl(_,_)     , _        ) -> assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
-    | (P_Impl(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
+    | (P_Impl(_,_)     , M_LHS(_) ) ->
+        fatal t.pos "Implications are not allowed in a LHS."
+    | (P_Impl(_,_)     , M_Patt   ) ->
+        fatal t.pos "Implications are not allowed in a pattern."
     | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
+    | (P_Abst(_,_)     , M_Patt   ) ->
+        fatal t.pos "Abstractions are not allowed in a pattern."
     | (P_Abst(xs,t)    , _        ) -> scope_binder _Abst env xs t
-    | (P_Prod(_,_)     , M_LHS(_) ) -> fatal t.pos "Not allowed in a LHS."
-    | (P_Prod(_,_)     , M_Patt   ) -> fatal t.pos "Not allowed in a pattern."
+    | (P_Prod(_,_)     , M_LHS(_) ) ->
+        fatal t.pos "Dependent products are not allowed in a LHS."
+    | (P_Prod(_,_)     , M_Patt   ) ->
+        fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _        ) -> scope_binder _Prod env xs b
     | (P_LLet(x,xs,t,u), M_Term(_)) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
-    | (P_LLet(_,_,_,_) , _        ) -> fatal t.pos "Only allowed in terms."
+    | (P_LLet(_,_,_,_) , _        ) ->
+        fatal t.pos "Let-bindings are not allowed in rewriting rules."
     | (P_NLit(n)       , _        ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in

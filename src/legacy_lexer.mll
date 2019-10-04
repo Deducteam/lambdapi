@@ -5,10 +5,10 @@ open Pos
 
 let filename = Pervasives.ref ""
 
-let to_module_path : string -> string list =
-  String.split_on_char '.'
+let to_module_path : string -> Syntax.p_module_path = fun mp ->
+  List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
 
-let locate : Lexing.position -> Lexing.position -> Pos.pos = fun p1 p2 ->
+let locate : Lexing.position * Lexing.position -> Pos.pos = fun (p1, p2) ->
   let fname = if !filename = "" then None else Some(!filename) in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
@@ -17,10 +17,10 @@ let locate : Lexing.position -> Lexing.position -> Pos.pos = fun p1 p2 ->
   Lazy.from_val {fname; start_line; start_col; end_line; end_col}
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
-  fun (p1,p2) elt -> {pos = Some(locate p1 p2); elt}
+  fun lps elt -> {pos = Some(locate lps); elt}
 
 let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
-  locate lexbuf.lex_start_p lexbuf.lex_curr_p
+  locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 
 type token =
   (* Special characters and symbols. *)
@@ -31,9 +31,9 @@ type token =
   (* Identifiers and wildcard. *)
   | WILD
   | ID      of string
-  | QID     of (string list * string)
+  | QID     of (Syntax.p_module_path * string)
   (* Commands. *)
-  | REQUIRE of string list
+  | REQUIRE of Syntax.p_module_path
   | EVAL
   | INFER
   | ASSERT  of bool
