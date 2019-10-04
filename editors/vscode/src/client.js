@@ -73,8 +73,8 @@ function getWebviewContent(goals) {
     var htmlPage1;
     var htmlPage2;
     goalsPrint = goals == null ? "" : goals.toString();
-    htmlPage1 = "<!DOCTYPE html>\n\t\t<html lang=\"en\">\n\t\t<head>\n\t\t\t<meta charset=\"UTF-8\">\n\t\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\t\t\t<title> Goals</title>\n\t\t</head>\n\t\t<body>\n\t\t\t<p> ";
-    htmlPage2 = " </p>\n\t\t</body>\n\t\t</html>";
+    htmlPage1 = "<!DOCTYPE html>\n\t\t<html lang=\"en\">\n\t\t<head>\n\t\t\t<meta charset=\"UTF-8\">\n\t\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n\t\t\t<title> Goals</title>\n\t\t</head>\n\t\t<body>\n\t\t\t<p><pre> ";
+    htmlPage2 = " </pre></p>\n\t\t</body>\n\t\t</html>";
     return htmlPage1.concat(goalsPrint.concat(htmlPage2));
 }
 function sendGoalsRequest(position, panel, uri) {
