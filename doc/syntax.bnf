@@ -128,7 +128,7 @@ reserved "compute"
   | "focus" <nat_lit>
   | "print"
   | "proofterm"
-  | "why3" <ident>?
+  | "why3" <string_lit>?
 
 // Assertion predicate
 <assertion> ::=

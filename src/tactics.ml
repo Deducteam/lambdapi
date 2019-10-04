@@ -105,21 +105,21 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.symmetry tac.pos ps)
   | P_tac_why3(s)    ->
       (* get the goal to prove *)
-      let (hypothesis, trm) = Proof.Goal.get_type g in
+      let (hypotheses, trm) = Proof.Goal.get_type g in
       (* get the default or the indicated name of the prover. *)
       let prover_name =
         match s with
-        | None          -> Timed.(!Why3prover.current_prover)
+        | None          -> Timed.(!Why3prover.default_prover)
         | Some(name)    -> name
       in
       (* translate from lambdapi to why3 terms. *)
       let (constants_table, hyps, why3term) =
-          Why3prop.translate tac.pos ps.proof_builtins (hypothesis, trm) in
+          Why3prop.translate tac.pos ps.proof_builtins (hypotheses, trm) in
       (* create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create constants_table hyps why3term in
       (* call the prover named [prover_name] and get the result. *)
       let prover_result = Why3prover.call tac.pos prover_name tsk in
-      (* if the prover succeed to prover the goal. *)
+      (* if the prover succeed to prove the goal. *)
       if Why3prover.answer prover_result.pr_answer then
         (* create a new axiom that represents the proved goal. *)
         let why3_axiom = Pos.make tac.pos (Why3prop.get_newname ()) in
@@ -130,10 +130,9 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         (* tell the user that the goal is proved (verbose 2) *)
         Console.out 2 "%s proved the current goal@." prover_name;
         (* return the variable terms of each item in the context. *)
-        let free_var = fun (_, (x, _)) -> Terms.mkfree x in
-        let context = List.rev_map free_var hypothesis in
+        let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
         (* apply the instance of the axiom with context. *)
-        let instance = Basics.add_args (Symb(a, Nothing)) context in
+        let instance = Basics.add_args (symb a) terms in
         (* apply the declared instance to the current goal. *)
         handle_refine instance
       else

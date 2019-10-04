@@ -22,12 +22,6 @@ let add_hypothesis :
     let axiom = Why3.Decl.create_prsymbol new_axiom in
     Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom axiom_term
 
-(** [declare_axioms l tsk] add all axioms that [l] contains to the Why3 task
-    [tsk]. *)
-let declare_axioms :
-    Why3.Term.term StrMap.t -> Why3.Task.task -> Why3.Task.task =
-    fun l tsk -> StrMap.fold add_hypothesis l tsk
-
 (** [create constants_table hypothesis goal] Add all the symbols of
     [constants_table] in a new task and declare [hypothesis] as axioms and
     [goal] as a Why3 goal. *)
@@ -37,5 +31,5 @@ let create :
   fun constants_table hypothesis goal ->
     let symbols = List.map (fun (_, x) -> x) constants_table in
     let tsk = declare_symbols symbols in
-    let tsk = declare_axioms hypothesis tsk in
+    let tsk = StrMap.fold add_hypothesis hypothesis tsk in
     add_goal tsk goal

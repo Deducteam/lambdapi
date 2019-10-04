@@ -2,23 +2,25 @@
 
 open Timed
 
-(** [!current_prover] contains the name of the current prover (can be changed
+(** [!default_prover] contains the name of the current prover (can be changed
     by using the set prover <name> command). *)
-let current_prover : string ref = ref "Alt-Ergo"
+let default_prover : string ref = ref "Alt-Ergo"
 
-(** [time_limit] is the time limit (in seconds) of a prover while finding a
-    proof. *)
-let time_limit : int ref = ref 10
+(** [prover_time_limit] is the time limit (in seconds) of a prover while
+    finding a proof. *)
+let prover_time_limit : int ref = ref 10
 
-(** [config] read the config file of Why3 that is installed in the machine.
-    the default path is [~/.why3.conf]. more information could be found in
-    http://why3.lri.fr/api/Whyconf.html *)
-let config : Why3.Whyconf.config = Why3.Whyconf.read_config None
+(** [why3_config] read the config file of Why3 that is installed in the
+    machine. the default path is [~/.why3.conf]. More information could be
+    found in http://why3.lri.fr/api/Whyconf.html *)
+let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
-(** [main] get only the main section of the Why3 config *)
-let main : Why3.Whyconf.main =
-        let m = Why3.Whyconf.get_main config in
-        Why3.Whyconf.load_plugins m; m
+(** [why3_main] get only the main section of the Why3 config *)
+let why3_main : Why3.Whyconf.main =
+    (* filter the configuration to get only the main information *)
+    let m = Why3.Whyconf.get_main why3_config in
+    (* load all plugins (TPTP, DIMACS, ...) and return the new config *)
+    Why3.Whyconf.load_plugins m; m
 
 (** [prover pos provername] search and return the prover called [prover_name]
     *)
@@ -26,19 +28,22 @@ let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
     fun pos prover_name ->
     (* filters the set of why3 provers *)
     let fp = Why3.Whyconf.parse_filter_prover prover_name in
-    let provers = Why3.Whyconf.filter_provers config fp in
+    (* get the set of provers *)
+    let provers = Why3.Whyconf.filter_provers why3_config fp in
+    (* display a message if we did not find a matching prover *)
     if Why3.Whyconf.Mprover.is_empty provers then
         Console.fatal pos  "[%s] not installed or not configured"
         prover_name
     else
+    (* return the prover configuration *)
         snd (Why3.Whyconf.Mprover.max_binding provers)
 
-(** [env] build an empty environment *)
-let env : Why3.Env.env ref = ref (Why3.Env.create_env [])
+(** [why3_env] build an empty environment *)
+let why3_env : Why3.Env.env ref = ref (Why3.Env.create_env [])
 
 (* [init_env ()] init the environment *)
 let init_env () =
-    env := Why3.Env.create_env (Why3.Whyconf.loadpath main)
+    why3_env := Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
 (** [prover_driver pos cp] load the config prover [cp] in the current
     enironment and return the driver of the prover. *)
@@ -46,7 +51,7 @@ let prover_driver :
     Pos.popt -> Why3.Whyconf.config_prover -> Why3.Driver.driver =
     fun pos cp ->
     try
-        Why3.Whyconf.load_driver main !env cp.Why3.Whyconf.driver []
+        Why3.Whyconf.load_driver why3_main !why3_env cp.Why3.Whyconf.driver []
     with e ->
         Console.fatal pos "Failed to load driver for %s: %a"
         cp.prover.prover_name
@@ -61,7 +66,10 @@ let result :
     Why3.Call_provers.prover_result =
     fun pos prv tsk ->
       let limit =
-        {Why3.Call_provers.empty_limit with limit_time = !time_limit} in
+        {
+            Why3.Call_provers.empty_limit
+            with limit_time = !prover_time_limit
+        } in
       Why3.Call_provers.wait_on_call (Why3.Driver.prove_task
       ~limit:limit
       ~command:prv.Why3.Whyconf.command (prover_driver pos prv) tsk)

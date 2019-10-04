@@ -71,6 +71,6 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       in
       out 3 "(eval) %a\n" pp v
   | P_query_prover(s)      ->
-      Timed.(Why3prover.current_prover := s)
+      Timed.(Why3prover.default_prover := s)
   | P_query_prover_limit(n)->
-      Timed.(Why3prover.time_limit := n)
+      Timed.(Why3prover.prover_time_limit := n)

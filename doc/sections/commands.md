@@ -312,7 +312,7 @@ set prover "Eprover"
 ```
 *Alt-Ergo* is set by default if the user didn't specify a prover.
 
-The user can also specifies the time limit (in seconds) of the prover:
+The user can also specify the time limit (in seconds) of the prover:
 ```
 set prover_limit 60
 ```

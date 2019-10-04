@@ -80,10 +80,13 @@ goals `?0` of type `TO`, ..., `?n` of type `Tn` if `t` is of type
 
 The tactic `why3` calls a prover (using the why3 platform) to solve the
 current goal. The user can specify the prover in two ways :
-- by using the command `set prover` (described in [commands](commands.md))
-- by the tactic `why3 "<prover_name>"` if the user want to change the prover inside an interactive mode.
+- globally by using the command `set prover` (described in
+[commands](commands.md))
+- locally by the tactic `why3 "<prover_name>"` if the user wants to change the
+prover inside an interactive mode.
 
-A default prover `Alt-Ergo` is set by default.
+If no prover name is given, then the globally set prover is used
+(`Alt-Ergo` by default).
 
 A set of symbols should be defined in order to use the `why3` tactic.
 The user should define those symbols using builtins as follow :
