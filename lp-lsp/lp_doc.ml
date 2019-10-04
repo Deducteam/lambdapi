@@ -57,8 +57,10 @@ let get_goals dg_proof =
   let rec get_goals_aux goals dg_proof =
     match dg_proof with
     | [] -> goals
-    | (loc,_,_, Some goalsList)::s -> let g = (goals @ [goalsList, loc]) in get_goals_aux g s
-    | (loc,_,_,None)::s -> let goals = (goals @ [[], loc]) in get_goals_aux goals s
+    | (loc,_,_, Some goalsList)::s ->
+       let g = (goals @ [goalsList, loc]) in get_goals_aux g s
+    | (loc,_,_,None)::s ->
+       let goals = (goals @ [[], loc]) in get_goals_aux goals s
   in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 let process_cmd _file (nodes,st,dg) ast =
@@ -130,7 +132,8 @@ let check_text ~doc =
       doc.root <- root; doc.final <- root; doc_spans
     in
     (* let doc = { doc with nodes = List.map doc_spans } in *)
-    let nodes, final, diag = List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
+    let nodes, final, diag =
+      List.fold_left (process_cmd uri) ([],doc.root,[]) doc_spans in
     let doc = { doc with nodes; final } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
