@@ -94,8 +94,7 @@ let pp_goals : _ pp = fun oc gl ->
           let (_, a) = Goal.get_type g in
           Format.fprintf oc "%i. %a\n" (i+1) pp a
         in
-        List.iteri print_goal gs;
-        Format.fprintf oc "\n"
+        List.iteri print_goal gs
       end
 
 
