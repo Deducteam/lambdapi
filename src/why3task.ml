@@ -2,11 +2,11 @@
 
 open Extra
 
-(** [declare_symbols l] add the declaration of every symbol in [l] to [tsk] *)
+(** [declare_symbols l] add the declaration of every symbol in [l] to [tsk].*)
 let declare_symbols : Why3.Term.lsymbol list -> Why3.Task.task = fun l ->
     List.fold_left Why3.Task.add_param_decl None l
 
-(** [add_goal tsk f] add a goal with [f] formula in the task [tsk] *)
+(** [add_goal tsk f] add a goal with [f] formula in the task [tsk]. *)
 let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
     fun tsk f ->
     let new_goal = Why3.Ident.id_fresh "lambdapi_goal" in

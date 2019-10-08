@@ -104,36 +104,36 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry tac.pos ps)
   | P_tac_why3(s)    ->
-      (* get the goal to prove *)
+      (* Get the goal to prove. *)
       let (hypotheses, trm) = Proof.Goal.get_type g in
-      (* get the default or the indicated name of the prover. *)
+      (* Get the default or the indicated name of the prover. *)
       let prover_name =
         match s with
         | None          -> Timed.(!Why3prover.default_prover)
         | Some(name)    -> name
       in
-      (* translate from lambdapi to why3 terms. *)
+      (* Translate from lambdapi to why3 terms. *)
       let (constants_table, hyps, why3term) =
           Why3prop.translate tac.pos ps.proof_builtins (hypotheses, trm) in
-      (* create a new task that contains symbols, axioms and the goal. *)
+      (* Create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create constants_table hyps why3term in
-      (* call the prover named [prover_name] and get the result. *)
+      (* Call the prover named [prover_name] and get the result. *)
       let prover_result = Why3prover.call tac.pos prover_name tsk in
-      (* if the prover succeed to prove the goal. *)
+      (* If the prover succeed to prove the goal. *)
       if Why3prover.answer prover_result.pr_answer then
-        (* create a new axiom that represents the proved goal. *)
+        (* Create a new axiom that represents the proved goal. *)
         let why3_axiom = Pos.make tac.pos (Why3prop.get_newname ()) in
-        (* get the meta type of the current goal (with quantified context) *)
+        (* Get the meta type of the current goal (with quantified context) *)
         let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
-        (* add the axiom to the current signature. *)
+        (* Add the axiom to the current signature. *)
         let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
-        (* tell the user that the goal is proved (verbose 2) *)
+        (* Tell the user that the goal is proved (verbose 2). *)
         Console.out 2 "%s proved the current goal@." prover_name;
-        (* return the variable terms of each item in the context. *)
+        (* Return the variable terms of each item in the context. *)
         let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
-        (* apply the instance of the axiom with context. *)
+        (* Apply the instance of the axiom with context. *)
         let instance = Basics.add_args (symb a) terms in
-        (* apply the declared instance to the current goal. *)
+        (* Apply the declared instance to the current goal. *)
         handle_refine instance
       else
         (Console.wrn tac.pos "%s didn't found a proof@." prover_name;

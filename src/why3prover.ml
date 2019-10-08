@@ -1,4 +1,4 @@
-(** Calling provers in Why3 *)
+(** Calling provers in Why3. *)
 
 open Timed
 
@@ -12,36 +12,36 @@ let prover_time_limit : int ref = ref 10
 
 (** [why3_config] read the config file of Why3 that is installed in the
     machine. the default path is [~/.why3.conf]. More information could be
-    found in http://why3.lri.fr/api/Whyconf.html *)
+    found in http://why3.lri.fr/api/Whyconf.html . *)
 let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
-(** [why3_main] get only the main section of the Why3 config *)
+(** [why3_main] get only the main section of the Why3 config. *)
 let why3_main : Why3.Whyconf.main =
-    (* filter the configuration to get only the main information *)
+    (* Filter the configuration to get only the main information. *)
     let m = Why3.Whyconf.get_main why3_config in
-    (* load all plugins (TPTP, DIMACS, ...) and return the new config *)
+    (* Load all plugins (TPTP, DIMACS, ...) and return the new config. *)
     Why3.Whyconf.load_plugins m; m
 
-(** [prover pos provername] search and return the prover called [prover_name]
+(** [prover pos provername] search and return the prover called [prover_name].
     *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
     fun pos prover_name ->
-    (* filters the set of why3 provers *)
+    (* Filter the set of why3 provers. *)
     let fp = Why3.Whyconf.parse_filter_prover prover_name in
-    (* get the set of provers *)
+    (* Get the set of provers. *)
     let provers = Why3.Whyconf.filter_provers why3_config fp in
-    (* display a message if we did not find a matching prover *)
+    (* Display a message if we did not find a matching prover. *)
     if Why3.Whyconf.Mprover.is_empty provers then
         Console.fatal pos  "[%s] not installed or not configured"
         prover_name
     else
-    (* return the prover configuration *)
+    (* Return the prover configuration. *)
         snd (Why3.Whyconf.Mprover.max_binding provers)
 
-(** [why3_env] build an empty environment *)
+(** [why3_env] build an empty environment. *)
 let why3_env : Why3.Env.env ref = ref (Why3.Env.create_env [])
 
-(* [init_env ()] init the environment *)
+(* [init_env ()] init the environment. *)
 let init_env () =
     why3_env := Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
@@ -78,7 +78,7 @@ let result :
 let answer : Why3.Call_provers.prover_answer -> bool = fun ans ->
     ans = Why3.Call_provers.Valid
 
-(** [call pos sp tsk] Call the prover named [sp] with the task [tsk]. *)
+(** [call pos sp tsk] call the prover named [sp] with the task [tsk]. *)
 let call :
     Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
     fun pos sp tsk -> result pos (prover pos sp) tsk
