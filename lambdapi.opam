@@ -26,7 +26,7 @@ depends: [
   "bindlib"      { >= "5.0.0" }
   "earley"       { >= "2.0.0" }
   "timed"        { >= "1.0"   }
-  "why3"
+  "why3"         { >= "1.2.0" }
   # tests
   "ppx_inline_test" { with-test }
 
