@@ -107,14 +107,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Get the goal to prove. *)
       let (hypotheses, trm) = Proof.Goal.get_type g in
       (* Get the default or the indicated name of the prover. *)
-      let prover_name =
-        match s with
-        | None          -> Timed.(!Why3prover.default_prover)
-        | Some(name)    -> name
-      in
+      let prover_name = Option.get s Timed.(!Why3prover.default_prover) in
       (* Translate from lambdapi to why3 terms. *)
       let (constants_table, hyps, why3term) =
-          Why3prop.translate tac.pos ps.proof_builtins (hypotheses, trm) in
+          Why3prop.translate tac.pos ps.proof_builtins (hypotheses, trm)
+      in
       (* Create a new task that contains symbols, axioms and the goal. *)
       let tsk = Why3task.create constants_table hyps why3term in
       (* Call the prover named [prover_name] and get the result. *)
