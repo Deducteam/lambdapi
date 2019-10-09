@@ -301,10 +301,6 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**Warning:** No check is done on the syntax of the symbol that is
-defined. As a consequence, it is very easy to break the system by redefining a
-keyword or a common symbol (e.g., `"("`, `")"` or `"symbol"`).
-
 **Prover config**:
 In order to use the `why3` tactic, a prover should be set using:
 ```
