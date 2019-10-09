@@ -1,21 +1,21 @@
-(** Translation of lambdapi goals to why3 goals in propositional case *)
+(** Translation of lambdapi goals to why3 goals in propositional case. *)
 
 open Terms
 open Extra
 
 exception NoGoalTranslation
 
-(* a map from lambdapi terms to Why3 constants *)
+(* A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
 
 (** [get_newname ()] generates a new axiom name. *)
 let get_newname : unit -> string =
-    (* number of axioms proved whith the Why3 tactic *)
+    (* Number of axioms proved whith the Why3 tactic. *)
     let nbr_axioms : int ref = ref 0 in fun () ->
     nbr_axioms := !nbr_axioms + 1;
     "Why3axiom_" ^ (string_of_int !nbr_axioms)
 
-(* builtins configuration for propositional logic *)
+(* Builtins configuration for propositional logic. *)
 type prop_config =
   { symb_P     : sym (** Encoding of propositions.        *)
   ; symb_T     : sym (** Encoding of types.               *)
@@ -27,7 +27,7 @@ type prop_config =
   ; symb_not   : sym (** Not(¬) symbol.                   *) }
 
 (** [get_prop_config pos builtins] set the builtins configuration using
-    [builtins] *)
+    [builtins]. *)
 let get_prop_config :
     Pos.popt -> sym StrMap.t -> prop_config = fun pos builtins ->
     let find_sym key =
@@ -46,8 +46,9 @@ let get_prop_config :
 (** [translate pos builtins (hs, g)] translates from lambdapi to Why3 goal [g]
     using the hypothesis [hs]. The function return
     [constants_table, hypothesis, formula] where :
-    - [constants_table] maps abstracted Lambdapi terms to Why3 constants
-    - [hypothesis] maps abstracted labels to Why3 terms (presentation of [hs])
+    - [constants_table] maps abstracted Lambdapi terms to Why3 constants.
+    - [hypothesis] maps abstracted labels to Why3 terms (presentation of
+    [hs]).
     - [formula] Why3 term representing the goal [g].  *)
 
 let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
@@ -126,14 +127,14 @@ and translate_prop :
     | symbol, [] when Basics.is_symb cfg.symb_top symbol   ->
         constants_table, Why3.Term.t_true
     | _                                                     ->
-        (* if the term [p] is in the list [constants_table] *)
+        (* If the term [p] is in the list [constants_table]. *)
         try
-            (* then find it and return it *)
+            (* Then find it and return it. *)
             let (_, ct) =
                 List.find (fun x -> Basics.eq (fst x) p) constants_table in
                 (constants_table, Why3.Term.ps_app ct [])
         with Not_found ->
-        (* or generate a new constant in why3 *)
+        (* Or generate a new constant in why3. *)
             let new_symbol = Why3.Ident.id_fresh "P" in
             let sym = Why3.Term.create_psymbol new_symbol [] in
             let new_predicate = Why3.Term.ps_app sym [] in
