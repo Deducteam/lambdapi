@@ -304,6 +304,13 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
+    | (P_UnaO(u,t)    , _         ) ->
+        let (s, impl) =
+          let (op,_,qid) = u in
+          let (s, _) = find_sym true ss qid in
+          (_Symb s (Unary(op)), s.sym_impl)
+        in
+        add_impl env t.pos s impl [t]
     | (P_BinO(l,b,r)  , _         ) ->
         let (s, impl) =
           let (op,_,_,qid) = b in
@@ -353,6 +360,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
     | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
     | P_NLit(_)        -> acc
+    | P_UnaO(_,t)      -> patt_vars acc t
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)        -> patt_vars acc t
     | P_Expl(t)        -> patt_vars acc t

@@ -267,6 +267,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
+        | P_config_unop(unop)     ->
+            let (s, _, qid) = unop in
+            (* Define the unary operator [s]. *)
+            let (sym, _) = find_sym false ss qid in
+            Sign.add_unop ss.signature s (sym, unop);
+            out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
