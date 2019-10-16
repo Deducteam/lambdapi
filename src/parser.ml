@@ -106,7 +106,7 @@ let declared_id = Prefix.grammar declared_ids
 
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
-let forbiden_in_ops =
+let forbidden_in_ops =
   [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; "=" ; ":"; "→"; "⇒"
   ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
@@ -194,7 +194,7 @@ let sanity_check : Pos.pos -> string -> unit = fun loc s ->
     if String.is_substring w s then
       parser_fatal loc "Invalid token (has [%s] as a substring)." w
   in
-  List.iter check_substring forbiden_in_ops
+  List.iter check_substring forbidden_in_ops
 
 (** Natural number literal. *)
 let nat_lit =
