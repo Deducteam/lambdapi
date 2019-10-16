@@ -115,6 +115,8 @@ type term =
   (** Use the given alias as qualifier. *)
   | Binary of string
   (** Show as the given binary operator. *)
+  | Unary  of string
+  (** Show as the given unary operator. *)
 
 (** {3 Representation of rewriting rules} *)
 

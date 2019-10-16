@@ -23,6 +23,7 @@ let pp_symbol : pp_hint -> sym pp = fun h oc s ->
   | Qualified -> Format.fprintf oc "%a.%s" Files.pp_path s.sym_path s.sym_name
   | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
   | Binary(o) -> Format.fprintf oc "(%s)" o
+  | Unary(o)  -> Format.fprintf oc "(%s)" o
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
