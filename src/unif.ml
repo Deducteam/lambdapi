@@ -8,8 +8,8 @@ open Basics
 open Print
 
 (** Logging function for unification. *)
-let log_solv = new_logger 's' "solv" "debugging information for unification"
-let log_solv = log_solv.logger
+let log_unif = new_logger 'u' "unif" "unification"
+let log_unif = log_unif.logger
 
 (** Unification configuration. *)
 type config =
@@ -104,7 +104,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     begin
       let t1 = add_args h1 ts1 in
       let t2 = add_args h2 ts2 in
-      log_solv "solve [%a] [%a]" pp t1 pp t2;
+      log_unif "unify [%a] [%a]" pp t1 pp t2;
     end;
 
   let exception Unsolvable in
@@ -308,4 +308,4 @@ let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
   set_config builtins;
   can_instantiate := b;
   try Some (solve p) with Fatal(_,m) ->
-    if !log_enabled then log_solv (red "solve: %s") m; None
+    if !log_enabled then log_unif (red "unify: %s") m; None

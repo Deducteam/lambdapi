@@ -8,7 +8,7 @@ open Extra
 
 (** Logging function for typing. *)
 let log_subj =
-  new_logger 'j' "subj" "debugging information for subject-reduction"
+  new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
 (** Representation of a substitution. *)

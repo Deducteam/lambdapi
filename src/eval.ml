@@ -25,12 +25,12 @@ A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
 (** Logging function for evaluation. *)
-let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
+let log_eval = new_logger 'e' "eval" "evaluation"
 let log_eval = log_eval.logger
 
 (** Logging function for equality modulo rewriting. *)
-let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
-let log_eqmd = log_eqmd.logger
+let log_conv = new_logger 'c' "conv" "conversion"
+let log_conv = log_conv.logger
 
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
@@ -107,7 +107,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
-  if !log_enabled then log_eqmd "[%a] == [%a]" pp a pp b;
+  if !log_enabled then log_conv "[%a] == [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -134,7 +134,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
+  if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
 
 (** {b NOTE} that matching with trees involves three collections of terms.
     1. The argument stack [stk] of type {!type:stack} which contains the terms

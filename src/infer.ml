@@ -6,8 +6,9 @@ open Terms
 open Print
 
 (** Logging function for typing. *)
-let log_type = new_logger 't' "type" "debugging information for typing"
-let log_type = log_type.logger
+let log_infr =
+  new_logger 'i' "infr" "type inference/checking"
+let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
 let constraints = Pervasives.ref []
@@ -159,8 +160,8 @@ let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
   let constrs = Pervasives.(!constraints) in
   if !log_enabled then
     begin
-      log_type (gre "infer [%a] yields [%a]") pp t pp a;
-      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      log_infr (gre "infer [%a] yields [%a]") pp t pp a;
+      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
       List.iter fn constrs;
     end;
   Pervasives.(constraints := []);
@@ -177,8 +178,8 @@ let check : Ctxt.t -> term -> term -> unif_constrs = fun ctx t c ->
   let constrs = Pervasives.(!constraints) in
   if !log_enabled then
     begin
-      log_type (gre "check [%a] [%a]") pp t pp c;
-      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      log_infr (gre "check [%a] [%a]") pp t pp c;
+      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
       List.iter fn constrs;
     end;
   Pervasives.(constraints := []);

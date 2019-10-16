@@ -10,7 +10,7 @@ open Proof
 open Print
 
 (** Logging function for the rewrite tactic. *)
-let log_rewr = new_logger 'w' "rewr" "informations for the rewrite tactic"
+let log_rewr = new_logger 'w' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
 (** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
