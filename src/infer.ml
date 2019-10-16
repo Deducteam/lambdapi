@@ -6,8 +6,7 @@ open Terms
 open Print
 
 (** Logging function for typing. *)
-let log_infr =
-  new_logger 'i' "infr" "type inference/checking"
+let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
