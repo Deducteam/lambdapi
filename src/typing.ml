@@ -16,9 +16,10 @@ let check : sym StrMap.t -> Ctxt.t -> term -> term -> bool =
   let to_solve = Infer.check ctx t a in
   match solve builtins true {no_problems with to_solve} with
   | None     -> false
+  | Some([]) -> true
   | Some(cs) ->
-      let fn (a,b) = log_infr (red "Cannot solve [%a] ~ [%a].") pp a pp b in
-      if !log_enabled then List.iter fn cs; cs = []
+      let fn (a,b) = wrn None "Cannot solve [%a] ~ [%a]." pp a pp b in
+      List.iter fn cs; false
 
 (** [infer_constr builtins ctx t] tries to infer a type [a], together with
    unification constraints [cs], for the term [t] in context [ctx].  The
@@ -40,8 +41,8 @@ let infer : sym StrMap.t -> Ctxt.t -> term -> term option =
   | None       -> None
   | Some(a,[]) -> Some(a)
   | Some(_,cs) ->
-      let fn (a,b) = log_infr (red "Cannot solve [%a] ~ [%a].") pp a pp b in
-      if !log_enabled then List.iter fn cs; None
+      let fn (a,b) = wrn None "Cannot solve [%a] ~ [%a]." pp a pp b in
+      List.iter fn cs; None
 
 (** [sort_type builtins ctx t] checks that the type of the term [t] in context
    [ctx] is a sort. If that is not the case, the exception [Fatal] is
