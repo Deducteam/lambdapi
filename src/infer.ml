@@ -60,6 +60,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
+
       let (_,b,ctx') = Ctxt.unbind ctx a b in
       let s = infer ctx' b in
       (* We check that [s] is a sort. *)
@@ -93,6 +94,15 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
         let c = Eval.whnf (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
+        | Meta(_,ts) ->
+            let ctx =
+              match Basics.distinct_vars_opt ts with
+              | None -> ctx
+              | Some vs -> Ctxt.sub ctx vs
+            in
+            let a = Ctxt.make_meta ctx Type in
+            let b = make_meta_codomain ctx a in
+            conv c (Prod(a,b)); (a,b)
         | _         ->
             let a = Ctxt.make_meta ctx Type in
             let b = make_meta_codomain ctx a in

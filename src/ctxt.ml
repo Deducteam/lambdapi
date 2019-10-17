@@ -57,3 +57,11 @@ let of_env : Env.t -> t =
 let make_meta : t -> term -> term = fun ctx a ->
   let m = fresh_meta (to_prod ctx a) (List.length ctx) in
   Meta(m, Array.of_list (List.rev_map (fun (v,_) -> Vari v) ctx))
+
+(** [sub ctx vs] return the sub-context of [ctx] made of the variables of
+    [vs]. *)
+let sub : t -> tvar array -> t = fun ctx ts ->
+  let f (v,t) ctx =
+    if Array.exists (Bindlib.eq_vars v) ts then (v,t)::ctx else ctx
+  in
+  List.fold_right f ctx []
