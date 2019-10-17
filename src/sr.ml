@@ -122,7 +122,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   (* Infer the type of the LHS and the constraints. *)
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
-  | Some(lhs_constrs, ty_lhs) ->
+  | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;

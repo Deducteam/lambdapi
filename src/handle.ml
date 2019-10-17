@@ -179,7 +179,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | Some(a) ->
             Typing.sort_type ss.builtins Ctxt.empty a;
             if Typing.check ss.builtins Ctxt.empty t a then a else
-            fatal cmd.pos "Term [%a] does not have type [%a]." pp t pp a
+            fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
             match Typing.infer ss.builtins Ctxt.empty t with
             | Some(a) -> a

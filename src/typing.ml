@@ -24,11 +24,11 @@ let check : sym StrMap.t -> Ctxt.t -> term -> term -> bool =
    unification constraints [cs], for the term [t] in context [ctx].  The
    function returns [Some(a,cs)] in case of success, and [None] otherwise. *)
 let infer_constr
-    : sym StrMap.t -> Ctxt.t -> term -> (unif_constrs * term) option =
+    : sym StrMap.t -> Ctxt.t -> term -> (term * unif_constrs) option =
   fun builtins ctx t ->
   if !log_enabled then log_infr "infer_constr [%a]" pp t;
   let (a, to_solve) = Infer.infer ctx t in
-  Option.map (fun cs -> (cs, a))
+  Option.map (fun cs -> (a, cs))
     (solve builtins true {no_problems with to_solve})
 
 (** [infer builtins ctx t] tries to infer a type [a] for [t] in the context
@@ -38,8 +38,8 @@ let infer : sym StrMap.t -> Ctxt.t -> term -> term option =
   fun builtins ctx t ->
   match infer_constr builtins ctx t with
   | None       -> None
-  | Some([],a) -> Some(a)
-  | Some(cs,_) ->
+  | Some(a,[]) -> Some(a)
+  | Some(_,cs) ->
       let fn (a,b) = log_infr (red "Cannot solve [%a] ~ [%a].") pp a pp b in
       if !log_enabled then List.iter fn cs; None
 
