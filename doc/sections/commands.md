@@ -287,7 +287,7 @@ set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
 set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 ```
 
-**Infix symbols** The following code defines infix symbols for
+**infix symbols** The following code defines infix symbols for
 addition and multiplication. Both are associative to the left, and
 they have priority levels `6` and `7`.
 
@@ -301,7 +301,13 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**Declared identifiers** The following code declares a new valid symbol, that
+**prefix symbols** The following code defines a prefix symbol for negation.
+
+```
+set prefix 5 "¬" ≔ neg
+```
+
+**declared identifiers** The following code declares a new valid symbol, that
 can then be used in the place of a symbol or λ-variable.
 
 ```
@@ -314,6 +320,6 @@ set declared "x₂"
 set declared "x₃"
 ```
 
-**Warning:** some chacks are performed upon the declaration of infix symbols
+**Warning:** some checks are performed upon the declaration of infix symbols
 and identifiers, but they are by no means sufficient (it is still possible to
 break the parser by defining well-chosen tokens).
