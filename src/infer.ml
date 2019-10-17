@@ -145,6 +145,14 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
         let c = Eval.whnf c in
         match c with
         | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
+        | Meta(_,ts) ->
+           let ctx =
+             match Basics.distinct_vars_opt ts with
+             | None -> ctx
+             | Some vs -> Ctxt.sub ctx vs
+           in
+           let b = make_meta_codomain ctx a in
+           conv c (Prod(a,b)); b
         | _         -> (* Generate product type with codomain [a]. *)
            let b = make_meta_codomain ctx a in
            conv c (Prod(a,b)); b
