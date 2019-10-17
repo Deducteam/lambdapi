@@ -7,17 +7,11 @@ symbol conj : B ⇒ B ⇒ B
 symbol disj : B ⇒ B ⇒ B
 
 set prefix 5 "¬" ≔ neg
-set infix right 5 "∧" ≔ conj
-set infix right 6 "∨" ≔ disj
+set infix right 6 "∧" ≔ conj
+set infix right 5 "∨" ≔ disj
 
-type tt ∨ ff ∧ tt ∨ ff
+assert tt ∨ ff ∧ ¬ tt ∨ ff ≡ tt ∨ (ff ∧ (¬ tt)) ∨ ff
 
-type λ p, ¬ p
+assert λ p, ¬ (¬ p) ≡ λ p, ¬ ¬ p
 
-type λ p, ¬ (¬ p)
-type λ p, ¬ ¬ p
-
-type λ (p : B ⇒ B) (x : B), ¬ (p x)
-type λ (p : B ⇒ B) (x : B), ¬ p x
-
-type ¬ ¬ ¬ tt
+assert λ (p:B⇒B) (x:B), ¬ (p x) ≡ λ (p:B⇒B) (x:B), ¬ p x
