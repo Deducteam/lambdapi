@@ -14,8 +14,12 @@ let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
 let conv a b =
-  let open Pervasives in
-  if not (Basics.eq a b) then constraints := (a,b) :: !constraints
+  log_infr "conv [%a] ~ [%a]" pp a pp b;
+  if not (Basics.eq a b) then
+    begin
+      log_infr (yel "add [%a] ~ [%a]") pp a pp b;
+      let open Pervasives in constraints := (a,b) :: !constraints
+    end
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
@@ -34,6 +38,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : Ctxt.t -> term -> term = fun ctx t ->
+  log_infr "infer [%a]" pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -51,7 +56,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   -> Timed.(!(s.sym_type))
+  | Symb(s,_)   -> !(s.sym_type)
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
      -----------------------------------------
@@ -116,7 +121,9 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,e)   -> infer ctx (term_of_meta m e)
+  | Meta(m,e)   ->
+      log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
+      infer ctx (term_of_meta m e)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
    [ctx], possibly under some constraints recorded in [constraints]
@@ -133,6 +140,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
    This avoids to build a product to destructure it just after. *)
 and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
+  log_infr "check [%a] [%a]" pp t pp c;
   match unfold t with
   (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
       ----------------------------------------------------
