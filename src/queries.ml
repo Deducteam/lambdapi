@@ -41,9 +41,9 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
                     fatal q.pos "Infered types are not convertible."
               end
           | (None   , _      ) ->
-              fatal pt.pos "The type of left-hand side cannot be infered."
+              fatal pt.pos "The type of LHS cannot be infered."
           | (_      , None   ) ->
-              fatal pu.pos "The type of the right-hand side cannot be infered."
+              fatal pu.pos "The type of the RHS cannot be infered."
       in
       if result = must_fail then fatal q.pos "Assertion failed.";
       out 3 "(asrt) assertion OK\n";
