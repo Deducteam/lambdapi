@@ -41,7 +41,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
                     fatal q.pos "Infered types are not convertible."
               end
           | (None   , _      ) ->
-              fatal pt.pos "The type of LHS cannot be infered."
+              fatal pt.pos "The type of the LHS cannot be infered."
           | (_      , None   ) ->
               fatal pu.pos "The type of the RHS cannot be infered."
       in
