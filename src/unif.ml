@@ -218,8 +218,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
                       begin
                         match get_args l1 with
                         | Symb(s0,_),_ ->
-                            log_unif "inverse_prod %a = %a, %a, %a" pp (symb s)
-                              pp (symb s0) pp (symb s1) pp (symb s2);
+                            log_unif "inverse_prod %a = %a, %a, %a"
+                              pp (symb s) pp (symb s0) pp (symb s1)
+                              pp (symb s2);
                             raise (Found (s0,s1,s2))
                         | _,_ -> ()
                       end
