@@ -200,12 +200,11 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   in
 
   (* [inverse_prod s] returns [Some(s0,s1,s2)] if [s] has a rule of the form
-     [s(s0 t0 ...) → ∀x:s1(t1),s2(t2)], and [None] otherwise. *)
+     [s(s0 l1 l2) → ∀x:s1(r1),s2(r2)], and [None] otherwise. *)
   let inverse_prod =
     let exception Found of (sym * sym * sym) in
     fun s ->
     let f rule =
-      log_unif "inverse_prod %a ?" pp_rule (s, Nothing, rule);
       let n = Bindlib.mbinder_arity rule.rhs in
       match Bindlib.msubst rule.rhs (Array.make n TE_None) with
       | Prod (Appl (Symb(s1,_), _), b) ->
@@ -217,11 +216,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
                   | [l1] ->
                       begin
                         match get_args l1 with
-                        | Symb(s0,_),_ ->
-                            log_unif "inverse_prod %a = %a, %a, %a"
-                              pp (symb s) pp (symb s0) pp (symb s1)
-                              pp (symb s2);
-                            raise (Found (s0,s1,s2))
+                        | Symb(s0,_),[_;_] -> raise (Found (s0,s1,s2))
                         | _,_ -> ()
                       end
                   | _ -> ()
@@ -235,7 +230,6 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   (* [inverse s v] computes [s^{-1}(v)], that is, a term [u] such that [s(u)]
      reduces to [v], or raises [Unsolvable]. *)
   let rec inverse s v =
-    log_unif "%a^{-1}(%a)" pp (symb s) pp v;
     match get_args (Eval.whnf v) with
     | Symb(s',_), [u] when s' == s -> u
     | Prod(a,b), _ ->
