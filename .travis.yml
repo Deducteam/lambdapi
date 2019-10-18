@@ -16,14 +16,15 @@ env:
   - OCAML_VERSION=4.05.0
   - OCAML_VERSION=4.06.0
   - OCAML_VERSION=4.06.1
-  - OCAML_VERSION=4.07.0
   - OCAML_VERSION=4.07.1
+  - OCAML_VERSION=4.08.1
+  - OCAML_VERSION=4.09.0
 #  - OCAML_VERSION=4.07.0 TEST_TARGETS=opam-release EXTRA_OPAM=dune-release
 # FIXME
 
 before_install:
   # Obtain and install opam locally.
-  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
+  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O /usr/bin/opam
   - sudo chmod 755 /usr/bin/opam
   # Initialize the switch.
   - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
