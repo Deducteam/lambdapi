@@ -253,9 +253,9 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Symb(s,h)   -> _Symb s h
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
     (* For now, we fail on products, abstractions and metavariables. *)
-    | Prod(_)     -> fatal_no_pos "Cannot rewrite under products."
-    | Abst(_)     -> fatal_no_pos "Cannot rewrite under abstractions."
-    | Meta(_)     -> fatal_no_pos "Cannot rewrite metavariables."
+    | Prod(_)     -> fatal None "Cannot rewrite under products."
+    | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
+    | Meta(_)     -> fatal None "Cannot rewrite metavariables."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
@@ -277,7 +277,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   let cfg = get_eq_config pos ps.proof_builtins in
 
   (* Get the focused goal. *)
-  let (g_env, g_type) = Proof.focus_goal ps in
+  let (g_env, g_type) = Proof.focus_goal pos ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
   let g_ctxt = Ctxt.of_env g_env in
@@ -632,7 +632,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
   (* Get the type of the focused goal. *)
-  let _, g_type = Proof.focus_goal ps in
+  let _, g_type = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
   let (a, l, r)  = get_eq_data pos cfg (Eval.whnf g_type) in
   if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
@@ -646,7 +646,7 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* Obtain the required symbols from the current signature. *)
   let cfg = Proof.(get_eq_config pos ps.proof_builtins) in
   (* Get the type of the focused goal. *)
-  let (g_env, g_type) = Proof.focus_goal ps in
+  let (g_env, g_type) = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a l r)”. *)
   let (a, l, r) = get_eq_data pos cfg g_type in
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)

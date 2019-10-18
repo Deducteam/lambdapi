@@ -13,7 +13,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   let env =
     match ps with
     | None     -> Env.empty
-    | Some(ps) -> fst (Proof.focus_goal ps)
+    | Some(ps) -> fst (Proof.focus_goal q.pos ps)
   in
   let scope = scope_term ss env in
   match q.elt with

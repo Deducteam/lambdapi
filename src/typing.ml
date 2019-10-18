@@ -51,8 +51,8 @@ let sort_type : sym StrMap.t -> Ctxt.t -> term -> unit =
   fun builtins ctx t ->
   if !log_enabled then log_infr "sort_type [%a]" pp t;
   match infer builtins ctx t with
-  | None    -> fatal_no_pos "Unable to infer a sort for [%a]." pp t
+  | None    -> fatal None "Unable to infer a sort for [%a]." pp t
   | Some(a) ->
   match unfold a with
   | Type | Kind -> ()
-  | a           -> fatal_no_pos "[%a] has type [%a] (not a sort)." pp t pp a
+  | a           -> fatal None "[%a] has type [%a] (not a sort)." pp t pp a
