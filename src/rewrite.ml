@@ -610,15 +610,18 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
-  log_rewr "Rewriting with:";
-  log_rewr "  goal           = [%a]" pp g_type;
-  log_rewr "  equality proof = [%a]" pp t;
-  log_rewr "  equality type  = [%a]" pp t_type;
-  log_rewr "  equality LHS   = [%a]" pp l;
-  log_rewr "  equality RHS   = [%a]" pp r;
-  log_rewr "  pred           = [%a]" pp pred;
-  log_rewr "  new goal       = [%a]" pp goal_type;
-  log_rewr "  produced term  = [%a]" pp term;
+  if !log_enabled then
+    begin
+      log_rewr "Rewriting with:";
+      log_rewr "  goal           = [%a]" pp g_type;
+      log_rewr "  equality proof = [%a]" pp t;
+      log_rewr "  equality type  = [%a]" pp t_type;
+      log_rewr "  equality LHS   = [%a]" pp l;
+      log_rewr "  equality RHS   = [%a]" pp r;
+      log_rewr "  pred           = [%a]" pp pred;
+      log_rewr "  new goal       = [%a]" pp goal_type;
+      log_rewr "  produced term  = [%a]" pp term;
+    end;
 
   (* Return the proof-term. *)
   term
@@ -663,10 +666,13 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   let term =
     add_args (symb cfg.symb_eqind) [a; r; l; meta_term; pred; refl_a_l] in
   (* Debugging data to the log. *)
-  log_rewr "Symmetry with:";
-  log_rewr "  goal       = [%a]" pp g_type;
-  log_rewr "  new goal   = [%a]" pp meta_type;
-  log_rewr "  predicate  = [%a]" pp pred;
-  log_rewr "  proof term = [%a]" pp term;
+  if !log_enabled then
+    begin
+      log_rewr "Symmetry with:";
+      log_rewr "  goal       = [%a]" pp g_type;
+      log_rewr "  new goal   = [%a]" pp meta_type;
+      log_rewr "  predicate  = [%a]" pp pred;
+      log_rewr "  proof term = [%a]" pp term
+    end;
   (* Return the proof-term. *)
   term
