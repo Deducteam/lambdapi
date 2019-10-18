@@ -233,7 +233,15 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     | _ -> raise Unsolvable
   in
 
-(* [solve_inj s ts v] tries to solve a problem of the form s(ts) = v when s is
+  let inverse_opt c s ts v =
+    if s == c.symb_P then
+      match ts with
+      | [t] -> begin try Some (t, inverse c s v) with Unsolvable -> None end
+      | _ -> None
+    else None
+  in
+
+  (* [solve_inj s ts v] tries to solve a problem of the form s(ts) = v when s is
    injective. Currently, it only handles a specific case: when s is the
    builtin P. *)
   let solve_inj s ts v =
@@ -242,13 +250,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       match Pervasives.(!config) with
       | None -> add_to_unsolved ()
       | Some c ->
-         try
-           if s == c.symb_P then
-             match ts with
-             | [t] -> solve_aux t (inverse c s v) p
-             | _ -> raise Unsolvable
-           else raise Unsolvable
-         with Unsolvable -> add_to_unsolved ()
+          match inverse_opt c s ts v with
+          | Some (t, u) -> solve_aux t u p
+          | None -> add_to_unsolved ()
   in
 
   match (h1, h2) with
@@ -277,8 +281,20 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
           if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
           then add_to_unsolved ()
           else error ()
-     else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
-     else add_to_unsolved ()
+     else if !(s1.sym_rules) = [] then solve_inj s2 ts2 t1
+     else if !(s2.sym_rules) = [] then solve_inj s1 ts1 t2
+     else
+       begin
+         match Pervasives.(!config) with
+         | None -> add_to_unsolved ()
+         | Some c ->
+             match inverse_opt c s1 ts1 t2 with
+             | Some (t, u) -> solve_aux t u p
+             | None ->
+                 match inverse_opt c s2 ts2 t1 with
+                 | Some (t, u) -> solve_aux t u p
+                 | None -> add_to_unsolved ()
+       end
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
      solve {p with recompute = true}
