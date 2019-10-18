@@ -14,10 +14,10 @@ let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
 let conv a b =
-  log_infr "conv [%a] ~ [%a]" pp a pp b;
+  if !log_enabled then log_infr "conv [%a] ~ [%a]" pp a pp b;
   if not (Basics.eq a b) then
     begin
-      log_infr (yel "add [%a] ~ [%a]") pp a pp b;
+      if !log_enabled then log_infr (yel "add [%a] ~ [%a]") pp a pp b;
       let open Pervasives in constraints := (a,b) :: !constraints
     end
 
@@ -38,7 +38,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : Ctxt.t -> term -> term = fun ctx t ->
-  log_infr "infer [%a]" pp t;
+  if !log_enabled then log_infr "infer [%a]" pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -122,7 +122,8 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
   | Meta(m,e)   ->
-      log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
+      if !log_enabled then
+        log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
       infer ctx (term_of_meta m e)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
@@ -140,7 +141,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
    This avoids to build a product to destructure it just after. *)
 and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
-  log_infr "check [%a] [%a]" pp t pp c;
+  if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
   match unfold t with
   (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
       ----------------------------------------------------
