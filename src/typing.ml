@@ -18,7 +18,7 @@ let check : sym StrMap.t -> Ctxt.t -> term -> term -> bool =
   | None     -> false
   | Some([]) -> true
   | Some(cs) ->
-      let fn (a,b) = wrn None "Cannot solve [%a] ~ [%a]." pp a pp b in
+      let fn (a,b) = fatal_msg "Cannot solve [%a] ~ [%a].\n" pp a pp b in
       List.iter fn cs; false
 
 (** [infer_constr builtins ctx t] tries to infer a type [a], together with
@@ -41,7 +41,7 @@ let infer : sym StrMap.t -> Ctxt.t -> term -> term option =
   | None       -> None
   | Some(a,[]) -> Some(a)
   | Some(_,cs) ->
-      let fn (a,b) = wrn None "Cannot solve [%a] ~ [%a]." pp a pp b in
+      let fn (a,b) = fatal_msg "Cannot solve [%a] ~ [%a].\n" pp a pp b in
       List.iter fn cs; None
 
 (** [sort_type builtins ctx t] checks that the type of the term [t] in context
