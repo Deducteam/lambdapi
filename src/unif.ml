@@ -216,7 +216,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
                         match get_args l1 with
                         | Symb(s0,_),[_;_] ->
                             if !log_enabled then
-                              log_unif (yel "inverses_for_prod %a: %a, %a, %a")
+                              log_unif
+                                (yel "inverses_for_prod %a: %a, %a, %a")
                                 pp (symb s)
                                 pp (symb s0) pp (symb s1) pp (symb s2);
                             (s0,s1,s2) :: l
