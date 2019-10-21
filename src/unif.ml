@@ -204,36 +204,43 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     solve_aux t1 t2 p
   in
 
-  (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2)] such that
-     [s] has a rule of the form [s(s0 l1 l2) → ∀x:s1(r1),s2(r2)]. *)
-  let inverses_for_prod : sym -> (sym * sym * sym) list = fun s ->
+  (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2,b)] such
+     that [s] has a rule of the form [s(s0 l1 l2) → ∀x:s1(r1),s2(r2)] with
+     [b=true] iff [x] occurs in [r2]. *)
+  let inverses_for_prod : sym -> (sym * sym * sym * bool) list = fun s ->
     let f l rule =
-      let n = Bindlib.mbinder_arity rule.rhs in
-      match Bindlib.msubst rule.rhs (Array.make n TE_None) with
-      | Prod (Appl (Symb(s1,_), _), b) ->
+      match rule.lhs with
+      | [l1] ->
           begin
-            match Bindlib.subst b Kind with
-            | Appl (Symb(s2,_), _) ->
+            match get_args l1 with
+            | Symb(s0,_), [_;_] ->
+                let n = Bindlib.mbinder_arity rule.rhs in
                 begin
-                  match rule.lhs with
-                  | [l1] ->
+                  match Bindlib.msubst rule.rhs (Array.make n TE_None) with
+                  | Prod (Appl (Symb(s1,_), _), b) ->
                       begin
-                        match get_args l1 with
-                        | Symb(s0,_),[_;_] ->
-                            if !log_enabled then
-                              log_unif
-                                (yel "inverses_for_prod %a: %a, %a, %a")
-                                pp (symb s)
-                                pp (symb s0) pp (symb s1) pp (symb s2);
-                            (s0,s1,s2) :: l
-                        | _,_ -> l
+                        match Bindlib.subst b Kind with
+                        | Appl (Symb(s2,_), Appl(_,Kind)) ->
+                            (s0,s1,s2,true) :: l
+                        | Appl (Symb(s2,_), _) ->
+                            (s0,s1,s2,false) :: l
+                        | _ -> l
                       end
                   | _ -> l
                 end
-            | _ -> l
+            | _, _ -> l
           end
       | _ -> l
-    in List.fold_left f [] !(s.sym_rules)
+    in
+    let l = List.fold_left f [] !(s.sym_rules) in
+    begin
+      if !log_enabled then
+        let f (s0,s1,s2,b) =
+          log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
+            pp (symb s) pp (symb s0) pp (symb s1) pp (symb s2) b
+        in List.iter f l
+    end;
+    l
   in
 
   (* [inverse s v] computes [s^{-1}(v)], that is, a term [u] such that [s(u)]
@@ -250,16 +257,16 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   and find_inverse_prod a b l =
     match l with
     | [] -> raise Not_invertible
-    | (s0,s1,s2) :: l ->
-        try inverse_prod a b s0 s1 s2
+    | (s0,s1,s2,d) :: l ->
+        try inverse_prod a b s0 s1 s2 d
         with Not_invertible -> find_inverse_prod a b l
 
-  and inverse_prod a b s0 s1 s2 =
-    let a = inverse s1 a in
+  and inverse_prod a b s0 s1 s2 d =
+    let a' = inverse s1 a in
     let x,b = Bindlib.unbind b in
-    let b = lift (inverse s2 b) in
-    let xb = _Abst (lift a) (Bindlib.bind_var x b) in
-    add_args (symb s0) [a; Bindlib.unbox xb]
+    let b' = lift (inverse s2 b) in
+    let xb' = if d then _Abst (lift a) (Bindlib.bind_var x b') else b' in
+    add_args (symb s0) [a'; Bindlib.unbox xb']
   in
 
   (* [inverse_opt s ts v] returns [Some(t,s^{-1}(v))] if [ts=[t]], [s] is

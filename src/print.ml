@@ -13,7 +13,7 @@ open Terms
 let print_domains : bool ref = Console.register_flag "print_domains" false
 
 (** Flag controling the printing of implicit arguments. *)
-let print_implicits : bool ref = Console.register_flag "print_implicits" true
+let print_implicits : bool ref = Console.register_flag "print_implicits" false
 
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)

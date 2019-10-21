@@ -262,8 +262,8 @@ do `lambdapi -h`.
 **flags** The user can set/unset some flags controling printing:
 
 ```
-set flag "print_implicits" off // default is on
-set flag "print_domains" off // default is on
+set flag "print_implicits" on // default is off
+set flag "print_domains" on // default is off
 ```
 
 **notation for natural numbers** It is possible to use the standard
