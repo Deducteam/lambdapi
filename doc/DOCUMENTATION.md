@@ -3,7 +3,7 @@ User manual for Lambdapi
 
 Lambdapi is a proof assistant based on the λΠ-calculus modulo rewriting,
 mostly compatible with the proof checker Dedukti. This document provides
-a good starting point for anyone withing to use or to contribute to the
+a good starting point for anyone wishing to use or to contribute to the
 project.
 
 Table of contents
