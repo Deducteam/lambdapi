@@ -21,4 +21,3 @@ rule eps (@all &a &b) → ∀ (x : eta &a), eps (&b x)
 // Leibniz equality
 definition eq : ∀ A, eta (A > A > o) ≔ λ A x y, all (λ p, p x --> p y)
 
-//type λ A x y, all (λ p, p x --> p y)

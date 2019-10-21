@@ -13,7 +13,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   let env =
     match ps with
     | None     -> Env.empty
-    | Some(ps) -> fst (Proof.focus_goal ps)
+    | Some(ps) -> fst (Proof.focus_goal q.pos ps)
   in
   let scope = scope_term ss env in
   match q.elt with
@@ -36,7 +36,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
                 | Some [] -> Eval.eq_modulo t u
                 | Some cs ->
                     let fn (t,u) =
-                      wrn None "Cannot solve [%a] ~ [%a]\n" pp t pp u in
+                      fatal_msg "Cannot solve [%a] ~ [%a].\n" pp t pp u in
                     List.iter fn cs;
                     fatal q.pos "Infered types are not convertible."
               end

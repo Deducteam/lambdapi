@@ -65,9 +65,9 @@ let init : sym StrMap.t -> Pos.strloc -> term -> t =
 let finished : t -> bool = fun ps -> ps.proof_goals = []
 
 (** [focus_goal ps] returns the focused goal or fails if there is none. *)
-let focus_goal : proof_state -> Env.t * term = fun ps ->
+let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   try Goal.get_type (List.hd ps.proof_goals)
-  with Failure(_)  -> Console.fatal_no_pos "No remaining goals..."
+  with Failure(_)  -> Console.fatal pos "No remaining goals..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : _ pp = fun oc gl ->
