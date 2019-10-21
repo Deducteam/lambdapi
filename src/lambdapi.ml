@@ -104,6 +104,9 @@ let spec =
     ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
+    ; ( "--eta-conv"
+      , Arg.Set Eval.eta_conv
+      , " Convert modulo eta" )
     ; ( "--beautify"
       , Arg.Unit (fun _ -> mode := Beautify; set_default_verbose 0)
       , " Parse input files and pretty-print them (in the new syntax)" )
