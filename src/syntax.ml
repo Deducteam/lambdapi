@@ -113,8 +113,8 @@ type p_query_aux =
   (** Normalisation command. *)
   | P_query_prover    of string
   (** Set the prover to use inside a proof. *)
-  | P_query_prover_limit of int
-  (** Set the time limit of the prover (in seconds). *)
+  | P_query_prover_timeout of int
+  (** Set the timeout of the prover (in seconds). *)
 
 type p_query = p_query_aux loc
 

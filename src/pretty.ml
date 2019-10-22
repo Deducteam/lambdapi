@@ -145,8 +145,8 @@ let pp_p_query : p_query pp = fun oc q ->
       out "@[<hov 2>compute@ %a@]" pp_p_term t
   | P_query_prover(s)                     ->
       out "set prover \"%s\"" s
-  | P_query_prover_limit(n)               ->
-      out "set prover_limit %d" n
+  | P_query_prover_timeout(n)               ->
+      out "set prover_timeout %d" n
 
 let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in

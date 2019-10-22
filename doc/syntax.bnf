@@ -159,7 +159,7 @@ reserved "compute"
   | "set" "builtin" <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "prover" <ident>
-  | "set" "prover_limit" <nat_lit>
+  | "set" "prover_timeout" <nat_lit>
   | "set" "declared" <string_lit>
   // Get the type of a term
   | "type" <term>

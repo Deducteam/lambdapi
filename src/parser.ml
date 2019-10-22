@@ -456,8 +456,8 @@ let parser query =
       Pos.in_pos _loc (P_query_normalize(t,c))
   | _set_ "prover" s:string_lit ->
       Pos.in_pos _loc (P_query_prover(s))
-  | _set_ "prover_limit" n:nat_lit ->
-      Pos.in_pos _loc (P_query_prover_limit(n))
+  | _set_ "prover_timeout" n:nat_lit ->
+      Pos.in_pos _loc (P_query_prover_timeout(n))
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
