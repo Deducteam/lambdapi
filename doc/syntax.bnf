@@ -156,6 +156,7 @@ reserved "compute"
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
   | "set" "builtin" <string_lit> "≔" <qident>
+  | "set" "prefix" <float_lit> <string_lit> "≔" <qident>
   | "set" "infix" {"left" | "right"}? <float_lit> <string_lit> "≔" <qident>
   | "set" "declared" <string_lit>
   // Get the type of a term

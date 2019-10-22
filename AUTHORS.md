@@ -6,3 +6,4 @@ Contributors
  - Emilio Gallego (Mines ParisTech)
  - Frédéric Blanqui (INRIA & LSV)
  - Rodolphe Lepigre (INRIA & LSV)
+ - Michael Färber (INRIA & LSV)

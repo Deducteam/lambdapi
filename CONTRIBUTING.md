@@ -14,7 +14,7 @@ In the interest of code source uniformity, we ask that:
  - there should be *no trailing spaces* at the end of lines,
  - lines length should be limited to *78 characters* (excluding newline).
 
-You should at the very least run `make sanity_check` before comiting anything.
+You should at the very least run `make sanity_check` before committing anything.
 
 
 Type annotations and interface
@@ -32,7 +32,7 @@ let a_function : int -> (bool -> bool) -> string -> unit = fun x y z ->
 
 Note that `ocamldoc` comments should take up as much space as possible,
 without exceeding the maximum line width. Starting at their second line
-(if any), the begining of the lines should be aligned with the first word
+(if any), the beginning of the lines should be aligned with the first word
 of the first line.
 
 
@@ -47,7 +47,7 @@ match ... with
 | B(x,y) -> ...
 ```
 
-When the action of a pattern does not fit on one line, it sould be indented
+When the action of a pattern does not fit on one line, it should be indented
 by two units (that is, four characters).
 ```OCaml
 | A(x) ->

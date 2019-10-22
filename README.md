@@ -16,7 +16,7 @@ Dependencies and compilation
 ----------------------------
 
 Lambdapi requires a Unix-like system. It should work on Linux as well as on
-MacOS. It might also be possible to make it work on Windows with Cygwyn or
+MacOS. It might also be possible to make it work on Windows with Cygwin or
 with "bash on Windows".
 
 List of dependencies:
