@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language:        Lambdapi
-" Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
+" Maintainer:      Rodolphe Lepigre <lepigre@mpi-sws.org>
 " Last Change:     12/09/2018
 " Version:         1.0
-" Original Author: Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
+" Original Author: Rodolphe Lepigre <lepigre@mpi-sws.org>
 
 if exists("b:current_syntax")
   finish
