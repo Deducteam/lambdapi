@@ -21,9 +21,9 @@ Table of contents
 
  - [Syntax of terms](sections/terms.md)
 
- - [Syntax of commands](sections/commands.md)
+ - [Commands](sections/commands.md)
 
- - [Syntax of proof tactics](sections/tactics.md)
+ - [Tactics](sections/tactics.md)
 
  - [API](sections/api.md)
 
