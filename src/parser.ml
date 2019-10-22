@@ -107,7 +107,7 @@ let declared_id = Prefix.grammar declared_ids
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
 let forbidden_in_ops =
-  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; "=" ; ":"; "→"; "⇒"
+  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; ":"; "→"; "⇒"
   ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
@@ -365,7 +365,7 @@ let parser term @(p : prio) =
   | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
+  | _let_ x:ident a:arg* "≔" t:(term PFunc) _in_ u:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
   (* Natural number literal. *)
   | n:nat_lit
@@ -436,7 +436,7 @@ let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
-  | l:term "→" r:term -> Pos.in_pos _loc (l, r) (* TODO *)
+  | l:term "→" r:term -> Pos.in_pos _loc (l, r)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
@@ -458,6 +458,7 @@ let parser assert_must_fail =
 let parser assertion =
   | t:term ":" a:term -> P_assert_typing(t,a)
   | t:term "≡" u:term -> P_assert_conv(t,u)
+  (* FIXME potential conflict with infix "≡". *)
 
 (** [query] parses a query. *)
 let parser query =
