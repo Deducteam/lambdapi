@@ -133,8 +133,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
         (* Apply the declared instance to the current goal. *)
         handle_refine instance
       else
-        (Console.wrn tac.pos "%s didn't found a proof@." prover_name;
-      ps)
+        Console.fatal tac.pos "%s did not found a proof@." prover_name
 
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
