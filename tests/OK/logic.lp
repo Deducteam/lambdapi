@@ -89,12 +89,12 @@ symbol imp_elim         : ∀ (p : Prop) (q : Prop), P (imp p q) ⇒ P p ⇒ P q
 
 theorem not_elimp : ∀ (A : Prop), P (not (not A)) ⇒ P A
 proof
-    intro A nnp
+    assume A nnp
     refine or_elim A (not A) A _ _ _
     refine excl_mid A
-    intro pa
+    assume pa
     refine pa
-    intro pna
+    assume pna
     apply bot_elim
     apply not_elim (not A) nnp
     apply pna
