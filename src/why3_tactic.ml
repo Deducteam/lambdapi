@@ -227,23 +227,6 @@ let prover_driver :
     cp.prover.prover_name
     Why3.Exn_printer.exn_printer e
 
-(** [result pos prv tsk] return the result of a prover [prv] with the task
-  [tsk]. *)
-let result :
-  Pos.popt ->
-  Why3.Whyconf.config_prover ->
-  Why3.Task.task ->
-  Why3.Call_provers.prover_result =
-  fun pos prv tsk ->
-    let limit =
-      {
-        Why3.Call_provers.empty_limit
-        with limit_time = !prover_timeout
-      } in
-    Why3.Call_provers.wait_on_call (Why3.Driver.prove_task
-    ~limit:limit
-    ~command:prv.Why3.Whyconf.command (prover_driver pos prv) tsk)
-
 let handle prover_name ss tac ps g =
   (* Get the goal to prove. *)
   let (hypotheses, trm) = Proof.Goal.get_type g in
@@ -256,7 +239,17 @@ let handle prover_name ss tac ps g =
   (* Create a new task that contains symbols, axioms and the goal. *)
   let tsk = create constants_table hyps why3term in
   (* Call the prover named [prover_name] and get the result. *)
-  let prover_result = result tac.pos (prover tac.pos prover_name) tsk in
+  let prover_result =
+    let prv = (prover tac.pos prover_name) in
+    let limit =
+      { Why3.Call_provers.empty_limit with limit_time = !prover_timeout }
+    in
+    Why3.Call_provers.wait_on_call (
+      Why3.Driver.prove_task
+        ~limit:limit
+        ~command:prv.Why3.Whyconf.command (prover_driver tac.pos prv) tsk
+        )
+    in
   (* If the prover succeeds to prove the goal. *)
   if Why3.Call_provers.Valid = prover_result.pr_answer then
   (* Create a new axiom that represents the proved goal. *)
