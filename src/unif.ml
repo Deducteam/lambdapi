@@ -8,27 +8,11 @@ open Basics
 open Print
 
 (** Logging function for unification. *)
-let log_solv = new_logger 's' "solv" "debugging information for unification"
-let log_solv = log_solv.logger
+let log_unif = new_logger 'u' "unif" "unification"
+let log_unif = log_unif.logger
 
-(** Unification configuration. *)
-type config =
-  { symb_P     : sym (** Encoding of propositions.        *)
-  ; symb_T     : sym (** Encoding of types.               *)
-  ; symb_all   : sym (** Universal quantifier.            *) }
-
-let config : config option Pervasives.ref = Pervasives.ref None
-
-(** [set_config builtins] set the configuration from [builtins]. FIXME: add
-   code to check that a config is correct. *)
-let set_config : sym StrMap.t -> unit = fun builtins ->
-  let open Pervasives in
-  try
-    let c = { symb_P   = StrMap.find "P" builtins
-            ; symb_T   = StrMap.find "T" builtins
-            ; symb_all = StrMap.find "all" builtins }
-    in config := Some c
-  with Not_found -> config := None
+(** Exception raised when a constraint is not solvable. *)
+exception Unsolvable
 
 (** Representation of a set of problems. *)
 type problems =
@@ -104,10 +88,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     begin
       let t1 = add_args h1 ts1 in
       let t2 = add_args h2 ts2 in
-      log_solv "solve [%a] [%a]" pp t1 pp t2;
+      log_unif "unify [%a] [%a]" pp t1 pp t2;
     end;
-
-  let exception Unsolvable in
 
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
@@ -115,11 +97,14 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
+
   let error () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    fatal_no_pos "[%a] and [%a] are not convertible." pp t1 pp t2
+    fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
+    raise Unsolvable
   in
+
   let decompose () =
     let add_arg_pb l t1 t2 = (t1, t2)::l in
     let to_solve =
@@ -135,10 +120,11 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
+    let exception Cannot_imitate in
     try
-      if not (us = [] && Sign.is_inj s) then raise Unsolvable;
+      if not (us = [] && Sign.is_inj s) then raise Cannot_imitate;
       let vars = match distinct_vars_opt vs with
-        | None -> raise Unsolvable
+        | None -> raise Cannot_imitate
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
@@ -153,12 +139,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
                   let m = fresh_meta (Env.to_prod env (lift a)) k in
                   let u = Meta (m,vs) in
                   build (i-1) (u::acc) (Bindlib.subst b u)
-               | _ -> raise Unsolvable
+               | _ -> raise Cannot_imitate
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
       solve_aux t1 t2 p
-    with Unsolvable -> add_to_unsolved ()
+    with Cannot_imitate -> add_to_unsolved ()
   in
 
   (* [imitate_lam_cond h ts] checks that [ts] is headed by a variable
@@ -218,37 +204,88 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     solve_aux t1 t2 p
   in
 
-  (* [inverse c s t] computes a term [u] such that [s(u)] reduces to
-     [t]. Raises [Unsolvable] if it cannot find [u]. Currently, it only
-     handles the builtin [P]. *)
-  let rec inverse c sym t =
-    match get_args (Eval.whnf t) with
-    | Symb(s,_), [u] when s == sym -> u
-    | Prod(ta,b), _ when sym == c.symb_P ->
-       let a = inverse c c.symb_T ta in
-       let x,b' = Bindlib.unbind b in
-       let b' = lift (inverse c sym b') in
-       let xb' = _Abst (lift a) (Bindlib.bind_var x b') in
-       add_args (symb c.symb_all) [a; Bindlib.unbox xb']
-    | _ -> raise Unsolvable
+  (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2,b)] such
+     that [s] has a rule of the form [s(s0 l1 l2) → ∀x:s1(r1),s2(r2)] with
+     [b=true] iff [x] occurs in [r2]. *)
+  let inverses_for_prod : sym -> (sym * sym * sym * bool) list = fun s ->
+    let f l rule =
+      match rule.lhs with
+      | [l1] ->
+          begin
+            match get_args l1 with
+            | Symb(s0,_), [_;_] ->
+                let n = Bindlib.mbinder_arity rule.rhs in
+                begin
+                  match Bindlib.msubst rule.rhs (Array.make n TE_None) with
+                  | Prod (Appl (Symb(s1,_), _), b) ->
+                      begin
+                        match Bindlib.subst b Kind with
+                        | Appl (Symb(s2,_), Appl(_,Kind)) ->
+                            (s0,s1,s2,true) :: l
+                        | Appl (Symb(s2,_), _) ->
+                            (s0,s1,s2,false) :: l
+                        | _ -> l
+                      end
+                  | _ -> l
+                end
+            | _, _ -> l
+          end
+      | _ -> l
+    in
+    let l = List.fold_left f [] !(s.sym_rules) in
+    begin
+      if !log_enabled then
+        let f (s0,s1,s2,b) =
+          log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
+            pp (symb s) pp (symb s0) pp (symb s1) pp (symb s2) b
+        in List.iter f l
+    end;
+    l
   in
 
-(* [solve_inj s ts v] tries to solve a problem of the form s(ts) = v when s is
-   injective. Currently, it only handles a specific case: when s is the
-   builtin P. *)
+  (* [inverse s v] computes [s^{-1}(v)], that is, a term [u] such that [s(u)]
+     reduces to [v], or raises [Not_invertible]. *)
+  let exception Not_invertible in
+
+  let rec inverse s v =
+    if !log_enabled then log_unif "inverse [%a] [%a]" pp (symb s) pp v;
+    match get_args (Eval.whnf v) with
+    | Symb(s',_), [u] when s' == s -> u
+    | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
+    | _, _ -> raise Not_invertible
+
+  and find_inverse_prod a b l =
+    match l with
+    | [] -> raise Not_invertible
+    | (s0,s1,s2,d) :: l ->
+        try inverse_prod a b s0 s1 s2 d
+        with Not_invertible -> find_inverse_prod a b l
+
+  and inverse_prod a b s0 s1 s2 d =
+    let a' = inverse s1 a in
+    let x,b = Bindlib.unbind b in
+    let b' = lift (inverse s2 b) in
+    let xb' = if d then _Abst (lift a) (Bindlib.bind_var x b') else b' in
+    add_args (symb s0) [a'; Bindlib.unbox xb']
+  in
+
+  (* [inverse_opt s ts v] returns [Some(t,s^{-1}(v))] if [ts=[t]], [s] is
+     injective and [s^{-1}(v)] exists, and [None] otherwise. *)
+  let inverse_opt s ts v =
+    if s.sym_mode = Injec then
+      match ts with
+      | [t] -> begin try Some (t, inverse s v) with Not_invertible -> None end
+      | _ -> None
+    else None
+  in
+
+  (* [solve_inj s ts v] tries to replace a problem of the form [s(ts) = v] by
+     [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !(s.sym_rules) = [] then error ()
-    else
-      match Pervasives.(!config) with
-      | None -> add_to_unsolved ()
-      | Some c ->
-         try
-           if s == c.symb_P then
-             match ts with
-             | [t] -> solve_aux t (inverse c s v) p
-             | _ -> raise Unsolvable
-           else raise Unsolvable
-         with Unsolvable -> add_to_unsolved ()
+    else match inverse_opt s ts v with
+         | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
+         | None -> add_to_unsolved ()
   in
 
   match (h1, h2) with
@@ -277,8 +314,17 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
           if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
           then add_to_unsolved ()
           else error ()
-     else if !(s1.sym_rules) = [] && !(s2.sym_rules) = [] then error ()
-     else add_to_unsolved ()
+     else if !(s1.sym_rules) = [] then solve_inj s2 ts2 t1
+     else if !(s2.sym_rules) = [] then solve_inj s1 ts1 t2
+     else
+       begin
+         match inverse_opt s1 ts1 t2 with
+         | Some (t, u) -> solve_aux t u p
+         | None ->
+             match inverse_opt s2 ts2 t1 with
+             | Some (t, u) -> solve_aux t u p
+             | None -> add_to_unsolved ()
+       end
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
      solve {p with recompute = true}
@@ -304,8 +350,6 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
    list [cs] is a list of unsolved convertibility constraints. *)
 let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
-  fun builtins b p ->
-  set_config builtins;
+  fun _builtins b p ->
   can_instantiate := b;
-  try Some (solve p) with Fatal(_,m) ->
-    if !log_enabled then log_solv (red "solve: %s") m; None
+  try Some (solve p) with Unsolvable -> None

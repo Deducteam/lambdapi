@@ -6,16 +6,20 @@ open Terms
 open Print
 
 (** Logging function for typing. *)
-let log_type = new_logger 't' "type" "debugging information for typing"
-let log_type = log_type.logger
+let log_infr = new_logger 'i' "infr" "type inference/checking"
+let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
 let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
 let conv a b =
-  let open Pervasives in
-  if not (Basics.eq a b) then constraints := (a,b) :: !constraints
+  if !log_enabled then log_infr "conv [%a] ~ [%a]" pp a pp b;
+  if not (Basics.eq a b) then
+    begin
+      if !log_enabled then log_infr (yel "add [%a] ~ [%a]") pp a pp b;
+      let open Pervasives in constraints := (a,b) :: !constraints
+    end
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
@@ -34,6 +38,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : Ctxt.t -> term -> term = fun ctx t ->
+  if !log_enabled then log_infr "infer [%a]" pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -51,7 +56,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   -> Timed.(!(s.sym_type))
+  | Symb(s,_)   -> !(s.sym_type)
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
      -----------------------------------------
@@ -60,6 +65,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
+
       let (_,b,ctx') = Ctxt.unbind ctx a b in
       let s = infer ctx' b in
       (* We check that [s] is a sort. *)
@@ -93,6 +99,15 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
         let c = Eval.whnf (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
+        | Meta(_,ts) ->
+            let ctx =
+              match Basics.distinct_vars_opt ts with
+              | None -> ctx
+              | Some vs -> Ctxt.sub ctx vs
+            in
+            let a = Ctxt.make_meta ctx Type in
+            let b = make_meta_codomain ctx a in
+            conv c (Prod(a,b)); (a,b)
         | _         ->
             let a = Ctxt.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
@@ -106,7 +121,10 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,e)   -> infer ctx (term_of_meta m e)
+  | Meta(m,e)   ->
+      if !log_enabled then
+        log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
+      infer ctx (term_of_meta m e)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
    [ctx], possibly under some constraints recorded in [constraints]
@@ -123,6 +141,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
    This avoids to build a product to destructure it just after. *)
 and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
+  if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
   match unfold t with
   (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
       ----------------------------------------------------
@@ -135,6 +154,14 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
         let c = Eval.whnf c in
         match c with
         | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
+        | Meta(_,ts) ->
+           let ctx =
+             match Basics.distinct_vars_opt ts with
+             | None -> ctx
+             | Some vs -> Ctxt.sub ctx vs
+           in
+           let b = make_meta_codomain ctx a in
+           conv c (Prod(a,b)); b
         | _         -> (* Generate product type with codomain [a]. *)
            let b = make_meta_codomain ctx a in
            conv c (Prod(a,b)); b
@@ -159,8 +186,8 @@ let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
   let constrs = Pervasives.(!constraints) in
   if !log_enabled then
     begin
-      log_type (gre "infer [%a] yields [%a]") pp t pp a;
-      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      log_infr (gre "infer [%a] yields [%a]") pp t pp a;
+      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
       List.iter fn constrs;
     end;
   Pervasives.(constraints := []);
@@ -177,8 +204,8 @@ let check : Ctxt.t -> term -> term -> unif_constrs = fun ctx t c ->
   let constrs = Pervasives.(!constraints) in
   if !log_enabled then
     begin
-      log_type (gre "check [%a] [%a]") pp t pp c;
-      let fn (a,b) = log_type "  assuming [%a] ~ [%a]" pp a pp b in
+      log_infr (gre "check [%a] [%a]") pp t pp c;
+      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
       List.iter fn constrs;
     end;
   Pervasives.(constraints := []);

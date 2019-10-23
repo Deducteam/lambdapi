@@ -25,12 +25,15 @@ A term t is in strong normal form (snf) if it cannot be reduced further.
 *)
 
 (** Logging function for evaluation. *)
-let log_eval = new_logger 'r' "eval" "debugging information for evaluation"
+let log_eval = new_logger 'e' "eval" "evaluation"
 let log_eval = log_eval.logger
 
 (** Logging function for equality modulo rewriting. *)
-let log_eqmd = new_logger 'e' "eqmd" "debugging information for equality"
-let log_eqmd = log_eqmd.logger
+let log_conv = new_logger 'c' "conv" "conversion"
+let log_conv = log_conv.logger
+
+(** Convert modulo eta. *)
+let eta_equality : bool ref = Console.register_flag "eta_equality" false
 
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
@@ -107,7 +110,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 
 (** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
 and eq_modulo : term -> term -> bool = fun a b ->
-  if !log_enabled then log_eqmd "[%a] == [%a]" pp a pp b;
+  if !log_enabled then log_conv "[%a] == [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -128,13 +131,17 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (Abst(a1,b1), Abst(a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
         eq_modulo ((a1,a2)::(b1,b2)::l)
+    | (Abst(_ ,b ), t          )
+    | (t          , Abst(_ ,b )) when !eta_equality ->
+        let (x,b) = Bindlib.unbind b in
+        eq_modulo ((b, Appl(t, Vari(x)))::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_eqmd (r_or_g res "%a == %a") pp a pp b; res
+  if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
 
 (** {b NOTE} that matching with trees involves three collections of terms.
     1. The argument stack [stk] of type {!type:stack} which contains the terms

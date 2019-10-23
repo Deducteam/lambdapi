@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language:        Dedukti
-" Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@inri.fr>
+" Maintainer:      Rodolphe Lepigre <lepigre@mpi-sws.org>
 " Last Change:     24/10/2017
 " Version:         1.0
-" Original Author: Rodolphe Lepigre <rodolphe.lepigre@inri.fr>
+" Original Author: Rodolphe Lepigre <lepigre@mpi-sws.org>
 
 if exists("b:current_syntax")
   finish

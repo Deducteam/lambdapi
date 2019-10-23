@@ -9,7 +9,7 @@ open Syntax
 open Scope
 
 (** Logging function for tactics. *)
-let log_tact = new_logger 'i' "tact" "debugging information for tactics"
+let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
 
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof

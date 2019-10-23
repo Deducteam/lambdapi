@@ -22,6 +22,9 @@ type assoc =
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
+(** Representation of a unary operator. *)
+type unop = string * priority * qident
+
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
@@ -50,6 +53,8 @@ and p_term_aux =
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
+  | P_UnaO of unop * p_term
+  (** Unary (prefix) operator. *)
   | P_BinO of p_term * binop * p_term
   (** Binary operator. *)
   | P_Wrap of p_term
@@ -160,6 +165,8 @@ type p_proof_end =
 type p_config =
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
+  | P_config_unop    of unop
+  (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
   | P_config_binop   of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
   | P_config_ident of string
@@ -198,6 +205,9 @@ let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
+let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
+  n1 = n2 && p1 = p2 && eq_qident id1 id2
+
 let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
   n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
 
@@ -217,6 +227,8 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (P_LLet(x1,xs1,t1,u1), P_LLet(x2,xs2,t2,u2)) ->
       eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
       && List.equal eq_p_arg xs1 xs2
+  | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)       ) ->
+      eq_unop u1 u2 && eq_p_term t1 t2
   | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)    ) ->
       eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | (P_Wrap(t1)          , P_Wrap(t2)          ) ->

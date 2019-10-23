@@ -12,5 +12,5 @@ rule fib3 0              → 0
  and fib3 (s (s (s &x))) → (fib3 (&x + 2)) + (fib3 (&x + 1)) + (fib3 &x)
 
 assert fib 15 ≡ 610
-assert fib 25 ≡ 75025
+assert fib 24 ≡ 46368
 compute fib3 22

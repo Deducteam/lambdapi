@@ -128,10 +128,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
-      let handle_rule r =
-        let (s,_,_) as r = scope_rule ss r in
+      let handle_rule pr =
+        let (s,_,_) as r = scope_rule ss pr in
         if !(s.sym_def) <> None then
-          fatal_no_pos "Symbol [%s] cannot be (re)defined." s.sym_name;
+          fatal pr.pos "Rewriting rules cannot be given for defined \
+                        symbol [%s]." s.sym_name;
         Sr.check_rule ss.builtins r; r
       in
       let rs = List.map handle_rule rs in
@@ -179,7 +180,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | Some(a) ->
             Typing.sort_type ss.builtins Ctxt.empty a;
             if Typing.check ss.builtins Ctxt.empty t a then a else
-            fatal cmd.pos "Term [%a] does not have type [%a]." pp t pp a
+            fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
             match Typing.infer ss.builtins Ctxt.empty t with
             | Some(a) -> a
@@ -194,7 +195,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature Defin x a impl in
-      out 3 "(symb) %s (definition)\n" s.sym_name;
+      out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
@@ -267,6 +268,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
+        | P_config_unop(unop)     ->
+            let (s, _, qid) = unop in
+            (* Define the unary operator [s]. *)
+            let (sym, _) = find_sym false ss qid in
+            Sign.add_unop ss.signature s (sym, unop);
+            out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
