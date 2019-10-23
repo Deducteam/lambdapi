@@ -59,76 +59,43 @@ let new_axiom_name : unit -> string =
   let counter = ref 0 in
   fun _ -> incr counter; "Why3axiom_" ^ (string_of_int !counter)
 
-
-(** FIXME *)
-exception NoGoalTranslation
-
-(** [translate_prop cfg constants ctxt p] translate the term [p] into Why3
-  terms with a context [ctxt] and a config [cfg]. *)
-let rec translate_prop : config -> cnst_table -> Ctxt.t -> term ->
-                       cnst_table * Why3.Term.term =
-    fun cfg constants ctxt p ->
-  match Basics.get_args p with
-  | symbol, [t1; t2] when Basics.is_symb cfg.symb_and symbol  ->
-    let (constants, t1) = translate_prop cfg constants ctxt t1 in
-    let (constants, t2) = translate_prop cfg constants ctxt t2 in
-      constants, Why3.Term.t_and t1 t2
-  | symbol, [t1; t2] when Basics.is_symb cfg.symb_or symbol   ->
-    let (constants, t1) = translate_prop cfg constants ctxt t1 in
-    let (constants, t2) = translate_prop cfg constants ctxt t2 in
-      constants, Why3.Term.t_or t1 t2
-  | symbol, [t1; t2] when Basics.is_symb cfg.symb_imp symbol  ->
-    let (constants, t1) = translate_prop cfg constants ctxt t1 in
-    let (constants, t2) = translate_prop cfg constants ctxt t2 in
-      constants, Why3.Term.t_implies t1 t2
-  | symbol, [t] when Basics.is_symb cfg.symb_not symbol       ->
-    let (constants, t) = translate_prop cfg constants ctxt t in
-      constants, Why3.Term.t_not t
-  | symbol, [] when Basics.is_symb cfg.symb_bot symbol        ->
-    constants, Why3.Term.t_false
-  | symbol, [] when Basics.is_symb cfg.symb_top symbol        ->
-    constants, Why3.Term.t_true
-  | _                                                         ->
-    (* If the term [p] is in the list [constants]. *)
-    try
-      (* Then find it and return it. *)
-      let (_, ct) =
-        List.find (fun x -> Basics.eq (fst x) p) constants in
-        (constants, Why3.Term.ps_app ct [])
-    with Not_found ->
-    (* Or generate a new constant in why3. *)
-      let new_symbol = Why3.Ident.id_fresh "P" in
-      let sym = Why3.Term.create_psymbol new_symbol [] in
-      let new_predicate = Why3.Term.ps_app sym [] in
-      (* add the new symbol to the list and return it *)
-      (p, sym)::constants, new_predicate
-
-(** [translate_goal cfg constants trm] translate the lambdapi term [trm] to
-  Why3 term using the configuration [cfg] and the list of Why3 constants in
-  [constants]. *)
-let translate_goal : config -> cnst_table -> term ->
-  cnst_table * Why3.Term.term =
-  fun cfg constants trm ->
-  match Basics.get_args trm with
-  | (symbol, [t]) when Basics.is_symb cfg.symb_P symbol ->
-    translate_prop cfg constants [] t
-  | _                                                   ->
-    raise NoGoalTranslation
-
-(** [translate_hyp cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp))]
-  translate the context [hyp] with the label [hyp_name] and add it in
-  [l_hypothesis] with the why3 constants [l_constants]. *)
-let translate_hyp : config -> cnst_table * Why3.Term.term StrMap.t ->
-                      string * (tvar * tbox) ->
-                      cnst_table * Why3.Term.term StrMap.t =
-    fun cfg (l_constants, l_hypothesis) (hyp_name, (_, hyp)) ->
-  try
-    let (new_why3_l, hyp') =
-      translate_goal cfg l_constants (Bindlib.unbox hyp)
-    in
-      (new_why3_l, StrMap.add hyp_name hyp' l_hypothesis)
-  with NoGoalTranslation ->
-    (l_constants, l_hypothesis)
+(** [translate_term cfg tbl t] translates the given lambdapi term [t] into the
+    correspondig Why3 term, using the configuration [cfg] and constants in the
+    association list [tbl]. *)
+let translate_term : config -> cnst_table -> term ->
+                       (cnst_table * Why3.Term.term) option = fun cfg tbl t ->
+  let rec translate_prop tbl ctxt t =
+    match Basics.get_args t with
+    | (Symb(s,_), [t1; t2]) when s == cfg.symb_and ->
+        let (tbl, t1) = translate_prop tbl ctxt t1 in
+        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        (tbl, Why3.Term.t_and t1 t2)
+    | (Symb(s,_), [t1; t2]) when s == cfg.symb_or  ->
+        let (tbl, t1) = translate_prop tbl ctxt t1 in
+        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        (tbl, Why3.Term.t_or t1 t2)
+    | (Symb(s,_), [t1; t2]) when s == cfg.symb_imp ->
+        let (tbl, t1) = translate_prop tbl ctxt t1 in
+        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        (tbl, Why3.Term.t_implies t1 t2)
+    | (Symb(s,_), [t]     ) when s == cfg.symb_not ->
+        let (tbl, t) = translate_prop tbl ctxt t in
+        (tbl, Why3.Term.t_not t)
+    | (Symb(s,_), []      ) when s == cfg.symb_bot ->
+        (tbl, Why3.Term.t_false)
+    | (Symb(s,_), []      ) when s == cfg.symb_top ->
+        (tbl, Why3.Term.t_true)
+    | (_        , _       )                        ->
+        (* If the term [p] is mapped in [tbl] then use it. *)
+        try (tbl, Why3.Term.ps_app (List.assoc_eq Basics.eq t tbl) [])
+        with Not_found ->
+          (* Otherwise generate a new constant in why3. *)
+          let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
+          ((t, sym)::tbl, Why3.Term.ps_app sym [])
+  in
+  match Basics.get_args t with
+  | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl [] t)
+  | _                                     -> None
 
 (** [translate pos builtins (hs, g)] translates from lambdapi to Why3 goal [g]
   using the hypothesis [hs]. The function return
@@ -137,17 +104,23 @@ let translate_hyp : config -> cnst_table * Why3.Term.term StrMap.t ->
   - [hypothesis] maps abstracted labels to Why3 terms (presentation of [hs]).
   - [formula] Why3 term representing the goal [g].  *)
 let translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
-                      cnst_table * Why3.Term.term StrMap.t * Why3.Term.term =
+                  cnst_table * Why3.Term.term StrMap.t * Why3.Term.term =
     fun pos builtins (hs, g) ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    List.fold_left (translate_hyp cfg) ([], StrMap.empty) hs in
-  try
-    let (constants, formula) = translate_goal cfg constants g in
-    (constants, hypothesis, formula)
-  with NoGoalTranslation ->
-    Console.fatal pos "The term [%a] is not of the form [P _]"
-    Print.pp g
+    (* [translate_hyp (tbl, map) (name, (_, hyp))] translate the context [hyp]
+       with the label [name] and add it in [tbl] with the why3 constants. *)
+    let translate_hyp (tbl, map) (name, (_, hyp)) =
+      match translate_term cfg tbl (Bindlib.unbox hyp) with
+      | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
+      | None                -> (tbl, map)
+    in
+    List.fold_left translate_hyp ([], StrMap.empty) hs
+  in
+  match translate_term cfg constants g with
+  | Some(tbl, why3_term) -> (tbl, hypothesis, why3_term)
+  | None                 ->
+      Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
 
 (** [add_goal tsk f] add a goal with [f] formula in the task [tsk]. *)
 let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
