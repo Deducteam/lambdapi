@@ -16,8 +16,8 @@
   (list (cons (concat "\\<" (regexp-opt '(
     "require" "open" "as" "let" "in" "symbol" "const" "injective" "rule" "and"
     "definition" "theorem" "assert" "assertnot" "set" "proof" "qed" "admit"
-    "abort" "focus" "print" "proofterm" "refine" "apply" "simpl" "intro"
-    "rewrite" "reflexivity" "symmetry" "type" "compute"
+    "abort" "focus" "print" "proofterm" "refine" "apply" "simpl" "assume"
+    "rewrite" "refl" "sym" "type" "compute"
   )) "\\>") 'font-lock-keyword-face))
   "Keyword highlighting for the LambdaPi mode.")
 
