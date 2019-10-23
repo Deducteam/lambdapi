@@ -104,11 +104,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry tac.pos ps)
   | P_tac_why3(prover_name)    ->
-      (* Apply the why3 tactic on the current goal. *)
-      let instance = Why3_tactic.handle prover_name ss tac ps g in
-      (* If the tactic succeeds, then apply the declared instance to the
-         current goal. *)
-      handle_refine instance
+      handle_refine (Why3_tactic.handle prover_name ss tac ps g)
 
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
