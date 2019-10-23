@@ -250,8 +250,9 @@ let handle prover_name ss tac ps g =
         ~command:prv.Why3.Whyconf.command (prover_driver tac.pos prv) tsk
         )
     in
-  (* If the prover succeeds to prove the goal. *)
-  if Why3.Call_provers.Valid = prover_result.pr_answer then
+  (* Check that the prover succeeded to prove the goal. *)
+  if not (Why3.Call_provers.Valid = prover_result.pr_answer) then
+    Console.fatal tac.pos "%s did not found a proof@." prover_name;
   (* Create a new axiom that represents the proved goal. *)
   let why3_axiom = Pos.make tac.pos (get_newname ()) in
   (* Get the meta type of the current goal (with quantified context) *)
@@ -263,10 +264,7 @@ let handle prover_name ss tac ps g =
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
   (* Apply the instance of the axiom with context. *)
-  let instance = Basics.add_args (symb a) terms in
-  (* Return the new axiom *)
-  instance
-  else
-  Console.fatal tac.pos "%s did not found a proof@." prover_name
+  Basics.add_args (symb a) terms
+
 (* Initilizing Why3 environment. *)
 let _ = init_env ()
