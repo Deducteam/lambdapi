@@ -64,9 +64,9 @@ try to instantiate some of the generated metavariables. The
 metavariables that cannot be solved are added as new goals.
 
 <!---------------------------------------------------------------------------->
-### `intro`
+### `assume`
 
-The tactic `intro h1 .. hn` replaces a goal of type `∀x1
+The tactic `assume h1 .. hn` replaces a goal of type `∀x1
 .. xn,T` by a goal of type `T` with `xi` replaced by `hi`.
 
 <!---------------------------------------------------------------------------->

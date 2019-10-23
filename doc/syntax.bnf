@@ -119,7 +119,7 @@ reserved "compute"
 // Proof tactics
 <tactic> ::=
   | "refine" <term>
-  | "intro" <ident>+
+  | "assume" <ident>+
   | "apply" <term>
   | "simpl"
   | "rewrite" {"[" <rw_patt> "]"}? <term>
