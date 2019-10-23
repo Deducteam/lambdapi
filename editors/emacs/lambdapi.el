@@ -36,7 +36,7 @@
   ("==" ?≡) ("\\equiv"  ?≡)
   ("&&" ?∧) ("\\wedge"  ?∧)
   ("||" ?∨) ("\\vee"    ?∨)
-  ("~~" ?¬) ("\\not"    ?¬)
+  ("~~" ?¬) ("\\neg"    ?¬)
   ("??" ?∃) ("\\exists" ?∃))
 
 ;; Main function creating the mode (lambdapi)
