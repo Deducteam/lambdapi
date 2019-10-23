@@ -260,13 +260,17 @@ let eq_p_assertion : p_assertion eq = fun a1 a2 ->
 
 let eq_p_query : p_query eq = fun q1 q2 ->
   match (q1.elt, q2.elt) with
-  | (P_query_assert(b1,a1)   , P_query_assert(b2,a2)   ) ->
+  | (P_query_assert(b1,a1)     , P_query_assert(b2,a2)     ) ->
      b1 = b2 && eq_p_assertion a1 a2
-  | (P_query_infer(t1,c1)    , P_query_infer(t2,c2)    ) ->
+  | (P_query_infer(t1,c1)      , P_query_infer(t2,c2)      ) ->
      eq_p_term t1 t2 && c1 = c2
-  | (P_query_normalize(t1,c1), P_query_normalize(t2,c2)) ->
+  | (P_query_normalize(t1,c1)  , P_query_normalize(t2,c2)  ) ->
      eq_p_term t1 t2 && c1 = c2
-  | (_                       , _                       ) ->
+  | (P_query_prover(s1)        , P_query_prover(s2)        ) ->
+     s1 = s2
+  | (P_query_prover_timeout(t1), P_query_prover_timeout(t2)) ->
+     t1 = t2
+  | (_                         , _                         ) ->
       false
 
 let eq_p_tactic : p_tactic eq = fun t1 t2 ->
@@ -281,6 +285,8 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
       Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
   | (P_tac_query(q1)     , P_tac_query(q2)     ) ->
       eq_p_query q1 q2
+  | (P_tac_why3(s1)      , P_tac_why3(s2)      ) ->
+      s1 = s2
   | (t1                  , t2                  ) ->
       t1 = t2
 
