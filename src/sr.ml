@@ -162,10 +162,6 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     end;
   (* Check that there is no uninstanciated metas left. *)
   let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
-  let is_pat_var m = m.meta_name <> None in
-  let exception Found in
-  let f m = if not (is_pat_var m) then raise Found in
-  let has_metas = try Basics.iter_meta f rhs; false with Found -> true in
-  if has_metas then
+  if Basics.has_metas rhs then
     fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
       pp_rule (s,h,r.elt)
