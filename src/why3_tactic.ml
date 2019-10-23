@@ -144,11 +144,6 @@ and translate_prop :
       (* add the new symbol to the list and return it *)
       (p, sym)::constants_table, new_predicate
 
-
-(** [declare_symbols l] add the declaration of every symbol in [l] to [tsk].*)
-let declare_symbols : Why3.Term.lsymbol list -> Why3.Task.task = fun l ->
-  List.fold_left Why3.Task.add_param_decl None l
-
 (** [add_goal tsk f] add a goal with [f] formula in the task [tsk]. *)
 let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
   fun tsk f ->
@@ -173,7 +168,8 @@ let create :
   -> Why3.Task.task =
   fun constants_table hypothesis goal ->
     let symbols = List.map (fun (_, x) -> x) constants_table in
-    let tsk = declare_symbols symbols in
+    (* Add the declaration of every symbol. *)
+    let tsk = List.fold_left Why3.Task.add_param_decl None symbols in
     let tsk = StrMap.fold add_hypothesis hypothesis tsk in
     add_goal tsk goal
 
@@ -249,15 +245,6 @@ let result :
     ~limit:limit
     ~command:prv.Why3.Whyconf.command (prover_driver pos prv) tsk)
 
-(** [answer ans] check if the answer [ans] of a prover is valid or not. *)
-let answer : Why3.Call_provers.prover_answer -> bool = fun ans ->
-  ans = Why3.Call_provers.Valid
-
-(** [call pos sp tsk] call the prover named [sp] with the task [tsk]. *)
-let call :
-  Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
-  fun pos sp tsk -> result pos (prover pos sp) tsk
-
 let handle prover_name ss tac ps g =
   (* Get the goal to prove. *)
   let (hypotheses, trm) = Proof.Goal.get_type g in
@@ -270,9 +257,9 @@ let handle prover_name ss tac ps g =
   (* Create a new task that contains symbols, axioms and the goal. *)
   let tsk = create constants_table hyps why3term in
   (* Call the prover named [prover_name] and get the result. *)
-  let prover_result = call tac.pos prover_name tsk in
+  let prover_result = result tac.pos (prover tac.pos prover_name) tsk in
   (* If the prover succeeds to prove the goal. *)
-  if answer prover_result.pr_answer then
+  if Why3.Call_provers.Valid = prover_result.pr_answer then
   (* Create a new axiom that represents the proved goal. *)
   let why3_axiom = Pos.make tac.pos (get_newname ()) in
   (* Get the meta type of the current goal (with quantified context) *)
