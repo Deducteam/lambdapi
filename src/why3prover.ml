@@ -6,9 +6,9 @@ open Timed
     by using the set prover <name> command). *)
 let default_prover : string ref = ref "Alt-Ergo"
 
-(** [prover_time_limit] is the time limit (in seconds) of a prover while
+(** [prover_timeout] is the time limit (in seconds) of a prover while
     finding a proof. *)
-let prover_time_limit : int ref = ref 10
+let prover_timeout : int ref = ref 10
 
 (** [why3_config] read the config file of Why3 that is installed in the
     machine. the default path is [~/.why3.conf]. More information could be
@@ -68,7 +68,7 @@ let result :
       let limit =
         {
             Why3.Call_provers.empty_limit
-            with limit_time = !prover_time_limit
+            with limit_time = !prover_timeout
         } in
       Why3.Call_provers.wait_on_call (Why3.Driver.prove_task
       ~limit:limit

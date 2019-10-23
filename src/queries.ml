@@ -73,4 +73,4 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   | P_query_prover(s)      ->
       Timed.(Why3prover.default_prover := s)
   | P_query_prover_timeout(n)->
-      Timed.(Why3prover.prover_time_limit := n)
+      Timed.(Why3prover.prover_timeout := n)
