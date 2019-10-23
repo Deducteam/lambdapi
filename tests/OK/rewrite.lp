@@ -91,14 +91,14 @@ set builtin "refl"  ≔ refl
 // [∀ n m, n + S m = S (n+m)]
 theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
 proof
-  intro n m
+  assume n m
   refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
   // Case Z.
   simpl
   reflexivity
   // Case S.
   simpl
-  intro pn ih
+  assume pn ih
   rewrite ih
   reflexivity
 qed
@@ -106,7 +106,7 @@ qed
 theorem rewriteTest0 : ∀x y z,
   P (eq nat (add (add x (s y)) z) (add (s (add x y)) z))
 proof
-  intro x y z
+  assume x y z
   print
   rewrite add_succ_r
   refine refl nat (add (s (add x y)) z)

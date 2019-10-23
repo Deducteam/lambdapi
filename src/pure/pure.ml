@@ -138,7 +138,7 @@ symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
 
 theorem notK : ∀a, P (eq bool (bool_neg (bool_neg a)) a)
 proof
-   intro a
+   assume a
 qed
 " in
   List.equal Command.equal c c
