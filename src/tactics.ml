@@ -107,19 +107,19 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Get the goal to prove. *)
       let (hypotheses, trm) = Proof.Goal.get_type g in
       (* Get the default or the indicated name of the prover. *)
-      let prover_name = Option.get s Timed.(!Why3prover.default_prover) in
+      let prover_name = Option.get s Timed.(!Why3_tactic.default_prover) in
       (* Translate from lambdapi to why3 terms. *)
       let (constants_table, hyps, why3term) =
-          Why3prop.translate tac.pos ps.proof_builtins (hypotheses, trm)
+          Why3_tactic.translate tac.pos ps.proof_builtins (hypotheses, trm)
       in
       (* Create a new task that contains symbols, axioms and the goal. *)
-      let tsk = Why3task.create constants_table hyps why3term in
+      let tsk = Why3_tactic.create constants_table hyps why3term in
       (* Call the prover named [prover_name] and get the result. *)
-      let prover_result = Why3prover.call tac.pos prover_name tsk in
+      let prover_result = Why3_tactic.call tac.pos prover_name tsk in
       (* If the prover succeed to prove the goal. *)
-      if Why3prover.answer prover_result.pr_answer then
+      if Why3_tactic.answer prover_result.pr_answer then
         (* Create a new axiom that represents the proved goal. *)
-        let why3_axiom = Pos.make tac.pos (Why3prop.get_newname ()) in
+        let why3_axiom = Pos.make tac.pos (Why3_tactic.get_newname ()) in
         (* Get the meta type of the current goal (with quantified context) *)
         let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
         (* Add the axiom to the current signature. *)
