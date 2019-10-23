@@ -156,7 +156,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let cs = List.filter (fun c -> not (is_constr c)) cs in
   if cs <> [] then
     begin
-      let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
+      let fn (t,u) = fatal_msg "Cannot solve [%a] ≡ [%a]\n" pp t pp u in
       List.iter fn cs;
       fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
     end;
