@@ -303,8 +303,6 @@ set prover_timeout 60
 ```
 The default time limit of a prover is set to 10 seconds.
 
-**Declared identifiers** The following code declares a new valid symbol, that
-can then be used in the place of a symbol or λ-variable.
 **prefix symbols** The following code defines a prefix symbol for negation.
 
 ```
