@@ -319,7 +319,7 @@ let whnf : term -> term = fun t ->
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
-  match get_args (whnf_beta t) with
+  match get_args (whnf t) with
   | Prod(a,b), _ ->
      let x,b = Bindlib.unbind b in
      Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
