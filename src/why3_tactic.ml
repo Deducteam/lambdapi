@@ -52,7 +52,6 @@ let get_prop_config :
   - [hypothesis] maps abstracted labels to Why3 terms (presentation of
   [hs]).
   - [formula] Why3 term representing the goal [g].  *)
-
 let rec translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
   cnst_table * Why3.Term.term StrMap.t * Why3.Term.term =
   fun pos builtins (hs, g) ->
