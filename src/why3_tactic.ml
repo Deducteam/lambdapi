@@ -192,6 +192,12 @@ let why3_main : Why3.Whyconf.main =
   (* Load all plugins (TPTP, DIMACS, ...) and return the new config. *)
   Why3.Whyconf.load_plugins m; m
 
+(** [why3_env] build an empty environment. *)
+let why3_env : Why3.Env.env ref = ref (Why3.Env.create_env [])
+
+(* Why3 initialization. *)
+let _ = why3_env := Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
+
 (** [prover pos provername] search and return the prover called [prover_name].
   *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
@@ -207,13 +213,6 @@ let prover : Pos.popt -> string -> Why3.Whyconf.config_prover =
   else
   (* Return the prover configuration. *)
     snd (Why3.Whyconf.Mprover.max_binding provers)
-
-(** [why3_env] build an empty environment. *)
-let why3_env : Why3.Env.env ref = ref (Why3.Env.create_env [])
-
-(* [init_env ()] init the environment. *)
-let init_env () =
-  why3_env := Why3.Env.create_env (Why3.Whyconf.loadpath why3_main)
 
 (** [prover_driver pos cp] load the config prover [cp] in the current
   enironment and return the driver of the prover. *)
@@ -265,6 +264,3 @@ let handle prover_name ss tac ps g =
   let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
   (* Apply the instance of the axiom with context. *)
   Basics.add_args (symb a) terms
-
-(* Initilizing Why3 environment. *)
-let _ = init_env ()
