@@ -3,6 +3,7 @@
 open Terms
 open Extra
 open Timed
+open Scope
 
 exception NoGoalTranslation
 
@@ -256,5 +257,36 @@ let call :
     Pos.popt -> string -> Why3.Task.task -> Why3.Call_provers.prover_result =
     fun pos sp tsk -> result pos (prover pos sp) tsk
 
+let handle prover_name ss tac ps g =
+      (* Get the goal to prove. *)
+      let (hypotheses, trm) = Proof.Goal.get_type g in
+      (* Get the default or the indicated name of the prover. *)
+      let prover_name = Option.get prover_name Timed.(!default_prover) in
+      (* Translate from lambdapi to why3 terms. *)
+      let (constants_table, hyps, why3term) =
+          translate tac.Pos.pos ps.Proof.proof_builtins (hypotheses, trm)
+      in
+      (* Create a new task that contains symbols, axioms and the goal. *)
+      let tsk = create constants_table hyps why3term in
+      (* Call the prover named [prover_name] and get the result. *)
+      let prover_result = call tac.pos prover_name tsk in
+      (* If the prover succeeds to prove the goal. *)
+      if answer prover_result.pr_answer then
+        (* Create a new axiom that represents the proved goal. *)
+        let why3_axiom = Pos.make tac.pos (get_newname ()) in
+        (* Get the meta type of the current goal (with quantified context) *)
+        let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
+        (* Add the axiom to the current signature. *)
+        let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
+        (* Tell the user that the goal is proved (verbose 2). *)
+        Console.out 2 "%s proved the current goal@." prover_name;
+        (* Return the variable terms of each item in the context. *)
+        let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
+        (* Apply the instance of the axiom with context. *)
+        let instance = Basics.add_args (symb a) terms in
+        (* Return the new axiom *)
+        instance
+      else
+        Console.fatal tac.pos "%s did not found a proof@." prover_name
 (* Initilizing Why3 environment. *)
 let _ = init_env ()

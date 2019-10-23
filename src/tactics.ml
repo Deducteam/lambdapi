@@ -103,37 +103,12 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry tac.pos ps)
-  | P_tac_why3(s)    ->
-      (* Get the goal to prove. *)
-      let (hypotheses, trm) = Proof.Goal.get_type g in
-      (* Get the default or the indicated name of the prover. *)
-      let prover_name = Option.get s Timed.(!Why3_tactic.default_prover) in
-      (* Translate from lambdapi to why3 terms. *)
-      let (constants_table, hyps, why3term) =
-          Why3_tactic.translate tac.pos ps.proof_builtins (hypotheses, trm)
-      in
-      (* Create a new task that contains symbols, axioms and the goal. *)
-      let tsk = Why3_tactic.create constants_table hyps why3term in
-      (* Call the prover named [prover_name] and get the result. *)
-      let prover_result = Why3_tactic.call tac.pos prover_name tsk in
-      (* If the prover succeed to prove the goal. *)
-      if Why3_tactic.answer prover_result.pr_answer then
-        (* Create a new axiom that represents the proved goal. *)
-        let why3_axiom = Pos.make tac.pos (Why3_tactic.get_newname ()) in
-        (* Get the meta type of the current goal (with quantified context) *)
-        let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
-        (* Add the axiom to the current signature. *)
-        let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
-        (* Tell the user that the goal is proved (verbose 2). *)
-        Console.out 2 "%s proved the current goal@." prover_name;
-        (* Return the variable terms of each item in the context. *)
-        let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
-        (* Apply the instance of the axiom with context. *)
-        let instance = Basics.add_args (symb a) terms in
-        (* Apply the declared instance to the current goal. *)
-        handle_refine instance
-      else
-        Console.fatal tac.pos "%s did not found a proof@." prover_name
+  | P_tac_why3(prover_name)    ->
+      (* Apply the why3 tactic on the current goal. *)
+      let instance = Why3_tactic.handle prover_name ss tac ps g in
+      (* If the tactic succeeds, then apply the declared instance to the
+         current goal. *)
+      handle_refine instance
 
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->
