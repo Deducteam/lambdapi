@@ -11,7 +11,7 @@ let default_prover : string ref = ref "Alt-Ergo"
 
 (** [prover_timeout] is the current time limit (in seconds) that is left for a
     prover to find a proof. It can be changed with "set prover <int>". *)
-let prover_timeout : int ref = ref 10
+let prover_timeout : int ref = ref 2
 
 (** [why3_config] is the Why3 configuration read the configuration file (it is
     usually located at ["~/.why3.conf"]). For more information, visit the Why3
@@ -64,22 +64,22 @@ let new_axiom_name : unit -> string =
     association list [tbl]. *)
 let translate_term : config -> cnst_table -> term ->
                        (cnst_table * Why3.Term.term) option = fun cfg tbl t ->
-  let rec translate_prop tbl ctxt t =
+  let rec translate_prop tbl t =
     match Basics.get_args t with
     | (Symb(s,_), [t1; t2]) when s == cfg.symb_and ->
-        let (tbl, t1) = translate_prop tbl ctxt t1 in
-        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        let (tbl, t1) = translate_prop tbl t1 in
+        let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_and t1 t2)
     | (Symb(s,_), [t1; t2]) when s == cfg.symb_or  ->
-        let (tbl, t1) = translate_prop tbl ctxt t1 in
-        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        let (tbl, t1) = translate_prop tbl t1 in
+        let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_or t1 t2)
     | (Symb(s,_), [t1; t2]) when s == cfg.symb_imp ->
-        let (tbl, t1) = translate_prop tbl ctxt t1 in
-        let (tbl, t2) = translate_prop tbl ctxt t2 in
+        let (tbl, t1) = translate_prop tbl t1 in
+        let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_implies t1 t2)
     | (Symb(s,_), [t]     ) when s == cfg.symb_not ->
-        let (tbl, t) = translate_prop tbl ctxt t in
+        let (tbl, t) = translate_prop tbl t in
         (tbl, Why3.Term.t_not t)
     | (Symb(s,_), []      ) when s == cfg.symb_bot ->
         (tbl, Why3.Term.t_false)
@@ -94,7 +94,7 @@ let translate_term : config -> cnst_table -> term ->
           ((t, sym)::tbl, Why3.Term.ps_app sym [])
   in
   match Basics.get_args t with
-  | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl [] t)
+  | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                     -> None
 
 (** [translate pos builtins (hs, g)] translates from lambdapi to Why3 goal [g]
@@ -122,31 +122,23 @@ let translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
   | None                 ->
       Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
 
-(** [add_goal tsk f] add a goal with [f] formula in the task [tsk]. *)
-let add_goal : Why3.Task.task -> Why3.Term.term -> Why3.Task.task =
-  fun tsk f ->
-  let new_goal = Why3.Ident.id_fresh "lambdapi_goal" in
-  let goal = Why3.Decl.create_prsymbol new_goal in
-  Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal f
-
-(** [add_hyp tsk (axiom_name, axiom_term)] add the axiom [axiom_term] named
-  [axiom_name] to the Why3 task [tsk]. *)
-let add_hyp : string -> Why3.Term.term -> Why3.Task.task ->  Why3.Task.task =
-  fun axiom_name axiom_term tsk ->
-  let new_axiom = Why3.Ident.id_fresh axiom_name in
-  let axiom = Why3.Decl.create_prsymbol new_axiom in
-  Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom axiom_term
-
-(** [create constants hypothesis goal] Add all the symbols of [constants] in a
-  new task and declare [hypothesis] as axioms and [goal] as a Why3 goal. *)
+(** [create tbl hyps term] adds all the constants of [tbl] in a new task, also
+    declare the hypotheses of [hyps] as axioms and register the term [term] as
+    a Why3 goal. *)
 let create : cnst_table -> Why3.Term.term StrMap.t -> Why3.Term.term ->
-               Why3.Task.task =
-  fun constants hypothesis goal ->
-    let symbols = List.map (fun (_, x) -> x) constants in
-    (* Add the declaration of every symbol. *)
-    let tsk = List.fold_left Why3.Task.add_param_decl None symbols in
-    let tsk = StrMap.fold add_hyp hypothesis tsk in
-    add_goal tsk goal
+               Why3.Task.task = fun tbl hyps term ->
+  (* Add the declaration of every constant. *)
+  let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
+  let tsk = List.fold_left fn None tbl in
+  (* Add the declaration of every hypothesis. *)
+  let fn name t tsk =
+    let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
+    Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
+  in
+  let tsk = StrMap.fold fn hyps tsk in
+  (* Add the goal itself. *)
+  let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
+  Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal term
 
 (** [prover pos prv] search and return the prover called [prv]. *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover = fun pos prv ->
@@ -156,7 +148,7 @@ let prover : Pos.popt -> string -> Why3.Whyconf.config_prover = fun pos prv ->
   let provers = Why3.Whyconf.filter_provers why3_config fp in
   (* Display a message if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
-    Console.fatal pos  "[%s] not installed or not configured" prv;
+    Console.fatal pos "[%s] not installed or not configured" prv;
   (* Return the prover configuration. *)
   snd (Why3.Whyconf.Mprover.max_binding provers)
 

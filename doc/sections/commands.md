@@ -301,7 +301,7 @@ The user can also specify the timeout (in seconds) of the prover:
 ```
 set prover_timeout 60
 ```
-The default time limit of a prover is set to 10 seconds.
+The default time limit of a prover is set to 2 seconds.
 
 **prefix symbols** The following code defines a prefix symbol for negation.
 
