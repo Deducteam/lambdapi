@@ -148,8 +148,8 @@ let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     let limit_time = !prover_timeout in
     let limit = {Why3.Call_provers.empty_limit with limit_time} in
     let command = prover.Why3.Whyconf.command in
-    (* Load the config prover [prv] in current environment, return the driver
-       of the prover. *)
+    (* Load the config prover [prover] in current environment, return the
+      driver of the prover. *)
     let driver =
       try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
       with e ->
