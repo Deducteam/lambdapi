@@ -14,9 +14,9 @@ let log_why3 = log_why3.logger
     be changed by using the "set prover <string>" command. *)
 let default_prover : string ref = ref "Alt-Ergo"
 
-(** [prover_timeout] is the current time limit (in seconds) that is left for a
-    prover to find a proof. It can be changed with "set prover <int>". *)
-let prover_timeout : int ref = ref 2
+(** [timeout] is the current time limit (in seconds) for a Why3 prover to find
+    a proof. It can be changed with "set prover <int>". *)
+let timeout : int ref = ref 2
 
 (** [why3_config] is the Why3 configuration read the configuration file (it is
     usually located at ["~/.why3.conf"]). For more information, visit the Why3
@@ -141,27 +141,23 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
 let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     fun tsk pos prover_name ->
   (* Filter the set of why3 provers. *)
-  let fp = Why3.Whyconf.parse_filter_prover prover_name in
-  (* Get the set of provers. *)
-  let provers = Why3.Whyconf.filter_provers why3_config fp in
-  (* Display a message if we did not find a matching prover. *)
+  let filter = Why3.Whyconf.parse_filter_prover prover_name in
+  let provers = Why3.Whyconf.filter_provers why3_config filter in
+  (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
     fatal pos "[%s] not installed or not configured" prover_name;
-  (* Return the prover configuration. *)
-  let (_, prover) = Why3.Whyconf.Mprover.max_binding provers in
-  let limit_time = !prover_timeout in
-  let limit = {Why3.Call_provers.empty_limit with limit_time} in
-  let command = prover.Why3.Whyconf.command in
-  (* Load the config prover [prover] in current environment, return the
-    driver of the prover. *)
+  (* Return the prover configuration and load the driver. *)
+  let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
     try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
     with e -> fatal pos "Failed to load driver for %s (%a)"
                 prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
+  (* Actually run the prover. *)
+  let limit = {Why3.Call_provers.empty_limit with limit_time = !timeout} in
+  let command = prover.Why3.Whyconf.command in
   let call = Why3.Driver.prove_task ~limit ~command driver tsk in
-  let result = Why3.Call_provers.wait_on_call call in
-  (Why3.Call_provers.Valid = result.pr_answer)
+  Why3.Call_provers.((wait_on_call call).pr_answer = Valid)
 
 (** [handle pos ps ss prover_name g] runs the Why3 prover corresponding to the
     name [prover_name] (if given or a default one otherwise) on the goal  [g].
