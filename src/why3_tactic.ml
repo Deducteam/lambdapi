@@ -132,43 +132,44 @@ let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
   | None                 ->
       Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
 
-(** [prover pos prv] search and return the prover called [prv]. *)
-let prover : Pos.popt -> string -> Why3.Whyconf.config_prover = fun pos prv ->
-  (* Filter the set of why3 provers. *)
-  let fp = Why3.Whyconf.parse_filter_prover prv in
-  (* Get the set of provers. *)
-  let provers = Why3.Whyconf.filter_provers why3_config fp in
-  (* Display a message if we did not find a matching prover. *)
-  if Why3.Whyconf.Mprover.is_empty provers then
-    Console.fatal pos "[%s] not installed or not configured" prv;
-  (* Return the prover configuration. *)
-  snd (Why3.Whyconf.Mprover.max_binding provers)
+(**[run_task tsk pos prover_name] Run the task [tsk] with the specified prover
+  named [prover_name] and return the answer of the prover. *)
+  let run_task : Why3.Task.task -> Pos.popt -> string ->
+                  Why3.Call_provers.prover_result = fun tsk pos prover_name ->
+    (* Filter the set of why3 provers. *)
+    let fp = Why3.Whyconf.parse_filter_prover prover_name in
+    (* Get the set of provers. *)
+    let provers = Why3.Whyconf.filter_provers why3_config fp in
+    (* Display a message if we did not find a matching prover. *)
+    if Why3.Whyconf.Mprover.is_empty provers then
+      Console.fatal pos "[%s] not installed or not configured" prover_name;
+    (* Return the prover configuration. *)
+    let (_, prover) = Why3.Whyconf.Mprover.max_binding provers in
+    let limit_time = !prover_timeout in
+    let limit = {Why3.Call_provers.empty_limit with limit_time} in
+    let command = prover.Why3.Whyconf.command in
+    (* Load the config prover [prv] in current environment, return the driver
+       of the prover. *)
+    let driver =
+      try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
+      with e ->
+        Console.fatal pos "Failed to load driver for %s: %a"
+          prover.prover.prover_name Why3.Exn_printer.exn_printer e
+    in
+    Why3.Call_provers.wait_on_call
+      (Why3.Driver.prove_task ~limit ~command driver tsk)
 
 (** [handle prover_name ss tac ps g] FIXME *)
-let handle prover_name ss tac ps g =
+let handle : string option -> sig_state -> 'a Pos.loc -> Proof.proof_state ->
+              Proof.Goal.t -> term = fun prover_name ss tac ps g ->
   (* Get the goal to prove. *)
   let (hypotheses, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
   let prover_name = Option.get prover_name Timed.(!default_prover) in
   (* Encode the goal in Why3. *)
   let tsk = encode tac.Pos.pos ps.Proof.proof_builtins (hypotheses, trm) in
-  (* Call the prover named [prover_name] and get the result. *)
-  let prover_result =
-    let prv = prover tac.pos prover_name in
-    let limit_time = !prover_timeout in
-    let limit = {Why3.Call_provers.empty_limit with limit_time} in
-    let command = prv.Why3.Whyconf.command in
-    (* Load the config prover [prv] in current environment, return the driver
-       of the prover. *)
-    let driver =
-      try Why3.Whyconf.(load_driver why3_main why3_env prv.driver [])
-      with e ->
-        Console.fatal tac.pos "Failed to load driver for %s: %a"
-          prv.prover.prover_name Why3.Exn_printer.exn_printer e
-    in
-    Why3.Call_provers.wait_on_call
-      (Why3.Driver.prove_task ~limit ~command driver tsk)
-  in
+  (* Run the task with the prover named [prover_name] and get the result. *)
+  let prover_result = run_task tsk tac.pos prover_name in
   (* Check that the prover succeeded to prove the goal. *)
   if not (Why3.Call_provers.Valid = prover_result.pr_answer) then
     Console.fatal tac.pos "%s did not found a proof@." prover_name;
