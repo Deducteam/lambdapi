@@ -97,15 +97,12 @@ let translate_term : config -> cnst_table -> term ->
   | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                     -> None
 
-(** [translate pos builtins (hs, g)] translates from lambdapi to Why3 goal [g]
-  using the hypothesis [hs]. The function return
-  [constants, hypothesis, formula] where :
-  - [constants] maps abstracted Lambdapi terms to Why3 constants.
-  - [hypothesis] maps abstracted labels to Why3 terms (presentation of [hs]).
-  - [formula] Why3 term representing the goal [g].  *)
-let translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
-                  cnst_table * Why3.Term.term StrMap.t * Why3.Term.term =
-    fun pos builtins (hs, g) ->
+(** [encode pos builtins (hs, g)] translates the goal [g] from lambdapi to
+  Why3 using the hypothesis [hs]. The function return a task that contains the
+  encoded version of lambdapi constants, hypothesis and the formula in Why3.
+  *)
+let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
+                  Why3.Task.task = fun pos builtins (hs, g) ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
     (* [translate_hyp (tbl, map) (name, (_, hyp))] translate the context [hyp]
@@ -118,27 +115,22 @@ let translate : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     List.fold_left translate_hyp ([], StrMap.empty) hs
   in
   match translate_term cfg constants g with
-  | Some(tbl, why3_term) -> (tbl, hypothesis, why3_term)
+  | Some(tbl, why3_term) ->
+    (* Add the declaration of every constant in a task. *)
+    let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
+    let tsk = List.fold_left fn None tbl in
+    (* Add the declaration of every hypothesis in the task. *)
+    let fn name t tsk =
+      let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
+      Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
+    in
+    let tsk = StrMap.fold fn hypothesis tsk in
+    (* Add the goal itself. *)
+    let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
+    (* Return the task that contains the encoded lambdapi formula in Why3. *)
+    Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term
   | None                 ->
       Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
-
-(** [create tbl hyps term] adds all the constants of [tbl] in a new task, also
-    declare the hypotheses of [hyps] as axioms and register the term [term] as
-    a Why3 goal. *)
-let create : cnst_table -> Why3.Term.term StrMap.t -> Why3.Term.term ->
-               Why3.Task.task = fun tbl hyps term ->
-  (* Add the declaration of every constant. *)
-  let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
-  let tsk = List.fold_left fn None tbl in
-  (* Add the declaration of every hypothesis. *)
-  let fn name t tsk =
-    let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
-    Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
-  in
-  let tsk = StrMap.fold fn hyps tsk in
-  (* Add the goal itself. *)
-  let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
-  Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal term
 
 (** [prover pos prv] search and return the prover called [prv]. *)
 let prover : Pos.popt -> string -> Why3.Whyconf.config_prover = fun pos prv ->
@@ -158,12 +150,8 @@ let handle prover_name ss tac ps g =
   let (hypotheses, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
   let prover_name = Option.get prover_name Timed.(!default_prover) in
-  (* Translate from lambdapi to why3 terms. *)
-  let (constants, hyps, why3term) =
-    translate tac.Pos.pos ps.Proof.proof_builtins (hypotheses, trm)
-  in
-  (* Create a new task that contains symbols, axioms and the goal. *)
-  let tsk = create constants hyps why3term in
+  (* Encode the goal in Why3. *)
+  let tsk = encode tac.Pos.pos ps.Proof.proof_builtins (hypotheses, trm) in
   (* Call the prover named [prover_name] and get the result. *)
   let prover_result =
     let prv = prover tac.pos prover_name in
