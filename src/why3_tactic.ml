@@ -1,9 +1,14 @@
 (** Calling a prover using Why3. *)
 
+open Console
 open Terms
 open Extra
 open Timed
 open Scope
+
+(** Logging function for external prover calling with Why3. *)
+let log_why3 = new_logger 'w' "why3" "why3 provers"
+let log_why3 = log_why3.logger
 
 (** [default_prover] contains the name of the current prover. Note that it can
     be changed by using the "set prover <string>" command. *)
@@ -115,7 +120,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     match translate_term cfg constants g with
     | Some(tbl, why3_term) -> (tbl, why3_term)
     | None                 ->
-        Console.fatal pos "The goal [%a] is not of the form [P _]" Print.pp g
+        fatal pos "The goal [%a] is not of the form [P _]" Print.pp g
   in
   (* Add the declaration of every constant in a task. *)
   let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
@@ -141,7 +146,7 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let provers = Why3.Whyconf.filter_provers why3_config fp in
   (* Display a message if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
-    Console.fatal pos "[%s] not installed or not configured" prover_name;
+    fatal pos "[%s] not installed or not configured" prover_name;
   (* Return the prover configuration. *)
   let (_, prover) = Why3.Whyconf.Mprover.max_binding provers in
   let limit_time = !prover_timeout in
@@ -151,9 +156,8 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
     driver of the prover. *)
   let driver =
     try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
-    with e ->
-      Console.fatal pos "Failed to load driver for %s: %a"
-        prover.prover.prover_name Why3.Exn_printer.exn_printer e
+    with e -> fatal pos "Failed to load driver for %s (%a)"
+                prover.prover.prover_name Why3.Exn_printer.exn_printer e
   in
   let call = Why3.Driver.prove_task ~limit ~command driver tsk in
   let result = Why3.Call_provers.wait_on_call call in
@@ -169,19 +173,20 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   let (hyps, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
   let prover_name = Option.get prover_name !default_prover in
+  if !log_enabled then log_why3 "running with configuration [%s]" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode pos ps.Proof.proof_builtins hyps trm in
   (* Run the task with the prover named [prover_name]. *)
   if not (run_task tsk pos prover_name) then
-    Console.fatal pos "%s did not found a proof@." prover_name;
+    fatal pos "%s did not found a proof" prover_name;
   (* Create a new axiom that represents the proved goal. *)
-  let why3_axiom = Pos.make pos (new_axiom_name ()) in
+  let axiom_name = new_axiom_name () in
   (* Get the meta type of the current goal (with quantified context). *)
   let trm = !((Proof.Goal.get_meta g).meta_type) in
   (* Add the axiom to the current signature. *)
-  let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
+  let a = Sign.add_symbol ss.signature Const (Pos.none axiom_name) trm [] in
   (* Tell the user that the goal is proved (verbose 2). *)
-  Console.out 2 "%s proved the current goal@." prover_name;
+  if !log_enabled then log_why3 "goal proved: axiom [%s] created" axiom_name;
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
