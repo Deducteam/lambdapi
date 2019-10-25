@@ -97,7 +97,7 @@ let translate_term : config -> cnst_table -> term ->
   | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                     -> None
 
-(** [encode pos builtins (hs, g)] translates the goal [g] from lambdapi to
+(** [encode pos builtins (hs, g)] translate the goal [g] from lambdapi to
   Why3 using the hypothesis [hs]. The function return a task that contains the
   encoded version of lambdapi constants, hypothesis and the formula in Why3.
   *)
@@ -159,7 +159,9 @@ let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     Why3.Call_provers.wait_on_call
       (Why3.Driver.prove_task ~limit ~command driver tsk)
 
-(** [handle prover_name ss tac ps g] FIXME *)
+(** [handle prover_name ss tac ps g] call the prover named [prover_name] on
+    the goal [g], if the prover succeeded to prove the goal, then the goal is
+    added to the signature [ss] as an axiom. *)
 let handle : string option -> sig_state -> 'a Pos.loc -> Proof.proof_state ->
               Proof.Goal.t -> term = fun prover_name ss tac ps g ->
   (* Get the goal to prove. *)
@@ -175,7 +177,7 @@ let handle : string option -> sig_state -> 'a Pos.loc -> Proof.proof_state ->
     Console.fatal tac.pos "%s did not found a proof@." prover_name;
   (* Create a new axiom that represents the proved goal. *)
   let why3_axiom = Pos.make tac.pos (new_axiom_name ()) in
-  (* Get the meta type of the current goal (with quantified context) *)
+  (* Get the meta type of the current goal (with quantified context). *)
   let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
   (* Add the axiom to the current signature. *)
   let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
