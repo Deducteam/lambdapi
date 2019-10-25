@@ -6,7 +6,7 @@ open Timed
 open Scope
 
 (** [default_prover] contains the name of the current prover. Note that it can
-    be changed by using the "set prover <name>" command. *)
+    be changed by using the "set prover <string>" command. *)
 let default_prover : string ref = ref "Alt-Ergo"
 
 (** [prover_timeout] is the current time limit (in seconds) that is left for a
