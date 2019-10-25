@@ -97,9 +97,9 @@ let translate_term : config -> cnst_table -> term ->
   | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                     -> None
 
-(** [encode pos builtins (hs, g)] translate the goal [g] from lambdapi to
-  Why3 using the hypothesis [hs]. The function return a task that contains the
-  encoded version of lambdapi constants, hypothesis and the formula in Why3.
+(** [encode pos builtins (hs, g)] translate the goal [g] from lambdapi to Why3
+    using the hypothesis [hs]. The function return a task that contains the
+    encoded version of lambdapi constants, hypothesis and the formula in Why3.
   *)
 let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
                   Why3.Task.task = fun pos builtins (hs, g) ->
@@ -132,8 +132,8 @@ let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
   | None                 ->
       Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
 
-(**[run_task tsk pos prover_name] Run the task [tsk] with the specified prover
-  named [prover_name] and return the answer of the prover. *)
+(** [run_task tsk pos prover_name] Run the task [tsk] with the specified
+    prover named [prover_name] and return the answer of the prover. *)
   let run_task : Why3.Task.task -> Pos.popt -> string ->
                   Why3.Call_provers.prover_result = fun tsk pos prover_name ->
     (* Filter the set of why3 provers. *)
