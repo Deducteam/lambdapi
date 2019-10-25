@@ -97,16 +97,12 @@ let translate_term : config -> cnst_table -> term ->
   | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
   | _                                     -> None
 
-(** [encode pos builtins (hs, g)] translate the goal [g] from lambdapi to Why3
-    using the hypothesis [hs]. The function return a task that contains the
-    encoded version of lambdapi constants, hypothesis and the formula in Why3.
-  *)
-let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
-                  Why3.Task.task = fun pos builtins (hs, g) ->
+(** [encode pos builtins hs g] translates the hypotheses [hs] and the goal [g]
+    into Why3 terms, to construct a Why3 task. *)
+let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
+    fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    (* [translate_hyp (tbl, map) (name, (_, hyp))] translate the context [hyp]
-       with the label [name] and add it in [tbl] with the why3 constants. *)
     let translate_hyp (tbl, map) (name, (_, hyp)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
       | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
@@ -114,76 +110,79 @@ let encode : Pos.popt -> sym StrMap.t -> (Env.env * term) ->
     in
     List.fold_left translate_hyp ([], StrMap.empty) hs
   in
-  match translate_term cfg constants g with
-  | Some(tbl, why3_term) ->
-    (* Add the declaration of every constant in a task. *)
-    let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
-    let tsk = List.fold_left fn None tbl in
-    (* Add the declaration of every hypothesis in the task. *)
-    let fn name t tsk =
-      let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
-      Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
-    in
-    let tsk = StrMap.fold fn hypothesis tsk in
-    (* Add the goal itself. *)
-    let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
-    (* Return the task that contains the encoded lambdapi formula in Why3. *)
-    Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term
-  | None                 ->
-      Console.fatal pos "The term [%a] is not of the form [P _]" Print.pp g
+  (* Translate the goal term. *)
+  let (tbl, why3_term) =
+    match translate_term cfg constants g with
+    | Some(tbl, why3_term) -> (tbl, why3_term)
+    | None                 ->
+        Console.fatal pos "The goal [%a] is not of the form [P _]" Print.pp g
+  in
+  (* Add the declaration of every constant in a task. *)
+  let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in
+  let tsk = List.fold_left fn None tbl in
+  (* Add the declaration of every hypothesis in the task. *)
+  let fn name t tsk =
+    let axiom = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh name) in
+    Why3.Task.add_prop_decl tsk Why3.Decl.Paxiom axiom t
+  in
+  let tsk = StrMap.fold fn hypothesis tsk in
+  (* Add the goal itself. *)
+  let goal = Why3.Decl.create_prsymbol (Why3.Ident.id_fresh "main_goal") in
+  (* Return the task that contains the encoded lambdapi formula in Why3. *)
+  Why3.Task.add_prop_decl tsk Why3.Decl.Pgoal goal why3_term
 
 (** [run_task tsk pos prover_name] Run the task [tsk] with the specified
     prover named [prover_name] and return the answer of the prover. *)
-  let run_task : Why3.Task.task -> Pos.popt -> string ->
-                  Why3.Call_provers.prover_result = fun tsk pos prover_name ->
-    (* Filter the set of why3 provers. *)
-    let fp = Why3.Whyconf.parse_filter_prover prover_name in
-    (* Get the set of provers. *)
-    let provers = Why3.Whyconf.filter_provers why3_config fp in
-    (* Display a message if we did not find a matching prover. *)
-    if Why3.Whyconf.Mprover.is_empty provers then
-      Console.fatal pos "[%s] not installed or not configured" prover_name;
-    (* Return the prover configuration. *)
-    let (_, prover) = Why3.Whyconf.Mprover.max_binding provers in
-    let limit_time = !prover_timeout in
-    let limit = {Why3.Call_provers.empty_limit with limit_time} in
-    let command = prover.Why3.Whyconf.command in
-    (* Load the config prover [prover] in current environment, return the
-      driver of the prover. *)
-    let driver =
-      try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
-      with e ->
-        Console.fatal pos "Failed to load driver for %s: %a"
-          prover.prover.prover_name Why3.Exn_printer.exn_printer e
-    in
-    Why3.Call_provers.wait_on_call
-      (Why3.Driver.prove_task ~limit ~command driver tsk)
+let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
+    fun tsk pos prover_name ->
+  (* Filter the set of why3 provers. *)
+  let fp = Why3.Whyconf.parse_filter_prover prover_name in
+  (* Get the set of provers. *)
+  let provers = Why3.Whyconf.filter_provers why3_config fp in
+  (* Display a message if we did not find a matching prover. *)
+  if Why3.Whyconf.Mprover.is_empty provers then
+    Console.fatal pos "[%s] not installed or not configured" prover_name;
+  (* Return the prover configuration. *)
+  let (_, prover) = Why3.Whyconf.Mprover.max_binding provers in
+  let limit_time = !prover_timeout in
+  let limit = {Why3.Call_provers.empty_limit with limit_time} in
+  let command = prover.Why3.Whyconf.command in
+  (* Load the config prover [prover] in current environment, return the
+    driver of the prover. *)
+  let driver =
+    try Why3.Whyconf.(load_driver why3_main why3_env prover.driver [])
+    with e ->
+      Console.fatal pos "Failed to load driver for %s: %a"
+        prover.prover.prover_name Why3.Exn_printer.exn_printer e
+  in
+  let call = Why3.Driver.prove_task ~limit ~command driver tsk in
+  let result = Why3.Call_provers.wait_on_call call in
+  (Why3.Call_provers.Valid = result.pr_answer)
 
-(** [handle prover_name ss tac ps g] call the prover named [prover_name] on
-    the goal [g], if the prover succeeded to prove the goal, then the goal is
-    added to the signature [ss] as an axiom. *)
-let handle : string option -> sig_state -> 'a Pos.loc -> Proof.proof_state ->
-              Proof.Goal.t -> term = fun prover_name ss tac ps g ->
+(** [handle pos ps ss prover_name g] runs the Why3 prover corresponding to the
+    name [prover_name] (if given or a default one otherwise) on the goal  [g].
+    If the prover succeeded to prove the goal, then this is reflected by a new
+    axiom that is added to signature [ss]. *)
+let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
+               Proof.Goal.t -> term = fun pos ps ss prover_name g ->
   (* Get the goal to prove. *)
-  let (hypotheses, trm) = Proof.Goal.get_type g in
+  let (hyps, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
-  let prover_name = Option.get prover_name Timed.(!default_prover) in
+  let prover_name = Option.get prover_name !default_prover in
   (* Encode the goal in Why3. *)
-  let tsk = encode tac.Pos.pos ps.Proof.proof_builtins (hypotheses, trm) in
-  (* Run the task with the prover named [prover_name] and get the result. *)
-  let prover_result = run_task tsk tac.pos prover_name in
-  (* Check that the prover succeeded to prove the goal. *)
-  if not (Why3.Call_provers.Valid = prover_result.pr_answer) then
-    Console.fatal tac.pos "%s did not found a proof@." prover_name;
+  let tsk = encode pos ps.Proof.proof_builtins hyps trm in
+  (* Run the task with the prover named [prover_name]. *)
+  if not (run_task tsk pos prover_name) then
+    Console.fatal pos "%s did not found a proof@." prover_name;
   (* Create a new axiom that represents the proved goal. *)
-  let why3_axiom = Pos.make tac.pos (new_axiom_name ()) in
+  let why3_axiom = Pos.make pos (new_axiom_name ()) in
   (* Get the meta type of the current goal (with quantified context). *)
-  let trm = Timed.(!((Proof.Goal.get_meta g).meta_type)) in
+  let trm = !((Proof.Goal.get_meta g).meta_type) in
   (* Add the axiom to the current signature. *)
   let a = Sign.add_symbol ss.signature Const why3_axiom trm [] in
   (* Tell the user that the goal is proved (verbose 2). *)
   Console.out 2 "%s proved the current goal@." prover_name;
   (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hypotheses in
+  let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
   Basics.add_args (symb a) terms
