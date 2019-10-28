@@ -36,6 +36,7 @@ let pp_symtag : symtag pp = fun oc tag ->
   match tag with
   | Sym_const -> Format.pp_print_string oc "const"
   | Sym_inj   -> Format.pp_print_string oc "injective"
+  | Sym_prv   -> Format.pp_print_string oc "private"
 
 let pp_symtags : symtag list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_symtag)

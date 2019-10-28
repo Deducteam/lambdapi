@@ -398,6 +398,18 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   (* We scope the LHS and add indexes in the environment for metavariables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
+    let rec privacy t =
+      (* Ensure that there are no foreign private symbols used. *)
+      let h, args = Basics.get_args t in
+      begin match h with
+      | Symb({sym_path; sym_mode=Priva; _},_) ->
+        if sym_path <> ss.signature.sign_path
+        then fatal p_lhs.pos "Private symbol escaped its module."
+      | _                               -> ()
+      end;
+      List.iter privacy args
+    in
+    privacy lhs;
     let (h, args) = Basics.get_args lhs in
     let is_const s = s.sym_mode = Const in
     match h with

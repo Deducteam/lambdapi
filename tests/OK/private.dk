@@ -1,0 +1,6 @@
+def A : Type.
+
+a : A.
+b : A.
+
+prv f : A -> A.

@@ -11,8 +11,8 @@ open Files
 open Syntax
 open Scope
 
-(** [write_trees] tells whether contains whether graphviz files containing the
-    representation of decision trees should be created. *)
+(** [write_trees] tells whether graphviz files containing the representation
+    of decision trees should be created. *)
 let write_trees : bool Pervasives.ref = Pervasives.ref false
 
 (** [check_builtin_nat s] checks that the builtin symbol [s] for
@@ -120,6 +120,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | []              -> Defin
         | Sym_const :: [] -> Const
         | Sym_inj   :: [] -> Injec
+        | Sym_prv   :: [] -> Priva
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
       (* Actually add the symbol to the signature and the state. *)

@@ -94,6 +94,8 @@ type term =
   (** The symbol may have a definition or rewriting rules (but NOT both). *)
   | Injec
   (** Same as [Defin], but the symbol is considered to be injective. *)
+  | Priva
+  (** The symbol cannot be used outside of the module where it is defined. *)
 
 (** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is

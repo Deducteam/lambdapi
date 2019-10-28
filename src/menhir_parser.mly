@@ -189,6 +189,7 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %token TYPE
 %token KW_DEF
 %token KW_INJ
+%token KW_PRV
 %token KW_THM
 %token <string> ID
 %token <Syntax.p_module_path * string> QID
@@ -209,6 +210,9 @@ line:
     }
   | KW_INJ s=ID COLON a=term DOT {
       make_pos $loc (P_symbol([Sym_inj], make_pos $loc(s) s, [], a))
+    }
+  | KW_PRV s=ID COLON a=term DOT {
+      make_pos $loc (P_symbol([Sym_prv], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
       make_pos $loc (P_definition(false, make_pos $loc(s) s, [], Some(a), t))

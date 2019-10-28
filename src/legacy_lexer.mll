@@ -27,7 +27,7 @@ type token =
   | L_SQB | R_SQB | L_PAR | R_PAR | ARROW | LARROW | FARROW | DEFEQ | COMMA
   | COLON | EQUAL | DOT | EOF
   (* Keywords. *)
-  | KW_DEF | KW_INJ | KW_THM | TYPE
+  | KW_DEF | KW_INJ | KW_THM | TYPE | KW_PRV
   (* Identifiers and wildcard. *)
   | WILD
   | ID      of string
@@ -86,6 +86,7 @@ rule token = parse
   | "def"                           { KW_DEF                               }
   | "inj"                           { KW_INJ                               }
   | "thm"                           { KW_THM                               }
+  | "prv"                           { KW_PRV                               }
   | "#REQUIRE" space+ (mpath as mp) { REQUIRE(to_module_path mp)           }
   | "#EVAL"                         { EVAL                                 }
   | "#INFER"                        { INFER                                }

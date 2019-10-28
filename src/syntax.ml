@@ -28,6 +28,7 @@ type unop = string * priority * qident
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
+
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =
@@ -82,6 +83,8 @@ type symtag =
   (** The symbol is constant. *)
   | Sym_inj
   (** The symbol is injective. *)
+  | Sym_prv
+  (** The symbol is private.  See FIXME for semantics. *)
 
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc

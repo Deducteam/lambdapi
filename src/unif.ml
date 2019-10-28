@@ -314,6 +314,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
           if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
           then add_to_unsolved ()
           else error ()
+       | Priva -> failwith "implement me"
      else if !(s1.sym_rules) = [] then solve_inj s2 ts2 t1
      else if !(s2.sym_rules) = [] then solve_inj s1 ts1 t2
      else
