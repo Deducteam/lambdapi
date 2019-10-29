@@ -102,6 +102,8 @@ set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
 set builtin "not"   ≔ not     // : Prop ⇒ Prop
 ```
 
+Do `why3 config --detect` to update the Why3 configuration.
+
 <!---------------------------------------------------------------------------->
 ### Tactics on equality
 

@@ -31,7 +31,7 @@ List of dependencies:
  - yojson >= 1.6.0
  - cmdliner
  - ppx\_inline\_test
- - why3 >= 1.2.0
+ - why3 >= 1.2.0 (do `why3 config --detect` to update the why configuration)
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
