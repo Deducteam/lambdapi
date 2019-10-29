@@ -28,7 +28,6 @@ type unop = string * priority * qident
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
-
 (** Parser-level (located) term representation. *)
 type p_term = p_term_aux loc
 and p_term_aux =

@@ -398,18 +398,6 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   (* We scope the LHS and add indexes in the environment for metavariables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
-    let rec privacy t =
-      (* Ensure that there are no foreign private symbols used. *)
-      let h, args = Basics.get_args t in
-      begin match h with
-      | Symb({sym_path; sym_mode=Priva; _},_) ->
-        if sym_path <> ss.signature.sign_path
-        then fatal p_lhs.pos "Private symbol escaped its module."
-      | _                               -> ()
-      end;
-      List.iter privacy args
-    in
-    privacy lhs;
     let (h, args) = Basics.get_args lhs in
     let is_const s = s.sym_mode = Const in
     match h with
@@ -427,6 +415,19 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     let t = scope (M_RHS(Array.to_list map)) ss Env.empty p_rhs in
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
+  let _, t = Bindlib.unmbind rhs in
+  let rec privacy t =
+    (* Ensure that there are no foreign private symbols used. *)
+    let h, args = Basics.get_args t in
+    begin match unfold h with
+      | Symb({sym_path; sym_mode=Priva; _},_) ->
+        if sym_path <> ss.signature.sign_path
+        then fatal p_lhs.pos "Foreign private symbol not allowed in RHS."
+      | _                                     -> ()
+    end;
+    List.iter privacy args
+  in
+  privacy t; (* Checking for private symbols in rhs. *)
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let vars = Array.of_list pvs in
   (* We put everything together to build the rule. *)

@@ -1,0 +1,5 @@
+#REQUIRE tests.OK.private.
+
+def g : tests.OK.private.A -> tests.OK.private.A.
+
+[X] g X --> tests.OK.private.f X.
