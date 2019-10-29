@@ -146,6 +146,10 @@ let pp_p_query : p_query pp = fun oc q ->
       out "@[<hov 4>type %a@]" pp_p_term t
   | P_query_normalize(t, _)               ->
       out "@[<hov 2>compute@ %a@]" pp_p_term t
+  | P_query_prover(s)                     ->
+      out "set prover \"%s\"" s
+  | P_query_prover_timeout(n)               ->
+      out "set prover_timeout %d" n
 
 let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -162,6 +166,8 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
+  | P_tac_why3(None)         -> out "why3"
+  | P_tac_why3(Some(s))      -> out "why3 %s" s
   | P_tac_query(q)           -> pp_p_query oc q
 
 let pp_command : p_command pp = fun oc cmd ->

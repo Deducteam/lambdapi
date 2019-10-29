@@ -176,6 +176,7 @@ let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
+let _why3_       = KW.create "why3"
 let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
 
@@ -476,6 +477,10 @@ let parser query =
   | _compute_ t:term ->
       let c = Eval.{strategy = SNF; steps = None} in
       Pos.in_pos _loc (P_query_normalize(t,c))
+  | _set_ "prover" s:string_lit ->
+      Pos.in_pos _loc (P_query_prover(s))
+  | _set_ "prover_timeout" n:nat_lit ->
+      Pos.in_pos _loc (P_query_prover_timeout(n))
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
@@ -489,6 +494,7 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
+  | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
 
 (** [proof_end] is a parser for a proof terminator. *)

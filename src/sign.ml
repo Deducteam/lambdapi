@@ -10,8 +10,7 @@ open Pos
 
 (** [builtin builtins name] finds the builtin symbol named [name]
    in [builtins] if it exists, and fails otherwise. *)
-let builtin : popt -> sym StrMap.t -> string -> sym =
-  fun pos builtins name ->
+let builtin : popt -> sym StrMap.t -> string -> sym = fun pos builtins name ->
   try StrMap.find name builtins
   with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
 
