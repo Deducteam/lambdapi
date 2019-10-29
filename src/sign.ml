@@ -117,7 +117,7 @@ let link : t -> unit = fun sign ->
     let h (n, r) =
       let r = link_rule r in
       let s = find sign n in
-      s.sym_rules := !(s.sym_rules) @ [r]
+      s.sym_rules := r :: !(s.sym_rules)
     in
     List.iter h ls
   in
@@ -276,7 +276,7 @@ let read : string -> t = fun fname ->
     rule does not correspond to a symbol of signature [sign],  it is stored in
     its dependencies. *)
 let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
-  sym.sym_rules := !(sym.sym_rules) @ [r];
+  sym.sym_rules := r :: !(sym.sym_rules);
   if sym.sym_path <> sign.sign_path then
     let m =
       try PathMap.find sym.sym_path !(sign.sign_deps)
