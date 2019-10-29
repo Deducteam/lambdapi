@@ -32,7 +32,6 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
     | (true , false) -> src
     | (false, true ) -> legacy
   in
-  let obj = base ^ obj_extension in
   if List.mem path !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" src;
@@ -40,9 +39,9 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       List.iter (fatal_msg "  - [%a]\n" Files.pp_path) !loading;
       fatal_no_pos "Build aborted."
     end;
-  if PathMap.mem path !loaded then
-    out 2 "Already loaded [%s]\n%!" src
-  else if force || Files.more_recent src obj then
+  if PathMap.mem path !loaded then out 2 "Already loaded [%s]\n%!" src
+  else let obj = base ^ obj_extension in
+  if force || Files.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
       out 2 "Loading [%s]%s\n%!" src forced;
