@@ -102,7 +102,8 @@ set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
 set builtin "not"   ≔ not     // : Prop ⇒ Prop
 ```
 
-Do `why3 config --detect` to update the Why3 configuration.
+**Important note:** you must run `why3 config --detect` whenever installing a
+new prover supported by Why3.
 
 <!---------------------------------------------------------------------------->
 ### Tactics on equality
