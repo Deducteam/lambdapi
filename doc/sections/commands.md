@@ -290,6 +290,19 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
+**Prover config**:
+In order to use the `why3` tactic, a prover should be set using:
+```
+set prover "Eprover"
+```
+*Alt-Ergo* is set by default if the user didn't specify a prover.
+
+The user can also specify the timeout (in seconds) of the prover:
+```
+set prover_timeout 60
+```
+The default time limit of a prover is set to 2 seconds.
+
 **prefix symbols** The following code defines a prefix symbol for negation.
 
 ```
