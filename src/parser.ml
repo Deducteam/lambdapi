@@ -160,6 +160,7 @@ let _assertnot_  = KW.create "assertnot"
 let _const_      = KW.create "const"
 let _inj_        = KW.create "injective"
 let _TYPE_       = KW.create "TYPE"
+let _prv_        = KW.create "private"
 let _proof_      = KW.create "proof"
 let _refine_     = KW.create "refine"
 let _intro_      = KW.create "assume"
@@ -322,6 +323,7 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 let parser symtag =
   | _const_ -> Sym_const
   | _inj_   -> Sym_inj
+  | _prv_   -> Sym_prv
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
