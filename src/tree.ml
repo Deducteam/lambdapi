@@ -428,7 +428,9 @@ module CM = struct
     then Check_stack else
     try
       if Pervasives.(!rule_order) then
-        (* There is no empty rule in this branch of the [if]. *)
+        (* [List.hd] won't fail because if the matrix is empty, then we don't
+           enter the function (see {!val:compile}). If it is not, then it has
+           at least one clause. *)
         let fc = List.hd clauses in
         if is_exhausted positions fc then Yield(fc) else raise Not_found
       else
