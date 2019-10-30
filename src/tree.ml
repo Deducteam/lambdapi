@@ -428,10 +428,12 @@ module CM = struct
     then Check_stack else
     try
       if Pervasives.(!rule_order) then
+        (* There is no empty rule in this branch of the [if]. *)
         let fc = List.hd clauses in
         if is_exhausted positions fc then Yield(fc) else raise Not_found
-      else let r = List.find (is_exhausted positions) clauses in
-      Yield(r)
+      else
+        let r = List.find (is_exhausted positions) clauses in
+        Yield(r)
     with Not_found ->
       (* Here is the heuristic: process in priority specialisations, then
          convertibility constraints, then closedness constraints. *)
