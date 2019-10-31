@@ -196,9 +196,6 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 
-(** [is_inj s] tells whether the symbol is injective. *)
-let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
-
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
   match Unix.fork () with

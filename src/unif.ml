@@ -122,7 +122,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let imitate_inj m vs us s h ts =
     let exception Cannot_imitate in
     try
-      if not (us = [] && Sign.is_inj s) then raise Cannot_imitate;
+      if not (us = [] && is_inj s) then raise Cannot_imitate;
       let vars = match distinct_vars_opt vs with
         | None -> raise Cannot_imitate
         | Some vars -> vars
