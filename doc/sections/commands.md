@@ -327,7 +327,7 @@ and identifiers, but they are by no means sufficient (it is still possible to
 break the parser by defining well-chosen tokens).
 
 **equality-related builtins** In order to use tactics related to
-Leibinz equality, one first has to define a number of builtin symbols
+Leibniz equality, one first has to define a number of builtin symbols
 as follows:
 
 ```
