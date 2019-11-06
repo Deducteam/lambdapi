@@ -5,7 +5,7 @@ The `lambdapi` executable is the main program. It can be used to process files
 written in the `lambdapi` syntax (with the ".lp" extension), and files written
 in the legacy (Dedukti) syntax (with the ".dk" extension).
 
-Do `lambdapi -h` to get the available options.
+Do `lambdapi -help` to get the available options.
 
 Several files can be given as command-line arguments, and they are all handled
 independently (in the order they are given). Note that the program immediately
