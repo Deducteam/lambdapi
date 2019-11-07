@@ -102,6 +102,9 @@ set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
 set builtin "not"   ≔ not     // : Prop ⇒ Prop
 ```
 
+**Important note:** you must run `why3 config --detect` whenever installing a
+new prover supported by Why3.
+
 <!---------------------------------------------------------------------------->
 ### Tactics on equality
 

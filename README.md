@@ -21,23 +21,28 @@ with "bash on Windows".
 
 List of dependencies:
  - GNU make
- - ocaml >= 4.04.1
- - dune >= 1.2.0
+ - [ocaml](https://ocaml.org/) >= 4.04.1
+ - [dune](https://dune.build/) >= 1.2.0
  - odoc (for documentation only)
  - [bindlib](https://github.com/rlepigre/ocaml-bindlib) >= 5.0.0
  - [earley](https://github.com/rlepigre/ocaml-earley) >= 2.0.0
  - [timed](https://github.com/rlepigre/ocaml-timed) >= 1.0
- - menhir
+ - [menhir](http://gallium.inria.fr/~fpottier/menhir/)
  - yojson >= 1.6.0
  - cmdliner
  - ppx\_inline\_test
- - why3 >= 1.2.0
+ - [why3](http://why3.lri.fr/) >= 1.2.0
+
+**Note on the use of Why3:** the command `why3 config --detect` must be run to
+update the Why3 configuration when a new prover is installed (including on the
+first installation of Why3).
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
 opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 ppx_inline_test why3.1.2.0
+why3 config --detect
 ```
 
 To compile Lambdapi, just run the command `make` in the source directory.

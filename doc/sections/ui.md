@@ -5,7 +5,7 @@ See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.
 There is an extension for VSCode (>= 1.31) derived from VSCoq. To
 install it do from the `lambdapi` repository:
 
-```
+```bash
 cd editors/vscode/
 npm install
 ln -s `pwd` ~/.vscode/extensions/

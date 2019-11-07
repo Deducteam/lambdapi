@@ -6,7 +6,7 @@ with care.
 
 To build:
 
-```
+```bash
 opam install dune cmdliner yojson
 dune build
 ```
@@ -17,9 +17,11 @@ The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
 There is an extension for VSCode derived from VSCoq. To install do:
 
-$ cd editors/vscode/
-$ npm install
-$ ln -s `pwd` ~/.vscode/extensions/
+```bash
+cd editors/vscode/
+npm install
+ln -s `pwd` ~/.vscode/extensions/
+```
 
 You need a recent enough VSCode (>= 1.31)
 

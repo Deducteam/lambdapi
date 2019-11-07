@@ -27,7 +27,7 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     let na = List.length argsa in
     let nb = List.length argsb in
     match (unfold ha, unfold hb) with
-    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && Sign.is_inj sa ->
+    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && is_inj sa ->
         let fn l t1 t2 = (t1,t2) :: l in
         build_sub acc (List.fold_left2 fn cs argsa argsb)
     | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
