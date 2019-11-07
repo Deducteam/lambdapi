@@ -72,7 +72,7 @@ type term =
   (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_mode  : sym_mode
   (** Tells what kind of symbol it is. *)
-  ; sym_visi  : sym_exposition
+  ; sym_expo  : sym_exposition
   (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
@@ -309,7 +309,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_visi = Public ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_expo = Public ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 

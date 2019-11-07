@@ -64,7 +64,7 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       ignore (List.fold_left handle sig_st (parse_file src));
       if Pervasives.(!gen_obj) then
         begin
-          let not_local _ (sym, _) = Terms.(sym.sym_visi) <> Terms.Local in
+          let not_local _ (sym, _) = Terms.(sym.sym_expo) <> Terms.Local in
           let sign_symbols =
             ref (StrMap.filter not_local !(sign.sign_symbols))
           in

@@ -77,7 +77,7 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
           fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
         end
   in
-  if s.sym_visi = Local && s.sym_path <> st.signature.sign_path
+  if s.sym_expo = Local && s.sym_path <> st.signature.sign_path
   then fatal pos "Foreign local symbol used";
   (s, pp_h)
 
@@ -425,7 +425,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     (* Ensure that there are no foreign private symbols used. *)
     let h, args = Basics.get_args t in
     begin match unfold h with
-      | Symb({sym_path; sym_visi=Private; _},_) ->
+      | Symb({sym_path; sym_expo=Private; _},_) ->
         if sym_path <> ss.signature.sign_path
         then fatal p_lhs.pos "Foreign private symbol not allowed in RHS."
       | _                                       -> ()
