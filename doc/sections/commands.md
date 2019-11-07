@@ -257,7 +257,7 @@ set debug -s
 
 Each functionality is represented by a single character. For instance,
 `i` stands for type inference. To get the list of debuggable functionalities,
-do `lambdapi -h`.
+do `lambdapi -help`.
 
 **flags** The user can set/unset some flags:
 
@@ -327,7 +327,7 @@ and identifiers, but they are by no means sufficient (it is still possible to
 break the parser by defining well-chosen tokens).
 
 **equality-related builtins** In order to use tactics related to
-Leibinz equality, one first has to define a number of builtin symbols
+Leibniz equality, one first has to define a number of builtin symbols
 as follows:
 
 ```

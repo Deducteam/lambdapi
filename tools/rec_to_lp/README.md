@@ -11,7 +11,7 @@ REC files can be retrieved from
 <https://scm.gforge.inria.fr/anonscm/svn/rec>.  The haskell files are
 in `rec/2019-CONVECS/HASKELL/`.  Then use the awk script,
 
-``` shell
+```bash
 ./rec_hs_to_lp.awk <INPUT>.hs > <out>.lp
 lambdapi out.lp
 ```
