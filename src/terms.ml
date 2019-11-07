@@ -115,6 +115,8 @@ type term =
   (** Use the given alias as qualifier. *)
   | Binary of string
   (** Show as the given binary operator. *)
+  | Unary  of string
+  (** Show as the given unary operator. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -231,6 +233,9 @@ type term =
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb s = Symb (s, Nothing)
 
+(** [is_inj s] tells whether the symbol is injective. *)
+let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
+
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
 
@@ -290,12 +295,12 @@ let meta_name : meta -> string = fun m ->
     is simpler to type-check. *)
 let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
-    { sym_name = Printf.sprintf "[%s]" (meta_name m)
+    { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
     ; sym_tree = ref Tree_types.empty_dtree }
   in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb(s, Alias("#"))) e
+  Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 
 (** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
     variable to avoid polluting the context. *)

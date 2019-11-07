@@ -66,6 +66,9 @@ let rec pp_p_term : p_term pp = fun oc t ->
         out "@[<hov 2>let %a%a = %a@]@ in@ %a"
           pp_ident x pp_p_args args pp_func t pp_func u
     | (P_NLit(i)         , _    ) -> out "%i" i
+    | (P_UnaO(u,t)       , _    ) ->
+        let (u, _, _) = u in
+        out "(%s %a)" u pp_atom t
     | (P_BinO(t,b,u)     , _    ) ->
         let (b, _, _, _) = b in
         out "(%a %s %a)" pp_atom t b pp_atom u
@@ -143,6 +146,10 @@ let pp_p_query : p_query pp = fun oc q ->
       out "@[<hov 4>type %a@]" pp_p_term t
   | P_query_normalize(t, _)               ->
       out "@[<hov 2>compute@ %a@]" pp_p_term t
+  | P_query_prover(s)                     ->
+      out "set prover \"%s\"" s
+  | P_query_prover_timeout(n)               ->
+      out "set prover_timeout %d" n
 
 let pp_p_tactic : p_tactic pp = fun oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -159,6 +166,8 @@ let pp_p_tactic : p_tactic pp = fun oc t ->
   | P_tac_focus(i)           -> out "focus %i" i
   | P_tac_print              -> out "print"
   | P_tac_proofterm          -> out "proofterm"
+  | P_tac_why3(None)         -> out "why3"
+  | P_tac_why3(Some(s))      -> out "why3 %s" s
   | P_tac_query(q)           -> pp_p_query oc q
 
 let pp_command : p_command pp = fun oc cmd ->
@@ -192,13 +201,16 @@ let pp_command : p_command pp = fun oc cmd ->
       out "%a" pp_p_proof_end e.elt
   | P_set(P_config_builtin(n,i))    ->
       out "set builtin %S ≔ %a" n pp_qident i
+  | P_set(P_config_unop(unop))      ->
+      let (s, p, qid) = unop in
+      out "set prefix %f \"%s\" ≔ %a" p s pp_qident qid
   | P_set(P_config_binop(binop))    ->
       let (s, a, p, qid) = binop in
       let a =
         match a with
         | Assoc_none  -> ""
-        | Assoc_left  -> "l"
-        | Assoc_right -> "r"
+        | Assoc_left  -> " left"
+        | Assoc_right -> " right"
       in
       out "set infix%s %f \"%s\" ≔ %a" a p s pp_qident qid
   | P_set(P_config_ident(id))       ->

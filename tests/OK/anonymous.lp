@@ -6,6 +6,6 @@ definition snd : T ⇒ U ⇒ U ≔ λ _ x, x
 
 theorem trivial : T ⇒ T ⇒ T ⇒ T
 proof
-  intro _ _ x
+  assume _ _ x
   refine x
 qed

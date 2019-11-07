@@ -256,14 +256,15 @@ set debug -s
 ```
 
 Each functionality is represented by a single character. For instance,
-`t` stands for typing. To get the list of debuggable functionalities,
-do `lambdapi -h`.
+`i` stands for type inference. To get the list of debuggable functionalities,
+run the command `lambdapi --help`.
 
-**flags** The user can set/unset some flags controling printing:
+**flags** The user can set/unset some flags:
 
 ```
-set flag "print_implicits" off // default is on
-set flag "print_domains" off // default is on
+set flag "print_implicits" on // default is off
+set flag "print_domains" on // default is off
+set flag "eta_equality" on // default is off
 ```
 
 **notation for natural numbers** It is possible to use the standard
@@ -275,19 +276,7 @@ set builtin "0"  ≔ zero // : N
 set builtin "+1" ≔ succ // : N ⇒ N
 ```
 
-**equality-related builtins** In order to use tactics related to
-Leibinz equality, one first has to define a number of builtin symbols
-as follows:
-
-```
-set builtin "T"     ≔ T     // : U ⇒ TYPE
-set builtin "P"     ≔ P     // : Prop ⇒ TYPE
-set builtin "eq"    ≔ eq    // : ∀ {a}, T a ⇒ T a ⇒ Prop
-set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
-set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
-```
-
-**Infix symbols** The following code defines infix symbols for
+**infix symbols** The following code defines infix symbols for
 addition and multiplication. Both are associative to the left, and
 they have priority levels `6` and `7`.
 
@@ -301,8 +290,27 @@ whether the defined symbol is non-associative, associative to the right,
 or associative to the left. The priority levels are floating point numbers,
 hence a priority can (almost) always be inserted between two different levels.
 
-**Declared identifiers** The following code declares a new valid symbol, that
-can then be used in the place of a symbol or λ-variable.
+**Prover config**:
+In order to use the `why3` tactic, a prover should be set using:
+```
+set prover "Eprover"
+```
+*Alt-Ergo* is set by default if the user didn't specify a prover.
+
+The user can also specify the timeout (in seconds) of the prover:
+```
+set prover_timeout 60
+```
+The default time limit of a prover is set to 2 seconds.
+
+**prefix symbols** The following code defines a prefix symbol for negation.
+
+```
+set prefix 5 "¬" ≔ neg
+```
+
+**declared identifiers** The following code declares a new valid symbol, that
+can then be used in the place of a symbol or variable.
 
 ```
 set declared "ℕ"
@@ -314,6 +322,18 @@ set declared "x₂"
 set declared "x₃"
 ```
 
-**Warning:** some chacks are performed upon the declaration of infix symbols
+**Warning:** some checks are performed upon the declaration of infix symbols
 and identifiers, but they are by no means sufficient (it is still possible to
 break the parser by defining well-chosen tokens).
+
+**equality-related builtins** In order to use tactics related to
+Leibniz equality, one first has to define a number of builtin symbols
+as follows:
+
+```
+set builtin "T"     ≔ T     // : U ⇒ TYPE
+set builtin "P"     ≔ P     // : Prop ⇒ TYPE
+set builtin "eq"    ≔ eq    // : ∀ {a}, T a ⇒ T a ⇒ Prop
+set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+```

@@ -10,8 +10,7 @@ open Pos
 
 (** [builtin builtins name] finds the builtin symbol named [name]
    in [builtins] if it exists, and fails otherwise. *)
-let builtin : popt -> sym StrMap.t -> string -> sym =
-  fun pos builtins name ->
+let builtin : popt -> sym StrMap.t -> string -> sym = fun pos builtins name ->
   try StrMap.find name builtins
   with Not_found -> fatal pos "Builtin symbol [%s] undefined." name
 
@@ -22,6 +21,7 @@ type t =
   ; sign_path     : module_path
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
+  ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref }
 
@@ -33,8 +33,8 @@ type t =
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_binops = ref StrMap.empty
-  ; sign_idents = ref StrSet.empty }
+  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
+  ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
     raises the [Not_found] exception otherwise. *)
@@ -124,7 +124,8 @@ let link : t -> unit = fun sign ->
   PathMap.iter gn !(sign.sign_deps);
   sign.sign_builtins := StrMap.map link_symb !(sign.sign_builtins);
   let hn (s,h) = (link_symb s, h) in
-  sign.sign_binops := StrMap.map hn !(sign.sign_binops) ;
+  sign.sign_unops := StrMap.map hn !(sign.sign_unops);
+  sign.sign_binops := StrMap.map hn !(sign.sign_binops);
   StrMap.iter (fun _ (s, _) -> Tree.update_dtree s) !(sign.sign_symbols)
 
 (** [unlink sign] removes references to external symbols (and thus signatures)
@@ -172,6 +173,7 @@ let unlink : t -> unit = fun sign ->
   let gn _ ls = List.iter (fun (_, r) -> unlink_rule r) ls in
   PathMap.iter gn !(sign.sign_deps);
   StrMap.iter (fun _ s -> unlink_sym s) !(sign.sign_builtins);
+  StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
 (** [add_symbol sign mode name a impl] creates a fresh symbol with name [name]
@@ -193,9 +195,6 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
     ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
-
-(** [is_inj s] tells whether the symbol is injective. *)
-let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
 
 (** [write sign file] writes the signature [sign] to the file [fname]. *)
 let write : t -> string -> unit = fun sign fname ->
@@ -227,6 +226,7 @@ let read : string -> t = fun fname ->
     unsafe_reset sign.sign_symbols;
     unsafe_reset sign.sign_deps;
     unsafe_reset sign.sign_builtins;
+    unsafe_reset sign.sign_unops;
     unsafe_reset sign.sign_binops;
     let rec reset_term t =
       let reset_binder b = reset_term (snd (Bindlib.unbind b)) in
@@ -286,6 +286,11 @@ let add_rule : t -> sym -> rule -> unit = fun sign sym r ->
     signature [sign]). The previous binding, if any, is discarded. *)
 let add_builtin : t -> string -> sym -> unit = fun sign s sym ->
   sign.sign_builtins := StrMap.add s sym !(sign.sign_builtins)
+
+(** [add_unop sign unop sym] binds the unary operator [op] to [sym] in [sign].
+    If [unop] was previously bound, the previous binding is discarded. *)
+let add_unop : t -> string -> (sym * unop) -> unit = fun sign s sym ->
+  sign.sign_unops := StrMap.add s sym !(sign.sign_unops)
 
 (** [add_binop sign op sym] binds the binary operator [op] to [sym] in [sign].
     If [op] was previously bound, the previous binding is discarded. *)

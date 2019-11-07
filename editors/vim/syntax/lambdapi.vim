@@ -1,9 +1,9 @@
 " Vim syntax file
 " Language:        Lambdapi
-" Maintainer:      Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
+" Maintainer:      Rodolphe Lepigre <lepigre@mpi-sws.org>
 " Last Change:     12/09/2018
 " Version:         1.0
-" Original Author: Rodolphe Lepigre <rodolphe.lepigre@inria.fr>
+" Original Author: Rodolphe Lepigre <lepigre@mpi-sws.org>
 
 if exists("b:current_syntax")
   finish
@@ -32,7 +32,7 @@ syntax keyword KeywordOK contained rule and definition theorem
 syntax keyword KeywordOK contained assert assertnot set
 syntax keyword KeywordOK contained proof qed admit abort
 syntax keyword KeywordOK contained focus print proofterm
-syntax keyword KeywordOK contained refine apply simpl intro
+syntax keyword KeywordOK contained refine apply simpl assume
 syntax keyword KeywordOK contained rewrite reflexivity symmetry
 syntax keyword KeywordOK contained type compute
 highlight link KeywordOK Keyword
@@ -44,7 +44,7 @@ syntax keyword KeywordKO contained rule and definition theorem
 syntax keyword KeywordKO contained assert assertnot set
 syntax keyword KeywordKO contained proof qed admit abort
 syntax keyword KeywordKO contained focus print proofterm
-syntax keyword KeywordKO contained refine apply simpl intro
+syntax keyword KeywordKO contained refine apply simpl assume
 syntax keyword KeywordKO contained rewrite reflexivity symmetry
 syntax keyword KeywordKO contained type compute
 highlight link KeywordKO Error

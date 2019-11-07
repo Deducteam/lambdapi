@@ -13,7 +13,7 @@ bug-reports: "https://github.com/Deducteam/lambdapi/issues"
 homepage: "https://github.com/Deducteam/lambdapi"
 dev-repo: "git+https://github.com/Deducteam/lambdapi.git"
 authors: [
-  "Rodolphe Lepigre <rodolphe.lepigre@inria.fr>"
+  "Rodolphe Lepigre <lepigre@mpi-sws.org>"
   "Frédéric Blanqui <frederic.blanqui@inria.fr>"
   "Emilio Jesús Gallego Arias <e@x80.org>" ]
 license: "CeCILL 2.1"
@@ -26,7 +26,7 @@ depends: [
   "bindlib"      { >= "5.0.0" }
   "earley"       { >= "2.0.0" }
   "timed"        { >= "1.0"   }
-
+  "why3"         { >= "1.2.0" }
   # tests
   "ppx_inline_test" { with-test }
 

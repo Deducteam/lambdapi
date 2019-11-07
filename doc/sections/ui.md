@@ -5,7 +5,7 @@ See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.
 There is an extension for VSCode (>= 1.31) derived from VSCoq. To
 install it do from the `lambdapi` repository:
 
-```
+```bash
 cd editors/vscode/
 npm install
 ln -s `pwd` ~/.vscode/extensions/
@@ -16,6 +16,8 @@ ln -s `pwd` ~/.vscode/extensions/
 The `emacs` mode can be optionally installed using `make install_emacs` in the
 `lambdapi` repository.  Support for the LSP server is enabled by default,  but
 it requires the `eglot` plugin to be installed.
+
+To enter unicode symbols using Latex commands, one can for instance use [company-math](https://github.com/vspinu/company-math).
 
 ### Vim
 

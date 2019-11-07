@@ -22,6 +22,9 @@ type assoc =
 (** The priority of an infix operator is a floating-point number. *)
 type priority = float
 
+(** Representation of a unary operator. *)
+type unop = string * priority * qident
+
 (** Representation of a binary operator. *)
 type binop = string * assoc * priority * qident
 
@@ -50,6 +53,8 @@ and p_term_aux =
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
+  | P_UnaO of unop * p_term
+  (** Unary (prefix) operator. *)
   | P_BinO of p_term * binop * p_term
   (** Binary operator. *)
   | P_Wrap of p_term
@@ -111,6 +116,10 @@ type p_query_aux =
   (** Type inference command. *)
   | P_query_normalize of p_term * Eval.config
   (** Normalisation command. *)
+  | P_query_prover    of string
+  (** Set the prover to use inside a proof. *)
+  | P_query_prover_timeout of int
+  (** Set the timeout of the prover (in seconds). *)
 
 type p_query = p_query_aux loc
 
@@ -136,6 +145,9 @@ type p_tactic_aux =
   (** Print the current goal. *)
   | P_tac_proofterm
   (** Print the current proof term (possibly containing open goals). *)
+  | P_tac_why3 of string option
+  (** Try to solve the current goal with why3. *)
+
   | P_tac_query   of p_query
   (** Query. *)
 type p_tactic = p_tactic_aux loc
@@ -153,6 +165,8 @@ type p_proof_end =
 type p_config =
   | P_config_builtin of string * qident
   (** Sets the configuration for a builtin syntax (e.g., nat literals). *)
+  | P_config_unop    of unop
+  (** Defines (or redefines) a unary operator (e.g., ["!"] or ["¬"]). *)
   | P_config_binop   of binop
   (** Defines (or redefines) a binary operator (e.g., ["+"] or ["×"]). *)
   | P_config_ident of string
@@ -191,6 +205,9 @@ let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
 
+let eq_unop : unop eq = fun (n1,p1,id1) (n2,p2,id2) ->
+  n1 = n2 && p1 = p2 && eq_qident id1 id2
+
 let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
   n1 = n2 && a1 = a2 && p1 = p2 && eq_qident id1 id2
 
@@ -210,6 +227,8 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (P_LLet(x1,xs1,t1,u1), P_LLet(x2,xs2,t2,u2)) ->
       eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
       && List.equal eq_p_arg xs1 xs2
+  | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)       ) ->
+      eq_unop u1 u2 && eq_p_term t1 t2
   | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)    ) ->
       eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
   | (P_Wrap(t1)          , P_Wrap(t2)          ) ->
@@ -253,13 +272,17 @@ let eq_p_assertion : p_assertion eq = fun a1 a2 ->
 
 let eq_p_query : p_query eq = fun q1 q2 ->
   match (q1.elt, q2.elt) with
-  | (P_query_assert(b1,a1)   , P_query_assert(b2,a2)   ) ->
+  | (P_query_assert(b1,a1)     , P_query_assert(b2,a2)     ) ->
      b1 = b2 && eq_p_assertion a1 a2
-  | (P_query_infer(t1,c1)    , P_query_infer(t2,c2)    ) ->
+  | (P_query_infer(t1,c1)      , P_query_infer(t2,c2)      ) ->
      eq_p_term t1 t2 && c1 = c2
-  | (P_query_normalize(t1,c1), P_query_normalize(t2,c2)) ->
+  | (P_query_normalize(t1,c1)  , P_query_normalize(t2,c2)  ) ->
      eq_p_term t1 t2 && c1 = c2
-  | (_                       , _                       ) ->
+  | (P_query_prover(s1)        , P_query_prover(s2)        ) ->
+     s1 = s2
+  | (P_query_prover_timeout(t1), P_query_prover_timeout(t2)) ->
+     t1 = t2
+  | (_                         , _                         ) ->
       false
 
 let eq_p_tactic : p_tactic eq = fun t1 t2 ->
@@ -274,6 +297,8 @@ let eq_p_tactic : p_tactic eq = fun t1 t2 ->
       Option.equal eq_p_rw_patt r1 r2 && eq_p_term t1 t2
   | (P_tac_query(q1)     , P_tac_query(q2)     ) ->
       eq_p_query q1 q2
+  | (P_tac_why3(s1)      , P_tac_why3(s2)      ) ->
+      s1 = s2
   | (t1                  , t2                  ) ->
       t1 = t2
 

@@ -37,7 +37,12 @@ let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   | Some(_) -> Format.fprintf Pervasives.(!err_fmt)
                  (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 
-(** Exception raised in case of failure. *)
+(** Exception raised in case of failure. Note that we use an optional optional
+    source position. [None] is used on errors that are independant from source
+    code position (e.g., errors related to command-line arguments parsing). In
+    cases where positions are expected [Some None] may be used to indicate the
+    abscence of a position. This may happen when terms are generated (e.g., by
+    a form of desugaring). *)
 exception Fatal of Pos.popt option * string
 
 (** [fatal_str fmt] may be called an arbitrary number of times to build up the
@@ -53,7 +58,8 @@ let fatal : Pos.popt -> ('a,'b) koutfmt -> 'a = fun pos fmt ->
   let cont _ = raise (Fatal(Some(pos), Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt
 
-(** [fatal_no_pos fmt] is equivalent to [fatal None fmt]. *)
+(** [fatal_no_pos fmt] is similar to [fatal _ fmt], but it is used to raise an
+    error that has no precise attached source code position. *)
 let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
   let cont _ = raise (Fatal(None, Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt
@@ -84,7 +90,10 @@ let default_loggers : string Pervasives.ref = Pervasives.ref ""
 
 (** [log_summary ()] returns descriptions for logging options. *)
 let log_summary : unit -> string list = fun () ->
-  let fn data = Format.sprintf "%c : %s" data.logger_key data.logger_desc in
+  let fn data =
+    Format.sprintf "%c : debugging information for %s"
+      data.logger_key data.logger_desc
+  in
   List.sort String.compare (List.map fn Pervasives.(!loggers))
 
 (** [set_log value key] enables or disables the loggers corresponding to every

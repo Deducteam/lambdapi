@@ -86,6 +86,12 @@ module Prefix :
       Earley.black_box fn Charset.full false "<tree>"
   end
 
+(** Currently defined unary operators. *)
+let unops : unop Prefix.t = Prefix.init ()
+
+(** Parser for a unary operator. *)
+let unop = Prefix.grammar unops
+
 (** Currently defined binary operators. *)
 let binops : binop Prefix.t = Prefix.init ()
 
@@ -100,21 +106,23 @@ let declared_id = Prefix.grammar declared_ids
 
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
-let forbiden_in_binops =
-  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; "=" ; ":"; "→"
+let forbidden_in_ops =
+  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; ":"; "→"; "⇒"
   ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
-(** [get_binops loc p] loads the binary operators associated to module [p] and
-    report possible errors at location [loc].  This operation requires the [p]
-    to be loaded (i.e., compiled). The declared identifiers are also retrieved
-    at the same time. *)
-let get_binops : Pos.pos -> p_module_path -> unit = fun loc p ->
+(** [get_ops loc p] loads the unary and binary operators associated to  module
+    [p] and report possible errors at location [loc].  This operation requires
+    the module [p] to be loaded (i.e., compiled). The declared identifiers are
+    also retrieved at the same time. *)
+let get_ops : Pos.pos -> p_module_path -> unit = fun loc p ->
   let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
       parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
   in
+  let fn s (_, unop) = Prefix.add unops s unop in
+  StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
   let fn s (_, binop) = Prefix.add binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops));
   let fn s = Prefix.add declared_ids s s in
@@ -154,7 +162,7 @@ let _inj_        = KW.create "injective"
 let _TYPE_       = KW.create "TYPE"
 let _proof_      = KW.create "proof"
 let _refine_     = KW.create "refine"
-let _intro_      = KW.create "intro"
+let _intro_      = KW.create "assume"
 let _apply_      = KW.create "apply"
 let _simpl_      = KW.create "simpl"
 let _rewrite_    = KW.create "rewrite"
@@ -168,6 +176,7 @@ let _abort_      = KW.create "abort"
 let _set_        = KW.create "set"
 let _wild_       = KW.create "_"
 let _proofterm_  = KW.create "proofterm"
+let _why3_       = KW.create "why3"
 let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
 
@@ -186,7 +195,7 @@ let sanity_check : Pos.pos -> string -> unit = fun loc s ->
     if String.is_substring w s then
       parser_fatal loc "Invalid token (has [%s] as a substring)." w
   in
-  List.iter check_substring forbiden_in_binops
+  List.iter check_substring forbidden_in_ops
 
 (** Natural number literal. *)
 let nat_lit =
@@ -315,7 +324,7 @@ let parser symtag =
   | _inj_   -> Sym_inj
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PAppl | PBinO | PFunc
+type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
 
 (** [term] is a parser for a term. *)
 let parser term @(p : prio) =
@@ -357,11 +366,25 @@ let parser term @(p : prio) =
   | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "=" t:(term PFunc) _in_ u:(term PFunc)
+  | _let_ x:ident a:arg* "≔" t:(term PFunc) _in_ u:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
+  (* Unary operator. *)
+  | u:unop t:(term PUnaO)
+      when p >= PUnaO ->
+        (* Find out minimum priorities for the operand. *)
+        let min_p =
+          let (_, p, _) = u in p
+        in
+        (* Check that priority of operand is above [min_p]. *)
+        let _ =
+          match t.elt with
+          | P_UnaO((_,p,_),_) when p < min_p -> Earley.give_up ()
+          | _                                -> ()
+        in
+        in_pos _loc (P_UnaO(u,t))
   (* Binary operator. *)
   | t:(term PBinO) b:binop
       when p >= PBinO ->>
@@ -377,8 +400,8 @@ let parser term @(p : prio) =
         (* Check that priority of left operand is above [min_pl]. *)
         let _ =
           match t.elt with
-          | P_BinO(_,(_,_,p,_),_) -> if p < min_pl then Earley.give_up ()
-          | _                     -> ()
+          | P_BinO(_,(_,_,p,_),_) when p < min_pl -> Earley.give_up ()
+          | _                                     -> ()
         in
         u:(term PBinO) ->
           (* Check that priority of the right operand is above [min_pr]. *)
@@ -414,7 +437,7 @@ let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
-  | l:term "→" r:term -> Pos.in_pos _loc (l, r) (* TODO *)
+  | l:term "→" r:term -> Pos.in_pos _loc (l, r)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
@@ -436,6 +459,7 @@ let parser assert_must_fail =
 let parser assertion =
   | t:term ":" a:term -> P_assert_typing(t,a)
   | t:term "≡" u:term -> P_assert_conv(t,u)
+  (* FIXME potential conflict with infix "≡". *)
 
 (** [query] parses a query. *)
 let parser query =
@@ -453,6 +477,10 @@ let parser query =
   | _compute_ t:term ->
       let c = Eval.{strategy = SNF; steps = None} in
       Pos.in_pos _loc (P_query_normalize(t,c))
+  | _set_ "prover" s:string_lit ->
+      Pos.in_pos _loc (P_query_prover(s))
+  | _set_ "prover_timeout" n:nat_lit ->
+      Pos.in_pos _loc (P_query_prover_timeout(n))
 
 (** [tactic] is a parser for a single tactic. *)
 let parser tactic =
@@ -466,6 +494,7 @@ let parser tactic =
   | i:{_:_focus_ nat_lit}       -> Pos.in_pos _loc (P_tac_focus(i))
   | _print_                     -> Pos.in_pos _loc P_tac_print
   | _proofterm_                 -> Pos.in_pos _loc P_tac_proofterm
+  | _why3_ s:string_lit?        -> Pos.in_pos _loc (P_tac_why3(s))
   | q:query                     -> Pos.in_pos _loc (P_tac_query(q))
 
 (** [proof_end] is a parser for a proof terminator. *)
@@ -483,6 +512,11 @@ let parser assoc =
 let parser config =
   | "builtin" s:string_lit "≔" qid:qident ->
       P_config_builtin(s,qid)
+  | "prefix" p:float_lit s:string_lit "≔" qid:qident ->
+      let unop = (s, p, qid) in
+      sanity_check _loc_s s;
+      Prefix.add unops s unop;
+      P_config_unop(unop)
   | "infix" a:assoc p:float_lit s:string_lit "≔" qid:qident ->
       let binop = (s, a, p, qid) in
       sanity_check _loc_s s;
@@ -524,13 +558,13 @@ let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
 (** [cmd] is a parser for a single command. *)
 let parser cmd =
   | _require_ o:{_open_ -> true}?[false] ps:path+
-      -> let fn p = do_require _loc p; if o then get_binops _loc p in
+      -> let fn p = do_require _loc p; if o then get_ops _loc p in
          List.iter fn ps; P_require(o,ps)
   | _require_ p:path _as_ n:path_elem
       -> do_require _loc p;
          P_require_as(p, Pos.in_pos _loc_n n)
   | _open_ ps:path+
-      -> List.iter (get_binops _loc) ps;
+      -> List.iter (get_ops _loc) ps;
          P_open(ps)
   | _symbol_ l:symtag* s:ident al:arg* ":" a:term
       -> P_symbol(l,s,al,a)
@@ -552,7 +586,7 @@ let parser cmds = {c:cmd -> in_pos _loc c}*
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> ast = fun fname ->
-  Prefix.reset binops; Prefix.reset declared_ids;
+  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_file cmds blank fname
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in
@@ -564,7 +598,7 @@ let parse_file : string -> ast = fun fname ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
-  Prefix.reset binops; Prefix.reset declared_ids;
+  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Earley.parse_string ~filename:fname cmds blank str
   with Earley.Parse_error(buf,pos) ->
     let loc = Pos.locate buf pos buf pos in

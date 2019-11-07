@@ -7,8 +7,7 @@ open Print
 open Extra
 
 (** Logging function for typing. *)
-let log_subj =
-  new_logger 'j' "subj" "debugging information for subject-reduction"
+let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
 (** Representation of a substitution. *)
@@ -28,7 +27,7 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     let na = List.length argsa in
     let nb = List.length argsb in
     match (unfold ha, unfold hb) with
-    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && Sign.is_inj sa ->
+    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && is_inj sa ->
         let fn l t1 t2 = (t1,t2) :: l in
         build_sub acc (List.fold_left2 fn cs argsa argsb)
     | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
@@ -122,7 +121,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   (* Infer the type of the LHS and the constraints. *)
   match Typing.infer_constr builtins Ctxt.empty lhs with
   | None                      -> wrn r.pos "Untypable LHS."
-  | Some(lhs_constrs, ty_lhs) ->
+  | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;
@@ -157,7 +156,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let cs = List.filter (fun c -> not (is_constr c)) cs in
   if cs <> [] then
     begin
-      let fn (t,u) = fatal_msg "Cannot solve [%a] ~ [%a]\n" pp t pp u in
+      let fn (t,u) = fatal_msg "Cannot solve [%a] ≡ [%a]\n" pp t pp u in
       List.iter fn cs;
       fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
     end;

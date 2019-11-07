@@ -9,7 +9,7 @@ open Syntax
 open Scope
 
 (** Logging function for tactics. *)
-let log_tact = new_logger 'i' "tact" "debugging information for tactics"
+let log_tact = new_logger 't' "tact" "tactics"
 let log_tact = log_tact.logger
 
 (** [handle_tactic ss ps tac] tries to apply the tactic [tac] (in the proof
@@ -103,6 +103,8 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       handle_refine (Rewrite.reflexivity tac.pos ps)
   | P_tac_sym           ->
       handle_refine (Rewrite.symmetry tac.pos ps)
+  | P_tac_why3(config)  ->
+      handle_refine (Why3_tactic.handle tac.pos ps ss config g)
 
 let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     fun ss ps tac ->

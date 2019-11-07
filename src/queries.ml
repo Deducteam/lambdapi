@@ -5,6 +5,7 @@ open Print
 open Pos
 open Syntax
 open Scope
+open Unif
 
 (** [handle_query ss ps q] *)
 let handle_query : sig_state -> Proof.t option -> p_query -> unit =
@@ -12,7 +13,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   let env =
     match ps with
     | None     -> Env.empty
-    | Some(ps) -> fst (Proof.focus_goal ps)
+    | Some(ps) -> fst (Proof.focus_goal q.pos ps)
   in
   let scope = scope_term ss env in
   match q.elt with
@@ -28,12 +29,21 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
           let infer = Typing.infer ss.builtins (Ctxt.of_env env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
-              if Eval.eq_modulo a b then Eval.eq_modulo t u else
-              fatal q.pos "Infered types not convertible (in assertion)."
+              begin
+                match solve ss.builtins true
+                        { no_problems with to_solve = [a,b] } with
+                | None -> fatal q.pos "Infered types are not convertible."
+                | Some [] -> Eval.eq_modulo t u
+                | Some cs ->
+                    let fn (t,u) =
+                      fatal_msg "Cannot solve [%a] ≡ [%a].\n" pp t pp u in
+                    List.iter fn cs;
+                    fatal q.pos "Infered types are not convertible."
+              end
           | (None   , _      ) ->
-              fatal pt.pos "Type cannot be infered (in assertion)."
+              fatal pt.pos "The type of the LHS cannot be infered."
           | (_      , None   ) ->
-              fatal pu.pos "Type cannot be infered (in assertion)."
+              fatal pu.pos "The type of the RHS cannot be infered."
       in
       if result = must_fail then fatal q.pos "Assertion failed.";
       out 3 "(asrt) assertion OK\n";
@@ -70,3 +80,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
       out 3 "(eval) %a\n" pp v
+  | P_query_prover(s)      ->
+      Timed.(Why3_tactic.default_prover := s)
+  | P_query_prover_timeout(n)->
+      Timed.(Why3_tactic.timeout := n)
