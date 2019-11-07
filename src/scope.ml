@@ -42,14 +42,15 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
 let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
-  match mp with
-  | []                               -> (* Symbol in scope. *)
+  let s, pp_h =
+    match mp with
+    | []                               -> (* Symbol in scope. *)
       begin
         try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-        let txt = if b then " or variable" else "" in
-        fatal pos "Unbound symbol%s [%s]." txt s
+          let txt = if b then " or variable" else "" in
+          fatal pos "Unbound symbol%s [%s]." txt s
       end
-  | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
+    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
       begin
         (* The signature must be loaded (alias is mapped). *)
         let sign =
@@ -58,9 +59,9 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
         in
         (* Look for the symbol. *)
         try (Sign.find sign s, Alias m) with Not_found ->
-        fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
-  | _                                -> (* Fully-qualified symbol. *)
+    | _                                -> (* Fully-qualified symbol. *)
       begin
         (* Check that the signature was required (or is the current one). *)
         if mp <> st.signature.sign_path then
@@ -73,8 +74,12 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
         in
         (* Look for the symbol. *)
         try (Sign.find sign s, Qualified) with Not_found ->
-        fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
       end
+  in
+  if s.sym_visi = Local && s.sym_path <> st.signature.sign_path
+  then fatal pos "Foreign local symbol used";
+  s, pp_h
 
 (** [find_qid st env qid] returns a boxed term corresponding to a variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In
@@ -420,10 +425,10 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     (* Ensure that there are no foreign private symbols used. *)
     let h, args = Basics.get_args t in
     begin match unfold h with
-      | Symb({sym_path; sym_mode=Priva; _},_) ->
+      | Symb({sym_path; sym_visi=Private; _},_) ->
         if sym_path <> ss.signature.sign_path
         then fatal p_lhs.pos "Foreign private symbol not allowed in RHS."
-      | _                                     -> ()
+      | _                                       -> ()
     end;
     List.iter privacy args
   in

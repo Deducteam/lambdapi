@@ -203,16 +203,16 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 
 line:
   | s=ID ps=param* COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_const], make_pos $loc(s) s, ps, a))
+      make_pos $loc (P_symbol(Symex_public, [Sym_const], make_pos $loc(s) s, ps, a))
     }
   | KW_DEF s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_public, [], make_pos $loc(s) s, [], a))
     }
   | KW_INJ s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_inj], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_public, [Sym_inj], make_pos $loc(s) s, [], a))
     }
   | KW_PRV s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_prv], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_private, [], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
       make_pos $loc (P_definition(false, make_pos $loc(s) s, [], Some(a), t))

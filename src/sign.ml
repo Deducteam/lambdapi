@@ -176,12 +176,14 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
+(* TODO update doc with exposition *)
 (** [add_symbol sign mode name a impl] creates a fresh symbol with name [name]
     (which should not already be used in [sign]) and with the type [a], in the
     signature [sign]. The list [impl] tells whether the first arguments of the
     symbol are set to be implicit. The created symbol is returned. *)
-let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
-    fun sign sym_mode s a impl ->
+let add_symbol : t -> sym_exposition -> sym_mode -> strloc -> term
+  -> bool list -> sym =
+    fun sign sym_visi sym_mode s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
@@ -192,7 +194,7 @@ let add_symbol : t -> sym_mode -> strloc -> term -> bool list -> sym =
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
     ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
-    ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_visi ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym
 

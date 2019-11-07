@@ -96,7 +96,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                  ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(ts, x, xs, a)     ->
+  | P_symbol(exp, ts, x, xs, a) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -120,11 +120,16 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | []              -> Defin
         | Sym_const :: [] -> Const
         | Sym_inj   :: [] -> Injec
-        | Sym_prv   :: [] -> Priva
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
+      let exp =
+        match exp with
+        | Symex_public  -> Public
+        | Symex_local   -> Local
+        | Symex_private -> Private
+      in
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature m x a impl in
+      let s = Sign.add_symbol ss.signature exp m x a impl in
       out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
@@ -195,7 +200,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature Defin x a impl in
+      let s = Sign.add_symbol ss.signature Public Defin x a impl in
       out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
@@ -234,7 +239,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature Const x a impl in
+            (* FIXME check visibility *)
+            let s = Sign.add_symbol ss.signature Public Const x a impl in
             out 3 "(symb) %s (admit)\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -246,7 +252,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 fatal cmd.pos "The proof is not finished."
               end;
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature Const x a impl in
+            (* FIXME check visibility *)
+            let s = Sign.add_symbol ss.signature Public Const x a impl in
             out 3 "(symb) %s (qed)\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in

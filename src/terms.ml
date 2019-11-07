@@ -71,7 +71,9 @@ type term =
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_mode  : sym_mode
-  (** Tells what kind of symbol it is. *) }
+  (** Tells what kind of symbol it is. *)
+  ; sym_visi  : sym_exposition
+  (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -94,8 +96,15 @@ type term =
   (** The symbol may have a definition or rewriting rules (but NOT both). *)
   | Injec
   (** Same as [Defin], but the symbol is considered to be injective. *)
-  | Priva
+
+(** Visibility of a symbol*)
+ and sym_exposition =
+  | Public
+  (** The symbol is exported and available. *)
+  | Private
   (** The symbol cannot be used outside of the module where it is defined. *)
+  | Local
+  (** The symbol is not exported. *)
 
 (** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
@@ -300,7 +309,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_visi = Public ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 

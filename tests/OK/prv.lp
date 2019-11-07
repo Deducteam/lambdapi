@@ -1,3 +1,3 @@
 symbol const A : TYPE
 
-symbol private f : A ⇒ A
+private symbol f : A ⇒ A

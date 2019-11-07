@@ -36,10 +36,15 @@ let pp_symtag : symtag pp = fun oc tag ->
   match tag with
   | Sym_const -> Format.pp_print_string oc "const"
   | Sym_inj   -> Format.pp_print_string oc "injective"
-  | Sym_prv   -> Format.pp_print_string oc "private"
 
 let pp_symtags : symtag list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_symtag)
+
+let pp_expostag : expostag pp = fun oc tag ->
+  match tag with
+  | Symex_public  -> Format.fprintf oc ""
+  | Symex_private -> Format.fprintf oc "private"
+  | Symex_local   -> Format.fprintf oc "local"
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in
@@ -181,8 +186,9 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(tags,s,args,a)         ->
-      out "@[<hov 2>symbol%a %a" pp_symtags tags pp_ident s;
+  | P_symbol(etag,tags,s,args,a)    ->
+      out "@[<hov 2>%a symbol%a %a" pp_expostag etag pp_symtags tags
+        pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
