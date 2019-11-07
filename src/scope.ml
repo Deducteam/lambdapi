@@ -45,41 +45,41 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
   let s, pp_h =
     match mp with
     | []                               -> (* Symbol in scope. *)
-      begin
-        try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
+        begin
+          try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
-      end
+        end
     | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
-      begin
-        (* The signature must be loaded (alias is mapped). *)
-        let sign =
-          try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
-          with _ -> assert false (* cannot fail. *)
-        in
-        (* Look for the symbol. *)
-        try (Sign.find sign s, Alias m) with Not_found ->
+        begin
+          (* The signature must be loaded (alias is mapped). *)
+          let sign =
+            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            with _ -> assert false (* cannot fail. *)
+          in
+          (* Look for the symbol. *)
+          try (Sign.find sign s, Alias m) with Not_found ->
           fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
-      end
+        end
     | _                                -> (* Fully-qualified symbol. *)
-      begin
-        (* Check that the signature was required (or is the current one). *)
-        if mp <> st.signature.sign_path then
-          if not (PathMap.mem mp !(st.signature.sign_deps)) then
-            fatal pos "No module [%a] required." Files.pp_path mp;
-        (* The signature must have been loaded. *)
-        let sign =
-          try PathMap.find mp Timed.(!Sign.loaded)
-          with Not_found -> assert false (* Should not happen. *)
-        in
-        (* Look for the symbol. *)
-        try (Sign.find sign s, Qualified) with Not_found ->
+        begin
+          (* Check that the signature was required (or is the current one). *)
+          if mp <> st.signature.sign_path then
+            if not (PathMap.mem mp !(st.signature.sign_deps)) then
+              fatal pos "No module [%a] required." Files.pp_path mp;
+          (* The signature must have been loaded. *)
+          let sign =
+            try PathMap.find mp Timed.(!Sign.loaded)
+            with Not_found -> assert false (* Should not happen. *)
+          in
+          (* Look for the symbol. *)
+          try (Sign.find sign s, Qualified) with Not_found ->
           fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
-      end
+        end
   in
   if s.sym_visi = Local && s.sym_path <> st.signature.sign_path
   then fatal pos "Foreign local symbol used";
-  s, pp_h
+  (s, pp_h)
 
 (** [find_qid st env qid] returns a boxed term corresponding to a variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In

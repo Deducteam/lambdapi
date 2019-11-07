@@ -65,7 +65,9 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       if Pervasives.(!gen_obj) then
         begin
           let not_local _ (sym, _) = Terms.(sym.sym_visi) <> Terms.Local in
-          let sign_symbols = ref (StrMap.filter not_local !(sign.sign_symbols)) in
+          let sign_symbols =
+            ref (StrMap.filter not_local !(sign.sign_symbols))
+          in
           let sign = { sign with sign_symbols } in
           Sign.write sign obj
         end;
