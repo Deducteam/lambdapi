@@ -38,7 +38,8 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     the name [snd qid.elt] in the opened modules of [st]. The boolean [b] only
     indicates if the error message should mention variables, in the case where
     the module path is empty and the symbol is unbound. This is reported using
-    the [Fatal] exception. *)
+    the [Fatal] exception. Private symbols from other modules are allowed in
+    left-hand side of rewrite rules (only) iff [allow_priv] is true. *)
 let find_sym : ?allow_priv:bool -> bool -> sig_state -> qident
   -> sym * pp_hint = fun ?(allow_priv=false) b st qid ->
   let {elt = (mp, s); pos} = qid in
@@ -85,14 +86,16 @@ let find_sym : ?allow_priv:bool -> bool -> sig_state -> qident
   then fatal pos "Private symbol not allowed"
   else (s, h)
 
-(** [find_qid st env qid] returns a boxed term corresponding to a variable  of
-    the environment [env] (or to a symbol) which name corresponds to [qid]. In
-    the case where the module path [fst qid.elt] is empty, we first search for
-    the name [snd qid.elt] in the environment, and if it is not mapped we also
-    search in the opened modules.  The exception [Fatal] is raised if an error
-    occurs (e.g., when the name cannot be found). *)
-let find_qid : ?allow_priv:bool -> sig_state -> env -> qident -> tbox =
-  fun ?(allow_priv=false) st env qid ->
+(** [find_qid allow_priv st env qid] returns a boxed term corresponding to a
+    variable of the environment [env] (or to a symbol) which name corresponds
+    to [qid]. In the case where the module path [fst qid.elt] is empty, we
+    first search for the name [snd qid.elt] in the environment, and if it is
+    not mapped we also search in the opened modules. The exception [Fatal] is
+    raised if an error occurs (e.g., when the name cannot be found). Private
+    symbols from other module are allowed in left-hand side of rewrite rules
+    (only) iff [allow_priv] is true. *)
+let find_qid : bool -> sig_state -> env -> qident -> tbox =
+  fun allow_priv st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -226,7 +229,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , _        ) -> _Type
     | (P_Iden(qid,_)   , _        ) ->
       let allow_priv = match md with M_LHS(_) -> true | _ -> false in
-      find_qid ~allow_priv ss env qid
+      find_qid allow_priv ss env qid
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
