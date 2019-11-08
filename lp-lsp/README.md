@@ -19,8 +19,7 @@ There is an extension for VSCode derived from VSCoq. To install do:
 
 ```bash
 cd editors/vscode/
-npm install
-ln -s `pwd` ~/.vscode/extensions/
+make
 ```
 
 You need a recent enough VSCode (>= 1.31)
