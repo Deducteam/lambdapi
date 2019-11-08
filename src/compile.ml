@@ -62,15 +62,10 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
             data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));
-      if Pervasives.(!gen_obj) then
-        begin
-          let not_local _ (sym, _) = Terms.(sym.sym_expo) <> Terms.Local in
-          let sign_symbols =
-            ref (StrMap.filter not_local !(sign.sign_symbols))
-          in
-          let sign = { sign with sign_symbols } in
-          Sign.write sign obj
-        end;
+      let not_local _ (sym, _) = Terms.(sym.sym_expo) <> Terms.Local in
+      (* FIXME strip bultins, unops and binops as well? *)
+      sign.sign_symbols := StrMap.filter not_local !(sign.sign_symbols);
+      if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
     end
