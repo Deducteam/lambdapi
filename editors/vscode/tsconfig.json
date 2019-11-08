@@ -4,13 +4,10 @@
 		"target": "es6",
 		"outDir": "out",
 		"sourceMap": true,
-		"strict": true,
-		//"rootDir": "src"
+		"strict": true
 	},
 	"files": [
 		"vscode.proposed.d.ts",
 		"src/client.ts"
 	]
-
-	//"exclude": ["node_modules", ".vscode-test"]
 }
