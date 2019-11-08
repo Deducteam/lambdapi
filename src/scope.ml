@@ -39,42 +39,51 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     indicates if the error message should mention variables, in the case where
     the module path is empty and the symbol is unbound. This is reported using
     the [Fatal] exception. *)
-let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
+let find_sym : ?allow_priv:bool -> bool -> sig_state -> qident
+  -> sym * pp_hint = fun ?(allow_priv=false) b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
-  match mp with
-  | []                               -> (* Symbol in scope. *)
-      begin
-        try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-        let txt = if b then " or variable" else "" in
-        fatal pos "Unbound symbol%s [%s]." txt s
-      end
-  | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
-      begin
-        (* The signature must be loaded (alias is mapped). *)
-        let sign =
-          try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
-          with _ -> assert false (* cannot fail. *)
-        in
-        (* Look for the symbol. *)
-        try (Sign.find sign s, Alias m) with Not_found ->
-        fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
-      end
-  | _                                -> (* Fully-qualified symbol. *)
-      begin
-        (* Check that the signature was required (or is the current one). *)
-        if mp <> st.signature.sign_path then
-          if not (PathMap.mem mp !(st.signature.sign_deps)) then
-            fatal pos "No module [%a] required." Files.pp_path mp;
-        (* The signature must have been loaded. *)
-        let sign =
-          try PathMap.find mp Timed.(!Sign.loaded)
-          with Not_found -> assert false (* Should not happen. *)
-        in
-        (* Look for the symbol. *)
-        try (Sign.find sign s, Qualified) with Not_found ->
-        fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
-      end
+  let (s, h) =
+    match mp with
+    | []                               -> (* Symbol in scope. *)
+        begin
+          try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
+          let txt = if b then " or variable" else "" in
+          fatal pos "Unbound symbol%s [%s]." txt s
+        end
+    | [m] when StrMap.mem m st.aliases -> (* Aliased module path. *)
+        begin
+          (* The signature must be loaded (alias is mapped). *)
+          let sign =
+            try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
+            with _ -> assert false (* cannot fail. *)
+          in
+          (* Look for the symbol. *)
+          try (Sign.find sign s, Alias m) with Not_found ->
+          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+        end
+    | _                                -> (* Fully-qualified symbol. *)
+        begin
+          (* Check that the signature was required (or is the current one). *)
+          if mp <> st.signature.sign_path then
+            if not (PathMap.mem mp !(st.signature.sign_deps)) then
+              fatal pos "No module [%a] required." Files.pp_path mp;
+          (* The signature must have been loaded. *)
+          let sign =
+            try PathMap.find mp Timed.(!Sign.loaded)
+            with Not_found -> assert false (* Should not happen. *)
+          in
+          (* Look for the symbol. *)
+          try (Sign.find sign s, Qualified) with Not_found ->
+          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+        end
+  in
+  (* Reject (if [allow_priv] is false) private symbols from other
+     signatures. *)
+  if (not allow_priv) && s.sym_expo = Private
+     && s.sym_path <> st.signature.sign_path
+  then fatal pos "Private symbol not allowed"
+  else (s, h)
 
 (** [find_qid st env qid] returns a boxed term corresponding to a variable  of
     the environment [env] (or to a symbol) which name corresponds to [qid]. In
@@ -82,7 +91,8 @@ let find_sym : bool -> sig_state -> qident -> sym * pp_hint = fun b st qid ->
     the name [snd qid.elt] in the environment, and if it is not mapped we also
     search in the opened modules.  The exception [Fatal] is raised if an error
     occurs (e.g., when the name cannot be found). *)
-let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
+let find_qid : ?allow_priv:bool -> sig_state -> env -> qident -> tbox =
+  fun ?(allow_priv=false) st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -90,7 +100,7 @@ let find_qid : sig_state -> env -> qident -> tbox = fun st env qid ->
     _Vari (Env.find s env)
   with Not_found ->
   (* Check for symbols. *)
-  let (s, hint) = find_sym true st qid in _Symb s hint
+  let (s, hint) = find_sym ~allow_priv true st qid in _Symb s hint
 
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
@@ -208,12 +218,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> tbox = fun env t ->
+  and scope_head : env -> p_term -> tbox =
+    fun  env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _        ) -> _Type
-    | (P_Iden(qid,_)   , _        ) -> find_qid ss env qid
+    | (P_Iden(qid,_)   , _        ) ->
+      let allow_priv = match md with M_LHS(_) -> true | _ -> false in
+      find_qid ~allow_priv ss env qid
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
@@ -326,7 +339,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
 
 (** [scope ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t].  The signature
-    state [ss] is used to hande module aliasing according to [find_qid]. *)
+    state [ss] is used to handle module aliasing according to [find_qid]. *)
 let scope_term : sig_state -> env -> p_term -> term
   = fun ss env t ->
   let m = Pervasives.ref StrMap.empty in
@@ -415,19 +428,6 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     let t = scope (M_RHS(Array.to_list map)) ss Env.empty p_rhs in
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
-  let _, t = Bindlib.unmbind rhs in
-  let rec privacy t =
-    (* Ensure that there are no foreign private symbols used. *)
-    let h, args = Basics.get_args t in
-    begin match unfold h with
-      | Symb({sym_path; sym_expo=Private; _},_) ->
-        if sym_path <> ss.signature.sign_path
-        then fatal p_lhs.pos "Foreign private symbol not allowed in RHS."
-      | _                                       -> ()
-    end;
-    List.iter privacy args
-  in
-  privacy t; (* Checking for private symbols in rhs. *)
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let vars = Array.of_list pvs in
   (* We put everything together to build the rule. *)
