@@ -66,17 +66,17 @@ let do_shutdown ofmt ~id =
   LIO.send_json ofmt msg
 
 let doc_table : (string, _) Hashtbl.t = Hashtbl.create 39
-let completed_table : (string, Lp_doc.t) Hashtbl.t = Hashtbl.create 39
+let completed_table : (string, Lsp_doc.t) Hashtbl.t = Hashtbl.create 39
 
 (* Notification handling; reply is optional / asynchronous *)
 let do_check_text ofmt ~doc =
-  let doc, diags = Lp_doc.check_text ~doc in
+  let doc, diags = Lsp_doc.check_text ~doc in
   Hashtbl.replace doc_table doc.uri doc;
   Hashtbl.replace completed_table doc.uri doc;
   LIO.send_json ofmt @@ diags
 
 let do_change ofmt ~doc change =
-  let open Lp_doc in
+  let open Lsp_doc in
   LIO.log_error "checking file" (doc.uri ^ " / version: " ^ (string_of_int doc.version));
   let doc = { doc with text = string_field "text" change; } in
   do_check_text ofmt ~doc
@@ -87,7 +87,7 @@ let do_open ofmt params =
     string_field "uri" document,
     int_field "version" document,
     string_field "text" document in
-  let doc = Lp_doc.new_doc ~uri ~text ~version in
+  let doc = Lsp_doc.new_doc ~uri ~text ~version in
   begin match Hashtbl.find_opt doc_table uri with
     | None -> ()
     | Some _ -> LIO.log_error "do_open" ("file " ^ uri ^ " not properly closed by client")
@@ -102,7 +102,7 @@ let do_change ofmt params =
     int_field "version" document in
   let changes = List.map U.to_assoc @@ list_field "contentChanges" params in
   let doc = Hashtbl.find doc_table uri in
-  let doc = { doc with Lp_doc.version; } in
+  let doc = { doc with Lsp_doc.version; } in
   List.iter (do_change ofmt ~doc) changes
 
 let do_close _ofmt params =
@@ -166,7 +166,7 @@ let in_range ?loc (line, pos) =
     (end_line - 1 = line && pos <= end_col)
 
 let get_goals ~doc ~line ~pos =
-  let open Lp_doc in
+  let open Lsp_doc in
   let node =
     List.find_opt (fun { ast; _ } ->
         let loc = Pure.Command.get_pos ast in
@@ -174,7 +174,7 @@ let get_goals ~doc ~line ~pos =
                 let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
         LIO.log_error "get_goals" ("call: "^ls);
         res
-      ) doc.Lp_doc.nodes in
+      ) doc.Lsp_doc.nodes in
   Option.map
     (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node
 
@@ -285,35 +285,13 @@ let lsp_main log_file std =
     close_out debug_oc;
     close_out lp_oc
 
-open Cmdliner
+(** Default log file location. *)
+let default_log_file = "/tmp/lambdapi_lsp_log.txt"
 
-(* let bt =
- *   let doc = "Enable backtraces" in
- *   Arg.(value & flag & info ["bt"] ~doc) *)
+(** Flags set by command line options. *)
+let log_file : string ref = ref default_log_file
+let std : bool ref = ref true
 
-let log_file =
-  let doc = "Log to $(docv)" in
-  Arg.(value & opt string "log-lsp.txt" & info ["log_file"] ~docv:"FILE" ~doc)
-
-let std =
-  let doc = "Restrict to standard LSP protocol" in
-  Arg.(value & flag & info ["std"] ~doc)
-
-let lsp_cmd =
-  let doc = "LP LSP Toplevel" in
-  let man = [
-    `S "DESCRIPTION";
-    `P "Experimental LP Toplevel with LSP support";
-    `S "USAGE";
-    `P "See the documentation on the project's webpage for more information"
-  ]
-  in
-  Term.(const lsp_main $ log_file $ std),
-  Term.info "lp-lsp" ~version:"0.0" ~doc ~man
-
-let main () =
-  match Term.eval lsp_cmd with
-  | `Error _ -> exit 1
-  | _        -> exit 0
-
-let _ = main ()
+(** Entry point for the server. *)
+let main : unit -> unit = fun _ ->
+  lsp_main !log_file !std

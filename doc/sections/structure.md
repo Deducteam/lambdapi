@@ -15,8 +15,6 @@ Structure of directories and files
 
 * `libraries/`: libraries of Dedukti files (see GNUmakefile)
 
-* `lp-lsp/`: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
-
 * `src/`: source code of Lambdapi
 
    + utilities:
@@ -76,6 +74,12 @@ Structure of directories and files
    + interface to editors:
 
      - `pure.ml` and `pure.mli`: interface to the LSP server
+
+   + LSP server:
+
+     - See [here](https://microsoft.github.io/language-server-protocol/) or
+       [there](https://langserver.org/) for more details on LSP.
+     - All the files in the `lsp` directory.
 
 * `tests/`: unit tests
    - `OK/`: tests that should succeed

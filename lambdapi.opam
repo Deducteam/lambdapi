@@ -32,7 +32,6 @@ depends: [
 
   # lp-lsp dependencies
   "yojson"       { >= "1.6.0" }
-  "cmdliner"
 ]
 
 build: [

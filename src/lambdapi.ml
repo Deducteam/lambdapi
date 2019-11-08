@@ -26,6 +26,7 @@ type execution_mode =
   | Normal    (** Type-checking (default mode).     *)
   | JustParse (** Only parse the files.             *)
   | Beautify  (** Parse and pretty-print the files. *)
+  | LSP       (** Run the LSP server.               *)
 
 (** [mode] holds the chosen exectuion mode for the run. *)
 let mode = ref Normal
@@ -39,6 +40,7 @@ let handle_file : string -> unit = fun fname ->
   try
     (* Handle non-normal modes first. *)
     match !mode with
+    | LSP       -> fatal_no_pos "LSP server does not expect file arguments."
     | JustParse -> ignore (Compile.parse_file fname)
     | Beautify  -> Pretty.beautify (Compile.parse_file fname)
     | Normal    ->
@@ -121,7 +123,17 @@ let spec =
       , " Prints the current version number and exits" )
     ; ( "--debug"
       , Arg.String set_default_debug
-      , "<flags> Enables given debugging flags by default " ^ debug_flags ) ]
+      , "<flags> Enables given debugging flags by default " ^ debug_flags )
+    ; ( "--lsp-server"
+      , Arg.Unit (fun _ -> mode := LSP)
+      , " Start the LSP server" )
+    ; ( "--standard-lsp"
+      , Arg.Set Lsp.Lsp_main.std
+      , " Restrict to standard LSP protocol" )
+    ; ( "--lsp-log-file"
+      , Arg.Set_string Lsp.Lsp_main.log_file
+      , "<file> Specified the LSP server log file (default: "
+          ^ Lsp.Lsp_main.default_log_file ^ ")" ) ]
   in
   List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2) spec
 
@@ -132,4 +144,6 @@ let _ =
   let files = ref [] in
   Arg.parse spec (fun s -> files := s :: !files) usage;
   (* Compile each file separately. *)
-  List.iter handle_file (List.rev !files)
+  List.iter handle_file (List.rev !files);
+  (* Start the LSP server if appropriate. *)
+  if !mode = LSP then Lsp.Lsp_main.main ()

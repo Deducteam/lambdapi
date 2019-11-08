@@ -4,15 +4,6 @@ This directory contains a prototype language server for the λΠ logical
 framework. At this stage, this is a very experimental prototype, use
 with care.
 
-To build:
-
-```bash
-opam install dune cmdliner yojson
-dune build
-```
-
-The resulting binary will be in `../_build/install/default/bin/lp-lsp`
-
 ## Using with VSCode
 
 There is an extension for VSCode derived from VSCoq. To install do:
@@ -27,13 +18,13 @@ You need a recent enough VSCode (>= 1.31)
 
 ## Using with Emacs
 
-`lp-lsp` will work out of the box with emacs and eglot, to do so,
-install [eglot](https://github.com/joaotavora/eglot) [using `M-x
-package-install eglot RET` should work], then do `M-x eglot` and
-specify as a server `lp-lsp --std`.
+Lambdapi LSP server will work out of the box with emacs and eglot,
+to do so, install [eglot](https://github.com/joaotavora/eglot)
+[using `M-x package-install eglot RET` should work], then do
+`M-x eglot` and specify as a server `lambdapi --lsp-server --standard-lsp`.
 
 `eglot` doesn't support the extended protocol information sent by
-`lp-lsp` yet.
+Lambdapi LSP server yet.
 
 ## Development TODO
 
@@ -61,5 +52,5 @@ scale proof editing. In particular:
 The server is split in 3 components:
 
 - `Lsp_*`: Files dealing with LSP structures.
-- `Lp_doc`: Document model for LP documents.
-- `Lp_lsp`: Main server, command handlers.
+- `Lsp_doc`: Document model for LP documents.
+- `Lsp_lsp`: Main server, command handlers.

@@ -10,7 +10,7 @@
  (name lambdapi)
  (public_name lambdapi)
  (modules lambdapi)
- (libraries lambdapi.core))
+ (libraries lambdapi.core lambdapi.lsp))
 
 (ocamllex legacy_lexer)
 (menhir
