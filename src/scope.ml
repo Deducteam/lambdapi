@@ -221,8 +221,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> tbox =
-    fun  env t ->
+  and scope_head : env -> p_term -> tbox = fun  env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
@@ -421,7 +420,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
         fatal p_lhs.pos "Constant LHS head symbol."
     | Symb(({sym_expo=Private; sym_path; _} as s),h) ->
         if ss.signature.sign_path <> sym_path then
-          fatal p_lhs.pos "Cannot redefine rules on foreign private symbols."
+          fatal p_lhs.pos "Cannot define rules on foreign private symbols."
         else (s, h, args)
     | Symb(s,h)                                      -> (s, h, args)
     | _                                              ->

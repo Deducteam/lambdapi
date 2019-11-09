@@ -102,7 +102,8 @@ type term =
   | Public
   (** The symbol is exported and available. *)
   | Private
-  (** The symbol cannot be used outside of the module where it is defined. *)
+  (** The symbol can only appear in subterms of left-hand sides of other
+      modules. *)
   | Local
   (** The symbol is not exported. *)
 
