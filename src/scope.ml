@@ -417,15 +417,14 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     let (h, args) = Basics.get_args lhs in
     let is_const s = s.sym_mode = Const in
     match h with
-    | Symb(({sym_expo = Private; sym_path; _} as s), h) ->
-        if ss.signature.sign_path <> sym_path
-        then
+    | Symb(s,_) when is_const s                      ->
+        fatal p_lhs.pos "Constant LHS head symbol."
+    | Symb(({sym_expo=Private; sym_path; _} as s),h) ->
+        if ss.signature.sign_path <> sym_path then
           fatal p_lhs.pos "Cannot redefine rules on foreign private symbols."
         else (s, h, args)
-    | Symb(s,_) when is_const s                         ->
-        fatal p_lhs.pos "Constant LHS head symbol."
-    | Symb(s,h)                                         -> (s, h, args)
-    | _                                                 ->
+    | Symb(s,h)                                      -> (s, h, args)
+    | _                                              ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] && !verbose > 1 then
