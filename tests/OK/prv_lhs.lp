@@ -1,3 +1,6 @@
-require tests.OK.prv
+require open tests.OK.prv
 
-rule tests.OK.prv.f &X → &X
+symbol g : A ⇒ A
+
+// Allowed to use private symbol f in lhs of rewrite rule
+rule g (f &X) → &X
