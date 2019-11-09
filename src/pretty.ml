@@ -33,18 +33,20 @@ let pp_path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (pp_path_elt pos) "."
 
 let pp_symtag : symtag pp = fun oc tag ->
-  match tag with
-  | Sym_const -> Format.pp_print_string oc "const"
-  | Sym_inj   -> Format.pp_print_string oc "injective"
+  Format.pp_print_string oc
+    (match tag with
+     | Sym_const -> "const"
+     | Sym_inj   -> "injective")
 
 let pp_symtags : symtag list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_symtag)
 
 let pp_expostag : expostag pp = fun oc tag ->
-  match tag with
-  | Symex_public  -> Format.fprintf oc ""
-  | Symex_private -> Format.fprintf oc "private"
-  | Symex_local   -> Format.fprintf oc "local"
+  Format.fprintf oc
+    (match tag with
+     | Symex_public  -> ""
+     | Symex_private -> "private"
+     | Symex_local   -> "local")
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in
