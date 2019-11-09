@@ -176,14 +176,15 @@ let unlink : t -> unit = fun sign ->
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_unops);
   StrMap.iter (fun _ (s,_) -> unlink_sym s) !(sign.sign_binops)
 
-(* TODO update doc with exposition *)
-(** [add_symbol sign mode name a impl] creates a fresh symbol with name [name]
-    (which should not already be used in [sign]) and with the type [a], in the
-    signature [sign]. The list [impl] tells whether the first arguments of the
-    symbol are set to be implicit. The created symbol is returned. *)
-let add_symbol : t -> sym_exposition -> sym_mode -> strloc -> term
+(** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
+    name [name] (which should not already be used in [sign]) and with the type
+    [a], in the signature [sign]. The exposition is {!constructor:Public} by
+    default, unless [?sym_expo] is precised. The list [impl] tells whether the
+    first arguments of the symbol are set to be implicit. The created symbol
+    is returned. *)
+let add_symbol : t -> ?sym_expo:sym_exposition -> sym_mode -> strloc -> term
   -> bool list -> sym =
-    fun sign sym_expo sym_mode s a impl ->
+    fun sign ?(sym_expo=Public) sym_mode s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
