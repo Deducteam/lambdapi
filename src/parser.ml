@@ -574,12 +574,7 @@ let parser cmd =
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
   | e:exposition? _symbol_ l:symtag* s:ident al:arg* ":" a:term
-      ->
-      let expo = match e with
-        | None    -> Symex_public
-        | Some(e) -> e
-      in
-      P_symbol(expo,l,s,al,a)
+      -> P_symbol(Option.get e Symex_public,l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
