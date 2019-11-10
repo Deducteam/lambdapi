@@ -51,7 +51,8 @@ require open church.sums
 ### `symbol`
 
 Symbols are declared using the `symbol` command, possibly associated with some
-modifier like `const` or `injective`.
+modifier or an exposition marker. In the following example, `const` is a
+modifier and `local` is an exposition marker.
 
 ```
 symbol const Nat : TYPE
@@ -61,6 +62,7 @@ symbol add : Nat ⇒ Nat ⇒ Nat
 symbol const list : Nat ⇒ TYPE
 symbol const nil : List zero
 symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
+local symbol aux : ∀n, List n ⇒ Nat
 ```
 
 The command requires a fresh symbol name (it should not have already been used
@@ -83,6 +85,15 @@ We recommend to start types and predicates by a capital letter.
  For the moment, the verification is left to the user.
 
 These modifiers are used to help the unification engine.
+
+**Exposition marker**
+Exposition defines how a symbol can be used outside the module where it is
+defined. By default any symbol is _public_, which means it can be used without
+restriction anywhere. There are two exposition markers available:
+- `local`: the symbol cannot be used outside of its module (can be compared to a
+  symbol not in the interface in OCaml);
+- `private`: the symbol can only be used in left-hand side of rewrite rules
+  outside of its module.
 
 **Implicit arguments**. Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
@@ -165,13 +176,15 @@ rule minus x x → zero
 ### `definition`
 
 The `definition` command is used to immediately define a new symbol, for it to
-be equal to some (closed) term.
+be equal to some (closed) term. Definitions can use exposition markers the same
+way the `symbol` command use them.
 
 ```
 definition plus_two : Nat ⇒ Nat ≔ λn,add n (succ (succ zero))
 definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
 definition plus_two (n : Nat) ≔ add n (succ (succ zero))
 definition plus_two n ≔ add n (succ (succ zero))
+private definition plus_two n ≔ add n (succ (succ zero))
 ```
 
 Note that some type annotations can be omitted, and that it is possible to put
