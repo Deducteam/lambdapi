@@ -162,7 +162,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           List.iter write_tree syms
         end;
       (ss, None)
-  | P_definition(op,x,xs,ao,t) ->
+  | P_definition(exp,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -192,6 +192,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
+      let sym_expo = match exp with
+        | Symex_public  -> Public
+        | Symex_private -> Private
+        | Symex_local   -> Local
+      in
       (* We check that no metavariable remains. *)
       if Basics.has_metas t || Basics.has_metas a then
         begin
@@ -200,8 +205,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
-      (* TODO Exposition for definitions as well *)
-      let s = Sign.add_symbol ss.signature Defin x a impl in
+      let s = Sign.add_symbol ss.signature ~sym_expo Defin x a impl in
       out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);

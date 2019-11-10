@@ -195,7 +195,8 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of bool * ident * p_arg list * p_type option * p_term
+  | P_definition of expostag * bool * ident * p_arg list * p_type option
+                  * p_term
   (** Definition of a symbol (unfoldable). *)
   | P_theorem    of p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
@@ -333,8 +334,8 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       && List.equal eq_p_arg al1 al2
   | (P_rules(rs1)                , P_rules(rs2)                ) ->
       List.equal eq_p_rule rs1 rs2
-  | (P_definition(b1,s1,l1,a1,t1), P_definition(b2,s2,l2,a2,t2)) ->
-      b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
+  | (P_definition(e1,b1,s1,l1,a1,t1), P_definition(e2,b2,s2,l2,a2,t2)) ->
+      e1 = e2 && b1 = b2 && eq_ident s1 s2 && List.equal eq_p_arg l1 l2
       && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
   | (P_theorem(st1,ts1,e1)       , P_theorem(st2,ts2,e2)       ) ->
       let (s1,l1,a1) = st1.elt in

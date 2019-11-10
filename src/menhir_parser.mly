@@ -215,22 +215,23 @@ line:
       make_pos $loc (P_symbol(Symex_private, [], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, [], Some(a), t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, [],
+                                  Some(a), t))
     }
   | KW_DEF s=ID DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, [], None, t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, [], None, t))
     }
   | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, ps, Some(a), t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, ps, Some(a), t))
     }
   | KW_DEF s=ID ps=param+ DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, ps, None, t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, ps, None, t))
     }
   | KW_THM s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(true , make_pos $loc(s) s, [], Some(a), t))
+      make_pos $loc (P_definition(Symex_public,true , make_pos $loc(s) s, [], Some(a), t))
     }
   | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(true , make_pos $loc(s) s, ps, Some(a), t))
+      make_pos $loc (P_definition(Symex_public,true , make_pos $loc(s) s, ps, Some(a), t))
     }
   | rs=rule+ DOT {
       make_pos $loc (P_rules(List.map translate_old_rule rs))

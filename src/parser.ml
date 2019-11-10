@@ -577,8 +577,8 @@ let parser cmd =
       -> P_symbol(Option.get e Symex_public,l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(false,s,al,ao,t)
+  | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(Option.get e Symex_public,false,s,al,ao,t)
   | st:statement (ts,e):proof
       -> P_theorem(st,ts,e)
   | _set_ c:config
