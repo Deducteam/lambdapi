@@ -101,7 +101,7 @@ type term =
  and sym_exposition =
   | Public
   (** The symbol is exported and available. *)
-  | Private
+  | Protected
   (** The symbol can only appear in subterms of left-hand sides of other
       modules. *)
   | Local

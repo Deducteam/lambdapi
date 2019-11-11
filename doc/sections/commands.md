@@ -92,7 +92,7 @@ defined. By default any symbol is _public_, which means it can be used without
 restriction anywhere. There are two exposition markers available:
 - `local`: the symbol cannot be used outside of its module (can be compared to a
   symbol not in the interface in OCaml);
-- `private`: the symbol can only be used in left-hand side of rewrite rules
+- `protected`: the symbol can only be used in left-hand side of rewrite rules
   outside of its module.
 
 **Implicit arguments**. Some function symbol arguments can be declared
@@ -184,7 +184,7 @@ definition plus_two : Nat ⇒ Nat ≔ λn,add n (succ (succ zero))
 definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
 definition plus_two (n : Nat) ≔ add n (succ (succ zero))
 definition plus_two n ≔ add n (succ (succ zero))
-private definition plus_two n ≔ add n (succ (succ zero))
+protected definition plus_two n ≔ add n (succ (succ zero))
 ```
 
 Note that some type annotations can be omitted, and that it is possible to put

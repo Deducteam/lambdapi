@@ -124,9 +124,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       in
       let sym_expo =
         match exp with
-        | Symex_public  -> Public
-        | Symex_local   -> Local
-        | Symex_private -> Private
+        | Symex_public    -> Public
+        | Symex_local     -> Local
+        | Symex_protected -> Protected
       in
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature ~sym_expo m x a impl in
@@ -193,9 +193,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
       let sym_expo = match exp with
-        | Symex_public  -> Public
-        | Symex_private -> Private
-        | Symex_local   -> Local
+        | Symex_public    -> Public
+        | Symex_protected -> Protected
+        | Symex_local     -> Local
       in
       (* We check that no metavariable remains. *)
       if Basics.has_metas t || Basics.has_metas a then

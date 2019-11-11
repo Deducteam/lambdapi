@@ -212,7 +212,7 @@ line:
       make_pos $loc (P_symbol(Symex_public, [Sym_inj], make_pos $loc(s) s, [], a))
     }
   | KW_PRV s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol(Symex_private, [], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_protected, [], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
       make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, [],

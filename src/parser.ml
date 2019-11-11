@@ -164,7 +164,7 @@ let _let_        = KW.create "let"
 let _local_      = KW.create "local"
 let _open_       = KW.create "open"
 let _print_      = KW.create "print"
-let _private_    = KW.create "private"
+let _protected_  = KW.create "protected"
 let _proof_      = KW.create "proof"
 let _proofterm_  = KW.create "proofterm"
 let _qed_        = KW.create "qed"
@@ -327,8 +327,8 @@ let parser symtag =
 
 (** [exposition] parses the exposition tag of a symbol.*)
 let parser exposition =
-  | _private_ -> Symex_private
-  | _local_   -> Symex_local
+  | _protected_ -> Symex_protected
+  | _local_     -> Symex_local
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc

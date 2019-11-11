@@ -45,7 +45,7 @@ let pp_expostag : expostag pp = fun oc tag ->
   Format.pp_print_string oc
     (match tag with
      | Symex_public  -> ""
-     | Symex_private -> "private"
+     | Symex_protected -> "protected"
      | Symex_local   -> "local")
 
 let rec pp_p_term : p_term pp = fun oc t ->

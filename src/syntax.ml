@@ -86,8 +86,8 @@ type symtag =
 type expostag =
   | Symex_public
   (** Symbol is exported, usable without restriction everywhere. *)
-  | Symex_private
-  (** Symbol is private: exposed but not constructible outside of its
+  | Symex_protected
+  (** Symbol is protected: exposed but not constructible outside of its
       module. *)
   | Symex_local
   (** Symbol is local: not exported and not visible outside of its module. *)

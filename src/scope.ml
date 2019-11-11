@@ -33,15 +33,16 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym b st qid] returns the symbol and printing hint corresponding  to
-    the qualified identifier [qid].  If [fst qid.elt] is empty,  we search for
-    the name [snd qid.elt] in the opened modules of [st]. The boolean [b] only
-    indicates if the error message should mention variables, in the case where
-    the module path is empty and the symbol is unbound. This is reported using
-    the [Fatal] exception. Private symbols from other modules are allowed in
-    left-hand side of rewrite rules (only) iff [allow_priv] is true. *)
-let find_sym : ?allow_priv:bool -> bool -> sig_state -> qident
-  -> sym * pp_hint = fun ?(allow_priv=false) b st qid ->
+(** [find_sym ?allow_protected b st qid] returns the symbol and printing hint
+    corresponding to the qualified identifier [qid]. If [fst qid.elt] is
+    empty, we search for the name [snd qid.elt] in the opened modules of [st].
+    The boolean [b] only indicates if the error message should mention
+    variables, in the case where the module path is empty and the symbol is
+    unbound. This is reported using the [Fatal] exception. Protected symbols
+    from other modules are allowed in left-hand side of rewrite rules (only)
+    iff [allow_protected] is true. *)
+let find_sym : ?allow_protected:bool -> bool -> sig_state -> qident
+  -> sym * pp_hint = fun ?(allow_protected=false) b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
   let (s, h) =
@@ -79,23 +80,23 @@ let find_sym : ?allow_priv:bool -> bool -> sig_state -> qident
           fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
         end
   in
-  (* Reject (if [allow_priv] is false) private symbols from other
+  (* Reject (if [allow_protected] is false) protected symbols from other
      signatures. *)
-  if (not allow_priv) && s.sym_expo = Private
+  if (not allow_protected) && s.sym_expo = Protected
      && s.sym_path <> st.signature.sign_path
-  then fatal pos "Private symbol not allowed"
+  then fatal pos "Protected symbol not allowed"
   else (s, h)
 
-(** [find_qid allow_priv st env qid] returns a boxed term corresponding to a
-    variable of the environment [env] (or to a symbol) which name corresponds
-    to [qid]. In the case where the module path [fst qid.elt] is empty, we
-    first search for the name [snd qid.elt] in the environment, and if it is
-    not mapped we also search in the opened modules. The exception [Fatal] is
-    raised if an error occurs (e.g., when the name cannot be found). Private
-    symbols from other module are allowed in left-hand side of rewrite rules
-    (only) iff [allow_priv] is true. *)
+(** [find_qid allow_protected st env qid] returns a boxed term corresponding
+    to a variable of the environment [env] (or to a symbol) which name
+    corresponds to [qid]. In the case where the module path [fst qid.elt] is
+    empty, we first search for the name [snd qid.elt] in the environment, and
+    if it is not mapped we also search in the opened modules. The exception
+    [Fatal] is raised if an error occurs (e.g., when the name cannot be
+    found). Protected symbols from other module are allowed in left-hand side
+    of rewrite rules (only) iff [allow_protected] is true. *)
 let find_qid : bool -> sig_state -> env -> qident -> tbox =
-  fun allow_priv st env qid ->
+  fun allow_protected st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -103,7 +104,7 @@ let find_qid : bool -> sig_state -> env -> qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
   (* Check for symbols. *)
-  let (s, hint) = find_sym ~allow_priv true st qid in _Symb s hint
+  let (s, hint) = find_sym ~allow_protected true st qid in _Symb s hint
 
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
@@ -416,9 +417,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     match h with
     | Symb(s,_) when is_const s                      ->
         fatal p_lhs.pos "Constant LHS head symbol."
-    | Symb(({sym_expo=Private; sym_path; _} as s),h) ->
+    | Symb(({sym_expo=Protected; sym_path; _} as s),h) ->
         if ss.signature.sign_path <> sym_path then
-          fatal p_lhs.pos "Cannot define rules on foreign private symbols."
+          fatal p_lhs.pos "Cannot define rules on foreign protected symbols."
         else (s, h, args)
     | Symb(s,h)                                      -> (s, h, args)
     | _                                              ->
