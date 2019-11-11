@@ -226,9 +226,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_) ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _        ) -> _Type
-    | (P_Iden(qid,_)   , _        ) ->
-      let allow_priv = match md with M_LHS(_) -> true | _ -> false in
-      find_qid allow_priv ss env qid
+    | (P_Iden(qid,_)   , M_LHS(_) ) -> find_qid true ss env qid
+    | (P_Iden(qid,_)   , _        ) -> find_qid false ss env qid
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
