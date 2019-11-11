@@ -90,7 +90,8 @@ type expostag =
   (** Symbol is protected: exposed but not constructible outside of its
       module. *)
   | Symex_private
-  (** Symbol is private: not exported and not visible outside of its module. *)
+  (** Symbol is private: not exported and not visible outside of its
+      module. *)
 
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
