@@ -413,7 +413,6 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
-    let is_const s = s.sym_mode = Const in
     match h with
     | Symb(s,_) when is_const s                      ->
         fatal p_lhs.pos "Constant LHS head symbol."
