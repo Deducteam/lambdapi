@@ -62,13 +62,13 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
             data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));
-      (* Removing local symbols from signature. *)
-      let not_local _ sym = Terms.(sym.sym_expo) <> Terms.Local in
-      let not_local_fst k s_ = not_local k (fst s_) in
-      sign.sign_symbols := StrMap.filter not_local_fst !(sign.sign_symbols);
-      sign.sign_builtins := StrMap.filter not_local !(sign.sign_builtins);
-      sign.sign_unops := StrMap.filter not_local_fst !(sign.sign_unops);
-      sign.sign_binops := StrMap.filter not_local_fst !(sign.sign_binops);
+      (* Removing private symbols from signature. *)
+      let not_prv _ sym = Terms.(sym.sym_expo) <> Terms.Private in
+      let not_prv_fst k s_ = not_prv k (fst s_) in
+      sign.sign_symbols := StrMap.filter not_prv_fst !(sign.sign_symbols);
+      sign.sign_builtins := StrMap.filter not_prv !(sign.sign_builtins);
+      sign.sign_unops := StrMap.filter not_prv_fst !(sign.sign_unops);
+      sign.sign_binops := StrMap.filter not_prv_fst !(sign.sign_binops);
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

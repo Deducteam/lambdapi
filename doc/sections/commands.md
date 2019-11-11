@@ -52,7 +52,7 @@ require open church.sums
 
 Symbols are declared using the `symbol` command, possibly associated with some
 modifier or an exposition marker. In the following example, `const` is a
-modifier and `local` is an exposition marker.
+modifier and `private` is an exposition marker.
 
 ```
 symbol const Nat : TYPE
@@ -62,7 +62,7 @@ symbol add : Nat ⇒ Nat ⇒ Nat
 symbol const list : Nat ⇒ TYPE
 symbol const nil : List zero
 symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
-local symbol aux : ∀n, List n ⇒ Nat
+private symbol aux : ∀n, List n ⇒ Nat
 ```
 
 The command requires a fresh symbol name (it should not have already been used
@@ -90,8 +90,8 @@ These modifiers are used to help the unification engine.
 Exposition defines how a symbol can be used outside the module where it is
 defined. By default any symbol is _public_, which means it can be used without
 restriction anywhere. There are two exposition markers available:
-- `local`: the symbol cannot be used outside of its module (can be compared to a
-  symbol not in the interface in OCaml);
+- `private`: the symbol cannot be used outside of its module (can be compared to
+  a symbol not in the interface in OCaml);
 - `protected`: the symbol can only be used in left-hand side of rewrite rules
   outside of its module.
 

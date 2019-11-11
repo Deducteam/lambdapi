@@ -104,7 +104,7 @@ type term =
   | Protected
   (** The symbol can only appear in subterms of left-hand sides of other
       modules. *)
-  | Local
+  | Private
   (** The symbol is not exported. *)
 
 (** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the

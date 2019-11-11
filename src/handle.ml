@@ -125,7 +125,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let sym_expo =
         match exp with
         | Symex_public    -> Public
-        | Symex_local     -> Local
+        | Symex_private   -> Private
         | Symex_protected -> Protected
       in
       (* Actually add the symbol to the signature and the state. *)
@@ -195,7 +195,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let sym_expo = match exp with
         | Symex_public    -> Public
         | Symex_protected -> Protected
-        | Symex_local     -> Local
+        | Symex_private   -> Private
       in
       (* We check that no metavariable remains. *)
       if Basics.has_metas t || Basics.has_metas a then
