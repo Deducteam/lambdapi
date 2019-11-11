@@ -42,7 +42,7 @@ let pp_symtags : symtag list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_symtag)
 
 let pp_expostag : expostag pp = fun oc tag ->
-  Format.fprintf oc
+  Format.pp_print_string oc
     (match tag with
      | Symex_public  -> ""
      | Symex_private -> "private"

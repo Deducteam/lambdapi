@@ -250,7 +250,6 @@ let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
 
 (** [is_const s] tells whether the symbol is a constant. *)
 let is_const : sym -> bool = fun s -> s.sym_mode = Const
-(* TODO inspect rewrite rules to declare a symbol constant? *)
 
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
