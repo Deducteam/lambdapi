@@ -1,4 +1,4 @@
-require open tests.OK.prv_reduction_1
+require open tests.OK.{|262_pair_ex_1|}
 
 symbol a : A
 symbol b : A

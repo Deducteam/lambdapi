@@ -1,4 +1,4 @@
-require tests.OK.prv
+require tests.OK.{|262_parsing|} as D
 
 // Defining a rule with a foreign private symbol as head is forbidden
-rule tests.OK.prv.f &X → &X
+rule D.f &X → &X
