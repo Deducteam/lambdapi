@@ -117,6 +117,7 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
 
+(* TODO document sym_exposition *)
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
@@ -159,24 +160,34 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       _Patt None name (Env.to_tbox env)
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
-  let rec scope : env -> p_term -> tbox = fun env t ->
+  let rec scope : ?expo:sym_exposition -> env -> p_term -> tbox =
+    fun ?expo env t ->
     (* Extract the spine. *)
     let (h, args) = Syntax.get_args t in
     (* Check whether application is marked as explicit in the head symbol. *)
     let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env h in
+    let h = scope_head ?expo env h in
     let impl =
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
+    let expo =
+      if expo = None then
+        (* Get exposition if not already set. *)
+        match fst (Basics.get_args (Bindlib.unbox h)) with
+        | Symb({sym_expo; _},_) ->
+          Some(sym_expo)
+        | _                     -> None
+      else expo (* If already set, keep it. *)
+    in
     (* Scope and insert the (implicit) arguments. *)
-    add_impl env t.pos h impl args
+    add_impl ?expo env t.pos h impl args
   (* Build the application of [h] to [args], inserting implicit arguments. *)
-  and add_impl env loc h impl args =
-    let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
+  and add_impl ?expo env loc h impl args =
+    let appl_p_term t u = _Appl t (scope ?expo env u) in
+    let appl_meta t = _Appl t (scope_head ?expo env (Pos.none P_Wild)) in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -230,13 +241,18 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> tbox = fun  env t ->
+  and scope_head : ?expo:sym_exposition -> env -> p_term -> tbox =
+    fun ?expo env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_) ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _        ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(_) ) ->
-        find_qid true false (* FIXME *) ss env qid
+      begin
+        match expo with
+        | Some(Private) | None -> find_qid true true ss env qid
+        | _                    -> find_qid true false ss env qid
+      end
     | (P_Iden(qid,_)   , M_Term(_,Private)) -> find_qid false true ss env qid
     | (P_Iden(qid,_)   , _        ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
