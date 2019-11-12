@@ -360,18 +360,3 @@ let get_args : p_term -> p_term * p_term list =
     | P_Wrap(t)   -> get_args args t
     | _           -> (t, args)
   in get_args []
-
-(** [get_root t] returns the root of a term. *)
-let get_root : p_term -> p_term = fun t ->
-  let gh, args = get_args t in
-  let rec get_root args =
-    match args with
-    | h :: tl ->
-      begin
-        match h.elt with
-        | P_BinO(_) -> h
-        | _         -> get_root tl
-      end
-    | []    -> gh
-  in
-  get_root args
