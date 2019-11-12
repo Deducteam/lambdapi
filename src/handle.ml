@@ -84,8 +84,14 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     the initial state of the proof.  The checking of the proof is then handled
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
-    fun ss cmd ->
-  let scope_basic = Scope.scope_term ss Env.empty in
+  fun ss cmd ->
+  let sym_expo s =
+    match s with
+    | Symex_public    -> Public
+    | Symex_private   -> Private
+    | Symex_protected -> Protected
+  in
+  let scope_basic exp = Scope.scope_term ~exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
      let ps = List.map (List.map fst) ps in
@@ -96,7 +102,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                  ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(exp, ts, x, xs, a) ->
+  | P_symbol(e, ts, x, xs, a) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -105,7 +111,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
-      let a = scope_basic a in
+      let e = sym_expo e in
+      let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains. *)
@@ -122,17 +129,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | Sym_inj   :: [] -> Injec
         | _               -> fatal cmd.pos "Multiple symbol tags."
       in
-      let sym_expo =
-        match exp with
-        | Symex_public    -> Public
-        | Symex_private   -> Private
-        | Symex_protected -> Protected
-      in
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature ~sym_expo m x a impl in
+      let s = Sign.add_symbol ss.signature ~sym_expo:e m x a impl in
       out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
+    (* FIXME scoping of rules and privacy?? *)
       (* Scoping and checking each rule in turn. *)
       let handle_rule pr =
         let (s,_,_) as r = scope_rule ss pr in
@@ -162,13 +164,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           List.iter write_tree syms
         end;
       (ss, None)
-  | P_definition(exp,op,x,xs,ao,t) ->
+  | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
+      let e = sym_expo e in
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
-      let t = scope_basic t in
+      let t = scope_basic e t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
       let (ao, impl) =
         match ao with
@@ -177,7 +180,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map scope_basic ao in
+      let ao = Option.map (scope_basic e) ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)
@@ -192,11 +195,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
-      let sym_expo = match exp with
-        | Symex_public    -> Public
-        | Symex_protected -> Protected
-        | Symex_private   -> Private
-      in
       (* We check that no metavariable remains. *)
       if Basics.has_metas t || Basics.has_metas a then
         begin
@@ -205,7 +203,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature ~sym_expo Defin x a impl in
+      let s = Sign.add_symbol ss.signature ~sym_expo:e Defin x a impl in
       out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
@@ -220,7 +218,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic a in
+      let a = scope_basic Public a in (* Theorems are public *)
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)

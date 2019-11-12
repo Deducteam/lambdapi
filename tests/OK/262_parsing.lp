@@ -8,7 +8,8 @@ protected symbol g : A ⇒ A
 private definition fdouble x ≔ f (f x)
 protected definition gdouble x ≔ g (g x)
 
-// Mixing public, protected and private
-definition fog x ≔ f (g x) // Private and protected
+// Mixing public, protected and private: if somthing is private,
+// so is the rest
+private definition fog x ≔ f (g x) // Private and protected
 symbol h : A ⇒ A
-definition fogoh x ≔ f (g (h x)) // Public, private, protected
+private definition fogoh x ≔ f (g (h x)) // Public, private, protected

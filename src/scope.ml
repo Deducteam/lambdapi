@@ -41,8 +41,9 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     unbound. This is reported using the [Fatal] exception. Protected symbols
     from other modules are allowed in left-hand side of rewrite rules (only)
     iff [allow_protected] is true. *)
-let find_sym : ?allow_protected:bool -> bool -> sig_state -> qident
-  -> sym * pp_hint = fun ?(allow_protected=false) b st qid ->
+let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
+  sig_state -> qident -> sym * pp_hint =
+  fun ?(allow_protected=false) ?(allow_private=false) b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
   let (s, h) =
@@ -82,11 +83,17 @@ let find_sym : ?allow_protected:bool -> bool -> sig_state -> qident
   in
   (* Reject (if [allow_protected] is false) protected symbols from other
      signatures. *)
-  if (not allow_protected) && s.sym_expo = Protected
-     && s.sym_path <> st.signature.sign_path
-  then fatal pos "Protected symbol not allowed"
-  else (s, h)
+  begin
+    match (allow_protected, allow_private, s.sym_expo) with
+    | (false, _    , Protected) ->
+        if s.sym_path <> st.signature.sign_path then
+          fatal pos "Protected symbol not allowed."
+    | (_    , false, Private  ) -> fatal pos "Private symbol not allowed."
+    | _                         -> ()
+  end;
+  (s, h)
 
+(* TODO document allow_private *)
 (** [find_qid allow_protected st env qid] returns a boxed term corresponding
     to a variable of the environment [env] (or to a symbol) which name
     corresponds to [qid]. In the case where the module path [fst qid.elt] is
@@ -95,16 +102,17 @@ let find_sym : ?allow_protected:bool -> bool -> sig_state -> qident
     [Fatal] is raised if an error occurs (e.g., when the name cannot be
     found). Protected symbols from other module are allowed in left-hand side
     of rewrite rules (only) iff [allow_protected] is true. *)
-let find_qid : bool -> sig_state -> env -> qident -> tbox =
-  fun allow_protected st env qid ->
+let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
+  fun allow_protected allow_private st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
     if mp <> [] then raise Not_found; (* Variables cannot be qualified. *)
     _Vari (Env.find s env)
   with Not_found ->
-  (* Check for symbols. *)
-  let (s, hint) = find_sym ~allow_protected true st qid in _Symb s hint
+    (* Check for symbols. *)
+    let (s, hint) = find_sym ~allow_protected ~allow_private true st qid in
+    _Symb s hint
 
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
@@ -112,7 +120,7 @@ type metamap = meta StrMap.t
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of metamap Pervasives.ref
+  | M_Term of metamap Pervasives.ref * sym_exposition
   (** Standard scoping mode for terms,  holding a map of metavariables
       that can be updated with new metavariables on scoping. *)
   | M_Patt
@@ -227,8 +235,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_) ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _        ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(_) ) -> find_qid true ss env qid
-    | (P_Iden(qid,_)   , _        ) -> find_qid false ss env qid
+    | (P_Iden(qid,_)   , M_LHS(_) ) ->
+        find_qid true false (* FIXME *) ss env qid
+    | (P_Iden(qid,_)   , M_Term(_,Private)) -> find_qid false true ss env qid
+    | (P_Iden(qid,_)   , _        ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_) ) -> fresh_patt env
     | (P_Wild          , M_Patt   ) -> _Wild
     | (P_Wild          , _        ) ->
@@ -240,7 +250,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let a = Env.to_prod env (_Meta m_ty vs) in
         let m = fresh_meta a (Array.length vs) in
         _Meta m vs
-    | (P_Meta(id,ts)   , M_Term(m)) ->
+    | (P_Meta(id,ts)   , M_Term(m,_)) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
@@ -339,13 +349,16 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t].  The signature
-    state [ss] is used to handle module aliasing according to [find_qid]. *)
-let scope_term : sig_state -> env -> p_term -> term
-  = fun ss env t ->
+(* TODO doc exp *)
+(** [scope ?exp ss env t] turns a parser-level term [t] into an actual term.
+    The variables of the environment [env] may appear in [t]. The signature
+    state [ss] is used to handle module aliasing according to [find_qid]. If
+    [?exp] is {!constructor:Public}, then the term mustn't contain any private
+    subterms. *)
+let scope_term : ?exp:sym_exposition -> sig_state -> env -> p_term -> term =
+  fun ?(exp=Public) ss env t ->
   let m = Pervasives.ref StrMap.empty in
-  Bindlib.unbox (scope (M_Term(m)) ss env t)
+  Bindlib.unbox (scope (M_Term(m, exp)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
