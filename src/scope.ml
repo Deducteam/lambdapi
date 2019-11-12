@@ -93,15 +93,16 @@ let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
   end;
   (s, h)
 
-(* TODO document allow_private *)
-(** [find_qid allow_protected st env qid] returns a boxed term corresponding
-    to a variable of the environment [env] (or to a symbol) which name
-    corresponds to [qid]. In the case where the module path [fst qid.elt] is
-    empty, we first search for the name [snd qid.elt] in the environment, and
-    if it is not mapped we also search in the opened modules. The exception
-    [Fatal] is raised if an error occurs (e.g., when the name cannot be
-    found). Protected symbols from other module are allowed in left-hand side
-    of rewrite rules (only) iff [allow_protected] is true. *)
+(** [find_qid allow_protected allow_private st env qid] returns a boxed term
+    corresponding to a variable of the environment [env] (or to a symbol)
+    which name corresponds to [qid]. In the case where the module path [fst
+    qid.elt] is empty, we first search for the name [snd qid.elt] in the
+    environment, and if it is not mapped we also search in the opened modules.
+    The exception [Fatal] is raised if an error occurs (e.g., when the name
+    cannot be found). If [allow_protected] is true, {!constructor:Protected}
+    symbols from foreign modules are allowed (protected symbols from current
+    modules are always allowed). If [allow_private] is true,
+    {!constructor:private} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun allow_protected allow_private st env qid ->
   let (mp, s) = qid.elt in
@@ -117,13 +118,13 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
 
-(* TODO document sym_exposition *)
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
   | M_Term of metamap Pervasives.ref * sym_exposition
-  (** Standard scoping mode for terms,  holding a map of metavariables
-      that can be updated with new metavariables on scoping. *)
+  (** Standard scoping mode for terms, holding a map of metavariables that can
+      be updated with new metavariables on scoping and the exposition of the
+      scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list
@@ -160,34 +161,36 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       _Patt None name (Env.to_tbox env)
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
-  let rec scope : ?expo:sym_exposition -> env -> p_term -> tbox =
-    fun ?expo env t ->
+  let rec scope : ?allow_private:bool -> env -> p_term -> tbox =
+    fun ?allow_private env t ->
     (* Extract the spine. *)
     let (h, args) = Syntax.get_args t in
     (* Check whether application is marked as explicit in the head symbol. *)
     let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head ?expo env h in
+    let h = scope_head ?allow_private env h in
     let impl =
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
-    let expo =
-      if expo = None then
+    let allow_private =
+      if allow_private = None then
         (* Get exposition if not already set. *)
         match fst (Basics.get_args (Bindlib.unbox h)) with
-        | Symb({sym_expo; _},_) ->
-          Some(sym_expo)
-        | _                     -> None
-      else expo (* If already set, keep it. *)
+        | Symb({sym_expo=Private; _},_) -> Some(true)
+        | Symb(_)                       -> Some(false)
+        | _                             -> None
+      else allow_private (* If already set, keep it. *)
     in
     (* Scope and insert the (implicit) arguments. *)
-    add_impl ?expo env t.pos h impl args
+    add_impl ?allow_private env t.pos h impl args
   (* Build the application of [h] to [args], inserting implicit arguments. *)
-  and add_impl ?expo env loc h impl args =
-    let appl_p_term t u = _Appl t (scope ?expo env u) in
-    let appl_meta t = _Appl t (scope_head ?expo env (Pos.none P_Wild)) in
+  and add_impl ?allow_private env loc h impl args =
+    let appl_p_term t u = _Appl t (scope ?allow_private env u) in
+    let appl_meta t =
+      _Appl t (scope_head ?allow_private env (Pos.none P_Wild))
+    in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -241,23 +244,23 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : ?expo:sym_exposition -> env -> p_term -> tbox =
-    fun ?expo env t ->
+  and scope_head : ?allow_private:bool -> env -> p_term -> tbox =
+    fun ?allow_private env t ->
     match (t.elt, md) with
-    | (P_Type          , M_LHS(_) ) ->
+    | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
-    | (P_Type          , _        ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(_) ) ->
+    | (P_Type          , _                ) -> _Type
+    | (P_Iden(qid,_)   , M_LHS(_)         ) ->
       begin
-        match expo with
-        | Some(Private) | None -> find_qid true true ss env qid
-        | _                    -> find_qid true false ss env qid
+        match allow_private with
+        | None    -> find_qid true true ss env qid
+        | Some(p) -> find_qid true p ss env qid
       end
     | (P_Iden(qid,_)   , M_Term(_,Private)) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , _        ) -> find_qid false false ss env qid
-    | (P_Wild          , M_LHS(_) ) -> fresh_patt env
-    | (P_Wild          , M_Patt   ) -> _Wild
-    | (P_Wild          , _        ) ->
+    | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
+    | (P_Wild          , M_LHS(_)         ) -> fresh_patt env
+    | (P_Wild          , M_Patt           ) -> _Wild
+    | (P_Wild          , _                ) ->
         (* We create a metavariable [m] of type [m_ty], which is itself also a
            metavariable (of type [Type]).  Note that this case applies both to
            regular terms, and to the RHS of rewriting rules. *)
@@ -266,7 +269,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let a = Env.to_prod env (_Meta m_ty vs) in
         let m = fresh_meta a (Array.length vs) in
         _Meta m vs
-    | (P_Meta(id,ts)   , M_Term(m,_)) ->
+    | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
           try StrMap.find id.elt Pervasives.(!m) with Not_found ->
@@ -280,9 +283,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           Pervasives.(m := StrMap.add id.elt m2 !m); m2
         in
         _Meta m2 (Array.map (scope env) ts)
-    | (P_Meta(_,_)     , _        ) ->
+    | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(m) ) ->
+    | (P_Patt(id,ts)   , M_LHS(m)         ) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -310,62 +313,62 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             None
         in
         _Patt i id.elt (Array.map Bindlib.box_var vs)
-    | (P_Patt(id,ts)   , M_RHS(m) ) ->
+    | (P_Patt(id,ts)   , M_RHS(m)         ) ->
         let x =
           try List.assoc id.elt m with Not_found ->
           fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
-    | (P_Patt(_,_)     , _        ) ->
+    | (P_Patt(_,_)     , _                ) ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
-    | (P_Appl(_,_)     , _        ) -> assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_) ) ->
+    | (P_Appl(_,_)     , _                ) -> assert false (* Unreachable. *)
+    | (P_Impl(_,_)     , M_LHS(_)         ) ->
         fatal t.pos "Implications are not allowed in a LHS."
-    | (P_Impl(_,_)     , M_Patt   ) ->
+    | (P_Impl(_,_)     , M_Patt           ) ->
         fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Impl(a,b)     , _        ) -> _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_)     , M_Patt   ) ->
+    | (P_Impl(a,b)     , _                ) ->
+        _Impl (scope env a) (scope env b)
+    | (P_Abst(_,_)     , M_Patt           ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
-    | (P_Abst(xs,t)    , _        ) -> scope_binder _Abst env xs t
-    | (P_Prod(_,_)     , M_LHS(_) ) ->
+    | (P_Abst(xs,t)    , _                ) -> scope_binder _Abst env xs t
+    | (P_Prod(_,_)     , M_LHS(_)         ) ->
         fatal t.pos "Dependent products are not allowed in a LHS."
     | (P_Prod(_,_)     , M_Patt   ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
-    | (P_Prod(xs,b)    , _        ) -> scope_binder _Prod env xs b
-    | (P_LLet(x,xs,t,u), M_Term(_)) ->
+    | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
+    | (P_LLet(x,xs,t,u), M_Term(_)        ) ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
-    | (P_LLet(_,_,_,_) , _        ) ->
+    | (P_LLet(_,_,_,_) , _                ) ->
         fatal t.pos "Let-bindings are not allowed in rewriting rules."
-    | (P_NLit(n)       , _        ) ->
+    | (P_NLit(n)       , _                ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
-    | (P_UnaO(u,t)    , _         ) ->
+    | (P_UnaO(u,t)    , _                 ) ->
         let (s, impl) =
           let (op,_,qid) = u in
           let (s, _) = find_sym true ss qid in
           (_Symb s (Unary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [t]
-    | (P_BinO(l,b,r)  , _         ) ->
+    | (P_BinO(l,b,r)  , _                 ) ->
         let (s, impl) =
           let (op,_,_,qid) = b in
           let (s, _) = find_sym true ss qid in
           (_Symb s (Binary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]
-    | (P_Wrap(t)      , _         ) -> scope env t
-    | (P_Expl(_)      , _         ) ->
+    | (P_Wrap(t)      , _                 ) -> scope env t
+    | (P_Expl(_)      , _                 ) ->
         fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
 
-(* TODO doc exp *)
 (** [scope ?exp ss env t] turns a parser-level term [t] into an actual term.
     The variables of the environment [env] may appear in [t]. The signature
     state [ss] is used to handle module aliasing according to [find_qid]. If
