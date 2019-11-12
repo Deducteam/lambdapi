@@ -95,6 +95,13 @@ restriction anywhere. There are two exposition markers available:
 - `protected`: the symbol can only be used in left-hand side of rewrite rules
   outside of its module.
 
+Exposition obeys the following rules
+- a public symbol can't by typed by private symbols
+- a public symbol can't rewrite to private symbols
+- foreign protected symbols can be used in the left-hand side of rewrite rules
+  exclusively
+- rewrite rules can't be defined on foreign private symbols.
+
 **Implicit arguments**. Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
 later. Implicit arguments are replaced by `_` at parsing time,
