@@ -130,10 +130,11 @@ type mode =
   | M_LHS  of (string * int) list
   (** Scoping mode for rewriting rule left-hand sides. The constructor
       carries a map associating an index to every free variable. *)
-  | M_RHS  of (string * tevar) list
+  | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor
       carries the environment for variables that will be bound in the
-      representation of the RHS. *)
+      representation of the RHS along with a boolean indicating whether
+      private terms are allowed. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -257,6 +258,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         | Some(p) -> find_qid true p ss env qid
       end
     | (P_Iden(qid,_)   , M_Term(_,Private)) -> find_qid false true ss env qid
+    | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_)         ) -> fresh_patt env
     | (P_Wild          , M_Patt           ) -> _Wild
@@ -313,7 +315,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             None
         in
         _Patt i id.elt (Array.map Bindlib.box_var vs)
-    | (P_Patt(id,ts)   , M_RHS(m)         ) ->
+    | (P_Patt(id,ts)   , M_RHS(m,_)       ) ->
         let x =
           try List.assoc id.elt m with Not_found ->
           fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
@@ -463,8 +465,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let names = Array.of_list (List.map fst map) in
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
+    let prv = sym.sym_expo = Private in
     let map = Array.map2 (fun n v -> (n,v)) names vars in
-    let t = scope (M_RHS(Array.to_list map)) ss Env.empty p_rhs in
+    let t = scope (M_RHS(Array.to_list map, prv)) ss Env.empty p_rhs in
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
