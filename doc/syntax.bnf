@@ -156,7 +156,8 @@ reserved "type"
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem
   | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
-  | "theorem" <ident> <arg>* ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
+    {"qed"|"admit"|"abort"}
   // Assertion
   | "assert" <assertion>
   | "assertnot" <assertion>
