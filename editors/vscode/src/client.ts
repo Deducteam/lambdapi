@@ -74,32 +74,98 @@ function refresh(panel : WebviewPanel, editor : TextEditor | undefined) {
 
 }
 
-function buildGoalsContent(goals : String) {
-    let goalsPrint : String;
-    let htmlPage1 : String;
-    let htmlPage2 : String;
-    goalsPrint = goals;
-    htmlPage1 =  `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> Goals</title>
-</head>
-<body>
-<p> `;
-    let date = new Date();
-    let datestring = date.toLocaleDateString(undefined, {
-        hour : '2-digit',
-        minute : '2-digit',
-        second : '2-digit'
-    });
-    htmlPage2 =     ` </p>
-</body>
-</html>`;
-    let datestring1 = '';
+// returns the HTML code of goals environment
+function getGoalsEnvContent(goals : Goal[]){
 
-    return htmlPage1+ datestring1+goalsPrint+htmlPage2;
+    let codeHyps : String = ""; //hypothesis HTML code
+    let codeGoals : String = ""; //goals HTML code
+    let codeEnvGoals : String = ""; //result code HTML
+
+    for(let i=0; i < goals.length; i++) {
+
+        codeHyps = `<div class="hypothesis">`;
+        codeGoals = `<div class="pp_goals">`;
+
+        for(let j=0; j<goals[i].hyps.length; j++){
+
+            let hnameCode = `<label class="hname">`
+                + goals[i].hyps[j].hname
+                + `</label>`;
+
+            let htypeCode = `<span class="htype">`
+                + goals[i].hyps[j].htype
+               + `</span> <br/>`;
+
+            codeHyps = codeHyps + hnameCode
+                + `<label class="sep"> : </label>`
+                + htypeCode;
+        }
+
+        let numGoalcode = `<label class="numGoal">`
+            + i + `</label>`;
+
+        let typeGoal = `<span class="goal">`
+            + goals[i].type + `</span>`;
+
+        codeGoals = codeGoals + numGoalcode
+            + `<label class ="sep"> : { </label> `
+            + typeGoal + `<label class ="sep">}</label><br/><br/></div>`;
+
+        codeHyps = codeHyps + `</div>`;
+
+        let codeSep = `<hr/>`;
+        codeEnvGoals = codeEnvGoals + "" + codeHyps + codeSep + codeGoals;
+    }
+
+    // if there is no goals
+    if(goals.length == 0){
+        codeEnvGoals = codeEnvGoals + `No goals`;
+    }
+    return codeEnvGoals;
+}
+
+// Returns the HTML code of the panel and the inset ccontent
+function buildGoalsContent(goals : Goal[]) {
+    
+    let header, footer : String;
+
+    // get the HTML code of goals environment
+    let codeEnvGoals : String = getGoalsEnvContent(goals);
+
+    // #FA8072
+    header =  `<!DOCTYPE html>
+￼       <html lang="en">
+￼       <head>
+￼               <meta charset="UTF-8">
+￼               <link rel="stylesheet" type="text/css" href="style/style.css" >
+￼               <meta name="viewport" content="width=device-width, initial-scale=1.0">
+￼               <style>
+￼                       .hname{
+￼                               color : #F08080;
+￼                       }
+￼                       .htype {
+￼                               color : #FFFFF0;
+￼                       }
+￼                       .numGoal{
+￼                               color : #90EE90;
+￼                       }
+￼                       .goal {
+￼                               color : #FFEFD5;
+￼                       }
+￼                       .sep, hr {
+￼                               color : #DAA520;
+￼                       }
+￼               </style>
+￼               <title> Goals</title>
+￼       </head>
+￼       <body>
+￼               <p class="goals_env"> `;
+    
+    footer =` </p>
+￼       </body>
+￼       </html>`;
+    
+    return header + codeEnvGoals + footer;
 }
 
 export interface TextDocumentIdent{
@@ -107,12 +173,23 @@ export interface TextDocumentIdent{
 }
 
 export interface ParamsGoals {
-    textDocument : TextDocumentIdent
-    position : Position
+    textDocument : TextDocumentIdent // current text document
+    position : Position         // position to get goals
+}
+
+export interface Env {
+	hname : String // hypothesis name
+	htype : String // hypothesis type
+}
+
+export interface Goal {
+	gid :  number // goal id
+	hyps : Env[] // hypothesis
+	type : String // goals
 }
 
 export interface GoalResp {
-    contents : String
+    goals : Goal[]
 }
 
 function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
@@ -121,11 +198,16 @@ function sendGoalsRequest(position: Position, panel : WebviewPanel, uri : Uri) {
     let cursor = {textDocument : doc, position : position};
     const req = new RequestType<ParamsGoals, GoalResp, void, void>("proof/goals");
     client.sendRequest(req, cursor).then((goals) => {
-        panel.webview.html = buildGoalsContent(goals.contents);
-        // Disabled as this is experimental
-	// let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
-	// wb.webview.html = panel.webview.html;
-    }, () => { panel.webview.html = buildGoalsContent(""); });
+        if(goals) {
+            let goal_render = buildGoalsContent(goals.goals);
+            panel.webview.html = goal_render
+            // Disabled as this is experimental
+	    // let wb = window.createWebviewTextEditorInset(window.activeTextEditor, line, height);
+	    // wb.webview.html = panel.webview.html;
+        } else {
+            panel.webview.html = buildGoalsContent([]);
+        }
+    }, () => { panel.webview.html = buildGoalsContent([]); });
 }
 
 export function deactivate(): Thenable<void> | undefined {

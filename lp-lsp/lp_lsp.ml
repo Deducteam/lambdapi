@@ -177,19 +177,6 @@ let in_range ?loc (line, pos) =
     (start_line - 1 = line && start_col <= pos) ||
     (end_line - 1 = line && pos <= end_col)
 
-(*let get_goals ~doc ~line ~pos =
-  let open Lp_doc in
-  let node =
-    List.find_opt (fun { ast; _ } ->
-        let loc = Pure.Command.get_pos ast in
-        let res = in_range ?loc (line,pos) in
-                let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
-        LIO.log_error "get_goals" ("call: "^ls);
-        res
-      ) doc.Lp_doc.nodes in
-  Option.map
-    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node*)
-
 let get_goals ~doc ~line ~pos =
   let open Lp_doc in
   let node =
@@ -203,27 +190,26 @@ let get_goals ~doc ~line ~pos =
   let goalsList = match node with
     | None -> []
     | Some n -> n.goals in
-  let goals, _ = List.find (fun (_, loc) ->
-      in_range ?loc (line,pos)
-  ) goalsList in
-  Option.map
-    (fun _ -> Format.asprintf "%a" Proof.pp_goals goals) node
+  let goals = match (List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList) with
+    | None -> None
+    | Some (v,_) -> Some v in
+  goals
 
-let do_hover ofmt ~id params =
-  let uri, line, pos = get_docTextPosition params in
-  let doc = Hashtbl.find completed_table uri in
-  get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
-      let result = `Assoc [ "contents", `String goals] in
-      let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
+let do_Gresult ofmt ~id g =
+  let result =
+    match g with
+    | None -> `Null
+    | Some v -> `Assoc [ "contents", `String v] in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
 
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
-    let doc = Hashtbl.find completed_table uri in
-     get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
-      let result = `Assoc [ "contents", `String goals] in
-      let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
+  let doc = Hashtbl.find completed_table uri in
+  let goals = get_goals ~doc ~line ~pos in
+  let result = LSP.json_of_goals goals in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
 
 let get_line lines l =
   let count = 0 in
@@ -356,7 +342,7 @@ let dispatch_message ofmt dict =
     do_definition ofmt ~id params
 
   | "proof/goals" ->
-    do_hover ofmt ~id params
+    do_goals ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->
