@@ -33,18 +33,16 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym ?allow_protected ?allow_private b st qid] returns the symbol and
-    printing hint corresponding to the qualified identifier [qid]. If [fst
-    qid.elt] is empty, we search for the name [snd qid.elt] in the opened
-    modules of [st]. The boolean [b] only indicates if the error message
-    should mention variables, in the case where the module path is empty and
-    the symbol is unbound. This is reported using the [Fatal] exception.
-    Protected symbols from other modules are allowed in left-hand side of
-    rewrite rules (only) iff [allow_protected] is true. Private symbols are
-    allowed iff [?allow_private] is set to [true]. *)
-let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
-  sig_state -> qident -> sym * pp_hint =
-  fun ?(allow_protected=false) ?(allow_private=false) b st qid ->
+(** [find_sym prt prv b st qid] returns the symbol and printing hint
+    corresponding to the qualified identifier [qid]. If [fst qid.elt] is
+    empty, we search for the name [snd qid.elt] in the opened modules of [st].
+    The boolean [b] only indicates if the error message should mention
+    variables, in the case where the module path is empty and the symbol is
+    unbound. This is reported using the [Fatal] exception. Protected symbols
+    from other modules are allowed in left-hand side of rewrite rules (only)
+    iff [prt] is true. Private symbols are allowed iff [prv] is [true]. *)
+let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
+  sym * pp_hint = fun ~prt ~prv b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
   let (s, h) =
@@ -85,7 +83,7 @@ let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
   (* Reject (if [allow_protected] is false) protected symbols from other
      signatures. *)
   begin
-    match (allow_protected, allow_private, s.sym_expo) with
+    match (prt, prv, s.sym_expo) with
     | (false, _    , Protected) ->
         if s.sym_path <> st.signature.sign_path then
           fatal pos "Protected symbol not allowed."
@@ -94,18 +92,17 @@ let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
   end;
   (s, h)
 
-(** [find_qid allow_protected allow_private st env qid] returns a boxed term
-    corresponding to a variable of the environment [env] (or to a symbol)
-    which name corresponds to [qid]. In the case where the module path [fst
-    qid.elt] is empty, we first search for the name [snd qid.elt] in the
-    environment, and if it is not mapped we also search in the opened modules.
-    The exception [Fatal] is raised if an error occurs (e.g., when the name
-    cannot be found). If [allow_protected] is true, {!constructor:Protected}
-    symbols from foreign modules are allowed (protected symbols from current
-    modules are always allowed). If [allow_private] is true,
-    {!constructor:private} symbols are allowed. *)
+(** [find_qid prt prv st env qid] returns a boxed term corresponding to a
+    variable of the environment [env] (or to a symbol) which name corresponds
+    to [qid]. In the case where the module path [fst qid.elt] is empty, we
+    first search for the name [snd qid.elt] in the environment, and if it is
+    not mapped we also search in the opened modules. The exception [Fatal] is
+    raised if an error occurs (e.g., when the name cannot be found). If [prt]
+    is true, {!constructor:Protected} symbols from foreign modules are allowed
+    (protected symbols from current modules are always allowed). If [prv] is
+    true, {!constructor:private} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
-  fun allow_protected allow_private st env qid ->
+  fun prt prv st env qid ->
   let (mp, s) = qid.elt in
   (* Check for variables in the environment first. *)
   try
@@ -113,7 +110,7 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    let (s, hint) = find_sym ~allow_protected ~allow_private true st qid in
+    let (s, hint) = find_sym ~prt ~prv true st qid in
     _Symb s hint
 
 (** Map of metavariables. *)
@@ -355,14 +352,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_UnaO(u,t)    , _                 ) ->
         let (s, impl) =
           let (op,_,qid) = u in
-          let (s, _) = find_sym true ss qid in
+          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Unary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [t]
     | (P_BinO(l,b,r)  , _                 ) ->
         let (s, impl) =
           let (op,_,_,qid) = b in
-          let (s, _) = find_sym true ss qid in
+          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Binary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]

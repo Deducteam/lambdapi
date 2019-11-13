@@ -271,7 +271,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let builtins = !(ss.signature.sign_builtins) in
             if StrMap.mem s builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
-            let (sym, _) = find_sym false ss qid in
+            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
             check_builtin_nat cmd.pos builtins s sym;
             Rewrite.check_builtin cmd.pos builtins s sym;
             Sign.add_builtin ss.signature s sym;
@@ -280,13 +280,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | P_config_unop(unop)     ->
             let (s, _, qid) = unop in
             (* Define the unary operator [s]. *)
-            let (sym, _) = find_sym false ss qid in
+            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
             Sign.add_unop ss.signature s (sym, unop);
             out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
-            let (sym, _) = find_sym false ss qid in
+            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
             Sign.add_binop ss.signature s (sym, binop);
             out 3 "(conf) new infix [%s]\n" s; ss
         | P_config_ident(id)      ->
