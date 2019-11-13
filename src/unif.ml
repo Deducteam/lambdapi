@@ -282,7 +282,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   (* [solve_inj s ts v] tries to replace a problem of the form [s(ts) = v] by
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
-    if !(s.sym_rules) = [] then error ()
+    if s.sym_mode = Const then error ()
     else match inverse_opt s ts v with
          | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
          | None -> add_to_unsolved ()
@@ -307,15 +307,10 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
        match s1.sym_mode with
        | Const -> decompose ()
        | Injec ->
-          if List.same_length ts1 ts2 then decompose ()
-          else if !(s1.sym_rules) = [] then error ()
-          else add_to_unsolved ()
-       | Defin ->
-          if !(s1.sym_rules) <> [] || List.same_length ts1 ts2
-          then add_to_unsolved ()
-          else error ()
-     else if !(s1.sym_rules) = [] then solve_inj s2 ts2 t1
-     else if !(s2.sym_rules) = [] then solve_inj s1 ts1 t2
+          if List.same_length ts1 ts2 then decompose () else add_to_unsolved ()
+       | Defin -> add_to_unsolved ()
+     else if s1.sym_mode = Const then solve_inj s2 ts2 t1
+     else if s2.sym_mode = Const then solve_inj s1 ts1 t2
      else
        begin
          match inverse_opt s1 ts1 t2 with
