@@ -195,14 +195,14 @@ let pp_command : p_command pp = fun oc cmd ->
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
-  | P_definition(e,_,s,args,ao,t)     ->
+  | P_definition(e,_,s,args,ao,t)   ->
       out "@[<hov 2>%a definition %a" pp_expostag e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
-  | P_theorem(st,ts,e)              ->
+  | P_theorem(ex,st,ts,e)           ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>theorem %a" pp_ident s;
+      out "@[<hov 2>%a theorem %a" pp_expostag ex pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";

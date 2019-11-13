@@ -208,7 +208,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
-  | P_theorem(stmt, ts, pe)    ->
+  | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
@@ -218,7 +218,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic Public a in (* Theorems are public *)
+      let a = scope_basic (sym_expo e) a in
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
