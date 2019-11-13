@@ -307,7 +307,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
        match s1.sym_mode with
        | Const -> decompose ()
        | Injec ->
-          if List.same_length ts1 ts2 then decompose () else add_to_unsolved ()
+           if List.same_length ts1 ts2 then decompose ()
+           else add_to_unsolved ()
        | Defin -> add_to_unsolved ()
      else if s1.sym_mode = Const then solve_inj s2 ts2 t1
      else if s2.sym_mode = Const then solve_inj s1 ts1 t2
