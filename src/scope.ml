@@ -33,14 +33,15 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym ?allow_protected b st qid] returns the symbol and printing hint
-    corresponding to the qualified identifier [qid]. If [fst qid.elt] is
-    empty, we search for the name [snd qid.elt] in the opened modules of [st].
-    The boolean [b] only indicates if the error message should mention
-    variables, in the case where the module path is empty and the symbol is
-    unbound. This is reported using the [Fatal] exception. Protected symbols
-    from other modules are allowed in left-hand side of rewrite rules (only)
-    iff [allow_protected] is true. *)
+(** [find_sym ?allow_protected ?allow_private b st qid] returns the symbol and
+    printing hint corresponding to the qualified identifier [qid]. If [fst
+    qid.elt] is empty, we search for the name [snd qid.elt] in the opened
+    modules of [st]. The boolean [b] only indicates if the error message
+    should mention variables, in the case where the module path is empty and
+    the symbol is unbound. This is reported using the [Fatal] exception.
+    Protected symbols from other modules are allowed in left-hand side of
+    rewrite rules (only) iff [allow_protected] is true. Private symbols are
+    allowed iff [?allow_private] is set to [true]. *)
 let find_sym : ?allow_protected:bool -> ?allow_private:bool -> bool ->
   sig_state -> qident -> sym * pp_hint =
   fun ?(allow_protected=false) ?(allow_private=false) b st qid ->
