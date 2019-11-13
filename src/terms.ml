@@ -97,13 +97,14 @@ type term =
   | Injec
   (** Same as [Defin], but the symbol is considered to be injective. *)
 
-(** Visibility of a symbol*)
+(** Exposition, or visibility of a symbol. Given at the declaration of a
+    symbol, and cannot be changed subsequently. *)
  and sym_exposition =
   | Public
   (** The symbol is exported and available. *)
   | Protected
-  (** The symbol can only appear in subterms of left-hand sides of other
-      modules. *)
+  (** Other modules can use the symbol in left-hand side of rewriting rules
+      only (not at the root). *)
   | Private
   (** The symbol is not exported. *)
 
