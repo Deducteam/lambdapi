@@ -58,7 +58,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
           (* The signature must be loaded (alias is mapped). *)
           let sign =
             try PathMap.find (StrMap.find m st.aliases) Timed.(!Sign.loaded)
-            with _ -> assert false (* cannot fail. *)
+            with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
           try (Sign.find sign s, Alias m) with Not_found ->
@@ -86,8 +86,9 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     match (prt, prv, s.sym_expo) with
     | (false, _    , Protected) ->
         if s.sym_path <> st.signature.sign_path then
-          fatal pos "Protected symbol not allowed."
-    | (_    , false, Private  ) -> fatal pos "Private symbol not allowed."
+          fatal pos "Protected symbol not allowed here."
+    | (_    , false, Private  ) ->
+        fatal pos "Private symbol not allowed here."
     | _                         -> ()
   end;
   (s, h)

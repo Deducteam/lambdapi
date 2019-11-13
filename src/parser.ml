@@ -144,7 +144,7 @@ module KW = Keywords.Make(
 (** Reserve ["KIND"] to disallow it as an identifier. *)
 let _ = KW.reserve "KIND"
 
-(** Keyword declarations. *)
+(** Keyword declarations. Keep alphabetical order (capital first). *)
 let _TYPE_       = KW.create "TYPE"
 let _abort_      = KW.create "abort"
 let _admit_      = KW.create "admit"
