@@ -29,8 +29,8 @@ module List = struct
 end
 
 module Option = struct
-  let iter f x = match x with | None -> () | Some x -> f x
-  let map f x = match x with | None -> None | Some x -> Some (f x)
+  let _iter f x = match x with | None -> () | Some x -> f x
+  let _map f x = match x with | None -> None | Some x -> Some (f x)
 end
 
 let    int_field name dict = U.to_int    List.(assoc name dict)
@@ -195,14 +195,6 @@ let get_goals ~doc ~line ~pos =
     | Some (v,_) -> Some v in
   goals
 
-let do_Gresult ofmt ~id g =
-  let result =
-    match g with
-    | None -> `Null
-    | Some v -> `Assoc [ "contents", `String v] in
-  let msg = LSP.mk_reply ~id ~result in
-  LIO.send_json ofmt msg
-
 let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
@@ -210,19 +202,6 @@ let do_goals ofmt ~id params =
   let result = LSP.json_of_goals goals in
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
-
-let get_line lines l =
-  let count = 0 in
-  let rec iter_list count lines l =
-  match lines with
-    | [] -> ""
-    | t::ts -> if count = l then t else iter_list (count+1) ts l in
-    iter_list count lines l
-
-let to_text (t : Str.split_result) : string =
-  match t with
-  | Str.Text s -> "Text: " ^ s
-  | Str.Delim s -> "Delim: " ^ s
 
 let myfail (msg : string) =
   LIO.log_error "fail" msg;
