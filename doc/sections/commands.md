@@ -95,12 +95,14 @@ restriction anywhere. There are two exposition markers available:
 - `protected`: the symbol can only be used in left-hand side of rewrite rules
   outside of its module.
 
-Exposition obeys the following rules
-- a public symbol can't by typed by private symbols
-- a public symbol can't rewrite to private symbols
-- foreign protected symbols can be used in the left-hand side of rewrite rules
-  exclusively
-- rewrite rules can't be defined on foreign private symbols.
+Exposition obeys the following rules: inside a module,
+- private symbols cannot appear in the type of public symbols;
+- private symbols cannot appear in the right-hand side of a rewriting rule
+  defining a public symbol
+- externally defined protected symbols cannot appear at the head of a left-hand
+  side
+- externally defined protected symbols cannot appear in the right hand side of a
+  rewriting rule
 
 **Implicit arguments**. Some function symbol arguments can be declared
 as implicit meaning that they must not be given by the user
