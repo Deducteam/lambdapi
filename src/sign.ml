@@ -178,10 +178,10 @@ let unlink : t -> unit = fun sign ->
 
 (** [add_symbol sign ?sym_expo mode name a impl] creates a fresh symbol with
     name [name] (which should not already be used in [sign]) and with the type
-    [a], in the signature [sign]. The exposition is {!constructor:Public} by
-    default, unless [?sym_expo] is precised. The list [impl] tells whether the
-    first arguments of the symbol are set to be implicit. The created symbol
-    is returned. *)
+    [a], in the signature [sign]. The exposition is
+    {!constructor:Terms.sym_exposition.Public} by default, unless [?sym_expo]
+    is precised. The list [impl] tells which arguments is implicit. The
+    created symbol is returned. *)
 let add_symbol : t -> ?sym_expo:sym_exposition -> sym_mode -> strloc -> term
   -> bool list -> sym =
     fun sign ?(sym_expo=Public) sym_mode s a impl ->

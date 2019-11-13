@@ -33,14 +33,16 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym prt prv b st qid] returns the symbol and printing hint
+(** [find_sym ~prt ~prv b st qid] returns the symbol and printing hint
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
     empty, we search for the name [snd qid.elt] in the opened modules of [st].
     The boolean [b] only indicates if the error message should mention
     variables, in the case where the module path is empty and the symbol is
-    unbound. This is reported using the [Fatal] exception. Protected symbols
-    from other modules are allowed in left-hand side of rewrite rules (only)
-    iff [prt] is true. Private symbols are allowed iff [prv] is [true]. *)
+    unbound. This is reported using the [Fatal] exception.
+    {!constructor:Terms.sym_exposition.Protected} symbols from other modules
+    are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
+    {!constructor:Terms.sym_exposition.Private} symbols are allowed iff [~prv]
+    is [true]. *)
 let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
   sym * pp_hint = fun ~prt ~prv b st qid ->
   let {elt = (mp, s); pos} = qid in
@@ -80,12 +82,11 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
           fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
         end
   in
-  (* Reject (if [allow_protected] is false) protected symbols from other
-     signatures. *)
   begin
     match (prt, prv, s.sym_expo) with
     | (false, _    , Protected) ->
         if s.sym_path <> st.signature.sign_path then
+          (* Fail if symbol is not defined in the current module. *)
           fatal pos "Protected symbol not allowed here."
     | (_    , false, Private  ) ->
         fatal pos "Private symbol not allowed here."
@@ -99,9 +100,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     first search for the name [snd qid.elt] in the environment, and if it is
     not mapped we also search in the opened modules. The exception [Fatal] is
     raised if an error occurs (e.g., when the name cannot be found). If [prt]
-    is true, {!constructor:Protected} symbols from foreign modules are allowed
-    (protected symbols from current modules are always allowed). If [prv] is
-    true, {!constructor:private} symbols are allowed. *)
+    is true, {!constructor:Terms.sym_exposition.Protected} symbols from
+    foreign modules are allowed (protected symbols from current modules are
+    always allowed). If [prv] is true,
+    {!constructor:Terms.sym_exposition.Private} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in
@@ -174,6 +176,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
+    (* Get the privacy of the root symbol to determine whether private
+       symbols are allowed in the next symbols. This is useful for rewriting
+       rules. *)
     let allow_private =
       if allow_private = None then
         (* Get exposition if not already set. *)
