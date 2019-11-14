@@ -22,17 +22,12 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     match cs with
     | []        -> List.split acc
     | (a,b)::cs ->
-    let (ha,argsa) = Basics.get_args a in
-    let (hb,argsb) = Basics.get_args b in
-    let na = List.length argsa in
-    let nb = List.length argsb in
-    match (unfold ha, unfold hb) with
-    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && is_inj sa ->
-        let fn l t1 t2 = (t1,t2) :: l in
-        build_sub acc (List.fold_left2 fn cs argsa argsb)
-    | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
-    | (_         , Vari(x)   ) when argsb = [] -> build_sub ((x,a)::acc) cs
-    | (_         , _         )                 -> build_sub acc cs
+      match Basics.get_args a with
+      | Vari(x), [] -> build_sub ((x,b)::acc) cs
+      | _, _ ->
+        match Basics.get_args b with
+        | Vari(x), [] -> build_sub ((x,a)::acc) cs
+        | _, _ -> build_sub acc cs
   in
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
