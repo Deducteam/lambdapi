@@ -17,6 +17,8 @@ One-line comments are introduced by '//':
 // all this is ignored
 ```
 
+In Emacs, one can (un)comment a region by using Meta-; .
+
 <!---------------------------------------------------------------------------->
 ### Lexical conventions
 
