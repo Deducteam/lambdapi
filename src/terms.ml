@@ -71,7 +71,9 @@ type term =
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_mode  : sym_mode
-  (** Tells what kind of symbol it is. *) }
+  (** Tells what kind of symbol it is. *)
+  ; sym_expo  : sym_exposition
+  (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
     reason related to the writing of signatures as binary files  (in  relation
@@ -94,6 +96,17 @@ type term =
   (** The symbol may have a definition or rewriting rules (but NOT both). *)
   | Injec
   (** Same as [Defin], but the symbol is considered to be injective. *)
+
+(** Exposition, or visibility of a symbol. Given at the declaration of a
+    symbol, and cannot be changed subsequently. *)
+ and sym_exposition =
+  | Public
+  (** The symbol is exported and available. *)
+  | Protected
+  (** Other modules can use the symbol in left-hand side of rewriting rules
+      only (not at the root). *)
+  | Private
+  (** The symbol is not exported. *)
 
 (** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
@@ -233,6 +246,15 @@ type term =
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb s = Symb (s, Nothing)
 
+(** [is_inj s] tells whether the symbol is injective. *)
+let is_inj : sym -> bool = fun s -> s.sym_mode = Injec
+
+(** [is_const s] tells whether the symbol is a constant. *)
+let is_const : sym -> bool = fun s -> s.sym_mode = Const
+
+(** [is_private s] tells whether the symbol [s] is private. *)
+let is_private : sym -> bool = fun s -> s.sym_expo = Private
+
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
 
@@ -295,7 +317,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
     ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_expo = Public ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 

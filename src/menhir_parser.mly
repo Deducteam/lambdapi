@@ -189,6 +189,7 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %token TYPE
 %token KW_DEF
 %token KW_INJ
+%token KW_PRV
 %token KW_THM
 %token <string> ID
 %token <Syntax.p_module_path * string> QID
@@ -202,31 +203,35 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 
 line:
   | s=ID ps=param* COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_const], make_pos $loc(s) s, ps, a))
+      make_pos $loc (P_symbol(Symex_public, [Sym_const], make_pos $loc(s) s, ps, a))
     }
   | KW_DEF s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_public, [], make_pos $loc(s) s, [], a))
     }
   | KW_INJ s=ID COLON a=term DOT {
-      make_pos $loc (P_symbol([Sym_inj], make_pos $loc(s) s, [], a))
+      make_pos $loc (P_symbol(Symex_public, [Sym_inj], make_pos $loc(s) s, [], a))
+    }
+  | KW_PRV s=ID COLON a=term DOT {
+      make_pos $loc (P_symbol(Symex_protected, [], make_pos $loc(s) s, [], a))
     }
   | KW_DEF s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, [], Some(a), t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, [],
+                                  Some(a), t))
     }
   | KW_DEF s=ID DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, [], None, t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, [], None, t))
     }
   | KW_DEF s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, ps, Some(a), t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, ps, Some(a), t))
     }
   | KW_DEF s=ID ps=param+ DEFEQ t=term DOT {
-      make_pos $loc (P_definition(false, make_pos $loc(s) s, ps, None, t))
+      make_pos $loc (P_definition(Symex_public,false, make_pos $loc(s) s, ps, None, t))
     }
   | KW_THM s=ID COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(true , make_pos $loc(s) s, [], Some(a), t))
+      make_pos $loc (P_definition(Symex_public,true , make_pos $loc(s) s, [], Some(a), t))
     }
   | KW_THM s=ID ps=param+ COLON a=term DEFEQ t=term DOT {
-      make_pos $loc (P_definition(true , make_pos $loc(s) s, ps, Some(a), t))
+      make_pos $loc (P_definition(Symex_public,true , make_pos $loc(s) s, ps, Some(a), t))
     }
   | rs=rule+ DOT {
       make_pos $loc (P_rules(List.map translate_old_rule rs))

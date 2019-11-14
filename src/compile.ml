@@ -22,7 +22,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Files.module_path -> unit = fun force path ->
-  let base = String.concat "/" path in
+  let base = String.concat Filename.dir_sep path in
   let src =
     let src = base ^ src_extension in
     let legacy = base ^ legacy_src_extension in
@@ -62,6 +62,13 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
             data.pdata_finalize ss st
       in
       ignore (List.fold_left handle sig_st (parse_file src));
+      (* Removing private symbols from signature. *)
+      let not_prv _ sym = Terms.(sym.sym_expo) <> Terms.Private in
+      let not_prv_fst k s_ = not_prv k (fst s_) in
+      sign.sign_symbols := StrMap.filter not_prv_fst !(sign.sign_symbols);
+      sign.sign_builtins := StrMap.filter not_prv !(sign.sign_builtins);
+      sign.sign_unops := StrMap.filter not_prv_fst !(sign.sign_unops);
+      sign.sign_binops := StrMap.filter not_prv_fst !(sign.sign_binops);
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;

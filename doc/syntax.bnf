@@ -1,38 +1,40 @@
-reserved "require"
-reserved "open"
-reserved "as"
-reserved "let"
-reserved "in"
-reserved "symbol"
-reserved "definition"
-reserved "theorem"
-reserved "rule"
+reserved "_"
+reserved "abort"
+reserved "admit"
 reserved "and"
+reserved "apply"
+reserved "as"
 reserved "assert"
 reserved "assertnot"
-reserved "const"
-reserved "injective"
-reserved "TYPE"
-reserved "pos"
-reserved "neg"
-reserved "proof"
-reserved "refine"
-reserved "intro"
-reserved "apply"
-reserved "simpl"
-reserved "rewrite"
-reserved "reflexivity"
-reserved "symmetry"
-reserved "focus"
-reserved "print"
-reserved "proofterm"
-reserved "qed"
-reserved "admit"
-reserved "abort"
-reserved "set"
-reserved "_"
-reserved "type"
 reserved "compute"
+reserved "const"
+reserved "definition"
+reserved "focus"
+reserved "in"
+reserved "injective"
+reserved "intro"
+reserved "let"
+reserved "neg"
+reserved "open"
+reserved "pos"
+reserved "print"
+reserved "private"
+reserved "proof"
+reserved "proofterm"
+reserved "protected"
+reserved "qed"
+reserved "refine"
+reserved "reflexivity"
+reserved "require"
+reserved "rewrite"
+reserved "rule"
+reserved "set"
+reserved "simpl"
+reserved "symbol"
+reserved "symmetry"
+reserved "theorem"
+reserved "type"
+reserved "TYPE"
 
 <declared_id> ::=
   | "ℕ"
@@ -66,6 +68,11 @@ reserved "compute"
 <symtag> ::=
   | "const"
   | "injective"
+
+<exposition> ::=
+  | "public"
+  | "protected"
+  | "private"
 
 <infix_op> ::=
   | "+"
@@ -144,12 +151,13 @@ reserved "compute"
   | "require" "open"? <path>
   | "open" <path>
   // Define a new symbol
-  | "symbol" <symtag>* <ident> <arg>* ":" <type>
+  | <exposition>? "symbol" <symtag>* <ident> <arg>* ":" <type>
   // Define a new rewriting rule
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem
-  | "definition" <ident> <arg>* {":" <type>}? "≔" <term>
-  | "theorem" <ident> <arg>* ":" <type> "proof" <tactic>* {"qed"|"admit"|"abort"}
+  | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
+  | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
+    {"qed"|"admit"|"abort"}
   // Assertion
   | "assert" <assertion>
   | "assertnot" <assertion>

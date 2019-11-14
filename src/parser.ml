@@ -144,41 +144,43 @@ module KW = Keywords.Make(
 (** Reserve ["KIND"] to disallow it as an identifier. *)
 let _ = KW.reserve "KIND"
 
-(** Keyword declarations. *)
-let _require_    = KW.create "require"
-let _open_       = KW.create "open"
-let _as_         = KW.create "as"
-let _let_        = KW.create "let"
-let _in_         = KW.create "in"
-let _symbol_     = KW.create "symbol"
-let _definition_ = KW.create "definition"
-let _theorem_    = KW.create "theorem"
-let _rule_       = KW.create "rule"
+(** Keyword declarations. Keep alphabetical order. *)
+let _abort_      = KW.create "abort"
+let _admit_      = KW.create "admit"
 let _and_        = KW.create "and"
+let _apply_      = KW.create "apply"
+let _as_         = KW.create "as"
 let _assert_     = KW.create "assert"
 let _assertnot_  = KW.create "assertnot"
-let _const_      = KW.create "const"
-let _inj_        = KW.create "injective"
-let _TYPE_       = KW.create "TYPE"
-let _proof_      = KW.create "proof"
-let _refine_     = KW.create "refine"
-let _intro_      = KW.create "assume"
-let _apply_      = KW.create "apply"
-let _simpl_      = KW.create "simpl"
-let _rewrite_    = KW.create "rewrite"
-let _refl_       = KW.create "reflexivity"
-let _sym_        = KW.create "symmetry"
-let _focus_      = KW.create "focus"
-let _print_      = KW.create "print"
-let _qed_        = KW.create "qed"
-let _admit_      = KW.create "admit"
-let _abort_      = KW.create "abort"
-let _set_        = KW.create "set"
-let _wild_       = KW.create "_"
-let _proofterm_  = KW.create "proofterm"
-let _why3_       = KW.create "why3"
-let _type_       = KW.create "type"
 let _compute_    = KW.create "compute"
+let _const_      = KW.create "const"
+let _definition_ = KW.create "definition"
+let _focus_      = KW.create "focus"
+let _in_         = KW.create "in"
+let _inj_        = KW.create "injective"
+let _intro_      = KW.create "assume"
+let _let_        = KW.create "let"
+let _open_       = KW.create "open"
+let _print_      = KW.create "print"
+let _private_    = KW.create "private"
+let _proof_      = KW.create "proof"
+let _proofterm_  = KW.create "proofterm"
+let _protected_  = KW.create "protected"
+let _qed_        = KW.create "qed"
+let _refine_     = KW.create "refine"
+let _refl_       = KW.create "reflexivity"
+let _require_    = KW.create "require"
+let _rewrite_    = KW.create "rewrite"
+let _rule_       = KW.create "rule"
+let _set_        = KW.create "set"
+let _simpl_      = KW.create "simpl"
+let _sym_        = KW.create "symmetry"
+let _symbol_     = KW.create "symbol"
+let _theorem_    = KW.create "theorem"
+let _type_       = KW.create "type"
+let _TYPE_       = KW.create "TYPE"
+let _why3_       = KW.create "why3"
+let _wild_       = KW.create "_"
 
 (** [sanity_check pos s] checks that the token [s] is appropriate for an infix
     operator or a declared identifier. If it is not the case, then the [Fatal]
@@ -322,6 +324,11 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 let parser symtag =
   | _const_ -> Sym_const
   | _inj_   -> Sym_inj
+
+(** [exposition] parses the exposition tag of a symbol.*)
+let parser exposition =
+  | _protected_ -> Symex_protected
+  | _private_   -> Symex_private
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
@@ -566,14 +573,14 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | _symbol_ l:symtag* s:ident al:arg* ":" a:term
-      -> P_symbol(l,s,al,a)
+  | e:exposition? _symbol_ l:symtag* s:ident al:arg* ":" a:term
+      -> P_symbol(Option.get e Symex_public,l,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(false,s,al,ao,t)
-  | st:statement (ts,e):proof
-      -> P_theorem(st,ts,e)
+  | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
+      -> P_definition(Option.get e Symex_public,false,s,al,ao,t)
+  | ex:exposition? st:statement (ts,e):proof
+      -> P_theorem(Option.get ex Symex_public,st,ts,e)
   | _set_ c:config
       -> P_set(c)
   | q:query
