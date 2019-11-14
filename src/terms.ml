@@ -233,9 +233,6 @@ type term =
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb s = Symb (s, Nothing)
 
-(** [is_inj s] tells whether the symbol is injective. *)
-let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
-
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
 
