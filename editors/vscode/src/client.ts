@@ -132,7 +132,10 @@ function buildGoalsContent(goals : Goal[]) {
     // get the HTML code of goals environment
     let codeEnvGoals : String = getGoalsEnvContent(goals);
 
-    // #FA8072
+    // Use #FA8072 color too?
+
+    // Note that the style.css file is missing as we don't know yet
+    // where it should be placed; this is a TODO.
     header =  `<!DOCTYPE html>
 ￼       <html lang="en">
 ￼       <head>
