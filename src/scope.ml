@@ -143,13 +143,14 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list * bool
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-      a map associating an index to every free variable along with the
-      privacy. *)
+      a map associating an index to every free variable along with a flag set
+      to [true] if {!constructor:Terms.sym_exposition.Private} symbols are
+      allowed. *)
   | M_RHS  of (string * tevar) list * bool
-  (** Scoping mode for rewriting rule righ-hand sides. The constructor
-      carries the environment for variables that will be bound in the
-      representation of the RHS along with a boolean indicating whether
-      private terms are allowed. *)
+  (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
+      the environment for variables that will be bound in the representation
+      of the RHS along with a flag indicating whether
+      {!constructor:Terms.sym_exposition.Private} terms are allowed. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -443,10 +444,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
-  let prv =
-    let s, _ = get_root p_lhs ss in
-    is_private s
-  in
+  (* Get privacy of the head of the rule, and scope the rest with this
+     privacy. *)
+  let prv = is_private (fst (get_root p_lhs ss)) in
   (* We scope the LHS and add indexes in the environment for metavariables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map, prv)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
