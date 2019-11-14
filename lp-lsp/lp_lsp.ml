@@ -203,34 +203,52 @@ let do_goals ofmt ~id params =
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg
 
-let myfail (msg : string) =
-  LIO.log_error "fail" msg;
+let msg_fail hdr msg =
+  LIO.log_error hdr msg;
   failwith msg
 
-let get_token tokens pos =
+(** [get_token line pos] tries to extract the corresponding token from
+   [line] for column [pos] ; this is used in go to definition, type on
+   hover, etc... The function is a bit complex due to the use of
+   Unicode chars in the Lambdapi code, it could surely be improved. *)
+let get_token line pos =
   let regexp = Str.regexp "[^a-zA-Z0-9_]" in
-  let res_split = Str.full_split regexp tokens in
+  let res_split = Str.full_split regexp line in
   let count = 0 in
   let rec iter_tokens count tokens pos =
     match tokens with
     | [] -> ""
     | t::ts -> match t with
-      | Str.Text txt -> let new_count = (count + (String.length txt)) in
-        if new_count >= pos then txt else
-          iter_tokens new_count ts pos
-      | Str.Delim s -> if String.equal s "\226" then let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
+      | Str.Text txt ->
+        let new_count = count + String.length txt in
+        if new_count >= pos
+        then txt
+        else iter_tokens new_count ts pos
+      | Str.Delim s ->
+        if String.equal s "\226"
+        then
+          let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
           let find_symb ts sym_table =
             match ts with
-            | [] -> failwith "error1"
-            | _::[] -> failwith "error2"
-            | a::b::tl -> match a,b with
-              | Str.Delim c, Str.Delim d -> if List.mem ("\226"^c^d) sym_table then let new_count = (count + 1) in
-                  iter_tokens new_count tl pos else let new_count = (count + 1) in
+            | [] ->
+              msg_fail "get_token" "unicode symbol not in table"
+            | _::[] ->
+              msg_fail "get_token" "not enough chars"
+            | a::b::tl ->
+              match a,b with
+              | Str.Delim c, Str.Delim d ->
+                if List.mem ("\226"^c^d) sym_table
+                then
+                  let new_count = count + 1 in
+                  iter_tokens new_count tl pos
+                else
+                  let new_count = count + 1 in
                   iter_tokens new_count ts pos
-              | _ -> failwith "error4"
-
+              | _, _ ->
+                msg_fail "get_token" "expected Delim in split"
           in find_symb ts sym_table
-        else let new_count = (count + 1) in
+        else
+          let new_count = (count + 1) in
           iter_tokens new_count ts pos
   in iter_tokens count res_split pos
 
@@ -276,9 +294,12 @@ let hover_symInfo ofmt ~id params =
 
   let sym_found = let open Timed in let open Terms in
     match Extra.StrMap.find_opt sym_target sym with
-    | None -> myfail "sym not found"
-    | Some (_, None) -> myfail "sym not found"
-    | Some (sym, Some _) -> !(sym.sym_type)
+    | None ->
+      msg_fail "hover" "sym not found"
+    | Some (_, None) ->
+      msg_fail "hover" "sym not found"
+    | Some (sym, Some _) ->
+      !(sym.sym_type)
   in let sym_type : string =
     Format.asprintf "%a" Print.pp_term sym_found  in
   let result = `Assoc [ "contents", `String sym_type] in
