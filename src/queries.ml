@@ -79,7 +79,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
         | Some(_) -> Eval.eval cfg t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
-      out 3 "(eval) %a\n" pp v
+      out 3 "(comp) %a\n" pp v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->

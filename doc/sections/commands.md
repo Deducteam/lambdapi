@@ -157,8 +157,8 @@ Pattern variables can be applied to distinct bound variables only,
 that is, the terms between `[` and `]` must be distinct bound
 variables only.
 
-Lambdapi uses then higher-order pattern-matching, that is, matching
-modulo β. Hence, the rule `lam (λx, app &F x) → &F` indeed implements
+Lambdapi uses higher-order pattern-matching (not in full generality
+though). Hence, the rule `lam (λx, app &F x) → &F` implements
 η-reduction since no valid instance of `F` can contain `x`.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
