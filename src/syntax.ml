@@ -83,7 +83,8 @@ type symtag =
   | Sym_inj
   (** The symbol is injective. *)
 
-type expostag =
+(** Representation of the exposition tag of a symbol. *)
+type expotag =
   | Symex_public
   (** Symbol is exported, usable without restriction everywhere. *)
   | Symex_protected
@@ -192,14 +193,14 @@ type p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of expostag * symtag list * ident * p_arg list * p_type
+  | P_symbol     of expotag * symtag list * ident * p_arg list * p_type
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of expostag * bool * ident * p_arg list * p_type option
+  | P_definition of expotag * bool * ident * p_arg list * p_type option
                   * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem    of expostag * p_statement * p_tactic list * p_proof_end loc
+  | P_theorem    of expotag * p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_set        of p_config
   (** Set the configuration. *)

@@ -145,7 +145,6 @@ module KW = Keywords.Make(
 let _ = KW.reserve "KIND"
 
 (** Keyword declarations. Keep alphabetical order (capital first). *)
-let _TYPE_       = KW.create "TYPE"
 let _abort_      = KW.create "abort"
 let _admit_      = KW.create "admit"
 let _and_        = KW.create "and"
@@ -179,6 +178,7 @@ let _sym_        = KW.create "symmetry"
 let _symbol_     = KW.create "symbol"
 let _theorem_    = KW.create "theorem"
 let _type_       = KW.create "type"
+let _TYPE_       = KW.create "TYPE"
 let _why3_       = KW.create "why3"
 let _wild_       = KW.create "_"
 

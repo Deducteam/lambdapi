@@ -41,7 +41,7 @@ let pp_symtag : symtag pp = fun oc tag ->
 let pp_symtags : symtag list pp = fun oc ->
   List.iter (Format.fprintf oc " %a" pp_symtag)
 
-let pp_expostag : expostag pp = fun oc tag ->
+let pp_expotag : expotag pp = fun oc tag ->
   Format.pp_print_string oc
     (match tag with
      | Symex_public    -> ""
@@ -189,20 +189,20 @@ let pp_command : p_command pp = fun oc cmd ->
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
   | P_symbol(etag,tags,s,args,a)    ->
-      out "@[<hov 2>%a symbol%a %a" pp_expostag etag pp_symtags tags
+      out "@[<hov 2>%a symbol%a %a" pp_expotag etag pp_symtags tags
         pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(e,_,s,args,ao,t)   ->
-      out "@[<hov 2>%a definition %a" pp_expostag e pp_ident s;
+      out "@[<hov 2>%a definition %a" pp_expotag e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(ex,st,ts,e)           ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>%a theorem %a" pp_expostag ex pp_ident s;
+      out "@[<hov 2>%a theorem %a" pp_expotag ex pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";

@@ -1,4 +1,3 @@
-reserved "TYPE"
 reserved "_"
 reserved "abort"
 reserved "admit"
@@ -35,6 +34,7 @@ reserved "symbol"
 reserved "symmetry"
 reserved "theorem"
 reserved "type"
+reserved "TYPE"
 
 <declared_id> ::=
   | "ℕ"
