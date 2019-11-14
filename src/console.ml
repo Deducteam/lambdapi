@@ -9,13 +9,21 @@ type 'a outfmt = ('a, Format.formatter, unit) format
 (** Short name for a standard formatter with continuation. *)
 type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 
+(** [color] tells whether colors can be used in the output. *)
+let color : bool Pervasives.ref = Pervasives.ref true
+
 (** Format transformers (colors). *)
-let red fmt = "\027[31m" ^^ fmt ^^ "\027[0m%!"
-let gre fmt = "\027[32m" ^^ fmt ^^ "\027[0m%!"
-let yel fmt = "\027[33m" ^^ fmt ^^ "\027[0m%!"
-let blu fmt = "\027[34m" ^^ fmt ^^ "\027[0m%!"
-let mag fmt = "\027[35m" ^^ fmt ^^ "\027[0m%!"
-let cya fmt = "\027[36m" ^^ fmt ^^ "\027[0m%!"
+let colorize k fmt =
+  if Pervasives.(!color) then
+    "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!"
+  else fmt
+
+let red fmt = colorize "31" fmt
+let gre fmt = colorize "32" fmt
+let yel fmt = colorize "33" fmt
+let blu fmt = colorize "34" fmt
+let mag fmt = colorize "35" fmt
+let cya fmt = colorize "36" fmt
 
 (** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
     in red otherwise. *)
