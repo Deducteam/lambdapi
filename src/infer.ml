@@ -14,10 +14,9 @@ let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
 let conv a b =
-  if !log_enabled then log_infr "conv [%a] ~ [%a]" pp a pp b;
   if not (Basics.eq a b) then
     begin
-      if !log_enabled then log_infr (yel "add [%a] ~ [%a]") pp a pp b;
+      if !log_enabled then log_infr (yel "add %a") pp_constr (a,b);
       let open Pervasives in constraints := (a,b) :: !constraints
     end
 
@@ -187,8 +186,7 @@ let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
   if !log_enabled then
     begin
       log_infr (gre "infer [%a] yields [%a]") pp t pp a;
-      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
-      List.iter fn constrs;
+      List.iter (log_infr "  assuming %a" pp_constr) constrs;
     end;
   Pervasives.(constraints := []);
   (a, constrs)
@@ -205,8 +203,7 @@ let check : Ctxt.t -> term -> term -> unif_constrs = fun ctx t c ->
   if !log_enabled then
     begin
       log_infr (gre "check [%a] [%a]") pp t pp c;
-      let fn (a,b) = log_infr "  assuming [%a] ~ [%a]" pp a pp b in
-      List.iter fn constrs;
+      List.iter (log_infr "  assuming %a" pp_constr) constrs;
     end;
   Pervasives.(constraints := []);
   constrs

@@ -22,17 +22,12 @@ let subst_from_constrs : (term * term) list -> subst = fun cs ->
     match cs with
     | []        -> List.split acc
     | (a,b)::cs ->
-    let (ha,argsa) = Basics.get_args a in
-    let (hb,argsb) = Basics.get_args b in
-    let na = List.length argsa in
-    let nb = List.length argsb in
-    match (unfold ha, unfold hb) with
-    | (Symb(sa,_), Symb(sb,_)) when sa == sb && na = nb && is_inj sa ->
-        let fn l t1 t2 = (t1,t2) :: l in
-        build_sub acc (List.fold_left2 fn cs argsa argsb)
-    | (Vari(x)   , _         ) when argsa = [] -> build_sub ((x,b)::acc) cs
-    | (_         , Vari(x)   ) when argsb = [] -> build_sub ((x,a)::acc) cs
-    | (_         , _         )                 -> build_sub acc cs
+      match Basics.get_args a with
+      | Vari(x), [] -> build_sub ((x,b)::acc) cs
+      | _, _ ->
+        match Basics.get_args b with
+        | Vari(x), [] -> build_sub ((x,a)::acc) cs
+        | _, _ -> build_sub acc cs
   in
   let (vs,ts) = build_sub [] cs in
   (Array.of_list vs, Array.of_list ts)
@@ -138,8 +133,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   if !log_enabled && to_solve <> [] then
     begin
       log_subj "RHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
-      List.iter fn to_solve
+      List.iter (log_subj "  if %a" pp_constr) to_solve
     end;
   (* Solving the constraints. *)
   match Unif.(solve builtins false {no_problems with to_solve}) with
@@ -156,9 +150,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let cs = List.filter (fun c -> not (is_constr c)) cs in
   if cs <> [] then
     begin
-      let fn (t,u) = fatal_msg "Cannot solve [%a] ≡ [%a]\n" pp t pp u in
-      List.iter fn cs;
-      fatal r.pos  "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
+      List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
+      fatal r.pos "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
     end;
   (* Check that there is no uninstanciated metas left. *)
   let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in

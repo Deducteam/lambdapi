@@ -89,6 +89,9 @@ let spec =
     [ ( "--gen-obj"
       , Arg.Set Compile.gen_obj
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
+    ; ( "--no-color"
+      , Arg.Set Console.color
+      , Printf.sprintf " Do not use colors in the output" )
     ; ( "--write-trees"
       , Arg.Set Handle.write_trees
       , " Write decision trees to \".gv\" files" )

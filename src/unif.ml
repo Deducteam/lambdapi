@@ -23,6 +23,12 @@ type problems =
   ; recompute : bool
   (** Indicates whether unsolved problems should be rechecked. *) }
 
+let pp_problem oc p =
+  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
+    (List.pp pp_constr "; ") p.to_solve
+    (List.pp pp_constr "; ") p.unsolved
+    p.recompute
+
 (** Empty problem. *)
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
@@ -72,6 +78,7 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
 (** [solve cfg p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
 let rec solve : problems -> unif_constrs = fun p ->
+  (*if !log_enabled then log_unif "%a" pp_problem p;*)
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
@@ -85,11 +92,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
-    begin
-      let t1 = add_args h1 ts1 in
-      let t2 = add_args h2 ts2 in
-      log_unif "unify [%a] [%a]" pp t1 pp t2;
-    end;
+    log_unif "solve %a ≡ %a" pp (add_args h1 ts1) pp (add_args h2 ts2);
 
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
@@ -120,9 +123,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
+    if !log_enabled then
+      log_unif "imitate_inj [%a] [%a]"
+        pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
     let exception Cannot_imitate in
     try
-      if not (us = [] && is_inj s) then raise Cannot_imitate;
+      if not (us = [] && s.sym_mode = Injec) then raise Cannot_imitate;
       let vars = match distinct_vars_opt vs with
         | None -> raise Cannot_imitate
         | Some vars -> vars
@@ -133,7 +139,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       let k = Array.length vars in
       let t =
         let rec build i acc t =
-          if i <= 0 then Basics.add_args (Symb(s,h)) (List.rev acc)
+          if i <= 0 then add_args (Symb(s,h)) (List.rev acc)
           else match unfold t with
                | Prod(a,b) ->
                   let m = fresh_meta (Env.to_prod env (lift a)) k in
@@ -282,6 +288,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   (* [solve_inj s ts v] tries to replace a problem of the form [s(ts) = v] by
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
+    if !log_enabled then log_unif "solve_inj [%a] [%a]"
+        pp (add_args (symb s) ts) pp v;
     if s.sym_mode = Const then error ()
     else match inverse_opt s ts v with
          | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
@@ -306,20 +314,23 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      if s1 == s2 then
        match s1.sym_mode with
        | Const -> decompose ()
-       | Injec ->
-           if List.same_length ts1 ts2 then decompose ()
-           else add_to_unsolved ()
-       | Defin -> add_to_unsolved ()
-     else if s1.sym_mode = Const then solve_inj s2 ts2 t1
-     else if s2.sym_mode = Const then solve_inj s1 ts1 t2
+       | Injec when List.same_length ts1 ts2 -> decompose ()
+       | _ -> add_to_unsolved ()
      else
        begin
-         match inverse_opt s1 ts1 t2 with
-         | Some (t, u) -> solve_aux t u p
-         | None ->
-             match inverse_opt s2 ts2 t1 with
+         match s1.sym_mode, s2.sym_mode with
+         | Const, Const -> error ()
+         | _, _ ->
+           begin
+             match inverse_opt s1 ts1 t2 with
              | Some (t, u) -> solve_aux t u p
-             | None -> add_to_unsolved ()
+             | None ->
+               begin
+                 match inverse_opt s2 ts2 t1 with
+                 | Some (t, u) -> solve_aux t u p
+                 | None -> add_to_unsolved ()
+               end
+           end
        end
 
   | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->

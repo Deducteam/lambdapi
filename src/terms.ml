@@ -247,7 +247,7 @@ type term =
 let symb s = Symb (s, Nothing)
 
 (** [is_inj s] tells whether the symbol is injective. *)
-let is_inj : sym -> bool = fun s -> s.sym_mode <> Defin
+let is_inj : sym -> bool = fun s -> s.sym_mode = Injec
 
 (** [is_const s] tells whether the symbol is a constant. *)
 let is_const : sym -> bool = fun s -> s.sym_mode = Const
