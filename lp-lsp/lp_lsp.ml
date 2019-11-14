@@ -28,6 +28,13 @@ module List = struct
   let find_opt f l = try Some List.(find f l) with | Not_found -> None
 end
 
+module StrMap = struct
+  include Extra.StrMap
+  let find_opt key map =
+    try Some (find key map)
+    with | Not_found -> None
+end
+
 module Option = struct
   let _iter f x = match x with | None -> () | Some x -> f x
   let _map f x = match x with | None -> None | Some x -> Some (f x)
@@ -272,7 +279,7 @@ let do_definition ofmt ~id params =
   LIO.log_error "symbol map" map_pp;
 
   let sym_info =
-    match Extra.StrMap.find_opt sym_target sym with
+    match StrMap.find_opt sym_target sym with
     | None
     | Some (_, None) -> `Null
     | Some (_, Some pos) -> mk_definfo file pos
@@ -293,7 +300,7 @@ let hover_symInfo ofmt ~id params =
   LIO.log_error "symbol map" map_pp;
 
   let sym_found = let open Timed in let open Terms in
-    match Extra.StrMap.find_opt sym_target sym with
+    match StrMap.find_opt sym_target sym with
     | None ->
       msg_fail "hover" "sym not found"
     | Some (_, None) ->
