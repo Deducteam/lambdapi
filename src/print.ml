@@ -132,9 +132,14 @@ let pp_term : term pp = fun oc t ->
 (** [pp] is a short synonym of [pp_term]. *)
 let pp : term pp = pp_term
 
-(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hing
+(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hint
     [h]) to the output channel [oc]. *)
 let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let lhs = Basics.add_args (Symb(s,h)) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
+
+(** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
+   output channel [oc]. *)
+let pp_constr : (term * term) pp = fun oc (t, u) ->
+  Format.fprintf oc "%a ≡ %a" pp t pp u
