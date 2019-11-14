@@ -119,6 +119,19 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
 (** Map of metavariables. *)
 type metamap = meta StrMap.t
 
+(** [get_root t ss] returns the symbol at the root of term [t]. *)
+let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
+  let rec get_root t =
+    match t.elt with
+    | P_Iden(qid,_)
+    | P_BinO(_,(_,_,_,qid),_)
+    | P_UnaO((_,_,qid),_)   -> find_sym ~prt:true ~prv:true true ss qid
+    | P_Appl(t, _)          -> get_root t
+    | P_Wrap(t)             -> get_root t
+    | _                     -> assert false
+  in
+  get_root t
+
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
@@ -128,9 +141,10 @@ type mode =
       scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
-  | M_LHS  of (string * int) list
-  (** Scoping mode for rewriting rule left-hand sides. The constructor
-      carries a map associating an index to every free variable. *)
+  | M_LHS  of (string * int) list * bool
+  (** Scoping mode for rewriting rule left-hand sides. The constructor carries
+      a map associating an index to every free variable along with the
+      privacy. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor
       carries the environment for variables that will be bound in the
@@ -163,38 +177,25 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       _Patt None name (Env.to_tbox env)
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
-  let rec scope : ?allow_private:bool -> env -> p_term -> tbox =
-    fun ?allow_private env t ->
+  let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
     let (h, args) = Syntax.get_args t in
     (* Check whether application is marked as explicit in the head symbol. *)
     let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head ?allow_private env h in
+    let h = scope_head env h in
     let impl =
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
     in
-    (* Get the privacy of the root symbol to determine whether private
-       symbols are allowed in the next symbols. This is useful for rewriting
-       rules. *)
-    let allow_private =
-      if allow_private = None then
-        (* Get exposition if not already set. *)
-        match fst (Basics.get_args (Bindlib.unbox h)) with
-        | Symb({sym_expo=Private; _},_) -> Some(true)
-        | Symb(_)                       -> Some(false)
-        | _                             -> None
-      else allow_private (* If already set, keep it. *)
-    in
     (* Scope and insert the (implicit) arguments. *)
-    add_impl ?allow_private env t.pos h impl args
+    add_impl env t.pos h impl args
   (* Build the application of [h] to [args], inserting implicit arguments. *)
-  and add_impl ?allow_private env loc h impl args =
-    let appl_p_term t u = _Appl t (scope ?allow_private env u) in
+  and add_impl env loc h impl args =
+    let appl_p_term t u = _Appl t (scope env u) in
     let appl_meta t =
-      _Appl t (scope_head ?allow_private env (Pos.none P_Wild))
+      _Appl t (scope_head env (Pos.none P_Wild))
     in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
@@ -249,18 +250,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : ?allow_private:bool -> env -> p_term -> tbox =
-    fun ?allow_private env t ->
+  and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _                ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(_)         ) ->
-      begin
-        match allow_private with
-        | None    -> find_qid true true ss env qid
-        | Some(p) -> find_qid true p ss env qid
-      end
+    | (P_Iden(qid,_)   , M_LHS(_,p)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Private)) -> find_qid false true ss env qid
     | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
@@ -291,7 +286,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(m)         ) ->
+    | (P_Patt(id,ts)   , M_LHS(m,_)       ) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -448,8 +443,12 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
+  let prv =
+    let s, _ = get_root p_lhs ss in
+    is_private s
+  in
   (* We scope the LHS and add indexes in the environment for metavariables. *)
-  let lhs = Bindlib.unbox (scope (M_LHS(map)) ss Env.empty p_lhs) in
+  let lhs = Bindlib.unbox (scope (M_LHS(map, prv)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with

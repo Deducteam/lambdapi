@@ -356,6 +356,7 @@ let eq_p_command : p_command eq = fun c1 c2 ->
 let get_args : p_term -> p_term * p_term list =
   let rec get_args args t =
     match t.elt with
+    | P_Appl(t, ({elt=P_BinO(_); _} as b)) -> get_args (t::args) b
     | P_Appl(t,u) -> get_args (u::args) t
     | P_Wrap(t)   -> get_args args t
     | _           -> (t, args)

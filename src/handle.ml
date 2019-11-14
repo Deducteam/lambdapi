@@ -134,7 +134,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
-    (* FIXME scoping of rules and privacy?? *)
       (* Scoping and checking each rule in turn. *)
       let handle_rule pr =
         let (s,_,_) as r = scope_rule ss pr in
