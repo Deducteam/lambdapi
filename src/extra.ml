@@ -71,14 +71,21 @@ module Option =
       | (None    , None    ) -> true
       | (Some(e1), Some(e2)) -> eq e1 e2
       | (_       , _       ) -> false
+
+    (** [pp pp_elt oc o] prints on the channel [oc] the element [e] with
+       [pp_elt] if [o = Some e]. *)
+    let pp : 'a pp -> 'a option pp = fun pp_elt oc o ->
+      match o with
+      | None   -> ()
+      | Some e -> pp_elt oc e
   end
 
 module List =
   struct
     include List
 
-    (** [pp pp_e sep oc l] prints the list [l] on the channel [oc] using [sep]
-        as separator, and [pp_e] for printing the elements. *)
+    (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using
+       [sep] as separator, and [pp_elt] for printing the elements. *)
     let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
       match l with
       | []    -> ()

@@ -1,9 +1,9 @@
 // Data type of booleans.
 
-symbol const B : TYPE
+constant symbol B : TYPE
 
-symbol const true  : B
-symbol const false : B
+constant symbol true  : B
+constant symbol false : B
 
 // Boolean negation.
 

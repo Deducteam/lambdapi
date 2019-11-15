@@ -25,6 +25,8 @@ let blu fmt = colorize "34" fmt
 let mag fmt = colorize "35" fmt
 let cya fmt = colorize "36" fmt
 
+let space fmt = " " ^^ fmt
+
 (** [r_or_g cond fmt] colors the format [fmt] in green if [cond] is [true] and
     in red otherwise. *)
 let r_or_g cond = if cond then gre else red

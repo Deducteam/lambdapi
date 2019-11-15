@@ -1,6 +1,6 @@
 // Test parsing of protected and private keywords
 // Define several constants to be used by other tests
-symbol const A : TYPE
+constant symbol A : TYPE
 
 private symbol f : A ⇒ A
 protected symbol g : A ⇒ A

@@ -1,13 +1,13 @@
-symbol const A : TYPE
-symbol const a : A
-symbol const B : A ⇒ TYPE
-symbol const C : A ⇒ TYPE
+constant symbol A : TYPE
+constant symbol a : A
+constant symbol B : A ⇒ TYPE
+constant symbol C : A ⇒ TYPE
 
 symbol f : A ⇒ A
 symbol g : A ⇒ A
 
-symbol const consB : ∀a, B (g a)
-symbol const consC : ∀a, C (f a)
+constant symbol consB : ∀a, B (g a)
+constant symbol consC : ∀a, C (f a)
 
 symbol calc :
   ∀ a : A,

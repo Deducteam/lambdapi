@@ -182,9 +182,9 @@ let unlink : t -> unit = fun sign ->
     {!constructor:Terms.sym_exposition.Public} by default, unless [?sym_expo]
     is precised. The list [impl] tells which arguments is implicit. The
     created symbol is returned. *)
-let add_symbol : t -> ?sym_expo:sym_exposition -> sym_mode -> strloc -> term
+let add_symbol : t -> expo option -> prop option -> strloc -> term
   -> bool list -> sym =
-    fun sign ?(sym_expo=Public) sym_mode s a impl ->
+    fun sign sym_expo sym_prop s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas a then
     fatal s.pos "The type of [%s] contains metavariables" s.elt;
@@ -194,7 +194,7 @@ let add_symbol : t -> ?sym_expo:sym_exposition -> sym_mode -> strloc -> term
   (* Add the symbol. *)
   let sym =
     { sym_name = s.elt ; sym_type = ref a ; sym_path = sign.sign_path
-    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_mode
+    ; sym_def = ref None ; sym_impl ; sym_rules = ref [] ; sym_prop
     ; sym_expo ; sym_tree = ref Tree_types.empty_dtree }
   in
   sign.sign_symbols := StrMap.add s.elt (sym, s.pos) !(sign.sign_symbols); sym

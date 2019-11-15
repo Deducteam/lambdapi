@@ -12,6 +12,20 @@ open Timed
 
 (** {3 Term (and symbol) representation} *)
 
+(** Symbol properties. *)
+type prop =
+  | Constant
+  (** The symbol is constant. *)
+  | Injective
+  (** The symbol is injective. *)
+
+(** Exposition tags. *)
+type expo =
+  | Protected
+  (** Exposed but usable in LHS arguments only. *)
+  | Private
+  (** Not visible outside of its module. *)
+
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
     rules. Specific constructors are included for such applications,  and they
@@ -54,7 +68,7 @@ type term =
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
-    be enforced for "mode" consistency (see {!type:sym_mode}).  *)
+    be enforced for "mode" consistency (see {!type:sym_prop}).  *)
  and sym =
   { sym_name  : string
   (** Name of the symbol. *)
@@ -70,9 +84,9 @@ type term =
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
-  ; sym_mode  : sym_mode
+  ; sym_prop  : prop option
   (** Tells what kind of symbol it is. *)
-  ; sym_expo  : sym_exposition
+  ; sym_expo  : expo option
   (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
@@ -87,33 +101,12 @@ type term =
     all explicit. Finally, note that {!field:sym_impl} is empty if and only if
     the symbol has no implicit parameters. *)
 
-(** Possible modes for a symbol. It is given at the declaration of the symbol,
-    and it cannot be changed subsequently. *)
- and sym_mode =
-  | Const
-  (** The symbol is constant: it has no definition and no rewriting rule. *)
-  | Defin
-  (** The symbol may have a definition or rewriting rules (but NOT both). *)
-  | Injec
-  (** Same as [Defin], but the symbol is considered to be injective. *)
-
-(** Exposition, or visibility of a symbol. Given at the declaration of a
-    symbol, and cannot be changed subsequently. *)
- and sym_exposition =
-  | Public
-  (** The symbol is exported and available. *)
-  | Protected
-  (** Other modules can use the symbol in left-hand side of rewriting rules
-      only (not at the root). *)
-  | Private
-  (** The symbol is not exported. *)
-
-(** {b NOTE} the value of the {!field:sym_mode} field of symbols restricts the
+(** {b NOTE} the value of the {!field:sym_prop} field of symbols restricts the
     value of their {!field:sym_def} and {!field:sym_rules} fields. A symbol is
     not allowed to be given rewriting rules (or a definition) when its mode is
-    set to {!constructor:Const}. Moreover, a symbol should not be given at the
-    same time a definition (i.e., {!field:sym_def} different from [None])  and
-    rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
+    set to {!constructor:Constant}. Moreover, a symbol should not be given at
+    the same time a definition (i.e., {!field:sym_def} different from [None])
+    and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
 
 (** Pretty-printing hint for a symbol. One hint is attached to each occurrence
     of a symbol, depending on the corresponding concrete (source code) syntax.
@@ -246,14 +239,14 @@ type term =
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb s = Symb (s, Nothing)
 
-(** [is_inj s] tells whether the symbol is injective. *)
-let is_inj : sym -> bool = fun s -> s.sym_mode = Injec
+(** [is_injective s] tells whether the symbol is injective. *)
+let is_injective : sym -> bool = fun s -> s.sym_prop = Some Injective
 
-(** [is_const s] tells whether the symbol is a constant. *)
-let is_const : sym -> bool = fun s -> s.sym_mode = Const
+(** [is_constant s] tells whether the symbol is a constant. *)
+let is_constant : sym -> bool = fun s -> s.sym_prop = Some Constant
 
 (** [is_private s] tells whether the symbol [s] is private. *)
-let is_private : sym -> bool = fun s -> s.sym_expo = Private
+let is_private : sym -> bool = fun s -> s.sym_expo = Some Private
 
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
@@ -316,8 +309,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref [] ; sym_mode = Const
-    ; sym_expo = Public ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_impl = []; sym_rules = ref [] ; sym_prop = None
+    ; sym_expo = None ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 

@@ -63,7 +63,7 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       in
       ignore (List.fold_left handle sig_st (parse_file src));
       (* Removing private symbols from signature. *)
-      let not_prv _ sym = Terms.(sym.sym_expo) <> Terms.Private in
+      let not_prv _ sym = not (Terms.is_private sym) in
       let not_prv_fst k s_ = not_prv k (fst s_) in
       sign.sign_symbols := StrMap.filter not_prv_fst !(sign.sign_symbols);
       sign.sign_builtins := StrMap.filter not_prv !(sign.sign_builtins);

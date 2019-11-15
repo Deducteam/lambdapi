@@ -1,9 +1,9 @@
 // From issue #70
 
-symbol const Nat : TYPE
+constant symbol Nat : TYPE
 
-symbol const z : Nat
-symbol const s : Nat ⇒ Nat
+constant symbol z : Nat
+constant symbol s : Nat ⇒ Nat
 
 symbol f : (Nat ⇒ Nat) ⇒ Nat
 

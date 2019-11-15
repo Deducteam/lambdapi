@@ -128,7 +128,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
     let exception Cannot_imitate in
     try
-      if not (us = [] && s.sym_mode = Injec) then raise Cannot_imitate;
+      if not (us = [] && is_injective s) then raise Cannot_imitate;
       let vars = match distinct_vars_opt vs with
         | None -> raise Cannot_imitate
         | Some vars -> vars
@@ -278,7 +278,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   (* [inverse_opt s ts v] returns [Some(t,s^{-1}(v))] if [ts=[t]], [s] is
      injective and [s^{-1}(v)] exists, and [None] otherwise. *)
   let inverse_opt s ts v =
-    if s.sym_mode = Injec then
+    if is_injective s then
       match ts with
       | [t] -> begin try Some (t, inverse s v) with Not_invertible -> None end
       | _ -> None
@@ -290,7 +290,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let solve_inj s ts v =
     if !log_enabled then log_unif "solve_inj [%a] [%a]"
         pp (add_args (symb s) ts) pp v;
-    if s.sym_mode = Const then error ()
+    if is_constant s then error ()
     else match inverse_opt s ts v with
          | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
          | None -> add_to_unsolved ()
@@ -312,14 +312,14 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
 
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
-       match s1.sym_mode with
-       | Const -> decompose ()
-       | Injec when List.same_length ts1 ts2 -> decompose ()
+       match s1.sym_prop with
+       | Some Constant -> decompose ()
+       | Some Injective when List.same_length ts1 ts2 -> decompose ()
        | _ -> add_to_unsolved ()
      else
        begin
-         match s1.sym_mode, s2.sym_mode with
-         | Const, Const -> error ()
+         match s1.sym_prop, s2.sym_prop with
+         | Some Constant, Some Constant -> error ()
          | _, _ ->
            begin
              match inverse_opt s1 ts1 t2 with

@@ -1,3 +1,3 @@
 // some code...
 
-symbol const T : TYPE
+constant symbol T : TYPE

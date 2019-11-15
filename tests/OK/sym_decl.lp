@@ -1,10 +1,10 @@
 // A type for the natural numbers.
-symbol const Nat : TYPE
+constant symbol Nat : TYPE
 
 // Zero and successor symbols.
-symbol const zero : Nat
-symbol const succ : Nat ⇒ Nat
-//symbol injective succ : Nat ⇒ Nat
+constant symbol zero : Nat
+constant symbol succ : Nat ⇒ Nat
+//injective symbol succ : Nat ⇒ Nat
 
 // Addition and multiplication
 symbol add : Nat ⇒ Nat ⇒ Nat

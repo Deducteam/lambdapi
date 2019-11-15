@@ -1,4 +1,4 @@
-symbol const A : TYPE
+constant symbol A : TYPE
 symbol Pair : TYPE
 
 symbol pair : A ⇒ A ⇒ Pair
