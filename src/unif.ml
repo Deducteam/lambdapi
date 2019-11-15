@@ -313,13 +313,13 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_prop with
-       | Some Constant -> decompose ()
-       | Some Injective when List.same_length ts1 ts2 -> decompose ()
+       | Const -> decompose ()
+       | Injec when List.same_length ts1 ts2 -> decompose ()
        | _ -> add_to_unsolved ()
      else
        begin
          match s1.sym_prop, s2.sym_prop with
-         | Some Constant, Some Constant -> error ()
+         | Const, Const -> error ()
          | _, _ ->
            begin
              match inverse_opt s1 ts1 t2 with

@@ -175,16 +175,14 @@ type p_command_aux =
   (** Require as statement. *)
   | P_open       of p_module_path list
   (** Open statement. *)
-  | P_symbol     of Terms.expo option * Terms.prop option * ident * p_arg list
-                  * p_type
+  | P_symbol     of Terms.expo * Terms.prop * ident * p_arg list * p_type
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
-  | P_definition of Terms.expo option * bool * ident * p_arg list
-                  * p_type option * p_term
+  | P_definition of Terms.expo * bool * ident * p_arg list * p_type option
+                  * p_term
   (** Definition of a symbol (unfoldable). *)
-  | P_theorem    of Terms.expo option * p_statement * p_tactic list
-                  * p_proof_end loc
+  | P_theorem    of Terms.expo * p_statement * p_tactic list * p_proof_end loc
   (** Theorem with its proof. *)
   | P_set        of p_config
   (** Set the configuration. *)

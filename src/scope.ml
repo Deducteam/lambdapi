@@ -84,11 +84,11 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
   in
   begin
     match (prt, prv, s.sym_expo) with
-    | (false, _    , Some Protected) ->
+    | (false, _    , Protec) ->
         if s.sym_path <> st.signature.sign_path then
           (* Fail if symbol is not defined in the current module. *)
           fatal pos "Protected symbol not allowed here."
-    | (_    , false, Some Private  ) ->
+    | (_    , false, Privat) ->
         fatal pos "Private symbol not allowed here."
     | _                         -> ()
   end;
@@ -135,7 +135,7 @@ let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of metamap Pervasives.ref * expo option
+  | M_Term of metamap Pervasives.ref * expo
   (** Standard scoping mode for terms, holding a map of metavariables that can
       be updated with new metavariables on scoping and the exposition of the
       scoped term. *)
@@ -257,7 +257,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(_,p)       ) -> find_qid true p ss env qid
-    | (P_Iden(qid,_)   , M_Term(_,Some Private)) ->
+    | (P_Iden(qid,_)   , M_Term(_,Privat )) ->
         find_qid false true ss env qid
     | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
@@ -377,7 +377,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     state [ss] is used to handle module aliasing according to [find_qid]. If
     [?exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
-let scope_term : expo option -> sig_state -> env -> p_term -> term =
+let scope_term : expo -> sig_state -> env -> p_term -> term =
   fun expo ss env t ->
   let m = Pervasives.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, expo)) ss env t)
@@ -455,7 +455,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     match h with
     | Symb(s,_) when is_constant s                      ->
         fatal p_lhs.pos "Constant LHS head symbol."
-    | Symb(({sym_expo=Some Protected; sym_path; _} as s),h) ->
+    | Symb(({sym_expo=Protec; sym_path; _} as s),h) ->
         if ss.signature.sign_path <> sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols."
         else (s, h, args)

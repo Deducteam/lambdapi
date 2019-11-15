@@ -182,8 +182,7 @@ let unlink : t -> unit = fun sign ->
     {!constructor:Terms.sym_exposition.Public} by default, unless [?sym_expo]
     is precised. The list [impl] tells which arguments is implicit. The
     created symbol is returned. *)
-let add_symbol : t -> expo option -> prop option -> strloc -> term
-  -> bool list -> sym =
+let add_symbol : t -> expo -> prop -> strloc -> term -> bool list -> sym =
     fun sign sym_expo sym_prop s a impl ->
   (* Check for metavariables in the symbol type. *)
   if Basics.has_metas a then

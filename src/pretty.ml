@@ -33,16 +33,16 @@ let pp_path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (pp_path_elt pos) "."
 
 let pp_expo : Terms.expo pp = fun oc e ->
-  Format.pp_print_string oc
-    (match e with
-     | Protected -> "protected "
-     | Private   -> "private ")
+  match e with
+  | Public -> ()
+  | Protec -> Format.pp_print_string oc "protected "
+  | Privat -> Format.pp_print_string oc "private "
 
 let pp_prop : Terms.prop pp = fun oc p ->
-  Format.pp_print_string oc
-    (match p with
-     | Constant -> "const "
-     | Injective   -> "injective ")
+  match p with
+  | Defin -> ()
+  | Const -> Format.pp_print_string oc "const "
+  | Injec -> Format.pp_print_string oc "injective "
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in
@@ -185,20 +185,19 @@ let pp_command : p_command pp = fun oc cmd ->
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
   | P_symbol(e,p,s,args,a)    ->
-      out "@[<hov 2>%a%asymbol %a" (Option.pp pp_expo) e (Option.pp pp_prop) p
-        pp_ident s;
+      out "@[<hov 2>%a%asymbol %a" pp_expo e pp_prop p pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(e,_,s,args,ao,t)   ->
-      out "@[<hov 2>%adefinition %a" (Option.pp pp_expo) e pp_ident s;
+      out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
   | P_theorem(e,st,ts,pe)           ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>%atheorem %a" (Option.pp pp_expo) e pp_ident s;
+      out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";

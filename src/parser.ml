@@ -322,13 +322,13 @@ let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
 (** [symtag] parses a single symbol tag. *)
 let parser property =
-  | _constant_  -> Terms.Constant
-  | _injective_ -> Terms.Injective
+  | _constant_  -> Terms.Const
+  | _injective_ -> Terms.Injec
 
 (** [exposition] parses the exposition tag of a symbol.*)
 let parser exposition =
-  | _protected_ -> Terms.Protected
-  | _private_   -> Terms.Private
+  | _protected_ -> Terms.Protec
+  | _private_   -> Terms.Privat
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
@@ -574,13 +574,13 @@ let parser cmd =
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
   | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(e,p,s,al,a)
+      -> P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(e,false,s,al,ao,t)
+      -> P_definition(Option.get e Terms.Public,false,s,al,ao,t)
   | e:exposition? st:statement (ts,pe):proof
-      -> P_theorem(e,st,ts,pe)
+      -> P_theorem(Option.get e Terms.Public,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query

@@ -15,7 +15,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
     | None     -> Env.empty
     | Some(ps) -> fst (Proof.focus_goal q.pos ps)
   in
-  let scope = scope_term None ss env in
+  let scope = scope_term Public ss env in
   match q.elt with
   | P_query_assert(must_fail, asrt)  ->
       let result =

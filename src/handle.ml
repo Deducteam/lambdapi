@@ -186,7 +186,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature e None x a impl in
+      let s = Sign.add_symbol ss.signature e Defin x a impl in
       out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
@@ -225,8 +225,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature None (Some Constant)
-                      x a impl in
+            let s = Sign.add_symbol ss.signature e Const x a impl in
             out 3 "(symb) %s (admit)\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -238,8 +237,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 fatal cmd.pos "The proof is not finished."
               end;
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature None (Some Constant)
-                      x a impl in
+            let s = Sign.add_symbol ss.signature e Const x a impl in
             out 3 "(symb) %s (qed)\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in

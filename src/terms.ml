@@ -14,17 +14,21 @@ open Timed
 
 (** Symbol properties. *)
 type prop =
-  | Constant
-  (** The symbol is constant. *)
-  | Injective
-  (** The symbol is injective. *)
+  | Defin
+  (** The symbol is definable by rewriting rules. *)
+  | Const
+  (** The symbol cannot be defined. *)
+  | Injec
+  (** The symbol is definable but is assumed to be injective. *)
 
-(** Exposition tags. *)
+(** Specify the visibility and usability of symbols outside their module. *)
 type expo =
-  | Protected
-  (** Exposed but usable in LHS arguments only. *)
-  | Private
-  (** Not visible outside of its module. *)
+  | Public
+  (** Visible and usable everywhere. *)
+  | Protec
+  (** Visible everywhere but usable in LHS arguments only. *)
+  | Privat
+  (** Not visible and thus not usable. *)
 
 (** Representation of a term (or types) in a general sense. Values of the type
     are also used, for example, in the representation of patterns or rewriting
@@ -84,9 +88,9 @@ type term =
   (** Rewriting rules for the symbol. *)
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
-  ; sym_prop  : prop option
+  ; sym_prop  : prop
   (** Tells what kind of symbol it is. *)
-  ; sym_expo  : expo option
+  ; sym_expo  : expo
   (** The visibility of the symbol. *) }
 
 (** {b NOTE} that {!field:sym_type} holds a (timed) reference for a  technical
@@ -240,13 +244,13 @@ type term =
 let symb s = Symb (s, Nothing)
 
 (** [is_injective s] tells whether the symbol is injective. *)
-let is_injective : sym -> bool = fun s -> s.sym_prop = Some Injective
+let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
 
 (** [is_constant s] tells whether the symbol is a constant. *)
-let is_constant : sym -> bool = fun s -> s.sym_prop = Some Constant
+let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 
 (** [is_private s] tells whether the symbol [s] is private. *)
-let is_private : sym -> bool = fun s -> s.sym_expo = Some Private
+let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
 (** Type of a list of unification constraints. *)
 type unif_constrs = (term * term) list
@@ -309,8 +313,8 @@ let term_of_meta : meta -> term array -> term = fun m e ->
   let s =
     { sym_name = Printf.sprintf "%s" (meta_name m)
     ; sym_type = ref !(m.meta_type) ; sym_path = [] ; sym_def = ref None
-    ; sym_impl = []; sym_rules = ref [] ; sym_prop = None
-    ; sym_expo = None ; sym_tree = ref Tree_types.empty_dtree }
+    ; sym_impl = []; sym_rules = ref [] ; sym_prop = Const
+    ; sym_expo = Privat ; sym_tree = ref Tree_types.empty_dtree }
   in
   Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
 
