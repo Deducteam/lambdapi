@@ -57,13 +57,13 @@ modifier or an exposition marker. In the following example, `const` is a
 modifier and `private` is an exposition marker.
 
 ```
-symbol const Nat : TYPE
-symbol const zero : Nat
-symbol const succ (x:Nat) : Nat
+const symbol Nat : TYPE
+const symbol zero : Nat
+const symbol succ (x:Nat) : Nat
 symbol add : Nat ⇒ Nat ⇒ Nat
-symbol const list : Nat ⇒ TYPE
-symbol const nil : List zero
-symbol const cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
+const symbol list : Nat ⇒ TYPE
+const symbol nil : List zero
+const symbol cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
 private symbol aux : ∀n, List n ⇒ Nat
 ```
 
@@ -81,7 +81,7 @@ Data types and predicates must be given types of the form
 We recommend to start types and predicates by a capital letter.
 
 **Modifiers:**
- - `const`: no rule can be added to the symbol
+ - `constant`: no rule can be added to the symbol
  - `injective`: the symbol can be considered as injective, that is,
  if `f t1 .. tn` ≡ `f u1 .. un`, then `t1`≡`u1`, ..., `tn`≡`un`.
  For the moment, the verification is left to the user.
