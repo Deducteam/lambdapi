@@ -101,21 +101,21 @@ let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
 (* Equality on *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "const symbol B : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
   List.equal Command.equal c c
 
 (* Equality not *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "const symbol B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "const symbol C : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "constant symbol C : TYPE" in
   not (List.equal Command.equal c d)
 
 (* Equality is not sensitive to whitespace *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "const   symbol  B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "  const symbol B :   TYPE " in
+  let (c,_) = parse_text st "foo.lp" "constant   symbol  B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "  constant symbol B :   TYPE " in
   List.equal Command.equal c d
 
 (* More complex test stressing most commands *)
