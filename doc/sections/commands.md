@@ -57,13 +57,13 @@ modifier or an exposition marker. In the following example, `const` is a
 modifier and `private` is an exposition marker.
 
 ```
-const symbol Nat : TYPE
-const symbol zero : Nat
-const symbol succ (x:Nat) : Nat
+constant symbol Nat : TYPE
+constant symbol zero : Nat
+constant symbol succ (x:Nat) : Nat
 symbol add : Nat ⇒ Nat ⇒ Nat
-const symbol list : Nat ⇒ TYPE
-const symbol nil : List zero
-const symbol cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
+constant symbol list : Nat ⇒ TYPE
+constant symbol nil : List zero
+constant symbol cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
 private symbol aux : ∀n, List n ⇒ Nat
 ```
 
