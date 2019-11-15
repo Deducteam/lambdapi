@@ -90,7 +90,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
           fatal pos "Protected symbol not allowed here."
     | (_    , false, Privat) ->
         fatal pos "Private symbol not allowed here."
-    | _                         -> ()
+    | _                      -> ()
   end;
   (s, h)
 
@@ -257,8 +257,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(_,p)       ) -> find_qid true p ss env qid
-    | (P_Iden(qid,_)   , M_Term(_,Privat )) ->
-        find_qid false true ss env qid
+    | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
     | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
     | (P_Wild          , M_LHS(_)         ) -> fresh_patt env
@@ -470,8 +469,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
     let map = Array.map2 (fun n v -> (n,v)) names vars in
-    let t = scope (M_RHS(Array.to_list map, is_private sym))
-              ss Env.empty p_rhs in
+    let t =
+      scope (M_RHS(Array.to_list map, is_private sym))
+        ss Env.empty p_rhs in
     Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
