@@ -7,6 +7,7 @@ install it do from the `lambdapi` repository:
 
 ```bash
 cd editors/vscode/
+make clean
 make
 ```
 
