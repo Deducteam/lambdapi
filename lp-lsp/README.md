@@ -19,6 +19,7 @@ There is an extension for VSCode 1.37 derived from VSCoq. To install do:
 
 ```bash
 cd editors/vscode/
+make clean
 make
 ```
 
