@@ -121,24 +121,33 @@ let%test _ =
 (* More complex test stressing most commands *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "
-const symbol B : TYPE
+  let (c,_) = parse_text st "foo.lp"
+                (* copied from tests/OK/foo.lp. keep in sync. *)
+"constant symbol B : TYPE
 
-const symbol true  : B
-const symbol false : B
-symbol bool_neg : B ⇒ B
+constant symbol true  : B
+constant symbol false : B
 
-rule bool_neg true  → false
-rule bool_neg false → true
+symbol neg : B ⇒ B
 
-const symbol Prop : TYPE
+rule neg true  → false
+rule neg false → true
+
+constant symbol Prop : TYPE
+
 injective symbol P : Prop ⇒ TYPE
 
-const symbol eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol eq : B ⇒ B ⇒ Prop
+constant symbol refl b : P (eq b b)
 
-theorem notK : ∀a, P (eq bool (bool_neg (bool_neg a)) a)
+constant symbol case (p : B⇒Prop) : P (p true) ⇒ P (p false) ⇒ ∀b, P b
+
+theorem notK : ∀b, P (eq (neg (neg b)) b)
 proof
-   assume a
+  assume b
+  apply case (λb, eq (neg (neg b)) b)
+  apply refl
+  apply refl
 qed
 " in
   List.equal Command.equal c c
