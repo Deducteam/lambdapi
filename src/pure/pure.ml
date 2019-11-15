@@ -101,40 +101,40 @@ let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
 (* Equality on *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol const B : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "const symbol B : TYPE" in
   List.equal Command.equal c c
 
 (* Equality not *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol const B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "symbol const C : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "const symbol B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "const symbol C : TYPE" in
   not (List.equal Command.equal c d)
 
 (* Equality is not sensitive to whitespace *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol   const  B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "  symbol const B :   TYPE " in
+  let (c,_) = parse_text st "foo.lp" "const   symbol  B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "  const symbol B :   TYPE " in
   List.equal Command.equal c d
 
 (* More complex test stressing most commands *)
 let%test _ =
   let st = initial_state ["foo"] in
   let (c,_) = parse_text st "foo.lp" "
-symbol const B : TYPE
+const symbol B : TYPE
 
-symbol const true  : B
-symbol const false : B
+const symbol true  : B
+const symbol false : B
 symbol bool_neg : B ⇒ B
 
 rule bool_neg true  → false
 rule bool_neg false → true
 
-symbol const Prop : TYPE
-symbol injective P : Prop ⇒ TYPE
+const symbol Prop : TYPE
+injective symbol P : Prop ⇒ TYPE
 
-symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
+const symbol eq : ∀a, T a ⇒ T a ⇒ Prop
 
 theorem notK : ∀a, P (eq bool (bool_neg (bool_neg a)) a)
 proof
