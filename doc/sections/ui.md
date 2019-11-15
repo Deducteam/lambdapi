@@ -7,8 +7,7 @@ install it do from the `lambdapi` repository:
 
 ```bash
 cd editors/vscode/
-npm install
-ln -s `pwd` ~/.vscode/extensions/
+make
 ```
 
 ### Emacs
