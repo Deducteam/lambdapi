@@ -9,12 +9,16 @@
     {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
     see
     {{:https://graphviz.gitlab.io/_pages/doc/info/output.html}graphviz doc}.
-    *)
+
+    To create dot files, use the [--write-trees] flag on command line: given a
+    module [M], a symbol [s] of the signature of [M], a file [M.s.gv]
+    containing the decision tree will be created. If [M] is [a.b.c], the file
+    will be [a/b/c.s.gv]. *)
 
 (** {b Description of output} we remind that trees are interpreted during
-    evaluation of terms to get the correct rule to apply.  A node is thus an
-    instruction for the evaluation algorithm.  There are three types of
-    labeled nodes, labeled edges and leaves.  A node can be
+    evaluation of terms to get the correct rule to apply. A node is thus an
+    instruction for the evaluation algorithm. There are labeled nodes, labeled
+    edges and leaves. A node can be
     - a regular node, represented by a circle, whose label indicates on which
       column the next operation to reach the following node will be performed;
     - a store node, represented by a rectangle, which is the same as a regular
@@ -40,8 +44,10 @@
     - [s_n] where [s] is a symbol if the operation to go from a regular or
       storage node to another node is a {!val:Tree.CM.specialize} on symbol
       [s] with arity [n];
-    - [λx] if the operation to go from a regular or storage node to another
-      node is a specialisation by an abstraction {!val:Tree.CM.abstract};
+    - [λvarn] if the operation to go from a regular or storage node to another
+      node is a specialisation by an abstraction {!val:Tree.CM.abstract},
+      [var]{e n} (with {e n} an integer) is the name of fresh variables which
+      can be used in conditional tests;
     - [✓] if the operation to go from a conditional node to another node is
       the assumption of satisfaction of the constraint indicated as label of
       the condition node;

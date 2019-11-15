@@ -15,6 +15,16 @@ open Tree_types
     decision trees. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
+(** [make_fresh_varname ()] creates a new variable name. This is used in
+    the {!val:compile} function, and the names are visible in the decision
+    trees when the matching is performed on an abstraction or a free
+    variable. *)
+let make_fresh_varname : unit -> string =
+  let c : int ref = ref 0 in
+  fun () ->
+    incr c;
+    "var" ^ (string_of_int !c)
+
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
@@ -693,7 +703,7 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       (* Abstraction specialisation*)
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
-        let var = Bindlib.new_var mkfree "tr" in
+        let var = Bindlib.new_var mkfree (make_fresh_varname ()) in
         let (positions, clauses) = CM.abstract swap var positions updated in
         Some(var, compile CM.{clauses ; slot ; positions})
       in
