@@ -18,3 +18,5 @@ libraries/zenon_modulo
 *.install
 *.gv
 *.png
+.DS_Store
+*.map
