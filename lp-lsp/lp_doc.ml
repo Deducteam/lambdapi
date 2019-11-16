@@ -16,7 +16,8 @@ module LSP = Lsp_base
 type doc_node =
   { ast   : Pure.Command.t
   ; exec  : bool
-  ; goals : Proof.Goal.t list
+  (*; tactics : Proof.Tactic.t list*)
+  ; goals : (Proof.Goal.t list * Pos.popt) list
   }
 
 (* Private. A doc is a list of nodes for now. The first element in
@@ -52,6 +53,13 @@ let process_pstep (pstate, diags) tac =
 let process_proof pstate tacs =
   List.fold_left process_pstep (pstate,[]) tacs
 
+let get_goals dg_proof =
+  let rec get_goals_aux goals dg_proof =
+    match dg_proof with
+    | [] -> goals
+    | (loc,_,_, Some goalsList)::s -> let g = (goals @ [goalsList, loc]) in get_goals_aux g s
+    | (loc,_,_,None)::s -> let goals = (goals @ [[], loc]) in get_goals_aux goals s
+  in get_goals_aux [] dg_proof
 (* XXX: Imperative problem *)
 let process_cmd _file (nodes,st,dg) ast =
   let open Pure in
@@ -67,10 +75,10 @@ let process_cmd _file (nodes,st,dg) ast =
     nodes, st, ok_diag :: dg
 
   | Cmd_Proof (pst, tlist, thm_loc, qed_loc) ->
+    let start_goals = current_goals pst in
     let pst, dg_proof = process_proof pst tlist in
-    let goals = current_goals pst in
-    let dg_proof = (cmd_loc, 4, "OKK", Some goals) :: dg_proof in
-    let dg_proof = (thm_loc, 4, "OK", Some goals) :: dg_proof in
+    let dg_proof = (thm_loc, 4, "OK", Some start_goals) :: dg_proof in
+    let goals = get_goals dg_proof in
     let nodes = { ast; exec = true; goals } :: nodes in
     let st, dg_proof =
       match end_proof pst with

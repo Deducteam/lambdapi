@@ -28,9 +28,16 @@ module List = struct
   let find_opt f l = try Some List.(find f l) with | Not_found -> None
 end
 
+module StrMap = struct
+  include Extra.StrMap
+  let find_opt key map =
+    try Some (find key map)
+    with | Not_found -> None
+end
+
 module Option = struct
-  let iter f x = match x with | None -> () | Some x -> f x
-  let map f x = match x with | None -> None | Some x -> Some (f x)
+  let _iter f x = match x with | None -> () | Some x -> f x
+  let _map f x = match x with | None -> None | Some x -> Some (f x)
 end
 
 let    int_field name dict = U.to_int    List.(assoc name dict)
@@ -57,6 +64,7 @@ let do_initialize ofmt ~id _params =
           "textDocumentSync", `Int 1
         ; "documentSymbolProvider", `Bool true
         ; "hoverProvider", `Bool true
+        ; "definitionProvider", `Bool true
         ; "codeActionProvider", `Bool false
         ]]) in
   LIO.send_json ofmt msg
@@ -126,6 +134,12 @@ let mk_syminfo file (name, _path, kind, pos) : J.t =
                   ]
   ]
 
+let mk_definfo file pos =
+  `Assoc [
+      "uri", `String file
+    ; "range", LSP.mk_range pos
+        ]
+
 let kind_of_type tm =
   let open Terms in
   let open Timed in
@@ -156,6 +170,11 @@ let get_docTextPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   file, line, character
 
+let get_textPosition params =
+  let pos = dict_field "position" params in
+  let line, character = int_field "line" pos, int_field "character" pos in
+  line, character
+
 let in_range ?loc (line, pos) =
   match loc with
   | None -> false
@@ -175,16 +194,124 @@ let get_goals ~doc ~line ~pos =
         LIO.log_error "get_goals" ("call: "^ls);
         res
       ) doc.Lp_doc.nodes in
-  Option.map
-    (fun node -> Format.asprintf "%a" Proof.pp_goals node.goals) node
+  let goalsList = match node with
+    | None -> []
+    | Some n -> n.goals in
+  let goals = match (List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList) with
+    | None -> None
+    | Some (v,_) -> Some v in
+  goals
 
-let do_hover ofmt ~id params =
+let do_goals ofmt ~id params =
   let uri, line, pos = get_docTextPosition params in
   let doc = Hashtbl.find completed_table uri in
-  get_goals ~doc ~line ~pos |> Option.iter (fun goals ->
-      let result = `Assoc [ "contents", `String goals] in
-      let msg = LSP.mk_reply ~id ~result in
-      LIO.send_json ofmt msg)
+  let goals = get_goals ~doc ~line ~pos in
+  let result = LSP.json_of_goals goals in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
+
+let msg_fail hdr msg =
+  LIO.log_error hdr msg;
+  failwith msg
+
+(** [get_token line pos] tries to extract the corresponding token from
+   [line] for column [pos] ; this is used in go to definition, type on
+   hover, etc... The function is a bit complex due to the use of
+   Unicode chars in the Lambdapi code, it could surely be improved. *)
+let get_token line pos =
+  let regexp = Str.regexp "[^a-zA-Z0-9_]" in
+  let res_split = Str.full_split regexp line in
+  let count = 0 in
+  let rec iter_tokens count tokens pos =
+    match tokens with
+    | [] -> ""
+    | t::ts -> match t with
+      | Str.Text txt ->
+        let new_count = count + String.length txt in
+        if new_count >= pos
+        then txt
+        else iter_tokens new_count ts pos
+      | Str.Delim s ->
+        if String.equal s "\226"
+        then
+          let sym_table = ["\226\135\146"; "\226\134\146"; "\226\136\128"] in
+          let find_symb ts sym_table =
+            match ts with
+            | [] ->
+              msg_fail "get_token" "unicode symbol not in table"
+            | _::[] ->
+              msg_fail "get_token" "not enough chars"
+            | a::b::tl ->
+              match a,b with
+              | Str.Delim c, Str.Delim d ->
+                if List.mem ("\226"^c^d) sym_table
+                then
+                  let new_count = count + 1 in
+                  iter_tokens new_count tl pos
+                else
+                  let new_count = count + 1 in
+                  iter_tokens new_count ts pos
+              | _, _ ->
+                msg_fail "get_token" "expected Delim in split"
+          in find_symb ts sym_table
+        else
+          let new_count = (count + 1) in
+          iter_tokens new_count ts pos
+  in iter_tokens count res_split pos
+
+let get_symbol text l pos =
+  let lines = String.split_on_char '\n' text in
+  let line = List.nth lines l in
+  get_token line pos
+
+let do_definition ofmt ~id params =
+  let file, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  LIO.log_error "definition" sym_target;
+
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_info =
+    match StrMap.find_opt sym_target sym with
+    | None
+    | Some (_, None) -> `Null
+    | Some (_, Some pos) -> mk_definfo file pos
+  in
+  let msg = LSP.mk_reply ~id ~result:sym_info in
+  LIO.send_json ofmt msg
+
+let hover_symInfo ofmt ~id params =
+  let _, _, doc = grab_doc params in
+  let line, pos = get_textPosition params in
+  let sym_target = get_symbol doc.text line pos in
+  let sym = Pure.get_symbols doc.final in
+  let map_pp : string =
+    Extra.StrMap.bindings sym |> List.map (fun (key, (sym,pos)) ->
+        Format.asprintf "{%s} / %s: @[%a@]" key sym.Terms.sym_name Pos.print pos)
+      |> String.concat "\n"
+  in
+  LIO.log_error "symbol map" map_pp;
+
+  let sym_found = let open Timed in let open Terms in
+    match StrMap.find_opt sym_target sym with
+    | None ->
+      msg_fail "hover" "sym not found"
+    | Some (_, None) ->
+      msg_fail "hover" "sym not found"
+    | Some (sym, Some _) ->
+      !(sym.sym_type)
+  in let sym_type : string =
+    Format.asprintf "%a" Print.pp_term sym_found  in
+  let result = `Assoc [ "contents", `String sym_type] in
+  let msg = LSP.mk_reply ~id ~result in
+  LIO.send_json ofmt msg
 
 let protect_dispatch p f x =
   try f x
@@ -216,7 +343,13 @@ let dispatch_message ofmt dict =
       (do_symbols ofmt ~id) params
 
   | "textDocument/hover" ->
-    do_hover ofmt ~id params
+    hover_symInfo ofmt ~id params
+
+  | "textDocument/definition" ->
+    do_definition ofmt ~id params
+
+  | "proof/goals" ->
+    do_goals ofmt ~id params
 
   (* Notifications *)
   | "textDocument/didOpen" ->
@@ -258,7 +391,7 @@ let lsp_main log_file std =
 
   let oc = F.std_formatter in
 
-  let debug_oc = open_out log_file in
+  let debug_oc = open_out_gen [Open_append;Open_creat] 511 log_file in
   LIO.debug_fmt := F.formatter_of_out_channel debug_oc;
 
   (* XXX: Capture better / per sentence. *)
@@ -315,5 +448,3 @@ let main () =
   match Term.eval lsp_cmd with
   | `Error _ -> exit 1
   | _        -> exit 0
-
-let _ = main ()

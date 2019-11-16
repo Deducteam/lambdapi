@@ -2,13 +2,19 @@ See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.
 
 ### VSCode
 
-There is an extension for VSCode (>= 1.31) derived from VSCoq. To
+There is an extension for VSCode >= 1.37 derived from VSCoq. To
 install it do from the `lambdapi` repository:
 
 ```bash
 cd editors/vscode/
-npm install
-ln -s `pwd` ~/.vscode/extensions/
+make clean
+make
+```
+
+This requires to have `npm` and `node-typescript` installed:
+
+```bash
+sudo apt install npm node-typescript
 ```
 
 ### Emacs
