@@ -255,7 +255,6 @@ let rec is_pattern : term -> bool = fun t ->
       is_pattern b
   | (_      , args) -> List.for_all is_pattern args
 
-
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
