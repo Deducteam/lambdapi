@@ -245,8 +245,14 @@ let rec is_pattern : term -> bool = fun t ->
   let contains_patt =
     List.exists (function Patt(_) -> true | _ -> false)
   in
-  match get_args t with
-  | (Patt(_), args) -> not (contains_patt args) && List.for_all is_pattern args
+  match get_args (unfold t) with
+  | (Patt(_), args) ->
+      (* Reject patterns applied to patterns. *)
+      not (contains_patt args)
+      && List.for_all is_pattern args
+  | (Abst(_,b), []) ->
+      let _, b = Bindlib.unbind b in
+      is_pattern b
   | (_      , args) -> List.for_all is_pattern args
 
 
