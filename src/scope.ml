@@ -449,6 +449,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let prv = is_private (fst (get_root p_lhs ss)) in
   (* We scope the LHS and add indexes in the environment for metavariables. *)
   let lhs = Bindlib.unbox (scope (M_LHS(map, prv)) ss Env.empty p_lhs) in
+  if not (Basics.is_pattern lhs) then fatal_no_pos "Invalid pattern";
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with

@@ -240,6 +240,16 @@ let distinct_vars : term array -> bool =
     | _ -> raise Not_unique_var
   in try Array.iter check ts; true with Not_unique_var -> false
 
+(** [is_pattern t] tells whether term [t] is a valid pattern. *)
+let rec is_pattern : term -> bool = fun t ->
+  let contains_patt =
+    List.exists (function Patt(_) -> true | _ -> false)
+  in
+  match get_args t with
+  | (Patt(_), args) -> not (contains_patt args) && List.for_all is_pattern args
+  | (_      , args) -> List.for_all is_pattern args
+
+
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
 (** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
