@@ -471,8 +471,8 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     let map = Array.map2 (fun n v -> (n,v)) names vars in
     let t =
       scope (M_RHS(Array.to_list map, is_private sym))
-        ss Env.empty p_rhs in
-    Bindlib.unbox (Bindlib.bind_mvar vars t)
+        ss Env.empty p_rhs
+    in Bindlib.unbox (Bindlib.bind_mvar vars t)
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let vars = Array.of_list pvs in
