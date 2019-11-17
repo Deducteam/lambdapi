@@ -244,7 +244,7 @@ let distinct_vars : term array -> bool =
 let rec is_pattern : term -> bool = fun t ->
   match get_args (unfold t) with
   | (Patt(_), []  ) -> true (* Pattern variables are not applied *)
-  | (Patt(_), _   ) -> false
+  | (Patt(_), args) -> distinct_vars (Array.of_list args)
   | (Abst(_,b), []) ->
       let _, b = Bindlib.unbind b in
       is_pattern b
