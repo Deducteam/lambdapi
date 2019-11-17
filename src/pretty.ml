@@ -32,21 +32,17 @@ let pp_qident : qident pp = fun oc qid ->
 let pp_path : Pos.popt -> p_module_path pp = fun pos ->
   List.pp (pp_path_elt pos) "."
 
-let pp_symtag : symtag pp = fun oc tag ->
-  Format.pp_print_string oc
-    (match tag with
-     | Sym_const -> "const"
-     | Sym_inj   -> "injective")
+let pp_expo : Terms.expo pp = fun oc e ->
+  match e with
+  | Public -> ()
+  | Protec -> Format.pp_print_string oc "protected "
+  | Privat -> Format.pp_print_string oc "private "
 
-let pp_symtags : symtag list pp = fun oc ->
-  List.iter (Format.fprintf oc " %a" pp_symtag)
-
-let pp_expotag : expotag pp = fun oc tag ->
-  Format.pp_print_string oc
-    (match tag with
-     | Symex_public    -> ""
-     | Symex_protected -> "protected"
-     | Symex_private   -> "private")
+let pp_prop : Terms.prop pp = fun oc p ->
+  match p with
+  | Defin -> ()
+  | Const -> Format.pp_print_string oc "const "
+  | Injec -> Format.pp_print_string oc "injective "
 
 let rec pp_p_term : p_term pp = fun oc t ->
   let open Parser in
@@ -188,26 +184,25 @@ let pp_command : p_command pp = fun oc cmd ->
       out "require %a as %a" (pp_path cmd.pos) p (pp_path_elt i.pos) i.elt
   | P_open(ps)                      ->
       List.iter (out "open %a" (pp_path cmd.pos)) ps
-  | P_symbol(etag,tags,s,args,a)    ->
-      out "@[<hov 2>%a symbol%a %a" pp_expotag etag pp_symtags tags
-        pp_ident s;
+  | P_symbol(e,p,s,args,a)    ->
+      out "@[<hov 2>%a%asymbol %a" pp_expo e pp_prop p pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
   | P_definition(e,_,s,args,ao,t)   ->
-      out "@[<hov 2>%a definition %a" pp_expotag e pp_ident s;
+      out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       Option.iter (out " :@ @[<hov>%a@]" pp_p_term) ao;
       out " ≔@ @[<hov>%a@]@]" pp_p_term t
-  | P_theorem(ex,st,ts,e)           ->
+  | P_theorem(e,st,ts,pe)           ->
       let (s,args,a) = st.elt in
-      out "@[<hov 2>%a theorem %a" pp_expotag ex pp_ident s;
+      out "@[<hov 2>%atheorem %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;
       out " :@ @[<2>%a@]@]@." pp_p_term a;
       out "proof@.";
       List.iter (out "  @[<hov>%a@]@." pp_p_tactic) ts;
-      out "%a" pp_p_proof_end e.elt
+      out "%a" pp_p_proof_end pe.elt
   | P_set(P_config_builtin(n,i))    ->
       out "set builtin %S ≔ %a" n pp_qident i
   | P_set(P_config_unop(unop))      ->

@@ -1,28 +1,28 @@
-symbol const U : TYPE
+constant symbol U : TYPE
 
 // Mini nat
-symbol const Nat  : U
-symbol const N : TYPE
+constant symbol Nat  : U
+constant symbol N : TYPE
 
 // Mini interpretation function
-symbol injective T : U ⇒ TYPE
+injective symbol T : U ⇒ TYPE
 rule T Nat        → N
 
-symbol const zero : T Nat
-symbol const s : N ⇒ N
+constant symbol zero : T Nat
+constant symbol s : N ⇒ N
 
 
 
 // Mini polymorphic lists
-symbol const List : U ⇒ U
+constant symbol List : U ⇒ U
 
-symbol const nil : ∀{Typ:U}, T(List Typ)
+constant symbol nil : ∀{Typ:U}, T(List Typ)
 // A version in full, without implicit arguments
-symbol const nilF : ∀(Typ:U), T(List Typ)
+constant symbol nilF : ∀(Typ:U), T(List Typ)
 
-symbol const cons : ∀{Typ:U}, T Typ ⇒ T (List Typ) ⇒ T (List Typ)
+constant symbol cons : ∀{Typ:U}, T Typ ⇒ T (List Typ) ⇒ T (List Typ)
 // A version in full, without implicit arguments
-symbol const consF : ∀(Typ:U), T Typ ⇒ T (List Typ) ⇒ T (List Typ)
+constant symbol consF : ∀(Typ:U), T Typ ⇒ T (List Typ) ⇒ T (List Typ)
 
 
 definition l1F ≔ consF Nat zero (nilF Nat)

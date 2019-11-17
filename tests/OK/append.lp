@@ -5,20 +5,20 @@
 ///  - a definition of vectors (lists of a given length),
 ///  - the usual **append** function for concatenation.
 
-symbol const A : TYPE
+constant symbol A : TYPE
 
-symbol const Nat : TYPE
+constant symbol Nat : TYPE
 
-symbol const zero : Nat
-symbol const succ : Nat ⇒ Nat
+constant symbol zero : Nat
+constant symbol succ : Nat ⇒ Nat
 
 symbol plus : Nat ⇒ Nat ⇒ Nat
 rule plus zero      &m → &m
 rule plus (succ &n) &m → succ (plus &n &m)
 
-symbol const Vec : Nat ⇒ TYPE
-symbol const nil : Vec zero
-symbol const cns : ∀ (n:Nat), A ⇒ Vec n ⇒ Vec (succ n)
+constant symbol Vec : Nat ⇒ TYPE
+constant symbol nil : Vec zero
+constant symbol cns : ∀ (n:Nat), A ⇒ Vec n ⇒ Vec (succ n)
 
 symbol append : ∀ (n:Nat) (m:Nat), Vec n ⇒ Vec m ⇒ Vec (plus n m)
 rule append _  _ nil             &l2 → &l2

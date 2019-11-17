@@ -1,4 +1,4 @@
-symbol const A : TYPE
+constant symbol A : TYPE
 
 symbol f : A ⇒ A
 private symbol a : A

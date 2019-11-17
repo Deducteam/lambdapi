@@ -71,14 +71,21 @@ module Option =
       | (None    , None    ) -> true
       | (Some(e1), Some(e2)) -> eq e1 e2
       | (_       , _       ) -> false
+
+    (** [pp pp_elt oc o] prints on the channel [oc] the element [e] with
+        [pp_elt] if [o = Some e]. *)
+    let pp : 'a pp -> 'a option pp = fun pp_elt oc o ->
+      match o with
+      | None   -> ()
+      | Some e -> pp_elt oc e
   end
 
 module List =
   struct
     include List
 
-    (** [pp pp_e sep oc l] prints the list [l] on the channel [oc] using [sep]
-        as separator, and [pp_e] for printing the elements. *)
+    (** [pp pp_elt sep oc l] prints the list [l] on the channel [oc] using
+        [sep] as separator, and [pp_elt] for printing the elements. *)
     let pp : 'a pp -> string -> 'a list pp = fun pp_elt sep oc l ->
       match l with
       | []    -> ()
@@ -212,10 +219,12 @@ module Array =
         let f x y = if not (f x y) then raise Done in
         try iter2 f a1 a2; true with Done -> false
 
-    (** [pp pp_e sep oc a] prints the array list [a] on the channel [oc] using
-        [sep] as separator, and [pp_e] for printing the elements. *)
+    (** [pp pp_elt sep oc a] prints the array list [a] on the channel [oc]
+        using [sep] as separator, and [pp_e] for printing the elements. *)
     let pp : 'a pp -> string -> 'a array pp = fun pp_elt sep oc a ->
-      List.pp pp_elt sep oc (to_list a)
+      let n = Array.length a in
+      if n > 0 then pp_elt oc a.(0);
+      for i=1 to n-1 do Format.fprintf oc "%s%a" sep pp_elt a.(i) done
 
     (** [equal eq a1 a2] tests the equality of [a1] and [a2],  comparing their
         elements with [eq]. *)

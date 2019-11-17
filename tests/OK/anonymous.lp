@@ -1,5 +1,5 @@
-symbol const T : TYPE
-symbol const U : TYPE
+constant symbol T : TYPE
+constant symbol U : TYPE
 
 definition fst : T ⇒ U ⇒ T ≔ λ x _, x
 definition snd : T ⇒ U ⇒ U ≔ λ _ x, x

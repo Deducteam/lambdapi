@@ -85,13 +85,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
-  let sym_expo s =
-    match s with
-    | Symex_public    -> Public
-    | Symex_private   -> Private
-    | Symex_protected -> Protected
-  in
-  let scope_basic exp = Scope.scope_term ~exp ss Env.empty in
+  let scope_basic exp = Scope.scope_term exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
      let ps = List.map (List.map fst) ps in
@@ -102,7 +96,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_open(ps)                  ->
      let ps = List.map (List.map fst) ps in
      (List.fold_left (handle_open cmd.pos) ss ps, None)
-  | P_symbol(e, ts, x, xs, a) ->
+  | P_symbol(e, p, x, xs, a) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
@@ -111,7 +105,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* We scope the type of the declaration. *)
-      let e = sym_expo e in
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
@@ -121,16 +114,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
         end;
-      (* We build the symbol declaration mode from the tags. *)
-      let m =
-        match ts with
-        | []              -> Defin
-        | Sym_const :: [] -> Const
-        | Sym_inj   :: [] -> Injec
-        | _               -> fatal cmd.pos "Multiple symbol tags."
-      in
       (* Actually add the symbol to the signature and the state. *)
-      let s = Sign.add_symbol ss.signature ~sym_expo:e m x a impl in
+      let s = Sign.add_symbol ss.signature e p x a impl in
       out 3 "(symb) %s\n" s.sym_name;
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
@@ -168,7 +153,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       if Sign.mem ss.signature x.elt then
         fatal x.pos "Symbol [%s] already exists." x.elt;
       (* Desugaring of arguments and scoping of [t]. *)
-      let e = sym_expo e in
       let t = if xs = [] then t else Pos.none (P_Abst(xs, t)) in
       let t = scope_basic e t in
       (* Desugaring of arguments and computation of argument impliciteness. *)
@@ -202,7 +186,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature ~sym_expo:e Defin x a impl in
+      let s = Sign.add_symbol ss.signature e Defin x a impl in
       out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
@@ -217,7 +201,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Obtaining the implicitness of arguments. *)
       let impl = Scope.get_implicitness a in
       (* Scoping the type (statement) of the theorem. *)
-      let a = scope_basic (sym_expo e) a in
+      let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
@@ -241,7 +225,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature Const x a impl in
+            let s = Sign.add_symbol ss.signature e Const x a impl in
             out 3 "(symb) %s (admit)\n" s.sym_name;
             wrn cmd.pos "Proof admitted.";
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
@@ -253,7 +237,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 fatal cmd.pos "The proof is not finished."
               end;
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature Const x a impl in
+            let s = Sign.add_symbol ss.signature e Const x a impl in
             out 3 "(symb) %s (qed)\n" s.sym_name;
             {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
       in

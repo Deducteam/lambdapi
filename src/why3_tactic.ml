@@ -180,7 +180,9 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Get the meta type of the current goal (with quantified context). *)
   let trm = !((Proof.Goal.get_meta g).meta_type) in
   (* Add the axiom to the current signature. *)
-  let a = Sign.add_symbol ss.signature Const (Pos.none axiom_name) trm [] in
+  let a =
+    Sign.add_symbol ss.signature Privat Const (Pos.none axiom_name) trm []
+  in
   (* Tell the user that the goal is proved (verbose 2). *)
   if !log_enabled then log_why3 "goal proved: axiom [%s] created" axiom_name;
   (* Return the variable terms of each item in the context. *)
