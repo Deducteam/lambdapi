@@ -218,6 +218,18 @@ module TvarHashtbl = Hashtbl.Make(TvarHash)
     {!constructor:Tree_types.TC.Vari}. *)
 let varmap : int TvarHashtbl.t = TvarHashtbl.create 0
 
+(** [store_bound v] stores [v] in {!val:varmap} creating a unique id if
+    needed. *)
+let store_bound : tvar -> unit =
+  let open Pervasives in
+  let vid : int ref = ref 0 in
+  fun v ->
+    if not (TvarHashtbl.mem varmap v) then
+    begin
+      incr vid;
+      TvarHashtbl.add varmap v !vid
+    end
+
 (** Prefix of bound variables. *)
 let var_prefix = "var"
 
@@ -481,6 +493,7 @@ module CM = struct
           let id =
             try TvarHashtbl.find varmap x
             with Not_found -> assert false
+            (* A [Vari] should have been introduced by an [Abst]. *)
           in
           Some(TC.Vari(id), e)
       | _                                -> None
@@ -720,11 +733,7 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
         let var = Bindlib.new_var mkfree var_prefix in
-        begin
-          (* Store and create identifier for the variable. *)
-          Pervasives.incr vid;
-          TvarHashtbl.add varmap var Pervasives.(!vid)
-        end;
+        store_bound var;
         let (positions, clauses) = CM.abstract swap var positions updated in
         Some(var, compile CM.{clauses ; slot ; positions})
       in

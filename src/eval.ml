@@ -290,7 +290,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 match abstraction with
                 | None         -> default ()
                 | Some(fv, tr) ->
-                    let nfv = Bindlib.new_var mkfree (Tree.var_prefix) in
+                    let nfv = Bindlib.new_var mkfree Tree.var_prefix in
                     (* Get the id set during tree build. *)
                     let id = Tree.TvarHashtbl.find Tree.varmap fv in
                     (* And associate it to the new variable. *)

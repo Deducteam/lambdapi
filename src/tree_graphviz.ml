@@ -51,7 +51,7 @@
     - [✓] if the operation to go from a conditional node to another node is
       the assumption of satisfaction of the constraint indicated as label of
       the condition node;
-    - [✗] if the operation to go form a conditional node to another node is
+    - [✗] if the operation to go from a conditional node to another node is
       the assumption of failure of satisfaction of the constraint indicated as
       label of the condition node. *)
 
