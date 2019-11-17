@@ -2,7 +2,7 @@ See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.
 
 ### VSCode
 
-There is an extension for VSCode 1.37 derived from VSCoq. To
+There is an extension for VSCode >= 1.37 derived from VSCoq. To
 install it do from the `lambdapi` repository:
 
 ```bash

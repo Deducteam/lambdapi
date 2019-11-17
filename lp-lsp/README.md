@@ -15,7 +15,7 @@ The resulting binary will be in `../_build/install/default/bin/lp-lsp`
 
 ## Using with VSCode
 
-There is an extension for VSCode 1.37 derived from VSCoq. To install do:
+There is an extension for VSCode >= 1.37 derived from VSCoq. To install do:
 
 ```bash
 cd editors/vscode/
