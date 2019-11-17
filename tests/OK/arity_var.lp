@@ -7,9 +7,9 @@ rule F 0      → N
 
 symbol c : ∀ n, F n
 
-symbol const R : TYPE
-symbol const r : R
-symbol const s : R
+constant symbol R : TYPE
+constant symbol r : R
+constant symbol s : R
 
 symbol f : N ⇒ R
 rule f (c 0)   → r

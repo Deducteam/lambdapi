@@ -1,16 +1,16 @@
 // Data type of booleans.
 
-symbol const B : TYPE
+constant symbol B : TYPE
 
-symbol const true  : B
-symbol const false : B
+constant symbol true  : B
+constant symbol false : B
 
 // Data type of natural numbers.
 
-symbol const N : TYPE
+constant symbol N : TYPE
 
-symbol const z : N
-symbol const s : N ⇒ N
+constant symbol z : N
+constant symbol s : N ⇒ N
 
 set builtin "0"  ≔ z
 set builtin "+1" ≔ s
@@ -31,27 +31,27 @@ rule mul (s &x) &y → add &y (mul &x &y)
 
 // Type of data type codes and their interpretation as types.
 
-symbol const U : TYPE
+constant symbol U : TYPE
 
 symbol T : U ⇒ TYPE
 
-symbol const bool : U
-symbol const nat  : U
+constant symbol bool : U
+constant symbol nat  : U
 
 rule T bool → B
 rule T nat  → N
 
-symbol const pi : ∀ (a : U), (T a ⇒ U) ⇒ U
+constant symbol pi : ∀ (a : U), (T a ⇒ U) ⇒ U
 
 rule T (pi &a &f) → ∀ (x : T &a), T (&f x)
 
 // Type of propositions and their interpretation as types.
 
-symbol const Prop : TYPE
+constant symbol Prop : TYPE
 
 symbol P : Prop ⇒ TYPE
 
-symbol const all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
+constant symbol all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
 
 rule P (all &a &f) → ∀ (x : T &a), P (&f x)
 
@@ -73,11 +73,11 @@ rule beq (s _ ) z      → false
 
 // Leibniz equality.
 
-symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol eq : ∀a, T a ⇒ T a ⇒ Prop
 
-symbol const refl : ∀a x, P (eq a x x)
+constant symbol refl : ∀a x, P (eq a x x)
 
-symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+constant symbol eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 // FIXME Try to infer the type of p.
 
 // Setting up builtins for rewrite.

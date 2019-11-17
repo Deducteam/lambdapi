@@ -153,11 +153,11 @@ let _as_         = KW.create "as"
 let _assert_     = KW.create "assert"
 let _assertnot_  = KW.create "assertnot"
 let _compute_    = KW.create "compute"
-let _const_      = KW.create "const"
+let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
 let _focus_      = KW.create "focus"
 let _in_         = KW.create "in"
-let _inj_        = KW.create "injective"
+let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
 let _let_        = KW.create "let"
 let _open_       = KW.create "open"
@@ -321,14 +321,14 @@ let parser path = m:path_elem ms:{"." path_elem}* $ -> m::ms
 let parser qident = mp:{path_elem "."}* id:any_ident -> in_pos _loc (mp,id)
 
 (** [symtag] parses a single symbol tag. *)
-let parser symtag =
-  | _const_ -> Sym_const
-  | _inj_   -> Sym_inj
+let parser property =
+  | _constant_  -> Terms.Const
+  | _injective_ -> Terms.Injec
 
 (** [exposition] parses the exposition tag of a symbol.*)
 let parser exposition =
-  | _protected_ -> Symex_protected
-  | _private_   -> Symex_private
+  | _protected_ -> Terms.Protec
+  | _private_   -> Terms.Privat
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
@@ -573,14 +573,14 @@ let parser cmd =
   | _open_ ps:path+
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
-  | e:exposition? _symbol_ l:symtag* s:ident al:arg* ":" a:term
-      -> P_symbol(Option.get e Symex_public,l,s,al,a)
+  | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
+      -> P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(Option.get e Symex_public,false,s,al,ao,t)
-  | ex:exposition? st:statement (ts,e):proof
-      -> P_theorem(Option.get ex Symex_public,st,ts,e)
+      -> P_definition(Option.get e Terms.Public,false,s,al,ao,t)
+  | e:exposition? st:statement (ts,pe):proof
+      -> P_theorem(Option.get e Terms.Public,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query

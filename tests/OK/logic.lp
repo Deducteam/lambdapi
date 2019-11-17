@@ -3,17 +3,17 @@ require open tests.OK.nat
 
 // Type of data type.
 
-symbol const U : TYPE
+constant symbol U : TYPE
 
 // Interpretation function (for data types as types).
 
-symbol injective T : U ⇒ TYPE
+injective symbol T : U ⇒ TYPE
 
 // Examples of data types and their interpretations.
 
-symbol const bool : U
-symbol const nat  : U
-symbol const pi   : ∀ (a : U), (T a ⇒ U) ⇒ U
+constant symbol bool : U
+constant symbol nat  : U
+constant symbol pi   : ∀ (a : U), (T a ⇒ U) ⇒ U
 
 rule T bool       → B
 rule T nat        → N
@@ -21,13 +21,13 @@ rule T (pi &a &f) → ∀ (x : T &a), T (&f x)
 
 // Type of propositions and their interpretation as types.
 
-symbol const Prop : TYPE
+constant symbol Prop : TYPE
 
-symbol const all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
+constant symbol all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
 
 // Interpretation function (for propositions as types).
 
-symbol injective P : Prop ⇒ TYPE
+injective symbol P : Prop ⇒ TYPE
 
 rule P (all &a &f) → ∀ (x : T &a), P (&f x)
 
@@ -47,18 +47,18 @@ rule nat_ind &p &u &v (s &n) → &v &n (nat_ind &p &u &v &n)
 
 // Leibniz equality.
 
-symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol eq : ∀a, T a ⇒ T a ⇒ Prop
 
-symbol const refl  : ∀a x, P (eq a x x)
-symbol const eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+constant symbol refl  : ∀a x, P (eq a x x)
+constant symbol eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
 
 // Definition of connectors
-symbol const bot        : Prop
-symbol const top        : Prop
-symbol const imp        : Prop ⇒ Prop ⇒ Prop
-symbol const {|and|}    : Prop ⇒ Prop ⇒ Prop
-symbol const or         : Prop ⇒ Prop ⇒ Prop
-symbol const not        : Prop ⇒ Prop
+constant symbol bot        : Prop
+constant symbol top        : Prop
+constant symbol imp        : Prop ⇒ Prop ⇒ Prop
+constant symbol {|and|}    : Prop ⇒ Prop ⇒ Prop
+constant symbol or         : Prop ⇒ Prop ⇒ Prop
+constant symbol not        : Prop ⇒ Prop
 
 // Axioms of Classical Natural Deduction
 

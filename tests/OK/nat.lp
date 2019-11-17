@@ -2,10 +2,10 @@ require open tests.OK.bool
 
 // Data type of natural numbers.
 
-symbol const N : TYPE
+constant symbol N : TYPE
 
-symbol const z : N
-symbol const s : N ⇒ N
+constant symbol z : N
+constant symbol s : N ⇒ N
 
 // Enabling built-in natural number literal, and example.
 

@@ -1,3 +1,3 @@
 require tests.OK.{|'test'|} as test
 
-symbol const e : test.T
+constant symbol e : test.T

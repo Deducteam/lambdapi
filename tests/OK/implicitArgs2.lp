@@ -1,20 +1,20 @@
-symbol const U : TYPE
+constant symbol U : TYPE
 
 // Mini nat
-symbol const Nat  : U
-symbol const N : TYPE
+constant symbol Nat  : U
+constant symbol N : TYPE
 
 // Mini interpretation function
-symbol injective T : U ⇒ TYPE
+injective symbol T : U ⇒ TYPE
 rule T Nat        → N
 
-symbol const zero : T Nat
-symbol const s : N ⇒ N
+constant symbol zero : T Nat
+constant symbol s : N ⇒ N
 
 
-symbol const id : ∀{Typ:U}, T Typ ⇒ T Typ
+constant symbol id : ∀{Typ:U}, T Typ ⇒ T Typ
 // A version in full, without implicit arguments
-symbol const idF : ∀(Typ:U), T Typ ⇒ T Typ
+constant symbol idF : ∀(Typ:U), T Typ ⇒ T Typ
 
 // We would like to do :
 // definition zero2 ≔ id zero

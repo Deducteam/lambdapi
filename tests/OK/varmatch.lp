@@ -1,6 +1,6 @@
-symbol const A : TYPE
+constant symbol A : TYPE
 
-symbol const id : A ⇒ A
+constant symbol id : A ⇒ A
 symbol f : (A ⇒ A) ⇒ (A ⇒ A)
 rule f (λ x, x) → id
 
