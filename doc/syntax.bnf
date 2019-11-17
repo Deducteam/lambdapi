@@ -65,12 +65,11 @@ reserved "TYPE"
 <qident> ::=
   | {<ident> "."}* <ident>
 
-<symtag> ::=
-  | "const"
+<property> ::=
+  | "constant"
   | "injective"
 
 <exposition> ::=
-  | "public"
   | "protected"
   | "private"
 
@@ -151,7 +150,7 @@ reserved "TYPE"
   | "require" "open"? <path>
   | "open" <path>
   // Define a new symbol
-  | <exposition>? "symbol" <symtag>* <ident> <arg>* ":" <type>
+  | <exposition>? <property>? "symbol" <ident> <arg>* ":" <type>
   // Define a new rewriting rule
   | "rule" <rule> {"and" <rule>}*
   // Definition of a symbol or theorem

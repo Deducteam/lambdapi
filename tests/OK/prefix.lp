@@ -1,4 +1,4 @@
-symbol const B : TYPE
+constant symbol B : TYPE
 
 symbol conj : B ⇒ B ⇒ B
 symbol disj : B ⇒ B ⇒ B

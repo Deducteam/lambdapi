@@ -1,8 +1,8 @@
-symbol const Type : TYPE
-symbol injective eta : Type ⇒ TYPE
+constant symbol Type : TYPE
+injective symbol eta : Type ⇒ TYPE
 
 // function type
-symbol const Ar : Type ⇒ Type ⇒ Type
+constant symbol Ar : Type ⇒ Type ⇒ Type
 set infix right 6 ">" ≔ Ar
 rule eta (&a > &b) → eta &a ⇒ eta &b
 

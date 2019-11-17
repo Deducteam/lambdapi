@@ -101,44 +101,53 @@ let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
 (* Equality on *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol const B : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
   List.equal Command.equal c c
 
 (* Equality not *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol const B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "symbol const C : TYPE" in
+  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "constant symbol C : TYPE" in
   not (List.equal Command.equal c d)
 
 (* Equality is not sensitive to whitespace *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "symbol   const  B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "  symbol const B :   TYPE " in
+  let (c,_) = parse_text st "foo.lp" "constant   symbol  B : TYPE" in
+  let (d,_) = parse_text st "foo.lp" "  constant symbol B :   TYPE " in
   List.equal Command.equal c d
 
 (* More complex test stressing most commands *)
 let%test _ =
   let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "
-symbol const B : TYPE
+  let (c,_) = parse_text st "foo.lp"
+                (* copied from tests/OK/foo.lp. keep in sync. *)
+"constant symbol B : TYPE
 
-symbol const true  : B
-symbol const false : B
-symbol bool_neg : B ⇒ B
+constant symbol true  : B
+constant symbol false : B
 
-rule bool_neg true  → false
-rule bool_neg false → true
+symbol neg : B ⇒ B
 
-symbol const Prop : TYPE
-symbol injective P : Prop ⇒ TYPE
+rule neg true  → false
+rule neg false → true
 
-symbol const eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol Prop : TYPE
 
-theorem notK : ∀a, P (eq bool (bool_neg (bool_neg a)) a)
+injective symbol P : Prop ⇒ TYPE
+
+constant symbol eq : B ⇒ B ⇒ Prop
+constant symbol refl b : P (eq b b)
+
+constant symbol case (p : B⇒Prop) : P (p true) ⇒ P (p false) ⇒ ∀b, P b
+
+theorem notK : ∀b, P (eq (neg (neg b)) b)
 proof
-   assume a
+  assume b
+  apply case (λb, eq (neg (neg b)) b)
+  apply refl
+  apply refl
 qed
 " in
   List.equal Command.equal c c

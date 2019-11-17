@@ -40,7 +40,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   (* Obtaining the goal environment and type. *)
   let (env, a) = Proof.Goal.get_type g in
 
-  let scope = scope_term ss env in
+  let scope = scope_term Public ss env in
   let infer t = Typing.infer ss.builtins (Ctxt.of_env env) t in
   let check t a = Typing.check ss.builtins (Ctxt.of_env env) t a in
 
