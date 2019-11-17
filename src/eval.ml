@@ -154,6 +154,19 @@ and eq_modulo : term -> term -> bool = fun a b ->
     The [bound] array is similar to the [vars] array except that it is used to
     save terms with free variables. *)
 
+(** {b NOTE} bound variables involve three elements:
+    1. a {!constructor:Terms.term.Abst} which introduces the bound variable in
+       the term;
+    2. a {!constructor:Terms.term.Vari} which is the bound variable previously
+       introduced;
+    3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
+       representation of a variable for trees.
+
+    Regarding reentrancy: each time an abstraction is matched, a fresh
+    variable is created. If fresh variable [w] represents the variable [v]
+    stored in the tree, the equality of the tree constructors for [v] and [w]
+    must be ensured (for the correctness of the matching). *)
+
 (** [tree_walk tree stk] tries to apply a rewriting rule by matching the stack
     [stk] agains the decision tree [tree]. The resulting state of the abstract
     machine is returned in case of success. Even if mathching fails, the stack
@@ -163,6 +176,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
+  let vid = Tree.TvarHashtbl.create 0 in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
      cursor indicating where to write in the [env] array described in
      {!module:Terms} as the environment of the RHS during matching.  [m]
@@ -261,9 +275,11 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 with Not_found -> default ()
               end
           | Vari(x)    ->
-              let cons = TC.Vari(Bindlib.name_of x) in
               begin
                 try
+                  let id = Tree.TvarHashtbl.find vid x in
+                  (* If raise Not_found, variable wasn't introduced by abst *)
+                  let cons = TC.Vari(id) in
                   let matched = TCMap.find cons children in
                   let stk = List.reconstruct left args right in
                   walk matched stk cursor fresh_vars
@@ -274,7 +290,11 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 match abstraction with
                 | None         -> default ()
                 | Some(fv, tr) ->
-                    let nfv = Bindlib.new_var mkfree (Bindlib.name_of fv) in
+                    let nfv = Bindlib.new_var mkfree (Tree.var_prefix) in
+                    (* Get the id set during tree build. *)
+                    let id = Tree.TvarHashtbl.find Tree.varmap fv in
+                    (* And associate it to the new variable. *)
+                    Tree.TvarHashtbl.add vid nfv id;
                     let bound = Bindlib.subst b (mkfree nfv) in
                     let u = bound :: args in
                     let fresh_vars = VarMap.add fv nfv fresh_vars in

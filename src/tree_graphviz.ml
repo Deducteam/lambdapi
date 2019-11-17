@@ -60,6 +60,16 @@ open Extra
 open Terms
 open Tree_types
 
+(** [name_of v] returns a friendly and unique name of variable [v] using
+    {!val:Tree.varmap}. *)
+let name_of : tvar -> string =
+  fun v ->
+  let id =
+    try Tree.TvarHashtbl.find Tree.varmap v
+    with Not_found -> assert false
+  in
+  Tree.var_prefix ^ (string_of_int id)
+
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa (* Default case *)
@@ -79,10 +89,10 @@ let to_dot : string -> sym -> unit = fun fname s ->
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
       match dh with
-      | DotAbst(v)           -> out "λ%a" Print.pp_tvar v
+      | DotAbst(v)           -> out "λ%s" (name_of v)
       | DotDefa              -> out "*"
       | DotCons(Symb(a,n,_)) -> out "%s<sub>%d</sub>" n a
-      | DotCons(Vari(s))     -> out "%s" s
+      | DotCons(Vari(i))     -> out "%d" i
       | DotCons(Abst)        -> assert false
       | DotSuccess           -> out "✓"
       | DotFailure           -> out "✗"
@@ -90,7 +100,8 @@ let to_dot : string -> sym -> unit = fun fname s ->
     let pp_tcstr : term tree_cond pp = fun oc cstr ->
       let out fmt = Format.fprintf oc fmt in
       let pp_ar oc ar =
-        Format.pp_print_list Print.pp_tvar oc (Array.to_list ar)
+        Format.pp_print_list Format.pp_print_string oc
+          (Array.to_list ar |> List.map name_of)
       in
       match cstr with
       | CondNL(i, j) -> out "%d ≡ %d" i j

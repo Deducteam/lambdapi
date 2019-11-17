@@ -15,16 +15,6 @@ open Tree_types
     decision trees. *)
 let rule_order : bool Pervasives.ref = Pervasives.ref false
 
-(** [make_fresh_varname ()] creates a new variable name. This is used in
-    the {!val:compile} function, and the names are visible in the decision
-    trees when the matching is performed on an abstraction or a free
-    variable. *)
-let make_fresh_varname : unit -> string =
-  let c : int ref = ref 0 in
-  fun () ->
-    incr c;
-    "var" ^ (string_of_int !c)
-
 (** {1 Types for decision trees}
 
     The types involved in the definition of decision trees are given in module
@@ -211,6 +201,28 @@ module CP = struct
     if res = None then choose_vf pools else res
 end
 
+(** {1 Variable referencing and display} *)
+
+(** Hashable term variables. *)
+module TvarHash =
+struct
+  type t = tvar
+  let equal = Bindlib.eq_vars
+  let hash = Bindlib.hash_var
+end
+
+(** Hashtable of term variables. *)
+module TvarHashtbl = Hashtbl.Make(TvarHash)
+
+(** Associates to each variable an identifier to be used by
+    {!constructor:Tree_types.TC.Vari}. *)
+let varmap : int TvarHashtbl.t = TvarHashtbl.create 0
+
+(** Prefix of bound variables. *)
+let var_prefix = "var"
+
+(** A counter for identifiers. TODO hide it in a [store] function. *)
+let vid : int Pervasives.ref = Pervasives.ref 0
 
 (** {1 Clause matrix and pattern matching problem} *)
 
@@ -462,12 +474,16 @@ module CM = struct
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
-      | Symb({ sym_name ; sym_path ; _ }, _) ->
+      | Symb({sym_name; sym_path; _}, _) ->
           Some(TC.Symb(arity, sym_name, sym_path), e)
-      | Abst(_, _)                           -> Some(Abst, e)
-      | Vari(x)                              ->
-          Some(Vari(Bindlib.name_of x), e)
-      | _                                    -> None
+      | Abst(_)                          -> Some(Abst, e)
+      | Vari(x)                          ->
+          let id =
+            try TvarHashtbl.find varmap x
+            with Not_found -> assert false
+          in
+          Some(TC.Vari(id), e)
+      | _                                -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
@@ -703,7 +719,12 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       (* Abstraction specialisation*)
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
-        let var = Bindlib.new_var mkfree (make_fresh_varname ()) in
+        let var = Bindlib.new_var mkfree var_prefix in
+        begin
+          (* Store and create identifier for the variable. *)
+          Pervasives.incr vid;
+          TvarHashtbl.add varmap var Pervasives.(!vid)
+        end;
         let (positions, clauses) = CM.abstract swap var positions updated in
         Some(var, compile CM.{clauses ; slot ; positions})
       in

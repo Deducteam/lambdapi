@@ -13,8 +13,8 @@ module TC =
       (** Symbol with its effective arity, name and module path. *)
       | Abst
       (** Abstraction (no arguments, patterns are in β-normal form). *)
-      | Vari of string
-      (** A bound variable represented using a name. *)
+      | Vari of int
+      (** A bound variable identified by a unique integer. *)
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -26,7 +26,7 @@ module TC =
     let pp : t pp = fun oc c ->
       match c with
       | Abst        -> Format.fprintf oc "λ"
-      | Vari(s)     -> Format.pp_print_string oc s
+      | Vari(d)     -> Format.pp_print_int oc d
       | Symb(a,s,_) -> Format.fprintf oc "%s %d-ary" s a
 
     (** [compare c1 c2] implements a total order on constructors. *)
