@@ -203,16 +203,12 @@ end
 
 (** {1 Variable referencing and display} *)
 
-(** Hashable term variables. *)
-module TvarHash =
-struct
-  type t = tvar
-  let equal = Bindlib.eq_vars
-  let hash = Bindlib.hash_var
-end
-
 (** Hashtable of term variables. *)
-module TvarHashtbl = Hashtbl.Make(TvarHash)
+module TvarHashtbl = Hashtbl.Make(struct
+    type t = tvar
+    let equal = Bindlib.eq_vars
+    let hash = Bindlib.hash_var
+  end)
 
 (** Associates to each variable an identifier to be used by
     {!constructor:Tree_types.TC.Vari}. *)
