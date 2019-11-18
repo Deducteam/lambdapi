@@ -243,8 +243,8 @@ let distinct_vars : term array -> bool =
 (** [is_pattern t] tells whether term [t] is a valid pattern. *)
 let rec is_pattern : term -> bool = fun t ->
   match get_args t with
-  | (Patt(_,_,ts), []  ) -> distinct_vars ts
-  | (Patt(_)     , args) -> distinct_vars (Array.of_list args)
+  | (Patt(_,_,ts), args) ->
+      distinct_vars (Array.append ts (Array.of_list args))
   | (Abst(_,b)   , []  ) -> is_pattern (snd (Bindlib.unbind b))
   | (_           , args) -> List.for_all is_pattern args
 
