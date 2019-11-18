@@ -229,9 +229,6 @@ let store_bound : tvar -> unit =
 (** Prefix of bound variables. *)
 let var_prefix = "var"
 
-(** A counter for identifiers. TODO hide it in a [store] function. *)
-let vid : int Pervasives.ref = Pervasives.ref 0
-
 (** {1 Clause matrix and pattern matching problem} *)
 
 (** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
