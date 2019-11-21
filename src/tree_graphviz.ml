@@ -62,13 +62,9 @@ open Tree_types
 
 (** [name_of v] returns a friendly and unique name of variable [v] using
     {!val:Tree.varmap}. *)
-let name_of : tvar -> string =
-  fun v ->
-  let id =
-    try Tree.TvarHashtbl.find Tree.varmap v
-    with Not_found -> assert false
-  in
-  Tree.var_prefix ^ (string_of_int id)
+let name_of : tvar -> string = fun v ->
+  let id = Tree.TvarHashtbl.find Tree.varmap v in
+  Tree.var_prefix ^ string_of_int id
 
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
