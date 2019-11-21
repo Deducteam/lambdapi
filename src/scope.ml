@@ -426,7 +426,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
-  let (pvs    , _ ) = patt_vars p_rhs in
+  let (pvs_rhs, _ ) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
   (* Check that the meta-variables of the RHS exist in the LHS. *)
   let check_in_lhs (m,i) =
@@ -436,11 +436,11 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     in
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
-  List.iter check_in_lhs pvs;
+  List.iter check_in_lhs pvs_rhs;
   (* Get the non-linear variables not in the RHS. *)
-  let nl = List.filter (fun m -> not (List.mem_assoc m pvs)) nl in
+  let nl = List.filter (fun m -> not (List.mem_assoc m pvs_rhs)) nl in
   (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
-  let pvs = pvs @ (List.map (fun m -> (m, List.assoc m pvs_lhs)) nl) in
+  let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
@@ -452,14 +452,14 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with
-    | Symb(s,_) when is_constant s                      ->
+    | Symb(s,_) when is_constant s                  ->
         fatal p_lhs.pos "Constant LHS head symbol."
     | Symb(({sym_expo=Protec; sym_path; _} as s),h) ->
         if ss.signature.sign_path <> sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols."
         else (s, h, args)
-    | Symb(s,h)                                      -> (s, h, args)
-    | _                                              ->
+    | Symb(s,h)                                     -> (s, h, args)
+    | _                                             ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] && !verbose > 1 then
