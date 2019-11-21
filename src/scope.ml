@@ -180,12 +180,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (h, args) = Syntax.get_args t in
-    (* Check whether application is marked as explicit in the head symbol. *)
-    let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
+    let (p_head, args) = Syntax.get_args t in
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env h in
+    let h = scope_head env p_head in
     let impl =
+      (* Check whether application is marked as explicit in head symbol. *)
+      let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
@@ -195,9 +195,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Build the application of [h] to [args], inserting implicit arguments. *)
   and add_impl env loc h impl args =
     let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t =
-      _Appl t (scope_head env (Pos.none P_Wild))
-    in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -311,7 +309,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             (* If the pattern variable is applied to every bound variables and
                if it has no reserved index then it is useless. *)
             if !verbose > 1 && List.length env = Array.length vs then
-              wrn t.pos "&%s replaced by a wildcard." id.elt;
+              wrn t.pos "&%s could be replaced by a wildcard." id.elt;
             None
         in
         _Patt i id.elt (Array.map Bindlib.box_var vs)
