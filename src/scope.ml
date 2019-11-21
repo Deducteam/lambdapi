@@ -293,7 +293,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           match unfold (Bindlib.unbox (scope env t)) with
           | Vari(x) -> x
           | _       -> fatal t.pos "Only bound variables are allowed in the \
-                                    environment of a &%s." id.elt
+                                    environment of &%s." id.elt
         in
         let vs = Array.map scope_var ts in
         (* Check that [vs] are distinct variables. *)
@@ -311,7 +311,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             (* If the pattern variable is applied to every bound variables and
                if it has no reserved index then it is useless. *)
             if !verbose > 1 && List.length env = Array.length vs then
-              wrn t.pos "&%s could be replaced by a wildcard." id.elt;
+              wrn t.pos "&%s replaced by a wildcard." id.elt;
             None
         in
         _Patt i id.elt (Array.map Bindlib.box_var vs)
