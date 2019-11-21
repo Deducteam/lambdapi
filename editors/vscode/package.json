@@ -41,7 +41,7 @@
       {
         "language": "lp",
         "scopeName": "source.lp",
-        "path": "./syntaxes/lp.tmLanguage"
+        "path": "./syntaxes/lp.tmLanguage.json"
       }
     ],
     "configuration": {
