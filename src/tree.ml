@@ -705,10 +705,11 @@ let compile : CM.t -> tree = fun m ->
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
         let var = Bindlib.new_var mkfree var_prefix in
+        let id = !count in
         incr count;
-        let vars_id = VarMap.add var !count vars_id in
+        let vars_id = VarMap.add var id vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
-        Some(var, !count, compile vars_id CM.{clauses ; slot ; positions})
+        Some(var, id, compile vars_id CM.{clauses ; slot ; positions})
       in
       Node({swap ; store ; children ; abstraction ; default})
   in

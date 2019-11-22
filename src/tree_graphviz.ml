@@ -118,19 +118,19 @@ let to_dot : string -> sym -> unit = fun fname s ->
           TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
           Option.iter (fun (v,x,t) -> write_tree tag (DotAbst(v, x)) t) abs;
           Option.iter (write_tree tag DotDefa) default
-      | Cond({ ok ; cond ; fail }) ->
+      | Cond({ ok ; cond ; fail })                              ->
           let tag = !node_count in
           out "@ %d [label=<%a> shape=\"diamond\"];" tag pp_tcstr cond;
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotSuccess ok;
           write_tree tag DotFailure fail
-      | Eos(l,r)    ->
+      | Eos(l,r)                                                ->
           let tag = !node_count in
           out "@ %d [label=\"\" shape=\"triangle\"];" tag;
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotFailure l;
           write_tree tag DotSuccess r
-      | Fail        ->
+      | Fail                                                    ->
           out "@ %d [label=<!>];" !node_count;
           out "@ %d -- %d [label=\"!\"];" father_l !node_count
     in
@@ -138,12 +138,11 @@ let to_dot : string -> sym -> unit = fun fname s ->
     begin
       match tree with
       (* First step must be done to avoid drawing a top node. *)
-      | Node({ swap ; store ; children; default ; abstraction }) ->
+      | Node({swap; store; children; default; abstraction=abs}) ->
           out "@ 0 [label=\"@%d\"%s];" swap
             (if store then " shape=\"box\"" else "");
           TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
-          Option.iter (fun (v,x,t) -> write_tree 0 (DotAbst(v,x)) t)
-            abstraction;
+          Option.iter (fun (v,x,t) -> write_tree 0 (DotAbst(v,x)) t) abs;
           Option.iter (fun t -> write_tree 0 DotDefa t) default
       | Leaf(_) -> ()
       | _       -> assert false
