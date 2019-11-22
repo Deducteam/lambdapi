@@ -11,10 +11,8 @@ module TC =
     type t =
       | Symb of int * string * Files.module_path
       (** Symbol with its effective arity, name and module path. *)
-      | Abst
-      (** Abstraction (no arguments, patterns are in β-normal form). *)
       | Vari of int
-      (** A bound variable identified by a unique integer. *)
+      (** A bound variable identified by a (tree-wise) unique integer. *)
 
     (** {b NOTE} the effective arity carried by the representation of a symbol
         is specific to a given symbol instance. Indeed, a symbol (in the sense
@@ -25,7 +23,6 @@ module TC =
     (** [pp oc c] prints tree constructor [c] to output channel [o]. *)
     let pp : t pp = fun oc c ->
       match c with
-      | Abst        -> Format.fprintf oc "λ"
       | Vari(d)     -> Format.pp_print_int oc d
       | Symb(a,s,_) -> Format.fprintf oc "%s %d-ary" s a
 

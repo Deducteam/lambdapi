@@ -458,7 +458,6 @@ module CM = struct
       match h with
       | Symb({sym_name; sym_path; _}, _) ->
           Some(TC.Symb(arity, sym_name, sym_path), e)
-      | Abst(_)                          -> Some(Abst, e)
       | Vari(x)                          ->
         Some(TC.Vari(VarMap.find x vars_id), e)
       | _                                -> None
@@ -681,12 +680,12 @@ let compile : CM.t -> tree = fun m ->
       let store = CM.store pats swap in
       let updated = List.map (CM.update_aux swap slot positions) clauses in
       let slot = if store then slot + 1 else slot in
-      let cons = CM.get_cons vars_id (CM.get_col swap pats) in
+      let column = CM.get_col swap pats in
+      let cons = CM.get_cons vars_id column in
       (* Constructors specialisation *)
       let children =
         let compile = compile vars_id in
         let fn acc (tr_cons, te_cons) =
-          if tr_cons = TC.Abst then acc else
           let (positions, clauses) =
             CM.specialize te_cons swap positions updated
           in
@@ -703,7 +702,8 @@ let compile : CM.t -> tree = fun m ->
       in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
+        let is_abst = function Abst(_) -> true | _ -> false in
+        if List.for_all (fun x -> not (is_abst x)) column then None else
         let var = Bindlib.new_var mkfree var_prefix in
         let id = !count in
         incr count;
