@@ -201,31 +201,6 @@ module CP = struct
     if res = None then choose_vf pools else res
 end
 
-(** {1 Variable referencing and display} *)
-
-(** Hashtable of term variables. *)
-module TvarHashtbl = Hashtbl.Make(struct
-    type t = tvar
-    let equal = Bindlib.eq_vars
-    let hash = Bindlib.hash_var
-  end)
-
-(** Associates to each variable an identifier to be used by
-    {!constructor:Tree_types.TC.Vari}. *)
-let varmap : int TvarHashtbl.t = TvarHashtbl.create 0
-
-(** [store_bound v] stores [v] in {!val:varmap} creating a unique id if
-    needed. *)
-let store_bound : tvar -> unit =
-  let open Pervasives in
-  let vid : int ref = ref 0 in
-  fun v ->
-    if not (TvarHashtbl.mem varmap v) then
-    begin
-      incr vid;
-      TvarHashtbl.add varmap v !vid
-    end
-
 (** Prefix of bound variables. *)
 let var_prefix = "var"
 
@@ -473,9 +448,11 @@ module CM = struct
       | Some(c) -> Condition(c)
       | None    -> Specialise(0)
 
-  (** [get_cons l] returns a list of unique (and sorted) tuples containing
-      tree construcors and the original term. *)
-  let get_cons : term list -> (TC.t * term) list = fun telst ->
+  (** [get_cons id l] returns a list of unique (and sorted) tuples containing
+      tree construcors from [l] and the original term. Variables are assigned
+      id [id]. *)
+  let get_cons : int VarMap.t -> term list -> (TC.t * term) list =
+    fun vars_id telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
@@ -483,12 +460,7 @@ module CM = struct
           Some(TC.Symb(arity, sym_name, sym_path), e)
       | Abst(_)                          -> Some(Abst, e)
       | Vari(x)                          ->
-          let id =
-            try TvarHashtbl.find varmap x
-            with Not_found -> assert false
-            (* A [Vari] should have been introduced by an [Abst]. *)
-          in
-          Some(TC.Vari(id), e)
+        Some(TC.Vari(VarMap.find x vars_id), e)
       | _                                -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
@@ -683,17 +655,22 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
 
 (** [compile m] translates the pattern matching problem encoded by the matrix
     [m] into a decision tree. *)
-let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
+let compile : CM.t -> tree = fun m ->
+  let count = ref 0 in
+  let rec compile : int VarMap.t -> CM.t -> tree =
+  fun vars_id ({clauses; positions; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
   | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder slot
   | Condition(cond)                          ->
+      let compile = compile vars_id in
       let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
       let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
       Cond({ok ; cond ; fail})
   | Check_stack                              ->
+      let compile = compile vars_id in
       let left =
         let positions, clauses = CM.empty_stack clauses in
         compile {pats with clauses; positions}
@@ -704,9 +681,10 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       let store = CM.store pats swap in
       let updated = List.map (CM.update_aux swap slot positions) clauses in
       let slot = if store then slot + 1 else slot in
-      let cons = CM.get_cons (CM.get_col swap pats) in
+      let cons = CM.get_cons vars_id (CM.get_col swap pats) in
       (* Constructors specialisation *)
       let children =
+        let compile = compile vars_id in
         let fn acc (tr_cons, te_cons) =
           if tr_cons = TC.Abst then acc else
           let (positions, clauses) =
@@ -718,6 +696,7 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       in
       (* Default child *)
       let default =
+        let compile = compile vars_id in
         let (positions, clauses) = CM.default swap positions updated in
         let ncm = CM.{clauses ; slot ; positions} in
         if CM.is_empty ncm then None else Some(compile ncm)
@@ -726,11 +705,14 @@ let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
       let abstraction =
         if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
         let var = Bindlib.new_var mkfree var_prefix in
-        store_bound var;
+        incr count;
+        let vars_id = VarMap.add var !count vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
-        Some(var, compile CM.{clauses ; slot ; positions})
+        Some(var, !count, compile vars_id CM.{clauses ; slot ; positions})
       in
       Node({swap ; store ; children ; abstraction ; default})
+  in
+  compile VarMap.empty m
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->

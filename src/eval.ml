@@ -176,13 +176,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
-  let vid = Tree.TvarHashtbl.create 0 in
   (* [walk t s c m] where [s] is the stack of terms to match and [c] the
      cursor indicating where to write in the [env] array described in
      {!module:Terms} as the environment of the RHS during matching.  [m]
      maps the free variables contained in the tree to the free variables
      used in this evaluation. *)
-  let rec walk tree stk cursor fresh_vars =
+  let rec walk tree stk cursor fresh_vars vars_id =
     let open Tree_types in
     match tree with
     | Fail                                                -> None
@@ -225,10 +224,10 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               let r = VarMap.for_all fn fresh_vars in
               if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else fail
         in
-        walk next stk cursor fresh_vars
+        walk next stk cursor fresh_vars vars_id
     | Eos(l, r)                                           ->
         let next = if stk = [] then l else r in
-        walk next stk cursor fresh_vars
+        walk next stk cursor fresh_vars vars_id
     | Node({swap; children; store; abstraction; default}) ->
         match List.destruct stk swap with
         | exception Not_found     -> None
@@ -239,7 +238,8 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if store then (vars.(cursor) <- examined; cursor + 1)
               else cursor
             in
-            walk t (List.reconstruct left [] right) cursor fresh_vars
+            let stk = List.reconstruct left [] right in
+            walk t stk cursor fresh_vars vars_id
           in
           Option.map_default fn None default
         else
@@ -260,7 +260,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           let default () =
             let fn d =
               let stk = List.reconstruct left [] right in
-              walk d stk cursor fresh_vars
+              walk d stk cursor fresh_vars vars_id
             in
             Option.map_default fn None default
           in
@@ -271,39 +271,35 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 try
                   let matched = TCMap.find cons children in
                   let stk = List.reconstruct left args right in
-                  walk matched stk cursor fresh_vars
+                  walk matched stk cursor fresh_vars vars_id
                 with Not_found -> default ()
               end
           | Vari(x)    ->
               begin
                 try
-                  let id = Tree.TvarHashtbl.find vid x in
-                  (* If raise Not_found, variable wasn't introduced by abst *)
+                  let id = VarMap.find x vars_id in
                   let cons = TC.Vari(id) in
                   let matched = TCMap.find cons children in
                   let stk = List.reconstruct left args right in
-                  walk matched stk cursor fresh_vars
+                  walk matched stk cursor fresh_vars vars_id
                 with Not_found -> default ()
               end
           | Abst(_, b) ->
               begin
                 match abstraction with
-                | None         -> default ()
-                | Some(fv, tr) ->
-                    let nfv = Bindlib.new_var mkfree Tree.var_prefix in
-                    (* Get the id set during tree build. *)
-                    let id = Tree.TvarHashtbl.find Tree.varmap fv in
-                    (* And associate it to the new variable. *)
-                    Tree.TvarHashtbl.add vid nfv id;
-                    let bound = Bindlib.subst b (mkfree nfv) in
-                    let u = bound :: args in
-                    let fresh_vars = VarMap.add fv nfv fresh_vars in
-                    walk tr (List.reconstruct left u right) cursor fresh_vars
+                | None           -> default ()
+                | Some(fv,id,tr) ->
+                    let bound, body = Bindlib.unbind b in
+                    let u = body :: args in
+                    let fresh_vars = VarMap.add fv bound fresh_vars in
+                    let vars_id = VarMap.add bound id vars_id in
+                    let stk = List.reconstruct left u right in
+                    walk tr stk cursor fresh_vars vars_id
               end
           | Meta(_, _) -> default ()
           | _          -> assert false
   in
-  walk tree stk 0 VarMap.empty
+  walk tree stk 0 VarMap.empty VarMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 and snf : term -> term = fun t ->
