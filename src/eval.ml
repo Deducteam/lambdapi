@@ -213,16 +213,17 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
               let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+              let fn b =
+                let fn _ x = not (Bindlib.occur x b) in
+                VarMap.for_all fn fresh_vars
+              in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar xs (lift vars.(i)) in
-              let fn _ x = not (Bindlib.occur x b) in
-              let r = VarMap.for_all fn fresh_vars in
-              if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
               let b = Bindlib.bind_mvar xs (lift (snf vars.(i))) in
-              let fn _ x = not (Bindlib.occur x b) in
-              let r = VarMap.for_all fn fresh_vars in
-              if r then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else fail
+              if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              fail
         in
         walk next stk cursor fresh_vars vars_id
     | Eos(l, r)                                           ->
