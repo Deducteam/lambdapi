@@ -12,7 +12,8 @@ open Parser
     the [parser_fatal] function should be used instead. *)
 
 (** [get_args t] decomposes [t] into a head term and a list of arguments. Note
-    that in the returned pair [(h,args)], [h] is never a [P_Appl] node. *)
+    that in the returned pair [(h,args)], [h] is never a [P_Appl] node. Note
+    also that P_LLet, P_UnaO, P_UnaB and P_NLit are not decomposed. *)
 let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
   let rec get_args acc t =
     match t.elt with
@@ -40,10 +41,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     (if !verbose > 1 then Option.iter fn ao); x
   in
   let ctx = List.map get_var ctx in
-  (* Find the minimum number of arguments a variable is applied to. *)
   let is_pat_var env x =
     not (List.mem x env) && List.exists (fun y -> y.elt = x) ctx
   in
+  (* Find the maximum number of arguments a variable is applied to. *)
   (* Using [fatal] is OK here as long as it is called with term positions. *)
   let fatal = Console.fatal in
   let arity = Hashtbl.create 7 in
@@ -59,13 +60,12 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
             begin
               try
                 let n = Hashtbl.find arity x in
-                if nb_args < n then Hashtbl.replace arity x nb_args
+                if nb_args > n then Hashtbl.replace arity x nb_args
               with Not_found -> Hashtbl.add arity x nb_args
             end
       | P_Wild          -> ()
-      | P_Type          -> ()
+      | P_Type          -> fatal h.pos "Type in legacy pattern."
       | P_Prod(_,_)     -> fatal h.pos "Product in legacy pattern."
-      | P_Meta(_,_)     -> fatal h.pos "Metaviable in legacy pattern."
       | P_Abst(xs,t)    ->
           begin
             match xs with
@@ -73,17 +73,17 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 fatal a.pos "Annotation in legacy pattern."
             | [([Some x],None   ,_)] ->
                 compute_arities (x.elt::env) t
-            | _                      ->
-                fatal h.pos "Invalid legacy pattern lambda."
+            | _                      -> assert false
           end
-      | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
-      | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-      | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
-      | P_UnaO(_,_)     -> fatal h.pos "Unary operator in legacy rule."
-      | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
-      | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
-      | P_Expl(_)       -> fatal h.pos "Explicit argument in legacy rule."
+      | P_Meta(_,_)
+      | P_Patt(_,_)
+      | P_LLet(_,_,_,_)
+      | P_NLit(_)
+      | P_UnaO(_,_)
+      | P_BinO(_,_,_)
+      | P_Wrap(_)
+      | P_Expl(_)       -> assert false
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -100,13 +100,31 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     match h.elt with
     | P_Iden({elt = ([],x); _}, _) when is_pat_var env x ->
        let lts = List.map (fun (p,t) -> p,build env t) lts in
-       let n =
-         try Hashtbl.find arity x with Not_found ->
-           assert false (* Unreachable. *)
-       in
-       let (lts1, lts2) = List.cut lts n in
-       let ts1 = Array.of_list (List.map snd lts1) in
-       add_args (Pos.make t.pos (P_Patt(Pos.make h.pos x, ts1))) lts2
+       let max = try Hashtbl.find arity x with Not_found -> assert false in
+       let k = List.length lts in
+       let nb_exp = if k >= max then 0 else max - k in
+       let p = t.pos in
+       if nb_exp = 0 then
+         let (lts1, lts2) = List.cut lts max in
+         let ts1 = Array.of_list (List.map snd lts1) in
+         let patt = Pos.make p (P_Patt(Pos.make h.pos x, ts1)) in
+         add_args patt lts2
+       else (* We eta-expense. *)
+         let ts = Array.of_list (List.map snd lts) in
+         let prefix = "var" in
+         let arg i =
+           if i < k then ts.(i)
+           else
+             let qid = Pos.make p ([], prefix ^ string_of_int (i-k)) in
+             Pos.make p (P_Iden (qid, false))
+         in
+         let args = Array.init max arg in
+         let patt = Pos.make p (P_Patt(Pos.make h.pos x, args)) in
+         let rec vars i =
+           if i >= nb_exp then []
+           else Some (Pos.make p (prefix ^ string_of_int i)) :: vars (i+1)
+         in
+         Pos.make t.pos (P_Abst([vars 0, None, false], patt))
     | _                                               ->
     match t.elt with
     | P_Iden(_)

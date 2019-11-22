@@ -164,6 +164,18 @@ let get_implicitness : p_term -> bool list = fun t ->
   in
   get_impl t
 
+(** [get_args t] decomposes the parser level term [t] into a spine
+   [(h,args)], when [h] is the term at the head of the application and [args]
+   is the list of all its arguments. WARNING: it does not decompose P_LLet,
+   P_UnaO, P_BinO and P_NLit. *)
+let get_args : p_term -> p_term * p_term list =
+  let rec get_args args t =
+    match t.elt with
+    | P_Appl(t,u) -> get_args (u::args) t
+    | P_Wrap(t)   -> get_args args t
+    | _           -> (t, args)
+  in get_args []
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
@@ -180,9 +192,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (p_head, args) = Syntax.get_args t in
+    let (p_head, args) = get_args t in
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env p_head in
+    let h = scope_head env p_head args in
     let impl =
       (* Check whether application is marked as explicit in head symbol. *)
       let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
@@ -195,7 +207,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Build the application of [h] to [args], inserting implicit arguments. *)
   and add_impl env loc h impl args =
     let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild) []) in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -249,7 +261,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> tbox = fun env t ->
+  and scope_head : env -> p_term -> p_term list -> tbox = fun env t args ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
@@ -286,6 +298,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
     | (P_Patt(id,ts)   , M_LHS(m,_)       ) ->
+        (* Check that the pattern variable is applied to no argument. *)
+        if args <> [] then fatal t.pos "Pattern variables cannot be applied.";
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
