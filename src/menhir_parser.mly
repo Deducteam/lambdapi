@@ -76,9 +76,9 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
             | _                      -> assert false
           end
       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
+      | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
       | P_Meta(_,_)
       | P_Patt(_,_)
-      | P_LLet(_,_,_,_)
       | P_NLit(_)
       | P_UnaO(_,_)
       | P_BinO(_,_,_)
