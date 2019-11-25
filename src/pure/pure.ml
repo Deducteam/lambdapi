@@ -6,6 +6,7 @@ open Timed
 open Core
 open Core.Extra
 open Core.Console
+open Core.Files
 
 (* NOTE this is required for initialization of [Parser.require]. *)
 let _ = Compile.compile
@@ -31,7 +32,7 @@ exception Parse_error of Pos.pos * string
 
 let parse_text : state -> string -> string -> Command.t list * state =
     fun (t,st) fname s ->
-  let old_syntax = Filename.check_suffix fname Files.legacy_src_extension in
+  let old_syntax = Filename.check_suffix fname legacy_src_extension in
   try
     Time.restore t;
     let ast =
@@ -61,12 +62,12 @@ type tactic_result =
 
 let t0 = Time.save ()
 
-let initial_state : Files.module_path -> state = fun path ->
+let initial_state : Path.t -> state = fun path ->
   Console.reset_default ();
   Time.restore t0;
   Sign.loading := [path];
   let sign = Sign.create path in
-  Sign.loaded  := Files.PathMap.add path sign !Sign.loaded;
+  Sign.loaded  := PathMap.add path sign !Sign.loaded;
   (Time.save (), Scope.empty_sig_state sign)
 
 let handle_command : state -> Command.t -> command_result =

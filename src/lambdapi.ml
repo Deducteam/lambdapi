@@ -91,7 +91,7 @@ let spec =
       , Printf.sprintf " Produce object files (%S extension)" obj_extension )
     ; ( "--no-color"
       , Arg.Set Console.color
-      , Printf.sprintf " Do not use colors in the output" )
+      , " Do not use colors in the output" )
     ; ( "--write-trees"
       , Arg.Set Handle.write_trees
       , " Write decision trees to \".gv\" files" )
@@ -119,6 +119,13 @@ let spec =
     ; ( "--termination"
       , Arg.String (fun cmd -> termination_checker := Some(cmd))
       , "<cmd> Runs the given termination checker" )
+    ; ( "--lib-root"
+      , Arg.String Files.set_lib_root
+      , Printf.sprintf "<path> sets the library root (default is \"%s\")"
+          (Files.default_lib_root ()) )
+    ; ( "--map"
+      , Arg.String Files.new_lib_mapping
+      , "<modpath>:<path> maps the given path under the library root" )
     ; ( "--version"
       , Arg.Unit (fun () -> out 0 "Lambdapi %s\n%!" Version.version; exit 0)
       , " Prints the current version number and exits" )
@@ -134,5 +141,15 @@ let _ =
   let usage = Printf.sprintf "Usage: %s [OPTIONS] [FILES]" Sys.argv.(0) in
   let files = ref [] in
   Arg.parse spec (fun s -> files := s :: !files) usage;
+  (* Log some configuration data. *)
+  if Timed.(!log_enabled) then
+    begin
+      Files.log_file "running directory: [%s]" (Files.current_path ());
+      Files.log_file "library root path: [%s]" (Files.lib_root_path ());
+      let fn = Files.log_file "mapping: [%a] → [%s]" Files.Path.pp in
+      PathMap.iter fn (Files.current_mappings ())
+    end;
+  (* Register the library root. *)
+  Files.init_lib_root ();
   (* Compile each file separately. *)
   List.iter handle_file (List.rev !files)

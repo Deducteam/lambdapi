@@ -21,7 +21,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-let rec compile : bool -> Files.module_path -> unit = fun force path ->
+let rec compile : bool -> Path.t -> unit = fun force path ->
   let base = String.concat Filename.dir_sep path in
   let src =
     let src = base ^ src_extension in
@@ -36,8 +36,8 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
   if List.mem path !loading then
     begin
       fatal_msg "Circular dependencies detected in [%s].\n" src;
-      fatal_msg "Dependency stack for module [%a]:\n" Files.pp_path path;
-      List.iter (fatal_msg "  - [%a]\n" Files.pp_path) !loading;
+      fatal_msg "Dependency stack for module [%a]:\n" Path.pp path;
+      List.iter (fatal_msg "  - [%a]\n" Path.pp) !loading;
       fatal_no_pos "Build aborted."
     end;
   if PathMap.mem path !loaded then

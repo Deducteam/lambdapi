@@ -337,3 +337,13 @@ let input_lines : in_channel -> string list = fun ic ->
     done;
     assert false (* Unreachable. *)
   with End_of_file -> List.rev !lines
+
+(** [run_process cmd] runs the command [cmd] and returns the list of the lines
+    that it printed to its standard output (if the command was successful). If
+    the command failed somehow, then [None] is returned. *)
+let run_process : string -> string list option = fun cmd ->
+  let (oc, ic, ec) = Unix.open_process_full cmd (Unix.environment ()) in
+  let res = input_lines oc in
+  match Unix.close_process_full (oc, ic, ec) with
+  | Unix.WEXITED(0) -> Some res
+  | _               -> None

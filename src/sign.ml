@@ -18,7 +18,7 @@ let builtin : popt -> sym StrMap.t -> string -> sym = fun pos builtins name ->
     defined in a single module (or file). *)
 type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
-  ; sign_path     : module_path
+  ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list PathMap.t ref
   ; sign_builtins : sym StrMap.t ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
@@ -31,7 +31,7 @@ type t =
    module to additional reduction rules defined in the current signature. *)
 
 (** [create path] creates an empty signature with module path [path]. *)
-let create : module_path -> t = fun sign_path ->
+let create : Path.t -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
   ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
   ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
@@ -59,7 +59,7 @@ let loaded : t PathMap.t ref = ref PathMap.empty
     being processed. They are stored in a stack due to dependencies. Note that
     the topmost element corresponds to the current module.  If a [module_path]
     appears twice in the stack, then there is a circular dependency. *)
-let loading : module_path list ref = ref []
+let loading : Path.t list ref = ref []
 
 (** [current_sign ()] returns the current signature. *)
 let current_sign () =
@@ -307,7 +307,7 @@ let add_ident : t -> string -> unit = fun sign id ->
     closure of) the dependencies of the signature [sign].  Note that the order
     of the list gives one possible loading order for the signatures. Note also
     that [sign] itself appears at the end of the list. *)
-let rec dependencies : t -> (module_path * t) list = fun sign ->
+let rec dependencies : t -> (Path.t * t) list = fun sign ->
   (* Recursively compute dependencies for the immediate dependencies. *)
   let fn p _ l = dependencies (PathMap.find p !loaded) :: l in
   let deps = PathMap.fold fn !(sign.sign_deps) [[(sign.sign_path, sign)]] in

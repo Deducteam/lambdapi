@@ -2,6 +2,7 @@
 
 (* Lambdapi core *)
 open Core
+open Files
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
@@ -50,7 +51,7 @@ type tactic_result =
 
 (** [initial_state path] returns an initial state for a signature with  module
     path [path]. The resulting state can be used by [handle_command]. *)
-val initial_state : Files.module_path -> state
+val initial_state : Path.t -> state
 
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding
