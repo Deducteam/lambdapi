@@ -43,7 +43,7 @@ let handle_file : string -> unit = fun fname ->
     | Beautify  -> Pretty.beautify (Compile.parse_file fname)
     | Normal    ->
     (* Compute the module path (checking the extension). *)
-    let mp = module_path fname in
+    let mp = Files.file_to_module fname in
     (* Run the compilation, possibly using a timeout. *)
     let compile = Compile.compile true in
     let _ =
@@ -147,7 +147,7 @@ let _ =
       Files.log_file "running directory: [%s]" (Files.current_path ());
       Files.log_file "library root path: [%s]" (Files.lib_root_path ());
       let fn = Files.log_file "mapping: [%a] → [%s]" Files.Path.pp in
-      PathMap.iter fn (Files.current_mappings ())
+      Files.ModMap.iter fn (Files.current_mappings ())
     end;
   (* Register the library root. *)
   Files.init_lib_root ();

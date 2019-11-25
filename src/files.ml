@@ -61,9 +61,8 @@ module ModMap :
         raised if the root of [m] was not previously set with [set_root]. *)
     val get : Path.t -> t -> file_path
 
-    (** [to_path_map m] converts the map [m] into a mapping of module paths to
-        file paths. This is mainly useful for debugging. *)
-    val to_path_map : t -> file_path PathMap.t
+    (** [iter fn m] calls function [fn] on every binding stored in [m]. *)
+    val iter : (Path.t -> file_path -> unit) -> t -> unit
   end =
   struct
     type t = Node of file_path option * t StrMap.t
@@ -104,17 +103,12 @@ module ModMap :
       | None       -> raise Root_not_set
       | Some(root) -> get root ks m
 
-    let to_path_map m =
-      let rec to_path_map mp map (Node(po, m)) =
-        let map =
-          match po with
-          | None    -> map
-          | Some(p) -> PathMap.add mp p map
-        in
-        let fn k m map = to_path_map (mp @ [k]) map m in
-        StrMap.fold fn m map
+    let iter fn m =
+      let rec iter path (Node(po, m)) =
+        Option.iter (fun file -> fn path file) po;
+        StrMap.iter (fun k m -> iter (path @ [k]) m) m
       in
-      to_path_map [] PathMap.empty m
+      iter [] m
   end
 
 (** [lib_root] stores the result of the ["--lib-root"] flag when given. *)
@@ -163,7 +157,8 @@ let lib_mappings : ModMap.t Pervasives.ref =
   Pervasives.ref ModMap.empty
 
 (** [init_lib_root ()] registers the currently set library root as part of our
-    module mapping. This function MUST be called before one can... TODO *)
+    module mapping. This function MUST be called before one can consider using
+    [module_to_file] or [module_path]. *)
 let init_lib_root : unit -> unit = fun _ ->
   let root = lib_root_path () in
   Pervasives.(lib_mappings := ModMap.set_root root !lib_mappings)
@@ -203,8 +198,8 @@ let current_path : unit -> string = fun _ ->
   Filename.realpath "."
 
 (** [current_mappings ()] gives the currently registered library mappings. *)
-let current_mappings : unit -> string PathMap.t = fun _ ->
-  ModMap.to_path_map Pervasives.(!lib_mappings)
+let current_mappings : unit -> ModMap.t = fun _ ->
+  Pervasives.(!lib_mappings)
 
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [init_lib_root] was
@@ -222,36 +217,47 @@ let obj_extension : string = ".lpo"
 (** [legacy_src_extension] is the extension for legacy source files. *)
 let legacy_src_extension : string = ".dk"
 
-(** [module_path path] computes the module path that corresponds to a relative
-    file [path], which should not use [".."]. The returned list is formed with
-    the subdirectories along the [path], and it is terminated by the file name
-    (without extension). Although it is removed, the extension should be given
-    on the file name, and it should correspond to [src_extension] (or possibly
-    to the legacy extension [legacy_src_extension]).  When [path] is  invalid,
-    [Invalid_argument "invalid module path"] is raised. *)
-let module_path : string -> Path.t = fun fname ->
-  let ext_ok = Filename.check_suffix fname src_extension in
-  let ext_ok = ext_ok || Filename.check_suffix fname legacy_src_extension in
-  if not ext_ok then
-    fatal_no_pos "Invalid file extension for [%s] (expected [%s] or [%s])."
-      fname src_extension legacy_src_extension;
-  if not (Filename.is_relative fname) then
-    fatal_no_pos "Invalid path for [%s] (expected relative path)." fname;
-  let base = Filename.chop_extension (Filename.basename fname) in
-  let dir = Filename.dirname fname in
-  if dir = Filename.parent_dir_name then
-    fatal_no_pos "Invalid path for [%s] ([%s] not allowed)."
-      fname Filename.parent_dir_name;
-  let rec build_path acc dir =
-    let dirbase = Filename.basename dir in
-    let dirdir  = Filename.dirname  dir in
-    if dirdir = Filename.parent_dir_name then
-      fatal_no_pos "Invalid path for [%s] ([%s] not allowed)."
-        fname Filename.parent_dir_name;
-    if dirbase = Filename.current_dir_name then acc
-    else build_path (dirbase::acc) dirdir
+(** [file_to_module path] computes the module path that corresponds to [path].
+    The file described by [path] is expected to have a valid extension (either
+    [src_extension] or the legacy extension [legacy_src_extension]). If [path]
+    is invalid, the [Fatal] exception is raised. *)
+let file_to_module : string -> Path.t = fun fname ->
+  (* Sanity check: source file extension. *)
+  let ext = Filename.extension fname in
+  if not (List.mem ext [ src_extension ; legacy_src_extension ]) then
+    fatal_no_pos "Invalid extension for [%s] (expected [%s] or [%s])." fname
+      src_extension legacy_src_extension;
+  (* Normalizing the file path. *)
+  let fname =
+    try Filename.realpath fname with Invalid_argument(_) ->
+      fatal_no_pos "No such file or directory [%s]." fname
   in
-  build_path [base] dir
+  let base = Filename.chop_extension fname in
+  (* Finding the best mapping under the root. *)
+  let mapping = ref None in
+  let fn mp path =
+    if String.is_prefix path base then
+      match !mapping with
+      | None       -> mapping := Some(mp, path)
+      | Some(_, p) -> if String.length p < String.length path then
+                        mapping := Some(mp, p)
+  in
+  ModMap.iter fn (current_mappings ());
+  (* Fail if there is none. *)
+  let (mp, path) =
+    match !mapping with
+    | Some(mp, path) -> (mp, path)
+    | None           ->
+        fatal_no_pos "[%s] cannot be placed under the library mapping." fname
+  in
+  ignore (mp, path);
+  (* Build the module path. *)
+  let rest =
+    let len_path = String.length path in
+    let len_base = String.length base in
+    String.sub base (len_path + 1) (len_base - len_path - 1)
+  in
+  mp @ String.split_on_char '/' rest
 
 (** [mod_time fname] returns the modification time of file [fname] represented
     as a [float]. [neg_infinity] is returned if the file does not exist. *)

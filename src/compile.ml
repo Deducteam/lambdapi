@@ -22,7 +22,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
 let rec compile : bool -> Path.t -> unit = fun force path ->
-  let base = String.concat Filename.dir_sep path in
+  let base = Files.module_to_file path in
   let src =
     let src = base ^ src_extension in
     let legacy = base ^ legacy_src_extension in

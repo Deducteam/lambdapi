@@ -39,6 +39,11 @@ module String =
       in
       is_sub 0
 
+    let is_prefix : string -> string -> bool = fun p s ->
+      let len_p = String.length p in
+      let len_s = String.length s in
+      len_p <= len_s && String.sub s 0 len_p = p
+
     let for_all : (char -> bool) -> string -> bool = fun p s ->
       let len_s = String.length s in
       let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
