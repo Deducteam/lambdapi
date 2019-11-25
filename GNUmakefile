@@ -20,7 +20,7 @@ doc:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = $(shell readlink -f _build/install/default/bin/lambdapi)
+LAMBDAPI     = ./_build/install/default/bin/lambdapi
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
