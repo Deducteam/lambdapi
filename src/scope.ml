@@ -193,8 +193,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
     let (p_head, args) = get_args t in
+    (* Check that LHS pattern variables are applied to no argument. *)
+    begin
+      match (p_head.elt, md) with
+      | (P_Patt(_,_), M_LHS(_,_)) when args <> [] ->
+        fatal t.pos "Pattern variables cannot be applied."
+      | _                                         -> ()
+    end;
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env p_head args in
+    let h = scope_head env p_head in
     let impl =
       (* Check whether application is marked as explicit in head symbol. *)
       let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
@@ -207,7 +214,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Build the application of [h] to [args], inserting implicit arguments. *)
   and add_impl env loc h impl args =
     let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild) []) in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -261,7 +268,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     in
     aux env xs
   (* Scoping function for head terms. *)
-  and scope_head : env -> p_term -> p_term list -> tbox = fun env t args ->
+  and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
@@ -298,8 +305,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
     | (P_Patt(id,ts)   , M_LHS(m,_)       ) ->
-        (* Check that the pattern variable is applied to no argument. *)
-        if args <> [] then fatal t.pos "Pattern variables cannot be applied.";
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
