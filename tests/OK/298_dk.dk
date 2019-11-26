@@ -1,0 +1,31 @@
+(; natural numbers ;)
+N : Type.
+z : N.
+s : N -> N.
+
+(; two parameters function ;)
+f : N -> N -> N.
+
+(; without context without inference ;)
+#ASSERT (n:N => s n) == (n:N => s n).
+#ASSERT (n:N => m:N => f n m) == (n:N => m:N => f n m).
+#ASSERT (n:N => s n) : (n:N) -> N. (; N -> N ;)
+#ASSERT (n:N => m:N => f n m) : (n:N) -> (m:N) -> N. (; N -> N -> N ;)
+
+(; without context with inference ;)
+#ASSERT (n => s n) == (n => s n).
+#ASSERT (n => m => f n m) == (n => m => f n m).
+#ASSERT (n => s (s n)) : (n:N) -> N. (; N -> N ;)
+#ASSERT (n => m => f n m) : (n:N) -> (m:N) -> N. (; N -> N -> N ;)
+
+(; with context without inference ;)
+#ASSERT {(n:N)} s n == s n.
+#ASSERT {(n:N) (m:N)} f n m == f n m.
+#ASSERT {(n:N)} s n : N.
+#ASSERT {(n:N) (m:N)} f n m : N.
+
+(; with context with inference ;)
+(; #ASSERT {n} s n == s n. ;)
+(; #ASSERT {n} s n : N. ;)
+(; #ASSERT {n m} f n m == f n m. ;)
+(; #ASSERT {n m} f n m : N. ;)

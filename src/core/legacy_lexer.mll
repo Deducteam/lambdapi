@@ -24,7 +24,7 @@ let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
 
 type token =
   (* Special characters and symbols. *)
-  | L_SQB | R_SQB | L_PAR | R_PAR | ARROW | LARROW | FARROW | DEFEQ | COMMA
+  | L_SQB | R_SQB | L_PAR | R_PAR | LEFTBRA | RIGHTBRA | ARROW | LARROW | FARROW | DEFEQ | COMMA
   | COLON | EQUAL | DOT | EOF
   (* Keywords. *)
   | KW_DEF | KW_INJ | KW_THM | TYPE | KW_PRV
@@ -75,6 +75,8 @@ rule token = parse
   | "=="                            { EQUAL                                }
   | '['                             { L_SQB                                }
   | ']'                             { R_SQB                                }
+  | '{'                             { LEFTBRA                              }
+  | '}'                             { RIGHTBRA                             }
   | '('                             { L_PAR                                }
   | ')'                             { R_PAR                                }
   | "-->"                           { LARROW                               }

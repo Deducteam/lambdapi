@@ -480,6 +480,16 @@ let parser query =
       Pos.in_pos _loc (P_query_flag(s, b))
   | mf:assert_must_fail a:assertion ->
       Pos.in_pos _loc (P_query_assert(mf,a))
+  | mf:assert_must_fail "{" ps:arg* "}" t:term "≡" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Abst(ps,u)) in
+      let assert_conv = P_assert_conv(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_conv))
+  | mf:assert_must_fail "{" ps:arg* "}" t:term ":" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Prod(ps,u)) in
+      let assert_typing = P_assert_typing(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_typing))
   | _type_ t:term ->
       let c = Eval.{strategy = NONE; steps = None} in
       Pos.in_pos _loc (P_query_infer(t,c))
