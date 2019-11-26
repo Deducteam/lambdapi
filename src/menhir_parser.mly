@@ -77,12 +77,12 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           end
       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
       | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-      | P_Meta(_,_)
-      | P_Patt(_,_)
-      | P_NLit(_)
-      | P_UnaO(_,_)
-      | P_BinO(_,_,_)
-      | P_Wrap(_)
+      | P_Meta(_,_)     -> assert false
+      | P_Patt(_,_)     -> assert false
+      | P_NLit(_)       -> assert false
+      | P_UnaO(_,_)     -> assert false
+      | P_BinO(_,_,_)   -> assert false
+      | P_Wrap(_)       -> assert false
       | P_Expl(_)       -> assert false
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
