@@ -206,11 +206,10 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
               let allowed = Array.map (fun e -> IntMap.find e id_vars) xs in
-              (* FIXME some comparisons can be avoided. *)
               (* Verify that box [b] does not contain unallowed variables
                  (i.e. other variables than the one bound). *)
               let only_allowed b =
-                let fn _ x = not (Bindlib.occur x b) in
+                let fn _ x = Array.mem x allowed || not (Bindlib.occur x b) in
                 IntMap.for_all fn id_vars
               in
               (* We first attempt to match [vars.(i)] directly. *)
