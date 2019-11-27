@@ -718,7 +718,9 @@ let compile : CM.t -> tree = fun m ->
         let var = Bindlib.new_var mkfree var_prefix in
         let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
-        let next = compile (count + 1) vars_id CM.{clauses; slot; positions} in
+        let next =
+          compile (count + 1) vars_id CM.{clauses; slot; positions}
+        in
         Some(count, next)
       in
       Node({swap ; store ; children ; abstraction ; default})
