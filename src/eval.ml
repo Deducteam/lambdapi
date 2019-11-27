@@ -176,11 +176,11 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
-  (* [walk t s c m] where [s] is the stack of terms to match and [c] the
-     cursor indicating where to write in the [env] array described in
-     {!module:Terms} as the environment of the RHS during matching.  [m]
-     maps the free variables contained in the tree to the free variables
-     used in this evaluation. *)
+  (* [walk t s c v i] where [s] is the stack of terms to match and [c] the
+     cursor indicating where to write in the [vars] array described in
+     {!module:Terms} as the environment of the RHS during matching. [v] maps
+     the free variables contained in the term to the indexes defined during
+     tree build, and [i] is the inverse mapping of [v]. *)
   let rec walk tree stk cursor vars_id id_vars =
     let open Tree_types in
     match tree with
@@ -212,16 +212,17 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | CondNL(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
-              let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
+              let allowed = Array.map (fun e -> IntMap.find e id_vars) xs in
+              (* FIXME some comparisons can be avoided. *)
               let fn b =
                 let fn _ x = not (Bindlib.occur x b) in
                 IntMap.for_all fn id_vars
               in
               (* We first attempt to match [vars.(i)] directly. *)
-              let b = Bindlib.bind_mvar xs (lift vars.(i)) in
+              let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
               if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar xs (lift (snf vars.(i))) in
+              let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
               if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               fail
         in
@@ -291,10 +292,9 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 | None        -> default ()
                 | Some(id,tr) ->
                     let bound, body = Bindlib.unbind b in
-                    let u = body :: args in
                     let vars_id = VarMap.add bound id vars_id in
                     let id_vars = IntMap.add id bound id_vars in
-                    let stk = List.reconstruct left u right in
+                    let stk = List.reconstruct left (body::args) right in
                     walk tr stk cursor vars_id id_vars
               end
           | Meta(_, _) -> default ()

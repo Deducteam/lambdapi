@@ -716,10 +716,11 @@ let compile : CM.t -> tree = fun m ->
         let is_abst = function Abst(_) -> true | _ -> false in
         if List.for_all (fun x -> not (is_abst x)) column then None else
         let var = Bindlib.new_var mkfree var_prefix in
+        let vars_id = VarMap.add var !count vars_id in
+        let (positions, clauses) = CM.abstract swap var positions updated in
+        (* Memorise counter as it will be modified by [compile]. *)
         let id = !count in
         incr count;
-        let vars_id = VarMap.add var id vars_id in
-        let (positions, clauses) = CM.abstract swap var positions updated in
         Some(id, compile vars_id CM.{clauses ; slot ; positions})
       in
       Node({swap ; store ; children ; abstraction ; default})
