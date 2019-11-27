@@ -83,7 +83,7 @@ reserved "why3"
   | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
-  | "&" - <ident> {"[" <term> {"," <term>}* "]"}?
+  | "&" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
   | "{" <term> "}"
   | <term> <term>

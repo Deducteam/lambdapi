@@ -153,6 +153,10 @@ rule diff (λx, sin &F[x]) → λx, diff (λx, &F[x]) x × cos &F[x]
 rule lam (λx, app &F x) → &F // η-reduction
 ```
 
+It is possible to define an unnamed pattern variable with the syntax `&_[x,y]`
+(it matches any term with at most `x` and `y` as its free variables). If `x`
+and `y` are the only variables in scope, then `_` is equivalent to `&_[x,y]`.
+
 In left-hand side, λ-expressions must have no type annotations.
 
 Pattern variables can be applied to distinct bound variables only,
