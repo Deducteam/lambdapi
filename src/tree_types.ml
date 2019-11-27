@@ -9,8 +9,8 @@ module TC =
   struct
     (** Atomic pattern constructor. *)
     type t =
-      | Symb of int * string * Files.module_path
-      (** Symbol with its effective arity, name and module path. *)
+      | Symb of Files.module_path * string * int
+      (** Symbol with its module path, name and effective arity. *)
       | Vari of int
       (** A bound variable identified by a ({e branch}-wise) unique
           integer. *)
@@ -25,7 +25,7 @@ module TC =
     let pp : t pp = fun oc c ->
       match c with
       | Vari(d)     -> Format.pp_print_int oc d
-      | Symb(a,s,_) -> Format.fprintf oc "%s %d-ary" s a
+      | Symb(_,s,a) -> Format.fprintf oc "%s %d-ary" s a
 
     (** [compare c1 c2] implements a total order on constructors. *)
     let compare : t -> t -> int = Pervasives.compare

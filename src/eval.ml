@@ -269,7 +269,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           in
           match t with
           | Symb(s, _) ->
-              let cons = TC.Symb(List.length args, s.sym_name, s.sym_path) in
+              let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
                 try
                   let matched = TCMap.find cons children in

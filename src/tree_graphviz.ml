@@ -81,7 +81,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
       match dh with
       | DotAbst(id)          -> out "λ%s%d" Tree.var_prefix id
       | DotDefa              -> out "*"
-      | DotCons(Symb(a,n,_)) -> out "%s<sub>%d</sub>" n a
+      | DotCons(Symb(_,n,a)) -> out "%s<sub>%d</sub>" n a
       | DotCons(Vari(i))     -> out "%s%d" Tree.var_prefix i
       | DotSuccess           -> out "✓"
       | DotFailure           -> out "✗"

@@ -460,9 +460,9 @@ module CM = struct
       let h, _, arity = get_args_len e in
       match h with
       | Symb({sym_name; sym_path; _}, _) ->
-          Some(TC.Symb(arity, sym_name, sym_path), e)
+          Some(TC.Symb(sym_path, sym_name, arity), e)
       | Vari(x)                          ->
-        Some(TC.Vari(VarMap.find x vars_id), e)
+          Some(TC.Vari(VarMap.find x vars_id), e)
       | _                                -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
