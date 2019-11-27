@@ -318,11 +318,11 @@ module CM = struct
       {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
-    | Patt(_, _, _) -> false
+    | Patt(_) -> false
     | Vari(_)
-    | Abst(_, _)
-    | Symb(_, _)    -> true
-    | _             -> assert false
+    | Abst(_)
+    | Symb(_) -> true
+    | _       -> assert false
 
   (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
@@ -352,11 +352,11 @@ module CM = struct
       number of tree constructors divided by the number of conditions. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
-      | []                           -> acc
-      | x :: xs when is_treecons x   -> loop (ncons + 1, nst) xs
-      | Patt(Some(_),_,_)::xs        -> loop (ncons, nst + 1) xs
+      | []                             -> acc
+      | x :: xs when is_treecons x     -> loop (ncons + 1, nst) xs
+      | Patt(Some(_),_,_)::xs          -> loop (ncons, nst + 1) xs
       | Patt(_,_,e)::xs when e <> [||] -> loop (ncons, nst + 1) xs
-      | _ :: xs                      -> loop acc xs
+      | _ :: xs                        -> loop acc xs
     in
     let nc, ns = loop (0, 0) ts in
     float_of_int nc /. (float_of_int ns)
@@ -534,17 +534,17 @@ module CM = struct
       let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(_, _), Symb(_, _)
-      | Vari(_)   , Vari(_)       ->
+      | Symb(_), Symb(_)
+      | Vari(_), Vari(_) ->
           if lenh = lenp && Basics.eq ph h
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
-      | _         , Patt(_, _, _) ->
+      | _      , Patt(_) ->
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with c_lhs = insert e })
-      | _         , Abst(_, _)    -> None
-      | _         , _             -> assert false
+      | _      , Abst(_) -> None
+      | _      , _       -> assert false
     in
     (pos, List.filter_map filtrans cls)
 
@@ -560,13 +560,15 @@ module CM = struct
     in
     let transf r =
       match r.c_lhs.(col) with
-      | Patt(_, _, _)           ->
-          let c_lhs = Array.append
+      | Patt(_)           ->
+          let c_lhs =
+            Array.append
               (Array.sub r.c_lhs 0 col)
-              (Array.drop (col + 1) r.c_lhs) in
+              (Array.drop (col + 1) r.c_lhs)
+          in
           Some({r with c_lhs})
-      | Symb(_, _) | Abst(_, _)
-      | Vari(_)    | Appl(_, _) -> None
+      | Symb(_) | Abst(_)
+      | Vari(_) | Appl(_) -> None
       | _ -> assert false in
     (pos, List.filter_map transf cls)
 
@@ -586,13 +588,13 @@ module CM = struct
     let transf (r:clause) =
       let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
-      | Abst(_, b)           ->
+      | Abst(_, b)     ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mkfree v) in
           Some({r with c_lhs = Array.concat (insert r b)})
-      | Patt(_, _, _) as pat ->
-          Some({r with c_lhs = Array.concat (insert r pat)})
-      | Symb(_, _) | Vari(_) -> None
+      | Patt(_) as pat -> Some({r with c_lhs = Array.concat (insert r pat)})
+      | Symb(_)
+      | Vari(_)        -> None
       | _                    -> assert false
     in
     (pos, List.filter_map transf cls)
@@ -627,15 +629,15 @@ let harvest : term array -> rhs -> CM.env_builder -> var_indexing -> int ->
   in
   let rec loop lhs env_builder slot =
     match lhs with
-    | []                        -> Leaf(env_builder, rhs)
-    | Patt(Some(i), _, e) :: ts ->
+    | []                    -> Leaf(env_builder, rhs)
+    | Patt(Some(i),_,e)::ts ->
         let env_builder =
           (slot, (i, Array.map (CM.index_var vi) e)) :: env_builder
         in
         default_node true (loop ts env_builder (slot + 1))
-    | Patt(None, _, _) :: ts    ->
-        default_node false (loop ts env_builder slot)
-    | _                         -> assert false in
+    | Patt(None,_,_)::ts    -> default_node false (loop ts env_builder slot)
+    | _                     -> assert false
+  in
   loop (Array.to_list lhs) env_builder slot
 
 (** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
@@ -669,15 +671,15 @@ let compile : CM.t -> tree = fun m ->
   fun count vars_id ({clauses; positions; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
-  | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
+  | Yield({c_rhs; env_builder; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder vars_id slot
-  | Condition(cond)                          ->
+  | Condition(cond)                        ->
       let compile = compile count vars_id in
       let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
       let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
-      Cond({ok ; cond ; fail})
-  | Check_stack                              ->
+      Cond({ok; cond; fail})
+  | Check_stack                            ->
       let compile = compile count vars_id in
       let left =
         let positions, clauses = CM.empty_stack clauses in
@@ -685,7 +687,7 @@ let compile : CM.t -> tree = fun m ->
       in
       let right = compile {pats with clauses = CM.not_empty_stack clauses} in
       Eos(left, right)
-  | Specialise(swap)                         ->
+  | Specialise(swap)                       ->
       let store = CM.store pats swap in
       let updated =
         List.map (CM.update_aux swap slot positions vars_id) clauses
