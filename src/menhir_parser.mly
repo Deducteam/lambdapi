@@ -111,20 +111,30 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
          add_args patt lts2
        else (* We eta-expense. *)
          let ts = Array.of_list (List.map snd lts) in
-         let prefix = "var" in
+         (* Create fresh variables. *)
+         let prefix = "v" and var_id = ref 0 in
+         let ctx = List.map (fun x -> x.elt) ctx in
+         let new_var _ =
+           while List.mem (prefix ^ string_of_int !var_id) ctx do
+             incr var_id
+           done;
+           let v = prefix ^ string_of_int !var_id in
+           incr var_id; v
+         in
+         let vars = Array.init nb_exp new_var in
+         (* Build the pattern. *)
          let arg i =
            if i < k then ts.(i)
-           else
-             let qid = Pos.make p ([], prefix ^ string_of_int (i-k)) in
-             Pos.make p (P_Iden (qid, false))
+           else Pos.make p (P_Iden (Pos.make p ([], vars.(i-k)), false))
          in
          let args = Array.init max arg in
          let patt = Pos.make p (P_Patt(Pos.make h.pos x, args)) in
-         let rec vars i =
+         (* Build the abstraction. *)
+         let rec build_vars i =
            if i >= nb_exp then []
-           else Some (Pos.make p (prefix ^ string_of_int i)) :: vars (i+1)
+           else Some (Pos.make p vars.(i)) :: build_vars (i+1)
          in
-         Pos.make t.pos (P_Abst([vars 0, None, false], patt))
+         Pos.make p (P_Abst([build_vars 0, None, false], patt))
     | _                                               ->
     match t.elt with
     | P_Iden(_)
