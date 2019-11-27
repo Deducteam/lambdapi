@@ -44,10 +44,10 @@ let rule_order : bool Pervasives.ref = Pervasives.ref false
 type rhs = (term_env, term) Bindlib.mbinder
 
 (** Representation of a branching condition (see {!type:Terms.tree_cond}). *)
-type tree_cond = term Tree_types.tree_cond
+type tree_cond = Tree_types.tree_cond
 
 (** Representation of a tree (see {!type:Terms.tree}). *)
-type tree = (term, rhs) Tree_types.tree
+type tree = rhs Tree_types.tree
 
 (** Type used to relate introduced variables to a unique identifier. *)
 type var_indexing = int VarMap.t

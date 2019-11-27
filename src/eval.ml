@@ -143,13 +143,11 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
 
-(** {b NOTE} that matching with trees involves three collections of terms.
+(** {b NOTE} that matching with trees involves two collections of terms.
     1. The argument stack [stk] of type {!type:stack} which contains the terms
        that are matched against the decision tree.
     2. An array [vars] of variables that are used for non-linearity checks and
        free variable checks, or that are used in the RHS.
-    3. A mapping [fresh_vars] from (free) variables to (free) variables, which
-       is used to avoid reentrancy issues.
 
     The [bound] array is similar to the [vars] array except that it is used to
     save terms with free variables. *)
@@ -160,12 +158,7 @@ and eq_modulo : term -> term -> bool = fun a b ->
     2. a {!constructor:Terms.term.Vari} which is the bound variable previously
        introduced;
     3. a {!constructor:Tree_types.TC.t.Vari} which is a simplified
-       representation of a variable for trees.
-
-    Regarding reentrancy: each time an abstraction is matched, a fresh
-    variable is created. If fresh variable [w] represents the variable [v]
-    stored in the tree, the equality of the tree constructors for [v] and [w]
-    must be ensured (for the correctness of the matching). *)
+       representation of a variable for trees. *)
 
 (** [tree_walk tree stk] tries to apply a rewriting rule by matching the stack
     [stk] agains the decision tree [tree]. The resulting state of the abstract
@@ -206,7 +199,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         List.iter fn env_builder;
         (* Actually perform the action. *)
         Some(Bindlib.msubst act env, stk)
-    | Cond({ ok ; cond ; fail })                          ->
+    | Cond({ok; cond; fail})                              ->
         let next =
           match cond with
           | CondNL(i, j) ->

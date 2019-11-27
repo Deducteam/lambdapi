@@ -86,7 +86,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
       | DotSuccess           -> out "✓"
       | DotFailure           -> out "✗"
     in
-    let pp_tcstr : term tree_cond pp = fun oc cstr ->
+    let pp_tcstr : tree_cond pp = fun oc cstr ->
       let out fmt = Format.fprintf oc fmt in
       let pp_ar oc ar =
         Format.pp_print_list Format.pp_print_int oc

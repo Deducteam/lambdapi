@@ -68,7 +68,7 @@ type term =
     syntax. They are thus considered to be fresh, unused pattern variables. *)
 
 (** Representation of a decision tree (used for rewriting). *)
- and dtree = (term, (term_env, term) Bindlib.mbinder) Tree_types.dtree
+ and dtree = (term_env, term) Bindlib.mbinder Tree_types.dtree
 
 (** Representation of a user-defined symbol. Symbols carry a "mode" indicating
     whether they may be given rewriting rules or a definition. Invariants must
