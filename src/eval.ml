@@ -207,17 +207,25 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | CondFV(xs,i) ->
               let allowed = Array.map (fun e -> IntMap.find e id_vars) xs in
               (* FIXME some comparisons can be avoided. *)
-              let fn b =
+              (* Verify that box [b] does not contain unallowed variables
+                 (i.e. other variables than the one bound). *)
+              let only_allowed b =
                 let fn _ x = not (Bindlib.occur x b) in
                 IntMap.for_all fn id_vars
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
-              if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
-              (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
-              if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
-              fail
+              if only_allowed b
+              then
+                (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+              else
+                (* As a last resort we try matching the SNF. *)
+                let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
+                if only_allowed b
+                then
+                  (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+                else
+                  fail
         in
         walk next stk cursor vars_id id_vars
     | Eos(l, r)                                           ->
