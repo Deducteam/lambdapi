@@ -63,7 +63,7 @@ open Tree_types
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa (* Default case *)
-  | DotAbst of tvar * int
+  | DotAbst of int
   | DotCons of TC.t
   | DotSuccess
   | DotFailure
@@ -79,7 +79,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
       match dh with
-      | DotAbst(v,id)        -> out "λ%s%d" (Bindlib.name_of v) id
+      | DotAbst(id)          -> out "λ%s%d" Tree.var_prefix id
       | DotDefa              -> out "*"
       | DotCons(Symb(a,n,_)) -> out "%s<sub>%d</sub>" n a
       | DotCons(Vari(i))     -> out "%s%d" Tree.var_prefix i
@@ -115,7 +115,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
           (* Create edge *)
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
-          Option.iter (fun (v,x,t) -> write_tree tag (DotAbst(v, x)) t) abs;
+          Option.iter (fun (x,t) -> write_tree tag (DotAbst(x)) t) abs;
           Option.iter (write_tree tag DotDefa) default
       | Cond({ ok ; cond ; fail })                              ->
           let tag = !node_count in
@@ -141,7 +141,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
           out "@ 0 [label=\"@%d\"%s];" swap
             (if store then " shape=\"box\"" else "");
           TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
-          Option.iter (fun (v,x,t) -> write_tree 0 (DotAbst(v,x)) t) abs;
+          Option.iter (fun (x,t) -> write_tree 0 (DotAbst(x)) t) abs;
           Option.iter (fun t -> write_tree 0 DotDefa t) default
       | Leaf(_) -> ()
       | _       -> assert false

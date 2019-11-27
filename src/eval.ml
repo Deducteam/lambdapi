@@ -288,8 +288,8 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | Abst(_, b) ->
               begin
                 match abstraction with
-                | None           -> default ()
-                | Some(_,id,tr) ->
+                | None        -> default ()
+                | Some(id,tr) ->
                     let bound, body = Bindlib.unbind b in
                     let u = body :: args in
                     let vars_id = VarMap.add bound id vars_id in

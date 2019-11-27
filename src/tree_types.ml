@@ -87,7 +87,7 @@ type ('term, 'rhs) tree =
           right hand side, are for constraint checks. *)
       ; children : ('term, 'rhs) tree TCMap.t
       (** Subtrees representing the matching of available constructors. *)
-      ; abstraction : ('term Bindlib.var * int * ('term, 'rhs) tree) option
+      ; abstraction : (int * ('term, 'rhs) tree) option
       (** Specialisation by an abstraction with the involved free variable. *)
       ; default : ('term, 'rhs) tree option
       (** When the available patterns contain a wildcard, this subtree is used
@@ -112,7 +112,7 @@ let rec tree_capacity : ('t, 'r) tree -> int = fun tr ->
   | Node({store; children=ch; abstraction=abs; default; _}) ->
       let c_ch = TCMap.fold (fun _ t m -> max m (tree_capacity t)) ch 0 in
       let c_default = Option.map_default tree_capacity 0 default in
-      let c_abs = Option.map_default (fun (_,_,t) -> tree_capacity t) 0 abs in
+      let c_abs = Option.map_default (fun (_,t) -> tree_capacity t) 0 abs in
       let c = max c_ch (max c_default c_abs) in
       if store then c + 1 else c
 

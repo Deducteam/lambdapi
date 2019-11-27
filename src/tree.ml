@@ -720,7 +720,7 @@ let compile : CM.t -> tree = fun m ->
         incr count;
         let vars_id = VarMap.add var id vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
-        Some(var, id, compile vars_id CM.{clauses ; slot ; positions})
+        Some(id, compile vars_id CM.{clauses ; slot ; positions})
       in
       Node({swap ; store ; children ; abstraction ; default})
   in
