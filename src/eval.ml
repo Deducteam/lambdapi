@@ -169,11 +169,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
-  (* [walk t s c v i] where [s] is the stack of terms to match and [c] the
-     cursor indicating where to write in the [vars] array described in
-     {!module:Terms} as the environment of the RHS during matching. [v] maps
-     the free variables contained in the term to the indexes defined during
-     tree build, and [i] is the inverse mapping of [v]. *)
+  (* [walk tree stk cursor vars_id id_vars] where [s] is the stack of terms to
+     match and [c] the cursor indicating where to write in the [vars] array
+     described in {!module:Terms} as the environment of the RHS during
+     matching. [v] maps the free variables contained in the term to the
+     indexes defined during tree build, and [i] is the inverse mapping of
+     [v]. *)
   let rec walk tree stk cursor vars_id id_vars =
     let open Tree_types in
     match tree with
