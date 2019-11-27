@@ -143,7 +143,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
   if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
 
-(** {b NOTE} that matching with trees involves two collections of terms.
+(** {b NOTE} that in {!val:tree_walk} matching with trees involves two
+    collections of terms.
     1. The argument stack [stk] of type {!type:stack} which contains the terms
        that are matched against the decision tree.
     2. An array [vars] of variables that are used for non-linearity checks and
@@ -152,7 +153,8 @@ and eq_modulo : term -> term -> bool = fun a b ->
     The [bound] array is similar to the [vars] array except that it is used to
     save terms with free variables. *)
 
-(** {b NOTE} bound variables involve three elements:
+(** {b NOTE} in the {!val:tree_walk} function, bound variables involve three
+    elements:
     1. a {!constructor:Terms.term.Abst} which introduces the bound variable in
        the term;
     2. a {!constructor:Terms.term.Vari} which is the bound variable previously
