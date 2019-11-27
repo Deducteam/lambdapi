@@ -46,9 +46,6 @@ type rhs = (term_env, term) Bindlib.mbinder
 (** Representation of a tree (see {!type:Terms.tree}). *)
 type tree = rhs Tree_types.tree
 
-(** Type used to relate introduced variables to a unique identifier. *)
-type var_indexing = int VarMap.t
-
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
@@ -475,13 +472,13 @@ module CM = struct
     in
     List.exists st_r cm.clauses
 
-  let index_var : var_indexing -> term -> int = fun vi t ->
+  let index_var : int VarMap.t -> term -> int = fun vi t ->
     VarMap.find (to_tvar t) vi
 
   (** [update_aux col slot clause] updates the fields the condition pool and
       the environment builder of clause [clause] assuming column [col] is
       inspected and the next environment slot is [slot]. *)
-  let update_aux : int -> int -> arg list -> var_indexing -> clause ->
+  let update_aux : int -> int -> arg list -> int VarMap.t -> clause ->
     clause = fun ci slot pos vi r ->
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
@@ -615,7 +612,7 @@ end
 (** [harvest l r e s] exhausts linearly the LHS [l] composed only of pattern
     variables with no constraints, to yield a leaf with RHS [r], environment
     builder [e] completed. *)
-let harvest : term array -> rhs -> CM.env_builder -> var_indexing -> int ->
+let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
   tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
@@ -661,7 +658,7 @@ let harvest : term array -> rhs -> CM.env_builder -> var_indexing -> int ->
 let compile : CM.t -> tree = fun m ->
   (* [compile c vi cm] compiles clause matrix [cm] which contains [c]
      variables indexed in [vi] *)
-  let rec compile : int -> var_indexing -> CM.t -> tree =
+  let rec compile : int -> int VarMap.t -> CM.t -> tree =
   fun count vars_id ({clauses; positions; slot} as pats) ->
   if CM.is_empty pats then Fail else
   let compile_cv = compile count vars_id in
