@@ -78,11 +78,12 @@ let to_dot : string -> sym -> unit = fun fname s ->
   let output_tree oc tree =
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
+      let var_px = "var" in
       match dh with
-      | DotAbst(id)          -> out "λ%s%d" Tree.var_prefix id
+      | DotAbst(id)          -> out "λ%s%d" var_px id
       | DotDefa              -> out "*"
       | DotCons(Symb(_,n,a)) -> out "%s<sub>%d</sub>" n a
-      | DotCons(Vari(i))     -> out "%s%d" Tree.var_prefix i
+      | DotCons(Vari(i))     -> out "%s%d" var_px i
       | DotSuccess           -> out "✓"
       | DotFailure           -> out "✗"
     in

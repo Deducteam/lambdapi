@@ -204,9 +204,6 @@ module CP = struct
     if res = None then choose_vf pools else res
 end
 
-(** Prefix of bound variables. *)
-let var_prefix = "var"
-
 (** {1 Clause matrix and pattern matching problem} *)
 
 (** {b NOTE} we ideally need the {!type:stack} of terms used during evaluation
@@ -717,7 +714,7 @@ let compile : CM.t -> tree = fun m ->
       let abstraction =
         let is_abst = function Abst(_) -> true | _ -> false in
         if List.for_all (fun x -> not (is_abst x)) column then None else
-        let var = Bindlib.new_var mkfree var_prefix in
+        let var = Bindlib.new_var mkfree "var" in
         let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
         let next =
