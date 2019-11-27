@@ -43,9 +43,6 @@ let rule_order : bool Pervasives.ref = Pervasives.ref false
     a RHS in every leaf since they correspond to matched rules. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** Representation of a branching condition (see {!type:Terms.tree_cond}). *)
-type tree_cond = Tree_types.tree_cond
-
 (** Representation of a tree (see {!type:Terms.tree}). *)
 type tree = rhs Tree_types.tree
 
@@ -667,22 +664,21 @@ let compile : CM.t -> tree = fun m ->
   let rec compile : int -> var_indexing -> CM.t -> tree =
   fun count vars_id ({clauses; positions; slot} as pats) ->
   if CM.is_empty pats then Fail else
+  let compile_cv = compile count vars_id in
   match CM.yield pats with
   | Yield({c_rhs; env_builder; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder vars_id slot
   | Condition(cond)                        ->
-      let compile = compile count vars_id in
-      let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
-      let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
+      let ok   = compile_cv {pats with clauses = CM.cond_ok   cond clauses} in
+      let fail = compile_cv {pats with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})
   | Check_stack                            ->
-      let compile = compile count vars_id in
       let left =
         let positions, clauses = CM.empty_stack clauses in
-        compile {pats with clauses; positions}
+        compile_cv {pats with clauses; positions}
       in
-      let right = compile {pats with clauses = CM.not_empty_stack clauses} in
+      let right = compile_cv {pats with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
   | Specialise(swap)                       ->
       let store = CM.store pats swap in
@@ -694,21 +690,19 @@ let compile : CM.t -> tree = fun m ->
       let cons = CM.get_cons vars_id column in
       (* Constructors specialisation *)
       let children =
-        let compile = compile count vars_id in
         let fn acc (tr_cons, te_cons) =
           let (positions, clauses) =
             CM.specialize te_cons swap positions updated
           in
-          TCMap.add tr_cons (compile CM.{clauses ; slot ; positions}) acc
+          TCMap.add tr_cons (compile_cv CM.{clauses ; slot ; positions}) acc
         in
         List.fold_left fn TCMap.empty cons
       in
       (* Default child *)
       let default =
-        let compile = compile count vars_id in
         let (positions, clauses) = CM.default swap positions updated in
-        let ncm = CM.{clauses ; slot ; positions} in
-        if CM.is_empty ncm then None else Some(compile ncm)
+        let ncm = CM.{clauses; slot; positions} in
+        if CM.is_empty ncm then None else Some(compile_cv ncm)
       in
       (* Abstraction specialisation*)
       let abstraction =
