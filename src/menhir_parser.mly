@@ -11,9 +11,12 @@ open Parser
     calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
     the [parser_fatal] function should be used instead. *)
 
-(** [get_args t] decomposes [t] into a head term and a list of arguments. Note
-    that in the returned pair [(h,args)], [h] is never a [P_Appl] node. Note
-    also that P_LLet, P_UnaO, P_UnaB and P_NLit are not decomposed. *)
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments.  The arguments are stored together with the position
+    of the corresponding application node in the source code. Note that [h] is
+    guaranteed not to be a [P_Appl] node. Term constructors with no equivalent
+    in the legacy syntax (like binary symbol applications) are not handled. *)
 let get_args : p_term -> p_term * (Pos.popt * p_term) list = fun t ->
   let rec get_args acc t =
     match t.elt with
@@ -99,43 +102,42 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let (h, lts) = get_args t in
     match h.elt with
     | P_Iden({elt = ([],x); _}, _) when is_pat_var env x ->
-       let lts = List.map (fun (p,t) -> p,build env t) lts in
-       let max = try Hashtbl.find arity x with Not_found -> assert false in
-       let k = List.length lts in
-       let nb_exp = if k >= max then 0 else max - k in
-       let p = t.pos in
-       if nb_exp = 0 then
-         let (lts1, lts2) = List.cut lts max in
-         let ts1 = Array.of_list (List.map snd lts1) in
-         let patt = Pos.make p (P_Patt(Pos.make h.pos x, ts1)) in
-         add_args patt lts2
-       else (* We eta-expense. *)
-         let ts = Array.of_list (List.map snd lts) in
-         (* Create fresh variables. *)
-         let prefix = "v" and var_id = ref 0 in
-         let ctx = List.map (fun x -> x.elt) ctx in
-         let new_var _ =
-           while List.mem (prefix ^ string_of_int !var_id) ctx do
-             incr var_id
-           done;
-           let v = prefix ^ string_of_int !var_id in
-           incr var_id; v
-         in
-         let vars = Array.init nb_exp new_var in
-         (* Build the pattern. *)
-         let arg i =
-           if i < k then ts.(i)
-           else Pos.make p (P_Iden (Pos.make p ([], vars.(i-k)), false))
-         in
-         let args = Array.init max arg in
-         let patt = Pos.make p (P_Patt(Pos.make h.pos x, args)) in
-         (* Build the abstraction. *)
-         let rec build_vars i =
-           if i >= nb_exp then []
-           else Some (Pos.make p vars.(i)) :: build_vars (i+1)
-         in
-         Pos.make p (P_Abst([build_vars 0, None, false], patt))
-    | _                                               ->
+        let lts = List.map (fun (p,t) -> p,build env t) lts in
+        let max = try Hashtbl.find arity x with Not_found -> assert false in
+        let k = List.length lts in
+        (* Number of η-expansions required. *)
+        let nb_exp = if k >= max then 0 else max - k in
+        let p = t.pos in
+        if nb_exp = 0 then
+          (* No η-expansion required (enough arguments). *)
+          let (lts1, lts2) = List.cut lts max in
+          let ts1 = Array.of_list (List.map snd lts1) in
+          let patt = Pos.make p (P_Patt(Pos.make h.pos x, ts1)) in
+          add_args patt lts2
+        else
+          (* We need to η-expense (not enough arguments). *)
+          let ts = Array.of_list (List.map snd lts) in
+          (* Create fresh variables. *)
+          let ctx = List.map (fun x -> x.elt) ctx in
+          (* Function to create fresh variable names. *)
+          let new_var_name : unit -> string =
+            let counter = ref (-1) in
+            fun () ->
+              incr counter;
+              while List.mem (Printf.sprintf "v%i" !counter) ctx do
+                incr counter
+              done;
+              Printf.sprintf "v%i" !counter
+          in
+          let vars = Array.init nb_exp (fun _ -> new_var_name ()) in
+          (* Build the pattern. *)
+          let fn x = Pos.none (P_Iden(Pos.none ([],x), false)) in
+          let args = Array.append ts (Array.map fn vars) in
+          let patt = Pos.make p (P_Patt(Pos.make h.pos x, args)) in
+          (* Build the abstraction. *)
+          let xs = Array.map (fun x -> Some(Pos.none x)) vars in
+          Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
+    | _                                                  ->
     match t.elt with
     | P_Iden(_)
     | P_Type

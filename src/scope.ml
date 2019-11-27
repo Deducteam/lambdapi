@@ -164,10 +164,10 @@ let get_implicitness : p_term -> bool list = fun t ->
   in
   get_impl t
 
-(** [get_args t] decomposes the parser level term [t] into a spine
-   [(h,args)], when [h] is the term at the head of the application and [args]
-   is the list of all its arguments. WARNING: it does not decompose P_LLet,
-   P_UnaO, P_BinO and P_NLit. *)
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments. Note that sugared applications (e.g., infix symbols)
+    are not expanded, so [h] may still be unsugared to an application. *)
 let get_args : p_term -> p_term * p_term list =
   let rec get_args args t =
     match t.elt with
@@ -197,7 +197,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     begin
       match (p_head.elt, md) with
       | (P_Patt(_,_), M_LHS(_,_)) when args <> [] ->
-        fatal t.pos "Pattern variables cannot be applied."
+          fatal t.pos "Pattern variables cannot be applied."
       | _                                         -> ()
     end;
     (* Scope the head and obtain the implicitness of arguments. *)
