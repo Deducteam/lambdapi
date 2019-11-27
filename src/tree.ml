@@ -49,6 +49,9 @@ type tree_cond = term Tree_types.tree_cond
 (** Representation of a tree (see {!type:Terms.tree}). *)
 type tree = (term, rhs) Tree_types.tree
 
+(** Type used to relate introduced variables to a unique identifier. *)
+type var_indexing = int VarMap.t
+
 (** {1 Conditions for decision trees}
 
     The decision trees used for pattern matching include binary nodes carrying
@@ -92,7 +95,7 @@ module CP = struct
     (** Set of convertibility constraints [(i,j)] with [i < j]. The constraint
         [(i,j)] is satisfied if the terms stored at indices [i] and [j] in the
         [vars] array of the {!val:Eval.tree_walk} function are convertible. *)
-    ; fv_conds : (tvar array) IntMap.t
+    ; fv_conds : (int array) IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
         stored at slot [i] in the [vars] array of {!val:Eval.tree_walk}. *) }
@@ -107,7 +110,7 @@ module CP = struct
   let pp : t pp = fun oc pool ->
     let pp_fv oc fv_conds =
       let pp_sep oc () = Format.pp_print_string oc ";" in
-      let pp_tvs = Format.pp_print_list ~pp_sep Print.pp_tvar in
+      let pp_tvs = Format.pp_print_list ~pp_sep Format.pp_print_int in
       let ppit oc (a, b) =
         Format.fprintf oc "@[(%a@@%d)@]" pp_tvs (Array.to_list b) a
       in
@@ -152,7 +155,7 @@ module CP = struct
 
   (** [register_fv slot xs pool] registers a free variables constraint for the
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
-  let register_fv : int -> tvar array -> t -> t = fun i vs pool ->
+  let register_fv : int -> int array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
   (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
@@ -166,7 +169,7 @@ module CP = struct
     match cond with
     | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
     | CondFV(x,i) ->
-        try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv_conds)
+        try Array.equal (=) x (IntMap.find i pool.fv_conds)
         with Not_found -> false
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
@@ -176,7 +179,7 @@ module CP = struct
     | CondFV(xs,i) ->
         try
           let ys = IntMap.find i pool.fv_conds in
-          if not (Array.equal Bindlib.eq_vars xs ys) then pool
+          if not (Array.equal (=) xs ys) then pool
           else {pool with fv_conds = IntMap.remove i pool.fv_conds}
         with Not_found -> pool
 
@@ -244,7 +247,7 @@ module CM = struct
       variable of the LHS into the RHS). An element [(sv, (se, xs))] indicates
       that slot [sv] of the [vars] array should be bound at index [se], in the
       environment using free variables [xs]. *)
-  type env_builder = (int * (int * term Bindlib.mvar)) list
+  type env_builder = (int * (int * int array)) list
 
   (** A clause matrix row (schematically {i c_lhs → c_rhs if cond_pool}). *)
   type clause =
@@ -478,17 +481,20 @@ module CM = struct
     in
     List.exists st_r cm.clauses
 
+  let index_var : var_indexing -> term -> int = fun vi t ->
+    VarMap.find (to_tvar t) vi
+
   (** [update_aux col slot clause] updates the fields the condition pool and
       the environment builder of clause [clause] assuming column [col] is
       inspected and the next environment slot is [slot]. *)
-  let update_aux : int -> int -> arg list -> clause -> clause =
-    fun ci slot pos r ->
+  let update_aux : int -> int -> arg list -> var_indexing -> clause ->
+    clause = fun ci slot pos vi r ->
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let (_, a, _) = List.destruct pos ci in
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
-            CP.register_fv slot (Array.map to_tvar e) r.cond_pool
+            CP.register_fv slot (Array.map (index_var vi) e) r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
@@ -498,10 +504,11 @@ module CM = struct
         in
         let env_builder =
           match i with
-          | Some(i) -> (slot, (i, Array.map to_tvar e)) :: r.env_builder
+          | Some(i) ->
+              (slot, (i, Array.map (index_var vi) e)) :: r.env_builder
           | None    -> r.env_builder
         in
-        { r with env_builder ; cond_pool }
+        {r with env_builder; cond_pool}
     | _             -> r
 
   (** [specialize pat col pos cl] filters and transforms LHS of [cl] assuming
@@ -613,8 +620,8 @@ end
 (** [harvest l r e s] exhausts linearly the LHS [l] composed only of pattern
     variables with no constraints, to yield a leaf with RHS [r], environment
     builder [e] completed. *)
-let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
-    fun lhs rhs env_builder slot ->
+let harvest : term array -> rhs -> CM.env_builder -> var_indexing -> int ->
+  tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; default = Some(child) }
@@ -623,7 +630,9 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     match lhs with
     | []                        -> Leaf(env_builder, rhs)
     | Patt(Some(i), _, e) :: ts ->
-        let env_builder = (slot, (i, Array.map to_tvar e)) :: env_builder in
+        let env_builder =
+          (slot, (i, Array.map (CM.index_var vi) e)) :: env_builder
+        in
         default_node true (loop ts env_builder (slot + 1))
     | Patt(None, _, _) :: ts    ->
         default_node false (loop ts env_builder slot)
@@ -656,13 +665,13 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
     [m] into a decision tree. *)
 let compile : CM.t -> tree = fun m ->
   let count = ref 0 in
-  let rec compile : int VarMap.t -> CM.t -> tree =
+  let rec compile : var_indexing -> CM.t -> tree =
   fun vars_id ({clauses; positions; slot} as pats) ->
   if CM.is_empty pats then Fail else
   match CM.yield pats with
   | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
-      harvest c_lhs c_rhs env_builder slot
+      harvest c_lhs c_rhs env_builder vars_id slot
   | Condition(cond)                          ->
       let compile = compile vars_id in
       let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
@@ -678,7 +687,9 @@ let compile : CM.t -> tree = fun m ->
       Eos(left, right)
   | Specialise(swap)                         ->
       let store = CM.store pats swap in
-      let updated = List.map (CM.update_aux swap slot positions) clauses in
+      let updated =
+        List.map (CM.update_aux swap slot positions vars_id) clauses
+      in
       let slot = if store then slot + 1 else slot in
       let column = CM.get_col swap pats in
       let cons = CM.get_cons vars_id column in

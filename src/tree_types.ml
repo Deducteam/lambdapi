@@ -41,7 +41,7 @@ type 'term tree_cond =
   (** Are the terms at the given indices convertible? We enforce the invariant
       that the first element is a point of reference, which appears in all the
       convertibility conditions involving a given non-linear variable. *)
-  | CondFV of 'term Bindlib.var array * int
+  | CondFV of int array * int
   (** Are the bound variables (which are free at the time of the checking) of
       the term at the given index in the array? *)
 
@@ -60,7 +60,7 @@ type 'term tree_cond =
 type ('term, 'rhs) tree =
   | Fail
   (** Empty decision tree, used when there are no rewriting rules. *)
-  | Leaf of (int * (int * 'term Bindlib.mvar)) list * 'rhs
+  | Leaf of (int * (int * int array)) list * 'rhs
   (** The value [Leaf(m, rhs)] stores the RHS [rhs] of the rewriting rule that
       can be applied upon reaching the leaf.  The association list [m] is used
       to construct the environment of the RHS. Note that we do not need to use

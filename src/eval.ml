@@ -181,7 +181,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
      {!module:Terms} as the environment of the RHS during matching.  [m]
      maps the free variables contained in the tree to the free variables
      used in this evaluation. *)
-  let rec walk tree stk cursor fresh_vars vars_id =
+  let rec walk tree stk cursor vars_id id_vars =
     let open Tree_types in
     match tree with
     | Fail                                                -> None
@@ -200,7 +200,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 env.(slot) <- TE_Some(b)
               else
                 let b = lift vars.(pos) in
-                let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+                let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
                 env.(slot) <- TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs b))
         in
         List.iter fn env_builder;
@@ -212,10 +212,10 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | CondNL(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
-              let xs = Array.map (fun e -> VarMap.find e fresh_vars) xs in
+              let xs = Array.map (fun e -> IntMap.find e id_vars) xs in
               let fn b =
                 let fn _ x = not (Bindlib.occur x b) in
-                VarMap.for_all fn fresh_vars
+                IntMap.for_all fn id_vars
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar xs (lift vars.(i)) in
@@ -225,10 +225,10 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if fn b then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               fail
         in
-        walk next stk cursor fresh_vars vars_id
+        walk next stk cursor vars_id id_vars
     | Eos(l, r)                                           ->
         let next = if stk = [] then l else r in
-        walk next stk cursor fresh_vars vars_id
+        walk next stk cursor vars_id id_vars
     | Node({swap; children; store; abstraction; default}) ->
         match List.destruct stk swap with
         | exception Not_found     -> None
@@ -240,7 +240,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               else cursor
             in
             let stk = List.reconstruct left [] right in
-            walk t stk cursor fresh_vars vars_id
+            walk t stk cursor vars_id id_vars
           in
           Option.map_default fn None default
         else
@@ -261,7 +261,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           let default () =
             let fn d =
               let stk = List.reconstruct left [] right in
-              walk d stk cursor fresh_vars vars_id
+              walk d stk cursor vars_id id_vars
             in
             Option.map_default fn None default
           in
@@ -272,7 +272,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 try
                   let matched = TCMap.find cons children in
                   let stk = List.reconstruct left args right in
-                  walk matched stk cursor fresh_vars vars_id
+                  walk matched stk cursor vars_id id_vars
                 with Not_found -> default ()
               end
           | Vari(x)    ->
@@ -282,25 +282,25 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                   let cons = TC.Vari(id) in
                   let matched = TCMap.find cons children in
                   let stk = List.reconstruct left args right in
-                  walk matched stk cursor fresh_vars vars_id
+                  walk matched stk cursor vars_id id_vars
                 with Not_found -> default ()
               end
           | Abst(_, b) ->
               begin
                 match abstraction with
                 | None           -> default ()
-                | Some(fv,id,tr) ->
+                | Some(_,id,tr) ->
                     let bound, body = Bindlib.unbind b in
                     let u = body :: args in
-                    let fresh_vars = VarMap.add fv bound fresh_vars in
                     let vars_id = VarMap.add bound id vars_id in
+                    let id_vars = IntMap.add id bound id_vars in
                     let stk = List.reconstruct left u right in
-                    walk tr stk cursor fresh_vars vars_id
+                    walk tr stk cursor vars_id id_vars
               end
           | Meta(_, _) -> default ()
           | _          -> assert false
   in
-  walk tree stk 0 VarMap.empty VarMap.empty
+  walk tree stk 0 VarMap.empty IntMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
 and snf : term -> term = fun t ->
