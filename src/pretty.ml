@@ -41,7 +41,7 @@ let pp_expo : Terms.expo pp = fun oc e ->
 let pp_prop : Terms.prop pp = fun oc p ->
   match p with
   | Defin -> ()
-  | Const -> Format.pp_print_string oc "const "
+  | Const -> Format.pp_print_string oc "constant "
   | Injec -> Format.pp_print_string oc "injective "
 
 let rec pp_p_term : p_term pp = fun oc t ->

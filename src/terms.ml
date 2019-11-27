@@ -89,7 +89,7 @@ type term =
   ; sym_tree  : dtree ref
   (** Decision tree used for pattern matching against rules of the symbol. *)
   ; sym_prop  : prop
-  (** Tells what kind of symbol it is. *)
+  (** Property of the symbol. *)
   ; sym_expo  : expo
   (** The visibility of the symbol. *) }
 

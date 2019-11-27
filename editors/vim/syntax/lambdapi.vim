@@ -26,27 +26,79 @@ syntax match StringLiteral "["][^"]*["]"
 highlight link StringLiteral String
 
 " Keywords.
-syntax keyword KeywordOK contained require open as let in
-syntax keyword KeywordOK contained symbol const injective
-syntax keyword KeywordOK contained rule and definition theorem
-syntax keyword KeywordOK contained assert assertnot set
-syntax keyword KeywordOK contained proof qed admit abort
-syntax keyword KeywordOK contained focus print proofterm
-syntax keyword KeywordOK contained refine apply simpl assume
-syntax keyword KeywordOK contained rewrite reflexivity symmetry
-syntax keyword KeywordOK contained type compute
+syntax keyword KeywordOK contained abort
+syntax keyword KeywordOK contained admit
+syntax keyword KeywordOK contained and
+syntax keyword KeywordOK contained apply
+syntax keyword KeywordOK contained as
+syntax keyword KeywordOK contained assert
+syntax keyword KeywordOK contained assertnot
+syntax keyword KeywordOK contained assume
+syntax keyword KeywordOK contained compute
+syntax keyword KeywordOK contained constant
+syntax keyword KeywordOK contained definition
+syntax keyword KeywordOK contained focus
+syntax keyword KeywordOK contained in
+syntax keyword KeywordOK contained injective
+syntax keyword KeywordOK contained let
+syntax keyword KeywordOK contained open
+syntax keyword KeywordOK contained print
+syntax keyword KeywordOK contained private
+syntax keyword KeywordOK contained proof
+syntax keyword KeywordOK contained proofterm
+syntax keyword KeywordOK contained protected
+syntax keyword KeywordOK contained qed
+syntax keyword KeywordOK contained refine
+syntax keyword KeywordOK contained reflexivity
+syntax keyword KeywordOK contained require
+syntax keyword KeywordOK contained rewrite
+syntax keyword KeywordOK contained rule
+syntax keyword KeywordOK contained set
+syntax keyword KeywordOK contained simpl
+syntax keyword KeywordOK contained symmetry
+syntax keyword KeywordOK contained symbol
+syntax keyword KeywordOK contained theorem
+syntax keyword KeywordOK contained type
+syntax keyword KeywordOK contained TYPE
+syntax keyword KeywordOK contained why3
 highlight link KeywordOK Keyword
 
 " Keyword in identifier.
-syntax keyword KeywordKO contained require open as let in
-syntax keyword KeywordKO contained symbol const injective
-syntax keyword KeywordKO contained rule and definition theorem
-syntax keyword KeywordKO contained assert assertnot set
-syntax keyword KeywordKO contained proof qed admit abort
-syntax keyword KeywordKO contained focus print proofterm
-syntax keyword KeywordKO contained refine apply simpl assume
-syntax keyword KeywordKO contained rewrite reflexivity symmetry
-syntax keyword KeywordKO contained type compute
+syntax keyword KeywordKO contained abort
+syntax keyword KeywordKO contained admit
+syntax keyword KeywordKO contained and
+syntax keyword KeywordKO contained apply
+syntax keyword KeywordKO contained as
+syntax keyword KeywordKO contained assert
+syntax keyword KeywordKO contained assertnot
+syntax keyword KeywordKO contained assume
+syntax keyword KeywordKO contained compute
+syntax keyword KeywordKO contained constant
+syntax keyword KeywordKO contained definition
+syntax keyword KeywordKO contained focus
+syntax keyword KeywordKO contained in
+syntax keyword KeywordKO contained injective
+syntax keyword KeywordKO contained let
+syntax keyword KeywordKO contained open
+syntax keyword KeywordKO contained print
+syntax keyword KeywordKO contained private
+syntax keyword KeywordKO contained proof
+syntax keyword KeywordKO contained proofterm
+syntax keyword KeywordKO contained protected
+syntax keyword KeywordKO contained qed
+syntax keyword KeywordKO contained refine
+syntax keyword KeywordKO contained reflexivity
+syntax keyword KeywordKO contained require
+syntax keyword KeywordKO contained rewrite
+syntax keyword KeywordKO contained rule
+syntax keyword KeywordKO contained set
+syntax keyword KeywordKO contained simpl
+syntax keyword KeywordKO contained symmetry
+syntax keyword KeywordKO contained symbol
+syntax keyword KeywordKO contained theorem
+syntax keyword KeywordKO contained type
+syntax keyword KeywordKO contained TYPE
+syntax keyword KeywordKO contained why3
 highlight link KeywordKO Error
 
 " Escaped identifiers member.
