@@ -332,14 +332,3 @@ let eq_p_command : p_command eq = fun c1 c2 ->
       eq_p_query q1 q2
   | (_                           , _                           ) ->
       false
-
-(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
-    when [h] is the term at the head of the application and [args] is the list
-    of all its arguments. *)
-let get_args : p_term -> p_term * p_term list =
-  let rec get_args args t =
-    match t.elt with
-    | P_Appl(t,u) -> get_args (u::args) t
-    | P_Wrap(t)   -> get_args args t
-    | _           -> (t, args)
-  in get_args []
