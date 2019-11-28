@@ -303,15 +303,17 @@ let parser arg_ident =
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
 let parser meta =
-  | "?" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+  | "?" - id:{regular_ident | escaped_ident} ->
+      if id = "_" then Earley.give_up (); in_pos _loc id
 
 (** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
 let parser patt =
-  | "&" - id:{regular_ident | escaped_ident} -> in_pos _loc id
+  | "&" - id:{regular_ident | escaped_ident} ->
+      if id = "_" then None else Some(in_pos _loc id)
 
 (** Any path member identifier (escaped idents are stripped). *)
 let parser path_elem =
-  | id:regular_ident -> KW.check id; (id, false)
+  | id:regular_ident          -> KW.check id; (id, false)
   | id:escaped_ident_no_delim -> (id, true)
 
 (** Module path (dot-separated identifiers. *)
