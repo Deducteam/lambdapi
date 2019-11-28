@@ -164,6 +164,18 @@ let get_implicitness : p_term -> bool list = fun t ->
   in
   get_impl t
 
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments. Note that sugared applications (e.g., infix symbols)
+    are not expanded, so [h] may still be unsugared to an application. *)
+let get_args : p_term -> p_term * p_term list =
+  let rec get_args args t =
+    match t.elt with
+    | P_Appl(t,u) -> get_args (u::args) t
+    | P_Wrap(t)   -> get_args args t
+    | _           -> (t, args)
+  in get_args []
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
@@ -180,7 +192,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (p_head, args) = Syntax.get_args t in
+    let (p_head, args) = get_args t in
+    (* Check that LHS pattern variables are applied to no argument. *)
+    begin
+      match (p_head.elt, md) with
+      | (P_Patt(_,_), M_LHS(_,_)) when args <> [] ->
+          fatal t.pos "Pattern variables cannot be applied."
+      | _                                         -> ()
+    end;
     (* Scope the head and obtain the implicitness of arguments. *)
     let h = scope_head env p_head in
     let impl =
