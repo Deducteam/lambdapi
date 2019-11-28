@@ -13,6 +13,17 @@ Structure of directories and files
    + `vim/`: code for vim
    + `vscode/`: code for vscode
 
+     - `.vscode/*.json`: config for launching, debugging, building the extension
+     - `src/*.ts`: the VSCode plugin source code written in the TypeScript language
+     - `package.json`: the manifest of the plugin (activation events, scripts, dependencies, ...)
+     - `tsconfig.json`: TypeScript configuration (directories, ...)
+     - `vscode.proposed.d.ts`: unstable VSCode API (Microsoft file, likely to change)
+     - `lp.configuration.json`: specific characters
+     - `syntaxes/lp.tmLanguage.json`: grammar of lambdapi
+     - `Makefile`
+     - `.gitignore`
+     - `License-vscoq.txt` MIT License mentionning the original author of VSCoq, a similar plugin for Coq
+
 * `libraries/`: libraries of Dedukti files (see GNUmakefile)
 
 * `lp-lsp/`: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
