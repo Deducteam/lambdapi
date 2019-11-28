@@ -1,0 +1,26 @@
+{
+  "scopeName": "source.lp",
+  "patterns": [
+    {
+      "include": "#commands"
+    },
+    {
+      "include": "#comments"
+    }
+  ],
+  "repository": {
+    "commands": {
+      "match": "\\b(abort|admit|and|apply|as|assert|assertnot|assume|compute|constant|definition|focus|in|injective|let|open|print|private|proof|proofterm|protected|qed|refine|reflexivity|require|rewrite|rule|set|simpl|symmetry|symbol|theorem|type|TYPE|why3)\\b",
+      "name": "keyword.control.lp"
+    },
+    "comments": {
+			"patterns": [
+				{
+					"begin": "//",
+					"end": "$",
+					"name": "comment.line.double-slash.lp"
+				}
+			]
+		}
+  }
+}

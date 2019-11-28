@@ -164,6 +164,18 @@ let get_implicitness : p_term -> bool list = fun t ->
   in
   get_impl t
 
+(** [get_args t] decomposes the parser level term [t] into a spine [(h,args)],
+    when [h] is the term at the head of the application and [args] is the list
+    of all its arguments. Note that sugared applications (e.g., infix symbols)
+    are not expanded, so [h] may still be unsugared to an application. *)
+let get_args : p_term -> p_term * p_term list =
+  let rec get_args args t =
+    match t.elt with
+    | P_Appl(t,u) -> get_args (u::args) t
+    | P_Wrap(t)   -> get_args args t
+    | _           -> (t, args)
+  in get_args []
+
 (** [scope md ss env t] turns a parser-level term [t] into an actual term. The
     variables of the environment [env] may appear in [t], and the scoping mode
     [md] changes the behaviour related to certain constructors.  The signature
@@ -180,12 +192,19 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
-    let (h, args) = Syntax.get_args t in
-    (* Check whether application is marked as explicit in the head symbol. *)
-    let expl = match h.elt with P_Iden(_,b) -> b | _ -> false in
+    let (p_head, args) = get_args t in
+    (* Check that LHS pattern variables are applied to no argument. *)
+    begin
+      match (p_head.elt, md) with
+      | (P_Patt(_,_), M_LHS(_,_)) when args <> [] ->
+          fatal t.pos "Pattern variables cannot be applied."
+      | _                                         -> ()
+    end;
     (* Scope the head and obtain the implicitness of arguments. *)
-    let h = scope_head env h in
+    let h = scope_head env p_head in
     let impl =
+      (* Check whether application is marked as explicit in head symbol. *)
+      let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
       match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
@@ -195,9 +214,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Build the application of [h] to [args], inserting implicit arguments. *)
   and add_impl env loc h impl args =
     let appl_p_term t u = _Appl t (scope env u) in
-    let appl_meta t =
-      _Appl t (scope_head env (Pos.none P_Wild))
-    in
+    let appl_meta t = _Appl t (scope_head env (Pos.none P_Wild)) in
     match (impl, args) with
     (* The remaining arguments are all explicit. *)
     | ([]         , _      ) -> List.fold_left appl_p_term h args
@@ -293,7 +310,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           match unfold (Bindlib.unbox (scope env t)) with
           | Vari(x) -> x
           | _       -> fatal t.pos "Only bound variables are allowed in the \
-                                    environment of a &%s." id.elt
+                                    environment of &%s." id.elt
         in
         let vs = Array.map scope_var ts in
         (* Check that [vs] are distinct variables. *)
@@ -426,7 +443,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, nl) = patt_vars p_lhs in
-  let (pvs    , _ ) = patt_vars p_rhs in
+  let (pvs_rhs, _ ) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
   (* Check that the meta-variables of the RHS exist in the LHS. *)
   let check_in_lhs (m,i) =
@@ -436,11 +453,11 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     in
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
-  List.iter check_in_lhs pvs;
+  List.iter check_in_lhs pvs_rhs;
   (* Get the non-linear variables not in the RHS. *)
-  let nl = List.filter (fun m -> not (List.mem_assoc m pvs)) nl in
+  let nl = List.filter (fun m -> not (List.mem_assoc m pvs_rhs)) nl in
   (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
-  let pvs = pvs @ (List.map (fun m -> (m, List.assoc m pvs_lhs)) nl) in
+  let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* NOTE [map] maps meta-variables to their position in the environment. *)
   (* NOTE meta-variables not in [map] can be considered as wildcards. *)
@@ -452,14 +469,14 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with
-    | Symb(s,_) when is_constant s                      ->
+    | Symb(s,_) when is_constant s                  ->
         fatal p_lhs.pos "Constant LHS head symbol."
     | Symb(({sym_expo=Protec; sym_path; _} as s),h) ->
         if ss.signature.sign_path <> sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols."
         else (s, h, args)
-    | Symb(s,h)                                      -> (s, h, args)
-    | _                                              ->
+    | Symb(s,h)                                     -> (s, h, args)
+    | _                                             ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] && !verbose > 1 then

@@ -41,10 +41,9 @@ def bpi_trans_2 (X : type) (x : term X) (y : term X) (z : term X)
   bpi X x z (trans X x y z h h')
     (z : term X => h'' : Eq X x z => P z (trans X y x z (sym X x y h) h'')) p.
 
-(; The following rule is rejected by Dedukti with the error message
-"The type could not be infered." ;)
+(; The following rule is rejected because the LHS is not a pattern ;)
 
-[X,x,y,z,P,h,h',p]
+(;[X,x,y,z,P,h,h',p]
   bpi X y z h' P
      (bpi X x y h
           (z => h'' => P z (trans X y x z (sym X x y h) h''))
@@ -52,3 +51,4 @@ def bpi_trans_2 (X : type) (x : term X) (y : term X) (z : term X)
     -->
   bpi X x z (trans X x y z h h')
     (z:term X => h'':Eq X x z => P z (trans X y x z (sym X x y h) h'')) p.
+;)
