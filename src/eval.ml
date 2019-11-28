@@ -208,12 +208,25 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | CondNL(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
-              let allowed = Array.map (fun e -> IntMap.find e id_vars) xs in
-              (* Verify that box [b] does not contain unallowed variables
+              let allowed =
+                let _, dummy = IntMap.choose id_vars in
+                Array.make (Array.length xs) dummy in
+              (* Remove variables that are allowed from the context; and fill
+                 the environment array. *)
+              let ligthened_map =
+                let c = Pervasives.ref 0 in
+                let fn id map =
+                  allowed.(i) <- IntMap.find id id_vars;
+                  Pervasives.incr c;
+                  IntMap.remove id map
+                in
+                Array.fold_right fn xs id_vars
+              in
+              (* Verify that box [b] does not contain forbidden variables
                  (i.e. other variables than the one bound). *)
               let only_allowed b =
-                let fn _ x = Array.mem x allowed || not (Bindlib.occur x b) in
-                IntMap.for_all fn id_vars
+                let fn _ x = not (Bindlib.occur x b) in
+                IntMap.for_all fn ligthened_map
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
