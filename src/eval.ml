@@ -209,11 +209,15 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(xs,i) ->
               let allowed =
+                (* Term variables allowed in the term. *)
                 let _, dummy = IntMap.choose id_vars in
                 Array.make (Array.length xs) dummy in
-              (* Remove variables that are allowed from the context; and fill
-                 the environment array. *)
-              let ligthened_map =
+              let lightened_map =
+                (* *Lightened* map containing variables from the context
+                   without the variables in the constraint (the [xs]). This
+                   avoids checking occurrence of variables that have been
+                   bound in the term (via [bind_mvar]).
+                   Aditionally, the [allowed] array is filled imperatively. *)
                 let c = Pervasives.ref 0 in
                 let fn id map =
                   allowed.(i) <- IntMap.find id id_vars;
@@ -222,25 +226,20 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 in
                 Array.fold_right fn xs id_vars
               in
-              (* Verify that box [b] does not contain forbidden variables
-                 (i.e. other variables than the one bound). *)
+              (* Verify that box [b] does not contain forbidden variables. *)
               let only_allowed b =
                 let fn _ x = not (Bindlib.occur x b) in
-                IntMap.for_all fn ligthened_map
+                IntMap.for_all fn lightened_map
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
               if only_allowed b
-              then
-                (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
-              else
-                (* As a last resort we try matching the SNF. *)
-                let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
-                if only_allowed b
-                then
-                  (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
-                else
-                  fail
+              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
+              (* As a last resort we try matching the SNF. *)
+              let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
+              if only_allowed b
+              then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
+              else fail
         in
         walk next stk cursor vars_id id_vars
     | Eos(l, r)                                           ->
