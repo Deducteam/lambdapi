@@ -502,9 +502,9 @@ module CM = struct
         {r with env_builder; cond_pool}
     | _             -> r
 
-  (** [specialize pat col pos cl] filters and transforms LHS of [cl] assuming
-      a matching on pattern [pat] on column [col], with [pos] being the
-      position of arguments in clauses. *)
+  (** [specialize pat col pos cls] filters and transforms LHS of [cls]
+      assuming a matching on pattern [pat] on column [col], with [pos] being
+      the position of arguments in clauses. *)
   let specialize : term -> int -> arg list -> clause list ->
     arg list * clause list = fun pat col pos cls ->
     let pos =
@@ -609,9 +609,10 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest l r e s] exhausts linearly the LHS [l] composed only of pattern
-    variables with no constraints, to yield a leaf with RHS [r], environment
-    builder [e] completed. *)
+(** [harvest lhs rhs eb vi sl] exhausts linearly the LHS [lhs] composed only
+    of pattern variables with no constraints, to yield a leaf with RHS [rhs]
+    and the environment builder [eb] completed. [vi] contains the indexes
+    of variables *)
 let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
   tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
