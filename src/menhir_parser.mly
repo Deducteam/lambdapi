@@ -112,7 +112,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           (* No η-expansion required (enough arguments). *)
           let (lts1, lts2) = List.cut lts max in
           let ts1 = Array.of_list (List.map snd lts1) in
-          let patt = Pos.make p (P_Patt(Pos.make h.pos x, ts1)) in
+          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), ts1)) in
           add_args patt lts2
         else
           (* We need to η-expense (not enough arguments). *)
@@ -133,7 +133,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           (* Build the pattern. *)
           let fn x = Pos.none (P_Iden(Pos.none ([],x), false)) in
           let args = Array.append ts (Array.map fn vars) in
-          let patt = Pos.make p (P_Patt(Pos.make h.pos x, args)) in
+          let patt = Pos.make p (P_Patt(Some(Pos.make h.pos x), args)) in
           (* Build the abstraction. *)
           let xs = Array.map (fun x -> Some(Pos.none x)) vars in
           Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
