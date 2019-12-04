@@ -78,7 +78,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
   let output_tree oc tree =
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
-      let var_px = "var" in
+      let var_px = "v" in
       match dh with
       | DotAbst(id)          -> out "λ%s%d" var_px id
       | DotDefa              -> out "*"

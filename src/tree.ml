@@ -609,10 +609,10 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest lhs rhs eb vi sl] exhausts linearly the LHS [lhs] composed only
-    of pattern variables with no constraints, to yield a leaf with RHS [rhs]
-    and the environment builder [eb] completed. [vi] contains the indexes
-    of variables *)
+(** [harvest lhs rhs env_builder vi slot] exhausts linearly the LHS [lhs]
+    composed only of pattern variables with no constraints, to yield a leaf
+    with RHS [rhs] and the environment builder [env_builder] completed. [vi]
+    contains the indexes of variables. *)
 let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
   tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
@@ -657,34 +657,34 @@ let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
 (** [compile m] translates the pattern matching problem encoded by the matrix
     [m] into a decision tree. *)
 let compile : CM.t -> tree = fun m ->
-  (* [compile c vi cm] compiles clause matrix [cm] which contains [c]
-     variables indexed in [vi] *)
+  (* [compile count vars_id cm] compiles clause matrix [cm] which contains
+     [count] variables indexed in [vars_id] *)
   let rec compile : int -> int VarMap.t -> CM.t -> tree =
-  fun count vars_id ({clauses; positions; slot} as pats) ->
-  if CM.is_empty pats then Fail else
+  fun count vars_id ({clauses; positions; slot} as cm) ->
+  if CM.is_empty cm then Fail else
   let compile_cv = compile count vars_id in
-  match CM.yield pats with
+  match CM.yield cm with
   | Yield({c_rhs; env_builder; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
       harvest c_lhs c_rhs env_builder vars_id slot
   | Condition(cond)                        ->
-      let ok   = compile_cv {pats with clauses = CM.cond_ok   cond clauses} in
-      let fail = compile_cv {pats with clauses = CM.cond_fail cond clauses} in
+      let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
+      let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
       Cond({ok; cond; fail})
   | Check_stack                            ->
       let left =
         let positions, clauses = CM.empty_stack clauses in
-        compile_cv {pats with clauses; positions}
+        compile_cv {cm with clauses; positions}
       in
-      let right = compile_cv {pats with clauses=CM.not_empty_stack clauses} in
+      let right = compile_cv {cm with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
   | Specialise(swap)                       ->
-      let store = CM.store pats swap in
+      let store = CM.store cm swap in
       let updated =
         List.map (CM.update_aux swap slot positions vars_id) clauses
       in
       let slot = if store then slot + 1 else slot in
-      let column = CM.get_col swap pats in
+      let column = CM.get_col swap cm in
       let cons = CM.get_cons vars_id column in
       (* Constructors specialisation *)
       let children =
