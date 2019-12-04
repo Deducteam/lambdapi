@@ -209,39 +209,27 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
           | CondFV(i,xs) ->
               let allowed =
-                (* Term variables allowed in the term. *)
-                Array.make (Array.length xs) (Bindlib.new_var mkfree "dummy")
-              in
-              let lightened_map =
-                (* *Lightened* map containing variables from the context
-                   without the variables in the constraint (the [xs]). This
-                   avoids checking occurrence of variables that have been
-                   bound in the term (via [bind_mvar]).
-                   Additionally, the [allowed] array is filled imperatively.
-                *)
-                let c = Pervasives.ref 0 in
-                let fn id map =
-                  begin
-                    try allowed.(Pervasives.(!c)) <- IntMap.find id id_vars
-                    with Not_found -> assert false
-                  end;
-                  Pervasives.incr c;
-                  IntMap.remove id map
+                (* Variables that are allowed in the term. *)
+                let fn id =
+                  try IntMap.find id id_vars with Not_found -> assert false
                 in
-                Array.fold_right fn xs id_vars
+                Array.map fn xs
               in
-              (* Verify that box [b] does not contain forbidden variables. *)
-              let only_allowed b =
-                let fn _ x = not (Bindlib.occur x b) in
-                IntMap.for_all fn lightened_map
+              (* Ensure there are no variables from [forbidden] in [b]. *)
+              let no_forbidden b =
+                let forbidden =
+                  (* Term variables forbidden in the term. *)
+                  IntMap.filter (fun id _ -> not (Array.mem id xs)) id_vars
+                in
+                IntMap.for_all (fun _ x -> not (Bindlib.occur x b)) forbidden
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
-              if only_allowed b
+              if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
               let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
-              if only_allowed b
+              if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
               else fail
         in
