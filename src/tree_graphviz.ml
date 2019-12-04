@@ -89,9 +89,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
     in
     let pp_tcstr : tree_cond pp = fun oc cstr ->
       let out fmt = Format.fprintf oc fmt in
-      let pp_ar oc ar =
-        Format.pp_print_list Format.pp_print_int oc
-          (Array.to_list ar)
+      let pp_ar = Array.pp Format.pp_print_int " "
       in
       match cstr with
       | CondNL(i, j) -> out "%d ≡ %d" i j
