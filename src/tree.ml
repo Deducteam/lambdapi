@@ -89,7 +89,7 @@ module CP = struct
     (** Set of convertibility constraints [(i,j)] with [i < j]. The constraint
         [(i,j)] is satisfied if the terms stored at indices [i] and [j] in the
         [vars] array of the {!val:Eval.tree_walk} function are convertible. *)
-    ; fv_conds : (int array) IntMap.t
+    ; fv_conds : int array IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
         stored at slot [i] in the [vars] array of {!val:Eval.tree_walk}. *) }
