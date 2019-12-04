@@ -95,7 +95,7 @@ let to_dot : string -> sym -> unit = fun fname s ->
       in
       match cstr with
       | CondNL(i, j) -> out "%d ≡ %d" i j
-      | CondFV(vs,i) -> out "%a ⊊ FV(%d)" pp_ar vs i
+      | CondFV(i,vs) -> out "%a ⊊ FV(%d)" pp_ar vs i
     in
     let out fmt = Format.fprintf oc fmt in
     let node_count = ref 0 in

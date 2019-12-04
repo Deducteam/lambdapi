@@ -207,11 +207,10 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           match cond with
           | CondNL(i, j) ->
               if eq_modulo vars.(i) vars.(j) then ok else fail
-          | CondFV(xs,i) ->
+          | CondFV(i,xs) ->
               let allowed =
                 (* Term variables allowed in the term. *)
-                let _, dummy = IntMap.choose id_vars in
-                Array.make (Array.length xs) dummy in
+                Array.make (Array.length xs) (Bindlib.new_var mkfree "dummy") in
               let lightened_map =
                 (* *Lightened* map containing variables from the context
                    without the variables in the constraint (the [xs]). This

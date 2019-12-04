@@ -162,7 +162,7 @@ module CP = struct
   let is_contained : tree_cond -> t -> bool = fun cond pool ->
     match cond with
     | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
-    | CondFV(x,i) ->
+    | CondFV(i,x) ->
         try Array.equal (=) x (IntMap.find i pool.fv_conds)
         with Not_found -> false
 
@@ -170,7 +170,7 @@ module CP = struct
   let remove cond pool =
     match cond with
     | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
-    | CondFV(xs,i) ->
+    | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
           if not (Array.equal (=) xs ys) then pool
@@ -188,7 +188,7 @@ module CP = struct
                    with Not_found -> choose_nl ps
     in
     let rec choose_vf pools =
-      let export (i,vs) = CondFV(vs,i) in
+      let export (i,vs) = CondFV(i,vs) in
       match pools with
       | []      -> None
       | p :: ps -> try Some(export (IntMap.choose p.fv_conds))

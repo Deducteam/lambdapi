@@ -42,7 +42,7 @@ type tree_cond =
   (** Are the terms at the given indices convertible? We enforce the invariant
       that the first element is a point of reference, which appears in all the
       convertibility conditions involving a given non-linear variable. *)
-  | CondFV of int array * int
+  | CondFV of int * int array
   (** Are the (indexed) bound variables (which are free at the time of the
       checking) of the term at the given index in the array? *)
 
