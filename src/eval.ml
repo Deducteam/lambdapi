@@ -171,12 +171,12 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   let (lazy capacity, lazy tree) = tree in
   let vars = Array.make capacity Kind in (* dummy terms *)
   let bound = Array.make capacity TE_None in
-  (* [walk tree stk cursor vars_id id_vars] where [s] is the stack of terms to
-     match and [c] the cursor indicating where to write in the [vars] array
-     described in {!module:Terms} as the environment of the RHS during
-     matching. [v] maps the free variables contained in the term to the
-     indexes defined during tree build, and [i] is the inverse mapping of
-     [v]. *)
+  (* [walk tree stk cursor vars_id id_vars] where [stk] is the stack of terms
+     to match and [curesor] the cursor indicating where to write in the [vars]
+     array described in {!module:Terms} as the environment of the RHS during
+     matching. [vars_id] maps the free variables contained in the term to the
+     indexes defined during tree build, and [id_vars] is the inverse mapping
+     of [vars_id]. *)
   let rec walk tree stk cursor vars_id id_vars =
     let open Tree_types in
     match tree with
@@ -217,10 +217,13 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                    without the variables in the constraint (the [xs]). This
                    avoids checking occurrence of variables that have been
                    bound in the term (via [bind_mvar]).
-                   Aditionally, the [allowed] array is filled imperatively. *)
+                   Additionally, the [allowed] array is filled imperatively. *)
                 let c = Pervasives.ref 0 in
                 let fn id map =
-                  allowed.(i) <- IntMap.find id id_vars;
+                  begin
+                    try allowed.(Pervasives.(!c)) <- IntMap.find id id_vars
+                    with Not_found -> assert false
+                  end;
                   Pervasives.incr c;
                   IntMap.remove id map
                 in
