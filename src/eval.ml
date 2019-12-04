@@ -210,13 +210,15 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           | CondFV(i,xs) ->
               let allowed =
                 (* Term variables allowed in the term. *)
-                Array.make (Array.length xs) (Bindlib.new_var mkfree "dummy") in
+                Array.make (Array.length xs) (Bindlib.new_var mkfree "dummy")
+              in
               let lightened_map =
                 (* *Lightened* map containing variables from the context
                    without the variables in the constraint (the [xs]). This
                    avoids checking occurrence of variables that have been
                    bound in the term (via [bind_mvar]).
-                   Additionally, the [allowed] array is filled imperatively. *)
+                   Additionally, the [allowed] array is filled imperatively.
+                *)
                 let c = Pervasives.ref 0 in
                 let fn id map =
                   begin
