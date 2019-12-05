@@ -215,13 +215,13 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                 in
                 Array.map fn xs
               in
+              let forbidden =
+                (* Term variables forbidden in the term. *)
+                IntMap.filter (fun id _ -> not (Array.mem id xs)) id_vars
+              in
               (* Ensure there are no variables from [forbidden] in [b]. *)
               let no_forbidden b =
-                let forbidden =
-                  (* Term variables forbidden in the term. *)
-                  IntMap.filter (fun id _ -> not (Array.mem id xs)) id_vars
-                in
-                IntMap.for_all (fun _ x -> not (Bindlib.occur x b)) forbidden
+                not (IntMap.exists (fun _ x -> Bindlib.occur x b) forbidden)
               in
               (* We first attempt to match [vars.(i)] directly. *)
               let b = Bindlib.bind_mvar allowed (lift vars.(i)) in
