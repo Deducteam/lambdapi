@@ -23,14 +23,17 @@ env:
 
 before_install:
   # Obtain and install opam locally.
-  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.0/opam-2.0.0-x86_64-linux -O /usr/bin/opam
+  - sudo wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux -O /usr/bin/opam
   - sudo chmod 755 /usr/bin/opam
   # Initialize the switch.
   - opam init -a --disable-sandboxing --compiler="$OCAML_VERSION"
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
-  - opam install menhir dune bindlib.5.0.0 timed.1.0 earley.2.0.0 yojson cmdliner ppx_inline_test why3.1.2.0 alt-ergo $EXTRA_OPAM
+  - opam pin add -n -k path lambdapi .
+  - opam install --deps-only -d -t lambdapi
+  - opam pin remove lambdapi
+  - opam install alt-ergo
   # Update why3 config after installing alt-ergo
   - why3 config --detect
 
