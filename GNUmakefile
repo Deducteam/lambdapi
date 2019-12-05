@@ -20,7 +20,7 @@ doc:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = ./_build/install/default/bin/lambdapi
+LAMBDAPI     = 'dune exec lambdapi --'
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
