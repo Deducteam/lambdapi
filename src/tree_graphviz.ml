@@ -9,12 +9,16 @@
     {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
     see
     {{:https://graphviz.gitlab.io/_pages/doc/info/output.html}graphviz doc}.
-    *)
+
+    To create dot files, use the [--write-trees] flag on command line: given a
+    module [M], a symbol [s] of the signature of [M], a file [M.s.gv]
+    containing the decision tree will be created. If [M] is [a.b.c], the file
+    will be [a/b/c.s.gv]. *)
 
 (** {b Description of output} we remind that trees are interpreted during
-    evaluation of terms to get the correct rule to apply.  A node is thus an
-    instruction for the evaluation algorithm.  There are three types of
-    labeled nodes, labeled edges and leaves.  A node can be
+    evaluation of terms to get the correct rule to apply. A node is thus an
+    instruction for the evaluation algorithm. There are labeled nodes, labeled
+    edges and leaves. A node can be
     - a regular node, represented by a circle, whose label indicates on which
       column the next operation to reach the following node will be performed;
     - a store node, represented by a rectangle, which is the same as a regular
@@ -40,12 +44,14 @@
     - [s_n] where [s] is a symbol if the operation to go from a regular or
       storage node to another node is a {!val:Tree.CM.specialize} on symbol
       [s] with arity [n];
-    - [λx] if the operation to go from a regular or storage node to another
-      node is a specialisation by an abstraction {!val:Tree.CM.abstract};
+    - [λvarn] if the operation to go from a regular or storage node to another
+      node is a specialisation by an abstraction {!val:Tree.CM.abstract},
+      [var]{e n} (with {e n} an integer) is the name of fresh variables which
+      can be used in conditional tests;
     - [✓] if the operation to go from a conditional node to another node is
       the assumption of satisfaction of the constraint indicated as label of
       the condition node;
-    - [✗] if the operation to go form a conditional node to another node is
+    - [✗] if the operation to go from a conditional node to another node is
       the assumption of failure of satisfaction of the constraint indicated as
       label of the condition node. *)
 
@@ -57,7 +63,7 @@ open Tree_types
 (** Printing hint for conversion to graphviz. *)
 type dot_term =
   | DotDefa (* Default case *)
-  | DotAbst of tvar
+  | DotAbst of int
   | DotCons of TC.t
   | DotSuccess
   | DotFailure
@@ -72,23 +78,22 @@ let to_dot : string -> sym -> unit = fun fname s ->
   let output_tree oc tree =
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
+      let var_px = "v" in
       match dh with
-      | DotAbst(v)           -> out "λ%a" Print.pp_tvar v
+      | DotAbst(id)          -> out "λ%s%d" var_px id
       | DotDefa              -> out "*"
-      | DotCons(Symb(a,n,_)) -> out "%s<sub>%d</sub>" n a
-      | DotCons(Vari(s))     -> out "%s" s
-      | DotCons(Abst)        -> assert false
+      | DotCons(Symb(_,n,a)) -> out "%s<sub>%d</sub>" n a
+      | DotCons(Vari(i))     -> out "%s%d" var_px i
       | DotSuccess           -> out "✓"
       | DotFailure           -> out "✗"
     in
-    let pp_tcstr : term tree_cond pp = fun oc cstr ->
+    let pp_tcstr : tree_cond pp = fun oc cstr ->
       let out fmt = Format.fprintf oc fmt in
-      let pp_ar oc ar =
-        Format.pp_print_list Print.pp_tvar oc (Array.to_list ar)
+      let pp_ar = Array.pp Format.pp_print_int " "
       in
       match cstr with
       | CondNL(i, j) -> out "%d ≡ %d" i j
-      | CondFV(vs,i) -> out "%a ⊊ FV(%d)" pp_ar vs i
+      | CondFV(i,vs) -> out "%a ⊊ FV(%d)" pp_ar vs i
     in
     let out fmt = Format.fprintf oc fmt in
     let node_count = ref 0 in
@@ -109,21 +114,21 @@ let to_dot : string -> sym -> unit = fun fname s ->
           (* Create edge *)
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           TCMap.iter (fun s e -> write_tree tag (DotCons(s)) e) children;
-          Option.iter (fun (v, t) -> write_tree tag (DotAbst(v)) t) abs;
+          Option.iter (fun (x,t) -> write_tree tag (DotAbst(x)) t) abs;
           Option.iter (write_tree tag DotDefa) default
-      | Cond({ ok ; cond ; fail }) ->
+      | Cond({ ok ; cond ; fail })                              ->
           let tag = !node_count in
           out "@ %d [label=<%a> shape=\"diamond\"];" tag pp_tcstr cond;
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotSuccess ok;
           write_tree tag DotFailure fail
-      | Eos(l,r)    ->
+      | Eos(l,r)                                                ->
           let tag = !node_count in
           out "@ %d [label=\"\" shape=\"triangle\"];" tag;
           out "@ %d -- %d [label=<%a>];" father_l tag pp_dotterm swon;
           write_tree tag DotFailure l;
           write_tree tag DotSuccess r
-      | Fail        ->
+      | Fail                                                    ->
           out "@ %d [label=<!>];" !node_count;
           out "@ %d -- %d [label=\"!\"];" father_l !node_count
     in
@@ -131,11 +136,11 @@ let to_dot : string -> sym -> unit = fun fname s ->
     begin
       match tree with
       (* First step must be done to avoid drawing a top node. *)
-      | Node({ swap ; store ; children; default ; abstraction }) ->
+      | Node({swap; store; children; default; abstraction=abs}) ->
           out "@ 0 [label=\"@%d\"%s];" swap
             (if store then " shape=\"box\"" else "");
           TCMap.iter (fun sw c -> write_tree 0 (DotCons(sw)) c) children;
-          Option.iter (fun (v, t) -> write_tree 0 (DotAbst(v)) t) abstraction;
+          Option.iter (fun (x,t) -> write_tree 0 (DotAbst(x)) t) abs;
           Option.iter (fun t -> write_tree 0 DotDefa t) default
       | Leaf(_) -> ()
       | _       -> assert false

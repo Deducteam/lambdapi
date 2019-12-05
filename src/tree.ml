@@ -43,11 +43,8 @@ let rule_order : bool Pervasives.ref = Pervasives.ref false
     a RHS in every leaf since they correspond to matched rules. *)
 type rhs = (term_env, term) Bindlib.mbinder
 
-(** Representation of a branching condition (see {!type:Terms.tree_cond}). *)
-type tree_cond = term Tree_types.tree_cond
-
 (** Representation of a tree (see {!type:Terms.tree}). *)
-type tree = (term, rhs) Tree_types.tree
+type tree = rhs Tree_types.tree
 
 (** {1 Conditions for decision trees}
 
@@ -92,7 +89,7 @@ module CP = struct
     (** Set of convertibility constraints [(i,j)] with [i < j]. The constraint
         [(i,j)] is satisfied if the terms stored at indices [i] and [j] in the
         [vars] array of the {!val:Eval.tree_walk} function are convertible. *)
-    ; fv_conds : (tvar array) IntMap.t
+    ; fv_conds : int array IntMap.t
     (** A mapping of [i] to [xs] represents a free variable condition that can
         only be satisfied if only the free variables of [x] appear in the term
         stored at slot [i] in the [vars] array of {!val:Eval.tree_walk}. *) }
@@ -107,7 +104,7 @@ module CP = struct
   let pp : t pp = fun oc pool ->
     let pp_fv oc fv_conds =
       let pp_sep oc () = Format.pp_print_string oc ";" in
-      let pp_tvs = Format.pp_print_list ~pp_sep Print.pp_tvar in
+      let pp_tvs = Format.pp_print_list ~pp_sep Format.pp_print_int in
       let ppit oc (a, b) =
         Format.fprintf oc "@[(%a@@%d)@]" pp_tvs (Array.to_list b) a
       in
@@ -152,7 +149,7 @@ module CP = struct
 
   (** [register_fv slot xs pool] registers a free variables constraint for the
       variables in [xs] on the slot [slot] of the [vars] array in [pool]. *)
-  let register_fv : int -> tvar array -> t -> t = fun i vs pool ->
+  let register_fv : int -> int array -> t -> t = fun i vs pool ->
     { pool with fv_conds = IntMap.add i vs pool.fv_conds }
 
   (** [constrained_nl i pool] tells whether index [i] in the RHS's environment
@@ -165,18 +162,18 @@ module CP = struct
   let is_contained : tree_cond -> t -> bool = fun cond pool ->
     match cond with
     | CondNL(i,j) -> PSet.mem (i,j) pool.nl_conds
-    | CondFV(x,i) ->
-        try Array.equal Bindlib.eq_vars x (IntMap.find i pool.fv_conds)
+    | CondFV(i,x) ->
+        try Array.equal (=) x (IntMap.find i pool.fv_conds)
         with Not_found -> false
 
   (** [remove cond pool] removes condition [cond] from the pool [pool]. *)
   let remove cond pool =
     match cond with
     | CondNL(i,j)  -> {pool with nl_conds = PSet.remove (i,j) pool.nl_conds}
-    | CondFV(xs,i) ->
+    | CondFV(i,xs) ->
         try
           let ys = IntMap.find i pool.fv_conds in
-          if not (Array.equal Bindlib.eq_vars xs ys) then pool
+          if not (Array.equal (=) xs ys) then pool
           else {pool with fv_conds = IntMap.remove i pool.fv_conds}
         with Not_found -> pool
 
@@ -191,7 +188,7 @@ module CP = struct
                    with Not_found -> choose_nl ps
     in
     let rec choose_vf pools =
-      let export (i,vs) = CondFV(vs,i) in
+      let export (i,vs) = CondFV(i,vs) in
       match pools with
       | []      -> None
       | p :: ps -> try Some(export (IntMap.choose p.fv_conds))
@@ -200,7 +197,6 @@ module CP = struct
     let res = choose_nl pools in
     if res = None then choose_vf pools else res
 end
-
 
 (** {1 Clause matrix and pattern matching problem} *)
 
@@ -242,7 +238,7 @@ module CM = struct
       variable of the LHS into the RHS). An element [(sv, (se, xs))] indicates
       that slot [sv] of the [vars] array should be bound at index [se], in the
       environment using free variables [xs]. *)
-  type env_builder = (int * (int * term Bindlib.mvar)) list
+  type env_builder = (int * (int * int array)) list
 
   (** A clause matrix row (schematically {i c_lhs → c_rhs if cond_pool}). *)
   type clause =
@@ -313,11 +309,11 @@ module CM = struct
       {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)
   let is_treecons : term -> bool = fun t ->
     match fst (get_args t) with
-    | Patt(_, _, _) -> false
+    | Patt(_) -> false
     | Vari(_)
-    | Abst(_, _)
-    | Symb(_, _)    -> true
-    | _             -> assert false
+    | Abst(_)
+    | Symb(_) -> true
+    | _       -> assert false
 
   (** [of_rules r] transforms rewriting rules into a clause matrix rules. *)
   let of_rules : rule list -> t = fun rs ->
@@ -347,11 +343,11 @@ module CM = struct
       number of tree constructors divided by the number of conditions. *)
   let score : term list -> float = fun ts ->
     let rec loop ((ncons, nst) as acc) = function
-      | []                           -> acc
-      | x :: xs when is_treecons x   -> loop (ncons + 1, nst) xs
-      | Patt(Some(_),_,_)::xs        -> loop (ncons, nst + 1) xs
+      | []                             -> acc
+      | x :: xs when is_treecons x     -> loop (ncons + 1, nst) xs
+      | Patt(Some(_),_,_)::xs          -> loop (ncons, nst + 1) xs
       | Patt(_,_,e)::xs when e <> [||] -> loop (ncons, nst + 1) xs
-      | _ :: xs                      -> loop acc xs
+      | _ :: xs                        -> loop acc xs
     in
     let nc, ns = loop (0, 0) ts in
     float_of_int nc /. (float_of_int ns)
@@ -446,18 +442,19 @@ module CM = struct
       | Some(c) -> Condition(c)
       | None    -> Specialise(0)
 
-  (** [get_cons l] returns a list of unique (and sorted) tuples containing
-      tree construcors and the original term. *)
-  let get_cons : term list -> (TC.t * term) list = fun telst ->
+  (** [get_cons id l] returns a list of unique (and sorted) tuples containing
+      tree construcors from [l] and the original term. Variables are assigned
+      id [id]. *)
+  let get_cons : int VarMap.t -> term list -> (TC.t * term) list =
+    fun vars_id telst ->
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
-      | Symb({ sym_name ; sym_path ; _ }, _) ->
-          Some(TC.Symb(arity, sym_name, sym_path), e)
-      | Abst(_, _)                           -> Some(Abst, e)
-      | Vari(x)                              ->
-          Some(Vari(Bindlib.name_of x), e)
-      | _                                    -> None
+      | Symb({sym_name; sym_path; _}, _) ->
+          Some(TC.Symb(sym_path, sym_name, arity), e)
+      | Vari(x)                          ->
+          Some(TC.Vari(VarMap.find x vars_id), e)
+      | _                                -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
@@ -475,17 +472,20 @@ module CM = struct
     in
     List.exists st_r cm.clauses
 
+  let index_var : int VarMap.t -> term -> int = fun vi t ->
+    VarMap.find (to_tvar t) vi
+
   (** [update_aux col slot clause] updates the fields the condition pool and
       the environment builder of clause [clause] assuming column [col] is
       inspected and the next environment slot is [slot]. *)
-  let update_aux : int -> int -> arg list -> clause -> clause =
-    fun ci slot pos r ->
+  let update_aux : int -> int -> arg list -> int VarMap.t -> clause ->
+    clause = fun ci slot pos vi r ->
     match fst (get_args r.c_lhs.(ci)) with
     | Patt(i, _, e) ->
         let (_, a, _) = List.destruct pos ci in
         let cond_pool =
           if (Array.length e) <> a.arg_rank then
-            CP.register_fv slot (Array.map to_tvar e) r.cond_pool
+            CP.register_fv slot (Array.map (index_var vi) e) r.cond_pool
           else r.cond_pool
         in
         let cond_pool =
@@ -495,19 +495,20 @@ module CM = struct
         in
         let env_builder =
           match i with
-          | Some(i) -> (slot, (i, Array.map to_tvar e)) :: r.env_builder
+          | Some(i) ->
+              (slot, (i, Array.map (index_var vi) e)) :: r.env_builder
           | None    -> r.env_builder
         in
-        { r with env_builder ; cond_pool }
+        {r with env_builder; cond_pool}
     | _             -> r
 
-  (** [specialize pat col pos cl] filters and transforms LHS of [cl] assuming
-      a matching on pattern [pat] on column [col], with [pos] being the
-      position of arguments in clauses. *)
+  (** [specialize pat col pos cls] filters and transforms LHS of [cls]
+      assuming a matching on pattern [pat] on column [col], with [pos] being
+      the position of arguments in clauses. *)
   let specialize : term -> int -> arg list -> clause list ->
-    arg list * clause list = fun pat ci pos rs ->
+    arg list * clause list = fun pat col pos cls ->
     let pos =
-      let l, m, r = List.destruct pos ci in
+      let l, m, r = List.destruct pos col in
       let _, _, nargs = get_args_len pat in
       let replace =
         if nargs = 0 then [] else
@@ -515,78 +516,79 @@ module CM = struct
       in
       List.reconstruct l replace r
     in
-    let insert r e = Array.concat [ Array.sub r.c_lhs 0 ci
+    let insert r e = Array.concat [ Array.sub r.c_lhs 0 col
                                   ; e
-                                  ; Array.drop (ci + 1) r.c_lhs ]
+                                  ; Array.drop (col + 1) r.c_lhs ]
     in
     let filtrans r =
       let insert = insert r in
       let ph, pargs, lenp = get_args_len pat in
-      let h, args, lenh = get_args_len r.c_lhs.(ci) in
+      let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(_, _), Symb(_, _)
-      | Vari(_)   , Vari(_)       ->
+      | Symb(_), Symb(_)
+      | Vari(_), Vari(_) ->
           if lenh = lenp && Basics.eq ph h
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
-      | _         , Patt(_, _, _) ->
+      | _      , Patt(_) ->
           let arity = List.length pargs in
           let e = Array.make arity (Patt(None, "", [||])) in
           Some({ r with c_lhs = insert e })
-      | _         , Abst(_, _)    -> None
-      | _         , _             -> assert false
+      | _      , Abst(_) -> None
+      | _      , _       -> assert false
     in
-    (pos, List.filter_map filtrans rs)
+    (pos, List.filter_map filtrans cls)
 
-  (** [default col pos cl] selects and transforms clauses [cl] assuming that
+  (** [default col pos cls] selects and transforms clauses [cls] assuming that
       terms on column [col] does not match any symbol being the head structure
       of another term in column [col]; [pos] is the positions of terms in
       clauses. *)
   let default : int -> arg list -> clause list -> arg list * clause list =
-    fun ci pos rs ->
+    fun col pos cls ->
     let pos =
-      let (l, _, r) = List.destruct pos ci in
+      let (l, _, r) = List.destruct pos col in
       List.rev_append l r
     in
     let transf r =
-      match r.c_lhs.(ci) with
-      | Patt(_, _, _)           ->
-          let c_lhs = Array.append
-              (Array.sub r.c_lhs 0 ci)
-              (Array.drop (ci + 1) r.c_lhs) in
+      match r.c_lhs.(col) with
+      | Patt(_)           ->
+          let c_lhs =
+            Array.append
+              (Array.sub r.c_lhs 0 col)
+              (Array.drop (col + 1) r.c_lhs)
+          in
           Some({r with c_lhs})
-      | Symb(_, _) | Abst(_, _)
-      | Vari(_)    | Appl(_, _) -> None
+      | Symb(_) | Abst(_)
+      | Vari(_) | Appl(_) -> None
       | _ -> assert false in
-    (pos, List.filter_map transf rs)
+    (pos, List.filter_map transf cls)
 
-  (** [abstract col var pos cl] selects and transforms clauses [cl] assuming
+  (** [abstract col v pos cls] selects and transforms clauses [cls] assuming
       that terms in column [col] match an abstraction.  The term under the
-      abstraction has its bound variable substituted by [var]; [pos] is the
+      abstraction has its bound variable substituted by [v]; [pos] is the
       position of terms in clauses [cl]. *)
   let abstract : int -> tvar -> arg list -> clause list ->
-                 arg list * clause list =
-    fun ci v pos clauses ->
-    let (l, {arg_path; arg_rank}, r) = List.destruct pos ci in
+    arg list * clause list = fun col v pos cls ->
+    let (l, {arg_path; arg_rank}, r) = List.destruct pos col in
     let a = {arg_path = 0 :: arg_path; arg_rank = arg_rank + 1} in
     let pos = List.rev_append l (a :: r) in
-    let insert r e = [ Array.sub r.c_lhs 0 ci
+    let insert r e = [ Array.sub r.c_lhs 0 col
                      ; [| e |]
-                     ; Array.drop (ci + 1) r.c_lhs ]
+                     ; Array.drop (col + 1) r.c_lhs ]
     in
     let transf (r:clause) =
-      let ph, pargs = get_args r.c_lhs.(ci) in
+      let ph, pargs = get_args r.c_lhs.(col) in
       match ph with
-      | Abst(_, b)           ->
+      | Abst(_, b)     ->
           assert (pargs = []) ; (* Patterns in β-normal form *)
           let b = Bindlib.subst b (mkfree v) in
           Some({r with c_lhs = Array.concat (insert r b)})
-      | Patt(_, _, _) as pat ->
-          Some({r with c_lhs = Array.concat (insert r pat)})
-      | Symb(_, _) | Vari(_) -> None
+      | Patt(_) as pat -> Some({r with c_lhs = Array.concat (insert r pat)})
+      | Symb(_)
+      | Vari(_)        -> None
       | _                    -> assert false
     in
-    (pos, List.filter_map transf clauses)
+    (pos, List.filter_map transf cls)
 
   (** [cond_ok cond cls] updates the clause list [cls] assuming that condition
       [cond] is satisfied. *)
@@ -607,24 +609,27 @@ module CM = struct
     List.filter (fun r -> r.c_lhs <> [||])
 end
 
-(** [harvest l r e s] exhausts linearly the LHS [l] composed only of pattern
-    variables with no constraints, to yield a leaf with RHS [r], environment
-    builder [e] completed. *)
-let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
-    fun lhs rhs env_builder slot ->
+(** [harvest lhs rhs env_builder vi slot] exhausts linearly the LHS [lhs]
+    composed only of pattern variables with no constraints, to yield a leaf
+    with RHS [rhs] and the environment builder [env_builder] completed. [vi]
+    contains the indexes of variables. *)
+let harvest : term array -> rhs -> CM.env_builder -> int VarMap.t -> int ->
+  tree = fun lhs rhs env_builder vi slot ->
   let default_node store child =
     Node { swap = 0 ; store ; children = TCMap.empty
          ; abstraction = None ; default = Some(child) }
   in
   let rec loop lhs env_builder slot =
     match lhs with
-    | []                        -> Leaf(env_builder, rhs)
-    | Patt(Some(i), _, e) :: ts ->
-        let env_builder = (slot, (i, Array.map to_tvar e)) :: env_builder in
+    | []                    -> Leaf(env_builder, rhs)
+    | Patt(Some(i),_,e)::ts ->
+        let env_builder =
+          (slot, (i, Array.map (CM.index_var vi) e)) :: env_builder
+        in
         default_node true (loop ts env_builder (slot + 1))
-    | Patt(None, _, _) :: ts    ->
-        default_node false (loop ts env_builder slot)
-    | _                         -> assert false in
+    | Patt(None,_,_)::ts    -> default_node false (loop ts env_builder slot)
+    | _                     -> assert false
+  in
   loop (Array.to_list lhs) env_builder slot
 
 (** {b NOTE} {!val:compile} produces a decision tree from a set of rewriting
@@ -651,53 +656,67 @@ let harvest : term array -> rhs -> CM.env_builder -> int -> tree =
 
 (** [compile m] translates the pattern matching problem encoded by the matrix
     [m] into a decision tree. *)
-let rec compile : CM.t -> tree = fun ({clauses ; positions ; slot} as pats) ->
-  if CM.is_empty pats then Fail else
-  match CM.yield pats with
-  | Yield({c_rhs ; env_builder ; c_lhs ; _}) ->
+let compile : CM.t -> tree = fun m ->
+  (* [compile count vars_id cm] compiles clause matrix [cm] which contains
+     [count] variables indexed in [vars_id] *)
+  let rec compile : int -> int VarMap.t -> CM.t -> tree =
+  fun count vars_id ({clauses; positions; slot} as cm) ->
+  if CM.is_empty cm then Fail else
+  let compile_cv = compile count vars_id in
+  match CM.yield cm with
+  | Yield({c_rhs; env_builder; c_lhs ; _}) ->
       if c_lhs = [||] then Leaf(env_builder, c_rhs) else
-      harvest c_lhs c_rhs env_builder slot
-  | Condition(cond)                          ->
-      let ok   = compile {pats with clauses = CM.cond_ok   cond clauses} in
-      let fail = compile {pats with clauses = CM.cond_fail cond clauses} in
-      Cond({ok ; cond ; fail})
-  | Check_stack                              ->
+      harvest c_lhs c_rhs env_builder vars_id slot
+  | Condition(cond)                        ->
+      let ok   = compile_cv {cm with clauses = CM.cond_ok   cond clauses} in
+      let fail = compile_cv {cm with clauses = CM.cond_fail cond clauses} in
+      Cond({ok; cond; fail})
+  | Check_stack                            ->
       let left =
         let positions, clauses = CM.empty_stack clauses in
-        compile {pats with clauses; positions}
+        compile_cv {cm with clauses; positions}
       in
-      let right = compile {pats with clauses = CM.not_empty_stack clauses} in
+      let right = compile_cv {cm with clauses=CM.not_empty_stack clauses} in
       Eos(left, right)
-  | Specialise(swap)                         ->
-      let store = CM.store pats swap in
-      let updated = List.map (CM.update_aux swap slot positions) clauses in
+  | Specialise(swap)                       ->
+      let store = CM.store cm swap in
+      let updated =
+        List.map (CM.update_aux swap slot positions vars_id) clauses
+      in
       let slot = if store then slot + 1 else slot in
-      let cons = CM.get_cons (CM.get_col swap pats) in
+      let column = CM.get_col swap cm in
+      let cons = CM.get_cons vars_id column in
       (* Constructors specialisation *)
       let children =
         let fn acc (tr_cons, te_cons) =
-          if tr_cons = TC.Abst then acc else
           let (positions, clauses) =
             CM.specialize te_cons swap positions updated
           in
-          TCMap.add tr_cons (compile CM.{clauses ; slot ; positions}) acc
+          TCMap.add tr_cons (compile_cv CM.{clauses ; slot ; positions}) acc
         in
         List.fold_left fn TCMap.empty cons
       in
       (* Default child *)
       let default =
         let (positions, clauses) = CM.default swap positions updated in
-        let ncm = CM.{clauses ; slot ; positions} in
-        if CM.is_empty ncm then None else Some(compile ncm)
+        let ncm = CM.{clauses; slot; positions} in
+        if CM.is_empty ncm then None else Some(compile_cv ncm)
       in
       (* Abstraction specialisation*)
       let abstraction =
-        if List.for_all (fun (x, _) -> x <> TC.Abst) cons then None else
-        let var = Bindlib.new_var mkfree "tr" in
+        let is_abst = function Abst(_) -> true | _ -> false in
+        if List.for_all (fun x -> not (is_abst x)) column then None else
+        let var = Bindlib.new_var mkfree "var" in
+        let vars_id = VarMap.add var count vars_id in
         let (positions, clauses) = CM.abstract swap var positions updated in
-        Some(var, compile CM.{clauses ; slot ; positions})
+        let next =
+          compile (count + 1) vars_id CM.{clauses; slot; positions}
+        in
+        Some(count, next)
       in
       Node({swap ; store ; children ; abstraction ; default})
+  in
+  compile 0 VarMap.empty m
 
 (** [update_dtree s] updates decision tree of symbol [s]. *)
 let update_dtree : sym -> unit = fun symb ->
