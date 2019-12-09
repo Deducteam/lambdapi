@@ -104,6 +104,9 @@ let spec =
     ; ( "--verbose"
       , Arg.Int set_default_verbose
       , "<int> Set the default verbosity level" ^ verbose_values )
+    ; ( "--no-warnings"
+      , Arg.Unit (fun _ -> no_wrn := true)
+      , " Disables the printing of warnings" )
     ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )

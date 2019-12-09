@@ -35,15 +35,19 @@ let out_fmt = Pervasives.ref Format.std_formatter
 (** [err_fmt] warning/error output formatter. *)
 let err_fmt = Pervasives.ref Format.err_formatter
 
+(** [no_wrn] disables warnings when set to [true]. *)
+let no_wrn = Pervasives.ref false
+
 (** [wrn popt fmt] prints a yellow warning message with [Printf] format [fmt].
     Note that the output buffer is flushed by the function, and that output is
     prefixed with the position [popt] if given. A newline is automatically put
     at the end of the message as well. *)
 let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
+  let open Pervasives in
+  let fprintf = if !no_wrn then Format.ifprintf else Format.fprintf in
   match pos with
-  | None    -> Format.fprintf Pervasives.(!err_fmt) (yel (fmt ^^ "\n"))
-  | Some(_) -> Format.fprintf Pervasives.(!err_fmt)
-                 (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
+  | None    -> fprintf !err_fmt (yel (fmt ^^ "\n"))
+  | Some(_) -> fprintf !err_fmt (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 
 (** Exception raised in case of failure. Note that we use an optional optional
     source position. [None] is used on errors that are independant from source
