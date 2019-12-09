@@ -70,10 +70,10 @@ fi
 # Checking function.
 function check_holide() {
   rm -f hol.lpo
-  ${LAMBDAPI} --gen-obj hol.dk
+  ${LAMBDAPI} --gen-obj --lib-root . --no-warnings hol.dk
   for FILE in `ls *.dk`; do
     if [ ${FILE} != "hol.dk" ]; then
-      ${LAMBDAPI} ${FILE}
+      ${LAMBDAPI} --lib-root . --no-warnings ${FILE}
     fi
   done
 }

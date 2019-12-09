@@ -67,9 +67,9 @@ fi
 # Checking function.
 function check_verine() {
   rm -f logic.lpo
-  ${LAMBDAPI} --gen-obj logic.dk
+  ${LAMBDAPI} --gen-obj --lib-root . --no-warnings logic.dk
   for FILE in `ls SEQ*.dk`; do
-    ${LAMBDAPI} ${FILE}
+    ${LAMBDAPI} --lib-root . --no-warnings ${FILE}
   done
 }
 

@@ -76,7 +76,7 @@ cd ${DIR}/workdir
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-$LAMBDAPI --verbose 0 --gen-obj *.dk
+$LAMBDAPI --verbose 0 --gen-obj --lib-root . --no-warnings *.dk
 
 # Checking function.
 function check() {
@@ -93,14 +93,14 @@ function check() {
     cat ${FILE_DK} | grep -v "^#NAME" >> ${MODNAME}.aux
     mv ${MODNAME}.aux ${FILE_DK}
 
-    ${LAMBDAPI} --verbose 0 ${FILE_DK}
+    ${LAMBDAPI} --verbose 0 --lib-root . --no-warnings ${FILE_DK}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
       echo "FAILED ${FILE_GZ}" >> error.log
     else
       echo -e "\033[0;32mOK\033[0m ${FILE_GZ}"
     fi
-    rm -f ${FILE_dk}
+    rm -f ${FILE_DK}
   }
 
   # Export things for the single file checking function.
@@ -109,7 +109,7 @@ function check() {
 
   # Run check on all files.
   echo "Compiling the library files with ${NBWORKERS} processes..."
-  find ../files -type f \
+  find ../files -type f | sort \
     | xargs -P ${NBWORKERS} -n 1 -I{} bash -c "check_gz {}"
 }
 
