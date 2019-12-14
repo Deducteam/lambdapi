@@ -112,14 +112,7 @@ let new_doc ~uri ~version ~text =
 (* XXX: Save on close. *)
 let close_doc _modname = ()
 
-let dummy_loc =
-  Lazy.from_val
-    Pos.{ fname = None
-        ; start_line = 1
-        ; start_col = 1
-        ; end_line = 2
-        ; end_col = 2
-        }
+let dummy_loc = Pacomb.Pos.phantom
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in

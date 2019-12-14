@@ -179,10 +179,13 @@ let in_range ?loc (line, pos) =
   match loc with
   | None -> false
   | Some loc ->
-    let { Pos.start_line ; start_col ; end_line ; end_col ; _ } = Lazy.force loc in
-    start_line - 1 < line && line < end_line - 1 ||
-    (start_line - 1 = line && start_col <= pos) ||
-    (end_line - 1 = line && pos <= end_col)
+     let open Pacomb.Pos in
+     let {start = {line=start_line; col=start_col; _}
+         ;end_  = {line=end_line  ; col=end_col  ; _}} = loc
+     in
+     start_line - 1 < line && line < end_line - 1 ||
+       (start_line - 1 = line && start_col <= pos) ||
+         (end_line - 1 = line && pos <= end_col)
 
 let get_goals ~doc ~line ~pos =
   let open Lp_doc in

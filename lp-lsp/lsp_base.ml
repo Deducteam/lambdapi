@@ -28,9 +28,9 @@ let mk_reply ~id ~result = `Assoc [ "jsonrpc", `String "2.0"; "id",     `Int id;
 let mk_event m p   = `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
 let mk_range (p : Pos.pos) : J.t =
-  let open Pos in
-  let {start_line=line1; start_col=col1; end_line=line2; end_col=col2; _} =
-    Lazy.force p
+  let open Pacomb.Pos in
+  let {start = {line=line1; col=col1; _}
+      ;end_  = {line=line2; col=col2; _}} = p
   in
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
