@@ -8,7 +8,7 @@ open Files
 
 (** [gen_obj] indicates whether we should generate object files when compiling
     source files. The default behaviour is not te generate them. *)
-let gen_obj = Pervasives.ref false
+let gen_obj = Stdlib.ref false
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
@@ -69,7 +69,7 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
       sign.sign_builtins := StrMap.filter not_prv !(sign.sign_builtins);
       sign.sign_unops := StrMap.filter not_prv_fst !(sign.sign_unops);
       sign.sign_binops := StrMap.filter not_prv_fst !(sign.sign_binops);
-      if Pervasives.(!gen_obj) then Sign.write sign obj;
+      if Stdlib.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
       out 1 "Checked [%s]\n%!" src;
     end
@@ -98,4 +98,4 @@ let _ =
       try Console.pop_state () with _ -> assert false (* Unreachable. *)
     with e -> Console.pop_state (); raise e
   in
-  Pervasives.(Parser.require := require)
+  Stdlib.(Parser.require := require)

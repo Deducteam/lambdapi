@@ -148,10 +148,10 @@ module List =
       try List.for_all2 eq l1 l2 with Invalid_argument _ -> false
 
     (** [max ?cmp l] finds the max of list [l] with compare function [?cmp]
-        defaulting to [Pervasives.compare].
+        defaulting to [Stdlib.compare].
         @raise Invalid_argument if [l] is empty. *)
     let max : ?cmp:('a -> 'a -> int) -> 'a list -> 'a =
-      fun ?(cmp=Pervasives.compare) li ->
+      fun ?(cmp=Stdlib.compare) li ->
       match li with
       | []   -> invalid_arg "Extra.List.max"
       | h::t -> let max e1 e2 = if cmp e1 e2 >= 0 then e1 else e2 in
@@ -233,9 +233,9 @@ module Array =
 
     (** [max_index ?cmp a] returns the index of the first maximum of array [a]
         according to comparison [?cmp].  If [cmp] is not given, defaults to
-        [Pervasives.compare]. *)
+        [Stdlib.compare]. *)
     let max_index : ?cmp:('a -> 'a -> int) -> 'a array -> int =
-      fun ?(cmp=Pervasives.compare) arr ->
+      fun ?(cmp=Stdlib.compare) arr ->
       let len = Array.length arr in
       if len = 0 then invalid_arg "Extra.Array.max_index" else
       let max = ref 0 in
@@ -244,10 +244,10 @@ module Array =
       done; !max
 
     (** [max ?cmp a] returns the higher element according to comparison
-        function [?cmp], using [Pervasives.compare] if not given, in array
+        function [?cmp], using [Stdlib.compare] if not given, in array
         [a]. *)
     let max : ?cmp:('a -> 'a -> int)-> 'a array -> 'a =
-      fun ?(cmp=Pervasives.compare) arr -> arr.(max_index ~cmp:cmp arr)
+      fun ?(cmp=Stdlib.compare) arr -> arr.(max_index ~cmp:cmp arr)
 
     (** [split a] is [List.split (Array.to_list a)]. *)
     let split : ('a * 'b) array -> 'a list * 'b list = fun a ->

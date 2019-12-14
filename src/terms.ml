@@ -285,9 +285,9 @@ let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
 (** [fresh_meta a n] creates a new metavariable of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta =
-  let counter = Pervasives.ref (-1) in
+  let counter = Stdlib.ref (-1) in
   let fresh_meta ?name a n =
-   { meta_key =  Pervasives.(incr counter; !counter) ; meta_name = name
+   { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
    ; meta_type = ref a ; meta_arity = n ; meta_value = ref None}
   in fresh_meta
 

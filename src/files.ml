@@ -18,7 +18,7 @@ type module_path = string list
 (** [OrderedType] module for [module_path]. *)
 module Path = struct
   type t = module_path
-  let compare : t -> t -> int = Pervasives.compare
+  let compare : t -> t -> int = Stdlib.compare
 end
 
 (* Functional maps with [module_path] keys. *)

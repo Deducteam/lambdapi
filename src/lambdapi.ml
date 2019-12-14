@@ -5,7 +5,7 @@ open Extra
 open Files
 open Console
 
-(* NOTE only standard [Pervasives] references here. *)
+(* NOTE only standard [Stdlib] references here. *)
 
 (** [confluence_checker] holds a possible confluence checking command. When it
    is given, the command should accept the HRS format on its input (see
