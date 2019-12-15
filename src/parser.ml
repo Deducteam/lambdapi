@@ -354,7 +354,7 @@ let%parser rec term (p : prio) =
       => in_pos _pos (P_Meta(m, Array.of_list e))
   (* Pattern (LHS) or pattern application (RHS). *)
   ; (p=PAtom) (p::patt) (e::env)
-      => in_pos _pos (P_Patt(p, Array.of_list e)))
+      => in_pos _pos (P_Patt(p, Array.of_list e))
   (* Parentheses. *)
   ; (p=PAtom) "(" (t::term PFunc) ")"
       => in_pos _pos (P_Wrap(t))
