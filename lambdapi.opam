@@ -29,6 +29,7 @@ depends: [
   "why3"         { >= "1.2.0" }
   # tests
   "ppx_inline_test" { with-test }
+  "stdlib-shims"
 
   # lp-lsp dependencies
   "yojson"       { >= "1.6.0" }
