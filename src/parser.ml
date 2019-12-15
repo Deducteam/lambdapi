@@ -382,7 +382,7 @@ let%parser rec term (p : prio) =
          _in_ (u::term PFunc)
       => in_pos _pos (P_LLet(x,a,t,u))
   (* Natural number literal. *)
-  ; (p=PAtom) (n::INT)
+  ; (p=PAtom) (n::NAT)
       => in_pos _pos (P_NLit(n))
   (* Unary operator. *)
   ; (p=PUnaO) (u::unop) (t::term PUnaO) =>
@@ -492,7 +492,7 @@ let%parser sign : bool Grammar.t =
 
 (** [query] parses a query. *)
 let%parser query : p_query Grammar.t =
-    _set_ "verbose" (i::INT) =>
+    _set_ "verbose" (i::NAT) =>
       in_pos _pos (P_query_verbose(i))
   ; _set_ "debug" (b::sign) (s::alpha) =>
       in_pos _pos (P_query_debug(b, s))
@@ -508,7 +508,7 @@ let%parser query : p_query Grammar.t =
       in_pos _pos (P_query_normalize(t,c)))
   ; _set_ "prover" (s::STRING_LIT) =>
       in_pos _pos (P_query_prover(s))
-  ; _set_ "prover_timeout" (n::INT) =>
+  ; _set_ "prover_timeout" (n::NAT) =>
       in_pos _pos (P_query_prover_timeout(n))
 
 (** [tactic] is a parser for a single tactic. *)
@@ -521,7 +521,7 @@ let%parser tactic =
                                       => in_pos _pos (P_tac_rewrite(p,t))
   ; _refl_                            => in_pos _pos P_tac_refl
   ; _sym_                             => in_pos _pos P_tac_sym
-  ; _focus_ (i::INT)                  => in_pos _pos (P_tac_focus(i))
+  ; _focus_ (i::NAT)                  => in_pos _pos (P_tac_focus(i))
   ; _print_                           => in_pos _pos P_tac_print
   ; _proofterm_                       => in_pos _pos P_tac_proofterm
   ; _why3_ (s:: ~? STRING_LIT)        => in_pos _pos (P_tac_why3(s))
