@@ -594,35 +594,35 @@ let do_require : pos -> p_module_path -> unit = fun loc path ->
 
 (** [cmd] is a parser for a single command. *)
 let%parser cmd =
-    _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path) ==>
-      begin
+    _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path)
+      ==> begin
         let fn p = do_require _pos p; if o then get_ops _pos p in
         List.iter fn ps; P_require(o,ps)
       end
-  ; _require_ (p::path) _as_ (n::path_elem) ==>
-      begin
+  ; _require_ (p::path) _as_ (n::path_elem)
+      ==> begin
         do_require _pos p;
         P_require_as(p, in_pos n_pos n)
       end
-  ; _open_ (ps:: ~+path) ==>
-      begin
+  ; _open_ (ps:: ~+path)
+      ==> begin
         List.iter (get_ops _pos) ps;
         P_open(ps)
       end
   ; (e:: ~?exposition) (p:: ~? property) _symbol_
-        (s::ident) (al:: ~*arg) ":" (a::term) =>
-      P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
-  ; _rule_ (r::rule) (rs:: ~*(_and_ (r::rule) => r)) =>
-      P_rules(r::rs)
+      (s::ident) (al:: ~*arg) ":" (a::term)
+      => P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
+  ; _rule_ (r::rule) (rs:: ~*(_and_ (r::rule) => r))
+      => P_rules(r::rs)
   ; (e:: ~?exposition) _definition_
-        (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term) =>
-      P_definition(Option.get e Terms.Public,false,s,al,ao,t)
-  ; (e:: ~? exposition) (st::statement) ((ts,pe)::proof) =>
-      P_theorem(Option.get e Terms.Public,st,ts,pe)
-  ; _set_ (c::config) =>
-      P_set(c)
-  ; (q::query) =>
-      P_query(q)
+      (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term)
+      => P_definition(Option.get e Terms.Public,false,s,al,ao,t)
+  ; (e:: ~? exposition) (st::statement) ((ts,pe)::proof)
+      => P_theorem(Option.get e Terms.Public,st,ts,pe)
+  ; _set_ (c::config)
+      => P_set(c)
+  ; (q::query)
+      => P_query(q)
 
 (** [cmds] is a parser for multiple (located) commands. *)
 let%parser cmds = Grammar.star (c::cmd => in_pos _pos c)
