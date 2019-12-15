@@ -5,4 +5,4 @@ Implementation choices
 
 * Bindings in terms are implemented using the [Bindlib](https://rlepigre.github.io/ocaml-bindlib/) library.
 
-* Parsing is using the [Earley](https://github.com/rlepigre/ocaml-earley/) library.
+* Parsing is using the [Pacomb] (https://github.com/craff/pacomb) library.

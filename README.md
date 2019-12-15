@@ -25,7 +25,7 @@ List of dependencies:
  - [dune](https://dune.build/) >= 1.2.0
  - odoc (for documentation only)
  - [bindlib](https://github.com/rlepigre/ocaml-bindlib) >= 5.0.0
- - [earley](https://github.com/rlepigre/ocaml-earley) >= 2.0.0
+ - [pacomb](https://github.com/craff/pacomb) >= 0.1.0
  - [timed](https://github.com/rlepigre/ocaml-timed) >= 1.0
  - [menhir](http://gallium.inria.fr/~fpottier/menhir/)
  - yojson >= 1.6.0
@@ -41,7 +41,7 @@ Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
 opam switch 4.05.0
 eval `opam config env`
-opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 ppx_inline_test why3.1.2.0
+opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 pacomb ppx_inline_test why3.1.2.0
 why3 config --detect
 ```
 

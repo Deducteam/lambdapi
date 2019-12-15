@@ -3,9 +3,7 @@
 
 open Pacomb
 
-(** Type of a position, corresponding to a continuous range of characters in a
-    (utf8-encoded) source file. Elements of this type are (lazily) constructed
-    by [Earley], using the following [locate] function. *)
+(** Type of a position, from Pacomb.Pos *)
 type pos = Pos.interval
 
 (* NOTE laziness is essential on big files (especially those with long lines),
