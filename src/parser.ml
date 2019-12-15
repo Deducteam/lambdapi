@@ -129,7 +129,7 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
   StrSet.iter fn Timed.(!Sign.(sign.sign_idents))
 
 (** Blank function (for comments and white spaces). *)
-let blank = Lex.blank_line "//"
+let blank = Blank.line_comments "//"
 
 (** Set of identifier characters. *)
 let id_charset = Charset.from_string "a-zA-Z0-9_'"
@@ -288,14 +288,14 @@ let%parser arg_ident =
 
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
-let%parser [@layout Lex.noblank] meta =
+let%parser [@layout Blank.none] meta =
   "?" (id::reg_or_esc_ident) =>
     begin
       if id = "_" then Lex.give_up (); in_pos _pos id
     end
 
 (** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
-let%parser [@layout Lex.noblank] patt =
+let%parser [@layout Blank.none] patt =
   "&" (id::reg_or_esc_ident) =>
     begin
       if id = "_" then None else Some(in_pos _pos id)
