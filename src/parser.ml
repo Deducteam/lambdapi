@@ -305,13 +305,23 @@ let%parser path_elem =
     (id::regular_ident)          => (KW.check id; (id, false))
   ; (id::escaped_ident_no_delim) => (id, true)
 
+(** Needed to force reading of full path otherwise, might get
+    file not found *)
+let no_dot g =
+  Grammar.test_after
+    (fun _ _ _ s n -> let (c,_,_) = Input.read s n in  c <> '.')
+    g
+
 (** Module path (dot-separated identifiers. *)
 let%parser path = (m::path_elem) (ms:: ~* ("." (p::path_elem) => p)) => m::ms
 
+let path = no_dot path
 
 (** [qident] parses a single (possibly qualified) identifier. *)
 let%parser qident =
   (mp:: ~* ((p::path_elem) "." => p)) (id::any_ident) => in_pos _pos (mp,id)
+
+let qident = no_dot qident
 
 (** [symtag] parses a single symbol tag. *)
 let%parser property =
@@ -340,11 +350,11 @@ let%parser rec term (p : prio) =
   ; (p=PAtom) _wild_
       => in_pos _pos P_Wild
   (* Metavariable. *)
-  ; (p=PAtom) (m::meta) (e:: ~? [[]] env)
+  ; (p=PAtom) (m::meta) (e::env)
       => in_pos _pos (P_Meta(m, Array.of_list e))
   (* Pattern (LHS) or pattern application (RHS). *)
-  ; (p=PAtom) (p::patt) (e:: ~? [[]] env)
-      => in_pos _pos (P_Patt(p, Array.of_list e))
+  ; (p=PAtom) (p::patt) (e::env)
+      => in_pos _pos (P_Patt(p, Array.of_list e)))
   (* Parentheses. *)
   ; (p=PAtom) "(" (t::term PFunc) ")"
       => in_pos _pos (P_Wrap(t))
@@ -437,7 +447,8 @@ and term_PBinO =
 (** [env] is a parser for a metavariable environment. *)
    *)
 and env =
-  "[" (t::term PBinO) (ts:: ~* ("," (t::term PBinO) => t)) "]" => t::ts
+    ()                                                           => []
+  ; "°[" (t::term PBinO) (ts:: ~* ("," (t::term PBinO) => t)) "]" => t::ts
 
 (** [arg] parses a single function argument. *)
 and arg =
@@ -531,21 +542,21 @@ let%parser assoc =
 let%parser config =
     "builtin" (s::STRING_LIT) "≔" (qid::qident) =>
       P_config_builtin(s,qid)
-  ; "prefix" (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
+  ; "prefix" (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) ==>
       begin
         let unop = (s, p, qid) in
         sanity_check s_pos s;
         Prefix.add unops s unop;
         P_config_unop(unop)
       end
-  ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
+  ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) ==>
       begin
         let binop = (s, a, p, qid) in
         sanity_check s_pos s;
         Prefix.add binops s binop;
         P_config_binop(binop)
       end
-  ; "declared" (id::STRING_LIT) =>
+  ; "declared" (id::STRING_LIT) ==>
       begin
         sanity_check id_pos id;
         Prefix.add declared_ids id id;
@@ -583,17 +594,17 @@ let do_require : pos -> p_module_path -> unit = fun loc path ->
 
 (** [cmd] is a parser for a single command. *)
 let%parser cmd =
-    _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path) =>
+    _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path) ==>
       begin
         let fn p = do_require _pos p; if o then get_ops _pos p in
         List.iter fn ps; P_require(o,ps)
       end
-  ; _require_ (p::path) _as_ (n::path_elem) =>
+  ; _require_ (p::path) _as_ (n::path_elem) ==>
       begin
         do_require _pos p;
         P_require_as(p, in_pos n_pos n)
       end
-  ; _open_ (ps:: ~+path) =>
+  ; _open_ (ps:: ~+path) ==>
       begin
         List.iter (get_ops _pos) ps;
         P_open(ps)
