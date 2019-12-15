@@ -448,7 +448,7 @@ and term_PBinO =
    *)
 and env =
     ()                                                           => []
-  ; "°[" (t::term PBinO) (ts:: ~* ("," (t::term PBinO) => t)) "]" => t::ts
+  ; "[" (t::term PBinO) (ts:: ~* ("," (t::term PBinO) => t)) "]" => t::ts
 
 (** [arg] parses a single function argument. *)
 and arg =
