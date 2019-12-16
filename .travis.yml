@@ -37,8 +37,9 @@ before_install:
   - opam pin add -k path pacomb.1.0 pacomb
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
-  - opam pin remove lambdapi
+  - opam pin remove lambdapi # why ? is not this causing the pb with ppx_inline_test ?
   - opam install alt-ergo
+  - opem install ppx_inline_test # should not be needed ?
   # Update why3 config after installing alt-ergo
   - why3 config --detect
 
