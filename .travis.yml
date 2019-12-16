@@ -39,7 +39,7 @@ before_install:
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi # why ? is not this causing the pb with ppx_inline_test ?
   - opam install alt-ergo
-  - opem install ppx_inline_test # should not be needed ?
+  - opam install ppx_inline_test # should not be needed ?
   # Update why3 config after installing alt-ergo
   - why3 config --detect
 
