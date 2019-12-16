@@ -18,6 +18,9 @@ env:
   - OCAML_VERSION=4.06.1
   - OCAML_VERSION=4.07.0
   - OCAML_VERSION=4.07.1
+  - OCAML_VERSION=4.08.0
+  - OCAML_VERSION=4.08.1
+  - OCAML_VERSION=4.09.0
 #  - OCAML_VERSION=4.07.0 TEST_TARGETS=opam-release EXTRA_OPAM=dune-release
 # FIXME
 
@@ -30,6 +33,8 @@ before_install:
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
+  - git clone git@github.com:craff/pacomb.git
+  - opam pin add -n -k path pacomb .
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi
