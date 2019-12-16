@@ -34,7 +34,7 @@ before_install:
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
   - git clone https://github.com/craff/pacomb.git
-  - opam pin add -n -k path pacomb .
+  - opam pin add -n -k path pacomb pacomb
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi
