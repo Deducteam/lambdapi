@@ -265,7 +265,9 @@ let escaped_ident : bool -> string Grammar.t = fun with_delim ->
     (Buffer.contents s, buf, pos)
   in
   let p_name = if with_delim then "{|<e-ident>|}" else "<e-ident>" in
-  Grammar.term { n = p_name ; f = fn; c = Charset.singleton '{' ; a = Lex.custom fn }
+  Grammar.term { n = p_name ; f = fn
+               ; c = Charset.singleton '{'
+               ; a = Lex.custom fn }
 
 let escaped_ident_no_delim = escaped_ident false
 let escaped_ident = escaped_ident true
