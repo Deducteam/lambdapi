@@ -337,6 +337,11 @@ let%parser exposition =
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
 
+(** define this two symbols so that the rule below can be left-factorised.
+    soon should not be necessary *)
+let%parser for_all = "∀" => ()
+let%parser lambda  = "λ" => ()
+
 (** [term] is a parser for a term. *)
 let%parser rec term (p : prio) =
   (* priorities inheritance *)
@@ -369,14 +374,14 @@ let%parser rec term (p : prio) =
   ; (p=PFunc) (a::term PBinO) "⇒" (b::term PFunc)
       => in_pos _pos (P_Impl(a,b))
   (* Products. *)
-  ; (p=PFunc) "∀" (xs:: ~+ arg) "," (b::term PFunc)
+  ; (p=PFunc) for_all (xs:: ~+ arg) "," (b::term PFunc)
       => in_pos _pos (P_Prod(xs,b))
-  ; (p=PFunc) "∀" (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (b::term PFunc)
+  ; (p=PFunc) for_all (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (b::term PFunc)
       => in_pos _pos (P_Prod([xs,Some(a),false],b))
   (* Abstraction. *)
-  ; (p=PFunc) "λ" (xs:: ~+ arg) "," (t::term PFunc)
+  ; (p=PFunc) lambda (xs:: ~+ arg) "," (t::term PFunc)
       => in_pos _pos (P_Abst(xs,t))
-  ; (p=PFunc) "λ" (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (t::term PFunc)
+  ; (p=PFunc) lambda (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (t::term PFunc)
       => in_pos _pos (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
   ; (p=PFunc) _let_ (x::ident) (a:: ~* arg) "≔" (t::term PFunc)
