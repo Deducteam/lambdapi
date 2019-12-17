@@ -95,10 +95,6 @@ let unop = Prefix.grammar unops
 (** Currently defined binary operators. *)
 let binops : binop Prefix.t = Prefix.init ()
 
-(** Parser for a binary operator.  split the part used for dependency *)
-let%parser binop =
-  (((__, assoc, p, ___) = b)::Prefix.grammar binops) => ((assoc,p),b)
-
 (** Currently defined identifiers. *)
 let declared_ids : string Prefix.t = Prefix.init ()
 
@@ -404,31 +400,19 @@ let%parser rec term (p : prio) =
         in_pos _pos (P_UnaO(u,t))
       end
   (* Binary operator. *)
-  ; (p = PBinO) ((pt,t)>:term_PBinO) (((assoc,p),b)>:binop) ((min_pr,u)::(
-        (* Find out minimum priorities for left and right operands. *)
-        let (min_pl, min_pr) =
-          let p_plus_epsilon = p +. 1e-6 in
-          match assoc with
-          | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
-          | Assoc_left  -> (p             , p_plus_epsilon)
-          | Assoc_right -> (p_plus_epsilon, p             )
-        in
-        (* Check that priority of left operand is above [min_pl]. *)
+  ; (p = PBinO) ((pt,t)>:left_PBinO) ((min_pr,b)>:binop pt) (u::term PBinO) =>
+      begin
+        (* Check that priority of the right operand is above [min_pr]. *)
         let _ =
-          match pt with
-          | Some p when p < min_pl -> Lex.give_up ()
-          | _                      -> ()
+          match u.elt with
+          | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Lex.give_up ()
+          | _                     -> ()
         in
-        ((u::term PBinO) => (min_pr, u)))) =>
-          (* Check that priority of the right operand is above [min_pr]. *)
-          let _ =
-            match u.elt with
-            | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Lex.give_up ()
-            | _                     -> ()
-          in
-          in_pos _pos (P_BinO(t,b,u))
+        in_pos _pos (P_BinO(t,b,u))
+      end
 
-and term_PBinO =
+(** parser collecting the priority, used left of an infix *)
+and left_PBinO =
   (t::term PBinO) =>
     begin
       let p =
@@ -438,6 +422,29 @@ and term_PBinO =
       in
       (p, t)
     end
+
+(** Parser for a binary operator. receive the priority of the left term and
+   return the priority for the right term *)
+and binop pt =
+  (((__, assoc, p, ___) = b)::Prefix.grammar binops) =>
+    begin
+      (* Find out minimum priorities for left and right operands. *)
+      let (min_pl, min_pr) =
+        let p_plus_epsilon = p +. 1e-6 in
+        match assoc with
+        | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
+        | Assoc_left  -> (p             , p_plus_epsilon)
+        | Assoc_right -> (p_plus_epsilon, p             )
+      in
+      (* Check that priority of left operand is above [min_pl]. *)
+      let _ =
+        match pt with
+        | Some p when p < min_pl -> Lex.give_up ()
+        | _                      -> ()
+      in
+      (min_pr,b)
+    end
+
 (*
 (* NOTE on binary operators. To handle infix binary operators, we need to rely
    on a dependent (Pacomb) grammar. The operands are parsed using the priority
