@@ -180,8 +180,8 @@ let in_range ?loc (line, pos) =
   | None -> false
   | Some loc ->
      let open Pacomb.Pos in
-     let {start = {line=start_line; col=start_col; _}
-         ;end_  = {line=end_line  ; col=end_col  ; _}} = loc
+     let {start = lazy {line=start_line; col=start_col; _}
+         ;end_  = lazy {line=end_line  ; col=end_col  ; _}} = loc
      in
      start_line - 1 < line && line < end_line - 1 ||
        (start_line - 1 = line && start_col <= pos) ||

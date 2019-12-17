@@ -29,8 +29,8 @@ let mk_event m p   = `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "pa
 
 let mk_range (p : Pos.pos) : J.t =
   let open Pacomb.Pos in
-  let {start = {line=line1; col=col1; _}
-      ;end_  = {line=line2; col=col2; _}} = p
+  let {start = lazy {line=line1; col=col1; _}
+      ;end_  = lazy {line=line2; col=col2; _}} = p
   in
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]

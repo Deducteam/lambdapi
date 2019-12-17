@@ -15,8 +15,8 @@ let locate : Lexing.position * Lexing.position -> Pos.pos = fun (p1, p2) ->
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
   let open Pacomb.Pos in
-  { start = { name; line = start_line; col = start_col; phantom = false }
-  ; end_  = { name; line = end_line  ; col = end_col  ; phantom = false }
+  { start = lazy { name; line = start_line; col = start_col; phantom = false }
+  ; end_  = lazy { name; line = end_line  ; col = end_col  ; phantom = false }
   }
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =

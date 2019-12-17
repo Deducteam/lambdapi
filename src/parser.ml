@@ -647,7 +647,7 @@ let parse_file : string -> ast = fun fname ->
     to be constructed. *)
 let parse_string : string -> string -> ast = fun fname str ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
-  try Grammar.parse_string ~filename:fname cmds blank str
+  try Grammar.parse_string ~utf8:UTF8 ~filename:fname cmds blank str
   with Pos.Parse_error(buf,pos,_msgs) ->
     let open Pos in
     let pos = { start = get_pos buf pos

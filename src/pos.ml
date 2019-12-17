@@ -47,8 +47,8 @@ let none : 'a -> 'a loc =
 (** [to_string pos] transforms [pos] into a readable string. *)
 let to_string : pos -> string = fun p ->
   let open Pos in
-  let { start = { name = fname; line = start_line; col = start_col ; _ }
-      ; end_  = { line = end_line; col = end_col ; _ } } = p
+  let { start = lazy { name = fname; line = start_line; col = start_col ; _ }
+      ; end_  = lazy { line = end_line; col = end_col ; _ } } = p
   in
   let fname = match fname with
     | ""    -> ""
