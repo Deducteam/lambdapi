@@ -82,7 +82,8 @@ module Prefix :
             | Some(best) -> best
         in fn None !t buf pos
       in
-      Grammar.term { n = "<tree>"; f = fn; c = Charset.full }
+      Grammar.term { n = "<tree>"; f = fn; c = Charset.full
+                   ; a = Lex.custom fn }
   end
 
 (** Currently defined unary operators. *)
@@ -212,7 +213,7 @@ let alpha : string Grammar.t =
     in
     fn 0 s0 n0
   in
-  Grammar.term { n = "<alpha>" ; c = alpha ; f = fn }
+  Grammar.term { n = "<alpha>" ; c = alpha ; f = fn ; a = Lex.custom fn }
 
 (** Regular identifier (regexp ["[a-zA-Z_][a-zA-Z0-9_']*"]). *)
 let regular_ident : string Grammar.t =
@@ -233,7 +234,7 @@ let regular_ident : string Grammar.t =
     in
     gn s0 n0
   in
-  Grammar.term { n = "<r-ident>" ; c = head_cs ; f = fn }
+  Grammar.term { n = "<r-ident>" ; c = head_cs ; f = fn ; a = Lex.custom fn }
 
 (** [escaped_ident with_delim] is a parser for a single escaped identifier. An
     escaped identifier corresponds to an arbitrary sequence of characters that
@@ -264,7 +265,7 @@ let escaped_ident : bool -> string Grammar.t = fun with_delim ->
     (Buffer.contents s, buf, pos)
   in
   let p_name = if with_delim then "{|<e-ident>|}" else "<e-ident>" in
-  Grammar.term { n = p_name ; f = fn; c = Charset.singleton '{' }
+  Grammar.term { n = p_name ; f = fn; c = Charset.singleton '{' ; a = Lex.custom fn }
 
 let escaped_ident_no_delim = escaped_ident false
 let escaped_ident = escaped_ident true
@@ -337,11 +338,6 @@ let%parser exposition =
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
 
-(** define this two symbols so that the rule below can be left-factorised.
-    soon should not be necessary *)
-let%parser for_all = "∀" => ()
-let%parser lambda  = "λ" => ()
-
 (** [term] is a parser for a term. *)
 let%parser rec term (p : prio) =
   (* priorities inheritance *)
@@ -374,14 +370,14 @@ let%parser rec term (p : prio) =
   ; (p=PFunc) (a::term PBinO) "⇒" (b::term PFunc)
       => in_pos _pos (P_Impl(a,b))
   (* Products. *)
-  ; (p=PFunc) for_all (xs:: ~+ arg) "," (b::term PFunc)
+  ; (p=PFunc) "∀" (xs:: ~+ arg) "," (b::term PFunc)
       => in_pos _pos (P_Prod(xs,b))
-  ; (p=PFunc) for_all (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (b::term PFunc)
+  ; (p=PFunc) "∀" (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (b::term PFunc)
       => in_pos _pos (P_Prod([xs,Some(a),false],b))
   (* Abstraction. *)
-  ; (p=PFunc) lambda (xs:: ~+ arg) "," (t::term PFunc)
+  ; (p=PFunc) "λ" (xs:: ~+ arg) "," (t::term PFunc)
       => in_pos _pos (P_Abst(xs,t))
-  ; (p=PFunc) lambda (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (t::term PFunc)
+  ; (p=PFunc) "λ" (xs:: ~+ arg_ident) ":" (a::term PFunc) "," (t::term PFunc)
       => in_pos _pos (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
   ; (p=PFunc) _let_ (x::ident) (a:: ~* arg) "≔" (t::term PFunc)
