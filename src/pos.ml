@@ -45,11 +45,9 @@ let none : 'a -> 'a loc =
   fun elt -> { elt ; pos = None }
 
 (** [to_string pos] transforms [pos] into a readable string. *)
-let to_string : pos -> string = fun p ->
+let to_string : pos -> string = fun (lazy p) ->
   let open Pos in
-  let { start = lazy { name = fname; line = start_line; col = start_col ; _ }
-      ; end_  = lazy { line = end_line; col = end_col ; _ } } = p
-  in
+  let { name = fname; start_line; start_col ; end_line; end_col ; _ } = p in
   let fname = match fname with
     | ""    -> ""
     | n -> n ^ ", "

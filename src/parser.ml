@@ -646,8 +646,8 @@ let parse_file : string -> ast = fun fname ->
   try Grammar.parse_file ~utf8:UTF8 cmds blank fname
   with Pos.Parse_error(buf,pos,_msgs) ->
         let open Pos in
-        let pos = { start = get_pos buf pos
-                  ; end_  = get_pos buf pos } in
+        let pos = get_pos buf pos in
+        let pos = lazy (interval pos pos) in
         parser_fatal pos "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
@@ -660,6 +660,6 @@ let parse_string : string -> string -> ast = fun fname str ->
   try Grammar.parse_string ~utf8:UTF8 ~filename:fname cmds blank str
   with Pos.Parse_error(buf,pos,_msgs) ->
     let open Pos in
-    let pos = { start = get_pos buf pos
-              ; end_  = get_pos buf pos } in
+    let pos = get_pos buf pos in
+    let pos = lazy (interval pos pos) in
     parser_fatal pos "Parse error."
