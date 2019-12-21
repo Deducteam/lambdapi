@@ -576,13 +576,14 @@ let parser cmd =
       -> List.iter (get_ops _loc) ps;
          P_open(ps)
   | e:exposition? p:property? _symbol_ s:ident al:arg* ":" a:term
-      -> P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
+      -> P_symbol(Option.get_default Terms.Public e,
+                  Option.get_default Terms.Defin p,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
-      -> P_definition(Option.get e Terms.Public,false,s,al,ao,t)
+      -> P_definition(Option.get_default Terms.Public e,false,s,al,ao,t)
   | e:exposition? st:statement (ts,pe):proof
-      -> P_theorem(Option.get e Terms.Public,st,ts,pe)
+      -> P_theorem(Option.get_default Terms.Public e,st,ts,pe)
   | _set_ c:config
       -> P_set(c)
   | q:query

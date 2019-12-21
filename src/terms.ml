@@ -240,6 +240,10 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
+(** Comparison function on metavariables. *)
+let cmp_meta m1 m2 = m1.meta_key - m2.meta_key
+let eq_meta m1 m2 = m1.meta_key = m2.meta_key
+
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb s = Symb (s, Nothing)
 
