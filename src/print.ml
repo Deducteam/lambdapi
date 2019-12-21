@@ -73,7 +73,7 @@ let pp_term : term pp = fun oc t ->
     let pp_term_env oc te =
       match te with
       | TE_Vari(m) -> out oc "%s" (Bindlib.name_of m)
-      | _          -> () (*assert false*)
+      | _          -> assert false
     in
     match unfold t with
     (* Application is handled separately, unreachable. *)
