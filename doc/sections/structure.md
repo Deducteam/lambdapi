@@ -17,12 +17,11 @@ Structure of directories and files
      - `src/*.ts`: the VSCode plugin source code written in the TypeScript language
      - `package.json`: the manifest of the plugin (activation events, scripts, dependencies, ...)
      - `tsconfig.json`: TypeScript configuration (directories, ...)
-     - `vscode.proposed.d.ts`: unstable VSCode API (Microsoft file, likely to change)
+     - `vscode.proposed.d.ts`: VSCode API (Microsoft file, likely to change)
      - `lp.configuration.json`: specific characters
      - `syntaxes/lp.tmLanguage.json`: grammar of lambdapi
      - `Makefile`
      - `.gitignore`
-     - `License-vscoq.txt` MIT License mentionning the original author of VSCoq, a similar plugin for Coq
 
 * `libraries/`: libraries of Dedukti files (see GNUmakefile)
 
