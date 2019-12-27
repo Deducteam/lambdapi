@@ -194,6 +194,7 @@ type p_command = p_command_aux loc
 
 (** Top level AST returned by the parser. *)
 type ast = p_command list
+type 'a fold = 'a -> ('a -> p_command -> 'a) -> 'a
 
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 

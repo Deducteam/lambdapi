@@ -553,21 +553,21 @@ let%parser assoc =
 let%parser config =
     "builtin" (s::STRING_LIT) "≔" (qid::qident) =>
       P_config_builtin(s,qid)
-  ; "prefix" (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) ==>
+  ; "prefix" (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
       begin
         let unop = (s, p, qid) in
         sanity_check s_pos s;
         Prefix.add unops s unop;
         P_config_unop(unop)
       end
-  ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) ==>
+  ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
       begin
         let binop = (s, a, p, qid) in
         sanity_check s_pos s;
         Prefix.add binops s binop;
         P_config_binop(binop)
       end
-  ; "declared" (id::STRING_LIT) ==>
+  ; "declared" (id::STRING_LIT) =>
       begin
         sanity_check id_pos id;
         Prefix.add declared_ids id id;
@@ -606,17 +606,17 @@ let do_require : pos -> p_module_path -> unit = fun loc path ->
 (** [cmd] is a parser for a single command. *)
 let%parser cmd =
     _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path)
-      ==> begin
+      => begin
         let fn p = do_require _pos p; if o then get_ops _pos p in
         List.iter fn ps; P_require(o,ps)
       end
   ; _require_ (p::path) _as_ (n::path_elem)
-      ==> begin
+      => begin
         do_require _pos p;
         P_require_as(p, in_pos n_pos n)
       end
   ; _open_ (ps:: ~+path)
-      ==> begin
+      => begin
         List.iter (get_ops _pos) ps;
         P_open(ps)
       end
@@ -636,14 +636,22 @@ let%parser cmd =
       => P_query(q)
 
 (** [cmds] is a parser for multiple (located) commands. *)
-let%parser cmds = Grammar.star (c::cmd => in_pos _pos c)
+let cmds : type a. a -> (a -> p_command -> a) -> a Grammar.t = fun acc fn ->
+  let%parser rec cmds =
+    () => (lazy acc)
+  ; (lazy acc::cmds) (c::cmd) => lazy (fn acc (in_pos _pos c))
+  in
+  let %parser cmds =
+    (lazy acc::cmds) EOF => acc
+  in
+  cmds
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
-let parse_file : string -> ast = fun fname ->
+let parse_file : string -> 'a fold = fun fname acc fn ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
-  try Grammar.parse_file ~utf8:UTF8 cmds blank fname
+  try Grammar.parse_file ~utf8:UTF8 (cmds acc fn) blank fname
   with Pos.Parse_error(buf,pos,_msgs) ->
         let open Pos in
         let pos = get_pos buf pos in
@@ -655,9 +663,9 @@ let parse_file : string -> ast = fun fname ->
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> ast = fun fname str ->
+let parse_string : string -> string -> 'a fold = fun fname str acc fn ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
-  try Grammar.parse_string ~utf8:UTF8 ~filename:fname cmds blank str
+  try Grammar.parse_string ~utf8:UTF8 ~filename:fname (cmds acc fn) blank str
   with Pos.Parse_error(buf,pos,_msgs) ->
     let open Pos in
     let pos = get_pos buf pos in

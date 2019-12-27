@@ -12,10 +12,11 @@ let gen_obj = Stdlib.ref false
 
 (** [parse_file fname] selects and runs the correct parser on file [fname], by
     looking at its extension. *)
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : type a. string -> a Syntax.fold =
+  fun fname acc fn ->
   match Filename.check_suffix fname src_extension with
-  | true  -> Parser.parse_file fname
-  | false -> Legacy_parser.parse_file fname
+  | true  -> Parser.parse_file fname acc fn
+  | false -> Legacy_parser.parse_file fname acc fn
 
 (** [compile force path] compiles the file corresponding to [path], when it is
     necessary (the corresponding object file does not exist,  must be updated,
@@ -61,7 +62,7 @@ let rec compile : bool -> Files.module_path -> unit = fun force path ->
             let st = List.fold_left (Tactics.handle_tactic ss) st ts in
             data.pdata_finalize ss st
       in
-      ignore (List.fold_left handle sig_st (parse_file src));
+      ignore (parse_file src sig_st handle);
       (* Removing private symbols from signature. *)
       let not_prv _ sym = not (Terms.is_private sym) in
       let not_prv_fst k s_ = not_prv k (fst s_) in

@@ -5,27 +5,28 @@
     calls to [Console.fatal] and [Console.fatal_no_pos].  In case of an error,
     the [parser_fatal] function should be used instead. *)
 
-let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
+let parse_lexbuf : string -> Lexing.lexbuf -> 'a Syntax.fold =
+  fun fname lexbuf acc fn ->
   Stdlib.(Legacy_lexer.filename := fname);
-  let lines = ref [] in
+  let acc = ref acc in
   try
     while true do
       let l = Menhir_parser.line Legacy_lexer.token lexbuf in
-      lines := l :: !lines
+      acc := fn !acc l
     done;
     assert false (* Unreachable. *)
   with
-  | End_of_file         -> List.rev !lines
+  | End_of_file         -> !acc
   | Menhir_parser.Error ->
       let loc = Lexing.(lexbuf.lex_start_p) in
       let loc = Legacy_lexer.locate (loc, loc) in
       Parser.parser_fatal loc "Unexpected token [%s]." (Lexing.lexeme lexbuf)
 
-let parse_file : string -> Syntax.ast = fun fname ->
+let parse_file : string -> 'a Syntax.fold = fun fname acc fn ->
   let ic = open_in fname in
   let lexbuf = Lexing.from_channel ic in
-  try let l = parse_lexbuf fname lexbuf in close_in ic; l
+  try let l = parse_lexbuf fname lexbuf acc fn in close_in ic; l
   with e -> close_in ic; raise e
 
-let parse_string : string -> string -> Syntax.ast = fun fname s ->
+let parse_string : string -> string -> 'a Syntax.fold = fun fname s ->
   parse_lexbuf fname (Lexing.from_string s)

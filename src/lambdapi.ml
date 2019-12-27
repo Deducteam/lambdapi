@@ -39,8 +39,9 @@ let handle_file : string -> unit = fun fname ->
   try
     (* Handle non-normal modes first. *)
     match !mode with
-    | JustParse -> ignore (Compile.parse_file fname)
-    | Beautify  -> Pretty.beautify (Compile.parse_file fname)
+    | JustParse -> Compile.parse_file fname () (fun () _ -> ())
+    | Beautify  -> Pretty.beautify
+                     (Compile.parse_file fname [] (fun l c -> c::l))
     | Normal    ->
     (* Compute the module path (checking the extension). *)
     let mp = module_path fname in

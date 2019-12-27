@@ -6,4 +6,3 @@ def Nat : Type.
 
 def S : Nat -> Nat.
 [] S T --> 0.
-
