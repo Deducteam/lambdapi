@@ -35,7 +35,8 @@ let parse_text : state -> string -> string -> Command.t list * state =
   try
     Time.restore t;
     let ast =
-      if old_syntax then Legacy_parser.parse_string fname s [] (fun l x -> x::l)
+      if old_syntax
+      then Legacy_parser.parse_string fname s [] (fun l x -> x::l)
       else Parser.parse_string fname s [] (fun l x -> x::l)
     in
     (ast, (Time.save (), st))
