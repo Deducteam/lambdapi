@@ -635,11 +635,17 @@ let%parser cmd =
   ; (q::query)
       => P_query(q)
 
-(** [cmds] is a parser for multiple (located) commands. *)
+(** [cmds] is a parser for multiple (located) commands. It "folds" on the
+   commands uusing the given accumalator and function rather that return a
+   list *)
 let cmds : type a. a -> (a -> p_command -> a) -> a Grammar.t = fun acc fn ->
+  (* lazy is necessary  otherwise  command which are prefix of another command
+     are evaluated,  and as this  may  modify  some  global  state,  this is a
+     catastrophy. The lazy trick below evaluates a command only after the next
+     command of EOF have been parsed. *)
   let%parser rec cmds =
     () => (lazy acc)
-  ; (lazy acc::cmds) (c::cmd) => lazy (fn acc (in_pos _pos c))
+    ; (lazy acc::cmds) (c::cmd) => lazy (fn acc (in_pos _pos c))
   in
   let %parser cmds =
     (lazy acc::cmds) EOF => acc
