@@ -41,8 +41,8 @@ let err_fmt = Stdlib.ref Format.err_formatter
     at the end of the message as well. *)
 let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
   match pos with
-  | None    -> Format.fprintf Stdlib.(!err_fmt) (yel (fmt ^^ "\n"))
-  | Some(_) -> Format.fprintf Stdlib.(!err_fmt)
+  | NoPos    -> Format.fprintf Stdlib.(!err_fmt) (yel (fmt ^^ "\n"))
+  | _        -> Format.fprintf Stdlib.(!err_fmt)
                  (yel ("[%a] " ^^ fmt ^^ "\n")) Pos.print pos
 
 (** Exception raised in case of failure. Note that we use an optional optional

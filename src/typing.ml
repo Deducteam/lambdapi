@@ -46,8 +46,8 @@ let infer : sym StrMap.t -> Ctxt.t -> term -> term option =
 let sort_type : sym StrMap.t -> Ctxt.t -> term -> unit =
   fun builtins ctx t ->
   match infer builtins ctx t with
-  | None    -> fatal None "Unable to infer a sort for [%a]." pp t
+  | None    -> fatal NoPos "Unable to infer a sort for [%a]." pp t
   | Some(a) ->
   match unfold a with
   | Type | Kind -> ()
-  | a           -> fatal None "[%a] has type [%a] (not a sort)." pp t pp a
+  | a           -> fatal NoPos "[%a] has type [%a] (not a sort)." pp t pp a

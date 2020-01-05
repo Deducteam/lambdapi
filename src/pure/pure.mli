@@ -24,7 +24,7 @@ type state
 type proof_state
 
 (** Exception raised by [parse_text]. *)
-exception Parse_error of Pos.pos * string
+exception Parse_error of Pos.ipos * string
 
 (** [parse_text st fname contents] runs the parser on the string [contents] as
     if it were a file named [fname]. The action takes place in the state [st],

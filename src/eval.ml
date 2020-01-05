@@ -382,4 +382,4 @@ let eval : config -> term -> term = fun c t ->
   | (SNF , None   ) -> snf t
   | (HNF , None   ) -> hnf t
   (* TODO implement the rest. *)
-  | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
+  | (_   , Some(_)) -> wrn NoPos "Number of steps not supported."; t

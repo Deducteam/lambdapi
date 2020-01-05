@@ -16,8 +16,8 @@ open Pacomb
 
 (** [parser_fatal loc fmt] is a wrapper for [Console.fatal] that enforces that
     the error has an attached source code position. *)
-let parser_fatal : pos -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
-  Console.fatal (Some(loc)) fmt
+let parser_fatal : popt -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
+  Console.fatal loc fmt
 
 (** Prefix trees for greedy parsing among a set of string. *)
 module Prefix :
@@ -116,7 +116,8 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
   let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
-      parser_fatal loc "Module [%a] not loaded (used for binops)." pp_path p
+      parser_fatal (ByPos loc)
+        "Module [%a] not loaded (used for binops)." pp_path p
   in
   let fn s (_, unop) = Prefix.add unops s unop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
@@ -183,6 +184,7 @@ let _wild_       = KW.create "_"
     operator or a declared identifier. If it is not the case, then the [Fatal]
     exception is raised. *)
 let sanity_check : pos -> string -> unit = fun loc s ->
+  let loc = ByPos loc in
   (* Of course, the empty string and keywords are forbidden. *)
   if s = "" then parser_fatal loc "Invalid token (empty).";
   if KW.mem s then parser_fatal loc "Invalid token (reserved).";
@@ -590,7 +592,7 @@ let require : (Files.module_path -> unit) Stdlib.ref = ref (fun _ -> ())
 (** [do_require pos path] is a wrapper for [!require path], that takes care of
     possible exceptions. Errors are reported at given position [pos],  keeping
     as much information as possible in the error message. *)
-let do_require : pos -> p_module_path -> unit = fun loc path ->
+let do_require : popt -> p_module_path -> unit = fun loc path ->
   let path = List.map fst path in
   let local_fatal fmt =
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
@@ -607,12 +609,12 @@ let do_require : pos -> p_module_path -> unit = fun loc path ->
 let%parser cmd =
     _require_ (o:: ~? [false] (_open_ => true)) (ps:: ~+ path)
       => begin
-        let fn p = do_require _pos p; if o then get_ops _pos p in
+        let fn p = do_require (ByPos _pos) p; if o then get_ops _pos p in
         List.iter fn ps; P_require(o,ps)
       end
   ; _require_ (p::path) _as_ (n::path_elem)
       => begin
-        do_require _pos p;
+        do_require (ByPos _pos) p;
         P_require_as(p, in_pos n_pos n)
       end
   ; _open_ (ps:: ~+path)
@@ -659,10 +661,8 @@ let parse_file : string -> 'a fold = fun fname acc fn ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Grammar.parse_file ~utf8:UTF8 (cmds acc fn) blank fname
   with Pos.Parse_error(buf,pos,_msgs) ->
-        let open Pos in
-        let pos = get_pos buf pos in
-        let pos = lazy (interval pos pos) in
-        parser_fatal pos "Parse error."
+    let pos = Input.spos buf pos in
+    parser_fatal (ByPos(pos,pos)) "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
@@ -673,7 +673,5 @@ let parse_string : string -> string -> 'a fold = fun fname str acc fn ->
   Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
   try Grammar.parse_string ~utf8:UTF8 ~filename:fname (cmds acc fn) blank str
   with Pos.Parse_error(buf,pos,_msgs) ->
-    let open Pos in
-    let pos = get_pos buf pos in
-    let pos = lazy (interval pos pos) in
-    parser_fatal pos "Parse error."
+    let pos = Input.spos buf pos in
+    parser_fatal (ByPos(pos,pos)) "Parse error."

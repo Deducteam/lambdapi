@@ -174,7 +174,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
   let rhs = build [] rhs in
   Pos.make r.pos (lhs, rhs)
 
-let build_config : Pos.pos -> string -> string option -> Eval.config =
+let build_config : Pos.popt -> string -> string option -> Eval.config =
     fun loc s1 s2o ->
   try
     let open Eval in

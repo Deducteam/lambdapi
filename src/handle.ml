@@ -296,9 +296,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
   with
-  | Timeout                as e -> raise e
-  | Fatal(Some(Some(_)),_) as e -> raise e
-  | Fatal(None         ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | Fatal(Some(None)   ,m)      -> fatal cmd.pos "Error on command.\n%s" m
-  | e                           ->
+  | Timeout              as e -> raise e
+  | Fatal(None       ,m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | Fatal(Some(NoPos),m)      -> fatal cmd.pos "Error on command.\n%s" m
+  | Fatal(Some(_)    ,_) as e -> raise e
+  | e                         ->
       fatal cmd.pos "Uncaught exception [%s]." (Printexc.to_string e)

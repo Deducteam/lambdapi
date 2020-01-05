@@ -48,6 +48,10 @@ let string_field name dict = U.to_string List.(assoc name dict)
 (* Conditionals *)
 let option_empty x = match x with | None -> true | Some _ -> false
 let option_cata f x d = match x with | None -> d | Some x -> f x
+let option_popt f x d = let open Pos in
+                        match x with | NoPos -> d
+                                     | LnPos x -> f x
+                                     | ByPos x -> f (ipos_of_pos x)
 let option_default x d = match x with | None -> d | Some x -> x
 
 let oint_field  name dict = option_cata U.to_int List.(assoc_opt name dict) 0
@@ -124,7 +128,7 @@ let grab_doc params =
   let start_doc, end_doc = Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
   doc_file, start_doc, end_doc
 
-let mk_syminfo file (name, _path, kind, pos) : J.t =
+let mk_syminfo file (name, _path, kind, (pos : Pos.ipos)) : J.t =
   `Assoc [
     "name", `String name;
     "kind", `Int kind;            (* function *)
@@ -158,7 +162,7 @@ let do_symbols ofmt ~id params =
   let sym = Extra.StrMap.fold (fun _ (s,p) l ->
       let open Terms in
       (* LIO.log_error "sym" (s.sym_name ^ " | " ^ Format.asprintf "%a" pp_term !(s.sym_type)); *)
-      option_cata (fun p -> mk_syminfo file
+      option_popt (fun p -> mk_syminfo file
                       (s.sym_name, s.sym_path, kind_of_type s, p) :: l) p l) sym [] in
   let msg = LSP.mk_reply ~id ~result:(`List sym) in
   LIO.send_json ofmt msg
@@ -175,22 +179,24 @@ let get_textPosition params =
   let line, character = int_field "line" pos, int_field "character" pos in
   line, character
 
-let in_range ?loc (line, pos) =
+let rec in_range loc (line, pos) =
+  let open Pos in
   match loc with
-  | None -> false
-  | Some loc ->
+  | NoPos -> false
+  | LnPos loc ->
      let open Pacomb.Pos in
-     let (lazy { start_line; start_col; end_line; end_col; _}) = loc in
+     let { start_line; start_col; end_line; end_col; _} = loc in
      start_line - 1 < line && line < end_line - 1 ||
        (start_line - 1 = line && start_col <= pos) ||
          (end_line - 1 = line && pos <= end_col)
+  | ByPos loc -> in_range (LnPos (ipos_of_pos loc)) (line, pos)
 
 let get_goals ~doc ~line ~pos =
   let open Lp_doc in
   let node =
     List.find_opt (fun { ast; _ } ->
         let loc = Pure.Command.get_pos ast in
-        let res = in_range ?loc (line,pos) in
+        let res = in_range loc (line,pos) in
                 let ls = Format.asprintf "%B l:%d p:%d / %a " res line pos Pos.print loc in
         LIO.log_error "get_goals" ("call: "^ls);
         res
@@ -198,7 +204,7 @@ let get_goals ~doc ~line ~pos =
   let goalsList = match node with
     | None -> []
     | Some n -> n.goals in
-  let goals = match (List.find_opt (fun (_, loc) -> in_range ?loc (line,pos)) goalsList) with
+  let goals = match (List.find_opt (fun (_, loc) -> in_range loc (line,pos)) goalsList) with
     | None -> None
     | Some (v,_) -> Some v in
   goals
@@ -279,11 +285,13 @@ let do_definition ofmt ~id params =
   in
   LIO.log_error "symbol map" map_pp;
 
+  let open Pos in
   let sym_info =
     match StrMap.find_opt sym_target sym with
     | None
-    | Some (_, None) -> `Null
-    | Some (_, Some pos) -> mk_definfo file pos
+    | Some (_, NoPos)     -> `Null
+    | Some (_, LnPos pos) -> mk_definfo file pos
+    | Some (_, ByPos pos) -> mk_definfo file (ipos_of_pos pos)
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg
@@ -304,9 +312,9 @@ let hover_symInfo ofmt ~id params =
     match StrMap.find_opt sym_target sym with
     | None ->
       msg_fail "hover" "sym not found"
-    | Some (_, None) ->
+    | Some (_, NoPos) ->
       msg_fail "hover" "sym not found"
-    | Some (sym, Some _) ->
+    | Some (sym, _) ->
       !(sym.sym_type)
   in let sym_type : string =
     Format.asprintf "%a" Print.pp_term sym_found  in

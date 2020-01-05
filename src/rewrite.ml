@@ -253,9 +253,9 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Symb(s,h)   -> _Symb s h
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
     (* For now, we fail on products, abstractions and metavariables. *)
-    | Prod(_)     -> fatal None "Cannot rewrite under products."
-    | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
-    | Meta(_)     -> fatal None "Cannot rewrite metavariables."
+    | Prod(_)     -> fatal NoPos "Cannot rewrite under products."
+    | Abst(_)     -> fatal NoPos "Cannot rewrite under abstractions."
+    | Meta(_)     -> fatal NoPos "Cannot rewrite metavariables."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false

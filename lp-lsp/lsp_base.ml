@@ -27,11 +27,11 @@ let _parse_uri str =
 let mk_reply ~id ~result = `Assoc [ "jsonrpc", `String "2.0"; "id",     `Int id;   "result", result ]
 let mk_event m p   = `Assoc [ "jsonrpc", `String "2.0"; "method", `String m; "params", `Assoc p ]
 
-let mk_range (p : Pos.pos) : J.t =
+let mk_range (p : Pos.ipos) : J.t =
   let open Pacomb.Pos in
   let
-    (lazy { start_line=line1; start_col=col1
-          ; end_line=line2; end_col=col2; _}) = p
+    ({ start_line=line1; start_col=col1
+     ; end_line=line2; end_col=col2; _}) = p
   in
   `Assoc ["start", `Assoc ["line", `Int (line1 - 1); "character", `Int col1];
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
@@ -58,7 +58,7 @@ let json_of_goals goals =
       "goals", `List List.(map json_of_goal goals)
     ]
 
-let mk_diagnostic ((p : Pos.pos), (lvl : int), (msg : string), (goals : _ option)) : J.t =
+let mk_diagnostic ((p : Pos.ipos), (lvl : int), (msg : string), (goals : _ option)) : J.t =
   let goals = json_of_goals goals in
   let range = mk_range p in
   `Assoc (mk_extra ["goal_info", goals] @

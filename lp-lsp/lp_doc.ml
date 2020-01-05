@@ -127,10 +127,12 @@ let check_text ~doc =
     let doc = { doc with nodes; final } in
     doc,
     LSP.mk_diagnostics ~uri ~version @@
-    List.fold_left (fun acc (pos,lvl,msg,goal) ->
+      List.fold_left (fun acc (pos,lvl,msg,goal) ->
+        let open Pos in
         match pos with
-        | None     -> acc
-        | Some pos -> (pos,lvl,msg,goal) :: acc
+        | NoPos     -> acc
+        | LnPos pos -> (pos,lvl,msg,goal) :: acc
+        | ByPos pos -> (Pos.ipos_of_pos pos,lvl,msg,goal) :: acc
       ) [] diag
   with
   | Pure.Parse_error(loc, msg) ->

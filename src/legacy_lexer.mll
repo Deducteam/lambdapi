@@ -8,19 +8,19 @@ let filename = Stdlib.ref ""
 let to_module_path : string -> Syntax.p_module_path = fun mp ->
   List.map (fun s -> (s, false)) (String.split_on_char '.' mp)
 
-let locate : Lexing.position * Lexing.position -> Pos.pos = fun (p1, p2) ->
+let locate : Lexing.position * Lexing.position -> popt = fun (p1, p2) ->
   let name = !filename in
   let start_line = p1.pos_lnum in
   let start_col = p1.pos_cnum - p1.pos_bol in
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
   let open Pacomb.Pos in
-  (lazy { name; start_line; start_col; end_line; end_col; phantom = false })
+  LnPos { name; start_line; start_col; end_line; end_col; phantom = false }
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
-  fun lps elt -> {pos = Some(locate lps); elt}
+  fun lps elt -> {pos = locate lps; elt}
 
-let locate_lexbuf : Lexing.lexbuf -> Pos.pos = fun lexbuf ->
+let locate_lexbuf : Lexing.lexbuf -> popt = fun lexbuf ->
   locate (lexbuf.lex_start_p, lexbuf.lex_curr_p)
 
 type token =
@@ -40,7 +40,7 @@ type token =
   | ASSERT  of bool
 
 let unexpected_char : Lexing.lexbuf -> char -> token = fun lexbuf c ->
-  fatal (Some(locate_lexbuf lexbuf)) "Unexpected characters [%c]." c
+  fatal (locate_lexbuf lexbuf) "Unexpected characters [%c]." c
 
 let comment_stack = Stack.create ()
 
@@ -57,7 +57,7 @@ let pop_comment () =
 
 let unclosed_comment () =
   let loc = try Stack.pop comment_stack with Stack.Empty -> assert false in
-  fatal (Some(loc)) "Unclosed comment."
+  fatal (loc) "Unclosed comment."
 }
 
 let space  = [' ''\t''\r']
