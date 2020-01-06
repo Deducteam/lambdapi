@@ -19,87 +19,20 @@ open Pacomb
 let parser_fatal : popt -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
   Console.fatal loc fmt
 
-(** Prefix trees for greedy parsing among a set of string. *)
-module Prefix :
-  sig
-    (** Type of a prefix tree. *)
-    type 'a t
-
-    (** [init ()] initializes a new (empty) prefix tree. *)
-    val init : unit -> 'a t
-
-    (** [reset t] resets [t] to an empty prefix tree [t]. *)
-    val reset : 'a t -> unit
-
-    (** [add k v t] inserts the value [v] with the key [k] (possibly replacing
-        a previous value associated to [k]) in the tree [t]. Note that key [k]
-        should not be [""], otherwise [Invalid_argument] is raised. *)
-    val add : 'a t -> string -> 'a -> unit
-
-    (** [grammar t] is a [Pacomb]  grammar parsing the longest possible prefix
-        of the input corresponding to a word of [t]. The corresponding, stored
-        value is returned. It fails if no such longest prefix exist. *)
-    val grammar : 'a t -> 'a Grammar.t
-  end =
-  struct
-    type 'a tree = Node of 'a option * (char * 'a tree) list
-    type 'a t = 'a tree Stdlib.ref
-
-    let init : unit -> 'a t = fun _ -> ref (Node(None, []))
-
-    let reset : 'a t -> unit = fun t -> t := Node(None, [])
-
-    let add : 'a t -> string -> 'a -> unit = fun t k v ->
-      if k = "" then invalid_arg "Prefix.add";
-      let rec add i (Node(vo,l)) =
-        match try Some(k.[i]) with _ -> None with
-        | None    -> Node(Some(v), l)
-        | Some(c) ->
-            let l =
-              try
-                let t = List.assoc c l in
-                (c, add (i+1) t) :: (List.remove_assoc c l)
-              with Not_found -> (c, add (i+1) (Node(None, []))) :: l
-            in
-            Node(vo, l)
-      in
-      t := add 0 !t
-
-    let grammar : 'a t -> 'a Grammar.t = fun t ->
-      let fn buf pos =
-        let rec fn best (Node(vo,l)) buf pos =
-          let best =
-            match vo with
-            | None    -> best
-            | Some(v) -> Some(v,buf,pos)
-          in
-          try
-            let (c, buf, pos) = Input.read buf pos in
-            fn best (List.assoc c l) buf pos
-          with Not_found ->
-            match best with
-            | None       -> Lex.give_up ()
-            | Some(best) -> best
-        in fn None !t buf pos
-      in
-      Grammar.term { n = "<tree>"; f = fn; c = Charset.full
-                   ; a = Lex.custom fn }
-  end
-
 (** Currently defined unary operators. *)
-let unops : unop Prefix.t = Prefix.init ()
+let unops : (string, unop) Word_list.t = Word_list.create ()
 
 (** Parser for a unary operator. *)
-let unop = Prefix.grammar unops
+let unop = Word_list.utf8_word unops
 
 (** Currently defined binary operators. *)
-let binops : binop Prefix.t = Prefix.init ()
+let binops : (string, binop) Word_list.t = Word_list.create ()
 
 (** Currently defined identifiers. *)
-let declared_ids : string Prefix.t = Prefix.init ()
+let declared_ids : (string, string) Word_list.t = Word_list.create ()
 
 (** Parser for a declared identifier. *)
-let declared_id = Prefix.grammar declared_ids
+let declared_id = Word_list.utf8_word declared_ids
 
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
@@ -119,11 +52,11 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
       parser_fatal (ByPos loc)
         "Module [%a] not loaded (used for binops)." pp_path p
   in
-  let fn s (_, unop) = Prefix.add unops s unop in
+  let fn s (_, unop) = Word_list.add_utf8 unops s unop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
-  let fn s (_, binop) = Prefix.add binops s binop in
+  let fn s (_, binop) = Word_list.add_utf8 binops s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops));
-  let fn s = Prefix.add declared_ids s s in
+  let fn s = Word_list.add_utf8 declared_ids s s in
   StrSet.iter fn Timed.(!Sign.(sign.sign_idents))
 
 (** Blank function (for comments and white spaces). *)
@@ -428,7 +361,7 @@ and left_PBinO =
 (** Parser for a binary operator. receive the priority of the left term and
    return the priority for the right term *)
 and binop pt =
-  (((__, assoc, p, ___) = b)::Prefix.grammar binops) =>
+  (((__, assoc, p, ___) = b)::Word_list.utf8_word binops) =>
     begin
       (* Find out minimum priorities for left and right operands. *)
       let (min_pl, min_pr) =
@@ -552,27 +485,27 @@ let%parser assoc =
   ; "right" => Assoc_right
 
 (** [config] parses a single configuration option. *)
-let%parser config =
+let%parser [@cache] config =
     "builtin" (s::STRING_LIT) "≔" (qid::qident) =>
       P_config_builtin(s,qid)
   ; "prefix" (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
       begin
         let unop = (s, p, qid) in
         sanity_check s_pos s;
-        Prefix.add unops s unop;
+        Word_list.add_utf8 unops s unop;
         P_config_unop(unop)
       end
   ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
       begin
         let binop = (s, a, p, qid) in
         sanity_check s_pos s;
-        Prefix.add binops s binop;
+        Word_list.add_utf8 binops s binop;
         P_config_binop(binop)
       end
   ; "declared" (id::STRING_LIT) =>
       begin
         sanity_check id_pos id;
-        Prefix.add declared_ids id id;
+        Word_list.add_utf8 declared_ids id id;
         P_config_ident(id)
       end
 
@@ -646,21 +579,35 @@ let cmds : type a. a -> (a -> p_command -> a) -> a Grammar.t = fun acc fn ->
      catastrophy. The lazy trick below evaluates a command only after the next
      command of EOF have been parsed. *)
   let%parser rec cmds =
-    () => (lazy acc)
-    ; (lazy acc::cmds) (c::cmd) => lazy (fn acc (in_pos _pos c))
+    ()                     => lazy acc
+    ; (acc::cmds) (c::cmd) => let acc = Lazy.force acc in
+                              lazy (fn acc (in_pos c_pos c))
   in
-  let %parser cmds =
-    (lazy acc::cmds) EOF => acc
-  in
+  let%parser cmds = (acc::cmds) EOF => Lazy.force acc in
   cmds
+
+let reset_ops () =
+  let open Word_list in
+  let u = save_and_reset unops in
+  let b = save_and_reset binops in
+  let d = save_and_reset declared_ids in
+  (u, b, d)
+
+let restore_ops (u,b,d) =
+  let open Word_list in
+  restore unops u; restore binops b; restore declared_ids d
 
 (** [parse_file fname] attempts to parse the file [fname], to obtain a list of
     toplevel commands. In case of failure, a graceful error message containing
     the error position is given through the [Fatal] exception. *)
 let parse_file : string -> 'a fold = fun fname acc fn ->
-  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
-  try Grammar.parse_file ~utf8:UTF8 (cmds acc fn) blank fname
+  let saved = reset_ops () in
+  try
+    let r =
+      Grammar.parse_file ~utf8:UTF8 (cmds acc fn) blank fname in
+    restore_ops saved; r
   with Pos.Parse_error(buf,pos,_msgs) ->
+    restore_ops saved;
     let pos = Input.spos buf pos in
     parser_fatal (ByPos(pos,pos)) "Parse error."
 
@@ -670,8 +617,13 @@ let parse_file : string -> 'a fold = fun fname acc fn ->
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
 let parse_string : string -> string -> 'a fold = fun fname str acc fn ->
-  Prefix.reset unops; Prefix.reset binops; Prefix.reset declared_ids;
-  try Grammar.parse_string ~utf8:UTF8 ~filename:fname (cmds acc fn) blank str
+  let saved = reset_ops () in
+  try
+    let r =
+      Grammar.parse_string ~utf8:UTF8 ~filename:fname (cmds acc fn) blank str
+    in
+    restore_ops saved; r
   with Pos.Parse_error(buf,pos,_msgs) ->
+    restore_ops saved;
     let pos = Input.spos buf pos in
     parser_fatal (ByPos(pos,pos)) "Parse error."
