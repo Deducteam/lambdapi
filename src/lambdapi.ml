@@ -108,6 +108,10 @@ let spec =
     ; ( "--just-parse"
       , Arg.Unit (fun _ -> mode := JustParse)
       , " Only parse the input files (no type-checking)" )
+    ; ( "--print-grammar"
+      , Arg.Unit (fun _ -> Pacomb.Grammar.print_grammar stderr
+                             (Parser.cmds () (fun () _ -> ())))
+      , " print the grammar of .lp files" )
     ; ( "--beautify"
       , Arg.Unit (fun _ -> mode := Beautify; set_default_verbose 0)
       , " Parse input files and pretty-print them (in the new syntax)" )

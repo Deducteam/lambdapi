@@ -248,13 +248,16 @@ let no_dot g =
     g
 
 (** Module path (dot-separated identifiers. *)
-let%parser path = (m::path_elem) (ms:: ~* ("." (p::path_elem) => p)) => m::ms
+let%parser path = (ms:: ~+ ["."] path_elem) => ms
 
 let path = no_dot path
 
 (** [qident] parses a single (possibly qualified) identifier. *)
+let%parser path_prefix =
+  (mp:: ~* ((p::path_elem) "." => p)) => mp
+
 let%parser qident =
-  (mp:: ~* ((p::path_elem) "." => p)) (id::any_ident) => in_pos _pos (mp,id)
+  (mp::path_prefix) (id::any_ident) => in_pos _pos (mp,id)
 
 let qident = no_dot qident
 
@@ -271,8 +274,15 @@ let%parser exposition =
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
 
+let string_of_prio = function
+  | PAtom -> "A"
+  | PAppl -> "@"
+  | PUnaO -> "U"
+  | PBinO -> "B"
+  | PFunc -> "F"
+
 (** [term] is a parser for a term. *)
-let%parser rec term (p : prio) =
+let%parser [@print_param string_of_prio] rec term (p : prio) =
   (* priorities inheritance *)
     PAtom < PAppl < PUnaO < PBinO < PFunc
   (* TYPE constant. *)
@@ -393,8 +403,8 @@ and binop pt =
 (** [env] is a parser for a metavariable environment. *)
    *)
 and env =
-    ()                                                           => []
-  ; "[" (t::term PBinO) (ts:: ~* ("," (t::term PBinO) => t)) "]" => t::ts
+    ()                                 => []
+  ; "[" (ts:: ~+ [","] (term PBinO)) "]" => ts
 
 (** [arg] parses a single function argument. *)
 and arg =
@@ -558,8 +568,8 @@ let%parser cmd =
   ; (e:: ~?exposition) (p:: ~? property) _symbol_
       (s::ident) (al:: ~*arg) ":" (a::term)
       => P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
-  ; _rule_ (r::rule) (rs:: ~*(_and_ (r::rule) => r))
-      => P_rules(r::rs)
+  ; _rule_ (rs:: ~+ [_and_] rule)
+      => P_rules(rs)
   ; (e:: ~?exposition) _definition_
       (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term)
       => P_definition(Option.get e Terms.Public,false,s,al,ao,t)
@@ -583,8 +593,8 @@ let cmds : type a. a -> (a -> p_command -> a) -> a Grammar.t = fun acc fn ->
     ; (acc::cmds) (c::cmd) => let acc = Lazy.force acc in
                               lazy (fn acc (in_pos c_pos c))
   in
-  let%parser cmds = (acc::cmds) EOF => Lazy.force acc in
-  cmds
+  let%parser top = (acc::cmds) EOF => Lazy.force acc in
+  top
 
 let reset_ops () =
   let open Word_list in
