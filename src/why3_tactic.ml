@@ -168,7 +168,7 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Get the goal to prove. *)
   let (hyps, trm) = Proof.Goal.get_type g in
   (* Get the default or the indicated name of the prover. *)
-  let prover_name = Option.get_default !default_prover prover_name in
+  let prover_name = Option.get !default_prover prover_name in
   if !log_enabled then log_why3 "running with configuration [%s]" prover_name;
   (* Encode the goal in Why3. *)
   let tsk = encode pos ps.Proof.proof_builtins hyps trm in

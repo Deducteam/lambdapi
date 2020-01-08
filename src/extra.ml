@@ -64,14 +64,9 @@ module Option =
       | None    -> ()
       | Some(e) -> f e
 
-    let get_default : 'a -> 'a option -> 'a = fun d o ->
+    let get : 'a -> 'a option -> 'a = fun d o ->
       match o with
       | None    -> d
-      | Some(e) -> e
-
-    let get : 'a option -> 'a = fun o ->
-      match o with
-      | None    -> assert false
       | Some(e) -> e
 
     let equal : 'a eq -> 'a option eq = fun eq o1 o2 ->
