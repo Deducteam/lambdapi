@@ -179,9 +179,8 @@ let iter : (term -> unit) -> term -> unit = fun action ->
   in iter
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
-   and of the type of every metavariable recursively if [b]. *)
-let iter_meta : bool -> (meta -> unit) -> term -> unit =
-  fun b f ->
+   and to the type of every metavariable recursively if [b] is true. *)
+let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
   let rec iter t =
     match unfold t with
     | Patt(_,_,_)
