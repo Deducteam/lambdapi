@@ -6,6 +6,9 @@ type 'a pp = Format.formatter -> 'a -> unit
 (** Short name for the type of an equality function. *)
 type 'a eq = 'a -> 'a -> bool
 
+(** Short name for the type of a comparison function. *)
+type 'a cmp = 'a -> 'a -> int
+
 module Int =
   struct
     type t = int
@@ -61,7 +64,7 @@ module Option =
       | None    -> ()
       | Some(e) -> f e
 
-    let get : 'a option -> 'a -> 'a = fun o d ->
+    let get : 'a -> 'a option -> 'a = fun d o ->
       match o with
       | None    -> d
       | Some(e) -> e
@@ -204,6 +207,20 @@ module List =
     let init : int -> (int -> 'a) -> 'a list = fun n f ->
       if n < 0 then invalid_arg "Extra.List.init" else
       let rec loop k = if k > n then [] else f k :: loop (k + 1) in loop 0
+
+    (** [in_sorted cmp x l] tells whether [x] is in [l] assuming that [l] is
+       sorted wrt [cmp]. *)
+    let in_sorted : 'a cmp -> 'a -> 'a list -> bool = fun cmp x ->
+      let rec in_sorted l =
+        match l with
+        | [] -> false
+        | y :: l ->
+            match cmp x y with
+            | 0 -> true
+            | n when n > 0 -> in_sorted l
+            | _ -> false
+      in in_sorted
+
   end
 
 module Array =
