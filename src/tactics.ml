@@ -55,7 +55,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
-    let metas = Basics.get_metas t in
+    let metas = Basics.get_metas true t in
     let new_goals = List.map Proof.Goal.of_meta metas in
     Proof.({ps with proof_goals = new_goals @ gs})
   in
