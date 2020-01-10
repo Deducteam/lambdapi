@@ -211,8 +211,8 @@ let get_metas : bool -> term -> meta list = fun b t ->
   iter_meta b (fun m -> l := m :: !l) t;
   List.sort_uniq cmp_meta !l
 
-(** [has_metas t] checks whether there are metavariables in [t], and in the
-   types of metavariables recursively if [b]. *)
+(** [has_metas b t] checks whether there are metavariables in [t], and in the
+   types of metavariables recursively if [b] is true. *)
 let has_metas : bool -> term -> bool =
   let exception Found in fun b t ->
   try iter_meta b (fun _ -> raise Found) t; false with Found -> true
