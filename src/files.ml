@@ -94,7 +94,7 @@ module ModMap :
     let get ks (Node(po, _) as m) =
       let rec get root ks (Node(po, m)) =
         match ks with
-        | []      -> Option.get po root
+        | []      -> Option.get root po
         | k :: ks ->
             try get (Filename.concat root k) ks (StrMap.find k m)
             with Not_found -> List.fold_left Filename.concat root (k :: ks)
