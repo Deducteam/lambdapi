@@ -418,33 +418,9 @@ let lsp_main log_file std =
     close_out debug_oc;
     close_out lp_oc
 
-open Cmdliner
+(* Stuff used to configure and run the server from the main file. *)
+let use_standard_lsp : bool ref = ref !LSP.std_protocol
+let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"
+let log_file : string ref = ref default_log_file
 
-(* let bt =
- *   let doc = "Enable backtraces" in
- *   Arg.(value & flag & info ["bt"] ~doc) *)
-
-let log_file =
-  let doc = "Log to $(docv)" in
-  Arg.(value & opt string "log-lsp.txt" & info ["log_file"] ~docv:"FILE" ~doc)
-
-let std =
-  let doc = "Restrict to standard LSP protocol" in
-  Arg.(value & flag & info ["std"] ~doc)
-
-let lsp_cmd =
-  let doc = "LP LSP Toplevel" in
-  let man = [
-    `S "DESCRIPTION";
-    `P "Experimental LP Toplevel with LSP support";
-    `S "USAGE";
-    `P "See the documentation on the project's webpage for more information"
-  ]
-  in
-  Term.(const lsp_main $ log_file $ std),
-  Term.info "lp-lsp" ~version:"0.0" ~doc ~man
-
-let main () =
-  match Term.eval lsp_cmd with
-  | `Error _ -> exit 1
-  | _        -> exit 0
+let run () = lsp_main !log_file !use_standard_lsp

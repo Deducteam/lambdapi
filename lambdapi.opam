@@ -27,16 +27,10 @@ depends: [
   "earley"       { >= "2.0.0" }
   "timed"        { >= "1.0"   }
   "why3"         { >= "1.2.0" }
-  # tests
-  "ppx_inline_test" { with-test }
-
-  # lp-lsp dependencies
   "yojson"       { >= "1.6.0" }
-  "cmdliner"
 ]
 
 build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]
 ]
-run-test: [ [ "dune" "runtest" "-p" name "-j" jobs ] ]

@@ -1,6 +1,5 @@
 (** Interface to LSP. *)
 
-(* Lambdapi core *)
 open Core
 open Files
 
