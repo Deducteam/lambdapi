@@ -1,4 +1,13 @@
-See the file [lp-lsp/README.md](../../lp-lsp/README.md) for more details.
+User interfaces
+---------------
+
+A prototype language server is provided with Lambdapi. It follows (an extension
+of) the Language Server Protocol (LSP), which is supported by most editors. See
+below for setting up your favorite editor.
+
+The server can be run using the command `lambdapi --lsp-server`. The extra flag
+`--standard-lsp` can be use to enforce strict LSP protocol (without extensions
+targeted at logical formalizations).
 
 ### VSCode
 
@@ -21,14 +30,19 @@ sudo apt install npm node-typescript
 
 The `emacs` mode can be optionally installed using `make install_emacs` in the
 `lambdapi` repository.  Support for the LSP server is enabled by default,  but
-it requires the `eglot` plugin to be installed.
+it requires the [eglot](https://github.com/joaotavora/eglot) plugin to be
+installed (using `M-x package-install eglot RET` should work).
 
-To enter unicode symbols using Latex commands, one can for instance use [company-math](https://github.com/vspinu/company-math).
+To enter unicode symbols using Latex commands, one can for instance use
+[company-math](https://github.com/vspinu/company-math).
+
+Note that `eglot` does not support the extended protocol information sent by
+our LSP server yet.
 
 ### Vim
 
 The `Vim` mode can be installed similarly using the command `make install_vim`
-in the `lambdapi` repository. It does not have support for the LSP server.
+in the `lambdapi` repository. It does not have support for the LSP server yet.
 
 ### Atom
 

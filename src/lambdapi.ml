@@ -145,8 +145,8 @@ let spec =
       , " Restrict to standard LSP protocol" )
     ; ( "--lsp-log-file"
       , Arg.Set_string Lsp.Lp_lsp.log_file
-      , "<file> Specified the LSP server log file (default: "
-          ^ Lsp.Lp_lsp.default_log_file ^ ")" ) ]
+      , "<file> Specified the LSP server log file (default is \""
+          ^ Lsp.Lp_lsp.default_log_file ^ "\")" ) ]
   in
   List.sort (fun (f1,_,_) (f2,_,_) -> String.compare f1 f2) spec
 
