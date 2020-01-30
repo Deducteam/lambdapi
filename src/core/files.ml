@@ -91,17 +91,21 @@ module ModMap :
 
     exception Root_not_set
 
-    let get ks (Node(po, _) as m) =
-      let rec get root ks (Node(po, m)) =
+    let get ks (Node(po, m)) =
+      let rec get (root, old_ks) ks m =
         match ks with
-        | []      -> Option.get root po
+        | []      ->
+            List.fold_left Filename.concat root old_ks
         | k :: ks ->
-            try get (Filename.concat root k) ks (StrMap.find k m)
-            with Not_found -> List.fold_left Filename.concat root (k :: ks)
+            match StrMap.find k m with
+            | Node(Some(root), m) -> get (root, ks) ks m
+            | Node(None      , m) -> get (root, old_ks) ks m
+            | exception Not_found ->
+                List.fold_left Filename.concat root old_ks
       in
       match po with
       | None       -> raise Root_not_set
-      | Some(root) -> get root ks m
+      | Some(root) -> get (root, ks) ks m
 
     let iter fn m =
       let rec iter path (Node(po, m)) =
@@ -205,8 +209,11 @@ let current_mappings : unit -> ModMap.t = fun _ ->
     path" (with no attached extension). It is assumed that [init_lib_root] was
     called prior to any call to this function. *)
 let module_to_file : Path.t -> file_path = fun mp ->
-  try ModMap.get mp Pervasives.(!lib_mappings) with ModMap.Root_not_set ->
-    assert false (* Unreachable after [init_lib_root] is called. *)
+  let path =
+    try ModMap.get mp Pervasives.(!lib_mappings) with ModMap.Root_not_set ->
+      assert false (* Unreachable after [init_lib_root] is called. *)
+  in
+  log_file "[%a] points to base name [%s]." Path.pp mp path; path
 
 (** [src_extension] is the expected extension for source files. *)
 let src_extension : string = ".lp"
@@ -257,7 +264,9 @@ let file_to_module : string -> Path.t = fun fname ->
     let len_base = String.length base in
     String.sub base (len_path + 1) (len_base - len_path - 1)
   in
-  mp @ String.split_on_char '/' rest
+  let full_mp = mp @ String.split_on_char '/' rest in
+  log_file "File [%s] is module [%a]." fname Path.pp full_mp;
+  full_mp
 
 (** [mod_time fname] returns the modification time of file [fname] represented
     as a [float]. [neg_infinity] is returned if the file does not exist. *)
