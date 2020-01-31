@@ -364,7 +364,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Abst(xs,t)    , _                ) -> scope_binder _Abst env xs t
     | (P_Prod(_,_)     , M_LHS(_)         ) ->
         fatal t.pos "Dependent products are not allowed in a LHS."
-    | (P_Prod(_,_)     , M_Patt   ) ->
+    | (P_Prod(_,_)     , M_Patt           ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
     | (P_LLet(x,xs,t,u), M_Term(_)        )
@@ -372,8 +372,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
-    | (P_LLet(_,_,_,_) , M_LHS(_)         ) ->
+    | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
+    | (P_LLet(_)       , M_Patt           ) ->
+        fatal t.pos "Let-bindings are not allowed in a pattern."
     | (P_NLit(n)       , _                ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
