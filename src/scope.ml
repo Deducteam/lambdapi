@@ -373,7 +373,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
         _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
     | (P_LLet(_,_,_,_) , _                ) ->
-        fatal t.pos "Let-bindings are not allowed in rewriting rules."
+        fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_NLit(n)       , _                ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
