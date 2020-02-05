@@ -11,7 +11,7 @@ if [[ ! -f "$mlsrc" ]]; then
  svn co 'https://scm.gforge.inria.fr/anonscm/svn/rec/2019-CONVECS/OCAML'
 fi
 for lpf in "${dksrc}"/*; do
-  root="$(basename "${lpf%.lp})"
+  root="$(basename "${lpf%.lp}")"
   t_lp="$(time (lambdapi "${dksrc}/${lpf}" &> /dev/null))"
   t_ghcrun="$(time (ghcrun "${hssrc}/${root}.hs" &> /dev/null))"
   t_ocaml="$(time (ocaml "${mlsrc}/${root}.ml" &> /dev/null))"
