@@ -3,7 +3,8 @@
 ## directory with the dedukti(3) syntax.
 ## NOTE tests using conditional rewriting are not translated
 
-set -euf -o pipefail
+set -eu -o pipefail
+shopt -s failglob
 
 src="HASKELL"
 out="DEDUKTI"
