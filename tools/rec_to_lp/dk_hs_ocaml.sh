@@ -21,5 +21,5 @@ for lpf in files; do
   t_ghc="$(time (cd "${hssrc}" || exit && ghc "${root}.hs" && ./${root}))"
   t_mlopt="$(time (cd "${mlsrc}" || exit && ocamlopt "${root}.ml" && \
           ./a.out))"
-  echo -e "${root}: ${t_lp}/${t_ghcrune}/${t_ocaml}/${t_ghc}/${t_mlopt}"
+  echo -e "${root}: ${t_lp}/${t_ghcrun}/${t_ocaml}/${t_ghc}/${t_mlopt}"
 done
