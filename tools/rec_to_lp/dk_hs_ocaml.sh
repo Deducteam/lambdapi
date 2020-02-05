@@ -1,6 +1,7 @@
 #!/bin/bash
 ## Compare timing of tests files between Haskell, OCaml and Dedukti3
-set -euf -o pipefail
+set -eu -o pipefail
+shopt -s failglob
 
 export TIMEFORMAT="%E" # Only seconds
 dksrc='DEDUKTI'
@@ -12,7 +13,7 @@ if [[ ! -f "$mlsrc" ]]; then
 fi
 for lpf in "${dksrc}"/*; do
   root="$(basename "${lpf%.lp}")"
-  t_lp="$(time (lambdapi "${dksrc}/${lpf}" &> /dev/null))"
+  t_lp="$(time (lambdapi "${dksrc}/${root}.lp" &> /dev/null))"
   t_ghcrun="$(time (ghcrun "${hssrc}/${root}.hs" &> /dev/null))"
   t_ocaml="$(time (ocaml "${mlsrc}/${root}.ml" &> /dev/null))"
   # For ghc and ocamlopt, we time compilation and execution
