@@ -14,7 +14,7 @@ fi
 for lpf in "${dksrc}"/*; do
   root="$(basename "${lpf%.lp}")"
   t_lp="$(time (lambdapi "${dksrc}/${root}.lp" &> /dev/null))"
-  t_ghcrun="$(time (ghcrun "${hssrc}/${root}.hs" &> /dev/null))"
+  t_ghcrun="$(time (runghc "${hssrc}/${root}.hs" &> /dev/null))"
   t_ocaml="$(time (ocaml "${mlsrc}/${root}.ml" &> /dev/null))"
   # For ghc and ocamlopt, we time compilation and execution
   t_ghc="$(time (cd "${hssrc}" || exit && ghc "${root}.hs" && \
