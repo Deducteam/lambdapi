@@ -7,7 +7,7 @@ dksrc='DEDUKTI'
 mlsrc='OCAML'
 hssrc='HASKELL'
 
-files="(cd ${dksrc} || exit && ls)"
+files="$(cd ${dksrc} || exit && ls)"
 
 if [[ ! -f "$mlsrc" ]]; then
  svn co 'https://scm.gforge.inria.fr/anonscm/svn/rec/2019-CONVECS/OCAML'
