@@ -178,44 +178,44 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Appl(t,u)  -> iter t; iter u
   in iter
 
-(** [iter_meta f t] applies the function [f] to every metavariable of
-   [t], as well as to every metavariable occurring in the type of an
-   uninstantiated metavariable occurring in [t], and so on. *)
-let rec iter_meta : (meta -> unit) -> term -> unit = fun f t ->
-  match unfold t with
-  | Patt(_,_,_)
-  | TEnv(_,_)
-  | Wild
-  | TRef(_)
-  | Vari(_)
-  | Type
-  | Kind
-  | Symb(_)    -> ()
-  | Prod(a,b)
-  | Abst(a,b)  -> iter_meta f a; iter_meta f (Bindlib.subst b Kind)
-  | Appl(t,u)  -> iter_meta f t; iter_meta f u
-  | Meta(v,ts) -> f v; iter_meta f !(v.meta_type); Array.iter (iter_meta f) ts
-
-(** {b NOTE} that {!val:iter_meta} is not implemented using {!val:iter} due to
-    the fact this it is performance-critical. *)
+(** [iter_meta b f t] applies the function [f] to every metavariable of [t],
+   and to the type of every metavariable recursively if [b] is true. *)
+let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
+  let rec iter t =
+    match unfold t with
+    | Patt(_,_,_)
+    | TEnv(_,_)
+    | Wild
+    | TRef(_)
+    | Vari(_)
+    | Type
+    | Kind
+    | Symb(_)    -> ()
+    | Prod(a,b)
+    | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)  -> iter t; iter u
+    | Meta(v,ts) -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+  in iter
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
 let occurs : meta -> term -> bool =
   let exception Found in fun m t ->
   let fn p = if m == p then raise Found in
-  try iter_meta fn t; false with Found -> true
+  try iter_meta false fn t; false with Found -> true
 
-(** [get_metas t] returns the list of all the metavariables in [t]. *)
-let get_metas : term -> meta list = fun t ->
+(** [get_metas b t] returns the list of all the metavariables in [t], and in
+   the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
+let get_metas : bool -> term -> meta list = fun b t ->
   let open Pervasives in
   let l = ref [] in
-  iter_meta (fun m -> l := m :: !l) t;
-  List.sort_uniq (fun m1 m2 -> m1.meta_key - m2.meta_key) !l
+  iter_meta b (fun m -> l := m :: !l) t;
+  List.sort_uniq cmp_meta !l
 
-(** [has_metas t] checks that there are metavariables in [t]. *)
-let has_metas : term -> bool =
-  let exception Found in fun t ->
-  try iter_meta (fun _ -> raise Found) t; false with Found -> true
+(** [has_metas b t] checks whether there are metavariables in [t], and in the
+   types of metavariables recursively if [b] is true. *)
+let has_metas : bool -> term -> bool =
+  let exception Found in fun b t ->
+  try iter_meta b (fun _ -> raise Found) t; false with Found -> true
 
 (** [distinct_vars_opt ts] checks that [ts] is made of distinct
    variables and returns these variables. *)

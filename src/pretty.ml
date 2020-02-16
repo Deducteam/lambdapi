@@ -60,7 +60,8 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_Iden(qid, true ), _    ) -> out "@%a" pp_qident qid
     | (P_Wild            , _    ) -> out "_"
     | (P_Meta(x,ar)      , _    ) -> out "?%a%a" pp_ident x pp_env ar
-    | (P_Patt(x,ar)      , _    ) -> out "&%a%a" pp_ident x pp_env ar
+    | (P_Patt(None   ,ar), _    ) -> out "&_%a" pp_env ar
+    | (P_Patt(Some(x),ar), _    ) -> out "&%a%a" pp_ident x pp_env ar
     | (P_Appl(t,u)       , PAppl)
     | (P_Appl(t,u)       , PFunc) -> out "%a@ %a" pp_appl t pp_atom u
     | (P_Impl(a,b)       , PFunc) -> out "%a@ ⇒ %a" pp_appl a pp_func b

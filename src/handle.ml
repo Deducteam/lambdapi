@@ -109,7 +109,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We check that [a] is typable by a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains. *)
-      if Basics.has_metas a then
+      if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a
@@ -179,7 +179,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
       (* We check that no metavariable remains. *)
-      if Basics.has_metas t || Basics.has_metas a then
+      if Basics.has_metas true t || Basics.has_metas true a then
         begin
           fatal_msg "The definition of [%s] or its type \
                      have unsolved metavariables.\n" x.elt;
@@ -205,7 +205,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Check that [a] is typable and that its type is a sort. *)
       Typing.sort_type ss.builtins Ctxt.empty a;
       (* We check that no metavariable remains in [a]. *)
-      if Basics.has_metas a then
+      if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
           fatal x.pos "We have %s : %a." x.elt pp a

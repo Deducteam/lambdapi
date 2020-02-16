@@ -182,13 +182,11 @@ let get_args : p_term -> p_term * p_term list =
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
-  let fresh_patt : env -> tbox =
+  let fresh_patt_name =
     let c = Pervasives.ref (-1) in
-    fun env ->
-      let open Pervasives in
-      let name = incr c; Printf.sprintf "#%i" !c in
-      _Patt None name (Env.to_tbox env)
+    fun _ -> Pervasives.(incr c; Printf.sprintf "#%i" !c)
   in
+  let fresh_patt env = _Patt None (fresh_patt_name ()) (Env.to_tbox env) in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
@@ -262,8 +260,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
-          let env = if x.elt = "_" then env else (x.elt,(v,a))::env in
-          let t = aux env ((l,d,i)::xs) in
+          let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
+          if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
+            wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
           cons a (Bindlib.bind_var v t)
     in
     aux env xs
@@ -310,7 +309,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           match unfold (Bindlib.unbox (scope env t)) with
           | Vari(x) -> x
           | _       -> fatal t.pos "Only bound variables are allowed in the \
-                                    environment of &%s." id.elt
+                                    environment of pattern variables."
         in
         let vs = Array.map scope_var ts in
         (* Check that [vs] are distinct variables. *)
@@ -319,23 +318,36 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
             if Bindlib.eq_vars vs.(i) vs.(j) then
               let name = Bindlib.name_of vs.(j) in
               fatal ts.(j).pos "Variable %s appears more than once in the \
-                                environment of &%s." name id.elt
+                                environment of a pattern variable." name
           done
         done;
         (* Find the reserved index, if any. *)
-        let i =
-          try Some(List.assoc id.elt m) with Not_found ->
-            (* If the pattern variable is applied to every bound variables and
-               if it has no reserved index then it is useless. *)
-            if !verbose > 1 && List.length env = Array.length vs then
-              wrn t.pos "&%s could be replaced by a wildcard." id.elt;
-            None
-        in
-        _Patt i id.elt (Array.map Bindlib.box_var vs)
+        begin
+          match id with
+          | None     ->
+              if List.length env = Array.length vs then
+                wrn t.pos "Pattern [%a] could be replaced by [_]."
+                  Pretty.pp_p_term t;
+              _Patt None (fresh_patt_name ()) (Array.map Bindlib.box_var vs)
+          | Some(id) ->
+              let i =
+                try Some(List.assoc id.elt m) with Not_found ->
+                  if List.length env = Array.length vs then
+                    wrn t.pos "Pattern variable [%a] can be replaced by a \
+                               wildcard [_]." Pretty.pp_p_term t
+                  else
+                    wrn t.pos "Pattern variable [&%s] does not need to be \
+                               named." id.elt;
+                  None
+              in
+              _Patt i id.elt (Array.map Bindlib.box_var vs)
+        end
     | (P_Patt(id,ts)   , M_RHS(m,_)       ) ->
         let x =
-          try List.assoc id.elt m with Not_found ->
-          fatal t.pos "Pattern variable not in scope." (* Cannot happen. *)
+          match id with
+          | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
+          | Some(id) -> try List.assoc id.elt m with Not_found ->
+                          fatal t.pos "Pattern variable not in scope."
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _                ) ->
@@ -410,16 +422,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Iden(_)        -> acc
     | P_Wild           -> acc
     | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
-    | P_Patt(id,ts)    ->
-        let (pvs, nl) as acc = Array.fold_left patt_vars acc ts in
-        let l = Array.length ts in
-        begin
-          try
-            if List.assoc id.elt pvs <> l then
-              fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
-            if List.mem id.elt nl then acc else (pvs, id.elt::nl)
-          with Not_found -> ((id.elt,l)::pvs, nl)
-        end
+    | P_Patt(id,ts)    -> add_patt (Array.fold_left patt_vars acc ts) id ts
     | P_Appl(t,u)      -> patt_vars (patt_vars acc t) u
     | P_Impl(a,b)      -> patt_vars (patt_vars acc a) b
     | P_Abst(xs,t)     -> patt_vars (arg_patt_vars acc xs) t
@@ -430,12 +433,22 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
     | P_Wrap(t)        -> patt_vars acc t
     | P_Expl(t)        -> patt_vars acc t
+  and add_patt ((pvs, nl) as acc) id ts =
+    match id with
+    | None     -> acc
+    | Some(id) ->
+    try
+      if List.assoc id.elt pvs <> Array.length ts then
+        fatal id.pos "Arity mismatch for pattern variable [%s]." id.elt;
+      if List.mem id.elt nl then acc else (pvs, id.elt :: nl)
+    with Not_found -> ((id.elt, Array.length ts) :: pvs, nl)
   and arg_patt_vars acc xs =
     match xs with
     | []                       -> acc
     | (_, None,    _   ) :: xs -> arg_patt_vars acc xs
     | (_, Some(a), _) :: xs    -> arg_patt_vars (patt_vars acc a) xs
-  in patt_vars ([],[])
+  in
+  patt_vars ([],[])
 
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
@@ -479,8 +492,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     | _                                             ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
-  if lhs = [] && !verbose > 1 then
-    wrn p_lhs.pos "LHS head symbol with no argument.";
+  if lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
   (* We scope the RHS and bind the meta-variables. *)
   let names = Array.of_list (List.map fst map) in
   let vars = Bindlib.new_mvar te_mkfree names in

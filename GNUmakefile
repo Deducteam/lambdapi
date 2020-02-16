@@ -20,7 +20,7 @@ doc:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = ./_build/install/default/bin/lambdapi
+LAMBDAPI     = dune exec -- lambdapi
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
@@ -65,37 +65,37 @@ sanity_check: tools/sanity_check.sh
 .PHONY: matita
 matita: bin
 	@printf "## Compiling the Matita's arithmetic library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./matita.sh
+	@cd libraries && dune exec -- ./matita.sh
 
 .PHONY: focalide
 focalide: bin
 	@printf "## Compiling focalide library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./focalide.sh
+	@cd libraries && dune exec -- ./focalide.sh
 
 .PHONY: holide
 holide: bin
 	@printf "## Compiling holide library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./holide.sh
+	@cd libraries && dune exec -- ./holide.sh
 
 .PHONY: verine
 verine: bin
 	@printf "## Compiling verine library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./verine.sh
+	@cd libraries && dune exec -- ./verine.sh
 
 .PHONY: iprover
 iprover: bin
 	@printf "## Compiling iProverModulo library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./iprover.sh
+	@cd libraries && dune exec -- ./iprover.sh
 
 .PHONY: dklib
 dklib: bin
 	@printf "## Compiling the dklib library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./dklib.sh
+	@cd libraries && dune exec -- ./dklib.sh
 
 .PHONY: zenon_modulo
 zenon_modulo: bin
 	@printf "## Compiling the zenon library ##\n"
-	@cd libraries && LAMBDAPI=${LAMBDAPI} ./zenon_modulo.sh
+	@cd libraries && dune exec -- ./zenon_modulo.sh
 
 #### Cleaning targets ########################################################
 
