@@ -55,6 +55,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       begin
         try Ctxt.type_of x ctx
         with Not_found ->
+          (* If not in types, try to get value. *)
           let v = try Ctxt.val_of x ctx with Not_found -> assert false in
           infer ctx v
       end
@@ -123,20 +124,25 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇒ T        ctx, x = t ⊢ u ⇒ U
+  (*  ctx ⊢ t ⇒ a        ctx, x = t ⊢ b<x> ⇒ u
      ----------------------------------------
-        ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
-  | LLet(t,y,b) ->
-      (* Check that [t] is of type [y] if given. *)
-      begin
-        match y with
-          | Some(y) -> check ctx t y
-          | None    -> ()
-      end;
-      (* Create new context with [x = t]. *)
-      let x, uu = Bindlib.unbind b in
-      let ctxr = Ctxt.add_type x t ctx in (* Of type <> value *)
-      infer ctxr uu
+        ctx ⊢ let x ≔ t : a in b<x> ⇒ subst u t  *)
+  | LLet(t,a,b) ->
+      (* Check that [t] is of type [y] if given, or provide it. *)
+      let a =
+        match a with
+          | Some(y) -> check ctx t y; y
+          | None    -> infer ctx t
+      in
+      (* First create new context with [x : a] *)
+      let (x, b, ctx') = Ctxt.unbind ctx a b in
+      (* Extend context with [x = t] *)
+      let ctx' = Ctxt.add_val x t ctx' in
+      let u = Eval.whnf (infer ctx' b) in
+      begin match u with
+      | Prod(_, b) -> Bindlib.subst b t
+      | _          -> u
+      end
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------

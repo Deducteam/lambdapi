@@ -14,19 +14,24 @@ type t =
 (** [empty] is the empty context. *)
 let empty : t = {ctx_typ=[]; ctx_val=[]}
 
-(** [add x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
-let add_type : tvar -> term -> t -> t =
-  fun x a ctx -> {ctx with ctx_typ = (x,a)::ctx.ctx_typ}
+(** [add_type x a ctx] maps the variable [x] to the type [a] in [ctx]. *)
+let add_type : tvar -> term -> t -> t = fun x a ctx ->
+  {ctx with ctx_typ = (x,a)::ctx.ctx_typ}
 
 (** [add_types l ctx] adds association list of values to types [l] to context
     [ctx]. *)
 let add_types : (tvar * term) list -> t -> t =
   List.fold_right (fun (v,t) -> add_type v t)
 
+(** [add_val x v ctx] define variable [x] as value [v] in [ctx]. *)
+let add_val : tvar -> term -> t -> t = fun x v ctx ->
+  {ctx with ctx_val = (x, v)::ctx.ctx_val}
+
 (** [unbind ctx a b] returns the triple [(x,b,ctx')] such that [(x,b)] is the
     unbinding of [b] and [ctx'] is the context [ctx] extended with [(x,a)] if
     [x] occurs in [b]. *)
-let unbind ctx a b =
+let unbind : t -> term -> (term, term) Bindlib.binder -> tvar * term * t =
+  fun ctx a b ->
   let (x,b') = Bindlib.unbind b in
   let ctx' = if Bindlib.binder_occur b then add_type x a ctx else ctx in
   (x,b',ctx')
