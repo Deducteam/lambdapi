@@ -21,7 +21,7 @@ let parse_file : string -> Syntax.ast = fun fname ->
     necessary (the corresponding object file does not exist,  must be updated,
     or [force] is [true]).  In that case,  the produced signature is stored in
     the corresponding object file. *)
-let rec compile : bool -> Path.t -> unit = fun force path ->
+let rec compile : bool -> Path.t -> Sign.t = fun force path ->
   let base = Files.module_to_file path in
   let src =
     let src = base ^ src_extension in
@@ -41,7 +41,8 @@ let rec compile : bool -> Path.t -> unit = fun force path ->
       fatal_no_pos "Build aborted."
     end;
   if PathMap.mem path !loaded then
-    out 2 "Already loaded [%s]\n%!" src
+    let sign = PathMap.find path !loaded in
+    out 2 "Already loaded [%s]\n%!" src; sign
   else if force || Files.more_recent src obj then
     begin
       let forced = if force then " (forced)" else "" in
@@ -71,17 +72,24 @@ let rec compile : bool -> Path.t -> unit = fun force path ->
       sign.sign_binops := StrMap.filter not_prv_fst !(sign.sign_binops);
       if Pervasives.(!gen_obj) then Sign.write sign obj;
       loading := List.tl !loading;
-      out 1 "Checked [%s]\n%!" src;
+      out 1 "Checked [%s]\n%!" src; sign
     end
   else
     begin
       out 2 "Loading [%s]\n%!" src;
       let sign = Sign.read obj in
-      PathMap.iter (fun mp _ -> compile false mp) !(sign.sign_deps);
+      PathMap.iter (fun mp _ -> ignore (compile false mp)) !(sign.sign_deps);
       loaded := PathMap.add path sign !loaded;
       Sign.link sign;
-      out 2 "Loaded  [%s]\n%!" obj;
+      out 2 "Loaded  [%s]\n%!" obj; sign
     end
+
+let compile_file : file_path -> Sign.t = fun fname ->
+  Config.apply_config fname;
+  (* Compute the module path (checking the extension). *)
+  let mp = Files.file_to_module fname in
+  (* Run compilation. *)
+  compile true mp
 
 (* NOTE we need to give access to the compilation function to the parser. This
    is the only way infix symbols can be parsed, since they may be added to the
@@ -94,7 +102,7 @@ let _ =
     Console.reset_default ();
     (* Compile and go back to previous state. *)
     try
-      compile false mp;
+      ignore (compile false mp);
       try Console.pop_state () with _ -> assert false (* Unreachable. *)
     with e -> Console.pop_state (); raise e
   in

@@ -44,23 +44,20 @@ let handle_file : string -> unit = fun fname ->
     | JustParse -> ignore (Compile.parse_file fname)
     | Beautify  -> Pretty.beautify (Compile.parse_file fname)
     | Normal    ->
-    (* Compute the module path (checking the extension). *)
-    let mp = Files.file_to_module fname in
     (* Run the compilation, possibly using a timeout. *)
-    let compile = Compile.compile true in
-    let _ =
+    let sign =
       match !timeout with
-      | None    -> compile mp
-      | Some(i) -> try with_timeout i compile mp with Timeout ->
+      | None    -> Compile.compile_file fname
+      | Some(i) -> try with_timeout i Compile.compile_file fname
+                   with Timeout ->
                      fatal_no_pos "Compilation timed out for [%s]." fname
     in
     let run_checker prop fn chk kw =
       let run cmd =
-        let sign = PathMap.find mp Sign.(Timed.(!loaded)) in
-          match External.run prop fn cmd sign with
-          | Some(true ) -> ()
-          | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
-          | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+        match External.run prop fn cmd sign with
+        | Some(true ) -> ()
+        | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
+        | None        -> fatal_no_pos "The rewrite system may not be %s." kw
       in
       Option.iter run !chk
     in

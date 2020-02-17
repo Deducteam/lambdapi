@@ -100,7 +100,7 @@ let process_cmd _file (nodes,st,dg) ast =
     nodes, st, (loc, 1, msg, None) :: dg
 
 let new_doc ~uri ~version ~text =
-  let root = Pure.initial_state [uri] in
+  let root = Pure.initial_state uri in
   { uri;
     text;
     version;

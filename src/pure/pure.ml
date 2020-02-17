@@ -4,9 +4,6 @@ open Extra
 open Console
 open Files
 
-(* NOTE this is required for initialization of [Parser.require]. *)
-let _ = Compile.compile
-
 (** Representation of a single command (abstract). *)
 module Command = struct
   type t = Syntax.p_command
@@ -58,12 +55,14 @@ type tactic_result =
 
 let t0 = Time.save ()
 
-let initial_state : Path.t -> state = fun path ->
+let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore t0;
-  Sign.loading := [path];
-  let sign = Sign.create path in
-  Sign.loaded  := PathMap.add path sign !Sign.loaded;
+  Config.apply_config fname;
+  let mp = Files.file_to_module fname in
+  Sign.loading := [mp];
+  let sign = Sign.create mp in
+  Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Scope.empty_sig_state sign)
 
 let handle_command : state -> Command.t -> command_result =
