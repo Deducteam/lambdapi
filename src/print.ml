@@ -126,7 +126,11 @@ let pp_term : term pp = fun oc t ->
         else
           out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
         if wrap then out oc ")"
-    | LLet(_,_,_) -> assert false
+    | LLet(t,_,b) ->
+        if wrap then out oc "(";
+        let x, b = Bindlib.unbind b in
+        out oc "let %a ≔ %a in %a" pp_tvar x (pp `Atom) t (pp `Atom) b;
+        if wrap then out oc ")"
   in
   pp `Func oc (cleanup t)
 
