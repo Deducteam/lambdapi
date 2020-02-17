@@ -56,6 +56,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_term i s) t
+  | LLet(_) -> failwith "implement"
 
 and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -89,6 +90,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
+  | LLet(_) -> failwith "implement"
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
@@ -152,6 +154,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
          |None -> assert false
        in
        Array.fold_left (fun acc t -> Appl(acc,t)) (Vari(v_i)) a
+    | LLet(_) -> failwith "implement"
   in
   let lhs =
     List.fold_left

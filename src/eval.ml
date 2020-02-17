@@ -317,6 +317,7 @@ and snf : term -> term = fun t ->
   | Type        -> h
   | Kind        -> h
   | Symb(_)     -> h
+  | LLet(t,_,b) -> snf (Bindlib.subst b t)
   | Prod(a,b)   ->
       let (x,b) = Bindlib.unbind b in
       let b = snf b in

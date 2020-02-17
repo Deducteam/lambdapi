@@ -84,6 +84,7 @@ let link : t -> unit = fun sign ->
     | Symb(s,h)   -> Symb(link_symb s, h)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
+    | LLet(t,y,b) -> LLet(link_term t, Option.map link_term y, link_binder b)
     | Appl(t,u)   -> Appl(link_term t, link_term u)
     | Meta(_,_)   -> assert false
     | Patt(i,n,m) -> Patt(i, n, Array.map link_term m)
@@ -153,6 +154,8 @@ let unlink : t -> unit = fun sign ->
     | Symb(s,_)    -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
+    | LLet(t,y,b)  ->
+        unlink_term t; Option.iter unlink_term y; unlink_binder b
     | Appl(t,u)    -> unlink_term t; unlink_term u
     | Meta(_,_)    -> assert false (* Should not happen, uninstantiated. *)
     | Patt(_,_,_)  -> () (* The environment only contains variables. *)
@@ -239,6 +242,8 @@ let read : string -> t = fun fname ->
       | Symb(s,_)   -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
+      | LLet(t,y,b) ->
+          reset_term t; Option.iter reset_term y; reset_binder b
       | Appl(t,u)   -> reset_term t; reset_term u
       | Meta(_,_)   -> assert false
       | Patt(_,_,m) -> Array.iter reset_term m

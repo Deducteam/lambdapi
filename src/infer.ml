@@ -117,6 +117,21 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
+  (*  ctx ⊢ t ⇒ T        ctx, x = t ⊢ u ⇒ U
+     ----------------------------------------
+        ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
+  | LLet(t,y,b) ->
+      (* Check that [t] is of type [y] if given. *)
+      begin
+        match y with
+          | Some(y) -> check ctx t y
+          | None    -> ()
+      end;
+      (* Create new context with [x = t]. *)
+      let x, uu = Bindlib.unbind b in
+      let ctxr = Ctxt.add x t ctx in (* Of type <> value *)
+      infer ctxr uu
+
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)

@@ -143,16 +143,17 @@ let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
     | Vari(_)
     | Type
     | Kind
-    | Symb(_)    -> ()
+    | Symb(_)     -> ()
     | Patt(_,_,ts)
     | TEnv(_,ts)
-    | Meta(_,ts) -> Array.iter (iter xs) ts
+    | Meta(_,ts)  -> Array.iter (iter xs) ts
     | Prod(a,b)
-    | Abst(a,b)  ->
+    | Abst(a,b)   ->
        iter xs a;
        let (x,b') = Bindlib.unbind b in
        iter (if Bindlib.binder_occur b then x::xs else xs) b'
-    | Appl(t,u)  -> iter xs t; iter xs u
+    | Appl(t,u)   -> iter xs t; iter xs u
+    | LLet(t,_,b) -> iter xs (Bindlib.subst b t)
   in
   iter [] (cleanup t)
 
@@ -169,13 +170,14 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Vari(_)
     | Type
     | Kind
-    | Symb(_)    -> ()
+    | Symb(_)     -> ()
     | Patt(_,_,ts)
     | TEnv(_,ts)
-    | Meta(_,ts) -> Array.iter iter ts
+    | Meta(_,ts)  -> Array.iter iter ts
     | Prod(a,b)
-    | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
-    | Appl(t,u)  -> iter t; iter u
+    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)   -> iter t; iter u
+    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
   in iter
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
@@ -190,11 +192,12 @@ let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
     | Vari(_)
     | Type
     | Kind
-    | Symb(_)    -> ()
+    | Symb(_)     -> ()
     | Prod(a,b)
-    | Abst(a,b)  -> iter a; iter (Bindlib.subst b Kind)
-    | Appl(t,u)  -> iter t; iter u
-    | Meta(v,ts) -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)   -> iter t; iter u
+    | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
   in iter
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)

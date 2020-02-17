@@ -126,6 +126,7 @@ let pp_term : term pp = fun oc t ->
         else
           out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
         if wrap then out oc ")"
+    | LLet(_,_,_) -> assert false
   in
   pp `Func oc (cleanup t)
 
