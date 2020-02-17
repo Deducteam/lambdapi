@@ -84,7 +84,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        and x = Bindlib.new_var mkfree "x"
        and y = Bindlib.new_var mkfree "y" in
        let ta = Appl (symb symb_T, Vari a) in
-       let c = [(y, ta); (x, ta); (a, term_U)] in
+       let c = Ctxt.add_types [(y, ta); (x, ta); (a, term_U)] Ctxt.empty in
        let eq_type = Ctxt.to_prod c term_Prop in
        if not (Basics.eq eq_type !(sym.sym_type)) then
          fatal pos "The type of [%s] is not of the form [%a]"
@@ -101,7 +101,10 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        in
        let a = Bindlib.new_var mkfree "a"
        and x = Bindlib.new_var mkfree "x" in
-       let c = [(x, Appl (symb symb_T, Vari a)); (a, term_U)] in
+       let c =
+         Ctxt.add_types
+           [(x, Appl(symb symb_T, Vari a)); (a, term_U)] Ctxt.empty
+       in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
        let refl_type = Ctxt.to_prod c (Appl (symb symb_P, t)) in
        if not (Basics.eq refl_type !(sym.sym_type))
@@ -129,15 +132,18 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        and py = Bindlib.new_var mkfree "py"
        and z = Bindlib.new_var mkfree "z" in
        let ta = Appl (symb symb_T, Vari a) in
-       let typ_p = Ctxt.to_prod [(z,ta)] term_Prop in
+       let typ_p = Ctxt.to_prod (Ctxt.add_type z ta Ctxt.empty) term_Prop in
        let eqaxy = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari y] in
        let p_of y = Appl (symb symb_P, Appl (Vari p, Vari y)) in
-       let c = [(py, p_of y)
-               ;(p, typ_p)
-               ;(xy, Appl (symb symb_P, eqaxy))
-               ;(y, ta)
-               ;(x, ta)
-               ;(a, term_U)] in
+       let c =
+         Ctxt.add_types
+           [(py, p_of y)
+           ;(p, typ_p)
+           ;(xy, Appl (symb symb_P, eqaxy))
+           ;(y, ta)
+           ;(x, ta)
+           ;(a, term_U)] Ctxt.empty
+       in
        let eqind_type = Ctxt.to_prod c (p_of x) in
        if not (Basics.eq eqind_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."

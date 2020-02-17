@@ -28,7 +28,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
   let m = Meta(fresh_meta Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
-  let b = Ctxt.make_meta ((x,a)::ctx) m in
+  let b = Ctxt.make_meta (Ctxt.add_type x a ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx],
@@ -51,7 +51,13 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
+  | Vari(x)     ->
+      begin
+        try Ctxt.type_of x ctx
+        with Not_found ->
+          let v = try Ctxt.val_of x ctx with Not_found -> assert false in
+          infer ctx v
+      end
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
@@ -129,7 +135,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       end;
       (* Create new context with [x = t]. *)
       let x, uu = Bindlib.unbind b in
-      let ctxr = Ctxt.add x t ctx in (* Of type <> value *)
+      let ctxr = Ctxt.add_type x t ctx in (* Of type <> value *)
       infer ctxr uu
 
   (*  ctx ⊢ term_of_meta m e ⇒ a

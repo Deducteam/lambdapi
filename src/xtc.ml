@@ -162,11 +162,11 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
-    let fn l x = (x,Meta(fresh_meta Type 0,[||]))::l in
-    List.fold_left fn [] !var_list
+    let fn ctx x = Ctxt.add_type x (Meta(fresh_meta Type 0, [||])) ctx in
+    List.fold_left fn Ctxt.empty !var_list
   in
   let (_,l) = Infer.infer ctx lhs in
-  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
+  List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx.ctx_typ
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
