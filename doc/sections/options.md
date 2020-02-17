@@ -11,34 +11,31 @@ Several files can be given as command-line arguments, and they are all handled
 independently (in the order they are given). Note that the program immediately
 stops on the first failure, without going to the next file (if any).
 
-**Important note:** the paths given on the command-line for input files should
-be relative to the current directory. Moreover, they should neither start with
-the `./` current directory marker, nor contain the parent directory marker
-`../`. This is due to the fact that the directory structure is significant due
-to the treatment of [modules](module.md).
-
 Command line flags can be used to control the behaviour of `lambdapi`. You can
-use `lambdapi --help` to get a short description of the available flags.  The
+use `lambdapi --help` to get a short description of the available  flags.  The
 available options are described in details below.
 
 #### Mode selection
 
-The `lambdapi` program may run in three different modes. The standard mode (it
-is selected by default) parses, type-checks and handles the given files. Other
-modes are selected with one of the following flags:
- - `--just-parse` enables the parsing mode: the files are parsed and `lambdapi`
-   only fails in case of parse error (variable scopes are not checked). In any
-   case, the compilation of dependencies may be triggered in order to retrieve
-   user-defined notations.
- - `--beautify` enables the pretty-printing mode: the files are printed to the
-   standard output in `lambdapi` syntax.  This mode can be used for converting
-   legacy syntax files (with the ".dk" extension) to the standard syntax. Note
-   that, as for the parsing mode (`--justparse` flag),  the compilation of the
-   dependencies of the input files may be triggered.
+The `lambdapi` program may run in four modes. In the default mode, the program
+parses, type-checks and handles the given files. Other modes are selected with
+one of the following flags:
+ - The option `--just-parse` enables the parsing mode. This means that we only
+   parse the files, and print an error message in case of parse error. Even in
+   parsing mode, compilation of dependencies may be triggered if corresponding
+   object files are not present (this is needed for user-defined notations).
+ - The option `--beautify` enables the pretty-printing mode. This mode is very
+   similar to the parsing mode, but it does one more thing: the parsed data is
+   printed to the standard output in `lambdapi` syntax.  This mode can be used
+   for converting legacy syntax files (with the ".dk" extension) to *standard*
+   syntax. Note that as for the parsing mode (`--justparse` flag), compilation
+   of dependencies may be triggered.
+ - The option `--lsp-server` runs the Lambdapi LSP server. In this case, there
+   should be no source files given as argument.
 
 Note that when several mode selection flags are given,  only the latest one is
-taken into account. Moreover, other command-line flags are ignored (except the
-`--help` and `-help` flags).
+taken into account. Moreover, some command-line flags may be ignored (the help
+flags `--help` and `-help` are always active).
 
 #### Default mode flags
 
@@ -132,3 +129,25 @@ reduction engine,
    `src/tree_graphviz.ml`.
  - `--keep-rule-order` forces the rewriting engine to use in priority
    the topmost rules.
+
+#### File path options
+
+The following options can be used to configure the module and package system:
+ - `--lib-root <DIR>` sets the library root, that is, the folder corresponding
+   to the entry point of the Lambdapi package system. This is the folder under
+   which every package is installed, and a default value is only only known if
+   Lambdapi has been installed. In development mode,  `--lib-root lib` must be
+   given (assuming Lambdapi is run at the root of the repository).
+ - `--map <MOD_PATH>:<DIR>` maps an arbitrary directory `<DIR>` under a module
+   path `<MOD_PATH>` (relative to the root directory).  This  option is useful
+   during the development of a package (before it has been installed). However
+   it can also be accessed using a package configuration file (`lambdapi.pkg`)
+   at the root of the library's source tree. More information on that is given
+   in the section about the module system.
+
+#### Server mode flags
+
+The following options can be used in server mode (`--lsp-server` flag):
+ - `--standard-lsp` restricts to standard LSP protocol (no extension).
+ - `--lsp-log-file <file>` sets the log file for the LSP server. If not given,
+   the file `/tmp/lambdapi_lsp_log.txt` is used.
