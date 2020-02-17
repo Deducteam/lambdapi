@@ -8,7 +8,7 @@ dksrc='DEDUKTI'
 mlsrc='OCAML'
 hssrc='HASKELL'
 
-if [[ ! -f "$mlsrc" ]]; then
+if [[ ! -d "$mlsrc" ]]; then
  svn co 'https://scm.gforge.inria.fr/anonscm/svn/rec/2019-CONVECS/OCAML'
 fi
 for lpf in "${dksrc}"/*; do
