@@ -11,10 +11,12 @@
 (defvar lambdapi-mode-syntax-table nil "Syntax table for LambdaPi.")
 
 (setq lambdapi-mode-syntax-table
-  (let ((syn-table (make-syntax-table)))
-    (modify-syntax-entry ?\/ ". 12b" syn-table)
-    (modify-syntax-entry ?\n "> b" syn-table)
-    syn-table))
+  (let ((st (make-syntax-table)))
+    (modify-syntax-entry ?\/ ". 12b" st)
+    (modify-syntax-entry ?\n "> b" st)
+    (modify-syntax-entry ?_ "_" st)
+    (modify-syntax-entry ?& "_" st)
+    st))
 
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
