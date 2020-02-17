@@ -51,14 +51,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     ->
-      begin
-        try Ctxt.type_of x ctx
-        with Not_found ->
-          (* If not in types, try to get value. *)
-          let v = try Ctxt.val_of x ctx with Not_found -> assert false in
-          infer ctx v
-      end
+  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
@@ -121,11 +114,18 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       in
       (* We then check the type of [u] against the domain type. *)
       check ctx u a;
+      (* FIXME works for the test file but is too ad hoc *)
+      (* Try to Δ reduce *)
+      let u =
+        match u with
+        | Vari(v) -> (try Ctxt.val_of v ctx with Not_found -> u)
+        | _       -> u
+      in
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇒ a        ctx, x = t ⊢ b<x> ⇒ u
-     ----------------------------------------
+  (*  ctx ⊢ t ⇒ a        ctx, x = t : a ⊢ b<x> ⇒ u
+     -----------------------------------------------
         ctx ⊢ let x ≔ t : a in b<x> ⇒ subst u t  *)
   | LLet(t,a,b) ->
       (* Check that [t] is of type [y] if given, or provide it. *)
@@ -138,11 +138,10 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       let (x, b, ctx') = Ctxt.unbind ctx a b in
       (* Extend context with [x = t] *)
       let ctx' = Ctxt.add_val x t ctx' in
-      let u = Eval.whnf (infer ctx' b) in
-      begin match u with
-      | Prod(_, b) -> Bindlib.subst b t
-      | _          -> u
-      end
+      let u = infer ctx' b in
+      (* Substitute [x] in [u] by [t]. *)
+      let bu = Bindlib.unbox (Bindlib.bind_var x (lift u)) in
+      Bindlib.subst bu t
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
