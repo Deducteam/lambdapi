@@ -78,7 +78,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
                      _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
     | LLet(t,y,b) ->
         let (x, b) = Bindlib.unbind b in
-        _LLet (to_m 0 t) (to_m 0 y) (Bindlib.bind_var x (to_m 0 b))
+        _LLet (to_m 0 t) (Option.map (to_m 0) y) (Bindlib.bind_var x (to_m 0 b))
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin

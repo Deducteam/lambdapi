@@ -28,88 +28,8 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
   let m = Meta(fresh_meta Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
-  let b = Ctxt.make_meta (Ctxt.add_type x a ctx) m in
+  let b = Ctxt.make_meta ((x,a)::ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
-
-
-let rec infer_refine : Ctxt.t -> term -> term * term = fun ctx t ->
-  log_infr "infer_ref [%a]" pp t;
-  match unfold t with
-  | Patt(_) | TEnv(_) | Kind | Wild | TRef(_) -> assert false
-  | Type         -> (Type, Kind)
-  | Vari(x) as t -> (try (t, Ctxt.type_of x ctx) with Not_found -> assert false)
-  | Symb(s,_) as t -> (t, !(s.sym_type))
-  | Meta(m, e) ->
-      log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
-      infer_refine ctx (term_of_meta m e)
-  | LLet(t,a,u) ->
-      (* Infer the type of the body, first extending the context. *)
-      let (x,u,ctx') = Ctxt.unbind ctx ~def:t a u in
-      let (u, u_ty) = infer_refine ctx' u in
-      (* Substitute accordingly the type of [u] with [t]. *)
-      let u_ty_b = Bindlib.unbox (Bindlib.bind_var x (lift u_ty)) in
-      let u_ty = Bindlib.subst u_ty_b t in
-      let u = Bindlib.unbox (Bindlib.bind_var x (lift u)) in
-      (LLet(t, a, u), u_ty)
-  | Abst(a,t) ->
-      (* We ensure that [a] is of type [Type]. *)
-      let _ = check_refine ctx a Type in
-      (* We infer the type of the body, first extending the context. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a t in
-      let (t, b) = infer_refine ctx' t in
-      (* Build back the abstraction binding [x] in t *)
-      let t = Bindlib.unbox (Bindlib.bind_var x (lift t)) in
-      (* Build the product type binding [x] in [b] *)
-      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      (Abst(a, t), Prod(a, b))
-  | Prod(a,b) ->
-      (* We ensure that [a] is of type [Type]. *)
-      let _ = check_refine ctx a Type in
-      (* We infer the type of the body, first extending the context. *)
-      let (_,b,ctx') = Ctxt.unbind ctx a b in
-      let (b, s) = infer_refine ctx' b in
-      (* We check that [s] is a sort. *)
-      begin
-        let s = unfold s in
-        match s with
-        | Type | Kind -> (b, s)
-        | _           -> conv s Type; (b, Type)
-      (* We add the constraint [s = Type] because kinds cannot occur
-         inside a term. So, [t] cannot be a kind. *)
-      end
-  | Appl(t,u) ->
-      (* We first infer a product type for [t]. *)
-      let (t, t_ty) = infer_refine ctx t in
-      let (a,b) =
-        let c = Eval.whnf t_ty in
-        match c with
-        | Prod(a,b) -> (a,b)
-        | Meta(_,ts) ->
-            let ctx =
-              match Basics.distinct_vars_opt ts with
-              | None -> ctx
-              | Some vs -> Ctxt.sub ctx vs
-            in
-            let a = Ctxt.make_meta ctx Type in
-            let b = make_meta_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
-        | _         ->
-            let a = Ctxt.make_meta ctx Type in
-            let b = make_meta_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
-      in
-      (* We then check the type of [u] against the domain type. *)
-      let (u, _) = check_refine ctx u a in
-      (Appl(t, u), Bindlib.subst b u)
-
-
-(** [check_refine ctx t a] returns the term [t] of type [a] expected from the
-    context [ctx] along with its type. *)
-and check_refine : Ctxt.t -> term -> term -> term * term = fun ctx t a ->
-  let (t', a') = infer_refine ctx t in
-  conv a' a;
-  (t', a')
-
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx],
    possibly under some constraints recorded in [constraints] using
@@ -125,13 +45,12 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
   | Wild        -> assert false (* Forbidden case. *)
   | TRef(_)     -> assert false (* Forbidden case. *)
 
-  (* ----------------
-     Γ ⊢ Type ⇒ Kind  *)
+  (* -------------------
+      ctx ⊢ Type ⇒ Kind  *)
   | Type        -> Kind
 
-  (*   (x: a) ∈ Γ  or  (x ≔ t : a) ∈ Γ
-     -----------------------------------
-           Γ ⊢ Vari(x) ⇒ a                *)
+  (* ---------------------------------
+      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
   | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
 
   (* -------------------------------
@@ -195,28 +114,23 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       in
       (* We then check the type of [u] against the domain type. *)
       check ctx u a;
-      (* FIXME works for the test file but is too ad hoc *)
-      (* Try to Δ reduce *)
-      let u =
-        match u with
-        | Vari(v) -> (try Ctxt.val_of v ctx with Not_found -> u)
-        | _       -> u
-      in
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇒ a        ctx, x = t : a ⊢ b<x> ⇒ u
-     -----------------------------------------------
-        ctx ⊢ let x ≔ t : a in b<x> ⇒ subst u t  *)
-  | LLet(t,a,b) ->
-      (* First create new context with [x : a] *)
-      let (x, b, ctx') = Ctxt.unbind ctx a b in
-      (* Extend context with [x = t] *)
-      let ctx' = Ctxt.add_val x t ctx' in
-      let u = infer ctx' b in
-      (* Substitute [x] in [u] by [t]. *)
-      let bu = Bindlib.unbox (Bindlib.bind_var x (lift u)) in
-      Bindlib.subst bu t
+  (*  ctx ⊢ t ⇒ T        ctx, x = t ⊢ u ⇒ U
+     ----------------------------------------
+        ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
+  | LLet(t,y,b) ->
+      (* Check that [t] is of type [y] if given. *)
+      begin
+        match y with
+          | Some(y) -> check ctx t y
+          | None    -> ()
+      end;
+      (* Create new context with [x = t]. *)
+      let x, uu = Bindlib.unbind b in
+      let ctxr = Ctxt.add x t ctx in (* Of type <> value *)
+      infer ctxr uu
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------

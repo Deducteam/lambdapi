@@ -177,7 +177,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Prod(a,b)
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(t,y,b) -> iter y; iter (Bindlib.subst b t)
+    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
   in iter
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
@@ -197,7 +197,7 @@ let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
     | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-    | LLet(t,y,b) -> iter y; iter (Bindlib.subst b t)
+    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
   in iter
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
