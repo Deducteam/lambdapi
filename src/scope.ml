@@ -370,7 +370,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(x,xs,t,u), M_Term(_)        )
     | (P_LLet(x,xs,t,u), M_RHS(_)         ) ->
         assert (xs = []); (* TODO binding functions with let? *)
-        let cons _ b = _LLet (scope env t) None b in
+        let cons a b = _LLet (scope env t) a b in
         scope_binder cons env [([Some(x)], None, false)] u
     | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."

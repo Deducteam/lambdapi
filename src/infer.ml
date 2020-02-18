@@ -45,12 +45,13 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
   | Wild        -> assert false (* Forbidden case. *)
   | TRef(_)     -> assert false (* Forbidden case. *)
 
-  (* -------------------
-      ctx ⊢ Type ⇒ Kind  *)
+  (* ----------------
+     Γ ⊢ Type ⇒ Kind  *)
   | Type        -> Kind
 
-  (* ---------------------------------
-      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
+  (*   (x: a) ∈ Γ  or  (x ≔ t : a) ∈ Γ
+     -----------------------------------
+           Γ ⊢ Vari(x) ⇒ a                *)
   | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
 
   (* -------------------------------
@@ -128,12 +129,6 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
      -----------------------------------------------
         ctx ⊢ let x ≔ t : a in b<x> ⇒ subst u t  *)
   | LLet(t,a,b) ->
-      (* Check that [t] is of type [y] if given, or provide it. *)
-      let a =
-        match a with
-          | Some(y) -> check ctx t y; y
-          | None    -> infer ctx t
-      in
       (* First create new context with [x : a] *)
       let (x, b, ctx') = Ctxt.unbind ctx a b in
       (* Extend context with [x = t] *)
