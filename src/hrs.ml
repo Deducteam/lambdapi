@@ -15,7 +15,7 @@ let print_sym : sym pp = fun oc s ->
 
 (** [print_patt oc p] outputs TPDB format corresponding to the pattern [p], to
     the channel [oc]. *)
-let print_term : bool -> term pp = fun lhs ->
+let rec print_term : bool -> term pp = fun lhs ->
   let rec pp oc t =
     let out fmt = Format.fprintf oc fmt in
     match unfold t with
@@ -40,10 +40,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
         out "pi(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp b
-    | LLet(t, u)   ->
-        (* Convert to a beta redex *)
-        let x, u = Bindlib.unbind u in
-        out "(\\v_%s.%a) %a" (Bindlib.name_of x) pp u pp t
+    | LLet(t,a,u)  -> print_term lhs oc (Appl(Abst(a,u), t))
   in pp
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
