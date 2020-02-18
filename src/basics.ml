@@ -153,7 +153,7 @@ let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
        let (x,b') = Bindlib.unbind b in
        iter (if Bindlib.binder_occur b then x::xs else xs) b'
     | Appl(t,u)   -> iter xs t; iter xs u
-    | LLet(t,_,b) -> iter xs (Bindlib.subst b t)
+    | LLet(t,b) -> iter xs (Bindlib.subst b t)
   in
   iter [] (cleanup t)
 
@@ -177,7 +177,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Prod(a,b)
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
+    | LLet(t,b)   -> iter (Bindlib.subst b t)
   in iter
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
@@ -197,7 +197,7 @@ let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
     | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-    | LLet(t,y,b) -> Option.iter iter y; iter (Bindlib.subst b t)
+    | LLet(t,b) -> iter (Bindlib.subst b t)
   in iter
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
