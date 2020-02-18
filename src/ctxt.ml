@@ -27,13 +27,24 @@ let add_types : (tvar * term) list -> t -> t =
 let add_val : tvar -> term -> t -> t = fun x v ctx ->
   {ctx with ctx_val = (x, v)::ctx.ctx_val}
 
-(** [unbind ctx a b] returns the triple [(x,b,ctx')] such that [(x,b)] is the
-    unbinding of [b] and [ctx'] is the context [ctx] extended with [(x,a)] if
-    [x] occurs in [b]. *)
-let unbind : t -> term -> (term, term) Bindlib.binder -> tvar * term * t =
-  fun ctx a b ->
+(** [unbind ctx ?def a b] returns the triple [(x,b,ctx')] such that [(x,b)] is
+    the unbinding of [b] and [ctx'] is the context [ctx] extended with, if [x]
+    occurs in [b]:
+    - [x: a] if [?def] is [None],
+    - [x := ?def : a] otherwise. *)
+let unbind : t -> ?def:term -> term -> (term, term) Bindlib.binder ->
+  tvar * term * t =
+  fun ctx ?def a b ->
   let (x,b') = Bindlib.unbind b in
-  let ctx' = if Bindlib.binder_occur b then add_type x a ctx else ctx in
+  let ctx' =
+    if Bindlib.binder_occur b then
+      (* Add the type declaration (or "assumption") [x : a] *)
+      let ctx' = add_type x a ctx in
+      match def with
+      | None    -> ctx'
+      (* If a value is given, add the (local) definition [x := v] *)
+      | Some(v) -> add_val x v ctx'
+    else ctx in
   (x,b',ctx')
 
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
