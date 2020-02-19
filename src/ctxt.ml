@@ -27,12 +27,21 @@ let assume : (tvar * term) list -> t -> t = fun hyps ctx ->
 let define : tvar -> term -> term -> t -> t = fun x a t ctx ->
   Define{ctx_v=x;ctx_y=a;ctx_e=t}::ctx
 
-(** [unbind_ctxt ctx a b] returns the triple [(x,b,ctx')] such that [(x,b)]
-   is the unbinding of [b] and [ctx'] is the context [ctx] extended with
-   [(x,a)] if [x] occurs in [b]. *)
-let unbind ctx a b =
+(** [unbind_ctxt ctx a ?def b] returns the triple [(x,b,ctx')] such that
+    [(x,b)] is the unbinding of [b] and [ctx'] is the context [ctx] extended
+    with, if [x] occurs in [b]
+    - [Assume(x, a)] if [?def] is not given and
+    - [Define{ctx_v=x; ctx_y=a; ctx_e=?def}] otherwise. *)
+let unbind : t -> term -> ?def:term -> tbinder -> tvar * term * t =
+  fun ctx a ?def b ->
   let (x,b') = Bindlib.unbind b in
-  let ctx' = if Bindlib.binder_occur b then assume [(x,a)] ctx else ctx in
+  let ctx' =
+    if Bindlib.binder_occur b then
+      match def with
+      | None    -> assume [(x,a)] ctx
+      | Some(t) -> define x a t ctx
+    else ctx
+  in
   (x,b',ctx')
 
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)

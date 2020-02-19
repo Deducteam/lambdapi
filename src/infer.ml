@@ -117,13 +117,18 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇒ T        ctx, x = t ⊢ u ⇒ U
-     ----------------------------------------
-        ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
+  (*  ctx ⊢ t ⇐ t'       ctx, x := t : b<x> ⊢ u ⇒ U
+     ------------------------------------------------
+        ctx ⊢ let x ≔ t : T in u ⇒ subst U t          *)
   | LLet(t,a,u) ->
-      check ctx a Type;
-      let u = Bindlib.subst u t in
-      infer ctx u
+      (* Get the refined t *)
+      (* let t', _ = check ctx t in *)
+      (* Unbind [u] and enrich context with [x=t] *)
+      let (x,u,ctx') = Ctxt.unbind ctx a ~def:t u in
+      let b = infer ctx' u in
+      (* Build back the term *)
+      let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
+      Bindlib.subst b t
 
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
