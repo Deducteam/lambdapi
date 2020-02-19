@@ -102,7 +102,6 @@ let eq : term -> term -> bool = fun a b -> a == b ||
                                     eq ((a1,a2)::(b1,b2)::l)
     | (LLet(t1,a1,u1), LLet(t2,a2,u2)) ->
         let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
-        (* FIXME or equality of substituted? *)
         eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
     | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
