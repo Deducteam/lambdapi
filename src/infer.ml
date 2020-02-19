@@ -28,7 +28,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
   let m = Meta(fresh_meta Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
      therefore incorrect when [m] is instantiated by Kind. *)
-  let b = Ctxt.make_meta ((x,a)::ctx) m in
+  let b = Ctxt.make_meta (Ctxt.assume [(x, a)] ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
 
 (** [infer ctx t] infers a type for the term [t] in context [ctx],

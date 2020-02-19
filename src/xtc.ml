@@ -163,10 +163,11 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
-    let fn l x = (x,Meta(fresh_meta Type 0,[||]))::l in
+    let fn l x = Ctxt.assume [(x, (Meta(fresh_meta Type 0,[||])))] l in
     List.fold_left fn [] !var_list
   in
   let (_,l) = Infer.infer ctx lhs in
+  let ctx = Ctxt.assumptions ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
