@@ -3,17 +3,7 @@
 open Extra
 open Terms
 
-(** An element of the context. *)
-type hypothesis =
-  | Assume of tvar * term
-  (** [Assume(x,a)] assumes that variable [x] is of type [a]. *)
-  | Define of {ctx_v: tvar; ctx_y: term; ctx_e: term}
-  (** [Define{ctx_v=x,ctx_y=a,ctx_e=t}] defines variable [x] to be term [t] of
-      type [a]. *)
-
-(** Representation of a typing context, associating a type or term with type
-    to free [Bindlib] variables. *)
-type t = hypothesis list
+type t = ctxt
 
 (** [empty] is the empty context. *)
 let empty : t = []
@@ -43,18 +33,6 @@ let unbind : t -> term -> ?def:term -> tbinder -> tvar * term * t =
     else ctx
   in
   (x,b',ctx')
-
-(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp : t pp = fun oc ctx ->
-  let pp_e oc h =
-    match h with
-    | Assume(x,a)                     ->
-        Format.fprintf oc "%a : %a" Print.pp_tvar x Print.pp a
-    | Define{ctx_v=x;ctx_y=a;ctx_e=t} ->
-        Format.fprintf oc "%a : %a ≔ %a" Print.pp_tvar x Print.pp a Print.pp t
-  in
-  if ctx = [] then Format.pp_print_string oc "∅"
-  else List.pp pp_e ", " oc (List.rev ctx)
 
 (** [assumptions ctx] returns a list mapping free variable to their types. *)
 let assumptions : t -> (tvar * term) list =

@@ -148,7 +148,19 @@ let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
+(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
+let pp_ctxt : ctxt pp = fun oc ctx ->
+  let pp_e oc h =
+    match h with
+    | Assume(x,a)                     ->
+        Format.fprintf oc "%a : %a" pp_tvar x pp a
+    | Define{ctx_v=x;ctx_y=a;ctx_e=t} ->
+        Format.fprintf oc "%a : %a ≔ %a" pp_tvar x pp a pp t
+  in
+  if ctx = [] then Format.pp_print_string oc "∅"
+  else List.pp pp_e ", " oc (List.rev ctx)
+
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
    output channel [oc]. *)
-let pp_constr : (term * term) pp = fun oc (t, u) ->
-  Format.fprintf oc "%a ≡ %a" pp t pp u
+let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
+  Format.fprintf oc "[%a] ⊢ %a ≡ %a" pp_ctxt ctx pp t pp u

@@ -84,11 +84,13 @@ let rec solve : problems -> unif_constrs = fun p ->
   | { to_solve = []; unsolved = cs; recompute = true } ->
      solve {no_problems with to_solve = cs}
   | { to_solve = []; unsolved = cs; _ } -> cs
-  | { to_solve = (t,u)::to_solve; _ } -> solve_aux t u {p with to_solve}
+  (* FIXME use ctx *)
+  | { to_solve = (_,t,u)::to_solve; _ } -> solve_aux t u {p with to_solve}
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
+  (* FIXME take context as argument *)
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
@@ -98,7 +100,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
     if Eval.eq_modulo t1 t2 then solve p
-    else solve {p with unsolved = (t1,t2) :: p.unsolved}
+    else solve {p with unsolved = (Ctxt.empty,t1,t2) :: p.unsolved}
   in
 
   let error () =
@@ -109,7 +111,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   in
 
   let decompose () =
-    let add_arg_pb l t1 t2 = (t1, t2)::l in
+    let add_arg_pb l t1 t2 = (Ctxt.empty,t1,t2)::l in
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
       with Invalid_argument _ -> error () in
@@ -199,7 +201,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
-         x,a,env',b,{p with to_solve = (u,t)::p.to_solve}
+         x,a,env',b,{p with to_solve = (Ctxt.empty,u,t)::p.to_solve}
     in
     let tm1 = Env.to_prod env' b in
     let m1 = fresh_meta tm1 (n+1) in
@@ -304,7 +306,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-     solve_aux a1 a2 {p with to_solve = (b1,b2) :: p.to_solve}
+     solve_aux a1 a2 {p with to_solve = (Ctxt.empty,b1,b2) :: p.to_solve}
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) ->

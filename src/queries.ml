@@ -31,12 +31,14 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
           | (Some(a), Some(b)) ->
               begin
                 match solve ss.builtins true
-                        { no_problems with to_solve = [a,b] } with
+                        { no_problems with to_solve = [Ctxt.empty,a,b] } with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo t u
                 | Some cs ->
-                    let fn (t,u) =
-                      fatal_msg "Cannot solve [%a] ≡ [%a].\n" pp t pp u in
+                    let fn (c,t,u) =
+                      fatal_msg "Cannot solve [%a] ⊢ [%a] ≡ [%a].\n"
+                        pp_ctxt c pp t pp u
+                    in
                     List.iter fn cs;
                     fatal q.pos "Infered types are not convertible."
               end

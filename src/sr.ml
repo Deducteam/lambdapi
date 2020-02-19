@@ -17,11 +17,12 @@ type subst = tvar array * term array
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : (term * term) list -> subst = fun cs ->
+let subst_from_constrs : unif_constrs -> subst = fun cs ->
   let rec build_sub acc cs =
     match cs with
-    | []        -> List.split acc
-    | (a,b)::cs ->
+    | []          -> List.split acc
+    | (_,a,b)::cs ->
+      (* FIXME use ctxt? *)
       match Basics.get_args a with
       | Vari(x), [] -> build_sub ((x,b)::acc) cs
       | _, _ ->
@@ -123,7 +124,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   if !log_enabled then
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
+      let fn (c,t,u) =
+        log_subj "  if [%a] ⊢ [%a] ~ [%a]" pp_ctxt c pp t pp u
+      in
       List.iter fn lhs_constrs
     end;
   (* Turn constraints into a substitution and apply it. *)
@@ -144,7 +147,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
       fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
   | Some(cs) ->
   let is_constr c =
-    let eq_comm (t1,u1) (t2,u2) =
+    let eq_comm (_,t1,u1) (_,t2,u2) =
       (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
       (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
     in

@@ -13,11 +13,11 @@ let log_infr = log_infr.logger
 let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
-let conv a b =
+let conv ctx a b =
   if not (Basics.eq a b) then
     begin
-      if !log_enabled then log_infr (yel "add %a") pp_constr (a,b);
-      let open Pervasives in constraints := (a,b) :: !constraints
+      if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
+      let open Pervasives in constraints := (ctx,a,b) :: !constraints
     end
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
@@ -72,7 +72,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
         let s = unfold s in
         match s with
         | Type | Kind -> s
-        | _           -> conv s Type; Type
+        | _           -> conv ctx s Type; Type
       (* We add the constraint [s = Type] because kinds cannot occur
          inside a term. So, [t] cannot be a kind. *)
       end
@@ -106,11 +106,11 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
             in
             let a = Ctxt.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
+            conv ctx c (Prod(a,b)); (a,b)
         | _         ->
             let a = Ctxt.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
+            conv ctx c (Prod(a,b)); (a,b)
       in
       (* We then check the type of [u] against the domain type. *)
       check ctx u a;
@@ -165,7 +165,7 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
       let b =
         let c = Eval.whnf c in
         match c with
-        | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
+        | Prod(d,b) -> conv ctx d a; b (* Domains must be convertible. *)
         | Meta(_,ts) ->
            let ctx =
              match Basics.distinct_vars_opt ts with
@@ -173,10 +173,10 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
              | Some vs -> Ctxt.sub ctx vs
            in
            let b = make_meta_codomain ctx a in
-           conv c (Prod(a,b)); b
+           conv ctx c (Prod(a,b)); b
         | _         -> (* Generate product type with codomain [a]. *)
            let b = make_meta_codomain ctx a in
-           conv c (Prod(a,b)); b
+           conv ctx c (Prod(a,b)); b
       in
       (* We type-check the body with the codomain. *)
       let (x,t,ctx') = Ctxt.unbind ctx a t in
@@ -185,7 +185,7 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
       (*  ctx ⊢ t ⇒ a
          -------------
           ctx ⊢ t ⇐ a  *)
-      conv (infer ctx t) c
+      conv ctx (infer ctx t) c
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the
    term [t] in the context [ctx], under unification constraints [cs].
