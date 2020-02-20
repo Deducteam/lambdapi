@@ -61,7 +61,8 @@ let pop_def_of : tvar -> t -> term * t = fun x ctx ->
   match dec with
     | Define{ctx_v=y;ctx_e=t;_}::l when Bindlib.eq_vars x y ->
         t, List.rev_append inc l
-    | h::l                                                  -> pop_def_of l (h::inc)
+    | h::l                                                  ->
+        pop_def_of l (h::inc)
     | []                                                    -> raise Not_found
   in
   pop_def_of ctx []
