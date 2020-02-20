@@ -68,7 +68,7 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
   (!can_instantiate || internal m)
   && not (occurs m u)
   && match nl_distinct_vars ts with
-     | None -> false
+     | None -> log_unif "false"; false
      | Some vs ->
         let bu = Bindlib.bind_mvar vs (lift u) in
         Bindlib.is_closed bu (* To make sure that there is no non-linear

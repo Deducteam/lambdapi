@@ -31,6 +31,33 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
   let b = Ctxt.make_meta ((x,a)::ctx) m in
   Bindlib.unbox (Bindlib.bind_var x (lift b))
 
+(** [beta_expand_meta x t] beta expands metavariables that depend on var
+    [x]. *)
+let rec beta_expand_meta : tvar -> term -> term = fun x t ->
+  let bem = beta_expand_meta x in
+  match unfold t with
+  | Appl(t,u)    -> Appl(bem t, bem u)
+  | Abst(a,t)    ->
+      let (x,t) = Bindlib.unbind t in
+      let t = bem t in
+      let a = bem a in
+      Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
+  | Prod(a,b)    ->
+      let (y,b) = Bindlib.unbind b in
+      let b = bem b in
+      let a = bem a in
+      Prod(a, Bindlib.unbox (Bindlib.bind_var y (lift b)))
+  | Meta(_) as t ->
+      let b = Bindlib.unbox (Bindlib.bind_var x (lift t)) in
+      let dom = Meta(fresh_meta Type 0,[||]) in
+      Appl(Abst(dom,b), Vari(x))
+  | LLet(t,a,u)  ->
+      let (y,u) = Bindlib.unbind u in
+      let u = bem u in
+      let u = Bindlib.unbox (Bindlib.bind_var y (lift u)) in
+      LLet(bem t, bem a, u)
+  | t        -> t
+
 (** [infer ctx t] infers a type for the term [t] in context [ctx],
    possibly under some constraints recorded in [constraints] using
    [conv]. The returned type is well-sorted if recorded unification
@@ -117,11 +144,18 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇒ T        ctx, x = t ⊢ u ⇒ U
+  (*  ctx ⊢ t ⇐ a        ctx, x = t ⊢ u ⇒ U
      ----------------------------------------
         ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
   | LLet(t,a,u) ->
       check ctx t a;
+      let x, u = Bindlib.unbind u in
+      (* We beta expand metavariables that depend on [x] in [u] to avoid
+         substituting free variables of meta, which would create non valid
+         meta, so with [m] a metavar and [x] a free var,
+         [m[x]] becomes [(λ x₀, m[x₀]) x]. *)
+      let u = beta_expand_meta x u in
+      let u = Bindlib.unbox (Bindlib.bind_var x (lift u)) in
       let u = Bindlib.subst u t in
       infer ctx u
 
