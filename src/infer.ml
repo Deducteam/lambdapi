@@ -124,6 +124,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* Get the refined t *)
       (* let t', _ = check ctx t in *)
       (* Unbind [u] and enrich context with [x=t] *)
+      check ctx t a;
       let (x,u,ctx') = Ctxt.unbind ctx a ~def:t u in
       let b = infer ctx' u in
       (* Build back the term *)
