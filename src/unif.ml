@@ -202,7 +202,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
-         x,a,env',b,{p with to_solve = (Ctxt.empty,u,t)::p.to_solve}
+         x,a,env',b,{p with to_solve = (ctx,u,t)::p.to_solve}
     in
     let tm1 = Env.to_prod env' b in
     let m1 = fresh_meta tm1 (n+1) in
@@ -307,7 +307,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-     solve_aux ctx a1 a2 {p with to_solve = (Ctxt.empty,b1,b2) :: p.to_solve}
+     solve_aux ctx a1 a2 {p with to_solve = (ctx,b1,b2) :: p.to_solve}
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) ->

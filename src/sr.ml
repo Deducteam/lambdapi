@@ -148,6 +148,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   | Some(cs) ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
+      (* FIXME merge contexts and use them in eq_modulo *)
       (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
       (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
     in
