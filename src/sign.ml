@@ -241,7 +241,7 @@ let read : string -> t = fun fname ->
       | Symb(s,_)   -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
-      | LLet(t,a,u)   -> reset_term t; reset_term a; reset_binder u
+      | LLet(t,a,u) -> reset_term t; reset_term a; reset_binder u
       | Appl(t,u)   -> reset_term t; reset_term u
       | Meta(_,_)   -> assert false
       | Patt(_,_,m) -> Array.iter reset_term m
