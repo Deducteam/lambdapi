@@ -63,13 +63,13 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
-  | Meta(_,_)               -> assert false
-  | TRef(_)                 -> assert false
-  | TEnv(_,_)               -> assert false
-  | Wild                    -> assert false
-  | Kind                    -> assert false
+  | Meta(_,_)
+  | TRef(_)
+  | TEnv(_,_)
+  | Wild
+  | Kind
   (* Variables are necessarily at object level *)
-  | Vari(_)                 -> assert false
+  | Vari(_)
   | Patt(_,_,_)             -> assert false
   (* Printing of atoms. *)
   | Type                    -> out "<TYPE/>@."
@@ -91,7 +91,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
-  | LLet(_) -> failwith "implement"
+  | LLet(t,_,u)             -> print_type i s oc (Bindlib.subst u t)
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
@@ -129,6 +129,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     | TRef _
     | Wild
     | Prod (_, _)
+    | LLet(_) (* No let in LHS *)
     | Vari _              -> assert false
     | Symb (_, _)         -> t
     | Abst (t1, b)        ->
@@ -155,7 +156,6 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
          |None -> assert false
        in
        Array.fold_left (fun acc t -> Appl(acc,t)) (Vari(v_i)) a
-    | LLet(_) -> failwith "implement"
   in
   let lhs =
     List.fold_left
