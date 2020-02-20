@@ -121,7 +121,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
      ----------------------------------------
         ctx ⊢ let x ≔ t : T in u ⇒ subst U t  *)
   | LLet(t,a,u) ->
-      check ctx a Type;
+      check ctx t a;
       let u = Bindlib.subst u t in
       infer ctx u
 
