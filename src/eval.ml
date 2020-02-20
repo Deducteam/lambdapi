@@ -117,7 +117,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
     context [?ctx] if provided. *)
 and eq_modulo : ?ctx:ctxt -> term -> term -> bool =
   fun ?(ctx=Ctxt.empty) a b ->
-  if !log_enabled then log_conv "[%a] == [%a]" pp a pp b;
+  if !log_enabled then log_conv "[%a] ⊢ [%a] == [%a]" pp_ctxt ctx pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
