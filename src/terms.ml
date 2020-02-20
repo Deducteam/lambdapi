@@ -261,17 +261,9 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
-(** An element of the context. *)
-type hypothesis =
-  | Assume of term Bindlib.var * term
-  (** [Assume(x,a)] assumes that variable [x] is of type [a]. *)
-  | Define of {ctx_v: term Bindlib.var; ctx_y: term; ctx_e: term}
-  (** [Define{ctx_v=x,ctx_y=a,ctx_e=t}] defines variable [x] to be term [t] of
-      type [a]. *)
-
-(** Representation of a typing context, associating a type or term with type
-    to free [Bindlib] variables. *)
-type ctxt = hypothesis list
+(** Typing context associating a [Bindlib] variable to a type and possibly a
+    definition. *)
+type ctxt = (term Bindlib.var * term * term option) list
 
 (** Type of a list of unification constraints. *)
 type unif_constrs = (ctxt * term * term) list

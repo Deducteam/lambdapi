@@ -150,12 +150,10 @@ let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
 
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
 let pp_ctxt : ctxt pp = fun oc ctx ->
-  let pp_e oc h =
-    match h with
-    | Assume(x,a)                     ->
-        Format.fprintf oc "%a : %a" pp_tvar x pp a
-    | Define{ctx_v=x;ctx_y=a;ctx_e=t} ->
-        Format.fprintf oc "%a : %a ≔ %a" pp_tvar x pp a pp t
+  let pp_e oc (x,a,t) =
+    match t with
+    | None    -> Format.fprintf oc "%a : %a" pp_tvar x pp a
+    | Some(t) -> Format.fprintf oc "%a : %a ≔ %a" pp_tvar x pp a pp t
   in
   if ctx = [] then Format.pp_print_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)

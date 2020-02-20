@@ -80,4 +80,4 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
 
 (** [to_ctxt] builds a context from an environment. *)
 let to_ctxt : t -> ctxt =
-  List.map (fun (_,(v,bt)) -> Assume(v,Bindlib.unbox bt))
+  List.map (fun (_,(v,bt)) -> (v,Bindlib.unbox bt,None))
