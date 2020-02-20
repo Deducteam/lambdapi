@@ -77,3 +77,7 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
             build_env (i+1) env (Bindlib.subst b (Vari v))
          | _ -> raise (Invalid_argument "of_prod")
   in build_env 0 [] t
+
+(** [to_ctxt] builds a context from an environment. *)
+let to_ctxt : t -> ctxt =
+  List.map (fun (_,(v,bt)) -> Assume(v,Bindlib.unbox bt))

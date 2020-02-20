@@ -98,7 +98,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    if Eval.eq_modulo t1 t2 then solve p else
+    if Eval.eq_modulo ~ctx t1 t2 then solve p else
     (* Keep the context *)
     solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
   in
@@ -108,20 +108,6 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let t2 = add_args h2 ts2 in
     fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
     raise Unsolvable
-  in
-
-  (* FIXME zeta or delta, i.e., should the mapping used in the context be kept
-     or removed from the context? *)
-  let zeta_reduce x t =
-    if !log_enabled then
-      log_unif "ζ reduction [%a] ⊢ [%a] → [%a]"
-        Print.pp_ctxt ctx Print.pp_tvar x Print.pp t;
-    let xt,ctx' =
-      try Ctxt.pop_def_of x ctx
-      with Not_found -> error ()
-    in
-    let to_solve = (ctx',xt,t)::p.to_solve in
-    solve {p with to_solve}
   in
 
   let decompose () =
@@ -363,9 +349,6 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
-
-  | (Vari(x)    , h          )
-  | (h          , Vari(x)    ) -> zeta_reduce x h
 
   | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
   | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1

@@ -290,7 +290,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   let (g_env, g_type) = Proof.focus_goal pos ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let g_ctxt = Ctxt.of_env g_env in
+  let g_ctxt = Env.to_ctxt g_env in
   let t_type =
     match Typing.infer ps.proof_builtins g_ctxt t with
     | Some(a) -> a
@@ -663,7 +663,7 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* We create a new metavariable (“M” in the above). *)
   let meta_type =
     Appl(symb cfg.symb_P, (add_args (symb cfg.symb_eq) [a; r; l])) in
-  let meta_term = Ctxt.make_meta (Ctxt.of_env g_env) meta_type in
+  let meta_term = Ctxt.make_meta (Env.to_ctxt g_env) meta_type in
   (* We build the predicate (“λx, eq a r x” in the above). *)
   let pred =
     let x = Bindlib.new_var mkfree "X" in

@@ -21,12 +21,12 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let result =
         match asrt with
         | P_assert_typing(pt,pa) ->
-          let t = scope pt and a = scope pa and ctxt = Ctxt.of_env env in
+          let t = scope pt and a = scope pa and ctxt = Env.to_ctxt env in
           Typing.sort_type ss.builtins ctxt a;
           (try Typing.check ss.builtins ctxt t a with _ -> false)
         | P_assert_conv(pt,pu)   ->
           let t = scope pt and u = scope pu in
-          let infer = Typing.infer ss.builtins (Ctxt.of_env env) in
+          let infer = Typing.infer ss.builtins (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
               begin
@@ -68,7 +68,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       (* Infer the type of [t]. *)
       let t = scope pt in
       let a =
-        match Typing.infer ss.builtins (Ctxt.of_env env) t with
+        match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(a) -> Eval.eval cfg a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
@@ -77,7 +77,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
       let v =
-        match Typing.infer ss.builtins (Ctxt.of_env env) t with
+        match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(_) -> Eval.eval cfg t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in

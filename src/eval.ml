@@ -92,6 +92,10 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   | (Abst(_,f), u::stk) ->
       Pervasives.incr steps;
       whnf_stk (Bindlib.subst f u) stk
+  (* Let unfolding *)
+  | (LLet(t,_,u), stk ) ->
+      Pervasives.incr steps;
+      whnf_stk (Bindlib.subst u t) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
       begin
@@ -108,8 +112,11 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_         , _    ) -> st
 
-(** [eq_modulo a b] tests equality modulo rewriting between [a] and [b]. *)
-and eq_modulo : term -> term -> bool = fun a b ->
+(** [eq_modulo ?ctx a b] tests equality modulo rewriting and modulo Δ
+    (unfolding of variables from the context) between [a] and [b] and with the
+    context [?ctx] if provided. *)
+and eq_modulo : ?ctx:ctxt -> term -> term -> bool =
+  fun ?(ctx=Ctxt.empty) a b ->
   if !log_enabled then log_conv "[%a] == [%a]" pp a pp b;
   let rec eq_modulo l =
     match l with
@@ -138,6 +145,14 @@ and eq_modulo : term -> term -> bool = fun a b ->
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
+    (* Try a Δ conversion *)
+    | (Vari(x)    , t          )
+    | (t          , Vari(x)    ) ->
+        let u =
+          try Ctxt.def_of x ctx
+          with Not_found -> raise Exit
+        in
+        eq_modulo ((u, t) :: l)
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in

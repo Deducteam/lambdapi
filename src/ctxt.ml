@@ -91,10 +91,6 @@ let to_prod : t -> term -> term = fun ctx t ->
       in
       Bindlib.unbox (List.fold_left fn (lift t) ctx)
 
-(** [of_env] builds a context from an environment. **)
-let of_env : Env.t -> t =
-  List.map (fun (_,(v,bt)) -> Assume(v,Bindlib.unbox bt))
-
 (** [make_meta ctx a] creates a metavariable of type [a],  with an environment
     containing the variables of context [ctx]. *)
 let make_meta : t -> term -> term = fun ctx a ->
