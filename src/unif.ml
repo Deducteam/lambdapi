@@ -76,31 +76,31 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
         && (set_meta m (Bindlib.unbox bu); true)
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
-   returns the constraints that could not be solved. *)
+    returns the constraints that could not be solved. *)
 let rec solve : problems -> unif_constrs = fun p ->
-  (*if !log_enabled then log_unif "%a" pp_problem p;*)
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
      solve {no_problems with to_solve = cs}
   | { to_solve = []; unsolved = cs; _ } -> cs
-  (* FIXME use ctx *)
-  | { to_solve = (_,t,u)::to_solve; _ } -> solve_aux t u {p with to_solve}
+  | { to_solve = (c,t,u)::to_solve; _ } -> solve_aux c t u {p with to_solve}
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
-and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
-  (* FIXME take context as argument *)
+and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
+  fun ctx t1 t2 p ->
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
-    log_unif "solve %a ≡ %a" pp (add_args h1 ts1) pp (add_args h2 ts2);
+    log_unif "solve %a ⊢ %a ≡ %a"
+      pp_ctxt ctx pp (add_args h1 ts1) pp (add_args h2 ts2);
 
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    if Eval.eq_modulo t1 t2 then solve p
-    else solve {p with unsolved = (Ctxt.empty,t1,t2) :: p.unsolved}
+    if Eval.eq_modulo t1 t2 then solve p else
+    (* Keep the context *)
+    solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
   in
 
   let error () =
@@ -110,8 +110,23 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     raise Unsolvable
   in
 
+  (* FIXME zeta or delta, i.e., should the mapping used in the context be kept
+     or removed from the context? *)
+  let zeta_reduce x t =
+    if !log_enabled then
+      log_unif "ζ reduction [%a] ⊢ [%a] → [%a]"
+        Print.pp_ctxt ctx Print.pp_tvar x Print.pp t;
+    let xt,ctx' =
+      try Ctxt.pop_def_of x ctx
+      with Not_found -> error ()
+    in
+    let to_solve = (ctx',xt,t)::p.to_solve in
+    solve {p with to_solve}
+  in
+
   let decompose () =
-    let add_arg_pb l t1 t2 = (Ctxt.empty,t1,t2)::l in
+    (* Propagate context *)
+    let add_arg_pb l t1 t2 = (ctx,t1,t2)::l in
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
       with Invalid_argument _ -> error () in
@@ -151,7 +166,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
-      solve_aux t1 t2 p
+      solve_aux ctx t1 t2 p
     with Cannot_imitate -> add_to_unsolved ()
   in
 
@@ -209,7 +224,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
-    solve_aux t1 t2 p
+    solve_aux ctx t1 t2 p
   in
 
   (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2,b)] such
@@ -294,7 +309,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         pp (add_args (symb s) ts) pp v;
     if is_constant s then error ()
     else match inverse_opt s ts v with
-         | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
+         | Some (t1, s_1_v) -> solve_aux ctx t1 s_1_v p
          | None -> add_to_unsolved ()
   in
 
@@ -306,7 +321,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Prod(a1,b1), Prod(a2,b2))
   | (Abst(a1,b1), Abst(a2,b2)) ->
      let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
-     solve_aux a1 a2 {p with to_solve = (Ctxt.empty,b1,b2) :: p.to_solve}
+     solve_aux ctx a1 a2 {p with to_solve = (Ctxt.empty,b1,b2) :: p.to_solve}
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) ->
@@ -315,9 +330,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_prop with
-       | Const -> decompose ()
+       | Const
        | Injec when List.same_length ts1 ts2 -> decompose ()
-       | _ -> add_to_unsolved ()
+       | _                                   -> add_to_unsolved ()
      else
        begin
          match s1.sym_prop, s2.sym_prop with
@@ -325,11 +340,11 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          | _, _ ->
            begin
              match inverse_opt s1 ts1 t2 with
-             | Some (t, u) -> solve_aux t u p
+             | Some (t, u) -> solve_aux ctx t u p
              | None ->
                begin
                  match inverse_opt s2 ts2 t1 with
-                 | Some (t, u) -> solve_aux t u p
+                 | Some (t, u) -> solve_aux ctx t u p
                  | None -> add_to_unsolved ()
                end
            end
@@ -348,6 +363,9 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
+
+  | (Vari(x)    , h          )
+  | (h          , Vari(x)    ) -> zeta_reduce x h
 
   | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
   | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1

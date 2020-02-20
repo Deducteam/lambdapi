@@ -52,6 +52,26 @@ let type_of : tvar -> t -> term = fun x ctx ->
   in
   match List.find f ctx with Assume(_,a) | Define{ctx_y=a;_} -> a
 
+(** [pop_def_of x ctx] returns the definition of [x] in the context [ctx] and
+    the context [ctx] without the definition of [x] if [x] appears in [ctx]
+    and
+    @raise Not_found if [x] does not appear in [ctx]. *)
+let pop_def_of : tvar -> t -> term * t = fun x ctx ->
+  let rec pop_def_of dec inc =
+  match dec with
+    | Define{ctx_v=y;ctx_e=t;_}::l when Bindlib.eq_vars x y ->
+        t, List.rev_append inc l
+    | h::l                                                  -> pop_def_of l (h::inc)
+    | []                                                    -> raise Not_found
+  in
+  pop_def_of ctx []
+
+(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
+    appears, and
+    @raise Not_found if not. *)
+let def_of : tvar -> t -> term = fun x ctx ->
+  fst (pop_def_of x ctx)
+
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> t -> bool = fun x ctx ->
   try ignore (type_of x ctx); false with Not_found -> true
