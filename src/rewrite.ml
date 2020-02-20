@@ -265,12 +265,12 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Prod(_)     -> fatal None "Cannot rewrite under products."
     | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
     | Meta(_)     -> fatal None "Cannot rewrite metavariables."
+    | LLet(_)     -> fatal None "Cannot rewrite in let"
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
     | Wild        -> assert false
     | TRef(_)     -> assert false
-    | LLet(_) -> failwith "implement"
   in
   Bindlib.(unbox (bind_var x (lift_subst t)))
 
