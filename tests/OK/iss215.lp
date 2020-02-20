@@ -1,7 +1,7 @@
 require open tests.OK.nat
 
-constant symbol VectN : N ⇒ TYPE
-constant symbol nil: VectN 0
+symbol VectN : N ⇒ TYPE
+symbol nil: VectN 0
 symbol cons (n: N): N ⇒ VectN n ⇒ VectN (n + 1)
 
 // [n] requires to be 0 to type
