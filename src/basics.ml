@@ -184,7 +184,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Prod(a,b)
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(t,a,b) -> iter a; iter (Bindlib.subst b t)
+    | LLet(t,a,b) -> iter t; iter a; iter (Bindlib.subst b Kind)
   in iter
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
