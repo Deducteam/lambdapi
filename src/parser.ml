@@ -38,6 +38,22 @@ let forbidden_in_ops =
   ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
+let add_binop _pos s binop =
+  try Word_list.add_utf8 binops s binop
+  with Word_list.Already_bound ->
+    Console.fatal (ByPos _pos) "Binary op [%s] already declared" s
+
+let add_unop _pos s unop =
+  try Word_list.add_utf8 unops s unop
+  with Word_list.Already_bound ->
+    Console.fatal (ByPos _pos) "Unary op [%s] already declared" s
+
+let add_declared _pos s =
+  try Word_list.add_utf8 declared_ids s s
+  with Word_list.Already_bound ->
+    Console.fatal (ByPos _pos) "Binary op [%s] already declared" s
+
+
 (** [get_ops loc p] loads the unary and binary operators associated to  module
     [p] and report possible errors at location [loc].  This operation requires
     the module [p] to be loaded (i.e., compiled). The declared identifiers are
@@ -49,11 +65,11 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
       parser_fatal (ByPos loc)
         "Module [%a] not loaded (used for binops)." pp_path p
   in
-  let fn s (_, unop) = Word_list.add_utf8 unops s unop in
+  let fn s (_, unop) = add_unop loc s unop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
-  let fn s (_, binop) = Word_list.add_utf8 binops s binop in
+  let fn s (_, binop) = add_binop loc s binop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_binops));
-  let fn s = Word_list.add_utf8 declared_ids s s in
+  let fn s = add_declared loc s in
   StrSet.iter fn Timed.(!Sign.(sign.sign_idents))
 
 (** Blank function (for comments and white spaces). *)
@@ -483,20 +499,20 @@ let%parser [@cache] config =
       begin
         let unop = (s, p, qid) in
         sanity_check s_pos s;
-        Word_list.add_utf8 unops s unop;
+        add_unop s_pos s unop;
         P_config_unop(unop)
       end
   ; "infix" (a::assoc) (p::FLOAT) (s::STRING_LIT) "≔" (qid::qident) =>
       begin
         let binop = (s, a, p, qid) in
         sanity_check s_pos s;
-        Word_list.add_utf8 binops s binop;
+        add_binop s_pos s binop;
         P_config_binop(binop)
       end
   ; "declared" (id::STRING_LIT) =>
       begin
         sanity_check id_pos id;
-        Word_list.add_utf8 declared_ids id id;
+        add_declared id_pos id;
         P_config_ident(id)
       end
 
