@@ -22,9 +22,6 @@ let parser_fatal : popt -> ('a,'b) Console.koutfmt -> 'a = fun loc fmt ->
 (** Currently defined unary operators. *)
 let unops : (string, unop) Word_list.t = Word_list.create ()
 
-(** Parser for a unary operator. *)
-let unop = Word_list.utf8_word unops
-
 (** Currently defined binary operators. *)
 let binops : (string, binop) Word_list.t = Word_list.create ()
 
@@ -272,19 +269,22 @@ let%parser exposition =
   ; _private_   => Terms.Privat
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PAppl | PUnaO | PBinO | PFunc
+type prio = PAtom | PAppl | PUnaO of float | PBinO of float | PFunc
 
 let string_of_prio = function
-  | PAtom -> "A"
-  | PAppl -> "@"
-  | PUnaO -> "U"
-  | PBinO -> "B"
-  | PFunc -> "F"
+  | PAtom   -> "A"
+  | PAppl   -> "@"
+  | PUnaO f -> "U" ^ string_of_float f
+  | PBinO f -> "B" ^ string_of_float f
+  | PFunc   -> "F"
 
 (** [term] is a parser for a term. *)
 let%parser [@print_param string_of_prio] rec term (p : prio) =
   (* priorities inheritance *)
-    PAtom < PAppl < PUnaO < PBinO < PFunc
+    PAtom < PAppl
+  ; (p =| PUnaO __) (t::term PAppl)  => t
+  ; (p =| PBinO __) (t::term (PUnaO min_float))  => t
+  ; PBinO min_float < PFunc
   (* TYPE constant. *)
   ; (p=PAtom) _TYPE_
       => in_pos _pos P_Type
@@ -310,7 +310,7 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=PAppl) (t::term PAppl) (u::term PAtom)
       => in_pos _pos (P_Appl(t,u))
   (* Implication. *)
-  ; (p=PFunc) (a::term PBinO) "⇒" (b::term PFunc)
+  ; (p=PFunc) (a::term (PBinO min_float)) "⇒" (b::term PFunc)
       => in_pos _pos (P_Impl(a,b))
   (* Products. *)
   ; (p=PFunc) "∀" (xs:: ~+ arg) "," (b::term PFunc)
@@ -330,64 +330,47 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=PAtom) (n::NAT)
       => in_pos _pos (P_NLit(n))
   (* Unary operator. *)
-  ; (p=PUnaO) (u::unop) (t::term PUnaO) =>
-      begin
-        (* Find out minimum priorities for the operand. *)
-        let min_p =
-          let (_, p, _) = u in p
-        in
-        (* Check that priority of operand is above [min_p]. *)
-        let _ =
-          match t.elt with
-          | P_UnaO((_,p,_),_) when p < min_p -> Lex.give_up ()
-          | _                                -> ()
-        in
-        in_pos _pos (P_UnaO(u,t))
-      end
+  ; (p=|PUnaO q) ((q,u)>:unop q) (t::term (PUnaO q)) =>
+      in_pos _pos (P_UnaO(u,t))
   (* Binary operator. *)
-  ; (p = PBinO) ((pt,t)>:left_PBinO) ((min_pr,b)>:binop pt) (u::term PBinO) =>
-      begin
-        (* Check that priority of the right operand is above [min_pr]. *)
-        let _ =
-          match u.elt with
-          | P_BinO(_,(_,_,p,_),_) -> if p < min_pr then Lex.give_up ()
-          | _                     -> ()
-        in
-        in_pos _pos (P_BinO(t,b,u))
-      end
+  ; (p=|PBinO q) ((pt,t)>:pBinO q) ((q,b)>:binop pt q) ((__,u)::pBinO q) =>
+      in_pos _pos (P_BinO(t,b,u))
 
 (** parser collecting the priority, used left of an infix *)
-and left_PBinO =
-  (t::term PBinO) =>
+and pBinO q =
+  (t::term (PBinO q)) =>
     begin
       let p =
         match t.elt with
-        | P_BinO(_,(_,_,p,_),_) -> Some p
-        | _                     -> None
+        | P_BinO(_,(_,_,p,_),_) -> p
+        | _                     -> max_float
       in
       (p, t)
     end
 
 (** Parser for a binary operator. receive the priority of the left term and
    return the priority for the right term *)
-and binop pt =
+and binop pmax pmin =
   (((__, assoc, p, ___) = b)::Word_list.utf8_word binops) =>
     begin
       (* Find out minimum priorities for left and right operands. *)
-      let (min_pl, min_pr) =
+      let (good, p) =
         let p_plus_epsilon = p +. 1e-6 in
         match assoc with
-        | Assoc_none  -> (p_plus_epsilon, p_plus_epsilon)
-        | Assoc_left  -> (p             , p_plus_epsilon)
-        | Assoc_right -> (p_plus_epsilon, p             )
+        | Assoc_none  -> (pmin <=  p && p <  pmax, p)
+        | Assoc_right -> (pmin <=  p && p <  pmax, p)
+        | Assoc_left  -> (pmin <=  p && p <= pmax, p_plus_epsilon)
       in
       (* Check that priority of left operand is above [min_pl]. *)
-      let _ =
-        match pt with
-        | Some p when p < min_pl -> Lex.give_up ()
-        | _                      -> ()
-      in
-      (min_pr,b)
+      if not good then Lex.give_up ();
+      (p,b)
+    end
+
+and unop pmin =
+  (((__, p, ___) = b)::Word_list.utf8_word unops) =>
+    begin
+      if p < pmin then Lex.give_up ();
+      (p,b)
     end
 
 (*
@@ -404,7 +387,7 @@ and binop pt =
    *)
 and env =
     ()                                 => []
-  ; "[" (ts:: ~+ [","] (term PBinO)) "]" => ts
+  ; "[" (ts:: ~+ [","] (term (PBinO min_float))) "]" => ts
 
 (** [arg] parses a single function argument. *)
 and arg =
@@ -567,14 +550,14 @@ let%parser cmd =
       end
   ; (e:: ~?exposition) (p:: ~? property) _symbol_
       (s::ident) (al:: ~*arg) ":" (a::term)
-      => P_symbol(Option.get e Terms.Public,Option.get p Terms.Defin,s,al,a)
+      => P_symbol(Option.get Terms.Public e,Option.get Terms.Defin p,s,al,a)
   ; _rule_ (rs:: ~+ [_and_] rule)
       => P_rules(rs)
   ; (e:: ~?exposition) _definition_
       (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term)
-      => P_definition(Option.get e Terms.Public,false,s,al,ao,t)
+      => P_definition(Option.get Terms.Public e,false,s,al,ao,t)
   ; (e:: ~? exposition) (st::statement) ((ts,pe)::proof)
-      => P_theorem(Option.get e Terms.Public,st,ts,pe)
+      => P_theorem(Option.get Terms.Public e,st,ts,pe)
   ; _set_ (c::config)
       => P_set(c)
   ; (q::query)
@@ -618,22 +601,24 @@ let parse_file : string -> 'a fold = fun fname acc fn ->
     restore_ops saved; r
   with Pos.Parse_error(buf,pos,_msgs) ->
     restore_ops saved;
-    let pos = Input.spos buf pos in
-    parser_fatal (ByPos(pos,pos)) "Parse error."
+    let (infos,p) = Input.spos buf pos in
+    let pos = mk_pos p p infos in
+    parser_fatal (ByPos pos) "Parse error."
 
 (** [parse_string fname str] attempts to parse the string [str] file to obtain
     a list of toplevel commands.  In case of failure, a graceful error message
     containing the error position is given through the [Fatal] exception.  The
     [fname] argument should contain a relevant file name for the error message
     to be constructed. *)
-let parse_string : string -> string -> 'a fold = fun fname str acc fn ->
+let parse_string : string -> string -> 'a fold = fun _fname str acc fn ->
   let saved = reset_ops () in
   try
     let r =
-      Grammar.parse_string ~utf8:UTF8 ~filename:fname (cmds acc fn) blank str
+      Grammar.parse_string ~utf8:UTF8 (cmds acc fn) blank str
     in
     restore_ops saved; r
   with Pos.Parse_error(buf,pos,_msgs) ->
     restore_ops saved;
-    let pos = Input.spos buf pos in
-    parser_fatal (ByPos(pos,pos)) "Parse error."
+    let (infos,p) = Input.spos buf pos in
+    let pos = mk_pos p p infos in
+    parser_fatal (ByPos pos) "Parse error."

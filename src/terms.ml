@@ -240,8 +240,14 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
+(** Comparison function on metavariables. *)
+let cmp_meta : meta -> meta -> int = fun m1 m2 -> m1.meta_key - m2.meta_key
+
+(** Equality on metavariables. *)
+let eq_meta : meta -> meta -> bool = fun m1 m2 -> m1.meta_key = m2.meta_key
+
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
-let symb s = Symb (s, Nothing)
+let symb : sym -> term = fun s -> Symb (s, Nothing)
 
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec

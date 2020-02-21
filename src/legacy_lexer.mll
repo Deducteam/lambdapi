@@ -15,7 +15,12 @@ let locate : Lexing.position * Lexing.position -> popt = fun (p1, p2) ->
   let end_line = p2.pos_lnum in
   let end_col = p2.pos_cnum - p2.pos_bol in
   let open Pacomb.Pos in
-  LnPos { name; start_line; start_col; end_line; end_col; phantom = false }
+  LnPos { file_name = name; start_line; start_col; end_line; end_col
+        ; start_line_offset = p1.pos_bol
+        ; end_line_offset = p2.pos_bol
+        ; start_byte = p1.pos_bol + p1.pos_cnum
+        ; end_byte = p2.pos_bol + p2.pos_cnum
+        ; text = ""}
 
 let make_pos : Lexing.position * Lexing.position -> 'a -> 'a Pos.loc =
   fun lps elt -> {pos = locate lps; elt}

@@ -27,7 +27,7 @@ end
 type state = Time.t * Scope.sig_state
 
 (** Exception raised by [parse_text] on error. *)
-exception Parse_error of Pos.ipos * string
+exception Parse_error of Pos.pos_info * string
 
 let parse_text : state -> string -> string -> Command.t list * state =
     fun (t,st) fname s ->
@@ -44,7 +44,7 @@ let parse_text : state -> string -> string -> Command.t list * state =
   | Fatal(None           , _  ) -> assert false (* Should not produce. *)
   | Fatal(Some(NoPos)    , _  ) -> assert false (* Should not produce. *)
   | Fatal(Some(LnPos pos), msg) -> raise (Parse_error(pos, msg))
-  | Fatal(Some(ByPos pos), msg) -> let pos = Pos.ipos_of_pos pos in
+  | Fatal(Some(ByPos pos), msg) -> let pos = Pos.pos_info pos in
                                    raise (Parse_error(pos, msg))
 
 type proof_finalizer = Scope.sig_state -> Proof.t -> Scope.sig_state

@@ -51,7 +51,7 @@ let option_cata f x d = match x with | None -> d | Some x -> f x
 let option_popt f x d = let open Pos in
                         match x with | NoPos -> d
                                      | LnPos x -> f x
-                                     | ByPos x -> f (ipos_of_pos x)
+                                     | ByPos x -> f (pos_info x)
 let option_default x d = match x with | None -> d | Some x -> x
 
 let oint_field  name dict = option_cata U.to_int List.(assoc_opt name dict) 0
@@ -128,7 +128,7 @@ let grab_doc params =
   let start_doc, end_doc = Hashtbl.(find doc_table doc_file, find completed_table doc_file) in
   doc_file, start_doc, end_doc
 
-let mk_syminfo file (name, _path, kind, (pos : Pos.ipos)) : J.t =
+let mk_syminfo file (name, _path, kind, (pos : Pos.pos_info)) : J.t =
   `Assoc [
     "name", `String name;
     "kind", `Int kind;            (* function *)
@@ -189,7 +189,7 @@ let rec in_range loc (line, pos) =
      start_line - 1 < line && line < end_line - 1 ||
        (start_line - 1 = line && start_col <= pos) ||
          (end_line - 1 = line && pos <= end_col)
-  | ByPos loc -> in_range (LnPos (ipos_of_pos loc)) (line, pos)
+  | ByPos loc -> in_range (LnPos (pos_info loc)) (line, pos)
 
 let get_goals ~doc ~line ~pos =
   let open Lp_doc in
@@ -291,7 +291,7 @@ let do_definition ofmt ~id params =
     | None
     | Some (_, NoPos)     -> `Null
     | Some (_, LnPos pos) -> mk_definfo file pos
-    | Some (_, ByPos pos) -> mk_definfo file (ipos_of_pos pos)
+    | Some (_, ByPos pos) -> mk_definfo file (pos_info pos)
   in
   let msg = LSP.mk_reply ~id ~result:sym_info in
   LIO.send_json ofmt msg

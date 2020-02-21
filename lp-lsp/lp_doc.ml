@@ -112,7 +112,7 @@ let new_doc ~uri ~version ~text =
 (* XXX: Save on close. *)
 let close_doc _modname = ()
 
-let dummy_loc = Pacomb.Pos.phantom
+let dummy_loc = Pacomb.Pos.no_pos
 
 let check_text ~doc =
   let uri, version = doc.uri, doc.version in
@@ -132,7 +132,7 @@ let check_text ~doc =
         match pos with
         | NoPos     -> acc
         | LnPos pos -> (pos,lvl,msg,goal) :: acc
-        | ByPos pos -> (Pos.ipos_of_pos pos,lvl,msg,goal) :: acc
+        | ByPos pos -> (Pos.pos_info pos,lvl,msg,goal) :: acc
       ) [] diag
   with
   | Pure.Parse_error(loc, msg) ->

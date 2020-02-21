@@ -103,9 +103,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   in
   let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs in
-  (* We substitute the RHS with the corresponding metavariables.*)
+  let metas = Array.map (function Some m -> m | None -> assert false) metas in
+  (* We substitute the RHS with the corresponding metavariables. *)
   let fn m =
-    let m = match m with Some(m) -> m | None -> assert false in
     let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
     let xs = Bindlib.new_mvar mkfree xs in
     let e = Array.map _Vari xs in
@@ -154,7 +154,10 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
       fatal r.pos "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
     end;
   (* Check that there is no uninstanciated metas left. *)
-  let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
-  if Basics.has_metas rhs then
-    fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
-      pp_rule (s,h,r.elt)
+  let lhs_metas = Basics.get_metas false lhs in
+  let f m =
+    if not (List.in_sorted cmp_meta m lhs_metas) then
+      fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
+        pp_rule (s,h,r.elt)
+  in
+  Basics.iter_meta false f rhs
