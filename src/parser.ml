@@ -371,7 +371,7 @@ and binop pmax pmin =
       let (good, p) =
         let p_plus_epsilon = p +. 1e-6 in
         match assoc with
-        | Assoc_none  -> (pmin <=  p && p <  pmax, p)
+        | Assoc_none  -> (pmin <=  p && p <  pmax, p_plus_epsilon)
         | Assoc_right -> (pmin <=  p && p <  pmax, p)
         | Assoc_left  -> (pmin <=  p && p <= pmax, p_plus_epsilon)
       in
