@@ -269,22 +269,20 @@ let%parser exposition =
   ; _private_   => Terms.Privat
 
 (** Priority level for an expression (term or type). *)
-type prio = PAtom | PAppl | PUnaO of float | PBinO of float | PFunc
+type prio = PAtom | PAppl | POper of float | PFunc
 
 let string_of_prio = function
   | PAtom   -> "A"
   | PAppl   -> "@"
-  | PUnaO f -> "U" ^ string_of_float f
-  | PBinO f -> "B" ^ string_of_float f
+  | POper f -> "B" ^ string_of_float f
   | PFunc   -> "F"
 
 (** [term] is a parser for a term. *)
 let%parser [@print_param string_of_prio] rec term (p : prio) =
   (* priorities inheritance *)
     PAtom < PAppl
-  ; (p =| PUnaO __) (t::term PAppl)  => t
-  ; (p =| PBinO __) (t::term (PUnaO min_float))  => t
-  ; PBinO min_float < PFunc
+  ; (p =| POper __) (t::term PAppl)  => t
+  ; POper min_float < PFunc
   (* TYPE constant. *)
   ; (p=PAtom) _TYPE_
       => in_pos _pos P_Type
@@ -310,7 +308,7 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=PAppl) (t::term PAppl) (u::term PAtom)
       => in_pos _pos (P_Appl(t,u))
   (* Implication. *)
-  ; (p=PFunc) (a::term (PBinO min_float)) "⇒" (b::term PFunc)
+  ; (p=PFunc) (a::term (POper min_float)) "⇒" (b::term PFunc)
       => in_pos _pos (P_Impl(a,b))
   (* Products. *)
   ; (p=PFunc) "∀" (xs:: ~+ arg) "," (b::term PFunc)
@@ -330,15 +328,15 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=PAtom) (n::NAT)
       => in_pos _pos (P_NLit(n))
   (* Unary operator. *)
-  ; (p=|PUnaO q) ((q,u)>:unop q) (t::term (PUnaO q)) =>
+  ; (p=|POper q) ((q,u)>:unop q) (t::term (POper q)) =>
       in_pos _pos (P_UnaO(u,t))
   (* Binary operator. *)
-  ; (p=|PBinO q) ((pt,t)>:pBinO q) ((q,b)>:binop pt q) ((__,u)::pBinO q) =>
+  ; (p=|POper q) ((pt,t)>:pBinO q) ((q,b)>:binop pt q) ((__,u)::pBinO q) =>
       in_pos _pos (P_BinO(t,b,u))
 
 (** parser collecting the priority, used left of an infix *)
 and pBinO q =
-  (t::term (PBinO q)) =>
+  (t::term (POper q)) =>
     begin
       let p =
         match t.elt with
@@ -376,7 +374,7 @@ and unop pmin =
 (*
 (* NOTE on binary operators. To handle infix binary operators, we need to rely
    on a dependent (Pacomb) grammar. The operands are parsed using the priority
-   level [PBinO]. The left operand is parsed first, together with the operator
+   level [POper]. The left operand is parsed first, together with the operator
    to obtain the corresponding priority and associativity parameters.  We then
    check whether the (binary operator) priority level [pl] of the left operand
    satifies the conditions, and reject it early if it does not.  We then parse
@@ -387,7 +385,7 @@ and unop pmin =
    *)
 and env =
     ()                                 => []
-  ; "[" (ts:: ~+ [","] (term (PBinO min_float))) "]" => ts
+  ; "[" (ts:: ~+ [","] (term (POper min_float))) "]" => ts
 
 (** [arg] parses a single function argument. *)
 and arg =
