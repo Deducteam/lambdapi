@@ -369,9 +369,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
     | (P_LLet(x,xs,t,u), M_Term(_)        )
     | (P_LLet(x,xs,t,u), M_RHS(_)         ) ->
-        assert (xs = []); (* TODO binding functions with let? *)
-        let cons a u = _LLet (scope env t) a u in
-        scope_binder cons env [([Some(x)], None, false)] u
+        (* Scope the binding [x xs := t] *)
+        let t = scope_binder _Abst env xs t in
+        (* Scope all the [let x xs := t in u] *)
+        let cons a u = _LLet t a u in
+        scope_binder cons env [[Some(x)], None, false] u
     | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt           ) ->
