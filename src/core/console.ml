@@ -38,7 +38,7 @@ let err_fmt = Pervasives.ref Format.err_formatter
 (** [no_wrn] disables warnings when set to [true]. *)
 let no_wrn = Pervasives.ref false
 
-(** [wrn popt fmt] prints a yellow warning message with [Printf] format [fmt].
+(** [wrn popt fmt] prints a yellow warning message with [Format] format [fmt].
     Note that the output buffer is flushed by the function, and that output is
     prefixed with the position [popt] if given. A newline is automatically put
     at the end of the message as well. *)

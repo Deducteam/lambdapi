@@ -9,8 +9,8 @@ open Console
     be placed. This information is also useful for installation. *)
 
 (* NOTE the information in the configuration file will eventually be used when
-   aking Lambdapi to install a package. It will also be generated when a fresh
-   package is generated. *)
+   asking Lambdapi to install a package.  It will also be generated when a new
+   package is initialized. *)
 
 (** Configuration file name. *)
 let config_file_name : string = "lambdapi.pkg"
