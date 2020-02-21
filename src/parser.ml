@@ -276,8 +276,9 @@ let qident = no_dot qident
 
 (** [symtag] parses a single symbol tag. *)
 let%parser property =
-    _constant_  => Terms.Const
-  ; _injective_ => Terms.Injec
+    _constant_  => Some Terms.Const
+  ; _injective_ => Some Terms.Injec
+  ; ()          => None
 
 (** [exposition] parses the exposition tag of a symbol.*)
 let%parser exposition =
@@ -287,10 +288,12 @@ let%parser exposition =
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | POper of float | PFunc
 
+let min_prio = -1.0
+
 let string_of_prio = function
   | PAtom   -> "A"
   | PAppl   -> "@"
-  | POper f -> "B" ^ string_of_float f
+  | POper f -> "B(" ^ string_of_float f ^ ")"
   | PFunc   -> "F"
 
 (** [term] is a parser for a term. *)
@@ -298,7 +301,7 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   (* priorities inheritance *)
     PAtom < PAppl
   ; (p =| POper __) (t::term PAppl)  => t
-  ; POper min_float < PFunc
+  ; POper min_prio < PFunc
   (* TYPE constant. *)
   ; (p=PAtom) _TYPE_
       => in_pos _pos P_Type
@@ -324,7 +327,7 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=PAppl) (t::term PAppl) (u::term PAtom)
       => in_pos _pos (P_Appl(t,u))
   (* Implication. *)
-  ; (p=PFunc) (a::term (POper min_float)) "⇒" (b::term PFunc)
+  ; (p=PFunc) (a::term (POper min_prio)) "⇒" (b::term PFunc)
       => in_pos _pos (P_Impl(a,b))
   (* Products. *)
   ; (p=PFunc) "∀" (xs:: ~+ arg) "," (b::term PFunc)
@@ -401,7 +404,7 @@ and unop pmin =
    *)
 and env =
     ()                                 => []
-  ; "[" (ts:: ~+ [","] (term (POper min_float))) "]" => ts
+  ; "[" (ts:: ~+ [","] (term (POper min_prio))) "]" => ts
 
 (** [arg] parses a single function argument. *)
 and arg =
@@ -562,7 +565,7 @@ let%parser cmd =
         List.iter (get_ops _pos) ps;
         P_open(ps)
       end
-  ; (e:: ~?exposition) (p:: ~? property) _symbol_
+  ; (e:: ~?exposition) (p::property) _symbol_
       (s::ident) (al:: ~*arg) ":" (a::term)
       => P_symbol(Option.get Terms.Public e,Option.get Terms.Defin p,s,al,a)
   ; _rule_ (rs:: ~+ [_and_] rule)
@@ -570,7 +573,7 @@ let%parser cmd =
   ; (e:: ~?exposition) _definition_
       (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term)
       => P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  ; (e:: ~? exposition) (st::statement) ((ts,pe)::proof)
+  ; (e:: ~?exposition) (st::statement) ((ts,pe)::proof)
       => P_theorem(Option.get Terms.Public e,st,ts,pe)
   ; _set_ (c::config)
       => P_set(c)
