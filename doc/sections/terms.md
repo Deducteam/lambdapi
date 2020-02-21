@@ -26,7 +26,7 @@ A user-defined term can be either:
 
  * a non-dependent product `A ⇒ T` (syntactic sugar for `∀x:A,T` with `x` not occurring in `T`)
 
- * a `let f (x:A) y z = t in` construction
+ * a `let f (x:A) y z ≔ t in` construction
 
  * application is written by space-separated juxtaposition, except for symbol identifiers declared as infix (e.g. `x+y`)
 
