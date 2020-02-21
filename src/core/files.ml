@@ -137,9 +137,11 @@ let set_lib_root : string -> unit = fun path ->
     for the system. It depends on the current Opam switch (if any), and it may
     or may not correspond to an existing directory. *)
 let default_lib_root : unit -> string = fun _ ->
-  match run_process "opam var lib" with
-  | Some([l]) -> Filename.concat l "lambdapi/lib_root"
-  | _         -> "/usr/local/lib/lambdapi/lib_root"
+  let prefix =
+    try Sys.getenv "OPAM_SWITCH_PREFIX"
+    with Not_found -> "/usr/local"
+  in
+  Filename.concat prefix "lib/lambdapi/lib_root"
 
 (** [lib_root_path ()] returns the canonical library root path. It corresponds
     to a valid path to a directory. The function fails gracefully if it is not
