@@ -69,7 +69,7 @@ let read : file_path -> config_data = fun fname ->
     typically a source file or object file.  If there is no configuration file
     in the same directory as [fname], then we look in the parent directory and
     so on, until this is possible.  Note that [fname] is first normalized with
-    a call to [Filename.real_path]. *)
+    a call to [Filename.realpath]. *)
 let find_config : file_path -> file_path option = fun fname ->
   let fname = Filename.realpath fname in
   let rec find dir =
