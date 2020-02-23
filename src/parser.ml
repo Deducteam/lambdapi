@@ -198,8 +198,10 @@ let escaped_ident : bool -> string Grammar.t = fun with_delim ->
     (* Accumulate until end marker. *)
     let rec work buf pos =
       let (c, buf, pos) = Input.read buf pos in
-      let (next_c,buf',pos') = Input.read buf pos in
-      if c = '|' && next_c = '}' then (buf', pos')
+      if c = '|' then
+        let (next_c,buf',pos') = Input.read buf pos in
+        if next_c = '}' then (buf', pos')
+        else (Buffer.add_char s c; work buf pos)
       else if c <> '\255' then (Buffer.add_char s c; work buf pos)
       else Lex.give_up ()
     in
@@ -235,15 +237,15 @@ let%parser arg_ident =
 
 
 (** Metavariable identifier (regular or escaped, prefixed with ['?']). *)
-let%parser [@layout Blank.none] meta =
-  "?" (id::reg_or_esc_ident) =>
+let%parser meta =
+  "?" (id::Grammar.no_blank_before reg_or_esc_ident) =>
     begin
       if id = "_" then Lex.give_up (); in_pos _pos id
     end
 
 (** Pattern variable identifier (regular or escaped, prefixed with ['&']). *)
-let%parser [@layout Blank.none] patt =
-  "&" (id::reg_or_esc_ident) =>
+let%parser patt =
+  "&" (id::Grammar.no_blank_before reg_or_esc_ident) =>
     begin
       if id = "_" then None else Some(in_pos _pos id)
     end
@@ -282,8 +284,9 @@ let%parser property =
 
 (** [exposition] parses the exposition tag of a symbol.*)
 let%parser exposition =
-    _protected_ => Terms.Protec
-  ; _private_   => Terms.Privat
+    _protected_ => Some Terms.Protec
+  ; _private_   => Some Terms.Privat
+  ; ()          => None
 
 (** Priority level for an expression (term or type). *)
 type prio = PAtom | PAppl | POper of float | PFunc
@@ -350,7 +353,7 @@ let%parser [@print_param string_of_prio] rec term (p : prio) =
   ; (p=|POper q) ((q,u)>:unop q) (t::term (POper q)) =>
       in_pos _pos (P_UnaO(u,t))
   (* Binary operator. *)
-  ; (p=|POper q) ((pt,t)>:pBinO q) ((q,b)>:binop pt q) ((__,u)::pBinO q) =>
+  ; (p=|POper q) ((pt,t)>:pBinO q) ((q,b)>:binop pt q) (u::term (POper q)) =>
       in_pos _pos (P_BinO(t,b,u))
 
 (** parser collecting the priority, used left of an infix *)
@@ -390,7 +393,6 @@ and unop pmin =
       (p,b)
     end
 
-(*
 (* NOTE on binary operators. To handle infix binary operators, we need to rely
    on a dependent (Pacomb) grammar. The operands are parsed using the priority
    level [POper]. The left operand is parsed first, together with the operator
@@ -401,7 +403,6 @@ and unop pmin =
    required condition before accepting the parse tree. *)
 
 (** [env] is a parser for a metavariable environment. *)
-   *)
 and env =
     ()                                 => []
   ; "[" (ts:: ~+ [","] (term (POper min_prio))) "]" => ts
@@ -565,15 +566,15 @@ let%parser cmd =
         List.iter (get_ops _pos) ps;
         P_open(ps)
       end
-  ; (e:: ~?exposition) (p::property) _symbol_
+  ; (e::exposition) (p::property) _symbol_
       (s::ident) (al:: ~*arg) ":" (a::term)
       => P_symbol(Option.get Terms.Public e,Option.get Terms.Defin p,s,al,a)
   ; _rule_ (rs:: ~+ [_and_] rule)
       => P_rules(rs)
-  ; (e:: ~?exposition) _definition_
+  ; (e::exposition) _definition_
       (s::ident) (al:: ~*arg) (ao:: ~? (":" (t::term) => t)) "≔" (t::term)
       => P_definition(Option.get Terms.Public e,false,s,al,ao,t)
-  ; (e:: ~?exposition) (st::statement) ((ts,pe)::proof)
+  ; (e::exposition) (st::statement) ((ts,pe)::proof)
       => P_theorem(Option.get Terms.Public e,st,ts,pe)
   ; _set_ (c::config)
       => P_set(c)
