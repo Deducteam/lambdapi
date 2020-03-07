@@ -77,6 +77,10 @@ let spec =
     let fn acc l = acc ^ "\n        " ^ l in
     List.fold_left fn "\n      Available flags:" (Console.log_summary ())
   in
+  let print_version () =
+    out 0 "Lambdapi version: %s\n%!" Version.version;
+    exit 0
+  in
   let verbose_values = "\n" ^ String.concat "\n"
     [ "      Available values:"
     ; "        ≤ 0 : no output at all"
@@ -129,7 +133,7 @@ let spec =
       , Arg.String Files.new_lib_mapping
       , "<modpath>:<path> maps the given path under the library root" )
     ; ( "--version"
-      , Arg.Unit (fun () -> out 0 "Lambdapi %s\n%!" Version.version; exit 0)
+      , Arg.Unit print_version
       , " Prints the current version number and exits" )
     ; ( "--debug"
       , Arg.String set_default_debug
