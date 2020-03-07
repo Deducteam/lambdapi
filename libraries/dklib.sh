@@ -19,17 +19,6 @@ if [[ "$#" -ne 0 ]]; then
   exit -1
 fi
 
-# Checking for the "lambadpi" command (first in LAMBDAPI).
-if [[ ! -v LAMBDAPI ]]; then
-  # Falling back to installed "lambdapi" command.
-  LAMBDAPI="$(which lambdapi 2> /dev/null)"
-  if [[ -z "${LAMBDAPI}" ]]; then
-    echo "No lambdapi command found... (not in path)"
-    echo "A command may be specified with the LAMBDAPI environment variable."
-    exit -1
-  fi
-fi
-
 # Prepare the library if necessary.
 if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
@@ -74,4 +63,4 @@ fi
 # Checking the files.
 cd ${DIR}
 \time -f "Finished in %E at %P with %MKb of RAM" \
-  ${LAMBDAPI} --lib-root . --no-warnings dklib.dk
+  lambdapi check --lib-root . --no-warnings dklib.dk

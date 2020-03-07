@@ -10,8 +10,6 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-val run : unit -> unit
-
-val use_standard_lsp : bool ref
 val default_log_file : string
-val log_file : string ref
+
+val main : bool -> string -> unit

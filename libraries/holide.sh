@@ -18,17 +18,6 @@ if [[ "$#" -ne 0 ]]; then
   exit -1
 fi
 
-# Checking for the "lambadpi" command (first in LAMBDAPI).
-if [[ ! -v LAMBDAPI ]]; then
-  # Falling back to installed "lambdapi" command.
-  LAMBDAPI="$(which lambdapi 2> /dev/null)"
-  if [[ -z "${LAMBDAPI}" ]]; then
-    echo "No lambdapi command found... (not in path)"
-    echo "A command may be specified with the LAMBDAPI environment variable."
-    exit -1
-  fi
-fi
-
 # Prepare the library if necessary.
 if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
@@ -70,16 +59,15 @@ fi
 # Checking function.
 function check_holide() {
   rm -f hol.lpo
-  ${LAMBDAPI} --gen-obj --lib-root . --no-warnings hol.dk
+  lambdapi check --gen-obj --lib-root . --no-warnings hol.dk
   for FILE in `ls *.dk`; do
     if [ ${FILE} != "hol.dk" ]; then
-      ${LAMBDAPI} --lib-root . --no-warnings ${FILE}
+      lambdapi check --lib-root . --no-warnings ${FILE}
     fi
   done
 }
 
-# Export stuff for the checking function.
-export readonly LAMBDAPI=${LAMBDAPI}
+# Export the checking function.
 export -f check_holide
 
 # Run the actual checks.

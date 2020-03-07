@@ -2,4 +2,4 @@
  (name lambdapi)
  (public_name lambdapi)
  (modules lambdapi)
- (libraries lambdapi.core lambdapi.lsp))
+ (libraries cmdliner lambdapi.core lambdapi.lsp))

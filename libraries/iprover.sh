@@ -22,17 +22,6 @@ if [[ "$#" -ne 0 ]]; then
   exit -1
 fi
 
-# Checking for the "lambadpi" command (first in LAMBDAPI).
-if [[ ! -v LAMBDAPI ]]; then
-  # Falling back to installed "lambdapi" command.
-  LAMBDAPI="$(which lambdapi 2> /dev/null)"
-  if [[ -z "${LAMBDAPI}" ]]; then
-    echo "No lambdapi command found... (not in path)"
-    echo "A command may be specified with the LAMBDAPI environment variable."
-    exit -1
-  fi
-fi
-
 # Prepare the library if necessary.
 if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
@@ -210,7 +199,7 @@ fi
 cd ${DIR}
 
 # Compiling the theory file.
-${LAMBDAPI} --gen-obj --lib-root . --no-warnings FOL.dk
+lambdapi check --gen-obj --lib-root . --no-warnings FOL.dk
 
 # Checking function.
 function check() {
@@ -219,13 +208,13 @@ function check() {
     SIG_FILE="$1_sig.dk"
     OBJ_FILE="$1_sig.lpo"
     PRF_FILE="$1_prf.dk"
-    ${LAMBDAPI} --verbose 0 --gen-obj --lib-root . --no-warnings ${SIG_FILE}
+    lambdapi check --verbose 0 --gen-obj --lib-root . --no-warnings ${SIG_FILE}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${SIG_FILE}"
       echo "FAILED ${SIG_FILE}" >> error.log
     elif [ -f "${PRF_FILE}" ]; then
       echo -e "\033[0;32mOK\033[0m ${SIG_FILE}"
-      ${LAMBDAPI} --verbose 0 --lib-root . --no-warnings ${PRF_FILE}
+      lambdapi check --verbose 0 --lib-root . --no-warnings ${PRF_FILE}
       if [ $? -ne 0 ]; then
         echo -e "\033[0;31mKO\033[0m ${PRF_FILE}"
         echo "FAILED ${PRF_FILE}" >> error.log
@@ -239,8 +228,7 @@ function check() {
     fi
   }
 
-  # Export things for the module checking function.
-  export readonly LAMBDAPI=${LAMBDAPI}
+  # Export the module checking function.
   export -f check_module
 
   # Run module check on all modules.
@@ -249,7 +237,6 @@ function check() {
 }
 
 # Export stuff for the checking function.
-export readonly LAMBDAPI=${LAMBDAPI}
 export readonly NBWORKERS=${NBWORKERS}
 export -f check
 

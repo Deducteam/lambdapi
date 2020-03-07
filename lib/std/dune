@@ -1,7 +1,7 @@
 (rule
  (target bool.lpo)
  (deps   bool.lp)
- (action (run lambdapi --lib-root .. --verbose 0 --gen-obj %{deps})))
+ (action (run lambdapi check --lib-root .. --verbose 0 --gen-obj %{deps})))
 
 (install
  (section lib)

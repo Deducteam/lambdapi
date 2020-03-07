@@ -25,8 +25,8 @@ library root.  The typical case is when a library (or package) is still  under
 development. In that case,  what we can do is map the development folder under
 the library root, similarly to what would happen when mounting a volume in our
 file system. There are two ways of doing that, the first one being to used the
-`--map <MOD_PATH>:<DIR>` command line option.  However, the best way is to use
-a package configuration file.
+`--map-dir MOD:DIR` command line option.  However, the best way is to use a
+package configuration file.
 
 #### Package configuration file
 
@@ -40,8 +40,8 @@ contain the following fields (an example is given below for the syntax):
  - `root_path` gives the module path under which the library is to be  placed.
    Assuming that our configuration file is at `<REPO_ROOT>/lambdapi.pkg`, this
    means that `<REPO_ROOT>/a/b/c.lp` will get module path `<ROOT_PATH>.a.b.c`.
-   In other words this is amounts to giving `--map <ROOT_PATH>:<REPO_ROOT>` on
-   the command line.
+   In other words this is amounts to giving `--map-dir <ROOT_PATH>:<REPO_ROOT>`
+   on the command line.
 
 In the future,  more useful meta data will be added to the configuration file,
 for example the name of the author, version number, dependencies, ...

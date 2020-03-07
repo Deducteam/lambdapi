@@ -5,9 +5,9 @@ A prototype language server is provided with Lambdapi. It follows (an extension
 of) the Language Server Protocol (LSP), which is supported by most editors. See
 below for setting up your favorite editor.
 
-The server can be run using the command `lambdapi --lsp-server`. The extra flag
-`--standard-lsp` can be use to enforce strict LSP protocol (without extensions
-targeted at logical formalizations).
+The server is run using the command `lambdapi lsp`. The flag `--standard-lsp`
+can be use to enforce strict LSP protocol (without extensions targeted at
+logical formalizations).
 
 ### VSCode
 

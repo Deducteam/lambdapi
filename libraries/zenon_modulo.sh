@@ -20,17 +20,6 @@ if [[ "$#" -ne 0 ]]; then
   exit -1
 fi
 
-# Checking for the "lambadpi" command (first in LAMBDAPI).
-if [[ ! -v LAMBDAPI ]]; then
-  # Falling back to installed "lambdapi" command.
-  LAMBDAPI="$(which lambdapi 2> /dev/null)"
-  if [[ -z "${LAMBDAPI}" ]]; then
-    echo "No lambdapi command found... (not in path)"
-    echo "A command may be specified with the LAMBDAPI environment variable."
-    exit -1
-  fi
-fi
-
 # Prepare the library if necessary.
 if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
@@ -76,7 +65,7 @@ cd ${DIR}/workdir
 
 # Compiling the theory files.
 echo "Compiling the theory files..."
-$LAMBDAPI --verbose 0 --gen-obj --lib-root . --no-warnings *.dk
+lambdapi check --verbose 0 --gen-obj --lib-root . --no-warnings *.dk
 
 # Checking function.
 function check() {
@@ -93,7 +82,7 @@ function check() {
     cat ${FILE_DK} | grep -v "^#NAME" >> ${MODNAME}.aux
     mv ${MODNAME}.aux ${FILE_DK}
 
-    ${LAMBDAPI} --verbose 0 --lib-root . --no-warnings ${FILE_DK}
+    lambdapi check --verbose 0 --lib-root . --no-warnings ${FILE_DK}
     if [ $? -ne 0 ]; then
       echo -e "\033[0;31mKO\033[0m ${FILE_GZ}"
       echo "FAILED ${FILE_GZ}" >> error.log
@@ -103,8 +92,7 @@ function check() {
     rm -f ${FILE_DK}
   }
 
-  # Export things for the single file checking function.
-  export readonly LAMBDAPI=${LAMBDAPI}
+  # Export the single file checking function.
   export -f check_gz
 
   # Run check on all files.
@@ -115,7 +103,6 @@ function check() {
 
 
 # Export stuff for the checking function.
-export readonly LAMBDAPI=${LAMBDAPI}
 export readonly NBWORKERS=${NBWORKERS}
 export -f check
 

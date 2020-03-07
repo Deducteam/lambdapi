@@ -100,13 +100,11 @@ let loggers : logger_data list Pervasives.ref = Pervasives.ref []
 (** [default_loggers] give the loggers enabled by default. *)
 let default_loggers : string Pervasives.ref = Pervasives.ref ""
 
-(** [log_summary ()] returns descriptions for logging options. *)
-let log_summary : unit -> string list = fun () ->
-  let fn data =
-    Format.sprintf "%c : debugging information for %s"
-      data.logger_key data.logger_desc
-  in
-  List.sort String.compare (List.map fn Pervasives.(!loggers))
+(** [log_summary ()] gives the keys and descriptions for logging options. *)
+let log_summary : unit -> (char * string) list = fun () ->
+  let fn data = (data.logger_key, data.logger_desc) in
+  let compare (c1, _) (c2, _) = Char.compare c1 c2 in
+  List.sort compare (List.map fn Pervasives.(!loggers))
 
 (** [set_log value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)

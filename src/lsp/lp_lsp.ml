@@ -384,7 +384,7 @@ let process_input ofmt (com : J.t) =
     LIO.log_error "[BT]" bt;
     LIO.log_error "process_input" (Printexc.to_string exn)
 
-let lsp_main log_file std =
+let main std log_file =
 
   Printexc.record_backtrace true;
   LSP.std_protocol := std;
@@ -418,9 +418,4 @@ let lsp_main log_file std =
     close_out debug_oc;
     close_out lp_oc
 
-(* Stuff used to configure and run the server from the main file. *)
-let use_standard_lsp : bool ref = ref !LSP.std_protocol
 let default_log_file : string = "/tmp/lambdapi_lsp_log.txt"
-let log_file : string ref = ref default_log_file
-
-let run () = lsp_main !log_file !use_standard_lsp
