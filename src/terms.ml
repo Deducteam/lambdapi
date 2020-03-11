@@ -416,7 +416,7 @@ let _Wild : tbox = Bindlib.box Wild
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
-(** [_LLet t u] lifts let binding [b] of term [t] with type annotation. *)
+(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun t a u -> LLet(t, a, u))
 
