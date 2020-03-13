@@ -191,6 +191,8 @@ let pp_command : p_command pp = fun oc cmd ->
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
+  | P_hints(hs)                     ->
+      out "%a" (List.pp pp_p_rule "\n") hs
   | P_definition(e,_,s,args,ao,t)   ->
       out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;

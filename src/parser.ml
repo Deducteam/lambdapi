@@ -156,6 +156,7 @@ let _compute_    = KW.create "compute"
 let _constant_   = KW.create "constant"
 let _definition_ = KW.create "definition"
 let _focus_      = KW.create "focus"
+let _hint_       = KW.create "hint"
 let _in_         = KW.create "in"
 let _injective_  = KW.create "injective"
 let _intro_      = KW.create "assume"
@@ -580,6 +581,8 @@ let parser cmd =
                   Option.get Terms.Defin p,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
+  | _hint_ r:rule rs:{_:_and_ rule}*
+      -> P_hints(r::rs)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
   | e:exposition? st:statement (ts,pe):proof

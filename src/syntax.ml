@@ -180,6 +180,8 @@ type p_command_aux =
   (** Symbol declaration. *)
   | P_rules      of p_rule list
   (** Rewriting rule declarations. *)
+  | P_hints      of p_rule list
+  (** Unification hints declarations. *)
   | P_definition of Terms.expo * bool * ident * p_arg list * p_type option
                   * p_term
   (** Definition of a symbol (unfoldable). *)
