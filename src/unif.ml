@@ -355,6 +355,49 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> error ()
 
+and try_hints : problems -> unif_constrs option =
+  fun ({unsolved; to_solve; _} as pb) ->
+  (* Symbol used to represent the unification relation. *)
+  let hint_unif = {sym_name="un";sym_type=ref Kind;sym_path=[];
+                   sym_def=ref None;sym_impl=[];
+                   sym_tree=ref Tree_types.empty_dtree;sym_prop=Defin;
+                   sym_expo=Public;sym_rules=ref []}
+  in
+  (* Symbol used to represent the conjunction of unification problems. *)
+  (* let hint_conj = {sym_name="un";sym_type=ref Kind;sym_path=[];
+   *                  sym_def=ref None;sym_impl=[];
+   *                  sym_tree=ref Tree_types.empty_dtree;sym_prop=Defin;
+   *                  sym_expo=Public;sym_rules=ref []}
+   * in *)
+  match unsolved with
+  | []            -> Some(to_solve)
+  | c::cs ->
+      let _,s,t = c in
+      let exception No_match in
+      let tree = !(hint_unif.sym_tree) in
+      try
+        let rhs =
+          match Eval.tree_walk tree [s;t] with
+          | Some(r,[]) -> r
+          | Some(_)    -> assert false (* Everything should be matched *)
+          | None       ->
+          match Eval.tree_walk tree [t;s] with
+          | Some(r,[]) -> r
+          | Some(_)    -> assert false (* Everything should be matched *)
+          | None       -> raise No_match
+        in
+        (* The head symbol should be the builtin 'unif' symbol. *)
+        let (h,ts) = Basics.get_args rhs in
+        assert (h == Symb(hint_unif, Nothing));
+        (* FIXME extend to the conjunction case *)
+        match ts with
+        | [s;t] ->
+            let to_solve = (Ctxt.empty, s, t) :: pb.to_solve in
+            let unsolved = cs in
+            Some(solve {pb with to_solve; unsolved})
+        | _     -> assert false
+      with No_match -> None
+
 (** [solve builtins flag problems] attempts to solve [problems], after having
    sets the value of [can_instantiate] to [flag].  If there is no solution,
    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
@@ -362,4 +405,4 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
   fun _builtins b p ->
   can_instantiate := b;
-  try Some (solve p) with Unsolvable -> None
+  try Some (solve p) with Unsolvable -> try_hints p
