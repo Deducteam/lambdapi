@@ -355,20 +355,12 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> error ()
 
-and try_hints : problems -> unif_constrs option =
-  fun ({unsolved; to_solve; _} as pb) ->
+and try_hints : sym StrMap.t -> problems -> unif_constrs option =
+  fun builtins ({unsolved; to_solve; _} as pb) ->
   (* Symbol used to represent the unification relation. *)
-  let hint_unif = {sym_name="un";sym_type=ref Kind;sym_path=[];
-                   sym_def=ref None;sym_impl=[];
-                   sym_tree=ref Tree_types.empty_dtree;sym_prop=Defin;
-                   sym_expo=Public;sym_rules=ref []}
-  in
+  let hint_unif = StrMap.find "hint_unif" builtins in
   (* Symbol used to represent the conjunction of unification problems. *)
-  (* let hint_conj = {sym_name="un";sym_type=ref Kind;sym_path=[];
-   *                  sym_def=ref None;sym_impl=[];
-   *                  sym_tree=ref Tree_types.empty_dtree;sym_prop=Defin;
-   *                  sym_expo=Public;sym_rules=ref []}
-   * in *)
+  (* FIXME *)
   match unsolved with
   | []            -> Some(to_solve)
   | c::cs ->
@@ -403,6 +395,6 @@ and try_hints : problems -> unif_constrs option =
    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
    list [cs] is a list of unsolved convertibility constraints. *)
 let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
-  fun _builtins b p ->
+  fun builtins b p ->
   can_instantiate := b;
-  try Some (solve p) with Unsolvable -> try_hints p
+  try Some (solve p) with Unsolvable -> try_hints builtins p

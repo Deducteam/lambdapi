@@ -30,10 +30,18 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
+(** Special symbol for unification hints. Practically, the term
+     [Symb(hint_unif,_) t u] represents the unification of [t] and [u]. *)
+let hint_unif : sym =
+  {sym_name="hint_unif"; sym_type=ref Kind; sym_path=[];
+   sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree;
+   sym_prop=Defin; sym_expo=Public; sym_rules=ref []}
+
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
+  let sign_builtins = ref (StrMap.singleton "hint_unif" hint_unif) in
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty
-  ; sign_builtins = ref StrMap.empty; sign_unops = ref StrMap.empty
+  ; sign_builtins; sign_unops = ref StrMap.empty
   ; sign_binops = ref StrMap.empty; sign_idents = ref StrSet.empty }
 
 (** [find sign name] finds the symbol named [name] in [sign] if it exists, and
