@@ -18,6 +18,9 @@ let print_implicits : bool ref = Console.register_flag "print_implicits" false
 (** Flag controling the printing of implicit arguments. *)
 let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 
+(** Flag controlling the printing of the context in unification. *)
+let print_contexts : bool ref = Console.register_flag "print_contexts" false
+
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
 let pp_symbol : pp_hint -> sym pp = fun h oc s ->
@@ -135,11 +138,9 @@ and pp_term : term pp = fun oc t ->
     | LLet(t,a,u) ->
         if wrap then out oc "(";
         let x, u = Bindlib.unbind u in
-        out oc "let %a : %a ≔ %a in %a"
-          pp_tvar x
-          (pp `Atom) a
-          (pp `Atom) t
-          (pp `Atom) u;
+        out oc "let %a" pp_tvar x;
+        if !print_domains then out oc ":%a" (pp `Atom) a;
+        out oc "≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
   in
   pp `Func oc (cleanup t)
@@ -165,6 +166,7 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
   else List.pp pp_e ", " oc (List.rev ctx)
 
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
-   output channel [oc]. *)
+    output channel [oc]. *)
 let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "[%a] ⊢ %a ≡ %a" pp_ctxt ctx pp t pp u
+  if !print_contexts then Format.fprintf oc "[%a] ⊢ " pp_ctxt ctx;
+  Format.fprintf oc "%a ≡ %a" pp t pp u
