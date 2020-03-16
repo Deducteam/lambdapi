@@ -36,6 +36,9 @@ rule plus z &n      → &n
 injective symbol I (n: Nat): TYPE
 symbol H (n: Nat): I n ⇒ Nat
 symbol iz: I z
+//    &x ≡ z   &y ≡ z
+// -------------------
+//    plus &x &y ≡ z
 hint hint_unif (plus &x &y) z → hint_conj (hint_unif &x z) (hint_unif &y z)
 // Trigger the unification problem plus ?1 ?2 ≡ z
 compute H (plus _ _) iz
