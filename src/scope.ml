@@ -11,17 +11,17 @@ open Env
 
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
-  { signature  : Sign.t                    (** Current signature.   *)
-  ; in_scope   : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
-  ; aliases    : module_path StrMap.t      (** Established aliases. *)
-  ; builtins   : sym StrMap.t              (** Builtin symbols.     *) }
+  { signature : Sign.t                    (** Current signature.   *)
+  ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
+  ; aliases   : module_path StrMap.t      (** Established aliases. *)
+  ; builtins  : sym StrMap.t              (** Builtin symbols.     *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
-  { signature  = sign
-  ; in_scope   = StrMap.empty
-  ; aliases    = StrMap.empty
-  ; builtins   = StrMap.empty }
+  { signature = sign
+  ; in_scope  = StrMap.empty
+  ; aliases   = StrMap.empty
+  ; builtins  = StrMap.empty }
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
