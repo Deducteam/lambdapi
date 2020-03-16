@@ -358,7 +358,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 and try_hints : sym StrMap.t -> unif_constrs -> unif_constrs option =
   fun builtins cs ->
   (* Symbol used to represent the unification relation. *)
-  let hint_unif = StrMap.find "hint_unif" Pervasives.(!(Sign.pervasives)) in
+  let hint_unif = StrMap.find "hint_unif" Sign.pervasives in
   (* Symbol used to represent the conjunction of unification problems. *)
   (* FIXME *)
   match cs with
@@ -387,6 +387,8 @@ and try_hints : sym StrMap.t -> unif_constrs -> unif_constrs option =
         match ts with
         | [s;t] ->
             let to_solve = (ctx, s, t) :: cs in
+            if !log_enabled then
+              log_unif (gre "hint [%a]") pp_constr (ctx,s,t);
             (* FIXME: we will potentially re fail on not processed failed
                constraints *)
             Some(solve {no_problems with to_solve})

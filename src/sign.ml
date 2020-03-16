@@ -31,7 +31,7 @@ type t =
    module to additional reduction rules defined in the current signature. *)
 
 (** [pervasives] contains the initial signature with pervasive symbols. *)
-let pervasives: sym StrMap.t Pervasives.ref =
+let pervasives: sym StrMap.t =
   (* Special symbol for unification hints. Practically, the term
      [Symb(hint_unif,_) t u] represents the unification of [t] and [u]. *)
   let hint_unif : sym =
@@ -39,7 +39,7 @@ let pervasives: sym StrMap.t Pervasives.ref =
     ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
     ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
   in
-  Pervasives.ref (StrMap.singleton "hint_unif" hint_unif)
+  StrMap.singleton "hint_unif" hint_unif
 
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->

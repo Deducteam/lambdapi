@@ -52,7 +52,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          try (StrMap.find s Pervasives.(!(Sign.pervasives)), Nothing) with Not_found ->
+          try (StrMap.find s Sign.pervasives, Nothing) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
