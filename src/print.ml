@@ -18,6 +18,9 @@ let print_implicits : bool ref = Console.register_flag "print_implicits" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
+(** Flag controling the printing of implicit arguments. *)
+let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
+
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
 let pp_symbol : pp_hint -> sym pp = fun h oc s ->
@@ -33,11 +36,14 @@ let pp_tvar : tvar pp = fun oc x ->
   Format.pp_print_string oc (Bindlib.name_of x)
 
 (** [pp_meta oc m] prints the uninstantiated meta-variable [m] to [oc]. *)
-let pp_meta : meta pp = fun oc m ->
-  Format.pp_print_string oc (meta_name m)
+let rec pp_meta : meta pp = fun oc m ->
+  if !print_meta_type then
+    Format.fprintf oc "(%s:%a)" (meta_name m) pp_term !(m.meta_type)
+  else
+    Format.pp_print_string oc (meta_name m)
 
 (** [pp_term oc t] prints the term [t] to the channel [oc]. *)
-let pp_term : term pp = fun oc t ->
+and pp_term : term pp = fun oc t ->
   let out = Format.fprintf in
   (* The possible priority levels are [`Func] (top level, including
      abstraction or product), [`Appl] (application) and [`Atom] (smallest
