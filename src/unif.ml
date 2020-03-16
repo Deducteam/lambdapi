@@ -106,7 +106,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let error () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
+    fatal_msg "[%a] and [%a] are not convertible due to error.\n" pp t1 pp t2;
     raise Unsolvable
   in
 
@@ -355,16 +355,17 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> error ()
 
-and try_hints : sym StrMap.t -> problems -> unif_constrs option =
-  fun builtins ({unsolved; to_solve; _} as pb) ->
+and try_hints : sym StrMap.t -> unif_constrs -> unif_constrs option =
+  fun builtins cs ->
   (* Symbol used to represent the unification relation. *)
-  let hint_unif = StrMap.find "hint_unif" builtins in
+  let hint_unif = StrMap.find "hint_unif" Pervasives.(!(Sign.pervasives)) in
   (* Symbol used to represent the conjunction of unification problems. *)
   (* FIXME *)
-  match unsolved with
-  | []            -> Some(to_solve)
+  match cs with
+  | []            -> Some([])
   | c::cs ->
-      let _,s,t = c in
+      if !log_enabled then log_unif "hint [%a]" pp_constr c;
+      let ctx,s,t = c in
       let exception No_match in
       let tree = !(hint_unif.sym_tree) in
       try
@@ -380,15 +381,17 @@ and try_hints : sym StrMap.t -> problems -> unif_constrs option =
         in
         (* The head symbol should be the builtin 'unif' symbol. *)
         let (h,ts) = Basics.get_args rhs in
-        assert (h == Symb(hint_unif, Nothing));
+        (* Assert that the rhs is a unification hint. *)
+        assert (match h with Symb(s,_) -> s == hint_unif | _ -> false);
         (* FIXME extend to the conjunction case *)
         match ts with
         | [s;t] ->
-            let to_solve = (Ctxt.empty, s, t) :: pb.to_solve in
-            let unsolved = cs in
-            Some(solve {pb with to_solve; unsolved})
+            let to_solve = (ctx, s, t) :: cs in
+            (* FIXME: we will potentially re fail on not processed failed
+               constraints *)
+            Some(solve {no_problems with to_solve})
         | _     -> assert false
-      with No_match -> None
+      with No_match -> try_hints builtins cs
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
    sets the value of [can_instantiate] to [flag].  If there is no solution,
@@ -397,4 +400,7 @@ and try_hints : sym StrMap.t -> problems -> unif_constrs option =
 let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
   fun builtins b p ->
   can_instantiate := b;
-  try Some (solve p) with Unsolvable -> try_hints builtins p
+  match solve p with
+  | exception Unsolvable -> None
+  | []                   -> Some([])
+  | cs                   -> try_hints builtins cs

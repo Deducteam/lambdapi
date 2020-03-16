@@ -153,7 +153,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Approximately same processing as rules without SR checking. *)
       let hs = List.map (scope_rule ss) hs in
       let add_hint (s,h,r) =
-        let hu = StrMap.find "hint_unif" ss.pervasives in
+        let hu = StrMap.find "hint_unif" Pervasives.(!(Sign.pervasives)) in
         assert (s == hu);
         hu.sym_rules := !(hu.sym_rules) @ [r.elt];
         out 3 "(hint) %a\n" Print.pp_rule (hu,h,r.elt)

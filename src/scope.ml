@@ -12,7 +12,6 @@ open Env
 (** State of the signature, including aliasing and accessible symbols. *)
 type sig_state =
   { signature  : Sign.t                    (** Current signature.   *)
-  ; pervasives : sym StrMap.t              (** Pervasive symbols    *)
   ; in_scope   : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases    : module_path StrMap.t      (** Established aliases. *)
   ; builtins   : sym StrMap.t              (** Builtin symbols.     *) }
@@ -20,7 +19,6 @@ type sig_state =
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
   { signature  = sign
-  ; pervasives = Sign.pervasives
   ; in_scope   = StrMap.empty
   ; aliases    = StrMap.empty
   ; builtins   = StrMap.empty }
@@ -54,7 +52,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          try (StrMap.find s st.pervasives, Nothing) with Not_found ->
+          try (StrMap.find s Pervasives.(!(Sign.pervasives)), Nothing) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
