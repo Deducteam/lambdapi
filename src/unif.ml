@@ -75,6 +75,41 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
                                 variable of [vs] occurring in [u]. *)
         && (set_meta m (Bindlib.unbox bu); true)
 
+(** [try_hints ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
+    declared unification hints. *)
+let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
+  fun ctx s t ->
+  (* Symbol used to represent the unification relation. *)
+  let hint_unif = StrMap.find "hint_unif" Sign.pervasives in
+  (* Symbol used to represent the conjunction of unification problems. *)
+  (* FIXME *)
+  if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
+  let exception No_match in
+  let tree = !(hint_unif.sym_tree) in
+  try
+    let rhs =
+      match Eval.tree_walk tree [s;t] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       ->
+      match Eval.tree_walk tree [t;s] with
+      | Some(r,[]) -> r
+      | Some(_)    -> assert false (* Everything should be matched *)
+      | None       -> raise No_match
+    in
+    (* The head symbol should be the builtin 'unif' symbol. *)
+    let (h,ts) = Basics.get_args rhs in
+    (* Assert that the rhs is a unification hint. *)
+    assert (match h with Symb(s,_) -> s == hint_unif | _ -> false);
+    (* FIXME extend to the conjunction case *)
+    match ts with
+    | [s;t] ->
+        if !log_enabled then
+          log_unif (gre "hint [%a]") pp_constr (ctx,s,t);
+        Some([(ctx,s,t)])
+    | _     -> assert false
+  with No_match -> None
+
 (** [solve cfg p] tries to solve the unification problems of [p] and
     returns the constraints that could not be solved. *)
 let rec solve : problems -> unif_constrs = fun p ->
@@ -99,8 +134,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
     if Eval.eq_modulo ~ctx t1 t2 then solve p else
+    (* Try to solve using hints before adding to unsolved. *)
     match try_hints ctx t1 t2 with
       | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
+      | Some([]) -> assert false (* Hints shouldn't have been necessary *)
       | Some(cs) -> solve {p with to_solve = cs @ p.to_solve}
   in
 
@@ -355,39 +392,6 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
 
   | (_          , _          ) -> error ()
-
-and try_hints : Ctxt.t -> term -> term -> unif_constrs option =
-  fun ctx s t ->
-  (* Symbol used to represent the unification relation. *)
-  let hint_unif = StrMap.find "hint_unif" Sign.pervasives in
-  (* Symbol used to represent the conjunction of unification problems. *)
-  (* FIXME *)
-  if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
-  let exception No_match in
-  let tree = !(hint_unif.sym_tree) in
-  try
-    let rhs =
-      match Eval.tree_walk tree [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
-      match Eval.tree_walk tree [t;s] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       -> raise No_match
-    in
-    (* The head symbol should be the builtin 'unif' symbol. *)
-    let (h,ts) = Basics.get_args rhs in
-    (* Assert that the rhs is a unification hint. *)
-    assert (match h with Symb(s,_) -> s == hint_unif | _ -> false);
-    (* FIXME extend to the conjunction case *)
-    match ts with
-    | [s;t] ->
-        if !log_enabled then
-          log_unif (gre "hint [%a]") pp_constr (ctx,s,t);
-        Some([(ctx,s,t)])
-    | _     -> assert false
-  with No_match -> None
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
    sets the value of [can_instantiate] to [flag].  If there is no solution,
