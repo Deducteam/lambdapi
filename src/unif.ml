@@ -393,7 +393,7 @@ and try_hints : sym StrMap.t -> unif_constrs -> unif_constrs option =
                constraints *)
             Some(solve {no_problems with to_solve})
         | _     -> assert false
-      with No_match -> try_hints builtins cs
+      with No_match -> Option.map (fun cs -> c :: cs) (try_hints builtins cs)
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
    sets the value of [can_instantiate] to [flag].  If there is no solution,
