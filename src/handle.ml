@@ -152,7 +152,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_hints(hs)                  ->
       (* Approximately same processing as rules without SR checking. *)
       let hs = List.map (scope_rule ss) hs in
-      let hu = StrMap.find "hint_unif" Sign.pervasives in
+      let hu = List.assoc "hint_unif" Sign.pervasives in
       let add_hint (s,h,r) =
         (* All hints must concern the [hint_unif] symbol *)
         assert (s == hu);

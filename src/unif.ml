@@ -80,7 +80,7 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
 let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
   fun ctx s t ->
   (* Symbol used to represent the unification relation. *)
-  let hint_unif = StrMap.find "hint_unif" Sign.pervasives in
+  let hint_unif = List.assoc "hint_unif" Sign.pervasives in
   (* Symbol used to represent the conjunction of unification problems. *)
   (* FIXME *)
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
