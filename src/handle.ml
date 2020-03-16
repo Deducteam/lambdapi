@@ -152,16 +152,22 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_hints(hs)                  ->
       (* Approximately same processing as rules without SR checking. *)
       let hs = List.map (scope_rule ss) hs in
+      let hu = StrMap.find "hint_unif" Sign.pervasives in
       let add_hint (s,h,r) =
-        let hu = StrMap.find "hint_unif" Sign.pervasives in
+        (* All hints must concern the [hint_unif] symbol *)
         assert (s == hu);
         hu.sym_rules := !(hu.sym_rules) @ [r.elt];
         out 3 "(hint) %a\n" Print.pp_rule (hu,h,r.elt)
       in
       List.iter add_hint hs;
-      let syms = List.remove_phys_dups (List.map (fun (s,_,_) -> s) hs) in
-      List.iter Tree.update_dtree syms;
-      (ss, None)
+      Tree.update_dtree hu;
+      if Pervasives.(!write_trees) then
+        begin
+          let fname = Printf.sprintf "hint_unif.gv" in
+          Console.out 3 "Writing file [%s]\n" fname;
+          Tree_graphviz.to_dot fname hu
+        end;
+      (ss, None) (* Unchanged *)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
       if Sign.mem ss.signature x.elt then
