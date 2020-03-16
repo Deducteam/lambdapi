@@ -82,7 +82,7 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
   (* Symbol used to represent the unification relation. *)
   let hint_unif = List.assoc "hint_unif" Sign.pervasives in
   (* Symbol used to represent the conjunction of unification problems. *)
-  (* FIXME *)
+  let hint_conj = List.assoc "hint_conj" Sign.pervasives in
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
   let tree = !(hint_unif.sym_tree) in
@@ -97,17 +97,18 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
       | Some(_)    -> assert false (* Everything should be matched *)
       | None       -> raise No_match
     in
-    (* The head symbol should be the builtin 'unif' symbol. *)
-    let (h,ts) = Basics.get_args rhs in
-    (* Assert that the rhs is a unification hint. *)
-    assert (match h with Symb(s,_) -> s == hint_unif | _ -> false);
-    (* FIXME extend to the conjunction case *)
-    match ts with
-    | [s;t] ->
-        if !log_enabled then
-          log_unif (gre "hint [%a]") pp_constr (ctx,s,t);
-        Some([(ctx,s,t)])
-    | _     -> assert false
+    let rec subpb_in t =
+      match Basics.get_args (unfold t) with
+      | (Symb(u,_),[s;t]) ->
+          if u == hint_unif then [(ctx,s,t)] else
+          if u == hint_conj then subpb_in s @ subpb_in t
+          else assert false (* Ill structured term *)
+      | _                 -> assert false
+    in
+    let subpbs = subpb_in rhs in
+    let pp_subpbs = List.pp pp_constr ", " in
+    if !log_enabled then log_unif (gre "hints [%a]") pp_subpbs subpbs;
+    Some(subpbs)
   with No_match -> None
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
