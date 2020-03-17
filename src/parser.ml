@@ -451,7 +451,7 @@ let parser rule =
 
 (** [unif] parses a unification problem. *)
 let parser unif =
-  | term "~" term
+  | term "≡" term
 
 (** [hint] is a parser for a unification hint. *)
 let parser hint =

@@ -13,6 +13,7 @@ reserved "definition"
 reserved "focus"
 reserved "in"
 reserved "injective"
+reserved "hint"
 reserved "let"
 reserved "open"
 reserved "print"
@@ -111,6 +112,10 @@ reserved "why3"
   | <patt> "→" <term>
 
 // TODO rule naming, positive / negative
+
+// Unification hint
+<hint> ::=
+  | <patt> "≡" <patt> "→" <term> "≡" <term> {"," <term> "≡" <term>}*
 
 // Rewrite pattern
 <rw_patt> ::=
