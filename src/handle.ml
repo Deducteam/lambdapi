@@ -149,17 +149,12 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           List.iter write_tree syms
         end;
       (ss, None)
-  | P_hints(hs)                  ->
+  | P_hint(h)                    ->
       (* Approximately same processing as rules without SR checking. *)
-      let hs = List.map (scope_rule ss) hs in
+      let h = scope_hint ss h in
       let hu = List.assoc "hint_unif" Sign.pervasives in
-      let add_hint (s,h,r) =
-        (* All hints must concern the [hint_unif] symbol *)
-        assert (s == hu);
-        hu.sym_rules := !(hu.sym_rules) @ [r.elt];
-        out 3 "(hint) %a\n" Print.pp_rule (hu,h,r.elt)
-      in
-      List.iter add_hint hs;
+      hu.sym_rules := !(hu.sym_rules) @ [h.elt];
+      out 3 "(hint) %a\n" Print.pp_rule (hu,Nothing,h.elt);
       Tree.update_dtree hu;
       if Pervasives.(!write_trees) then
         begin

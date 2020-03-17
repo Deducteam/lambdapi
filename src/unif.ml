@@ -99,10 +99,9 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) ->
-          if u == hint_unif then [(ctx,s,t)] else
-          if u == hint_conj then subpb_in s @ subpb_in t
-          else assert false (* Ill structured term *)
+      | (Symb(u,_),[s;t]) when u == hint_unif -> [(ctx,s,t)]
+      | (Symb(u,_),ts   ) when u == hint_conj ->
+          List.concat (List.map subpb_in ts)
       | _                 -> assert false
     in
     let subpbs = subpb_in rhs in

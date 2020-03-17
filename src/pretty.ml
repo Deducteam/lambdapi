@@ -108,6 +108,14 @@ let pp_p_rule : p_rule pp = fun oc r ->
   let (lhs, rhs) = r.elt in
   Format.fprintf oc "@[<hov 3>rule %a@ → %a@]@?" pp_p_term lhs pp_p_term rhs
 
+let pp_p_hint : p_hint pp = fun oc h ->
+  let (l,r,rs) = h.elt in
+  let pp_unif oc (l,r) =
+    Format.fprintf oc "@[%a@ ~ %a@]@?" pp_p_term l pp_p_term r
+  in
+  let pp_unifs = List.pp (pp_unif) ", " in
+  Format.fprintf oc "@[<hov 3>hint %a@ → %a@]@?" pp_unif l pp_unifs (r::rs)
+
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with
   | P_proof_qed   -> Format.pp_print_string oc "qed"
@@ -191,8 +199,8 @@ let pp_command : p_command pp = fun oc cmd ->
       out " :@ @[<hov>%a@]" pp_p_term a
   | P_rules(rs)                     ->
       out "%a" (List.pp pp_p_rule "\n") rs
-  | P_hints(hs)                     ->
-      out "%a" (List.pp pp_p_rule "\n") hs
+  | P_hint(h)                       ->
+      out "%a" pp_p_hint h
   | P_definition(e,_,s,args,ao,t)   ->
       out "@[<hov 2>%adefinition %a" pp_expo e pp_ident s;
       List.iter (out " %a" pp_p_arg) args;

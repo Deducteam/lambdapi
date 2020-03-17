@@ -512,6 +512,74 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   (* We put everything together to build the rule. *)
   (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; vars})
 
+(** [scope_hint ss h] transforms a parser-level hint [h] into a rewriting rule
+    defined on {!val:Sign.hint_unif}. A unification hint can be seen as a
+    rewriting rule that rewrite a unification problem into several smaller
+    ones. Unlike rewriting rules, unification hints may generate new
+    metavariables. TODO: handle new variables generation. *)
+let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
+  let (p_l, p_r, p_rs) = h.elt in
+  (* Get pattern variables of [l] and [r] and verify that they are
+     algebraic. *)
+  let alg_patt_vars (l,r) =
+    let (pvs_l, nl) = patt_vars l in
+    if nl <> [] then fatal h.pos "Algebraic unification hints only.";
+    let (pvs_r, nl) = patt_vars r in
+    if nl <> [] then fatal h.pos "Algebraic unification hints only.";
+    pvs_l @ pvs_r
+  in
+  (* Compute the pattern variables. *)
+  let pvs =
+    let pvs_lhs = alg_patt_vars p_l in
+    let pvs_rhs =
+      let rest = List.map alg_patt_vars p_rs in
+      List.concat (alg_patt_vars p_r :: rest)
+    in
+    List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs in
+  let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
+  (* Like [Basics.add_args] but for parser level terms. *)
+  let add_args t args =
+    let rec add_args t args =
+      match args with
+      | []      -> t
+      | u::args -> add_args (Pos.none (P_Appl(t,u))) args
+    in
+    add_args t args
+  in
+  (* [mk_unif_pb (l,r)] creates a parser-level unification problem [l ~ r]. *)
+  let mk_unif_pb (l,r) =
+    let p_unif_hint = Pos.none (P_Iden(Pos.none ([],"hint_unif"),false)) in
+    add_args p_unif_hint [l; r]
+  in
+  (* [mk_unif_conj us] creates a parser-level conjunction of unification
+     problems [us]. *)
+  let mk_unif_conj us =
+    let p_unif_conj = Pos.none (P_Iden(Pos.none ([],"hint_conj"),false)) in
+    add_args p_unif_conj us
+  in
+  let lhs =
+    let lhs =
+      let p_lhs = mk_unif_pb p_l in
+      Bindlib.unbox (scope (M_LHS(map, false)) ss Env.empty p_lhs)
+    in
+    let unif_hint = List.assoc "hint_unif" Sign.pervasives in
+    let (h, args) = Basics.get_args lhs in
+    assert (match h with Symb(s,_) -> s == unif_hint | _ -> false);
+    args
+  in
+  let rhs : (term_env, term) Bindlib.mbinder =
+    let names = Array.of_list (List.map fst map) in
+    let vars = Bindlib.new_mvar te_mkfree names in
+    let rhs =
+      let p_rhs = mk_unif_conj (List.map mk_unif_pb (p_r::p_rs)) in
+      let map = Array.map2 (fun n v -> (n,v)) names vars in
+      let mode = M_RHS(Array.to_list map, true) in
+      scope mode ss Env.empty p_rhs
+    in
+    Bindlib.unbox (Bindlib.bind_mvar vars rhs)
+  in
+  Pos.make h.pos {lhs; rhs; arity = List.length lhs; vars = Array.of_list pvs}
+
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->

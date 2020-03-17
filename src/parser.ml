@@ -449,6 +449,14 @@ let term = term PFunc
 let parser rule =
   | l:term "→" r:term -> Pos.in_pos _loc (l, r)
 
+(** [unif] parses a unification problem. *)
+let parser unif =
+  | term "~" term
+
+(** [hint] is a parser for a unification hint. *)
+let parser hint =
+  | u:unif "→" r:unif rs:{"," unif}* -> Pos.in_pos _loc (u,r,rs)
+
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =
   | t:term                          -> P_rw_Term(t)
@@ -581,8 +589,8 @@ let parser cmd =
                   Option.get Terms.Defin p,s,al,a)
   | _rule_ r:rule rs:{_:_and_ rule}*
       -> P_rules(r::rs)
-  | _hint_ r:rule rs:{_:_and_ rule}*
-      -> P_hints(r::rs)
+  | _hint_ h:hint
+      -> P_hint(h)
   | e:exposition? _definition_ s:ident al:arg* ao:{":" term}? "≔" t:term
       -> P_definition(Option.get Terms.Public e,false,s,al,ao,t)
   | e:exposition? st:statement (ts,pe):proof
