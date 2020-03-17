@@ -23,7 +23,7 @@ rule T nat → Nat
 //  T &x ≡ Nat
 hint (T &x) ≡ Nat → &x ≡ nat
 
-symbol G: ∀(x: Bool) (y: Nat), TYPE
+symbol G: Bool ⇒ Nat ⇒ TYPE
 type λx: T _, λy: T _, G x y
 
 // Need several hints
@@ -33,7 +33,7 @@ symbol plus : Nat ⇒ Nat ⇒ Nat
 rule plus z &n      → &n
  and plus (s &m) &n → s (plus &m &n)
 
-injective symbol I (n: Nat): TYPE
+injective symbol I: Nat ⇒ TYPE
 symbol H (n: Nat): I n ⇒ Nat
 symbol iz: I z
 //    &x ≡ z   &y ≡ z

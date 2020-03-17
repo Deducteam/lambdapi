@@ -52,7 +52,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          try (List.assoc s Sign.pervasives, Nothing) with Not_found ->
+          try (List.assoc s Sign.Unif_hints.map, Nothing) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
@@ -547,31 +547,22 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     add_args t args
   in
   (* [mk_unif_pb (l,r)] creates a parser-level unification problem [l ~ r]. *)
-  let mk_unif_pb (l,r) =
-    let p_unif_hint = Pos.none (P_Iden(Pos.none ([],"hint_unif"),false)) in
-    add_args p_unif_hint [l; r]
-  in
-  (* [mk_unif_conj us] creates a parser-level conjunction of unification
-     problems [us]. *)
-  let mk_unif_conj us =
-    let p_unif_conj = Pos.none (P_Iden(Pos.none ([],"hint_conj"),false)) in
-    add_args p_unif_conj us
-  in
+  let mk_unif_pb (l,r) = add_args Sign.Unif_hints.p_atom [l; r] in
   let lhs =
     let lhs =
       let p_lhs = mk_unif_pb p_l in
       Bindlib.unbox (scope (M_LHS(map, false)) ss Env.empty p_lhs)
     in
-    let unif_hint = List.assoc "hint_unif" Sign.pervasives in
     let (h, args) = Basics.get_args lhs in
-    assert (match h with Symb(s,_) -> s == unif_hint | _ -> false);
+    assert (match h with Symb(s,_) -> s == Sign.Unif_hints.atom | _ -> false);
     args
   in
   let rhs : (term_env, term) Bindlib.mbinder =
     let names = Array.of_list (List.map fst map) in
     let vars = Bindlib.new_mvar te_mkfree names in
     let rhs =
-      let p_rhs = mk_unif_conj (List.map mk_unif_pb (p_r::p_rs)) in
+      let unif_probs = List.map mk_unif_pb (p_r::p_rs) in
+      let p_rhs = add_args Sign.Unif_hints.p_list unif_probs in
       let map = Array.map2 (fun n v -> (n,v)) names vars in
       let mode = M_RHS(Array.to_list map, true) in
       scope mode ss Env.empty p_rhs

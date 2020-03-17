@@ -79,13 +79,9 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
     declared unification hints. *)
 let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
   fun ctx s t ->
-  (* Symbol used to represent the unification relation. *)
-  let hint_unif = List.assoc "hint_unif" Sign.pervasives in
-  (* Symbol used to represent the conjunction of unification problems. *)
-  let hint_conj = List.assoc "hint_conj" Sign.pervasives in
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !(hint_unif.sym_tree) in
+  let tree = !(Sign.Unif_hints.atom.sym_tree) in
   try
     let rhs =
       match Eval.tree_walk tree [s;t] with
@@ -99,8 +95,8 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) when u == hint_unif -> [(ctx,s,t)]
-      | (Symb(u,_),ts   ) when u == hint_conj ->
+      | (Symb(u,_),[s;t]) when u == Sign.Unif_hints.atom -> [(ctx,s,t)]
+      | (Symb(u,_),ts   ) when u == Sign.Unif_hints.list ->
           List.concat (List.map subpb_in ts)
       | _                 -> assert false
     in
