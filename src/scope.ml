@@ -543,17 +543,21 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     add_args t args
   in
-  (* [mk_unif_pb (l,r)] creates a parser-level unification problem [l ~ r]. *)
+  (* [mk_unif_pb (l,r)] creates a parser-level unification problem [l ≡ r]. *)
   let mk_unif_pb (l,r) = add_args Sign.Unif_hints.p_atom [l; r] in
   let lhs =
     let lhs =
       let p_lhs = mk_unif_pb p_l in
-      Bindlib.unbox (scope (M_LHS(map, false)) ss Env.empty p_lhs)
+      Bindlib.unbox (scope (M_LHS(map, true)) ss Env.empty p_lhs)
     in
     let (h, args) = Basics.get_args lhs in
     assert (match h with Symb(s,_) -> s == Sign.Unif_hints.atom | _ -> false);
     args
   in
+  (* The rhs is of the form
+     - either [x ≡ t], or
+     - [x ≡ t, y ≡ u, ...]
+     where [x] and [y] are pattern variables. *)
   let rhs : (term_env, term) Bindlib.mbinder =
     let names = Array.of_list (List.map fst map) in
     let vars = Bindlib.new_mvar te_mkfree names in
@@ -566,6 +570,10 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     Bindlib.unbox (Bindlib.bind_mvar vars rhs)
   in
+  (* TODO: check that unification hint is acceptable, that is, considering the
+     hint [t ≡ u → x ≡ t', y ≡ u'],
+     - {x, y} ⊆ FV(t) ∪ FV(u) and,
+     - t[x ≔ t', y ≔ u'] ≡ u[x ≔ t', y ≔ u']. *)
   Pos.make h.pos {lhs; rhs; arity = List.length lhs; vars = Array.of_list pvs}
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
