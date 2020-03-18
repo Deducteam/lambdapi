@@ -578,6 +578,8 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     Bindlib.unbox (Bindlib.bind_mvar vars rhs)
   in
+  (* NOTE: the remaining of the function checks whether [lhs] and [rhs] are
+     well-formed. *)
   let vars, rhst = Bindlib.unmbind rhs in
   (* Returns the list of bindings of the rhs as a list of [[(tevar,term)]] *)
   let rec get_bindings t =
@@ -628,12 +630,6 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
           Print.pp t Print.pp u (List.pp pp_binding ", ") bindings
     | _      -> assert false
   end;
-  (* TODO: check that unification hint is acceptable, that is, considering the
-     hint [t ≡ u → x ≡ t', y ≡ u'],
-     - {x, y} ⊆ FV(t) ∪ FV(u) and,            OK
-     - x and y are distinct,                  OK
-     - t' and u' do not depend on x nor y,    OK
-     - t[x ≔ t', y ≔ u'] ≡ u[x ≔ t', y ≔ u']. *)
   Pos.make h.pos {lhs; rhs; arity = List.length lhs; vars = Array.of_list pvs}
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
