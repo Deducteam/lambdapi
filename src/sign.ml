@@ -30,28 +30,6 @@ type t =
    list. This association list then maps definable symbols of the external
    module to additional reduction rules defined in the current signature. *)
 
-(** Some definitions for unification hints. *)
-module Unif_hints = struct
-
-  (** Symbol representing an atomic unification problem. The term [atom t u]
-      represents [t =? u]. *)
-  let atom : sym =
-    { sym_name="unif_atom"; sym_type=ref Kind; sym_path=[]
-    ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
-    ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
-
-  let p_atom : p_term = Pos.none (P_Iden(Pos.none ([], "unif_atom"), false))
-
-  (** Symbol for a list of atoms. *)
-  let list : sym = {atom with sym_name = "unif_list"}
-
-  let p_list : p_term = Pos.none (P_Iden(Pos.none ([], "unif_list"), false))
-
-  (** Mapping from symbol names to names. *)
-  let map : (string * sym) list =
-    [(atom.sym_name, atom); (list.sym_name, list)]
-end
-
 (** [create path] creates an empty signature with module path [path]. *)
 let create : module_path -> t = fun sign_path ->
   { sign_path; sign_symbols = ref StrMap.empty; sign_deps = ref PathMap.empty

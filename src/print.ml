@@ -160,6 +160,15 @@ let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
+(** [pp_hint oc h] prints hint [h] to channel [oc]. *)
+let pp_hint : rule pp = fun oc h ->
+  let (s, pph) =
+    match Unif_hints.atom with
+    | Symb(s, pph) -> s, pph
+    | _            -> assert false
+  in
+  pp_rule oc (s, pph, h)
+
 (** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
 let pp_ctxt : ctxt pp = fun oc ctx ->
   let pp_e oc (x,a,t) =

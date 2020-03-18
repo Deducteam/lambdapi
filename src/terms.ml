@@ -268,6 +268,34 @@ type ctxt = (term Bindlib.var * term * term option) list
 (** Type of a list of unification constraints. *)
 type unif_constrs = (ctxt * term * term) list
 
+(** Some definitions for unification hints. *)
+module Unif_hints = struct
+
+  (** Symbol representing an atomic unification problem. The term [atom t u]
+      represents [t =? u]. *)
+  let atom : term =
+    let sym =
+      { sym_name="unif_atom"; sym_type=ref Kind; sym_path=[]
+      ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
+      ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
+    in
+    Symb(sym, Binary("≡"))
+
+  (** Symbol for a list of atoms. *)
+  let list : term =
+    let sym =
+      { sym_name="unif_list"; sym_type=ref Kind; sym_path=[]
+      ; sym_def=ref None; sym_impl=[];sym_tree=ref Tree_types.empty_dtree
+      ; sym_prop=Defin; sym_expo=Public; sym_rules=ref [] }
+    in
+    Symb(sym, Nothing)
+
+  (** Mapping from symbol names to names. *)
+  let map : (string * term) list =
+    [("unif_atom", atom); ("unif_list", list)]
+end
+
+
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
     is returned cannot be an instantiated metavariable or term environment nor

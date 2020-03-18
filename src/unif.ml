@@ -81,7 +81,7 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
   fun ctx s t ->
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !(Sign.Unif_hints.atom.sym_tree) in
+  let tree = !((to_sym Unif_hints.atom).sym_tree) in
   try
     let rhs =
       match Eval.tree_walk tree [s;t] with
@@ -95,8 +95,8 @@ let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
-      | (Symb(u,_),[s;t]) when u == Sign.Unif_hints.atom -> [(ctx,s,t)]
-      | (Symb(u,_),ts   ) when u == Sign.Unif_hints.list ->
+      | (Symb(u,_),[s;t]) when u == to_sym Unif_hints.atom -> [(ctx,s,t)]
+      | (Symb(u,_),ts   ) when u == to_sym Unif_hints.list ->
           List.concat (List.map subpb_in ts)
       | _                 -> assert false
     in

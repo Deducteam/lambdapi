@@ -52,7 +52,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     | []                               -> (* Symbol in scope. *)
         begin
           try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
-          try (List.assoc s Sign.Unif_hints.map, Nothing) with Not_found ->
+          let smap =
+            List.map (fun (s,t) -> (s, Basics.to_sym t)) Unif_hints.map
+          in
+          try (List.assoc s smap, Nothing) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
@@ -552,14 +555,16 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     add_args t args
   in
   (* [mk_unif_pb (l,r)] creates a parser-level unification problem [l ≡ r]. *)
-  let mk_unif_pb (l,r) = add_args Sign.Unif_hints.p_atom [l; r] in
+  let mk_unif_pb (l,r) = add_args Syntax.Unif_hints.p_atom [l; r] in
   let lhs =
     let lhs =
       let p_lhs = mk_unif_pb p_l in
       Bindlib.unbox (scope (M_LHS(map, true)) ss Env.empty p_lhs)
     in
     let (h, args) = Basics.get_args lhs in
-    assert (match h with Symb(s,_) -> s == Sign.Unif_hints.atom | _ -> false);
+    assert (match h with
+        | Symb(s,_) -> s == Basics.to_sym Unif_hints.atom
+        | _ -> false);
     args
   in
   (* The rhs is of the form
@@ -571,7 +576,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     let vars = Bindlib.new_mvar te_mkfree names in
     let rhs =
       let unif_probs = List.map mk_unif_pb p_rs in
-      let p_rhs = add_args Sign.Unif_hints.p_list unif_probs in
+      let p_rhs = add_args Syntax.Unif_hints.p_list unif_probs in
       let map = Array.map2 (fun n v -> (n,v)) names vars in
       let mode = M_RHS(Array.to_list map, true) in
       scope mode ss Env.empty p_rhs
@@ -584,9 +589,11 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* Returns the list of bindings of the rhs as a list of [[(tevar,term)]] *)
   let rec get_bindings t =
     match Basics.get_args t with
-    | Symb(h, _), [TEnv(TE_Vari(x), _); u] when h == Sign.Unif_hints.atom ->
+    | Symb(h, _), [TEnv(TE_Vari(x), _); u]
+      when h == Basics.to_sym Unif_hints.atom ->
         [(x,u)]
-    | Symb(h, _), args                     when h == Sign.Unif_hints.list ->
+    | Symb(h, _), args
+      when h == Basics.to_sym Unif_hints.list ->
         List.concat (List.map get_bindings args)
     | _ -> assert false (* ill formed unification hint *)
   in

@@ -152,9 +152,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   | P_hint(h)                    ->
       (* Approximately same processing as rules without SR checking. *)
       let h = scope_hint ss h in
-      let hu = Sign.Unif_hints.atom in
+      let hu = Basics.to_sym Terms.Unif_hints.atom in
       hu.sym_rules := !(hu.sym_rules) @ [h.elt];
-      out 3 "(hint) %a\n" Print.pp_rule (hu,Nothing,h.elt);
+      out 3 "(hint) %a\n" Print.pp_hint h.elt;
       Tree.update_dtree hu;
       if Pervasives.(!write_trees) then
         begin

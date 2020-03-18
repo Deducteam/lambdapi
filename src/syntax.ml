@@ -202,6 +202,13 @@ type p_command = p_command_aux loc
 (** Top level AST returned by the parser. *)
 type ast = p_command list
 
+(** Unification hints symbols. *)
+module Unif_hints =
+  struct
+    let p_atom : p_term = Pos.none (P_Iden(Pos.none ([], "unif_atom"), false))
+    let p_list : p_term = Pos.none (P_Iden(Pos.none ([], "unif_list"), false))
+  end
+
 let eq_ident : ident eq = fun x1 x2 -> x1.elt = x2.elt
 
 let eq_qident : qident eq = fun q1 q2 -> q1.elt = q2.elt
