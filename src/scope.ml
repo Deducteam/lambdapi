@@ -532,7 +532,13 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let pvs =
     let pvs_lhs = alg_patt_vars p_l in
     let pvs_rhs = List.concat (List.map alg_patt_vars p_rs) in
-    List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs in
+    let check_in_lhs (m,_) =
+      try ignore (List.assoc m pvs_lhs) with Not_found ->
+      fatal h.pos "Unknown pattern variable [%s]." m
+    in
+    List.iter check_in_lhs pvs_rhs;
+    List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs
+  in
   (* Mapping from pattern variable names to position in environment. *)
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* Like [Basics.add_args] but for parser level terms. *)
@@ -598,9 +604,9 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   List.iter vars_closed bindings;
   (* TODO: check that unification hint is acceptable, that is, considering the
      hint [t ≡ u → x ≡ t', y ≡ u'],
-     - {x, y} ⊆ FV(t) ∪ FV(u) and,
+     - {x, y} ⊆ FV(t) ∪ FV(u) and,            OK
      - x and y are distinct,                  OK
-     - t' and u' do not depend on x nor y,
+     - t' and u' do not depend on x nor y,    OK
      - t[x ≔ t', y ≔ u'] ≡ u[x ≔ t', y ≔ u']. *)
   Pos.make h.pos {lhs; rhs; arity = List.length lhs; vars = Array.of_list pvs}
 
