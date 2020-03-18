@@ -520,19 +520,19 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let (p_l, p_rs) = h.elt in
   (* NOTE: in the following comments, we consider a unification hint of the
      form P ≡ Q → x1 ≡ H1, ..., xn ≡ Hn. *)
-  (* Get pattern variables of [l] and [r] and verify that they are
-     algebraic. *)
-  let alg_patt_vars (l,r) =
-    let (pvs_l, nl) = patt_vars l in
-    if nl <> [] then fatal h.pos "Algebraic unification hints only.";
-    let (pvs_r, nl) = patt_vars r in
-    if nl <> [] then fatal h.pos "Algebraic unification hints only.";
-    pvs_l @ pvs_r
-  in
   (* Compute the pattern variables. *)
   let pvs =
-    let pvs_lhs = alg_patt_vars p_l in
-    let pvs_rhs = List.concat (List.map alg_patt_vars p_rs) in
+    (* Get pattern variables of [l] and [r] and verify that they are
+       linear. *)
+    let lin_patt_vars (l,r) =
+      let (pvs_l, nl) = patt_vars l in
+      if nl <> [] then fatal h.pos "Linear unification hints only.";
+      let (pvs_r, nl) = patt_vars r in
+      if nl <> [] then fatal h.pos "Linear unification hints only.";
+      pvs_l @ pvs_r
+    in
+    let pvs_lhs = lin_patt_vars p_l in
+    let pvs_rhs = List.concat (List.map lin_patt_vars p_rs) in
     let check_in_lhs (m,_) =
       try ignore (List.assoc m pvs_lhs) with Not_found ->
       fatal h.pos "Unknown pattern variable [%s]." m
@@ -589,12 +589,10 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     | _ -> assert false (* ill formed unification hint *)
   in
   let bindings = get_bindings rhst in
-  (* Ensure that pattern is linear. *)
+  (* Ensure that (xi)i are distinct pairwise. *)
   let eq_fst (x,_) (y,_) = Bindlib.eq_vars x y in
   if not (List.are_distinct ~eq:eq_fst bindings) then
     fatal h.pos "Only linear hint RHS allowed";
-  (* Ensure that in RHS of the form [x ≡ t], [t] does not depend on [x] (and
-     other variables of the hint). *)
   (* [vars_closed (_,t)] raises an error if [t] depends on a variable in
      [vars]. *)
   let vars_closed (_,t) =
@@ -602,6 +600,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     if Array.exists (fun x -> Bindlib.occur x tb) vars then
       fatal h.pos "RHS of sub-unification problems can't depend on patterns"
   in
+  (* Ensure that ∀ (i, j), Hi does not depend on xj. *)
   List.iter vars_closed bindings;
   (* [subst_from_hints t] substitutes pattern variables in [t] by the values
      in [bindings]. *)
