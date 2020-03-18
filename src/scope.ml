@@ -514,11 +514,12 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
 
 (** [scope_hint ss h] transforms a parser-level hint [h] into a rewriting rule
     defined on {!val:Sign.hint_unif}. A unification hint can be seen as a
-    rewriting rule that rewrite a unification problem into several smaller
-    ones. Unlike rewriting rules, unification hints may generate new
-    metavariables. TODO: handle new variables generation. *)
+    rewriting rule that rewrite a unification problem into one or more
+    sub-unification problems. *)
 let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let (p_l, p_rs) = h.elt in
+  (* NOTE: in the following comments, we consider a unification hint of the
+     form P ≡ Q → x1 ≡ H1, ..., xn ≡ Hn. *)
   (* Get pattern variables of [l] and [r] and verify that they are
      algebraic. *)
   let alg_patt_vars (l,r) =
@@ -602,6 +603,32 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
       fatal h.pos "RHS of sub-unification problems can't depend on patterns"
   in
   List.iter vars_closed bindings;
+  (* [subst_from_hints t] substitutes pattern variables in [t] by the values
+     in [bindings]. *)
+  let subst_from_hints t =
+    let rec subst t =
+      match unfold t with
+      | Appl(t,u)   -> Appl(subst t, subst u)
+      | Patt(_,s,_) ->
+          let f (x,_) = String.equal s (Bindlib.name_of x) in
+          snd (List.find f bindings)
+      | t           -> t
+    in
+    subst t
+  in
+  (* Ensure that hints are sound, that is, P[x1 ≔ H1, ..., xn ≔ Hn] is
+     convertible with Q[x1 ≔ H1, ..., xn ≔ Hn]. *)
+  begin match lhs with
+    | [t; u] ->
+      let pp_binding oc (tev, t) =
+        Format.fprintf oc "@[&%a ≔ %a@]" Print.pp_tevar tev Print.pp t
+      in
+      if not (Eval.eq_modulo (subst_from_hints t) (subst_from_hints u)) then
+        fatal h.pos ("[%a]@ is@ not@ convertible@ with@ [%a]@ " ^^
+                     "with@ substitution@ [%a]")
+          Print.pp t Print.pp u (List.pp pp_binding ", ") bindings
+    | _      -> assert false
+  end;
   (* TODO: check that unification hint is acceptable, that is, considering the
      hint [t ≡ u → x ≡ t', y ≡ u'],
      - {x, y} ⊆ FV(t) ∪ FV(u) and,            OK
