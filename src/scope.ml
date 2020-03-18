@@ -571,7 +571,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     Bindlib.unbox (Bindlib.bind_mvar vars rhs)
   in
-  let _, rhst = Bindlib.unmbind rhs in
+  let vars, rhst = Bindlib.unmbind rhs in
   (* Returns the list of bindings of the rhs as a list of [[(tevar,term)]] *)
   let rec get_bindings t =
     match Basics.get_args t with
@@ -585,7 +585,17 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* Ensure that pattern is linear. *)
   let eq_fst (x,_) (y,_) = Bindlib.eq_vars x y in
   if not (List.are_distinct ~eq:eq_fst bindings) then
-    fatal h.pos "Hinted pattern variables are not pairwise distinct";
+    fatal h.pos "Only linear hint RHS allowed";
+  (* Ensure that in RHS of the form [x ≡ t], [t] does not depend on [x] (and
+     other variables of the hint). *)
+  (* [vars_closed (_,t)] raises an error if [t] depends on a variable in
+     [vars]. *)
+  let vars_closed (_,t) =
+    let tb = lift t in
+    if Array.exists (fun x -> Bindlib.occur x tb) vars then
+      fatal h.pos "RHS of sub-unification problems can't depend on patterns"
+  in
+  List.iter vars_closed bindings;
   (* TODO: check that unification hint is acceptable, that is, considering the
      hint [t ≡ u → x ≡ t', y ≡ u'],
      - {x, y} ⊆ FV(t) ∪ FV(u) and,
