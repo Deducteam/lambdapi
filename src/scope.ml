@@ -533,6 +533,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     let pvs_lhs = alg_patt_vars p_l in
     let pvs_rhs = List.concat (List.map alg_patt_vars p_rs) in
     List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs in
+  (* Mapping from pattern variable names to position in environment. *)
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* Like [Basics.add_args] but for parser level terms. *)
   let add_args t args =
@@ -570,9 +571,26 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     in
     Bindlib.unbox (Bindlib.bind_mvar vars rhs)
   in
+  let _, rhst = Bindlib.unmbind rhs in
+  (* Returns the list of bindings of the rhs as a list of [[(tevar,term)]] *)
+  let rec get_bindings t =
+    match Basics.get_args t with
+    | Symb(h, _), [TEnv(TE_Vari(x), _); u] when h == Sign.Unif_hints.atom ->
+        [(x,u)]
+    | Symb(h, _), args                     when h == Sign.Unif_hints.list ->
+        List.concat (List.map get_bindings args)
+    | _ -> assert false (* ill formed unification hint *)
+  in
+  let bindings = get_bindings rhst in
+  (* Ensure that pattern is linear. *)
+  let eq_fst (x,_) (y,_) = Bindlib.eq_vars x y in
+  if not (List.are_distinct ~eq:eq_fst bindings) then
+    fatal h.pos "Hinted pattern variables are not pairwise distinct";
   (* TODO: check that unification hint is acceptable, that is, considering the
      hint [t ≡ u → x ≡ t', y ≡ u'],
      - {x, y} ⊆ FV(t) ∪ FV(u) and,
+     - x and y are distinct,                  OK
+     - t' and u' do not depend on x nor y,
      - t[x ≔ t', y ≔ u'] ≡ u[x ≔ t', y ≔ u']. *)
   Pos.make h.pos {lhs; rhs; arity = List.length lhs; vars = Array.of_list pvs}
 

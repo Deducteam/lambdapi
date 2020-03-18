@@ -179,6 +179,18 @@ module List =
       | x :: xs -> let xs = remove_phys_dups xs in
                    if List.memq x xs then xs else x :: xs
 
+    (** [mem_eq eq x l] is [List.mem x l] with equality [eq]. *)
+    let mem_eq : 'a eq -> 'a -> 'a list -> bool = fun eq needle hay ->
+      try ignore (List.find (eq needle) hay); true with Not_found -> false
+
+    (** [are_distinct ?eq l] returns [true] if all elements of [l] are
+        pairwise distinct and false otherwise. *)
+    let rec are_distinct : ?eq:('a eq) -> 'a list -> bool =
+      fun ?(eq=Pervasives.(=)) l ->
+      match l with
+      | hd :: tl -> if mem_eq eq hd tl then false else are_distinct ~eq tl
+      | []       -> true
+
     (** [deconstruct l i] returns a triple [(left_rev, e, right)] where [e] is
         the [i]-th element of [l], [left_rev] is the reversed prefix of [l] up
         to its [i]-th element (excluded),  and [right] is the remaining suffix
