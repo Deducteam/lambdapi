@@ -457,7 +457,7 @@ let parser sub_unif =
 (** [hint] is a parser for a unification hint. *)
 let parser hint =
   | u:{term "≡" term} "→" r:sub_unif rs:{"," sub_unif}* ->
-      Pos.in_pos _loc (u,r,rs)
+      Pos.in_pos _loc (u,r::rs)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =

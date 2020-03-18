@@ -518,7 +518,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     ones. Unlike rewriting rules, unification hints may generate new
     metavariables. TODO: handle new variables generation. *)
 let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
-  let (p_l, p_r, p_rs) = h.elt in
+  let (p_l, p_rs) = h.elt in
   (* Get pattern variables of [l] and [r] and verify that they are
      algebraic. *)
   let alg_patt_vars (l,r) =
@@ -531,10 +531,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* Compute the pattern variables. *)
   let pvs =
     let pvs_lhs = alg_patt_vars p_l in
-    let pvs_rhs =
-      let rest = List.map alg_patt_vars p_rs in
-      List.concat (alg_patt_vars p_r :: rest)
-    in
+    let pvs_rhs = List.concat (List.map alg_patt_vars p_rs) in
     List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs in
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
   (* Like [Basics.add_args] but for parser level terms. *)
@@ -561,7 +558,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     let names = Array.of_list (List.map fst map) in
     let vars = Bindlib.new_mvar te_mkfree names in
     let rhs =
-      let unif_probs = List.map mk_unif_pb (p_r::p_rs) in
+      let unif_probs = List.map mk_unif_pb p_rs in
       let p_rhs = add_args Sign.Unif_hints.p_list unif_probs in
       let map = Array.map2 (fun n v -> (n,v)) names vars in
       let mode = M_RHS(Array.to_list map, true) in

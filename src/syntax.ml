@@ -82,12 +82,7 @@ type p_rule = (p_patt * p_term) loc
 
 (** Parser-level unification hint. *)
 type p_hint =
-  ( (p_patt * p_patt)
-  (* Left-hand side, initial unification problem. *)
-  * (p_term * p_term)
-  (* First unification sub-problem. *)
-  * (p_term * p_term) list
-  (* Rest of unification sub-problems. *)) loc
+  ((p_patt * p_patt) * (p_term * p_term) list) loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =
