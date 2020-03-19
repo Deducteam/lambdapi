@@ -586,17 +586,20 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* NOTE: the remaining of the function checks whether [lhs] and [rhs] are
      well-formed. *)
   let vars, rhst = Bindlib.unmbind rhs in
-  (* Returns the list of bindings of the rhs as a list of [[(tevar,term)]] *)
-  let rec get_bindings t =
-    match Basics.get_args t with
-    | Symb(h, _), [TEnv(TE_Vari(x), _); u]
-      when h == Basics.to_sym Unif_hints.atom -> [(x,u)]
-    | Symb(h, _), args
-      when h == Basics.to_sym Unif_hints.list ->
-        List.concat (List.map get_bindings args)
-    | _ -> assert false (* ill formed unification hint *)
+  (* Retrieve the sub unification problems in the form (xi, Hi). *)
+  let bindings : (tevar * term) list =
+    let (h, args) = Basics.get_args rhst in
+    assert (Basics.to_sym h == Basics.to_sym Unif_hints.list);
+    let f t = (* [f (xi ≡ Hi)] returns [(xi, Hi)] *)
+      match Basics.get_args t with
+      | (Symb(s, _), [TEnv(TE_Vari(x),_); u]) ->
+          assert (s == Basics.to_sym Unif_hints.atom);
+          (x, u)
+      | _                                     ->
+          assert false (* Ill-formed hint. *)
+    in
+    List.map f args
   in
-  let bindings = get_bindings rhst in
   (* Ensure that (xi)i are distinct pairwise. *)
   let eq_fst (x,_) (y,_) = Bindlib.eq_vars x y in
   if not (List.are_distinct ~eq:eq_fst bindings) then
