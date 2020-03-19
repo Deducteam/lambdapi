@@ -18,8 +18,8 @@ let define : tvar -> term -> term -> ctxt -> ctxt = fun x a t ctx ->
 (** [unbind ctx a def b] returns the triple [(x,b,ctx')] such that [(x,b)] is
     the unbinding of [b] and [ctx'] is the context [ctx] extended with, if [x]
     occurs in [b]
-    - [Assume(x, a)] if [def] is [None] and
-    - [Define{ctx_v=x; ctx_y=a; ctx_e=?def}] otherwise. *)
+    - the assumption that [x] is of type [a] if [def] is [None], and
+    - the definition of [x] in [def] of type [a] otherwise. *)
 let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   fun ctx a def b ->
   let (x,b') = Bindlib.unbind b in
