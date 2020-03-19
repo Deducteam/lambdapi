@@ -6,6 +6,6 @@
 (install
  (section lib)
  (files
-  (bool.lp  as lib_root/std/bool.lp)
-  (bool.lpo as lib_root/std/bool.lpo)))
+  (bool.lp  as lib_root/example/bool.lp)
+  (bool.lpo as lib_root/example/bool.lpo)))
 

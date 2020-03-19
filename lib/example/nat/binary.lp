@@ -1,4 +1,4 @@
-require open std.bool
+require open example.bool
 
 // Data type of binary natural numbers.
 

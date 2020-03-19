@@ -11,8 +11,8 @@
 (install
  (section lib)
  (files
-  (unary.lp   as lib_root/std/nat/unary.lp)
-  (binary.lp  as lib_root/std/nat/binary.lp)
-  (unary.lpo  as lib_root/std/nat/unary.lpo)
-  (binary.lpo as lib_root/std/nat/binary.lpo)))
+  (unary.lp   as lib_root/example/nat/unary.lp)
+  (binary.lp  as lib_root/example/nat/binary.lp)
+  (unary.lpo  as lib_root/example/nat/unary.lpo)
+  (binary.lpo as lib_root/example/nat/binary.lpo)))
 
