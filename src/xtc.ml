@@ -169,7 +169,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
   let (_,l) = Infer.infer ctx lhs in
   (* Discard contexts *)
   let l = List.map (fun (_,t,u) -> (t,u)) l in
-  let ctx = Ctxt.assumptions ctx in
+  let ctx = List.map (fun (x,a,_) -> (x, a)) ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of

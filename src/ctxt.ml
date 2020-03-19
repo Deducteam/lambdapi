@@ -32,10 +32,6 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   in
   (x,b',ctx')
 
-(** [assumptions ctx] returns a list mapping free variable to their types. *)
-let assumptions : ctxt -> (tvar * term) list =
-  List.map (fun (x,a,_) -> (x, a))
-
 (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,
     and raises [Not_found] otherwise. *)
 let type_of : tvar -> ctxt -> term = fun x ctx ->
