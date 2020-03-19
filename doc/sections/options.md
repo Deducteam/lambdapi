@@ -51,8 +51,8 @@ command line arguments and flags.
 
  - `--lib-root DIR` sets the library root, that is, the folder corresponding
    to the entry point of the Lambdapi package system. This is the folder under
-   which every package is installed, and a default value is only only known if
-   Lambdapi has been installed. In development mode,  `--lib-root lib` must be
+   which every package is installed,  and a default value is only known if the
+   program has been installed.  In development mode,  `--lib-root lib` must be
    given (assuming Lambdapi is run at the root of the repository).
 
  - `--map-dir MOD:DIR` maps an arbitrary directory `DIR` under a module path
@@ -83,7 +83,7 @@ command line arguments and flags.
 
 Lambdapi provides an option `--confluence CMD` to check the confluence of the
 rewriting system by calling an external prover with the command `CMD`. The
-given command receives [TRS](http://project-coco.uibk.ac.at/problems/trs.php)
+given command receives [HRS](http://project-coco.uibk.ac.at/problems/hrs.php)
 formatted text on its standard input, and it is expected to output on the
 first line of its standard output either `YES`, `NO` or `MAYBE`.
 

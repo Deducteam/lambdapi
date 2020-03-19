@@ -3,7 +3,7 @@ Installation via [Opam](http://opam.ocaml.org/)
 
 The version of `lambdapi` that is directly available through Opam (with the
 command `opam install lambdapi`) is currently outdated. We will only publish
-a new version of `lambdapi` Opam pacakge when the development has reached a
+a new version of `lambdapi` Opam package when the development has reached a
 more stable test. For now, we advise you to pin the development repository to
 get the latest bug fixes.
 

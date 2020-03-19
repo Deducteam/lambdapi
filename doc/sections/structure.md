@@ -97,7 +97,7 @@ Structure of directories and files
    - `OK/`: tests that should succeed
    - `KO/`: tests that should fail
 
-* `lib/`: a minimal standar library for Lambdapi.
+* `lib/`: a minimal standard library for Lambdapi.
 
 * `tools/`:
    - `deps.ml`: gives the `#REQUIRE` commands that should be added at the beginning of a Dedukti file
