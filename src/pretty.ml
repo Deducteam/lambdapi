@@ -113,8 +113,8 @@ let pp_p_hint : p_hint pp = fun oc h ->
   let pp_unif oc (l,r) =
     Format.fprintf oc "@[%a@ ~ %a@]@?" pp_p_term l pp_p_term r
   in
-  let pp_unifs = List.pp (pp_unif) ", " in
-  Format.fprintf oc "@[<hov 3>hint %a@ → %a@]@?" pp_unif l pp_unifs rs
+  let pp_unifs = List.pp pp_unif ", " in
+  Format.fprintf oc "@[<hov 3>hint %a@ → %a@]@?" pp_unif l.elt pp_unifs rs.elt
 
 let pp_p_proof_end : p_proof_end pp = fun oc e ->
   match e with

@@ -80,9 +80,15 @@ and p_arg = ident option list * p_type option * bool
 (** Parser-level rewriting rule representation. *)
 type p_rule = (p_patt * p_term) loc
 
+(** Parser-level representation of the pattern of a unification hint. *)
+type p_hint_patt = (p_patt * p_patt) loc
+
+(** Parser-level representation of the sub unification problems of a
+    unification hint. *)
+type p_hint_supb = ((p_term * p_term) list) loc
+
 (** Parser-level unification hint. *)
-type p_hint =
-  ((p_patt * p_patt) * (p_term * p_term) list) loc
+type p_hint = (p_hint_patt * p_hint_supb) loc
 
 (** Rewrite pattern specification. *)
 type p_rw_patt =

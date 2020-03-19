@@ -529,16 +529,16 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
        linear. *)
     let lin_patt_vars (l,r) =
       let (pvs_l, nl) = patt_vars l in
-      if nl <> [] then fatal h.pos "Linear unification hints only.";
+      if nl <> [] then fatal p_l.pos "Linear unification hints only.";
       let (pvs_r, nl) = patt_vars r in
-      if nl <> [] then fatal h.pos "Linear unification hints only.";
+      if nl <> [] then fatal p_rs.pos "Linear unification hints only.";
       pvs_l @ pvs_r
     in
-    let pvs_lhs = lin_patt_vars p_l in
-    let pvs_rhs = List.concat (List.map lin_patt_vars p_rs) in
+    let pvs_lhs = lin_patt_vars p_l.elt in
+    let pvs_rhs = List.concat (List.map lin_patt_vars p_rs.elt) in
     let check_in_lhs (m,_) =
       try ignore (List.assoc m pvs_lhs) with Not_found ->
-      fatal h.pos "Unknown pattern variable [%s]." m
+      fatal p_rs.pos "Unknown pattern variable [%s]." m
     in
     List.iter check_in_lhs pvs_rhs;
     List.map (fun m -> (m, List.assoc m pvs_lhs)) [] @ pvs_rhs
@@ -558,7 +558,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let mk_unif_pb (l,r) = add_args Syntax.Unif_hints.p_atom [l; r] in
   let lhs =
     let lhs =
-      let p_lhs = mk_unif_pb p_l in
+      let p_lhs = mk_unif_pb p_l.elt in
       Bindlib.unbox (scope (M_LHS(map, true)) ss Env.empty p_lhs)
     in
     let (h, args) = Basics.get_args lhs in
@@ -575,7 +575,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
     let names = Array.of_list (List.map fst map) in
     let vars = Bindlib.new_mvar te_mkfree names in
     let rhs =
-      let unif_probs = List.map mk_unif_pb p_rs in
+      let unif_probs = List.map mk_unif_pb p_rs.elt in
       let p_rhs = add_args Syntax.Unif_hints.p_list unif_probs in
       let map = Array.map2 (fun n v -> (n,v)) names vars in
       let mode = M_RHS(Array.to_list map, true) in
@@ -590,8 +590,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let rec get_bindings t =
     match Basics.get_args t with
     | Symb(h, _), [TEnv(TE_Vari(x), _); u]
-      when h == Basics.to_sym Unif_hints.atom ->
-        [(x,u)]
+      when h == Basics.to_sym Unif_hints.atom -> [(x,u)]
     | Symb(h, _), args
       when h == Basics.to_sym Unif_hints.list ->
         List.concat (List.map get_bindings args)
@@ -601,13 +600,13 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   (* Ensure that (xi)i are distinct pairwise. *)
   let eq_fst (x,_) (y,_) = Bindlib.eq_vars x y in
   if not (List.are_distinct ~eq:eq_fst bindings) then
-    fatal h.pos "Only linear hint RHS allowed";
+    fatal p_rs.pos "Only linear hint RHS allowed";
   (* [vars_closed (_,t)] raises an error if [t] depends on a variable in
      [vars]. *)
   let vars_closed (_,t) =
     let tb = lift t in
     if Array.exists (fun x -> Bindlib.occur x tb) vars then
-      fatal h.pos "RHS of sub-unification problems can't depend on patterns"
+      fatal p_rs.pos "RHS of sub-unification problems can't depend on patterns"
   in
   (* Ensure that ∀ (i, j), Hi does not depend on xj. *)
   List.iter vars_closed bindings;
