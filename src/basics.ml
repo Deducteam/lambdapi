@@ -157,8 +157,8 @@ let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
        iter (if Bindlib.binder_occur b then x::xs else xs) b'
     | Appl(t,u)   -> iter xs t; iter xs u
     | LLet(t,a,u) ->
-        iter xs a;
         iter xs t;
+        iter xs a;
         let x,u' = Bindlib.unbind u in
         iter (if Bindlib.binder_occur u then x::xs else xs) u'
   in
