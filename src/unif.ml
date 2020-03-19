@@ -98,7 +98,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    if Eval.eq_modulo ~ctx t1 t2 then solve p else
+    if Eval.eq_modulo ctx t1 t2 then solve p else
     (* Keep the context *)
     solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
   in
