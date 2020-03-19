@@ -15,13 +15,13 @@ let assume : (tvar * term) list -> ctxt -> ctxt = fun hyps ctx ->
 let define : tvar -> term -> term -> ctxt -> ctxt = fun x a t ctx ->
   (x, a, Some(t)) :: ctx
 
-(** [unbind_ctxt ctx a ?def b] returns the triple [(x,b,ctx')] such that
-    [(x,b)] is the unbinding of [b] and [ctx'] is the context [ctx] extended
-    with, if [x] occurs in [b]
-    - [Assume(x, a)] if [?def] is not given and
+(** [unbind ctx a def b] returns the triple [(x,b,ctx')] such that [(x,b)] is
+    the unbinding of [b] and [ctx'] is the context [ctx] extended with, if [x]
+    occurs in [b]
+    - [Assume(x, a)] if [def] is [None] and
     - [Define{ctx_v=x; ctx_y=a; ctx_e=?def}] otherwise. *)
-let unbind : ctxt -> term -> ?def:term -> tbinder -> tvar * term * ctxt =
-  fun ctx a ?def b ->
+let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
+  fun ctx a def b ->
   let (x,b') = Bindlib.unbind b in
   let ctx' =
     if Bindlib.binder_occur b then

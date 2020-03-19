@@ -65,7 +65,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
 
-      let (_,b,ctx') = Ctxt.unbind ctx a b in
+      let (_,b,ctx') = Ctxt.unbind ctx a None b in
       let s = infer ctx' b in
       (* We check that [s] is a sort. *)
       begin
@@ -84,7 +84,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a t in
+      let (x,t,ctx') = Ctxt.unbind ctx a None t in
       let b = infer ctx' t in
       (* We build the product type by binding [x] in [b]. *)
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
@@ -123,7 +123,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | LLet(t,a,u) ->
       check ctx t a;
       (* Unbind [u] and enrich context with [x:=t:a] *)
-      let (x,u,ctx') = Ctxt.unbind ctx a ~def:t u in
+      let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
       let b = infer ctx' u in
       (* Build back the term *)
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
@@ -178,7 +178,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
            conv ctx c (Prod(a,b)); b
       in
       (* We type-check the body with the codomain. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a t in
+      let (x,t,ctx') = Ctxt.unbind ctx a None t in
       check ctx' t (Bindlib.subst b (Vari(x)))
   | t           ->
       (*  ctx ⊢ t ⇒ a
