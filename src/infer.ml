@@ -23,7 +23,7 @@ let conv ctx a b =
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
     type for a product of domain type [a].  It has access to the variables  of
     the context [ctx] and a fresh variables corresponding to the argument. *)
-let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
+let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
   let x = Bindlib.new_var mkfree "x" in
   let m = Meta(fresh_meta Kind 0, [||]) in
   (* [m] can be instantiated by Type or Kind only (the type of [m] is
@@ -36,7 +36,7 @@ let make_meta_codomain : Ctxt.t -> term -> tbinder = fun ctx a ->
    [conv]. The returned type is well-sorted if recorded unification
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
-let rec infer : Ctxt.t -> term -> term = fun ctx t ->
+let rec infer : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_infr "infer [%a]" pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
@@ -151,7 +151,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
    Finished in 3:46.13 at 99% with 2724844Kb of RAM
 
    This avoids to build a product to destructure it just after. *)
-and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
+and check : ctxt -> term -> term -> unit = fun ctx t c ->
   if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
   match unfold t with
   (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
@@ -191,7 +191,7 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
    In other words, the constraints of [cs] must be satisfied for [t]
    to have type [a]. [ctx] must be well-formed. This function never
    fails (but constraints may be unsatisfiable). *)
-let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
+let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
   Pervasives.(constraints := []);
   let a = infer ctx t in
   let constrs = Pervasives.(!constraints) in
@@ -208,7 +208,7 @@ let infer : Ctxt.t -> term -> term * unif_constrs = fun ctx t ->
    context [ctx] must be well-typed, and the type [c]
    well-sorted. This function never fails (but constraints may be
    unsatisfiable). *)
-let check : Ctxt.t -> term -> term -> unif_constrs = fun ctx t c ->
+let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
   Pervasives.(constraints := []);
   check ctx t c;
   let constrs = Pervasives.(!constraints) in
