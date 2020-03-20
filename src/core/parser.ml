@@ -62,7 +62,8 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
   let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
-      parser_fatal (ByPos loc) "Module [%a] not loaded (used for binops)." Path.pp p
+      parser_fatal (ByPos loc) "Module [%a] not loaded (used for binops)."
+        Path.pp p
   in
   let fn s (_, unop) = add_unop loc s unop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
