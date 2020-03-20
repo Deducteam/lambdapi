@@ -11,7 +11,7 @@ env:
   - OPAMYES="true"
   - TEST_TARGETS="real_tests"
   matrix:
-#  - OCAML_VERSION=4.04.1 fails because of ppx_inline_test ???? Why ????
+  - OCAML_VERSION=4.04.1
   - OCAML_VERSION=4.04.2
   - OCAML_VERSION=4.05.0
   - OCAML_VERSION=4.06.0
@@ -37,9 +37,8 @@ before_install:
   - opam pin add -k path pacomb.1.0 pacomb
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
-  - opam pin remove lambdapi # why ? is not this causing the pb with ppx_inline_test ?
+  - opam pin remove lambdapi
   - opam install alt-ergo
-  - opam install ppx_inline_test # should not be needed ?
   # Update why3 config after installing alt-ergo
   - why3 config --detect
 
