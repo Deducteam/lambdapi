@@ -26,7 +26,7 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 let pp_symbol : pp_hint -> sym pp = fun h oc s ->
   match h with
   | Nothing   -> Format.pp_print_string oc s.sym_name
-  | Qualified -> Format.fprintf oc "%a.%s" Files.pp_path s.sym_path s.sym_name
+  | Qualified -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
   | Binary(o) -> Format.fprintf oc "(%s)" o
   | Unary(o)  -> Format.fprintf oc "(%s)" o

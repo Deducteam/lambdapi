@@ -3,7 +3,8 @@ Structure of directories and files
 
 * `doc/`: documentation
 
-     - `DOCUMENTATION.md`: starting point of the documentation, each topic being developed in a .md file of the subdirectory `sections`
+     - `DOCUMENTATION.md`: entry point of the documentation, each topic being
+        developed in a `.md` file of the `doc/sections` directory
      - `PERFS.md`: a comparison of performances of Dedukti 2.6 and Lambdapi
      - `syntax.bnf`: BNF grammar of Lambdapi
 
@@ -27,7 +28,7 @@ Structure of directories and files
 
 * `lp-lsp/`: source code of the Lambdapi LSP server (see https://microsoft.github.io/language-server-protocol/ and https://langserver.org/)
 
-* `src/`: source code of Lambdapi
+* `src/core`: source code of Lambdapi
 
    + utilities:
 
@@ -38,10 +39,11 @@ Structure of directories and files
      - `external.ml`: call to external tools
      - `hrs.ml`: export to the .hrs format of the confluence competition
      - `xtc.ml`: export to the .xtc format of the termination competition
+     - `config.ml`: handling of configuration files
+     - `stubs.c`: C implementation for `Extra.Filename.realpath`.
 
    + file, command and tactic handling:
 
-     - `lambdapi.ml`: main file
      - `compile.ml`: file parsing and compiling (.lpo files)
      - `handle.ml`: command handling
      - `queries.ml`: handling of queries (commands that do not change the signature or the proof state)
@@ -83,16 +85,23 @@ Structure of directories and files
 
      - `sr.ml`: algorithm for checking subject reduction
 
-   + interface to editors:
+* `src/pure`: pure interface (mainly used by the LSP server)
 
-     - `pure.ml` and `pure.mli`: interface to the LSP server
+     - `pure.ml` and `pure.mli`: provide utilities to roll back state
+
+* `src/lsp/`: files related to the LSP server
+
+* `src/lambdapi.ml`: main program
 
 * `tests/`: unit tests
    - `OK/`: tests that should succeed
    - `KO/`: tests that should fail
+
+* `lib/`: a minimal standard library for Lambdapi.
 
 * `tools/`:
    - `deps.ml`: gives the `#REQUIRE` commands that should be added at the beginning of a Dedukti file
    - `generate_tests.ml`: creates test files in `tests/OK` that can be parametrised
    - `listings.tex`: setup of the LaTeX package [listings](https://www.ctan.org/pkg/listings) for including Lambdapi code into a LaTeX document
    - `sanity_check.sh`: script checking some style guidelines below (called by `make sanity_check`)
+   - `gen_version.ml`: script used by dune to generate the `src/core/version.ml` file
