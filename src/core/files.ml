@@ -257,7 +257,9 @@ let file_to_module : string -> Path.t = fun fname ->
     match !mapping with
     | Some(mp, path) -> (mp, path)
     | None           ->
-        fatal_no_pos "[%s] cannot be placed under the library mapping." fname
+        fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
+        fatal_msg "Consider adding a package file [lambdapi.pkg] under";
+        fatal_no_pos " your source tree."
   in
   ignore (mp, path);
   (* Build the module path. *)
