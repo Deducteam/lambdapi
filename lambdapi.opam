@@ -23,10 +23,10 @@ depends: [
   "ocaml"        { >= "4.04.0" }
   "dune"         { >= "1.3.0"  }
   "menhir"
-  "bindlib"      { >= "5.0.0" }
+  "bindlib"      { = "5.0.0" }
   "pacomb"       { >= "1.0" }
-  "timed"        { >= "1.0"   }
-  "why3"         { >= "1.2.0" }
+  "timed"        { = "1.0"   }
+  "why3"         { = "1.2.0" }
   "yojson"       { >= "1.6.0" }
   "cmdliner"     { >= "1.0.3" }
 ]
