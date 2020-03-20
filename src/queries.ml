@@ -36,8 +36,8 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
                     let fn (c,t,u) =
-                      fatal_msg "Cannot solve [%a] ⊢ [%a] ≡ [%a].\n"
-                        pp_ctxt c pp t pp u
+                      fatal_msg "Cannot solve %a[%a] ≡ [%a].\n"
+                        wrap_ctxt c pp t pp u
                     in
                     List.iter fn cs;
                     fatal q.pos "Infered types are not convertible."

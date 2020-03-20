@@ -125,7 +125,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;
       let fn (c,t,u) =
-        log_subj "  if [%a] ⊢ [%a] ~ [%a]" pp_ctxt c pp t pp u
+        log_subj "  if %a[%a] ~ [%a]" wrap_ctxt c pp t pp u
       in
       List.iter fn lhs_constrs
     end;

@@ -50,7 +50,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     log_tact "refining [%a] with term [%a]" pp_meta m pp t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    log_tact "proving [%a ⊢ %a : %a]" pp_ctxt (Env.to_ctxt env) pp t pp a;
+    log_tact "proving [%a%a : %a]" wrap_ctxt (Env.to_ctxt env) pp t pp a;
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
