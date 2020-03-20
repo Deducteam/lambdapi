@@ -1,14 +1,8 @@
-(** Interface to lp-lsp. See pure.mli for comments. *)
-
 open Timed
-
-(* Lambdapi core *)
 open Core
-open Core.Extra
-open Core.Console
-
-(* NOTE this is required for initialization of [Parser.require]. *)
-let _ = Compile.compile
+open Extra
+open Console
+open Files
 
 (** Representation of a single command (abstract). *)
 module Command = struct
@@ -31,7 +25,7 @@ exception Parse_error of Pos.pos * string
 
 let parse_text : state -> string -> string -> Command.t list * state =
     fun (t,st) fname s ->
-  let old_syntax = Filename.check_suffix fname Files.legacy_src_extension in
+  let old_syntax = Filename.check_suffix fname legacy_src_extension in
   try
     Time.restore t;
     let ast =
@@ -61,12 +55,14 @@ type tactic_result =
 
 let t0 = Time.save ()
 
-let initial_state : Files.module_path -> state = fun path ->
+let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
   Time.restore t0;
-  Sign.loading := [path];
-  let sign = Sign.create path in
-  Sign.loaded  := Files.PathMap.add path sign !Sign.loaded;
+  Config.apply_config fname;
+  let mp = Files.file_to_module fname in
+  Sign.loading := [mp];
+  let sign = Sign.create mp in
+  Sign.loaded  := PathMap.add mp sign !Sign.loaded;
   (Time.save (), Scope.empty_sig_state sign)
 
 let handle_command : state -> Command.t -> command_result =
@@ -97,57 +93,3 @@ let end_proof : proof_state -> command_result = fun s ->
 let get_symbols : state -> (Terms.sym * Pos.popt) StrMap.t = fun s ->
   Time.restore (fst s);
   !(Sign.((current_sign ()).sign_symbols))
-
-(* Equality on *)
-let%test _ =
-  let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
-  List.equal Command.equal c c
-
-(* Equality not *)
-let%test _ =
-  let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "constant symbol B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "constant symbol C : TYPE" in
-  not (List.equal Command.equal c d)
-
-(* Equality is not sensitive to whitespace *)
-let%test _ =
-  let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp" "constant   symbol  B : TYPE" in
-  let (d,_) = parse_text st "foo.lp" "  constant symbol B :   TYPE " in
-  List.equal Command.equal c d
-
-(* More complex test stressing most commands *)
-let%test _ =
-  let st = initial_state ["foo"] in
-  let (c,_) = parse_text st "foo.lp"
-                (* copied from tests/OK/foo.lp. keep in sync. *)
-"constant symbol B : TYPE
-
-constant symbol true  : B
-constant symbol false : B
-
-symbol neg : B ⇒ B
-
-rule neg true  → false
-rule neg false → true
-
-constant symbol Prop : TYPE
-
-injective symbol P : Prop ⇒ TYPE
-
-constant symbol eq : B ⇒ B ⇒ Prop
-constant symbol refl b : P (eq b b)
-
-constant symbol case (p : B⇒Prop) : P (p true) ⇒ P (p false) ⇒ ∀b, P b
-
-theorem notK : ∀b, P (eq (neg (neg b)) b)
-proof
-  assume b
-  apply case (λb, eq (neg (neg b)) b)
-  apply refl
-  apply refl
-qed
-" in
-  List.equal Command.equal c c

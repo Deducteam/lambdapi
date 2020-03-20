@@ -18,17 +18,6 @@ if [[ "$#" -ne 0 ]]; then
   exit -1
 fi
 
-# Checking for the "lambadpi" command (first in LAMBDAPI).
-if [[ ! -v LAMBDAPI ]]; then
-  # Falling back to installed "lambdapi" command.
-  LAMBDAPI="$(which lambdapi 2> /dev/null)"
-  if [[ -z "${LAMBDAPI}" ]]; then
-    echo "No lambdapi command found... (not in path)"
-    echo "A command may be specified with the LAMBDAPI environment variable."
-    exit -1
-  fi
-fi
-
 # Prepare the library if necessary.
 if [[ ! -d ${DIR} ]]; then
   # The directory is not ready, so we need to work.
@@ -67,14 +56,13 @@ fi
 # Checking function.
 function check_verine() {
   rm -f logic.lpo
-  ${LAMBDAPI} --gen-obj logic.dk
+  lambdapi check --gen-obj --lib-root . --no-warnings logic.dk
   for FILE in `ls SEQ*.dk`; do
-    ${LAMBDAPI} ${FILE}
+    lambdapi check --lib-root . --no-warnings ${FILE}
   done
 }
 
-# Export stuff for the checking function.
-export readonly LAMBDAPI=${LAMBDAPI}
+# Export the checking function.
 export -f check_verine
 
 # Run the actual checks.

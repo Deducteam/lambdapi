@@ -51,7 +51,7 @@ let handle_open : popt -> sig_state -> Path.t -> sig_state =
   let sign =
     try PathMap.find p !(Sign.loaded) with Not_found ->
       (* The signature has not been required... *)
-      fatal pos "Module [%a] has not been required." pp_path p
+      fatal pos "Module [%a] has not been required." Path.pp p
   in
   (* Open the module. *)
   open_sign ss sign
@@ -63,7 +63,7 @@ let handle_require : bool -> popt -> sig_state -> Path.t -> sig_state =
     fun b pos ss p ->
   (* Check that the module has not already been required. *)
   if PathMap.mem p !(ss.signature.sign_deps) then
-    fatal pos "Module [%a] is already required." pp_path p;
+    fatal pos "Module [%a] is already required." Path.pp p;
   (* Add the dependency (it was compiled already while parsing). *)
   ss.signature.sign_deps := PathMap.add p [] !(ss.signature.sign_deps);
   if b then handle_open pos ss p else ss

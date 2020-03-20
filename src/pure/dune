@@ -1,7 +1,5 @@
 (library
  (name pure)
  (public_name lambdapi.pure)
- (inline_tests)
  (modules pure)
- (preprocess (pps ppx_inline_test))
  (libraries core))

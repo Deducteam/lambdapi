@@ -1,45 +1,84 @@
 Module system
 -------------
 
-Lambdapi has a (very) light module system based on file paths. Although it has
-several limitations,  the module system allows the splitting developments into
-several files, and even several folders. The main thing to know is that a file
-holds a single module, which name corresponds to that of the file. For example
-a file `nat.lp` in the working directory will define the `nat` module,  and it
-can be referred as such in other files (or modules).
+Lambdapi has a (very) light module system based on file paths. It allows us to
+split our developments into several files, and even several folders.  The main
+thing to know is that a file holds a single module,  and accessing this module
+in other files requires using its *full* module path.
 
-However, note that `nat.lp` only defines module `nat` if `lambdapi` is invoked
-in the directory containing the file. Now, if the current directory contains a
-directory `lib`, itself containing a file `boolean.lp`, then the corresponding
-module is accessed using a full qualification `lib.boolean`. To illustrate the
-behaviour of the system, consider the following example.
-```bash
-working_directory  # lambdapi is invoked in that directory
-├── main.lp        # this module must always be refered as "main"
-├── bool.lp        # this module must always be refered as "bool"
-├── church
-│   ├── nat.lp     # this module must always be refered as "church.nat"
-│   └── list.lp    # this module must always be refered as "church.list"
-└── scott
-    ├── nat.lp     # this module must always be refered as "scott.nat"
-    └── list.lp    # this module must always be refered as "scott.list"
-```
-An important limitation here is the following: if `church.list` depends on the
-`bool` module,  then running `lambdapi` on `list.lp` in the `church` directory
-will fail. Indeed, while in that directory, the module path `bool` corresponds
-to file `church/bool.lp`, which does not exist. Similarly, if `church.list` is
-depending on `church.nat`, then its compilation will also fail due to the fact
-that it expects to find a file `church/church/nat.lp`.
+#### Module path
 
-To summarize, every module path in a source tree are relative to the directory
-in which `lambdapi` is invoked. Even for files in (sub-)directories. Note that
-this approach allows us to easily resolve dependencies automatically. However,
-we need to enforce that file paths given on the command line are normalised in
-the following sense. They should not start with `./`, they should be relative,
-and they should not contain `..`.
-```bash
-lambdapi church/nat.lp     # Correct
-lambdapi ./church/nat.lp   # Incorrect
-lambdapi bool.lp           # Correct
-lambdapi church/../bool.lp # Incorrect
+The module path that corresponds to a source file is defined using the name of
+the file, but also the position of the file under the *library root* (a folder
+under which the standard library and all packages are installed).
+
+The typical case is when we want to access a module of some installed library,
+for example the standard library. In that case, the module path is built using
+the file path as follows: if our source file is at `<LIB_ROOT>/std/bool.lp` it
+is accessed with module path `std.bool`.  And if there are nested folders then
+the module path gets more members. File `<LIB_ROOT>/std/a/b/c/d.lp` has module
+path `std.a.b.c.d`.
+
+By default, every modules are looked up under the library root. However, there
+are cases where the files we want to work with are not (yet!) placed under the
+library root.  The typical case is when a library (or package) is still  under 
+development. In that case,  what we can do is map the development folder under
+the library root, similarly to what would happen when mounting a volume in our
+file system. There are two ways of doing that,  the first one being to use the
+`--map-dir MOD:DIR` command line option.  However, the best way is to use a
+package configuration file.
+
+#### Package configuration file
+
+A package configuration file can be placed at the root of the source tree of a
+library (or package) under development. It should be named `lambdapi.pkg`, and
+contain the following fields (an example is given below for the syntax):
+ - `package_name` giving a globally unique name for the package being defined.
+   This is not yet used,  but will be necessary when we eventually publish our
+   packages online so that they can be automatically downloaded when our users
+   need them. (The idea is to come up with a system similar to Cargo in Rust.)
+ - `root_path` gives the module path under which the library is to be  placed.
+   Assuming that our configuration file is at `<REPO_ROOT>/lambdapi.pkg`, this
+   means that `<REPO_ROOT>/a/b/c.lp` will get module path `<ROOT_PATH>.a.b.c`.
+   In other words this is equivalent to `--map-dir <ROOT_PATH>:<REPO_ROOT>` on
+   the command line.
+
+In the future,  more useful meta data will be added to the configuration file,
+for example the name of the author, version number, dependencies, ...
+
+Example of configuration file (syntax reference):
 ```
+# Lines whose first non-whitespace charater is # are comments  
+# The end of a non-comment line cannot be commented.
+# The config file MUST be called "lambdapi.pkg".
+# The syntax for entries is:
+key = value
+# If the key is not known then it is ignored.
+# There are two used keys for now:
+package_name = my_package_name
+root_path    = a.b.c
+# We will use more entries later (e.g., authors, version, ...)
+```
+
+#### Installation procedure for third-party packages
+
+A package should be installed under the library directory, under the specified
+root path. In other words a package whose root path is `x.y.z` should have its
+files installed under the directory `<LIB_ROOT>/x/y/z`. Moreover the directory
+structure relative to the package configuration file should be preserved.
+
+Of course, we should enforce that a root path is uniquely used by one package.
+This can be enforced using a central authority, but this can only be done when
+we actually decide to implement automatic package distribution. For now, it is
+assumed that every user uses reasonable root paths for their packages.
+
+Note that if a package uses root path `a.b.c` then no other package should use
+root path `a` or `a.b` (and obviously not `a.b.c` either). However there is no
+problem in using `a.d` or `a.b.d`. The rules are as follows:
+ - the root path of a package cannot be a prefix of the root path of another,
+ - the root path of a package cannot extend the root path of another.
+
+We will use the following conventions:
+ - root path `std` is reserved for the standard library,
+ - extracted libraries are installed under `libraries.<NAME>` (for example, we
+   would use root path `libraries.matita` for `matita`).
