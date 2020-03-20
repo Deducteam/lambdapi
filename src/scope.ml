@@ -613,7 +613,8 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let vars_closed (_,t) =
     let tb = lift t in
     if Array.exists (fun x -> Bindlib.occur x tb) vars then
-      fatal p_rs.pos "RHS of sub-unification problems can't depend on patterns"
+      fatal p_rs.pos
+        "RHS of sub-unification problems can't depend on patterns"
   in
   (* Ensure that ∀ (i, j), Hi does not depend on xj. *)
   List.iter vars_closed bindings;
@@ -622,8 +623,8 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   let subst_of_hints t =
     let rec subst t =
       match unfold t with
-      | Appl(t,u)   -> Appl(subst t, subst u)
-      | Patt(_,s,_) ->
+      | Appl(t,u)         -> Appl(subst t, subst u)
+      | Patt(Some(_),s,_) -> (* Only variables used in rhs. *)
           let f (x,_) = String.equal s (Bindlib.name_of x) in
           snd (List.find f bindings)
       | t           -> t
