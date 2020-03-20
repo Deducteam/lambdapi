@@ -21,3 +21,6 @@ assert let f (x: T) ≔ λ_, x in f a ≡ λ_, a
 symbol f : T ⇒ T
 rule f _ → let x ≔ a in x
 assert f a ≡ a
+
+// Should raise a warning (x not used in body)
+assert f a ≡ let x ≔ a in a
