@@ -25,7 +25,7 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
      let symb_0 = builtin "0" in
      let typ_0 = !(symb_0.sym_type) in
      let x = Bindlib.new_var mkfree "_" in
-     let ctx = Ctxt.assume [(x, typ_0)] Ctxt.empty in
+     let ctx = [(x, typ_0, None)] in
      let typ_s = Ctxt.to_prod ctx typ_0 in
      if not (Basics.eq typ_s !(sym.sym_type)) then
        fatal pos "The type of [%s] is not of the form [%a]"

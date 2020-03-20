@@ -6,15 +6,6 @@ open Terms
 (** [empty] is the empty context. *)
 let empty : ctxt = []
 
-(** [assume h ctx] adds list of assumptions [h] mapping variables to their
-    types to context [ctx]. *)
-let assume : (tvar * term) list -> ctxt -> ctxt = fun hyps ctx ->
-  List.map (fun (x,a) -> (x, a, None)) hyps @ ctx
-
-(** [define x a t ctx] maps variable [x] to term [t] of type [a] in [ctx]. *)
-let define : tvar -> term -> term -> ctxt -> ctxt = fun x a t ctx ->
-  (x, a, Some(t)) :: ctx
-
 (** [unbind ctx a def b] returns the triple [(x,b,ctx')] such that [(x,b)] is
     the unbinding of [b] and [ctx'] is the context [ctx] extended with, if [x]
     occurs in [b]
@@ -26,8 +17,8 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   let ctx' =
     if Bindlib.binder_occur b then
       match def with
-      | None    -> assume [(x,a)] ctx
-      | Some(t) -> define x a t ctx
+      | None    -> (x, a, None) :: ctx
+      | Some(t) -> (x, a, Some(t)) :: ctx
     else ctx
   in
   (x,b',ctx')
