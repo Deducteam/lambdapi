@@ -626,7 +626,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
       | Appl(t,u)         -> Appl(subst t, subst u)
       | Patt(Some(_),s,_) -> (* Only variables used in rhs. *)
           let f (x,_) = String.equal s (Bindlib.name_of x) in
-          snd (List.find f bindings)
+          snd (try List.find f bindings with Not_found -> assert false)
       | t           -> t
     in
     subst t
