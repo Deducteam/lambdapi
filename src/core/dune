@@ -1,0 +1,20 @@
+(rule
+ (targets version.ml)
+ (action
+  (with-stdout-to version.ml
+    (run ocaml unix.cma %{dep:../../tools/gen_version.ml})))
+ (mode fallback))
+
+(library
+ (name core)
+ (public_name lambdapi.core)
+ (synopsis "LambdaPi interactive theorem prover [core]")
+ (modules :standard)
+ (c_names stubs)
+ (preprocess (per_module ((pps pacomb.ppx) parser)))
+ (libraries unix timed bindlib pacomb why3))
+
+(ocamllex legacy_lexer)
+(menhir
+ (flags (--external-tokens Legacy_lexer))
+ (modules menhir_parser))

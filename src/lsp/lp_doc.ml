@@ -100,7 +100,12 @@ let process_cmd _file (nodes,st,dg) ast =
     nodes, st, (loc, 1, msg, None) :: dg
 
 let new_doc ~uri ~version ~text =
-  let root = Pure.initial_state [uri] in
+  let root =
+    (* We remove the ["file://"] prefix. *)
+    assert(Extra.String.is_prefix "file://" uri);
+    let path = String.sub uri 7 (String.length uri - 7) in
+    Pure.initial_state path
+  in
   { uri;
     text;
     version;

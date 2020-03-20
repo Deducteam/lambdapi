@@ -9,7 +9,7 @@ module TC =
   struct
     (** Atomic pattern constructor. *)
     type t =
-      | Symb of Files.module_path * string * int
+      | Symb of Files.Path.t * string * int
       (** Symbol with its module path, name and effective arity. *)
       | Vari of int
       (** A bound variable identified by a ({e branch}-wise) unique

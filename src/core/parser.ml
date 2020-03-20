@@ -62,8 +62,7 @@ let get_ops : pos -> p_module_path -> unit = fun loc p ->
   let p = List.map fst p in
   let sign =
     try PathMap.find p Timed.(!(Sign.loaded)) with Not_found ->
-      parser_fatal (ByPos loc)
-        "Module [%a] not loaded (used for binops)." pp_path p
+      parser_fatal (ByPos loc) "Module [%a] not loaded (used for binops)." Path.pp p
   in
   let fn s (_, unop) = add_unop loc s unop in
   StrMap.iter fn Timed.(!Sign.(sign.sign_unops));
@@ -531,7 +530,7 @@ let%parser proof =
     it is required as a dependency. This has the effect of importing notations
     exported by that module. The value of [require] is set in [Compile], and a
     reference is used to avoid to avoid cyclic dependencies. *)
-let require : (Files.module_path -> unit) Stdlib.ref = ref (fun _ -> ())
+let require : (Path.t -> unit) Stdlib.ref = ref (fun _ -> ())
 
 (** [do_require pos path] is a wrapper for [!require path], that takes care of
     possible exceptions. Errors are reported at given position [pos],  keeping
@@ -540,7 +539,7 @@ let do_require : popt -> p_module_path -> unit = fun loc path ->
   let path = List.map fst path in
   let local_fatal fmt =
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
-    parser_fatal loc fmt Files.pp_path path
+    parser_fatal loc fmt Path.pp path
   in
   (* We attach our position to errors comming from the outside. *)
   try !require path with

@@ -1,18 +1,5 @@
-(library
- (name core)
- (public_name lambdapi.core)
- (synopsis "LambdaPi interactive theorem prover [core]")
- (modules :standard \ lambdapi)
- (preprocess (per_module ((pps pacomb.ppx) parser)))
- (libraries unix timed bindlib pacomb why3))
-
 (executable
  (name lambdapi)
  (public_name lambdapi)
  (modules lambdapi)
- (libraries lambdapi.core))
-
-(ocamllex legacy_lexer)
-(menhir
- (flags (--external-tokens Legacy_lexer))
- (modules menhir_parser))
+ (libraries cmdliner lambdapi.core lambdapi.lsp))

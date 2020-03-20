@@ -39,6 +39,11 @@ module String =
       in
       is_sub 0
 
+    let is_prefix : string -> string -> bool = fun p s ->
+      let len_p = String.length p in
+      let len_s = String.length s in
+      len_p <= len_s && String.sub s 0 len_p = p
+
     let for_all : (char -> bool) -> string -> bool = fun p s ->
       let len_s = String.length s in
       let rec for_all i = i >= len_s || (p s.[i] && for_all (i+1)) in
@@ -279,7 +284,17 @@ module Array =
 
   end
 
-(** Functional maps with [int] keys. *)
+module Filename =
+  struct
+    include Filename
+
+    (** [realpath path] returns the absolute canonical path to file [path]. If
+        [path] is invalid (i.e., it does not describe an existing file),  then
+        the exception [Invalid_argument] is raised. *)
+    external realpath : string -> string = "c_realpath"
+  end
+
+(* Functional maps with [int] keys. *)
 module IntMap = Map.Make(Int)
 
 (** Functional sets of integers. *)
@@ -327,3 +342,13 @@ let input_lines : in_channel -> string list = fun ic ->
     done;
     assert false (* Unreachable. *)
   with End_of_file -> List.rev !lines
+
+(** [run_process cmd] runs the command [cmd] and returns the list of the lines
+    that it printed to its standard output (if the command was successful). If
+    the command failed somehow, then [None] is returned. *)
+let run_process : string -> string list option = fun cmd ->
+  let (oc, ic, ec) = Unix.open_process_full cmd (Unix.environment ()) in
+  let res = input_lines oc in
+  match Unix.close_process_full (oc, ic, ec) with
+  | Unix.WEXITED(0) -> Some res
+  | _               -> None
