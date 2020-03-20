@@ -112,12 +112,11 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_         , _    ) -> st
 
-(** [eq_modulo ?ctx a b] tests equality modulo rewriting and modulo Δ
+(** [eq_modulo ctx a b] tests equality modulo rewriting and modulo δ
     (unfolding of variables from the context) between [a] and [b] and with the
-    context [?ctx] if provided. *)
-and eq_modulo : ?ctx:ctxt -> term -> term -> bool =
-  fun ?(ctx=Ctxt.empty) a b ->
-  if !log_enabled then log_conv "[%a] ⊢ [%a] == [%a]" pp_ctxt ctx pp a pp b;
+    context [ctx]. *)
+and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
+  if !log_enabled then log_conv "%a[%a] == [%a]" wrap_ctxt ctx pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -145,7 +144,7 @@ and eq_modulo : ?ctx:ctxt -> term -> term -> bool =
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    (* Try a Δ conversion *)
+    (* Try a δ conversion *)
     | (Vari(x)    , t          )
     | (t          , Vari(x)    ) ->
         let u =
@@ -221,7 +220,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
         let next =
           match cond with
           | CondNL(i, j) ->
-              if eq_modulo vars.(i) vars.(j) then ok else fail
+              if eq_modulo [] vars.(i) vars.(j) then ok else fail
           | CondFV(i,xs) ->
               let allowed =
                 (* Variables that are allowed in the term. *)

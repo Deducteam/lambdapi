@@ -179,8 +179,13 @@ let pp_ctxt : ctxt pp = fun oc ctx ->
   if ctx = [] then Format.pp_print_string oc "∅"
   else List.pp pp_e ", " oc (List.rev ctx)
 
+(** [wrap_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
+    true, with [ ⊢ ] after; and nothing otherwise. *)
+let wrap_ctxt : ctxt pp = fun oc ctx ->
+  let out = if !print_contexts then Format.fprintf else Format.ifprintf in
+  out oc "[%a] ⊢ " pp_ctxt ctx
+
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
     output channel [oc]. *)
 let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
-  if !print_contexts then Format.fprintf oc "[%a] ⊢ " pp_ctxt ctx;
-  Format.fprintf oc "%a ≡ %a" pp t pp u
+  Format.fprintf oc "%a%a ≡ %a" wrap_ctxt ctx pp t pp u

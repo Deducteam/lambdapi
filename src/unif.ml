@@ -77,7 +77,7 @@ let instantiate : meta -> term array -> term -> bool = fun m ts u ->
 
 (** [try_hints ctx s t] tries to solve unification problem [ctx ⊢ s ≡ t] using
     declared unification hints. *)
-let try_hints : Ctxt.t -> term -> term -> unif_constrs option =
+let try_hints : ctxt -> term -> term -> unif_constrs option =
   fun ctx s t ->
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
@@ -123,13 +123,13 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
-    log_unif "solve %a ⊢ %a ≡ %a"
-      pp_ctxt ctx pp (add_args h1 ts1) pp (add_args h2 ts2);
+    log_unif "solve %a%a ≡ %a"
+      wrap_ctxt ctx pp (add_args h1 ts1) pp (add_args h2 ts2);
 
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
     let t2 = add_args h2 ts2 in
-    if Eval.eq_modulo ~ctx t1 t2 then solve p else
+    if Eval.eq_modulo ctx t1 t2 then solve p else
     (* Try to solve using hints before adding to unsolved. *)
     match try_hints ctx t1 t2 with
       | None     -> solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}

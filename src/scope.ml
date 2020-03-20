@@ -250,13 +250,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
-  (* Scoping of a binder (abstraction or product). *)
-  and scope_binder cons env xs t =
+  (* Scoping of a binder (abstraction, product or let-binding with [llet] to
+     true). *)
+  and scope_binder ?(llet=false) cons env xs t =
     let rec aux env xs =
       match xs with
       | []                  -> scope env t
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
+          assert (not llet); (* Let with wildcard rejected at parsing *)
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
           let t = aux env ((l,d,i)::xs) in
@@ -266,7 +268,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let a = scope_domain env d in
           let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
+            wrn x.pos
+              (if llet then "Variable [%s] is not used in let-binding."
+               else "Variable [%s] could be replaced by [_].") x.elt;
           cons a (Bindlib.bind_var v t)
     in
     aux env xs
@@ -373,11 +377,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
     | (P_LLet(x,xs,t,u), M_Term(_)        )
     | (P_LLet(x,xs,t,u), M_RHS(_)         ) ->
-        (* Scope the binding [x xs := t] *)
+        (* Scope the binding [x xs := t] as [x := λxs, t]. *)
         let t = scope_binder _Abst env xs t in
         (* Scope all the [let x xs := t in u] *)
         let cons a u = _LLet t a u in
-        scope_binder cons env [[Some(x)], None, false] u
+        scope_binder ~llet:true cons env [[Some(x)], None, false] u
     | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt           ) ->
@@ -615,7 +619,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   List.iter vars_closed bindings;
   (* [subst_from_hints t] substitutes pattern variables in [t] by the values
      in [bindings]. *)
-  let subst_from_hints t =
+  let subst_of_hints t =
     let rec subst t =
       match unfold t with
       | Appl(t,u)   -> Appl(subst t, subst u)
@@ -633,7 +637,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
       let pp_binding oc (tev, t) =
         Format.fprintf oc "@[&%a ≔ %a@]" Print.pp_tevar tev Print.pp t
       in
-      if not (Eval.eq_modulo (subst_from_hints t) (subst_from_hints u)) then
+      if not (Eval.eq_modulo [] (subst_of_hints t) (subst_of_hints u)) then
         fatal h.pos ("[%a]@ is@ not@ convertible@ with@ [%a]@ " ^^
                      "with@ substitution@ [%a]")
           Print.pp t Print.pp u (List.pp pp_binding ", ") bindings

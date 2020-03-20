@@ -63,13 +63,13 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
   match unfold t with
   (* Forbidden cases. *)
-  | Meta(_,_)
-  | TRef(_)
-  | TEnv(_,_)
-  | Wild
-  | Kind
+  | Meta(_,_)               -> assert false
+  | TRef(_)                 -> assert false
+  | TEnv(_,_)               -> assert false
+  | Wild                    -> assert false
+  | Kind                    -> assert false
   (* Variables are necessarily at object level *)
-  | Vari(_)
+  | Vari(_)                 -> assert false
   | Patt(_,_,_)             -> assert false
   (* Printing of atoms. *)
   | Type                    -> out "<TYPE/>@."
@@ -163,13 +163,13 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
-    let fn l x = Ctxt.assume [(x, (Meta(fresh_meta Type 0,[||])))] l in
+    let fn l x = (x, (Meta(fresh_meta Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
   let (_,l) = Infer.infer ctx lhs in
   (* Discard contexts *)
   let l = List.map (fun (_,t,u) -> (t,u)) l in
-  let ctx = Ctxt.assumptions ctx in
+  let ctx = List.map (fun (x,a,_) -> (x, a)) ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
