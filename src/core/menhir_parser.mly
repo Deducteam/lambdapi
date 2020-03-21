@@ -104,7 +104,7 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let (h, lts) = get_args t in
     match h.elt with
     | P_Iden({elt = ([],x); _}, _) when is_pat_var env x ->
-        let lts = List.map (fun (p,t) -> p,build env t) lts in
+        let lts = List.map (fun (p, t) -> (p, build env t)) lts in
         let max = try Hashtbl.find arity x with Not_found -> assert false in
         let k = List.length lts in
         (* Number of η-expansions required. *)
@@ -139,6 +139,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           (* Build the abstraction. *)
           let xs = Array.map (fun x -> Some(Pos.none x)) vars in
           Pos.make p (P_Abst([Array.to_list xs, None, false], patt))
+    | P_Wild when lts = [] && env = []                   -> t
+    | P_Wild                                             ->
+        let lts = List.map (fun (_, t) -> build env t) lts in
+        Pos.make t.pos (P_Patt(None, Array.of_list lts))
     | _                                                  ->
     match t.elt with
     | P_Iden(_)
