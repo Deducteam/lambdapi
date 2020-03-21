@@ -113,9 +113,9 @@
 ;; LSP mode
 (require 'eglot)
 (add-to-list 'eglot-server-programs
-  '(lambdapi-mode . ("lp-lsp" "--std")))
+  '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
 (add-to-list 'eglot-server-programs
-  '(lambdapi-legacy-mode . ("lp-lsp" "--std")))
+  '(lambdapi-legacy-mode . ("lambdapi" "lsp" "--standard-lsp")))
 (add-hook 'lambdapi-mode-hook 'eglot-ensure)
 (add-hook 'lambdapi-legacy-mode-hook 'eglot-ensure)
 

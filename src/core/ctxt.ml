@@ -14,13 +14,7 @@ let empty : ctxt = []
 let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
   fun ctx a def b ->
   let (x,b') = Bindlib.unbind b in
-  let ctx' =
-    if Bindlib.binder_occur b then
-      match def with
-      | None    -> (x, a, None) :: ctx
-      | Some(t) -> (x, a, Some(t)) :: ctx
-    else ctx
-  in
+  let ctx' = if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx in
   (x,b',ctx')
 
 (** [find x ctx] returns the type of [x] in the context [ctx] when it appears,

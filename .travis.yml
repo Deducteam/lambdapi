@@ -9,7 +9,7 @@ env:
   global:
   - OPAMJOBS="2"
   - OPAMYES="true"
-  - TEST_TARGETS="unit_tests real_tests"
+  - TEST_TARGETS="real_tests"
   matrix:
 #  - OCAML_VERSION=4.04.1
   - OCAML_VERSION=4.04.2
