@@ -76,6 +76,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 fatal a.pos "Annotation in legacy pattern."
             | [([Some x],None   ,_)] ->
                 compute_arities (x.elt::env) t
+            | [([None  ],None   ,_)] ->
+                compute_arities env t
             | _                      -> assert false
           end
       | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
@@ -154,11 +156,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     | P_Abst(xs,u)    ->
         let (x,a) =
           match xs with
-          | [([Some x],ao,_)] -> (x, Option.map (build env) ao)
-          | _                 -> assert false (* Unreachable. *)
+          | [([x],ao,_)] -> (x, Option.map (build env) ao)
+          | _            -> assert false (* Unreachable. *)
         in
-        let u = build (x.elt::env) u in
-        Pos.make t.pos (P_Abst([([Some x],a,false)], u))
+        let u =
+          match x with
+          | Some(x) -> build (x.elt::env) u
+          | None    -> build env u
+        in
+        Pos.make t.pos (P_Abst([([x],a,false)], u))
     | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
     | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
     | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
@@ -328,6 +334,9 @@ aterm:
   | t=aterm u=sterm { make_pos $loc (P_Appl(t,u)) }
   | t=sterm         { t }
 
+type_annot:
+  | COLON a=aterm { a }
+
 term:
   | t=aterm { t }
   | x=ID COLON a=aterm ARROW b=term {
@@ -341,12 +350,11 @@ term:
   | a=term ARROW b=term {
       make_pos $loc (P_Impl(a, b))
     }
-  | x=ID FARROW t=term {
-      let x = make_pos $loc(x) x in
-      make_pos $loc (P_Abst([([Some x], None, false)], t))
+  | WILD a=option(type_annot) FARROW t=term {
+      make_pos $loc (P_Abst([([None], a, false)], t))
     }
-  | x=ID COLON a=aterm FARROW t=term {
+  | x=ID a=option(type_annot) FARROW t=term {
       let x = make_pos $loc(x) x in
-      make_pos $loc (P_Abst([([Some x], Some(a), false)], t))
+      make_pos $loc (P_Abst([([Some x], a, false)], t))
     }
 %%
