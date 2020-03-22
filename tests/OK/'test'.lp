@@ -1,3 +1,0 @@
-// some code...
-
-constant symbol T : TYPE

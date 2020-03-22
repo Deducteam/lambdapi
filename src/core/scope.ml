@@ -13,7 +13,7 @@ open Env
 type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
-  ; aliases   : module_path StrMap.t      (** Established aliases. *)
+  ; aliases   : Path.t StrMap.t           (** Established aliases. *)
   ; builtins  : sym StrMap.t              (** Builtin symbols.     *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
@@ -64,14 +64,14 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
           in
           (* Look for the symbol. *)
           try (Sign.find sign s, Alias m) with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
     | _                                -> (* Fully-qualified symbol. *)
         begin
           (* Check that the signature was required (or is the current one). *)
           if mp <> st.signature.sign_path then
             if not (PathMap.mem mp !(st.signature.sign_deps)) then
-              fatal pos "No module [%a] required." Files.pp_path mp;
+              fatal pos "No module [%a] required." Path.pp mp;
           (* The signature must have been loaded. *)
           let sign =
             try PathMap.find mp Timed.(!Sign.loaded)
@@ -79,7 +79,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
           in
           (* Look for the symbol. *)
           try (Sign.find sign s, Qualified) with Not_found ->
-          fatal pos "Unbound symbol [%a.%s]." Files.pp_path mp s
+          fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
   in
   begin
@@ -444,9 +444,9 @@ let patt_vars : p_term -> (string * int) list * string list =
     with Not_found -> ((id.elt, Array.length ts) :: pvs, nl)
   and arg_patt_vars acc xs =
     match xs with
-    | []                       -> acc
-    | (_, None,    _   ) :: xs -> arg_patt_vars acc xs
-    | (_, Some(a), _) :: xs    -> arg_patt_vars (patt_vars acc a) xs
+    | []                    -> acc
+    | (_, None   , _) :: xs -> arg_patt_vars acc xs
+    | (_, Some(a), _) :: xs -> arg_patt_vars (patt_vars acc a) xs
   in
   patt_vars ([],[])
 
@@ -498,10 +498,8 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
     let map = Array.map2 (fun n v -> (n,v)) names vars in
-    let t =
-      scope (M_RHS(Array.to_list map, is_private sym))
-        ss Env.empty p_rhs
-    in Bindlib.unbox (Bindlib.bind_mvar vars t)
+    let mode = M_RHS(Array.to_list map, is_private sym) in
+    Bindlib.unbox (Bindlib.bind_mvar vars (scope mode ss Env.empty p_rhs))
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let vars = Array.of_list pvs in

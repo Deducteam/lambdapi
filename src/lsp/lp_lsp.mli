@@ -10,4 +10,6 @@
 (* Status: Very Experimental                                            *)
 (************************************************************************)
 
-val main : unit -> unit
+val default_log_file : string
+
+val main : bool -> string -> unit

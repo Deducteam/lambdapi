@@ -1,7 +1,7 @@
 (** Interface to LSP. *)
 
-(* Lambdapi core *)
 open Core
+open Files
 
 (** Abstract representation of a command (top-level item). *)
 module Command : sig
@@ -48,9 +48,9 @@ type tactic_result =
   | Tac_OK    of proof_state
   | Tac_Error of Pos.popt option * string
 
-(** [initial_state path] returns an initial state for a signature with  module
-    path [path]. The resulting state can be used by [handle_command]. *)
-val initial_state : Files.module_path -> state
+(** [initial_state fname] gives an initial state for working with the (source)
+    file [fname]. The resulting state can be used by [handle_command]. *)
+val initial_state : file_path -> state
 
 (** [handle_command st cmd] evaluates the command [cmd] in state [st],  giving
     one of three possible results: the command is fully handled (corresponding
