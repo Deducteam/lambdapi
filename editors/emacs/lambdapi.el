@@ -1,12 +1,52 @@
 ;;; lambdapi-mode --- A major mode to edit Dedukti files
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
+;; Keywords: lambdapi dedukti proof-assistant
+;; Compatibility: GNU Emacs 26.1
 ;; Package-Requires: ((quail))
 
 ;;; Commentary:
 
 ;;; Code:
 
+;;; Legacy
+;; Syntax table (legacy syntax)
+(defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
+
+(setq lambdapi-mode-legacy-syntax-table
+  (let ((syn-table (make-syntax-table)))
+    (modify-syntax-entry ?\( "()1n" syn-table)
+    (modify-syntax-entry ?\) ")(4n" syn-table)
+    (modify-syntax-entry ?\; ". 23" syn-table)
+    syn-table))
+
+;; Keywords (legacy syntax)
+(defconst lambdapi-legacy-font-lock-keywords
+  (list
+   (cons
+    (concat
+     "\\<"
+     (regexp-opt '("def" "thm" "inj"))
+     "\\>") 'font-lock-keyword-face)
+   (cons
+    (concat
+     "#"
+     (regexp-opt '("REQUIRE" "EVAL" "INFER" "ASSERT" "ASSERTNOT"))
+     "\\>") 'font-lock-preprocessor-face))
+  "Keyword highlighting for the LambdaPi mode (legacy syntax).")
+
+
+;; Main function creating the mode (legacy syntax)
+;;;###autoload
+(define-derived-mode lambdapi-legacy-mode prog-mode "LambdaPi (legacy)"
+  "A mode for editing LambdaPi files (in legacy syntax)."
+  (set-syntax-table lambdapi-mode-legacy-syntax-table)
+  (setq-local font-lock-defaults '(lambdapi-legacy-font-lock-keywords))
+  (setq-local comment-start "(;")
+  (setq-local comment-end ";)")
+  (setq-default indent-tabs-mode nil))
+
+;;; Dedukti3
 ;; Syntax table
 (defvar lambdapi-mode-syntax-table nil "Syntax table for LambdaPi.")
 
@@ -47,7 +87,7 @@
   '("protected" "injective" "constant" "private"))
 
 (defconst lp-keywords--modules
-  '("require" "import" "as"))
+  '("require" "import" "as" "open"))
 
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
@@ -86,49 +126,18 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
-;; Syntax table (legacy syntax)
-(defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
-
-(setq lambdapi-mode-legacy-syntax-table
-  (let ((syn-table (make-syntax-table)))
-    (modify-syntax-entry ?\( "()1n" syn-table)
-    (modify-syntax-entry ?\) ")(4n" syn-table)
-    (modify-syntax-entry ?\; ". 23" syn-table)
-    syn-table))
-
-;; Keywords (legacy syntax)
-(defconst lambdapi-legacy-font-lock-keywords
-  (list
-   (cons
-    (concat
-     "\\<"
-     (regexp-opt '("def" "thm" "inj"))
-     "\\>") 'font-lock-keyword-face)
-   (cons
-    (concat
-     "#"
-     (regexp-opt '("REQUIRE" "EVAL" "INFER" "ASSERT" "ASSERTNOT"))
-     "\\>") 'font-lock-preprocessor-face))
-  "Keyword highlighting for the LambdaPi mode (legacy syntax).")
-
-
-;; Main function creating the mode (legacy syntax)
-;;;###autoload
-(define-derived-mode lambdapi-legacy-mode prog-mode "LambdaPi (legacy)"
-  "A mode for editing LambdaPi files (in legacy syntax)."
-  (set-syntax-table lambdapi-mode-legacy-syntax-table)
-  (setq-local font-lock-defaults '(lambdapi-legacy-font-lock-keywords))
-  (setq-local comment-start "(;")
-  (setq-local comment-end ";)")
-  (setq-default indent-tabs-mode nil))
-
 ;; SMIE indentation engine
 (require 'smie)
+
+;; TODO: forward and backward token
 
 (defconst lp-smie-grammar
   (smie-prec2->grammar
    (smie-bnf->prec2
     '((ident)
+      (qident (ident))
+      (rw-patt)
+      (nat-lit)
       (args (ident)
             (ident ":" sterm))
       (sterm ("TYPE")
@@ -138,8 +147,6 @@
              ("λ" args "," sterm)
              ("∀" args "," sterm)
              ("let" args "≔" sterm "in" sterm))
-      (rw-patt)
-      (nat-lit)
       (tactic ("refine" sterm)
               ("assume" sterm)
               ("apply" sterm)
@@ -156,22 +163,40 @@
       (symtag ("constant" "injective" "protected" "private"))
       (command (symtag "symbol" args ":" sterm)
                ("theorem" args ":" sterm "proof" tactic "qed")
+               ("theorem" args ":" sterm "proof" tactic "admit")
+               ("theorem" args ":" sterm "proof" tactic "abort")
                ("definition" args "≔" sterm)
                ("rule" rules)
                ("assert" sterm "≡" sterm)
                ("compute" sterm)
-               ("type" sterm ":" sterm)))
-    '((assoc "theorem" ":"))
-    '((assoc "symbol" ":"))
-    '((assoc ",") (assoc "⇒"))
-    '((assoc "in") (assoc "⇒")))))
+               ("type" sterm ":" sterm)
+               ("require" qident)
+               ("require" qident "as" ident)
+               ("require" "open" qident)
+               ("set" "verbose" nat-lit)
+               ("set" "debug" ident)
+               ("set" "builtin" ident "≔" qident)
+               ("set" "prefix" ident "≔" qident)
+               ("set" "infix" ident "≔" qident)
+               ("set" "infix" "left" ident "≔" qident)
+               ("set" "infix" "right" ident "≔" qident)
+               ("set" "prover" ident)
+               ("set" "prover_timeout" nat-lit)
+               ("set" "declared" ident)))
+    '((assoc ":" "theorem"))
+    '((assoc ":" "symbol"))
+    '((assoc ",") (assoc "in") (right "⇒")))))
 
 (defun lp-smie-rules (kind token)
   "Indentation rule for case KIND and token TOKEN."
-  (let ((indent-offset 2)
-        (command (or "symbol" "theorem" "assert" "compute" "type" "rule"
-                     "definition")))
+  (let ((command (or "symbol" "theorem" "assert" "compute" "type" "rule"
+                     "definition" "set" "require" "assertnot")))
     (pcase (cons kind token)
+      ;; (`(:before . basic)
+      ;;  ,(if (and (smie-rule-parent-p '("require")) (smie-rule-bolp)))
+      ;;  (cons 'column 2))
+      (`(:after . basic)
+       ,(if (and (smie-rule-parent-p '("as")) (smie-rule-hanging-p)) '('column 0)))
       (`(:before . command) '('column 0)))))
 
 ;; Main function creating the mode (lambdapi)
