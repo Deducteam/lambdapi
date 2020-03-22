@@ -18,47 +18,47 @@
     (modify-syntax-entry ?& "_" st)
     st))
 
-(defconst lp-keywords-regex
-  (regexp-opt
-   '("abort"
-     "admit"
-     "and"
-     "apply"
-     "as"
-     "assert"
-     "assertnot"
-     "assume"
-     "compute"
-     "constant"
-     "definition"
-     "focus"
-     "in"
-     "injective"
-     "let"
-     "open"
-     "print"
-     "private"
-     "proof"
-     "proofterm"
-     "protected"
-     "qed"
-     "refine"
-     "reflexivity"
-     "require"
-     "rewrite"
-     "rule"
-     "set"
-     "simpl"
-     "symbol"
-     "symmetry"
-     "theorem"
-     "TYPE"
-     "type"
-     "why3")))
+(defconst lp-keywords--proofs
+  '("abort"
+    "admit"
+    "apply"
+    "assume"
+    "focus"
+    "print"
+    "proofterm"
+    "qed"
+    "refine"
+    "reflexivity"
+    "rewrite"
+    "simpl"
+    "symmetry"
+    "why3"))
+
+(defconst lp-keywords--terms
+  '("in" "let" "λ" "∀" "TYPE"))
+
+(defconst lp-keywords--misc-commands
+  '("assert" "assertnot" "type" "compute"))
+
+(defconst lp-keywords--commands
+  '("and" "symbol" "theorem" "definition" "rule" "proof" "admit" "qed" "abort"))
+
+(defconst lp-keywords--symtags
+  '("protected" "injective" "constant" "private"))
+
+(defconst lp-keywords--modules
+  '("require" "import" "as"))
 
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
-  (list (cons (concat "\\<" lp-keywords-regex "\\>") 'font-lock-keyword-face))
+  (list (cons
+         (concat "\\<" (regexp-opt (append lp-keywords--commands
+                                           lp-keywords--symtags
+                                           lp-keywords--modules)) "\\>")
+         'font-lock-keyword-face)
+        (cons
+         (concat "\\<" (regexp-opt lp-keywords--misc-commands) "\\>")
+         'font-lock-preprocessor-face))
   "Keyword highlighting for the LambdaPi mode.")
 
 ;; Unicode support
