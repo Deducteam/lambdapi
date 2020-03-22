@@ -89,17 +89,6 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
-;; Main function creating the mode (lambdapi)
-;;;###autoload
-(define-derived-mode lambdapi-mode prog-mode "LambdaPi"
-  "A mode for editing LambdaPi files."
-  (set-syntax-table lambdapi-mode-syntax-table)
-  (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
-  (setq-local comment-start "//")
-  (setq-local comment-end "")
-  (setq-default indent-tabs-mode nil)
-  (set-input-method "LambdaPi"))
-
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
 
@@ -135,6 +124,53 @@
   (setq-local comment-start "(;")
   (setq-local comment-end ";)")
   (setq-default indent-tabs-mode nil))
+
+;; SMIE indentation engine
+(require 'smie)
+(defconst lp/bnf
+  '((ident)
+    (args (ident)
+          ("(" ident ":" sterm ")" args))
+    (sterm ("TERM")
+           ("_")
+           ("(" sterm ")")
+           ("{" sterm "}")
+           (sterm "⇒" sterm)
+           (sterm "→" sterm)
+           ("λ" args "," sterm)
+           ("∀" args "," sterm)
+           ("let" args "≔" sterm "in" sterm))
+    (command ("symbol" args ":" sterm)
+             ("theorem" args ":" sterm)
+             ("rule" sterm "→" sterm)
+             ("assert" sterm "≡" sterm)
+             ("compute" sterm)
+             ("type" sterm))
+    (right "⇒")))
+(defvar lp-smie-grammar (smie-prec2->grammar (smie-bnf->prec2 lp/bnf)))
+(defvar lp/keywords-rgx (regexp-opt
+                         '("symbol" "rule"
+                           "≔" "λ" "∀"
+                           "⇒" "→"
+                           "," ":"
+                           "≡")))
+
+(defun lp-smie-rules (kind token)
+  "Indentation rule for case KIND and token TOKEN."
+  (pcase (cons kind token)
+    (`(:after . ":") (cons 'column 2))))
+
+;; Main function creating the mode (lambdapi)
+;;;###autoload
+(define-derived-mode lambdapi-mode prog-mode "LambdaPi"
+  "A mode for editing LambdaPi files."
+  (set-syntax-table lambdapi-mode-syntax-table)
+  (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
+  (setq-local comment-start "//")
+  (setq-local comment-end "")
+  (smie-setup lp-smie-grammar #'lp-smie-rules)
+  (setq-default indent-tabs-mode nil)
+  (set-input-method "LambdaPi"))
 
 ;; LSP mode
 (if (not (version<= emacs-version "26"))
