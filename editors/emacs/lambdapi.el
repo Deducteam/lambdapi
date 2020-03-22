@@ -18,50 +18,47 @@
     (modify-syntax-entry ?& "_" st)
     st))
 
+(defconst lp-keywords-regex
+  (regexp-opt
+   '("abort"
+     "admit"
+     "and"
+     "apply"
+     "as"
+     "assert"
+     "assertnot"
+     "assume"
+     "compute"
+     "constant"
+     "definition"
+     "focus"
+     "in"
+     "injective"
+     "let"
+     "open"
+     "print"
+     "private"
+     "proof"
+     "proofterm"
+     "protected"
+     "qed"
+     "refine"
+     "reflexivity"
+     "require"
+     "rewrite"
+     "rule"
+     "set"
+     "simpl"
+     "symbol"
+     "symmetry"
+     "theorem"
+     "TYPE"
+     "type"
+     "why3")))
+
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
-  (list
-   (cons
-    (concat
-     "\\<"
-     (regexp-opt
-      '("abort"
-        "admit"
-        "and"
-        "apply"
-        "as"
-        "assert"
-        "assertnot"
-        "assume"
-        "compute"
-        "constant"
-        "definition"
-        "focus"
-        "in"
-        "injective"
-        "let"
-        "open"
-        "print"
-        "private"
-        "proof"
-        "proofterm"
-        "protected"
-        "qed"
-        "refine"
-        "reflexivity"
-        "require"
-        "rewrite"
-        "rule"
-        "set"
-        "simpl"
-        "symbol"
-        "symmetry"
-        "theorem"
-        "TYPE"
-        "type"
-        "why3"))
-     "\\>")
-    'font-lock-keyword-face))
+  (list (cons (concat "\\<" lp-keywords-regex "\\>") 'font-lock-keyword-face))
   "Keyword highlighting for the LambdaPi mode.")
 
 ;; Unicode support
@@ -127,38 +124,55 @@
 
 ;; SMIE indentation engine
 (require 'smie)
-(defconst lp/bnf
-  '((ident)
-    (args (ident)
-          ("(" ident ":" sterm ")" args))
-    (sterm ("TERM")
-           ("_")
-           ("(" sterm ")")
-           ("{" sterm "}")
-           (sterm "⇒" sterm)
-           (sterm "→" sterm)
-           ("λ" args "," sterm)
-           ("∀" args "," sterm)
-           ("let" args "≔" sterm "in" sterm))
-    (command ("symbol" args ":" sterm)
-             ("theorem" args ":" sterm)
-             ("rule" sterm "→" sterm)
-             ("assert" sterm "≡" sterm)
-             ("compute" sterm)
-             ("type" sterm))
-    (right "⇒")))
-(defvar lp-smie-grammar (smie-prec2->grammar (smie-bnf->prec2 lp/bnf)))
-(defvar lp/keywords-rgx (regexp-opt
-                         '("symbol" "rule"
-                           "≔" "λ" "∀"
-                           "⇒" "→"
-                           "," ":"
-                           "≡")))
+
+(defconst lp-smie-grammar
+  (smie-prec2->grammar
+   (smie-bnf->prec2
+    '((ident)
+      (args (ident)
+            (ident ":" sterm))
+      (sterm ("TYPE")
+             ("_")
+             (sterm "⇒" sterm)
+             (ident)
+             ("λ" args "," sterm)
+             ("∀" args "," sterm)
+             ("let" args "≔" sterm "in" sterm))
+      (rw-patt)
+      (nat-lit)
+      (tactic ("refine" sterm)
+              ("assume" sterm)
+              ("apply" sterm)
+              ("simpl")
+              ("rewrite" "[" rw-patt "]" sterm)
+              ("reflexivity")
+              ("focus" nat-lit)
+              ("print")
+              ("proofterm")
+              ("why3"))
+      (rule (sterm "→" sterm))
+      (rules (rule)
+             (rule "and" rule))
+      (symtag ("constant" "injective" "protected" "private"))
+      (command (symtag "symbol" args ":" sterm)
+               ("theorem" args ":" sterm "proof" tactic "qed")
+               ("definition" args "≔" sterm)
+               ("rule" rules)
+               ("assert" sterm "≡" sterm)
+               ("compute" sterm)
+               ("type" sterm ":" sterm)))
+    '((assoc "theorem" ":"))
+    '((assoc "symbol" ":"))
+    '((assoc ",") (assoc "⇒"))
+    '((assoc "in") (assoc "⇒")))))
 
 (defun lp-smie-rules (kind token)
   "Indentation rule for case KIND and token TOKEN."
-  (pcase (cons kind token)
-    (`(:after . ":") (cons 'column 2))))
+  (let ((indent-offset 2)
+        (command (or "symbol" "theorem" "assert" "compute" "type" "rule"
+                     "definition")))
+    (pcase (cons kind token)
+      (`(:before . command) '('column 0)))))
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
