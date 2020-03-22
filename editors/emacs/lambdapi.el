@@ -91,8 +91,8 @@
 
 (setq lambdapi-mode-legacy-syntax-table
   (let ((syn-table (make-syntax-table)))
-    (modify-syntax-entry ?\( ". 1" syn-table)
-    (modify-syntax-entry ?\) ". 4" syn-table)
+    (modify-syntax-entry ?\( "()1n" syn-table)
+    (modify-syntax-entry ?\) ")(4n" syn-table)
     (modify-syntax-entry ?\; ". 23" syn-table)
     syn-table))
 
