@@ -34,7 +34,7 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [sensible_tref t] transforms {!constructor:Appl} into references. *)
+(** [appl_to_tref t] transforms {!constructor:Appl} into references. *)
 let appl_to_tref : term -> term = fun t ->
   match t with
   | Appl(_,_) as t -> TRef(ref (Some t))
@@ -136,39 +136,6 @@ let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
   | Symb(r,_) -> r == s
   | _         -> false
-
-(** [iter_ctxt f t] applies the function [f] to every node of the term [t].
-   At each call, the function is given the list of the free variables in the
-   term, in the reverse order they were given. Free variables that were
-   already in the term before the call are not included in the list. Note: [f]
-   is called on already unfolded terms only. *)
-let iter_ctxt : (tvar list -> term -> unit) -> term -> unit = fun action t ->
-  let rec iter xs t =
-    let t = unfold t in
-    action xs t;
-    match t with
-    | Wild
-    | TRef(_)
-    | Vari(_)
-    | Type
-    | Kind
-    | Symb(_)     -> ()
-    | Patt(_,_,ts)
-    | TEnv(_,ts)
-    | Meta(_,ts)  -> Array.iter (iter xs) ts
-    | Prod(a,b)
-    | Abst(a,b)   ->
-       iter xs a;
-       let (x,b') = Bindlib.unbind b in
-       iter (if Bindlib.binder_occur b then x::xs else xs) b'
-    | Appl(t,u)   -> iter xs t; iter xs u
-    | LLet(t,a,u) ->
-        iter xs t;
-        iter xs a;
-        let x,u' = Bindlib.unbind u in
-        iter (if Bindlib.binder_occur u then x::xs else xs) u'
-  in
-  iter [] (cleanup t)
 
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded

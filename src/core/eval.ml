@@ -38,6 +38,12 @@ let eta_equality : bool ref = Console.register_flag "eta_equality" false
 (** Counter used to preserve physical equality in {!val:whnf}. *)
 let steps : int Pervasives.ref = Pervasives.ref 0
 
+(** [appl_to_tref t] transforms {!constructor:Appl} into references. *)
+let appl_to_tref : term -> term = fun t ->
+  match t with
+  | Appl(_,_) as t -> TRef(ref (Some t))
+  | t              -> t
+
 (** Abstract machine stack. *)
 type stack = term list
 
