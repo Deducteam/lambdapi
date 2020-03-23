@@ -60,8 +60,7 @@ type term =
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
   | LLet of term * term * (term, term) Bindlib.binder
-  (** Local let binding [LLet(t, a, u)] is [let x : a ≔ t in u] where
-      [u] is a binder of the form [λ x, u']. *)
+  (** [LLet(t, a, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the

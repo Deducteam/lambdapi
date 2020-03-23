@@ -50,8 +50,8 @@ and p_term_aux =
   | P_Prod of p_arg list * p_term
   (** Product over several variables. *)
   | P_LLet of ident * p_arg list * p_term * p_term
-  (** Local let.
-      TODO add type annotation [T] of term [t] in [let x = t : T in u]. *)
+  (** Local let. *)
+  (* TODO add type annotation [T] of term [t] in [let x = t : T in u]. *)
   | P_NLit of int
   (** Natural number literal. *)
   | P_UnaO of unop * p_term
