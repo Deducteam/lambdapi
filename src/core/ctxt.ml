@@ -23,14 +23,13 @@ let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
-    appears, and
-    @raise Not_found if not. *)
-let rec def_of : tvar -> ctxt -> term = fun x ctx ->
+    appears, and [None] otherwise *)
+let rec def_of : tvar -> ctxt -> term option = fun x ctx ->
   match ctx with
-  | (y,_,Some(t))::_ when Bindlib.eq_vars x y -> t
-  | (y,_,None)::_    when Bindlib.eq_vars x y -> raise Not_found
+  | (y,_,Some(t))::_ when Bindlib.eq_vars x y -> Some(t)
+  | (y,_,None)::_    when Bindlib.eq_vars x y -> None
   | _::l                                      -> def_of x l
-  | []                                        -> raise Not_found
+  | []                                        -> None
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->

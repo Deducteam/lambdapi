@@ -143,15 +143,23 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq_modulo l
     (* Try a δ conversion *)
+    | ((Vari(x) as t), (Vari(y) as u)) ->
+        if Bindlib.eq_vars x y then eq_modulo l else
+        begin
+          match (Ctxt.def_of x ctx, Ctxt.def_of y ctx) with
+          | None   , None    -> raise Exit
+          | None   , Some(u) -> eq_modulo ((t, u) :: l)
+          | Some(t), None    -> eq_modulo ((t, u) :: l)
+          | Some(t), Some(u) -> eq_modulo ((t, u) :: l)
+        end
     | (Vari(x)    , t          )
     | (t          , Vari(x)    ) ->
-        let u =
-          try Ctxt.def_of x ctx
-          with Not_found -> raise Exit
-        in
-        eq_modulo ((u, t) :: l)
+        begin
+          match Ctxt.def_of x ctx with
+          | None    -> raise Exit
+          | Some(u) -> eq_modulo ((t, u) :: l)
+        end
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
