@@ -27,9 +27,7 @@ let type_of : tvar -> ctxt -> term = fun x ctx ->
 let rec def_of : tvar -> ctxt -> term option = fun x ctx ->
   match ctx with
   | []         -> None
-  | (y,_,d)::l ->
-      if Bindlib.eq_vars x y then d else
-      def_of x l
+  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->
@@ -49,8 +47,8 @@ let to_prod : ctxt -> term -> term = fun ctx t ->
     containing the variables of context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
   let m = fresh_meta (to_prod ctx a) (List.length ctx) in
-  let getv (x,_,_) = Vari(x) in
-  Meta(m, Array.of_list (List.rev_map getv ctx))
+  let get_var (x,_,_) = Vari(x) in
+  Meta(m, Array.of_list (List.rev_map get_var ctx))
 
 (** [sub ctx vs] return the sub-context of [ctx] made of the variables of
     [vs]. *)
