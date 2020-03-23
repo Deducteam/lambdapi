@@ -89,7 +89,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | P_Impl(a,b)        -> out "%a@ ⇒ %a" (pp PAppl) a pp_toplevel b
     | P_LLet(x,args,t,u) -> out "@[<hov 2>let %a%a =@ %a@]@ in@ %a" pp_ident x
                               pp_p_args args pp_toplevel t pp_toplevel u
-    | _                  -> out "@[<hov 2>%a@]" (pp PFunc) t
+    | _                  -> out "%a" (pp PFunc) t
   in
   pp_toplevel oc t
 
