@@ -1,0 +1,26 @@
+A : Type.
+a : A.
+
+def f1 : (A -> A) -> A.
+[] f1 (_ => _) --> a.
+
+#ASSERT f1 (_ => a) == a.
+#ASSERTNOT f1 (x => x) == a.
+
+def f2 : (A -> A) -> A.
+[] f2 (x => _) --> a.
+
+#ASSERT f2 (_ => a) == a.
+#ASSERTNOT f2 (x => x) == a.
+
+def f3 : (A -> A) -> A.
+[] f3 (x => _ x) --> a.
+
+#ASSERT f3 (_ => a) == a.
+#ASSERT f3 (x => x) == a.
+
+def f4 : (A -> A) -> A.
+[X] f4 (x => X x) --> a.
+
+#ASSERT f4 (_ => a) == a.
+#ASSERT f4 (x => x) == a.

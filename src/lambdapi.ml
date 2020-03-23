@@ -37,7 +37,7 @@ let init : config -> unit = fun cfg ->
   set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
-  Console.color := cfg.no_colors;
+  Console.color := not cfg.no_colors;
   Handle.too_long := cfg.too_long;
   (* Log some configuration data. *)
   if Timed.(!log_enabled) then
