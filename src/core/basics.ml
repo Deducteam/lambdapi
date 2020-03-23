@@ -160,75 +160,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
   in iter
 
-(** [iter_meta b f t] applies the function [f] to every metavariable of [t],
-   and to the type of every metavariable recursively if [b] is true. *)
-let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
-  let rec iter t =
-    match unfold t with
-    | Patt(_,_,_)
-    | TEnv(_,_)
-    | Wild
-    | TRef(_)
-    | Vari(_)
-    | Type
-    | Kind
-    | Symb(_)     -> ()
-    | Prod(a,b)
-    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
-    | Appl(t,u)   -> iter t; iter u
-    | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-    | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
-  in iter
-
-(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
-let occurs : meta -> term -> bool =
-  let exception Found in fun m t ->
-  let fn p = if m == p then raise Found in
-  try iter_meta false fn t; false with Found -> true
-
-(** [get_metas b t] returns the list of all the metavariables in [t], and in
-   the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
-let get_metas : bool -> term -> meta list = fun b t ->
-  let open Pervasives in
-  let l = ref [] in
-  iter_meta b (fun m -> l := m :: !l) t;
-  List.sort_uniq cmp_meta !l
-
-(** [has_metas b t] checks whether there are metavariables in [t], and in the
-   types of metavariables recursively if [b] is true. *)
-let has_metas : bool -> term -> bool =
-  let exception Found in fun b t ->
-  try iter_meta b (fun _ -> raise Found) t; false with Found -> true
-
-(** [distinct_vars ts] checks that [ts] is made of distinct
-   variables and returns these variables. *)
-let distinct_vars : term array -> tvar array option =
-  let exception Not_unique_var in fun ts ->
-  let open Pervasives in
-  let vars = ref VarSet.empty in
-  let to_var t =
-    match unfold t with
-    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars; x
-    | _ -> raise Not_unique_var
-  in try Some (Array.map to_var ts) with Not_unique_var -> None
-
-(** {3 Conversion of a rule into a "pair" of terms} *)
-
-(** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
-    [r] into a term.  The bound higher-order variables of the original RHS are
-    substituted using [Patt] constructors.  They are thus represented as their
-    LHS counterparts. This is a more convenient way of representing terms when
-    analysing confluence or termination. *)
-let term_of_rhs : rule -> term = fun r ->
-  let fn i (name, arity) =
-    let make_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
-    let vars = Array.init arity make_var in
-    let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
-    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
-  in
-  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
-
-(** {4 Contexts} *)
+(** {3 Contexts} *)
 
 (** [ctx_unbind ctx a def b] returns the triple [(x,b,ctx')] such that [(x,b)]
     is the unbinding of [b] and [ctx'] is the context [ctx] extended with, if
@@ -284,3 +216,83 @@ let subctx : ctxt -> tvar array -> ctxt = fun ctx vs ->
     if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
   in
   List.fold_right f ctx []
+
+(** {3 Metavariables} *)
+
+(** [iter_meta b f t] applies the function [f] to every metavariable of [t],
+   and to the type of every metavariable recursively if [b] is true. *)
+let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
+  let rec iter t =
+    match unfold t with
+    | Patt(_,_,_)
+    | TEnv(_,_)
+    | Wild
+    | TRef(_)
+    | Vari(_)
+    | Type
+    | Kind
+    | Symb(_)     -> ()
+    | Prod(a,b)
+    | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
+    | Appl(t,u)   -> iter t; iter u
+    | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
+    | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
+  in iter
+
+(** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)
+let occurs : meta -> term -> bool =
+  let exception Found in fun m t ->
+  let fn p = if m == p then raise Found in
+  try iter_meta false fn t; false with Found -> true
+
+(** [get_metas b t] returns the list of all the metavariables in [t], and in
+   the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
+let get_metas : bool -> term -> meta list = fun b t ->
+  let open Pervasives in
+  let l = ref [] in
+  iter_meta b (fun m -> l := m :: !l) t;
+  List.sort_uniq cmp_meta !l
+
+(** [has_metas b t] checks whether there are metavariables in [t], and in the
+   types of metavariables recursively if [b] is true. *)
+let has_metas : bool -> term -> bool =
+  let exception Found in fun b t ->
+  try iter_meta b (fun _ -> raise Found) t; false with Found -> true
+
+(** [distinct_vars ts] checks that [ts] is made of distinct
+   variables and returns these variables. *)
+let distinct_vars : ctxt -> term array -> tvar array option =
+  let exception Not_unique_var in fun ctx ts ->
+  let open Pervasives in
+  let vars = ref VarSet.empty in
+  let to_var t =
+    match unfold t with
+    | Vari(x) ->
+        let x =
+          (* If variable is defined in [ctx], replace the var by its
+             definition. *)
+          match def_of x ctx with
+          | Some(Vari(x)) -> x
+          | None          -> x
+          | Some(_)       -> raise Not_unique_var
+        in
+        if not (VarSet.mem x !vars) then (vars := VarSet.add x !vars; x) else
+        raise Not_unique_var
+    | _       -> raise Not_unique_var
+  in try Some (Array.map to_var ts) with Not_unique_var -> None
+
+(** {3 Conversion of a rule into a "pair" of terms} *)
+
+(** [terms_of_rule r] converts the RHS (right hand side) of the rewriting rule
+    [r] into a term.  The bound higher-order variables of the original RHS are
+    substituted using [Patt] constructors.  They are thus represented as their
+    LHS counterparts. This is a more convenient way of representing terms when
+    analysing confluence or termination. *)
+let term_of_rhs : rule -> term = fun r ->
+  let fn i (name, arity) =
+    let make_var i = Bindlib.new_var mkfree (Printf.sprintf "x%i" i) in
+    let vars = Array.init arity make_var in
+    let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
+    TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
+  in
+  Bindlib.msubst r.rhs (Array.mapi fn r.vars)

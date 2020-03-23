@@ -100,7 +100,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         | Prod(a,b) -> (a,b)
         | Meta(_,ts) ->
             let ctx =
-              match Basics.distinct_vars ts with
+              match Basics.distinct_vars ctx ts with
               | None -> ctx
               | Some vs -> Basics.subctx ctx vs
             in
@@ -167,7 +167,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
         | Prod(d,b) -> conv ctx d a; b (* Domains must be convertible. *)
         | Meta(_,ts) ->
            let ctx =
-             match Basics.distinct_vars ts with
+             match Basics.distinct_vars ctx ts with
              | None -> ctx
              | Some vs -> Basics.subctx ctx vs
            in

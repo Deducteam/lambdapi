@@ -132,7 +132,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let exception Cannot_imitate in
     try
       if not (us = [] && is_injective s) then raise Cannot_imitate;
-      let vars = match distinct_vars vs with
+      let vars = match distinct_vars ctx vs with
         | None -> raise Cannot_imitate
         | Some vars -> vars
       in
