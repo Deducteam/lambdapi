@@ -163,9 +163,8 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     - the definition of [x] in [def] of type [a] otherwise. *)
 let ctx_unbind : ctxt -> term -> term option -> tbinder ->
   tvar * term * ctxt = fun ctx a def b ->
-  let (x,b') = Bindlib.unbind b in
-  let ctx' = if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx in
-  (x,b',ctx')
+  let (x, t) = Bindlib.unbind b in
+  (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
 (** [type_of x ctx] returns the type of [x] in the context [ctx] when it
     appears, and raises [Not_found] otherwise. *)
