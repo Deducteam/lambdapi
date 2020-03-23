@@ -265,7 +265,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos
-              (if llet then "Variable [%s] is not used in let-binding."
+              (if llet then "Useless let-binding (variable [%s] not bound)."
                else "Variable [%s] could be replaced by [_].") x.elt;
           cons a (Bindlib.bind_var v t)
     in
