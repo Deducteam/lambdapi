@@ -28,6 +28,7 @@ let type_of : tvar -> ctxt -> term = fun x ctx ->
 let rec def_of : tvar -> ctxt -> term = fun x ctx ->
   match ctx with
   | (y,_,Some(t))::_ when Bindlib.eq_vars x y -> t
+  | (y,_,None)::_    when Bindlib.eq_vars x y -> raise Not_found
   | _::l                                      -> def_of x l
   | []                                        -> raise Not_found
 
