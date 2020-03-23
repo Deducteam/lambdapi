@@ -105,7 +105,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas true a then
         begin
@@ -168,11 +168,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ss.builtins Ctxt.empty a;
-            if Typing.check ss.builtins Ctxt.empty t a then a else
+            Typing.sort_type ss.builtins [] a;
+            if Typing.check ss.builtins [] t a then a else
             fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Typing.infer ss.builtins Ctxt.empty t with
+            match Typing.infer ss.builtins [] t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -201,7 +201,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin

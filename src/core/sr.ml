@@ -118,7 +118,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst r.elt.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  match Typing.infer_constr builtins Ctxt.empty lhs with
+  match Typing.infer_constr builtins [] lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
@@ -133,7 +133,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  let to_solve = Infer.check Ctxt.empty rhs ty_lhs in
+  let to_solve = Infer.check [] rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
       log_subj "RHS has type [%a]" pp ty_lhs;

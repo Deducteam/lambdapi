@@ -153,7 +153,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | ((Vari(x) as t), (Vari(y) as u)) ->
         if Bindlib.eq_vars x y then eq_modulo l else
         begin
-          match (Ctxt.def_of x ctx, Ctxt.def_of y ctx) with
+          match (def_of x ctx, def_of y ctx) with
           | None   , None    -> raise Exit
           | None   , Some(u) -> eq_modulo ((t, u) :: l)
           | Some(t), None    -> eq_modulo ((t, u) :: l)
@@ -162,7 +162,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Vari(x)    , t          )
     | (t          , Vari(x)    ) ->
         begin
-          match Ctxt.def_of x ctx with
+          match def_of x ctx with
           | None    -> raise Exit
           | Some(u) -> eq_modulo ((t, u) :: l)
         end
