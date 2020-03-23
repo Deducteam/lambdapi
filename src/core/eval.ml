@@ -118,9 +118,8 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
   (* In head normal form. *)
   | (_         , _    ) -> st
 
-(** [eq_modulo ctx a b] tests equality modulo rewriting and modulo δ
-    (unfolding of variables from the context) between [a] and [b] and with the
-    context [ctx]. *)
+(** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
+    the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
   if !log_enabled then log_conv "%a[%a] == [%a]" wrap_ctxt ctx pp a pp b;
   let rec eq_modulo l =
@@ -149,7 +148,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    (* Try a δ conversion *)
+    (* Try unfolding variable definitions. *)
     | ((Vari(x) as t), (Vari(y) as u)) ->
         if Bindlib.eq_vars x y then eq_modulo l else
         begin

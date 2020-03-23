@@ -248,7 +248,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
   (* Scoping of a binder (abstraction, product or let-binding with [llet] to
      true). *)
-  and scope_binder ?(llet=false) cons env xs t =
+  and scope_binder ?(is_let=false) cons env xs t =
     let rec aux env xs =
       match xs with
       | []                  -> scope env t
@@ -265,7 +265,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos
-              (if llet then "Useless let-binding (variable [%s] not bound)."
+              (if is_let then "Useless let-binding (variable [%s] not bound)."
                else "Variable [%s] could be replaced by [_].") x.elt;
           cons a (Bindlib.bind_var v t)
     in
