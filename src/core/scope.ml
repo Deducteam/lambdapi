@@ -246,7 +246,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
-  (* Scoping of a binder (abstraction, product or let-binding with [llet] to
+  (* Scoping of a binder (abstraction, product or let-binding with [is_let] to
      true). *)
   and scope_binder ?(is_let=false) cons env xs t =
     let rec aux env xs =
@@ -254,7 +254,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | []                  -> scope env t
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
-          assert (not llet); (* Let with wildcard rejected at parsing *)
+          assert (not is_let); (* Let with wildcard rejected at parsing *)
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
           let t = aux env ((l,d,i)::xs) in
@@ -377,7 +377,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let t = scope_binder _Abst env xs t in
         (* Scope all the [let x xs := t in u] *)
         let cons a u = _LLet t a u in
-        scope_binder ~llet:true cons env [[Some(x)], None, false] u
+        scope_binder ~is_let:true cons env [[Some(x)], None, false] u
     | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt           ) ->
