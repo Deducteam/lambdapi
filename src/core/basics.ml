@@ -34,12 +34,6 @@ let to_tvar : term -> tvar = fun t ->
     “marshaled” (e.g., by the {!module:Sign} module), as this would break the
     freshness invariant of new variables. *)
 
-(** [appl_to_tref t] transforms {!constructor:Appl} into references. *)
-let appl_to_tref : term -> term = fun t ->
-  match t with
-  | Appl(_,_) as t -> TRef(ref (Some t))
-  | t              -> t
-
 (** [count_products a] returns the number of consecutive products at the  head
     of the term [a]. *)
 let rec count_products : term -> int = fun t ->
