@@ -42,3 +42,8 @@ symbol iz: I z
 hint (plus &x &y) ≡ z → &x ≡ z, &y ≡ z
 // Trigger the unification problem plus ?1 ?2 ≡ z
 compute H (plus _ _) iz
+
+// The arrow problem
+symbol arrow : U ⇒ U ⇒ U
+rule T (arrow &t &u) → T &t ⇒ T &u
+hint (T &a ⇒ T &b) ≡ T (arrow &c &d) → &a ≡ &c, &b ≡ &d
