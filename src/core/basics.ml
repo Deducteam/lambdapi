@@ -270,19 +270,21 @@ let ctx_mem : tvar -> ctxt -> bool = fun x ->
   List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
 
 (** [prod ctx t] builds a product by abstracting over the context [ctx], in
-    the term [t]. *)
-let prod : ctxt -> term -> term = fun ctx t ->
-  let fn t elt =
+    the term [t]. It returns the number of products as well. *)
+let prod : ctxt -> term -> term * int = fun ctx t ->
+  let fn (t,c) elt =
     match elt with
-    | (x,a,None   ) -> _Prod (lift a) (Bindlib.bind_var x t)
-    | (x,a,Some(u)) -> _LLet (lift u) (lift a) (Bindlib.bind_var x t)
+    | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
+    | (x,a,Some(u)) -> (_LLet (lift u) (lift a) (Bindlib.bind_var x t), c)
   in
-  Bindlib.unbox (List.fold_left fn (lift t) ctx)
+  let t, c = List.fold_left fn (lift t, 0) ctx in
+  (Bindlib.unbox t, c)
 
 (** [make_meta ctx a] creates a metavariable of type [a],  with an environment
     containing the variables of context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
-  let m = fresh_meta (prod ctx a) (List.length ctx) in
+  let prd, len = prod ctx a in
+  let m = fresh_meta prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
 
