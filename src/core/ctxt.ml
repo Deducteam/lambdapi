@@ -22,24 +22,14 @@ let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
 let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
-(** [pop_def_of x ctx] returns the definition of [x] in the context [ctx] and
-    the context [ctx] without the definition of [x] if [x] appears in [ctx]
-    and
-    @raise Not_found if [x] does not appear in [ctx]. *)
-let pop_def_of : tvar -> ctxt -> term * ctxt = fun x ctx ->
-  let rec pop_def_of dec inc =
-  match dec with
-    | (y,_,Some(t))::l when Bindlib.eq_vars x y -> (t, List.rev_append inc l)
-    | h::l                                      -> pop_def_of l (h::inc)
-    | []                                        -> raise Not_found
-  in
-  pop_def_of ctx []
-
 (** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
     appears, and
     @raise Not_found if not. *)
-let def_of : tvar -> ctxt -> term = fun x ctx ->
-  fst (pop_def_of x ctx)
+let rec def_of : tvar -> ctxt -> term = fun x ctx ->
+  match ctx with
+  | (y,_,Some(t))::_ when Bindlib.eq_vars x y -> t
+  | _::l                                      -> def_of x l
+  | []                                        -> raise Not_found
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ctx ->
