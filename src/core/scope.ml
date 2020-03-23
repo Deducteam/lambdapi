@@ -589,7 +589,7 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   in
   (* NOTE: the remaining of the function checks whether [lhs] and [rhs] are
      well-formed. *)
-  let vars, rhst = Bindlib.unmbind rhs in
+  let _, rhst = Bindlib.unmbind rhs in
   (* Retrieve the sub unification problems in the form (xi, Hi). *)
   let bindings : (tevar * term) list =
     let (h, args) = Basics.get_args rhst in
@@ -609,17 +609,19 @@ let scope_hint : sig_state -> p_hint -> rule loc = fun ss h ->
   if not (List.are_distinct ~eq:eq_fst bindings) then
     fatal p_rs.pos "Only linear hint RHS allowed";
   (* [vars_closed (_,t)] raises an error if [t] depends on a variable in
-     [vars]. *)
+     [bvars]. *)
+  let bvars = List.map fst bindings in
   let vars_closed (_,t) =
     let tb = lift t in
-    if Array.exists (fun x -> Bindlib.occur x tb) vars then
+    if List.exists (fun x -> Bindlib.occur x tb) bvars then
       fatal p_rs.pos
-        "RHS of sub-unification problems can't depend on patterns"
+        "RHS of sub-unification problems can't depend on hinted vars"
   in
   (* Ensure that ∀ (i, j), Hi does not depend on xj. *)
   List.iter vars_closed bindings;
   (* [subst_from_hints t] substitutes pattern variables in [t] by the values
      in [bindings]. *)
+  (* FIXME: rather replace by meta variables and check type (as with SR). *)
   let subst_of_hints t =
     let rec subst t =
       match unfold t with
