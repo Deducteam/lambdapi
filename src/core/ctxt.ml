@@ -33,8 +33,8 @@ let rec def_of : tvar -> ctxt -> term = fun x ctx ->
   | []                                        -> raise Not_found
 
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
-let mem : tvar -> ctxt -> bool = fun x ctx ->
-  try ignore (type_of x ctx); false with Not_found -> true
+let mem : tvar -> ctxt -> bool = fun x ->
+  List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
 
 (** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. *)
