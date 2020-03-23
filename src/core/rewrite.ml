@@ -101,10 +101,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        in
        let a = Bindlib.new_var mkfree "a"
        and x = Bindlib.new_var mkfree "x" in
-       let c =
-           [(x, Appl(symb symb_T, Vari a), None)
-           ;(a, term_U, None)]
-       in
+       let c = [(x, Appl(symb symb_T, Vari a), None); (a, term_U, None)] in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
        let refl_type = Ctxt.to_prod c (Appl (symb symb_P, t)) in
        if not (Basics.eq refl_type !(sym.sym_type))
@@ -132,8 +129,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        and py = Bindlib.new_var mkfree "py"
        and z = Bindlib.new_var mkfree "z" in
        let ta = Appl (symb symb_T, Vari a) in
-       let c = [(z, ta, None)] in
-       let typ_p = Ctxt.to_prod c term_Prop in
+       let typ_p = Ctxt.to_prod [(z, ta, None)] term_Prop in
        let eqaxy = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari y] in
        let p_of y = Appl (symb symb_P, Appl (Vari p, Vari y)) in
        let c =
