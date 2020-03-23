@@ -81,17 +81,14 @@ let try_hints : ctxt -> term -> term -> unif_constrs option =
   fun ctx s t ->
   if !log_enabled then log_unif "hint [%a]" pp_constr (ctx,s,t);
   let exception No_match in
-  let tree = !((to_sym Unif_hints.atom).sym_tree) in
   try
     let rhs =
-      match Eval.tree_walk tree [s;t] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       ->
-      match Eval.tree_walk tree [t;s] with
-      | Some(r,[]) -> r
-      | Some(_)    -> assert false (* Everything should be matched *)
-      | None       -> raise No_match
+      let u = Basics.add_args Unif_hints.atom [s; t] in
+      let r = Eval.whnf u in
+      if not (r == u) then r else (* r <> u if a reduction happened *)
+      let u = Basics.add_args Unif_hints.atom [t; s] in
+      let r = Eval.whnf u in
+      if not (r == u) then r else raise No_match
     in
     let rec subpb_in t =
       match Basics.get_args (unfold t) with
