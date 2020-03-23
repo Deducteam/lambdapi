@@ -40,9 +40,10 @@ let mem : tvar -> ctxt -> bool = fun x ->
     the term [t]. *)
 let to_prod : ctxt -> term -> term = fun ctx t ->
   match ctx with
-  | []            -> t
-  | [(x,a,None)]  -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
-  | _             ->
+  | []               -> t
+  | [(x,a,None)]     -> Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift t)))
+  | (_,_,Some(_))::_ -> assert false
+  | _                ->
       let fn t (x,a,_) = _Prod (lift a) (Bindlib.bind_var x t) in
       Bindlib.unbox (List.fold_left fn (lift t) ctx)
 
