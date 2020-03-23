@@ -200,9 +200,9 @@ let has_metas : bool -> term -> bool =
   let exception Found in fun b t ->
   try iter_meta b (fun _ -> raise Found) t; false with Found -> true
 
-(** [distinct_vars_opt ts] checks that [ts] is made of distinct
+(** [distinct_vars ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
-let distinct_vars_opt : term array -> tvar array option =
+let distinct_vars : term array -> tvar array option =
   let exception Not_unique_var in fun ts ->
   let open Pervasives in
   let vars = ref VarSet.empty in
@@ -211,17 +211,6 @@ let distinct_vars_opt : term array -> tvar array option =
     | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars; x
     | _ -> raise Not_unique_var
   in try Some (Array.map to_var ts) with Not_unique_var -> None
-
-(** [distinct_vars ts] checks that [ts] is made of distinct variables. *)
-let distinct_vars : term array -> bool =
-  let exception Not_unique_var in fun ts ->
-  let open Pervasives in
-  let vars = ref VarSet.empty in
-  let check t =
-    match unfold t with
-    | Vari x when not (VarSet.mem x !vars) -> vars := VarSet.add x !vars
-    | _ -> raise Not_unique_var
-  in try Array.iter check ts; true with Not_unique_var -> false
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
