@@ -246,14 +246,14 @@ let term_of_rhs : rule -> term = fun r ->
     [x] occurs in [b]
     - the assumption that [x] is of type [a] if [def] is [None], and
     - the definition of [x] in [def] of type [a] otherwise. *)
-let ctx_unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
-  fun ctx a def b ->
+let ctx_unbind : ctxt -> term -> term option -> tbinder ->
+  tvar * term * ctxt = fun ctx a def b ->
   let (x,b') = Bindlib.unbind b in
   let ctx' = if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx in
   (x,b',ctx')
 
-(** [type_of x ctx] returns the type of [x] in the context [ctx] when it appears,
-    and raises [Not_found] otherwise. *)
+(** [type_of x ctx] returns the type of [x] in the context [ctx] when it
+    appears, and raises [Not_found] otherwise. *)
 let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
