@@ -41,6 +41,11 @@ let steps : int Pervasives.ref = Pervasives.ref 0
 (** Abstract machine stack. *)
 type stack = term list
 
+(** FIXME: unification hints must be allowed on types, which may involve
+    rewriting on products. For now, it isn't implemented and we raise the
+    following exception if a rewriting on a product is attempted. *)
+exception Type_red
+
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
@@ -318,8 +323,16 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
                     let stk = List.reconstruct left (body::args) right in
                     walk tr stk cursor vars_id id_vars
               end
-          | Meta(_, _) -> default ()
-          | _          -> assert false
+          | Meta(_) -> default ()
+          | TRef(_) -> assert false
+          | TEnv(_) -> assert false
+          | Patt(_) -> assert false
+          | LLet(_) -> assert false
+          | Appl(_) -> assert false
+          | Type    -> raise Type_red
+          | Kind    -> assert false
+          | Wild    -> assert false
+          | Prod(_) -> raise Type_red
   in
   walk tree stk 0 VarMap.empty IntMap.empty
 
