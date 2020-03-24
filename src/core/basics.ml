@@ -191,7 +191,7 @@ let occurs : meta -> term -> bool =
   try iter_meta false fn t; false with Found -> true
 
 (** [get_metas b t] returns the list of all the metavariables in [t], and in
-   the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
+    the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
 let get_metas : bool -> term -> meta list = fun b t ->
   let open Pervasives in
   let l = ref [] in
@@ -199,33 +199,28 @@ let get_metas : bool -> term -> meta list = fun b t ->
   List.sort_uniq cmp_meta !l
 
 (** [has_metas b t] checks whether there are metavariables in [t], and in the
-   types of metavariables recursively if [b] is true. *)
+    types of metavariables recursively if [b] is true. *)
 let has_metas : bool -> term -> bool =
   let exception Found in fun b t ->
   try iter_meta b (fun _ -> raise Found) t; false with Found -> true
 
-(** [distinct_vars ts] checks that [ts] is made of distinct
-   variables and returns these variables. *)
+(** [distinct_vars ctx ts]  checks  that terms of  [ts] are made of  variables
+    that are themselves or their definition in  [ctx] (if it exists) distinct.
+    If so, the variables are returned. *)
 let distinct_vars : ctxt -> term array -> tvar array option =
   fun ctx ts ->
   let exception Not_unique_var in
   let open Pervasives in
   let vars = ref VarSet.empty in
-  let to_var t =
+  let rec to_var t =
     match unfold t with
     | Vari(x) ->
-        let x =
-          (* If variable is defined in [ctx], replace the var by its
-             definition. *)
-          match Ctxt.def_of x ctx with
-          | Some(Vari(x)) -> x
-          | None          -> x
-          | Some(_)       -> raise Not_unique_var
-        in
+        let x = Option.map_default to_var x (Ctxt.def_of x ctx) in
         if not (VarSet.mem x !vars) then (vars := VarSet.add x !vars; x) else
         raise Not_unique_var
     | _       -> raise Not_unique_var
-  in try Some (Array.map to_var ts) with Not_unique_var -> None
+  in
+  try Some (Array.map to_var ts) with Not_unique_var -> None
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
