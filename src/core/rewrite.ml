@@ -254,11 +254,11 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Kind        -> _Kind
     | Symb(s,h)   -> _Symb s h
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
-    (* For now, we fail on products, abstractions and metavariables. *)
+    (* For now, we fail on products, abstractions, metavariables and let. *)
     | Prod(_)     -> fatal None "Cannot rewrite under products."
     | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
     | Meta(_)     -> fatal None "Cannot rewrite metavariables."
-    | LLet(_)     -> fatal None "Cannot rewrite in let"
+    | LLet(_)     -> fatal None "Cannot rewrite in let."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
