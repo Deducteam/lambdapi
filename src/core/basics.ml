@@ -215,8 +215,9 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     match unfold t with
     | Vari(x) ->
         let x = Option.map_default to_var x (Ctxt.def_of x ctx) in
-        if not (VarSet.mem x !vars) then (vars := VarSet.add x !vars; x) else
-        raise Not_unique_var
+        if VarSet.mem x !vars then raise Not_unique_var;
+        vars := VarSet.add x !vars;
+        x
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
