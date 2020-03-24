@@ -7,6 +7,11 @@ Adding let-bindings to the terms structure.
 
 #### File management and module mapping (2020-03-20)
 
+- New module system.
+- Revised command line arguments parsing.
+- LSP server run from `lambdapi`
+- `--no-warning` option (fixes #296).
+
 #### Trees simplification (2019-12-05)
 
 Simplification of the decision tree structure
