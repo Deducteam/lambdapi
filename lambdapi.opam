@@ -20,7 +20,7 @@ license: "CeCILL 2.1"
 doc: "https://deducteam.github.io/lambdapi/"
 
 depends: [
-  "ocaml"        { >= "4.04.0" }
+  "ocaml"        { >= "4.05.0" }
   "dune"         { >= "1.3.0"  }
   "menhir"
   "bindlib"      { = "5.0.0" }
