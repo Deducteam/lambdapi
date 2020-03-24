@@ -1,3 +1,12 @@
+#### Let bindings (2020-03-24)
+
+Adding let-bindings to the terms structure.
+- Contexts can now contain term definitions.
+- Unification is carried out with a context.
+- Equality modulo can use a context to unfold the definition of variables.
+
+#### File management and module mapping (2020-03-20)
+
 #### Trees simplification (2019-12-05)
 
 Simplification of the decision tree structure
