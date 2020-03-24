@@ -22,7 +22,6 @@ let subst_from_constrs : unif_constrs -> subst = fun cs ->
     match cs with
     | []          -> List.split acc
     | (_,a,b)::cs ->
-      (* FIXME use ctxt? *)
       match Basics.get_args a with
       | Vari(x), [] -> build_sub ((x,b)::acc) cs
       | _, _ ->
@@ -145,10 +144,10 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
       fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
   | Some(cs) ->
   let is_constr c =
-    let eq_comm (_,t1,u1) (_,t2,u2) =
-      (* FIXME merge contexts and use them in eq_modulo *)
-      (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
-      (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
+    let eq_comm (c1,t1,u1) (c2,t2,u2) =
+      let ctx = match Ctxt.merge c1 c2 with None -> [] | Some(x) -> x in
+      (Eval.eq_modulo ctx t1 t2 && Eval.eq_modulo ctx u1 u2) ||
+      (Eval.eq_modulo ctx t1 u2 && Eval.eq_modulo ctx t2 u1)
     in
     List.exists (eq_comm c) lhs_constrs
   in
