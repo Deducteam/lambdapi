@@ -1,5 +1,6 @@
-(** Typing contexts *)
+(** Typing context. *)
 
+open Extra
 open Terms
 
 (** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
