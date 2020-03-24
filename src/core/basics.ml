@@ -154,63 +154,15 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
   in iter
 
-(** {3 Contexts} *)
-
-(** [ctx_unbind ctx a def b] returns the triple [(x,b,ctx')] such that [(x,b)]
-    is the unbinding of [b] and [ctx'] is the context [ctx] extended with, if
-    [x] occurs in [b]
-    - the assumption that [x] is of type [a] if [def] is [None], and
-    - the definition of [x] in [def] of type [a] otherwise. *)
-let ctx_unbind : ctxt -> term -> term option -> tbinder ->
-  tvar * term * ctxt = fun ctx a def b ->
-  let (x, t) = Bindlib.unbind b in
-  (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
-
-(** [type_of x ctx] returns the type of [x] in the context [ctx] when it
-    appears, and raises [Not_found] otherwise. *)
-let type_of : tvar -> ctxt -> term = fun x ctx ->
-  let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
-
-(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
-    appears, and [None] otherwise *)
-let rec def_of : tvar -> ctxt -> term option = fun x ctx ->
-  match ctx with
-  | []         -> None
-  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
-
-(** [ctx_mem x ctx] tells whether variable [x] is mapped in the context
-    [ctx]. *)
-let ctx_mem : tvar -> ctxt -> bool = fun x ->
-  List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
-
-(** [prod ctx t] builds a product by abstracting over the context [ctx], in
-    the term [t]. It returns the number of products as well. *)
-let prod : ctxt -> term -> term * int = fun ctx t ->
-  let fn (t,c) elt =
-    match elt with
-    | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
-    | (x,a,Some(u)) -> (_LLet (lift u) (lift a) (Bindlib.bind_var x t), c)
-  in
-  let t, c = List.fold_left fn (lift t, 0) ctx in
-  (Bindlib.unbox t, c)
+(** {3 Metavariables} *)
 
 (** [make_meta ctx a] creates a metavariable of type [a],  with an environment
     containing the variables of context [ctx]. *)
 let make_meta : ctxt -> term -> term = fun ctx a ->
-  let prd, len = prod ctx a in
+  let prd, len = Ctxt.prod ctx a in
   let m = fresh_meta prd len in
   let get_var (x,_,_) = Vari(x) in
   Meta(m, Array.of_list (List.rev_map get_var ctx))
-
-(** [subctx ctx vs] return the sub-context of [ctx] made of the variables of
-    [vs]. *)
-let subctx : ctxt -> tvar array -> ctxt = fun ctx vs ->
-  let f ((x,_,_) as hyp) ctx =
-    if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
-  in
-  List.fold_right f ctx []
-
-(** {3 Metavariables} *)
 
 (** [iter_meta b f t] applies the function [f] to every metavariable of [t],
    and to the type of every metavariable recursively if [b] is true. *)
@@ -264,7 +216,7 @@ let distinct_vars : ctxt -> term array -> tvar array option =
         let x =
           (* If variable is defined in [ctx], replace the var by its
              definition. *)
-          match def_of x ctx with
+          match Ctxt.def_of x ctx with
           | Some(Vari(x)) -> x
           | None          -> x
           | Some(_)       -> raise Not_unique_var

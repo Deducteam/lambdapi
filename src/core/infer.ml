@@ -51,7 +51,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Basics.type_of x ctx with Not_found -> assert false)
+  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
@@ -65,7 +65,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
 
-      let (_,b,ctx') = Basics.ctx_unbind ctx a None b in
+      let (_,b,ctx') = Ctxt.unbind ctx a None b in
       let s = infer ctx' b in
       (* We check that [s] is a sort. *)
       begin
@@ -84,7 +84,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
       (* We infer the type of the body, first extending the context. *)
-      let (x,t,ctx') = Basics.ctx_unbind ctx a None t in
+      let (x,t,ctx') = Ctxt.unbind ctx a None t in
       let b = infer ctx' t in
       (* We build the product type by binding [x] in [b]. *)
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
@@ -102,7 +102,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
             let ctx =
               match Basics.distinct_vars ctx ts with
               | None -> ctx
-              | Some vs -> Basics.subctx ctx vs
+              | Some vs -> Ctxt.sub ctx vs
             in
             let a = Basics.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
@@ -123,7 +123,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | LLet(t,a,u) ->
       check ctx t a;
       (* Unbind [u] and enrich context with [x:=t:a] *)
-      let (x,u,ctx') = Basics.ctx_unbind ctx a (Some(t)) u in
+      let (x,u,ctx') = Ctxt.unbind ctx a (Some(t)) u in
       let b = infer ctx' u in
       (* Build back the term *)
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
@@ -169,7 +169,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
            let ctx =
              match Basics.distinct_vars ctx ts with
              | None -> ctx
-             | Some vs -> Basics.subctx ctx vs
+             | Some vs -> Ctxt.sub ctx vs
            in
            let b = make_meta_codomain ctx a in
            conv ctx c (Prod(a,b)); b
@@ -178,7 +178,7 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
            conv ctx c (Prod(a,b)); b
       in
       (* We type-check the body with the codomain. *)
-      let (x,t,ctx') = Basics.ctx_unbind ctx a None t in
+      let (x,t,ctx') = Ctxt.unbind ctx a None t in
       check ctx' t (Bindlib.subst b (Vari(x)))
   | t           ->
       (*  ctx ⊢ t ⇒ a

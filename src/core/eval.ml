@@ -153,7 +153,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Vari(x)    , t          )
     | (t          , Vari(x)    ) ->
         begin
-          match def_of x ctx with
+          match Ctxt.def_of x ctx with
           | None    -> raise Exit
           | Some(u) -> eq_modulo ((t, u) :: l)
         end
