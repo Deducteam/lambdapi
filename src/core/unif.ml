@@ -351,6 +351,9 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
   | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
 
+  | (Vari(_)    , _          )
+  | (_          , Vari(_)    ) -> add_to_unsolved ()
+
   | (_          , _          ) -> error ()
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
