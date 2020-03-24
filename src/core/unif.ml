@@ -310,9 +310,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      solve_aux ctx a1 a2 {p with to_solve = (ctx,b1,b2) :: p.to_solve}
 
   (* Other cases. *)
-  | (Vari(x1)   , Vari(x2)   ) ->
-     if Bindlib.eq_vars x1 x2 then decompose () else error ()
-
+  | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> decompose ()
   | (Symb(s1,_) , Symb(s2,_) ) ->
      if s1 == s2 then
        match s1.sym_prop with
