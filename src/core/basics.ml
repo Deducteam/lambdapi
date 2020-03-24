@@ -207,7 +207,8 @@ let has_metas : bool -> term -> bool =
 (** [distinct_vars ts] checks that [ts] is made of distinct
    variables and returns these variables. *)
 let distinct_vars : ctxt -> term array -> tvar array option =
-  let exception Not_unique_var in fun ctx ts ->
+  fun ctx ts ->
+  let exception Not_unique_var in
   let open Pervasives in
   let vars = ref VarSet.empty in
   let to_var t =
