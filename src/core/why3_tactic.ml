@@ -26,9 +26,7 @@ let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 (** [why3_main] is the main section of the Why3 configuration. *)
 let why3_main : Why3.Whyconf.main =
   (* Filter the configuration to get only the main information. *)
-  let m = Why3.Whyconf.get_main why3_config in
-  (* Load all plugins (TPTP, DIMACS, ...) and return the new config. *)
-  Why3.Whyconf.load_plugins m; m
+  Why3.Whyconf.get_main why3_config
 
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
