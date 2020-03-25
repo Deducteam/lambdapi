@@ -361,11 +361,12 @@ let whnf : ctxt -> term -> term = fun ctx t ->
   if Pervasives.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
-let rec simplify : term -> term = fun t ->
-  match get_args (whnf [] t) with
+let rec simplify : ctxt -> term -> term = fun ctx t ->
+  match get_args (whnf ctx t) with
   | Prod(a,b), _ ->
-     let x,b = Bindlib.unbind b in
-     Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
+     let (x,b) = Bindlib.unbind b in
+     let b = Bindlib.bind_var x (lift (simplify ctx b)) in
+     Prod (simplify ctx a, Bindlib.unbox b)
   | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)

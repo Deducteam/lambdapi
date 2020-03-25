@@ -56,7 +56,7 @@ let of_prod_arity : int -> term -> env * term = fun n t ->
     else match Eval.whnf [] t with
          | Prod(a,b) ->
             let v,b = Bindlib.unbind b in
-            let a = Eval.simplify a in
+            let a = Eval.simplify [] a in
             let env = add v (lift a) env in
             build_env (i+1) env b
          | _ -> raise (Invalid_argument "of_prod")

@@ -32,14 +32,15 @@ module Goal :
     let of_meta : meta -> t = fun m ->
       let (goal_hyps, goal_type) =
         Env.of_prod_arity m.meta_arity !(m.meta_type) in
-      let goal_type = Eval.simplify goal_type in
+      let goal_type = Eval.simplify (Env.to_ctxt goal_hyps) goal_type in
       {goal_meta = m; goal_hyps; goal_type}
 
     let get_meta : t -> meta = fun g -> g.goal_meta
 
     let get_type : t -> Env.t * term = fun g -> (g.goal_hyps, g.goal_type)
 
-    let simpl : t -> t = fun g -> {g with goal_type = Eval.snf [] g.goal_type}
+    let simpl : t -> t = fun g ->
+      {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
   end
 
 (** Representation of the proof state of a theorem. *)
