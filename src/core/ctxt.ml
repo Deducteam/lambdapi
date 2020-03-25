@@ -47,11 +47,3 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
     if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
   in
   List.fold_right f ctx []
-
-(** [merge c1 c2] merges contexts [c1] and [c2] and returns [None] if they
-    overlap. The new context is [c1] reversed and concatenated to [c2]. *)
-let rec merge : ctxt -> ctxt -> ctxt option = fun c1 c2 ->
-  match c1 with
-  | (x,_,_)::_ when mem x c2 -> None
-  | (x,a,d)::c1 -> merge c1 ((x,a,d)::c2)
-  | []          -> Some(c2)
