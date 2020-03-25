@@ -258,8 +258,8 @@ let file_to_module : string -> Path.t = fun fname ->
     | Some(mp, path) -> (mp, path)
     | None           ->
         fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
-        fatal_msg "Consider adding a package file [lambdapi.pkg] under";
-        fatal_no_pos " your source tree."
+        fatal_msg "Consider adding a package file [lambdapi.pkg] under your ";
+        fatal_no_pos "source tree, or use the [--map-dir] option."
   in
   ignore (mp, path);
   (* Build the module path. *)
