@@ -1,4 +1,6 @@
-(** Scoping environment for variables. *)
+(** Scoping environment for variables.
+    Note that since meta-variable types are closed, the contexts passed to
+    {!val:Eval.whnf} and alike are empty. *)
 
 open Terms
 
