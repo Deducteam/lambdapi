@@ -74,7 +74,8 @@ let get_args_ctx : ctxt -> term -> term * term list = fun ctx t ->
   let rec get_args acc t =
     match unfold t with
     | Appl(t,u)    -> get_args (u::acc) t
-    | Vari(x) as t -> (Option.get t (Ctxt.def_of x ctx), acc)
+    | Vari(x) as t ->
+        Option.map_default (get_args acc) (t, acc) (Ctxt.def_of x ctx)
     | t            -> (t, acc)
   in
   get_args [] t
