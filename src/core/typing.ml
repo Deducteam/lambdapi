@@ -16,7 +16,7 @@ let check : sym StrMap.t -> ctxt -> term -> term -> bool =
   | Some([]) -> true
   | Some(cs) ->
       let fn (c,a,b) =
-        fatal_msg "Cannot solve %a[%a] ≡ [%a].\n" wrap_ctxt c pp a pp b
+        fatal_msg "Cannot solve %a.\n" pp_constr (c, a, b)
       in
       List.iter fn cs; false
 
@@ -40,7 +40,7 @@ let infer : sym StrMap.t -> ctxt -> term -> term option =
   | Some(a,[]) -> Some(a)
   | Some(_,cs) ->
       let fn (c,a,b) =
-        fatal_msg "Cannot solve %a[%a] ≡ [%a].\n" wrap_ctxt c pp a pp b
+        fatal_msg "Cannot solve %a.\n" pp_constr (c, a, b)
       in
       List.iter fn cs; None
 

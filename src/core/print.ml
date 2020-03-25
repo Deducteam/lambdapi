@@ -155,23 +155,22 @@ let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 
-(** [pp oc ctx] prints the context [ctx] to the channel [oc]. *)
-let pp_ctxt : ctxt pp = fun oc ctx ->
-  let pp_e oc (x,a,t) =
-    match t with
-    | None    -> Format.fprintf oc "%a:%a" pp_tvar x pp a
-    | Some(t) -> Format.fprintf oc "%a:%a ≔ %a" pp_tvar x pp a pp t
-  in
-  if ctx = [] then Format.pp_print_string oc "∅"
-  else List.pp pp_e ", " oc (List.rev ctx)
-
-(** [wrap_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
+(** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)
-let wrap_ctxt : ctxt pp = fun oc ctx ->
+let pp_ctxt : ctxt pp = fun oc ctx ->
+  let pp_ctxt : ctxt pp = fun oc ctx ->
+    let pp_e oc (x,a,t) =
+      match t with
+      | None    -> Format.fprintf oc "%a:%a" pp_tvar x pp a
+      | Some(t) -> Format.fprintf oc "%a:%a ≔ %a" pp_tvar x pp a pp t
+    in
+    if ctx = [] then Format.pp_print_string oc "∅"
+    else List.pp pp_e ", " oc (List.rev ctx)
+  in
   let out = if !print_contexts then Format.fprintf else Format.ifprintf in
   out oc "%a ⊢ " pp_ctxt ctx
 
 (** [pp_constr oc (t,u)] prints the unification constraints [(t,u)] to the
     output channel [oc]. *)
 let pp_constr : (ctxt * term * term) pp = fun oc (ctx, t, u) ->
-  Format.fprintf oc "%a%a ≡ %a" wrap_ctxt ctx pp t pp u
+  Format.fprintf oc "%a%a ≡ %a" pp_ctxt ctx pp t pp u
