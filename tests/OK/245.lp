@@ -22,15 +22,18 @@ rule eps (@all &a &b) → ∀ (x : eta &a), eps (&b x)
 definition eq :
   ∀ {A : Type}, eta (A > A > o) ≔
   λ A x y, all (λ p, p x --> p y)
-set infix right 7 "≡" ≔ eq
+set infix right 7 "=" ≔ eq
 
 // reflexivity of equality
 definition eq_refl :
-  ∀ {A : Type}, eps (@all A (λ x, x ≡ x)) ≔
+  ∀ {A : Type}, eps (@all A (λ x, x = x)) ≔
   λ A x q H, H
 
 // symmetry of equality
+//set flag "print_domains" on
+//set flag "print_implicits" on
+//set debug +iu
 definition eq_sym :
   ∀ {A : Type} (x y : eta A),
-  eps (x ≡ y --> y ≡ x) ≔
-  λ A x y H, H (λ y, y ≡ x) (eq_refl x)
+  eps (x = y --> y = x) ≔
+  λ A x y H, H (λ y, y = x) (eq_refl x)

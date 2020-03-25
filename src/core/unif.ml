@@ -38,8 +38,7 @@ let can_instantiate : bool ref = ref true
 
 (** [nl_distinct_vars ts] checks that [ts] is made of variables [vs] only
    and returns some copy of [vs] where variables occurring more than
-   once are replaced by fresh variables. It returns [None]
-   otherwise. *)
+   once are replaced by fresh variables. It returns [None] otherwise. *)
 let nl_distinct_vars : term array -> tvar array option =
   let exception Not_a_var in fun ts ->
   let open Pervasives in
@@ -61,19 +60,24 @@ let nl_distinct_vars : term array -> tvar array option =
   try Some (Array.map replace_nl_var (Array.map to_var ts))
   with Not_a_var -> None
 
-(** [instantiate m ts u] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = u”. The returned boolean tells whether [m]
-    was instantiated or not. *)
+(** [instantiation m ts u] checks whether, in a problem [m[ts]=u], [m] can be
+   instantiated and returns the corresponding instantiation. It does not check
+   whether the instantiation is closed though. *)
+let instantiation : meta -> term array -> term ->
+                    (term, term) Bindlib.mbinder Bindlib.box option
+  = fun m ts u ->
+  if (!can_instantiate || internal m) && not (occurs m u) then
+    match nl_distinct_vars ts with
+    | None -> None
+    | Some vs -> Some (Bindlib.bind_mvar vs (lift u))
+  else None
+
+(** [instantiate m ts u] check whether, in a problem [m[ts]=u], [m] can be
+   instantiated and, if so, instantiate it. *)
 let instantiate : meta -> term array -> term -> bool = fun m ts u ->
-  (!can_instantiate || internal m)
-  && not (occurs m u)
-  && match nl_distinct_vars ts with
-     | None -> false
-     | Some vs ->
-        let bu = Bindlib.bind_mvar vs (lift u) in
-        Bindlib.is_closed bu (* To make sure that there is no non-linear
-                                variable of [vs] occurring in [u]. *)
-        && (set_meta m (Bindlib.unbox bu); true)
+  match instantiation m ts u with
+  | Some bu when Bindlib.is_closed bu -> set_meta m (Bindlib.unbox bu); true
+  | _ -> false
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
    returns the constraints that could not be solved. *)
@@ -91,25 +95,22 @@ let rec solve : problems -> unif_constrs = fun p ->
 and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
-  if !log_enabled then
-    log_unif "solve %a ≡ %a" pp (add_args h1 ts1) pp (add_args h2 ts2);
+  let t1 = add_args h1 ts1 in
+  let t2 = add_args h2 ts2 in
+  if !log_enabled then log_unif "solve %a ≡ %a" pp t1 pp t2;
 
   let add_to_unsolved () =
-    let t1 = add_args h1 ts1 in
-    let t2 = add_args h2 ts2 in
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
 
   let error () =
-    let t1 = add_args h1 ts1 in
-    let t2 = add_args h2 ts2 in
     fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
     raise Unsolvable
   in
 
   let decompose () =
-    let add_arg_pb l t1 t2 = (t1, t2)::l in
+    let add_arg_pb l a b = (a,b)::l in
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
       with Invalid_argument _ -> error () in
@@ -292,8 +293,16 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         pp (add_args (symb s) ts) pp v;
     if is_constant s then error ()
     else match inverse_opt s ts v with
-         | Some (t1, s_1_v) -> solve_aux t1 s_1_v p
+         | Some (a, b) -> solve_aux a b p
          | None -> add_to_unsolved ()
+  in
+
+  (* For a problem of the form [m[ts] = ∀x:_,_] with [ts] distinct bound
+     variables, [imitate_prod m ts] instantiates [m] by a fresh product and
+     continue. *)
+  let imitate_prod m =
+    let mxs, prod, _, _ = Env.extend_meta_type m in
+    solve_aux mxs prod { p with to_solve = (t1,t2)::p.to_solve }
   in
 
   match (h1, h2) with
@@ -337,6 +346,11 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      solve {p with recompute = true}
   | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
      solve {p with recompute = true}
+
+  | (Meta(m,ts)  , Prod(_,_) )
+       when ts1 = [] && instantiation m ts t2 <> None -> imitate_prod m
+  | (Prod(_,_)   , Meta(m,ts))
+       when ts2 = [] && instantiation m ts t1 <> None -> imitate_prod m
 
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
