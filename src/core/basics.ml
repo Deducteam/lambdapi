@@ -90,15 +90,16 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** [eq t u] tests the equality of [t] and [u] (up to α-equivalence). It fails
-    if [t] or [u] contain terms of the form [Patt(i,s,e)] or [TEnv(te,e)].  In
-    the process, subterms of the form [TRef(r)] in [t] and [u] may be set with
-    the corresponding value to enforce equality. In other words,  [eq t u] can
+(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence). It
+    fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
+    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
+    [u] may be set with the corresponding value to enforce equality, and
+    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
     be used to implement non-linear matching (see {!module:Rewrite}). When the
     matching feature is used, one should make sure that [TRef] constructors do
     not appear both in [t] and in [u] at the same time. Indeed, the references
-    are set naively, without checking occurence. *)
-let eq : term -> term -> bool = fun a b -> a == b ||
+    are set naively, without checking occurrence. *)
+let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
     match l with
@@ -123,6 +124,14 @@ let eq : term -> term -> bool = fun a b -> a == b ||
     | (_          , Wild       ) -> eq l
     | (TRef(r)    , b          ) -> r := Some(b); eq l
     | (a          , TRef(r)    ) -> r := Some(a); eq l
+    (* Try unfolding variable definitions. *)
+    | (Vari(x)    , t          )
+    | (t          , Vari(x)    ) ->
+        begin
+          match Ctxt.def_of x ctx with
+          | None    -> raise Not_equal
+          | Some(u) -> eq ((t, u) :: l)
+        end
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )

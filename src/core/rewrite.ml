@@ -86,7 +86,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let ta = Appl (symb symb_T, Vari a) in
        let c = [(y, ta, None); (x, ta, None); (a, term_U, None)] in
        let (eq_type, _) = Ctxt.prod c term_Prop in
-       if not (Basics.eq eq_type !(sym.sym_type)) then
+       if not (Basics.eq [] eq_type !(sym.sym_type)) then
          fatal pos "The type of [%s] is not of the form [%a]"
            sym.sym_name pp eq_type
      end
@@ -104,7 +104,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let c = [(x, Appl(symb symb_T, Vari a), None); (a, term_U, None)] in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
        let (refl_type, _) = Ctxt.prod c (Appl (symb symb_P, t)) in
-       if not (Basics.eq refl_type !(sym.sym_type))
+       if not (Basics.eq [] refl_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp refl_type
      end
@@ -141,7 +141,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
          ;(a , term_U                  , None)]
        in
        let (eqind_type, _) = Ctxt.prod c (p_of x) in
-       if not (Basics.eq eqind_type !(sym.sym_type))
+       if not (Basics.eq [] eqind_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp eqind_type
      end
@@ -194,7 +194,7 @@ let break_prod : term -> term * tvar array = fun a ->
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if Basics.eq p t then Some(Array.map unfold ts) else None
+  if Basics.eq [] p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
     variables” of [xs]),  and it finds the first instance of (a term matching)
@@ -227,7 +227,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if Basics.eq t p then true else
+    if Basics.eq [] t p then true else
       begin
         Time.restore time;
         match unfold t with
@@ -247,7 +247,7 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
-    if Basics.eq p t then _Vari x else
+    if Basics.eq [] p t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type

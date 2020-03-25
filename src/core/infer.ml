@@ -14,7 +14,7 @@ let constraints = Pervasives.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Basics.eq a b) then
+  if not (Basics.eq ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
       let open Pervasives in constraints := (ctx,a,b) :: !constraints
