@@ -34,7 +34,9 @@ before_install:
   - opam install alt-ergo.2.3.0
   # Update why3 config after installing alt-ergo
   - why3 config --detect
+  # CI debugging stuff
   - cat /home/travis/.why3.conf
+  - env
 
 script:
   - make $TEST_TARGETS
