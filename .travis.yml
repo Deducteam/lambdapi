@@ -36,9 +36,9 @@ before_install:
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi
-  - opam install alt-ergo
   # Update why3 config after installing alt-ergo
-  - why3 config --detect
+  - opam install alt-ergo.2.3.0
+  - why3 config --full-config
 
 script:
   - make $TEST_TARGETS
