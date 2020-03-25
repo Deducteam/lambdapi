@@ -76,9 +76,6 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     | Symb(s,h)   -> _Symb s h
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
                      _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
-    | LLet(t,a,u) ->
-        let (x, u) = Bindlib.unbind u in
-        _LLet (to_m 0 t) (to_m 0 a) (Bindlib.bind_var x (to_m 0 u))
     | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
     | Patt(i,n,a) ->
         begin
@@ -99,6 +96,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
