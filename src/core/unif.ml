@@ -92,7 +92,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let (h1, ts1) = Eval.whnf_stk t1 [] in
   let (h2, ts2) = Eval.whnf_stk t2 [] in
   if !log_enabled then
-    log_unif "solve %a" pp_constr (ctx, (add_args h1 ts1), (add_args h2 ts2));
+    log_unif "solve %a" pp_constr (ctx, add_args h1 ts1, add_args h2 ts2);
 
   let add_to_unsolved () =
     let t1 = add_args h1 ts1 in
