@@ -85,8 +85,8 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
    arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
    [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
-let extend_meta_type : meta ->
-    term * term * (term, term) Bindlib.mbinder * (term, tbinder) Bindlib.mbinder
+let extend_meta_type : meta -> term * term
+    * (term, term) Bindlib.mbinder * (term, tbinder) Bindlib.mbinder
   = fun m ->
   let n = m.meta_arity in
   let (env, s) = of_prod_arity n Timed.(!(m.meta_type)) in
