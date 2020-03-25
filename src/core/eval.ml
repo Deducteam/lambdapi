@@ -45,9 +45,8 @@ type stack = term list
 let rec whnf_beta : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
-  let t = unfold t in
   let (u, stk) = whnf_beta_stk t [] in
-  if Pervasives.(!steps) <> s then add_args u stk else t
+  if Pervasives.(!steps) <> s then add_args u stk else unfold t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
     applied to the argument list (or stack) [stk]. Note that the normalisation
@@ -68,17 +67,15 @@ and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
 (** [whnf_beta t] computes a weak head beta normal form of [t]. *)
 let whnf_beta : term -> term = fun t ->
   Pervasives.(steps := 0);
-  let t = unfold t in
   let u = whnf_beta t in
-  if Pervasives.(!steps = 0) then t else u
+  if Pervasives.(!steps = 0) then unfold t else u
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
-  let t = unfold t in
   let (u, stk) = whnf_stk t [] in
-  if Pervasives.(!steps) <> s then add_args u stk else t
+  if Pervasives.(!steps) <> s then add_args u stk else unfold t
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)

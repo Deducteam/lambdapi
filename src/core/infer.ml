@@ -96,7 +96,7 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
       (* We first infer a product type for [t]. *)
       let (a,b) =
         let c = Eval.whnf (infer ctx t) in
-        match unfold c with
+        match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
             let mxs, p, bp1, bp2 = Env.extend_meta_type m in
@@ -144,7 +144,7 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
       check ctx a Type;
       (* We (hopefully) evaluate [c] to a product, and get its body. *)
       let b =
-        let c = unfold (Eval.whnf c) in
+        let c = Eval.whnf c in
         match c with
         | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
         | Meta(m,ts) ->
