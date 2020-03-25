@@ -28,10 +28,10 @@ before_install:
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
+  - opam install alt-ergo.2.3.0
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi
-  - opam install alt-ergo.2.3.0
   # Update why3 config after installing alt-ergo
   - why3 config --detect
   # CI debugging stuff
