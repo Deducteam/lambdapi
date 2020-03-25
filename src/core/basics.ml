@@ -107,7 +107,6 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (a,b)::l ->
     match (unfold a, unfold b) with
     | (a          , b          ) when a == b -> eq l
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
@@ -124,6 +123,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (_          , Wild       ) -> eq l
     | (TRef(r)    , b          ) -> r := Some(b); eq l
     | (a          , TRef(r)    ) -> r := Some(a); eq l
+    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     (* Try unfolding variable definitions. *)
     | (Vari(x)    , t          )
     | (t          , Vari(x)    ) ->
