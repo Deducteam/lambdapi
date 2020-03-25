@@ -21,11 +21,11 @@ let subst_from_constrs : unif_constrs -> subst = fun cs ->
   let rec build_sub acc cs =
     match cs with
     | []          -> List.split acc
-    | (_,a,b)::cs ->
-      match Basics.get_args a with
+    | (c,a,b)::cs ->
+      match Basics.get_args_ctx c a with
       | Vari(x), [] -> build_sub ((x,b)::acc) cs
       | _, _ ->
-        match Basics.get_args b with
+        match Basics.get_args_ctx c b with
         | Vari(x), [] -> build_sub ((x,a)::acc) cs
         | _, _ -> build_sub acc cs
   in

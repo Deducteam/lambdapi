@@ -67,6 +67,18 @@ let get_args_len : term -> term * term list * int = fun t ->
   in
   get_args_len [] 0 t
 
+(** [get_args_ctx ctx t] decomposes term [t] as [get_args] does, but any
+    variable encountered is replaced by its definition in [ctx] (if it
+    exists). *)
+let get_args_ctx : ctxt -> term -> term * term list = fun ctx t ->
+  let rec get_args acc t =
+    match unfold t with
+    | Appl(t,u)    -> get_args (u::acc) t
+    | Vari(x) as t -> (Option.get t (Ctxt.def_of x ctx), acc)
+    | t            -> (t, acc)
+  in
+  get_args [] t
+
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
