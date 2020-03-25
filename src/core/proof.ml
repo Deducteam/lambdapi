@@ -39,7 +39,7 @@ module Goal :
 
     let get_type : t -> Env.t * term = fun g -> (g.goal_hyps, g.goal_type)
 
-    let simpl : t -> t = fun g -> {g with goal_type = Eval.snf g.goal_type}
+    let simpl : t -> t = fun g -> {g with goal_type = Eval.snf [] g.goal_type}
   end
 
 (** Representation of the proof state of a theorem. *)

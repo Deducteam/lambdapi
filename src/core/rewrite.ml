@@ -59,7 +59,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
   | "T" | "P" ->
      begin
        let exception Invalid_type in
-       try match Eval.whnf !(sym.sym_type) with
+       try match Eval.whnf [] !(sym.sym_type) with
            | Prod (_, b) ->
               let _, b = Bindlib.unbind b in
               if b <> Type then raise Invalid_type
@@ -181,7 +181,7 @@ let rec add_refs : term -> term = fun t ->
     products. These variables may appear free in the returned term. *)
 let break_prod : term -> term * tvar array = fun a ->
   let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
-    match Eval.whnf a with
+    match Eval.whnf [] a with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
     | a         -> (a, Array.of_list (List.rev vs))
   in aux a []
@@ -637,7 +637,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Get the type of the focused goal. *)
   let _, g_type = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf g_type) in
+  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf [] g_type) in
   if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
   (* Build the witness. *)
   add_args (symb cfg.symb_refl) [a; l]

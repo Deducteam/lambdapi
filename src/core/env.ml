@@ -53,7 +53,7 @@ let to_tbox : env -> tbox array = fun env ->
 let of_prod_arity : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
     if i >= n then env, t
-    else match Eval.whnf t with
+    else match Eval.whnf [] t with
          | Prod(a,b) ->
             let v,b = Bindlib.unbind b in
             let a = Eval.simplify a in
@@ -70,7 +70,7 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
   let n = Array.length vars in
   let rec build_env i env t =
     if i >= n then env, t
-    else match Eval.whnf t with
+    else match Eval.whnf [] t with
          | Prod(a,b) ->
             let v = vars.(i) in
             let env = add v (lift a) env in

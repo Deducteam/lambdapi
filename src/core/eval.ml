@@ -79,41 +79,48 @@ let whnf_beta : term -> term = fun t ->
   if Pervasives.(!steps = 0) then t else u
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
-let rec whnf : term -> term = fun t ->
+let rec whnf : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Pervasives.(!steps) in
   let t = unfold t in
-  let (u, stk) = whnf_stk t [] in
+  let (u, stk) = whnf_stk ctx t [] in
   if Pervasives.(!steps) <> s then add_args u stk else t
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
-and whnf_stk : term -> stack -> term * stack = fun t stk ->
+and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk   ) ->
-      whnf_stk f (appl_to_tref u::stk)
+      whnf_stk ctx f (appl_to_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
       Pervasives.incr steps;
-      whnf_stk (Bindlib.subst f u) stk
+      whnf_stk ctx (Bindlib.subst f u) stk
   (* Let unfolding *)
   | (LLet(t,_,u), stk ) ->
       Pervasives.incr steps;
-      whnf_stk (Bindlib.subst u t) stk
+      whnf_stk ctx (Bindlib.subst u t) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Pervasives.incr steps; whnf_stk t stk
+      | Some(t) -> Pervasives.incr steps; whnf_stk ctx t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) stk with
       (* If no rule is found, return the original term *)
       | None        -> st
-      | Some(t,stk) -> Pervasives.incr steps; whnf_stk t stk
+      | Some(t,stk) -> Pervasives.incr steps; whnf_stk ctx t stk
+      end
+  (* Try to unfold a variable from the context. *)
+  | (Vari(x)   , stk  ) ->
+      begin
+        match Ctxt.def_of x ctx with
+        | None    -> st
+        | Some(t) -> Pervasives.incr steps; whnf_stk ctx t stk
       end
   (* In head normal form. *)
   | (_         , _    ) -> st
@@ -128,7 +135,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf a, whnf b) with
+    match (whnf ctx a, whnf ctx b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -149,14 +156,6 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
     | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
-    (* Try unfolding variable definitions. *)
-    | (Vari(x)    , t          )
-    | (t          , Vari(x)    ) ->
-        begin
-          match Ctxt.def_of x ctx with
-          | None    -> raise Exit
-          | Some(u) -> eq_modulo ((t, u) :: l)
-        end
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
@@ -247,7 +246,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
+              let b = Bindlib.bind_mvar allowed (lift (snf [] vars.(i))) in
               if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
               else fail
@@ -272,7 +271,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           Option.map_default fn None default
         else
           let s = Pervasives.(!steps) in
-          let (t, args) = whnf_stk examined [] in
+          let (t, args) = whnf_stk [] examined [] in
           let args = if store then List.map appl_to_tref args else args in
           (* Introduce sharing on arguments *)
           if Pervasives.(!steps) <> s then
@@ -329,52 +328,52 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   walk tree stk 0 VarMap.empty IntMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
-and snf : term -> term = fun t ->
-  let h = whnf t in
+and snf : ctxt -> term -> term = fun ctx t ->
+  let h = whnf ctx t in
   match h with
   | Vari(_)     -> h
   | Type        -> h
   | Kind        -> h
   | Symb(_)     -> h
-  | LLet(t,_,b) -> snf (Bindlib.subst b t)
+  | LLet(t,_,b) -> snf ctx (Bindlib.subst b t)
   | Prod(a,b)   ->
       let (x,b) = Bindlib.unbind b in
-      let b = snf b in
+      let b = snf ctx b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Prod(snf a, b)
+      Prod(snf ctx a, b)
   | Abst(a,b)   ->
       let (x,b) = Bindlib.unbind b in
-      let b = snf b in
+      let b = snf ctx b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Abst(snf a, b)
-  | Appl(t,u)   -> Appl(snf t, snf u)
-  | Meta(m,ts)  -> Meta(m, Array.map snf ts)
+      Abst(snf ctx a, b)
+  | Appl(t,u)   -> Appl(snf ctx t, snf ctx u)
+  | Meta(m,ts)  -> Meta(m, Array.map (snf ctx) ts)
   | Patt(_,_,_) -> assert false
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
   | TRef(_)     -> assert false
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
-let whnf : term -> term = fun t ->
+let whnf : ctxt -> term -> term = fun ctx t ->
   Pervasives.(steps := 0);
   let t = unfold t in
-  let u = whnf t in
+  let u = whnf ctx t in
   if Pervasives.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : term -> term = fun t ->
-  match get_args (whnf t) with
+  match get_args (whnf [] t) with
   | Prod(a,b), _ ->
      let x,b = Bindlib.unbind b in
      Prod (simplify a, Bindlib.unbox (Bindlib.bind_var x (lift (simplify b))))
   | h, ts -> add_args h (List.map whnf_beta ts)
 
 (** [hnf t] computes a head-normal form of the term [t]. *)
-let rec hnf : term -> term = fun t ->
-  match whnf t with
+let rec hnf : ctxt -> term -> term = fun ctx t ->
+  match whnf ctx t with
   | Abst(a,t) ->
      let x,t = Bindlib.unbind t in
-     Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf t))))
+     Abst(a, Bindlib.unbox (Bindlib.bind_var x (lift (hnf ctx t))))
   | t         -> t
 
 (** Type representing the different evaluation strategies. *)
@@ -398,8 +397,8 @@ let eval : config -> term -> term = fun c t ->
   match (c.strategy, c.steps) with
   | (_   , Some(0))
   | (NONE, _      ) -> t
-  | (WHNF, None   ) -> whnf t
-  | (SNF , None   ) -> snf t
-  | (HNF , None   ) -> hnf t
+  | (WHNF, None   ) -> whnf [] t
+  | (SNF , None   ) -> snf [] t
+  | (HNF , None   ) -> hnf [] t
   (* TODO implement the rest. *)
   | (_   , Some(_)) -> wrn None "Number of steps not supported."; t
