@@ -157,8 +157,8 @@ reserved "why3"
   | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*
     {"qed"|"admit"|"abort"}
   // Assertion
-  | "assert" <assertion>
-  | "assertnot" <assertion>
+  | "assert" arg* "⊢" <assertion>
+  | "assertnot" arg* "⊢" <assertion>
   // Set option
   | "set" "verbose" RE("[1-9][0-9]*")
   | "set" "debug" RE("[-+][a-zA-Z]+")
