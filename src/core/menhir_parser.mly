@@ -221,8 +221,6 @@ let build_config : Pos.pos -> string -> string option -> Eval.config =
 %token R_PAR
 %token L_SQB
 %token R_SQB
-%token LEFTBRA
-%token RIGHTBRA
 %token EVAL
 %token INFER
 %token <bool> ASSERT
@@ -300,22 +298,8 @@ line:
       let q = make_pos $loc (P_query_assert(mf, P_assert_typing(t,a))) in
       make_pos $loc (P_query q)
     }
-  | mf=ASSERT LEFTBRA ps=param* RIGHTBRA t=aterm COLON a=term DOT {
-      let ps_t = make_pos $loc (P_Abst(ps,t)) in
-      let ps_a = make_pos $loc (P_Prod(ps,a)) in
-      let assert_type = P_assert_typing(ps_t,ps_a) in
-      let q = make_pos $loc (P_query_assert(mf, assert_type)) in
-      make_pos $loc (P_query q)
-    }
   | mf=ASSERT t=aterm EQUAL u=term DOT {
       let q = make_pos $loc (P_query_assert(mf, P_assert_conv(t,u))) in
-      make_pos $loc (P_query q)
-    }
-  | mf=ASSERT LEFTBRA ps=param* RIGHTBRA t=aterm EQUAL u=term DOT {
-      let ps_t = make_pos $loc (P_Abst(ps,t)) in
-      let ps_u = make_pos $loc (P_Abst(ps,u)) in
-      let assert_conv = P_assert_conv(ps_t,ps_u) in
-      let q = make_pos $loc (P_query_assert(mf, assert_conv)) in
       make_pos $loc (P_query q)
     }
   | r=REQUIRE    DOT {
