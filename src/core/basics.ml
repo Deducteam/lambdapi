@@ -206,7 +206,7 @@ let occurs : meta -> term -> bool =
 (** [get_metas b t] returns the list of all the metavariables in [t], and in
    the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
 let get_metas : bool -> term -> meta list = fun b t ->
-  let open Pervasives in
+  let open Stdlib in
   let l = ref [] in
   iter_meta b (fun m -> l := m :: !l) t;
   List.sort_uniq cmp_meta !l
@@ -221,7 +221,7 @@ let has_metas : bool -> term -> bool =
    variables and returns these variables. *)
 let distinct_vars_opt : term array -> tvar array option =
   let exception Not_unique_var in fun ts ->
-  let open Pervasives in
+  let open Stdlib in
   let vars = ref VarSet.empty in
   let to_var t =
     match unfold t with
@@ -232,7 +232,7 @@ let distinct_vars_opt : term array -> tvar array option =
 (** [distinct_vars ts] checks that [ts] is made of distinct variables. *)
 let distinct_vars : term array -> bool =
   let exception Not_unique_var in fun ts ->
-  let open Pervasives in
+  let open Stdlib in
   let vars = ref VarSet.empty in
   let check t =
     match unfold t with
