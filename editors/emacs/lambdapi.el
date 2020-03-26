@@ -1,14 +1,15 @@
-;;; lambdapi-mode --- A major mode to edit Dedukti files
+;;; lambdapi-mode --- A major mode to edit Dedukti files -*- lexical-binding: t; -*-
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Keywords: lambdapi dedukti proof-assistant
 ;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((quail))
+;; Package-Requires: ((emacs "26.1") (quail))
 
 ;;; Commentary:
-
+;;
 ;;; Code:
 
+(require 'lambdapi-smie)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
@@ -58,56 +59,50 @@
     (modify-syntax-entry ?& "_" st)
     st))
 
-(defconst dk3-ident "[a-zA-Z_][a-zA-Z0-9_]*")
-(defconst dk3-nat-lit "[0-9]+")
-(defconst dk3-float-lit "[0-9]+\\([.][0-9]+\\)?")
-(defconst lp-keywords--tactics
-  '("abort"
-    "admit"
-    "apply"
-    "assume"
-    "focus"
-    "print"
-    "proofterm"
-    "qed"
-    "refine"
-    "reflexivity"
-    "rewrite"
-    "simpl"
-    "symmetry"
-    "why3"))
-
-(defconst lp-keywords--proof-finish
-  '("admit" "qed" "abort"))
-
-(defconst lp-keywords--terms
-  '("in" "let" "λ" "∀" "," "TYPE" "→" "⇒" "≔"))
-
-(defconst lp-keywords--misc-commands
-  '("assert" "assertnot" "type" "compute"))
-
-(defconst lp-keywords--commands
-  '("and" "symbol" "theorem" "definition" "rule" "proof" ":"))
-
-(defconst lp-keywords--symtags
-  '("protected" "injective" "constant" "private"))
-
-(defconst lp-keywords--modules
-  '("require" "import" "as" "open" "."))
-
-(defconst lp-keywords--params
-  '("set" "verbose" "prover" "prover_timeout" "prefix" "infix" "left" "right"))
-
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
   (list (cons
-         (concat "\\<" (regexp-opt (append lp-keywords--commands
-                                           lp-keywords--symtags
-                                           lp-keywords--modules)) "\\>")
+         (concat "\\<"
+                 (regexp-opt
+                  '("theorem"
+                    "proof"
+                    "admit"
+                    "abort"
+                    "qed"
+                    "symbol"
+                    "rule"
+                    "and"))
+                 "\\>")
          'font-lock-keyword-face)
         (cons
-         (concat "\\<" (regexp-opt lp-keywords--misc-commands) "\\>")
-         'font-lock-preprocessor-face))
+         (concat "\\<"
+                 (regexp-opt
+                  '("set"
+                    "require"
+                    "open"
+                    "as"
+                    "type"
+                    "assert"
+                    "assertnot"
+                    "compute"))
+                 "\\>")
+         'font-lock-preprocessor-face)
+        (cons
+         (concat "\\<"
+                 (regexp-opt
+                  '("refine"
+                    "assume"
+                    "apply"
+                    "proofterm"
+                    "rewrite"
+                    "print"))
+                 "\\>")
+         'font-lock-builtin-face)
+        (cons
+         (concat "\\<"
+                 (regexp-opt '("TYPE" "left" "right" "infix" "prefix"))
+                 "\\>")
+         'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
 ;; Unicode support
@@ -134,154 +129,6 @@
   ("`w" ?ω) ("`x" ?χ) ("`y" ?υ) ("`z" ?ζ)
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
-
-;; SMIE indentation engine
-(require 'smie)
-
-(defconst lp-smie-grammar
-  (smie-prec2->grammar
-   (smie-bnf->prec2
-    '((ident ("ID"))
-      (qident (ident "." ident))
-      (rw-patt)
-      (args (ident)
-            (ident ":" sterm))
-      (sterm ("TYPE")
-             ("_")
-             (ident)
-             (sterm "⇒" sterm)
-             ("λ" args "," sterm)
-             ("∀" args "," sterm)
-             ("let" args "≔" sterm "in" sterm))
-      (tactic ("refine" sterm)
-              ("assume" sterm)
-              ("apply" sterm)
-              ("simpl")
-              ("rewrite" "[" rw-patt "]" sterm)
-              ("reflexivity")
-              ("focus" nat-lit)
-              ("print")
-              ("proofterm")
-              ("why3"))
-      (rule (sterm "→" sterm))
-      (rules (rule)
-             (rule "and" rule))
-      (symtag ("constant" "injective" "protected" "private"))
-      (command (symtag "symbol" args ":" sterm)
-               ("theorem" args ":" sterm "proof" tactic "PRFEND")
-               ("definition" args "≔" sterm)
-               ("rule" rules)
-               ("assert" sterm "≡" sterm)
-               ("compute" sterm)
-               ("type" sterm ":" sterm)
-               ("require" qident)
-               ("require" qident "as" ident)
-               ("require" "open" qident)
-               ("set" "verbose" "NATLIT")
-               ("set" "debug" ident)
-               ("set" "builtin" ident "≔" qident)
-               ("set" "prefix" "FLOATLIT" "\"" ident "\"" "≔" qident)
-               ("set" "infix" "FLOATLIT" ident "≔" qident)
-               ("set" "infix" "left" "FLOATLIT" ident "≔" qident)
-               ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
-               ("set" "prover" ident)
-               ("set" "prover_timeout" "NATLIT")
-               ("set" "declared" ident)))
-    '((assoc ":" "theorem"))
-    '((assoc ":" "symbol"))
-    '((assoc ",") (assoc "in") (right "⇒")))))
-
-(defconst dk3-keywords--main-regexp
-  (regexp-opt
-   (append
-    lp-keywords--tactics
-    lp-keywords--params
-    lp-keywords--terms
-    lp-keywords--modules
-    lp-keywords--commands
-    lp-keywords--symtags
-    lp-keywords--misc-commands)))
-
-;; TODO: literals with double quotes for set infix etc
-(defun dedukti-smie-forward-token ()
-  "Forward lexer for Dedukti3."
-  ;; Skip comments
-  (forward-comment (point-max))
-  (cond
-   ;; qed, admit or abort as "PRFEND"
-   ((looking-at (regexp-opt lp-keywords--proof-finish))
-    (goto-char (match-end 0))
-    "PRFEND")
-   ((looking-at dk3-keywords--main-regexp)
-    (goto-char (match-end 0))
-    (match-string-no-properties 0))
-   ;; nat lit
-   ((looking-at dk3-nat-lit)
-    (goto-char (match-end 0))
-    "NATLIT")
-   ;; float lit
-   ((looking-at dk3-float-lit)
-    (goto-char (match-end 0))
-    "FLOATLIT")
-   ;; identifiers
-   ((looking-at dk3-ident)
-    (goto-char (match-end 0))
-    "ID")
-   ;; TODO: Case to distinguish top ":" from arguments ":"
-   (t (buffer-substring-no-properties
-       (point)
-       (progn (skip-syntax-forward "w_")
-              (point))))))
-
-(defun dedukti-smie-backward-token ()
-  "Backward lexer for Dedukti3."
-  (forward-comment (- (point)))
-  (cond
-   ((looking-back dk3-keywords--main-regexp (- (point) 13) t)
-    (goto-char (match-beginning 0))
-    (match-string-no-properties 0))
-   ;; naturals
-   ((looking-back dk3-nat-lit nil t)
-    (goto-char (match-beginning 0))
-    "NATLIT")
-   ;; floats
-   ((looking-back dk3-float-lit nil t)
-    (goto-char (match-beginning 0))
-    "FLOATLIT")
-   ;; identifiers
-   ((looking-back dk3-ident nil t)
-    (goto-char (match-beginning 0))
-    "ID")
-   ;; TODO: same, case for ":"
-   (t (buffer-substring-no-properties
-       (point)
-       (progn (skip-syntax-backward "w_")
-              (point))))))
-(defun dedukti-backward ()
-  "Move backward by one token or by a sexp."
-  (interactive)
-  (let ((beg (point)))
-    (prog1
-        (or (dedukti-smie-backward-token)
-            (backward-sexp))
-      (when (eq beg (point))
-        (backward-char)))))
-
-(defun dedukti-smie-backward-debug ()
-  "Print the current value of `dedukti-smie-backward-token'."
-  (interactive)
-  (let ((v (dedukti-backward)))
-    (when v (princ v))))
-
-(defun lp-smie-rules (kind token)
-  "Indentation rule for case KIND and token TOKEN."
-  (pcase (cons kind token)
-    (`(:elem . basic) 0)
-    ;; Toplevel
-    (`(:before . "symbol") '(column 0))
-    (`(:before . "theorem") '(column 0))
-    (`(:before . "type") '(column 0))
-    (`(:before . "set") '(column 0))))
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
