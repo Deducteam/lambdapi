@@ -42,7 +42,7 @@ let can_instantiate : bool ref = ref true
    otherwise. *)
 let nl_distinct_vars : term array -> tvar array option =
   let exception Not_a_var in fun ts ->
-  let open Pervasives in
+  let open Stdlib in
   let vars = ref VarSet.empty
   and nl_vars = ref VarSet.empty in
   let to_var t =

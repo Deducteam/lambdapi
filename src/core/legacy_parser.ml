@@ -6,7 +6,7 @@
     the [parser_fatal] function should be used instead. *)
 
 let parse_lexbuf : string -> Lexing.lexbuf -> Syntax.ast = fun fname lexbuf ->
-  Pervasives.(Legacy_lexer.filename := fname);
+  Stdlib.(Legacy_lexer.filename := fname);
   let lines = ref [] in
   try
     while true do

@@ -13,7 +13,7 @@ open Tree_types
 
 (** Flag indicating whether the order of rules in files should be preserved by
     decision trees. *)
-let rule_order : bool Pervasives.ref = Pervasives.ref false
+let rule_order : bool Stdlib.ref = Stdlib.ref false
 
 (** {1 Types for decision trees}
 
@@ -356,7 +356,7 @@ module CM = struct
       among columns [c]. Here, we mean "best" in the sense of {!val:score}. *)
   let pick_best_among : t -> int array -> int = fun mat columns->
     let scores = Array.map (fun ci -> score (get_col ci mat)) columns in
-    Array.max_index ~cmp:(Pervasives.compare) scores
+    Array.max_index ~cmp:(Stdlib.compare) scores
 
   (** [can_switch_on r k] tells whether we can switch on column [k] of list of
       clauses [r]. *)
@@ -418,12 +418,12 @@ module CM = struct
   let yield : t -> decision = fun ({ clauses ; positions ; _ } as m) ->
     (* If a line is empty and priority is given to the topmost rule, we have
        to eliminate ¨empty¨ rules. *)
-    if Pervasives.(!rule_order)
+    if Stdlib.(!rule_order)
        && List.exists (fun x -> x.c_lhs = [||]) clauses
        && List.exists (fun x -> x.c_lhs <> [||]) clauses
     then Check_stack else
     try
-      if Pervasives.(!rule_order) then
+      if Stdlib.(!rule_order) then
         (* [List.hd] won't fail because if the matrix is empty, then we don't
            enter the function (see {!val:compile}). If it is not, then it has
            at least one clause. *)
