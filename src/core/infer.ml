@@ -10,14 +10,14 @@ let log_infr = new_logger 'i' "infr" "type inference/checking"
 let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
-let constraints = Pervasives.ref []
+let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
   if not (Basics.eq ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
-      let open Pervasives in constraints := (ctx,a,b) :: !constraints
+      let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
 (** [make_meta_codomain ctx a] builds a metavariable intended as the  codomain
@@ -192,15 +192,15 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
    to have type [a]. [ctx] must be well-formed. This function never
    fails (but constraints may be unsatisfiable). *)
 let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   let a = infer ctx t in
-  let constrs = Pervasives.(!constraints) in
+  let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
       log_infr (gre "infer [%a] yields [%a]") pp t pp a;
       List.iter (log_infr "  assuming %a" pp_constr) constrs;
     end;
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   (a, constrs)
 
 (** [check ctx t c] checks returns a list [cs] of unification
@@ -209,13 +209,13 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
    well-sorted. This function never fails (but constraints may be
    unsatisfiable). *)
 let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   check ctx t c;
-  let constrs = Pervasives.(!constraints) in
+  let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
       log_infr (gre "check [%a] [%a]") pp t pp c;
       List.iter (log_infr "  assuming %a" pp_constr) constrs;
     end;
-  Pervasives.(constraints := []);
+  Stdlib.(constraints := []);
   constrs

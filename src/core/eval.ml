@@ -36,7 +36,7 @@ let log_conv = log_conv.logger
 let eta_equality : bool ref = Console.register_flag "eta_equality" false
 
 (** Counter used to preserve physical equality in {!val:whnf}. *)
-let steps : int Pervasives.ref = Pervasives.ref 0
+let steps : int Stdlib.ref = Stdlib.ref 0
 
 (** [appl_to_tref t] transforms {!constructor:Appl} into references. *)
 let appl_to_tref : term -> term = fun t ->
@@ -50,10 +50,10 @@ type stack = term list
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
-  let s = Pervasives.(!steps) in
+  let s = Stdlib.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_beta_stk t [] in
-  if Pervasives.(!steps) <> s then add_args u stk else t
+  if Stdlib.(!steps) <> s then add_args u stk else t
 
 (** [whnf_beta_stk t stk] computes the weak head beta normal form of [t]
     applied to the argument list (or stack) [stk]. Note that the normalisation
@@ -66,25 +66,25 @@ and whnf_beta_stk : term -> stack -> term * stack = fun t stk ->
       whnf_beta_stk f (u :: stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk ) ->
-      Pervasives.incr steps;
+      Stdlib.incr steps;
       whnf_beta_stk (Bindlib.subst f u) stk
   (* In head beta normal form. *)
   | (_        , _      ) -> st
 
 (** [whnf_beta t] computes a weak head beta normal form of [t]. *)
 let whnf_beta : term -> term = fun t ->
-  Pervasives.(steps := 0);
+  Stdlib.(steps := 0);
   let t = unfold t in
   let u = whnf_beta t in
-  if Pervasives.(!steps = 0) then t else u
+  if Stdlib.(!steps = 0) then t else u
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
 let rec whnf : ctxt -> term -> term = fun ctx t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
-  let s = Pervasives.(!steps) in
+  let s = Stdlib.(!steps) in
   let t = unfold t in
   let (u, stk) = whnf_stk ctx t [] in
-  if Pervasives.(!steps) <> s then add_args u stk else t
+  if Stdlib.(!steps) <> s then add_args u stk else t
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
@@ -96,31 +96,31 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       whnf_stk ctx f (appl_to_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
-      Pervasives.incr steps;
+      Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst f u) stk
   (* Let unfolding *)
   | (LLet(t,_,u), stk ) ->
-      Pervasives.incr steps;
+      Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst u t) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Pervasives.incr steps; whnf_stk ctx t stk
+      | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) stk with
       (* If no rule is found, return the original term *)
       | None        -> st
-      | Some(t,stk) -> Pervasives.incr steps; whnf_stk ctx t stk
+      | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
       end
   (* Try to unfold a variable from the context. *)
   | (Vari(x)   , stk  ) ->
       begin
         match Ctxt.def_of x ctx with
         | None    -> st
-        | Some(t) -> Pervasives.incr steps; whnf_stk ctx t stk
+        | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
       end
   (* In head normal form. *)
   | (_         , _    ) -> st
@@ -270,11 +270,11 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           in
           Option.map_default fn None default
         else
-          let s = Pervasives.(!steps) in
+          let s = Stdlib.(!steps) in
           let (t, args) = whnf_stk [] examined [] in
           let args = if store then List.map appl_to_tref args else args in
           (* Introduce sharing on arguments *)
-          if Pervasives.(!steps) <> s then
+          if Stdlib.(!steps) <> s then
             begin
               match examined with
               | TRef(v) -> v := Some(add_args t args)
@@ -355,10 +355,10 @@ and snf : ctxt -> term -> term = fun ctx t ->
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : ctxt -> term -> term = fun ctx t ->
-  Pervasives.(steps := 0);
+  Stdlib.(steps := 0);
   let t = unfold t in
   let u = whnf ctx t in
-  if Pervasives.(!steps = 0) then t else u
+  if Stdlib.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
 let rec simplify : ctxt -> term -> term = fun ctx t ->

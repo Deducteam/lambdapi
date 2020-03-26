@@ -135,7 +135,7 @@ let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of metamap Pervasives.ref * expo
+  | M_Term of metamap Stdlib.ref * expo
   (** Standard scoping mode for terms, holding a map of metavariables that can
       be updated with new metavariables on scoping and the exposition of the
       scoped term. *)
@@ -183,8 +183,8 @@ let get_args : p_term -> p_term * p_term list =
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
   let fresh_patt_name =
-    let c = Pervasives.ref (-1) in
-    fun _ -> Pervasives.(incr c; Printf.sprintf "#%i" !c)
+    let c = Stdlib.ref (-1) in
+    fun _ -> Stdlib.(incr c; Printf.sprintf "#%i" !c)
   in
   let fresh_patt env = _Patt None (fresh_patt_name ()) (Env.to_tbox env) in
   (* Toplevel scoping function, with handling of implicit arguments. *)
@@ -294,7 +294,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
-          try StrMap.find id.elt Pervasives.(!m) with Not_found ->
+          try StrMap.find id.elt Stdlib.(!m) with Not_found ->
           (* Otherwise we create a new metavariable [m1] of type [TYPE]
              and a new metavariable [m2] of name [id] and type [m1], and
              return [m2]. *)
@@ -302,7 +302,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let m1 = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
           let a = Env.to_prod env (_Meta m1 vs) in
           let m2 = fresh_meta ~name:id.elt a (Array.length vs) in
-          Pervasives.(m := StrMap.add id.elt m2 !m); m2
+          Stdlib.(m := StrMap.add id.elt m2 !m); m2
         in
         _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _                ) ->
@@ -416,7 +416,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     subterms. *)
 let scope_term : expo -> sig_state -> env -> p_term -> term =
   fun expo ss env t ->
-  let m = Pervasives.ref StrMap.empty in
+  let m = Stdlib.ref StrMap.empty in
   Bindlib.unbox (scope (M_Term(m, expo)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an

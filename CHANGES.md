@@ -1,4 +1,9 @@
-#### Let bindings (2020-03-24)
+#### Prepare for modern versions of OCaml (2020-03-26)
+
+ - Use `Stdlib` instead of `Pervasives` (enforced by sanity checks).
+ - Rely on `stdlib-shims` to provide `Stdlib` on older version of OCaml.
+
+#### Let bindings (2020-03-26)
 
 Adding let-bindings to the terms structure.
 - Contexts can now contain term definitions.
@@ -7,10 +12,10 @@ Adding let-bindings to the terms structure.
 
 #### File management and module mapping (2020-03-20)
 
-- New module system.
-- Revised command line arguments parsing.
-- LSP server run from `lambdapi`
-- `--no-warning` option (fixes #296).
+ - New module system.
+ - Revised command line arguments parsing and introduce subcommands.
+ - LSP server is now a Lambdapi subcommand: run with `lambdapi lsp`.
+ - New `--no-warning` option (fixes #296).
 
 #### Trees simplification (2019-12-05)
 

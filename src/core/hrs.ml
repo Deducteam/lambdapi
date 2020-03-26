@@ -48,14 +48,14 @@ let print_term : bool -> term pp = fun lhs ->
 let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
   (* Print the pattern variable declarations. *)
   let get_patt_names : term list -> string list = fun ts ->
-    let names = Pervasives.ref [] in
+    let names = Stdlib.ref [] in
     let fn t =
       match t with
-      | Patt(_,n,_) -> Pervasives.(names := n :: !names)
+      | Patt(_,n,_) -> Stdlib.(names := n :: !names)
       | _           -> ()
     in
     List.iter (Basics.iter fn) ts;
-    List.sort_uniq String.compare Pervasives.(!names)
+    List.sort_uniq String.compare Stdlib.(!names)
   in
   let names = get_patt_names r.lhs in
   if names <> [] then
