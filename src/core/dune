@@ -12,7 +12,7 @@
  (modules :standard)
  (c_names stubs)
  (preprocess (per_module ((pps pacomb.ppx) parser)))
- (libraries unix timed bindlib pacomb why3))
+ (libraries unix stdlib-shims timed bindlib pacomb why3))
 
 (ocamllex legacy_lexer)
 (menhir
