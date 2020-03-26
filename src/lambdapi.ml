@@ -6,7 +6,7 @@ open Files
 open Console
 open Version
 
-(* NOTE only standard [Pervasives] references here. *)
+(* NOTE only standard [Stdlib] references here. *)
 
 (** {3 Evaluation of commands. *)
 
@@ -280,43 +280,71 @@ let files : string list Term.t =
 
 (** Definition of the commands. *)
 
+let man_pkg_file =
+  let sample_pkg_file =
+    let lines =
+      [ "# Lines whose first non-whitespace charater is # are comments"
+      ; "# The end of a non-comment line cannot be commented."
+      ; "# The following two fields must be defined:"
+      ; "package_name = my_package_name"
+      ; "root_path = a.b.c"
+      ; "# Unknown fields like the following are ignored."
+      ; "unknown = this is useless" ]
+    in
+    `Pre (String.concat "\n" (List.map (Printf.sprintf "\t%s") lines))
+  in
+  [ `S Manpage.s_files
+  ; `P "A package configuration files $(b,lambdapi.pkg) can be placed at the \
+        root of a source tree, so that Lambdapi can determine under what \
+        module path the underlying modules should be registered (relative to \
+        the library root). If several candidate package configuration files \
+        are found in the parent folders of a source file, the one in the \
+        closest parent directory is used."
+  ; `P "The syntax of package configuration files is line-based. Each line \
+        can either be a comment (i.e., it starts with a '#') or a key-value \
+        association of the form \"key = value\". Two such entries should be \
+        given for a configuration file to be valid: a $(b,package_name) \
+        entry whose value is an identifier and a $(b,root_path) entry whose \
+        value is a module path."
+  ; `P "An example of package configuration file is given bellow."
+  ; sample_pkg_file ]
+
 let check_cmd =
   let doc = "Type-checks the given files." in
   Term.(const check_cmd $ global_config $ timeout $ files),
-  Term.info "check" ~doc ~exits:Term.default_exits
+  Term.info "check" ~doc ~man:man_pkg_file
 
 let parse_cmd =
   let doc = "Run the parser on the given files." in
   Term.(const parse_cmd $ global_config $ files),
-  Term.info "parse" ~doc ~exits:Term.default_exits
+  Term.info "parse" ~doc ~man:man_pkg_file
 
 let beautify_cmd =
   let doc = "Run the parser and pretty-printer on the given files." in
   Term.(const beautify_cmd $ global_config $ files),
-  Term.info "beautify" ~doc ~exits:Term.default_exits
+  Term.info "beautify" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =
   let doc = "Runs the LSP server." in
   Term.(const lsp_server_cmd $ global_config $ standard_lsp $ lsp_log_file),
-  Term.info "lsp" ~doc ~exits:Term.default_exits
+  Term.info "lsp" ~doc ~man:man_pkg_file
 
 let help_cmd =
   let doc = "Display the main help page for Lambdapi." in
   Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "help" ~doc ~exits:Term.default_exits
+  Term.info "help" ~doc
 
 let version_cmd =
   let run () = out 0 "Lambdapi version: %s\n%!" Version.version in
   let doc = "Display the current version of Lambdapi." in
   Term.(const run $ const ()),
-  Term.info "version" ~doc ~exits:Term.default_exits
+  Term.info "version" ~doc
 
 let default_cmd =
   let doc = "A type-checker for the lambdapi-calculus modulo rewriting." in
   let sdocs = Manpage.s_common_options in
-  let exits = Term.default_exits in
   Term.(ret (const (`Help (`Pager, None)))),
-  Term.info "lambdapi" ~version ~doc ~sdocs ~exits
+  Term.info "lambdapi" ~version ~doc ~sdocs
 
 let _ =
   let cmds =

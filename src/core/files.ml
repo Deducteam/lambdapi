@@ -17,7 +17,7 @@ module Path =
     type t = module_path
 
     (** [compare] is a standard comparing function for module paths. *)
-    let compare : t -> t -> int = Pervasives.compare
+    let compare : t -> t -> int = Stdlib.compare
 
     (** [pp oc mp] prints [mp] to channel [oc]. *)
     let pp : module_path pp = fun oc mp ->
@@ -116,8 +116,8 @@ module ModMap :
   end
 
 (** [lib_root] stores the result of the ["--lib-root"] flag when given. *)
-let lib_root : string option Pervasives.ref =
-  Pervasives.ref None
+let lib_root : string option Stdlib.ref =
+  Stdlib.ref None
 
 (** [set_lib_root path] sets the library root to the given file [path]. If the
     given [path] does not refer to a valid (existing) directory the program is
@@ -127,8 +127,8 @@ let set_lib_root : string -> unit = fun path ->
     let path = Filename.realpath path in
     if not (Sys.is_directory path) then
       exit_with "Invalid library root ([%s] is not a directory)." path;
-    match Pervasives.(!lib_root) with
-    | None    -> Pervasives.(lib_root := Some(path))
+    match Stdlib.(!lib_root) with
+    | None    -> Stdlib.(lib_root := Some(path))
     | Some(_) -> exit_with "The library root was already set."
   with Sys_error(_) | Invalid_argument(_) ->
     exit_with "Invalid library root (no such file or directory [%s])." path
@@ -148,7 +148,7 @@ let default_lib_root : unit -> string = fun _ ->
     able to find such a directory. Note that prior to installation, the option
     ["--lib-root"] must be used so that this function does not fail. *)
 let lib_root_path : unit -> string = fun _ ->
-  match Pervasives.(!lib_root) with Some(path) -> path | None ->
+  match Stdlib.(!lib_root) with Some(path) -> path | None ->
   let path = default_lib_root () in
   try
     let path = Filename.realpath path in
@@ -159,15 +159,15 @@ let lib_root_path : unit -> string = fun _ ->
     exit_with "Default library root [%s] does not exist." path
 
 (** [lib_mappings] stores the specified mappings of library paths. *)
-let lib_mappings : ModMap.t Pervasives.ref =
-  Pervasives.ref ModMap.empty
+let lib_mappings : ModMap.t Stdlib.ref =
+  Stdlib.ref ModMap.empty
 
 (** [init_lib_root ()] registers the currently set library root as part of our
     module mapping. This function MUST be called before one can consider using
     [module_to_file] or [module_path]. *)
 let init_lib_root : unit -> unit = fun _ ->
   let root = lib_root_path () in
-  Pervasives.(lib_mappings := ModMap.set_root root !lib_mappings)
+  Stdlib.(lib_mappings := ModMap.set_root root !lib_mappings)
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
     ["<modpath>:<path>"]. Then, if module path ["<modpath>"] is not yet mapped
@@ -197,7 +197,7 @@ let new_lib_mapping : string -> unit = fun s ->
     with ModMap.Already_mapped ->
       fail "module path [%a] is already mapped" Path.pp module_path
   in
-  Pervasives.(lib_mappings := new_mapping)
+  Stdlib.(lib_mappings := new_mapping)
 
 (** [current_path ()] returns the canonical running path of the program. *)
 let current_path : unit -> string = fun _ ->
@@ -205,14 +205,14 @@ let current_path : unit -> string = fun _ ->
 
 (** [current_mappings ()] gives the currently registered library mappings. *)
 let current_mappings : unit -> ModMap.t = fun _ ->
-  Pervasives.(!lib_mappings)
+  Stdlib.(!lib_mappings)
 
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [init_lib_root] was
     called prior to any call to this function. *)
 let module_to_file : Path.t -> file_path = fun mp ->
   let path =
-    try ModMap.get mp Pervasives.(!lib_mappings) with ModMap.Root_not_set ->
+    try ModMap.get mp Stdlib.(!lib_mappings) with ModMap.Root_not_set ->
       assert false (* Unreachable after [init_lib_root] is called. *)
   in
   log_file "[%a] points to base name [%s]." Path.pp mp path; path
@@ -258,8 +258,8 @@ let file_to_module : string -> Path.t = fun fname ->
     | Some(mp, path) -> (mp, path)
     | None           ->
         fatal_msg "[%s] cannot be mapped under the library root.\n" fname;
-        fatal_msg "Consider adding a package file [lambdapi.pkg] under";
-        fatal_no_pos " your source tree."
+        fatal_msg "Consider adding a package file [lambdapi.pkg] under your ";
+        fatal_no_pos "source tree, or use the [--map-dir] option."
   in
   ignore (mp, path);
   (* Build the module path. *)

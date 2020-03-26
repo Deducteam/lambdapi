@@ -3,7 +3,7 @@ open Console
 open Lexing
 open Pos
 
-let filename = Pervasives.ref ""
+let filename = Stdlib.ref ""
 
 let to_module_path : string -> Syntax.p_module_path = fun mp ->
   List.map (fun s -> (s, false)) (String.split_on_char '.' mp)

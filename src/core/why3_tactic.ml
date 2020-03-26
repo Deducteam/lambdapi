@@ -24,11 +24,7 @@ let timeout : int ref = ref 2
 let why3_config : Why3.Whyconf.config = Why3.Whyconf.read_config None
 
 (** [why3_main] is the main section of the Why3 configuration. *)
-let why3_main : Why3.Whyconf.main =
-  (* Filter the configuration to get only the main information. *)
-  let m = Why3.Whyconf.get_main why3_config in
-  (* Load all plugins (TPTP, DIMACS, ...) and return the new config. *)
-  Why3.Whyconf.load_plugins m; m
+let why3_main : Why3.Whyconf.main = Why3.Whyconf.get_main why3_config
 
 (** [why3_env] is the initialized Why3 environment. *)
 let why3_env : Why3.Env.env =
@@ -145,7 +141,22 @@ let run_task : Why3.Task.task -> Pos.popt -> string -> bool =
   let provers = Why3.Whyconf.filter_provers why3_config filter in
   (* Fail if we did not find a matching prover. *)
   if Why3.Whyconf.Mprover.is_empty provers then
-    fatal pos "[%s] not installed or not configured" prover_name;
+    begin
+      fatal_msg "prover [%s] not found.\n" prover_name;
+      let provers = Why3.Whyconf.get_provers why3_config in
+      let _ =
+        if Why3.Whyconf.Mprover.is_empty provers then
+          fatal_msg "There are no available Why3 provers.\n"
+        else
+          let fn p _ = fatal_msg " - %a\n" Why3.Whyconf.print_prover p in
+          fatal_msg "The available Why3 provers are:\n";
+          Why3.Whyconf.Mprover.iter fn provers
+      in
+      fatal_msg "Why3 configuration read from [%s].\n"
+        (Why3.Whyconf.get_conf_file why3_config);
+      fatal_msg "Your prover might not be installed or detected, ";
+      fatal pos "remember to run [why3 config --detect]."
+    end;
   (* Return the prover configuration and load the driver. *)
   let prover = snd (Why3.Whyconf.Mprover.max_binding provers) in
   let driver =
