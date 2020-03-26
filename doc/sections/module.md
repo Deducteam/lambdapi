@@ -8,30 +8,33 @@ in other files requires using its *full* module path.
 
 #### Module path
 
-The module path that corresponds to a source file is defined using the name of
-the file, but also the position of the file under the *library root* (a folder
-under which the standard library and all packages are installed).
+The module path that corresponds to a source file is defined using the
+name of the file, but also the position of the file under the *library
+root* (a folder under which all packages are installed). This library
+root, denoted by <LIB_ROOT> in the following, is set when installing
+Lambdapi with Opam or `make install`. It can also be set or changed by
+using the `--lib-root` option.
 
-The typical case is when we want to access a module of some installed library,
-for example the standard library. In that case, the module path is built using
-the file path as follows: if our source file is at `<LIB_ROOT>/std/bool.lp` it
-is accessed with module path `std.bool`.  And if there are nested folders then
-the module path gets more members. File `<LIB_ROOT>/std/a/b/c/d.lp` has module
-path `std.a.b.c.d`.
+The typical case is when we want to access a module of some installed
+library.  In that case, the module path is built using the file path
+as follows: if our source file is at `<LIB_ROOT>/std/bool.lp`, it is
+accessed with module path `std.bool`.  And if there are nested folders
+then the module path gets more members. File
+`<LIB_ROOT>/std/a/b/c/d.lp` has module path `std.a.b.c.d`.
 
 By default, every modules are looked up under the library root. However, there
-are cases where the files we want to work with are not (yet!) placed under the
-library root.  The typical case is when a library (or package) is still  under 
-development. In that case,  what we can do is map the development folder under
+are cases where the files we want to work with are not yet placed under the
+library root.  The typical case is when a package is still  under 
+development. In that case,  what we can do is map the development folder of this package under
 the library root, similarly to what would happen when mounting a volume in our
 file system. There are two ways of doing that,  the first one being to use the
 `--map-dir MOD:DIR` command line option.  However, the best way is to use a
-package configuration file.
+package configuration file. It is necessary for Emacs to know where to find the files.
 
 #### Package configuration file
 
-A package configuration file can be placed at the root of the source tree of a
-library (or package) under development. It should be named `lambdapi.pkg`, and
+A package configuration file can be placed at the top of the source tree of a
+package under development. It should be named `lambdapi.pkg`, and
 contain the following fields (an example is given below for the syntax):
  - `package_name` giving a globally unique name for the package being defined.
    This is not yet used,  but will be necessary when we eventually publish our
@@ -60,10 +63,86 @@ root_path    = a.b.c
 # We will use more entries later (e.g., authors, version, ...)
 ```
 
+#### "Hello World!" example 1
+
+Assume the <LIB_ROOT> directory is organized as follows:
+
+<LIB_ROOT>
+|_ `std`
+   |_ `list.lp`
+
+Assume that your own development files are organized as follows:
+
+<MY_DIR>
+|_ `lambdapi.pkg`
+|_ `main.lp`
+|_ `lib`
+   |_ `tree.lp`
+|_ `parser`
+   |_ `grammar.lp`
+
+Then:
+
+- In `lambdapi.pkg`, you should have:
+```
+package_name = cert_comp
+root_path = cert_comp
+```
+
+- In `<MY_DIR>/lib/tree.lp`, write `require std.list` to have access
+  to the contents of `<LIB_ROOT>/std/list.lp`.
+
+- In `<MY_DIR>/parser/grammar.lp`, write `require cert_comp.lib.tree`
+to have access to the contents of `<MY_DIR>/lib/tree.lp`.
+
+- In `<MY_DIR>/main.lp`, write `require cert_comp.parser.grammar` to
+have access to the contents of `<MY_DIR>/parser/grammar.lp`.
+
+- After installation of your package, the <LIB_ROOT> directory will be:
+
+<LIB_ROOT>
+|_ `std`
+   |_ `list.lp`
+|_ `cert_comp`
+   |_ `main.lp`
+   |_ `lib`
+      |_ `tree.lp`
+   |_ `parser`
+      |_ `grammar.lp`
+
+#### "Hello World!" example 2
+
+Assume the <LIB_ROOT> directory is organized as follows:
+
+<LIB_ROOT>
+|_ `std`
+   |_ `nat`
+      |_ `unary.lp`
+
+And assume that your own development files are organized as follows:
+
+<MY_DIR>
+|_ `lambdapi.pkg`
+|_ `binary.lp`
+
+Then, in `lambdapi.pkg`, you should have:
+```
+package_name = bin_nat
+root_path = std.nat.binary
+```
+
+After installation, the <LIB_ROOT> directory will be:
+
+<LIB_ROOT>
+|_ `std`
+   |_ `nat`
+      |_ `unary.lp`
+      |_ `binary.lp`
+
 #### Installation procedure for third-party packages
 
-A package should be installed under the library directory, under the specified
-root path. In other words a package whose root path is `x.y.z` should have its
+A package should be installed in the root library, under the specified
+root path. In other words a package whose root path is `x.y.z` will have its
 files installed under the directory `<LIB_ROOT>/x/y/z`. Moreover the directory
 structure relative to the package configuration file should be preserved.
 
@@ -81,4 +160,4 @@ problem in using `a.d` or `a.b.d`. The rules are as follows:
 We will use the following conventions:
  - root path `std` is reserved for the standard library,
  - extracted libraries are installed under `libraries.<NAME>` (for example, we
-   would use root path `libraries.matita` for `matita`).
+   would use root path `libraries.matita` for `Matita`).

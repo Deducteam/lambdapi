@@ -29,7 +29,7 @@ The commands `check`, `parse` and `beautify` expect input files with either
 the standard `.lp` extension, or the legacy (Dedukti) `.dk` extension. The
 appropriate parser is selected automatically.
 
-**Note:** the `beautify` command outputs only *standard syntax*, and hence it
+**Note:** the `beautify` command outputs only *standard syntax*, and hence
 can be used to convert legacy syntax files (with the `.dk` extension) into the
 Lambdapi syntax.
 
@@ -49,21 +49,21 @@ command line arguments and flags.
    default value is 1). A value of 0 should not print anything, and the higher
    values (up to 3) print more and more information.
 
- - `--lib-root DIR` sets the library root, that is, the folder corresponding
-   to the entry point of the Lambdapi package system. This is the folder under
-   which every package is installed,  and a default value is only known if the
-   program has been installed.  In development mode,  `--lib-root lib` must be
-   given (assuming Lambdapi is run at the root of the repository).
+ - `--keep-rule-order` forces the rewriting engine to try and apply the rewrite
+   rules in the order of their declaration.
 
- - `--map-dir MOD:DIR` maps an arbitrary directory `DIR` under a module path
-   `MOD` (relative to the root directory). This option is mainly useful during
-   the development of a package (before it has been installed). However it can
-   also be accessed using a package configuration file (`lambdapi.pkg`) at the
-   root of the library's source tree. More information on that is given in the
-   section about the module system.
+ - `--lib-root DIR` sets a library root, that is, a folder where
+   required modules will be looked for. This option is not needed if
+   Lambdapi has been installed with Opam or `make install` as, in this
+   case, the library root is already known.
 
- - `--keep-rule-order` forces the rewriting engine to try and apply the rules
-   in the order of their declaration.
+ - `--map-dir MOD:DIR` maps an arbitrary directory `DIR` under a
+   module path `MOD` relative to the library root. This option is
+   useful only during the development of a package, before its
+   installation under the library root. It can also be set by using a
+   package configuration file `lambdapi.pkg` (this is necessary for
+   Emacs to know where to find the files). More information on that is
+   given in the section about the module system.
 
 ##### Debugging flags
 
