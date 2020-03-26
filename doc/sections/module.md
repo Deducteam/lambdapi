@@ -66,21 +66,21 @@ root_path    = a.b.c
 #### "Hello World!" example 1
 
 Assume the <LIB_ROOT> directory is organized as follows:
-
+```
 <LIB_ROOT>
-|_ `std`
-   |_ `list.lp`
-
+|_ std
+   |_ list.lp
+```
 Assume that your own development files are organized as follows:
-
+```
 <MY_DIR>
-|_ `lambdapi.pkg`
-|_ `main.lp`
-|_ `lib`
-   |_ `tree.lp`
-|_ `parser`
-   |_ `grammar.lp`
-
+|_ lambdapi.pkg
+|_ main.lp
+|_ lib
+   |_ tree.lp
+|_ parser
+   |_ grammar.lp
+```
 Then:
 
 - In `lambdapi.pkg`, you should have:
@@ -99,32 +99,33 @@ to have access to the contents of `<MY_DIR>/lib/tree.lp`.
 have access to the contents of `<MY_DIR>/parser/grammar.lp`.
 
 - After installation of your package, the <LIB_ROOT> directory will be:
-
+```
 <LIB_ROOT>
-|_ `std`
-   |_ `list.lp`
-|_ `cert_comp`
-   |_ `main.lp`
-   |_ `lib`
-      |_ `tree.lp`
-   |_ `parser`
-      |_ `grammar.lp`
+|_ std`
+   |_ list.lp
+|_ cert_comp
+   |_ main.lp
+   |_ lib
+      |_ tree.lp
+   |_ parser
+      |_ grammar.lp
+```
 
 #### "Hello World!" example 2
 
 Assume the <LIB_ROOT> directory is organized as follows:
-
+```
 <LIB_ROOT>
-|_ `std`
-   |_ `nat`
-      |_ `unary.lp`
-
+|_ std
+   |_ nat
+      |_ unary.lp
+```
 And assume that your own development files are organized as follows:
-
+```
 <MY_DIR>
-|_ `lambdapi.pkg`
-|_ `binary.lp`
-
+|_ lambdapi.pkg
+|_ binary.lp
+```
 Then, in `lambdapi.pkg`, you should have:
 ```
 package_name = bin_nat
@@ -132,12 +133,13 @@ root_path = std.nat.binary
 ```
 
 After installation, the <LIB_ROOT> directory will be:
-
+```
 <LIB_ROOT>
-|_ `std`
-   |_ `nat`
-      |_ `unary.lp`
-      |_ `binary.lp`
+|_ std
+   |_ nat
+      |_ unary.lp
+      |_ binary.lp
+```
 
 #### Installation procedure for third-party packages
 
