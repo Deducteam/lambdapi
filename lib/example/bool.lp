@@ -52,6 +52,6 @@ set infix right 16 "⊕" ≔ bool_xor
 
 // Some tests.
 
-assert (λ x y z : B, x ∨ y ∨ ¬ z) ≡ (λ x y z : B, x ∨ (y ∨ ¬ z))
-assert (λ x y z : B, x ∨ y ∧ z) ≡ (λ x y z : B, x ∨ (y ∧ z))
-assert (λ x y z : B, z ⇨ x ∨ y ∧ z) ≡ (λ x y z : B, z ⇨ (x ∨ (y ∧ z)))
+assert (x y z : B) ⊢ x ∨ y ∨ ¬ z ≡ x ∨ (y ∨ ¬ z)
+assert (x y z : B) ⊢ x ∨ y ∧ z ≡ x ∨ (y ∧ z)
+assert (x y z : B) ⊢ z ⇨ x ∨ y ∧ z ≡ z ⇨ (x ∨ (y ∧ z))
