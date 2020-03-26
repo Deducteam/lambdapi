@@ -28,7 +28,7 @@ module TC =
       | Symb(_,s,a) -> Format.fprintf oc "%s %d-ary" s a
 
     (** [compare c1 c2] implements a total order on constructors. *)
-    let compare : t -> t -> int = Pervasives.compare
+    let compare : t -> t -> int = Stdlib.compare
   end
 
 (** A mapping with atomic pattern constructors as keys. *)

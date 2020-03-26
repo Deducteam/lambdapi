@@ -6,7 +6,7 @@ open Files
 open Console
 open Version
 
-(* NOTE only standard [Pervasives] references here. *)
+(* NOTE only standard [Stdlib] references here. *)
 
 (** {3 Evaluation of commands. *)
 
