@@ -90,8 +90,8 @@ let rec solve : problems -> unif_constrs = fun p ->
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   fun ctx t1 t2 p ->
-  let (h1, ts1) = Eval.whnf_stk ctx t1 [] in
-  let (h2, ts2) = Eval.whnf_stk ctx t2 [] in
+  let (h1, ts1) = Basics.get_args (Eval.whnf ctx t1) in
+  let (h2, ts2) = Basics.get_args (Eval.whnf ctx t2) in
   if !log_enabled then
     log_unif "solve %a" pp_constr (ctx, add_args h1 ts1, add_args h2 ts2);
 
@@ -183,7 +183,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let n = m.meta_arity in
     let env, t = Env.of_prod_arity n !(m.meta_type) in
     let x,a,env',b,p =
-      match Eval.whnf ctx t with
+      match Eval.whnf [] t with
       | Prod(a,b) ->
          let x,b = Bindlib.unbind b in
          let a = lift a in
@@ -258,7 +258,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   let rec inverse s v =
     if !log_enabled then log_unif "inverse [%a] [%a]" pp (symb s) pp v;
-    match get_args (Eval.whnf ctx v) with
+    match get_args (Eval.whnf [] v) with
     | Symb(s',_), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
     | _, _ -> raise Not_invertible

@@ -79,48 +79,41 @@ let whnf_beta : term -> term = fun t ->
   if Stdlib.(!steps = 0) then t else u
 
 (** [whnf t] computes a weak head normal form of the term [t]. *)
-let rec whnf : ctxt -> term -> term = fun ctx t ->
+let rec whnf : term -> term = fun t ->
   if !log_enabled then log_eval "evaluating [%a]" pp t;
   let s = Stdlib.(!steps) in
   let t = unfold t in
-  let (u, stk) = whnf_stk ctx t [] in
+  let (u, stk) = whnf_stk t [] in
   if Stdlib.(!steps) <> s then add_args u stk else t
 
 (** [whnf_stk t k] computes the weak head normal form of [t] applied to
     stack [k].  Note that the normalisation is done in the sense of [whnf]. *)
-and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
+and whnf_stk : term -> stack -> term * stack = fun t stk ->
   let st = (unfold t, stk) in
   match st with
   (* Push argument to the stack. *)
   | (Appl(f,u), stk   ) ->
-      whnf_stk ctx f (appl_to_tref u::stk)
+      whnf_stk f (appl_to_tref u::stk)
   (* Beta reduction. *)
   | (Abst(_,f), u::stk) ->
       Stdlib.incr steps;
-      whnf_stk ctx (Bindlib.subst f u) stk
+      whnf_stk (Bindlib.subst f u) stk
   (* Let unfolding *)
   | (LLet(t,_,u), stk ) ->
       Stdlib.incr steps;
-      whnf_stk ctx (Bindlib.subst u t) stk
+      whnf_stk (Bindlib.subst u t) stk
   (* Try to rewrite. *)
   | (Symb(s,_), stk   ) ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
-      | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
+      | Some(t) -> Stdlib.incr steps; whnf_stk t stk
       | None    ->
       (* Otherwise try rewriting using decision tree. *)
       match tree_walk !(s.sym_tree) stk with
       (* If no rule is found, return the original term *)
       | None        -> st
-      | Some(t,stk) -> Stdlib.incr steps; whnf_stk ctx t stk
-      end
-  (* Try to unfold a variable from the context. *)
-  | (Vari(x)   , stk  ) ->
-      begin
-        match Ctxt.def_of x ctx with
-        | None    -> st
-        | Some(t) -> Stdlib.incr steps; whnf_stk ctx t stk
+      | Some(t,stk) -> Stdlib.incr steps; whnf_stk t stk
       end
   (* In head normal form. *)
   | (_         , _    ) -> st
@@ -135,7 +128,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (a,b)::l ->
     let a = unfold a and b = unfold b in
     if a == b then eq_modulo l else
-    match (whnf ctx a, whnf ctx b) with
+    match (whnf a, whnf b) with
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -246,7 +239,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
               if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok) else
               (* As a last resort we try matching the SNF. *)
-              let b = Bindlib.bind_mvar allowed (lift (snf [] vars.(i))) in
+              let b = Bindlib.bind_mvar allowed (lift (snf vars.(i))) in
               if no_forbidden b
               then (bound.(i) <- TE_Some(Bindlib.unbox b); ok)
               else fail
@@ -271,7 +264,7 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
           Option.map_default fn None default
         else
           let s = Stdlib.(!steps) in
-          let (t, args) = whnf_stk [] examined [] in
+          let (t, args) = whnf_stk examined [] in
           let args = if store then List.map appl_to_tref args else args in
           (* Introduce sharing on arguments *)
           if Stdlib.(!steps) <> s then
@@ -328,36 +321,40 @@ and tree_walk : dtree -> stack -> (term * stack) option = fun tree stk ->
   walk tree stk 0 VarMap.empty IntMap.empty
 
 (** [snf t] computes the strong normal form of the term [t]. *)
-and snf : ctxt -> term -> term = fun ctx t ->
-  let h = whnf ctx t in
+and snf : term -> term = fun t ->
+  let h = whnf t in
   match h with
   | Vari(_)     -> h
   | Type        -> h
   | Kind        -> h
   | Symb(_)     -> h
-  | LLet(t,_,b) -> snf ctx (Bindlib.subst b t)
+  | LLet(t,_,b) -> snf (Bindlib.subst b t)
   | Prod(a,b)   ->
       let (x,b) = Bindlib.unbind b in
-      let b = snf ctx b in
+      let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Prod(snf ctx a, b)
+      Prod(snf a, b)
   | Abst(a,b)   ->
       let (x,b) = Bindlib.unbind b in
-      let b = snf ctx b in
+      let b = snf b in
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
-      Abst(snf ctx a, b)
-  | Appl(t,u)   -> Appl(snf ctx t, snf ctx u)
-  | Meta(m,ts)  -> Meta(m, Array.map (snf ctx) ts)
+      Abst(snf a, b)
+  | Appl(t,u)   -> Appl(snf t, snf u)
+  | Meta(m,ts)  -> Meta(m, Array.map snf ts)
   | Patt(_,_,_) -> assert false
   | TEnv(_,_)   -> assert false
   | Wild        -> assert false
   | TRef(_)     -> assert false
 
+(** [snf ctx t] computes the strong normal form of term [t] in context
+    [ctx]. *)
+let snf : ctxt -> term -> term = fun ctx t -> snf (Ctxt.llet ctx t)
+
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : ctxt -> term -> term = fun ctx t ->
   Stdlib.(steps := 0);
   let t = unfold t in
-  let u = whnf ctx t in
+  let u = whnf (Ctxt.llet ctx t) in
   if Stdlib.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
