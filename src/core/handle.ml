@@ -13,7 +13,7 @@ open Scope
 
 (** [write_trees] tells whether graphviz files containing the representation
     of decision trees should be created. *)
-let write_trees : bool Pervasives.ref = Pervasives.ref false
+let write_trees : bool Stdlib.ref = Stdlib.ref false
 
 (** [check_builtin_nat s] checks that the builtin symbol [s] for
    non-negative literals has a good type. *)
@@ -137,7 +137,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
       (* Writing decision tree if required. *)
-      if Pervasives.(!write_trees) then
+      if Stdlib.(!write_trees) then
         begin
           let write_tree s =
             let fname = String.concat Filename.dir_sep s.sym_path in
@@ -282,7 +282,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
 
 (** [too_long] indicates the duration after which a warning should be given to
     indicate commands that take too long to execute. *)
-let too_long = Pervasives.ref infinity
+let too_long = Stdlib.ref infinity
 
 (** [handle_cmd ss cmd] is similar to [handle_cmd_aux ss cmd] but it adds some
     exception handling. In particular, the position of [cmd] is used on errors
@@ -292,7 +292,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
     fun ss cmd ->
   try
     let (tm, ss) = time (handle_cmd ss) cmd in
-    if Pervasives.(tm >= !too_long) then
+    if Stdlib.(tm >= !too_long) then
       wrn cmd.pos "It took %.2f seconds to handle the command." tm;
     ss
   with

@@ -44,7 +44,7 @@ module Prefix :
   end =
   struct
     type 'a tree = Node of 'a option * (char * 'a tree) list
-    type 'a t = 'a tree Pervasives.ref
+    type 'a t = 'a tree Stdlib.ref
 
     let init : unit -> 'a t = fun _ -> ref (Node(None, []))
 
@@ -546,7 +546,7 @@ let parser proof =
     it is required as a dependency. This has the effect of importing notations
     exported by that module. The value of [require] is set in [Compile], and a
     reference is used to avoid to avoid cyclic dependencies. *)
-let require : (Path.t -> unit) Pervasives.ref = ref (fun _ -> ())
+let require : (Path.t -> unit) Stdlib.ref = ref (fun _ -> ())
 
 (** [do_require pos path] is a wrapper for [!require path], that takes care of
     possible exceptions. Errors are reported at given position [pos],  keeping

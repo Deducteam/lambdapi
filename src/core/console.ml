@@ -10,11 +10,11 @@ type 'a outfmt = ('a, Format.formatter, unit) format
 type ('a,'b) koutfmt = ('a, Format.formatter, unit, unit, unit, 'b) format6
 
 (** [color] tells whether colors can be used in the output. *)
-let color : bool Pervasives.ref = Pervasives.ref true
+let color : bool Stdlib.ref = Stdlib.ref true
 
 (** Format transformers (colors). *)
 let colorize k fmt =
-  if Pervasives.(!color) then
+  if Stdlib.(!color) then
     "\027[" ^^ k ^^ "m" ^^ fmt ^^ "\027[0m%!"
   else fmt
 
@@ -30,20 +30,20 @@ let cya fmt = colorize "36" fmt
 let r_or_g cond = if cond then gre else red
 
 (** [out_fmt] main output formatter. *)
-let out_fmt = Pervasives.ref Format.std_formatter
+let out_fmt = Stdlib.ref Format.std_formatter
 
 (** [err_fmt] warning/error output formatter. *)
-let err_fmt = Pervasives.ref Format.err_formatter
+let err_fmt = Stdlib.ref Format.err_formatter
 
 (** [no_wrn] disables warnings when set to [true]. *)
-let no_wrn = Pervasives.ref false
+let no_wrn = Stdlib.ref false
 
 (** [wrn popt fmt] prints a yellow warning message with [Format] format [fmt].
     Note that the output buffer is flushed by the function, and that output is
     prefixed with the position [popt] if given. A newline is automatically put
     at the end of the message as well. *)
 let wrn : Pos.popt -> 'a outfmt -> 'a = fun pos fmt ->
-  let open Pervasives in
+  let open Stdlib in
   let fprintf = if !no_wrn then Format.ifprintf else Format.fprintf in
   match pos with
   | None    -> fprintf !err_fmt (yel (fmt ^^ "\n"))
@@ -95,16 +95,16 @@ type logger_data =
 let log_enabled : bool ref = ref false
 
 (** [loggers] constains the registered logging functions. *)
-let loggers : logger_data list Pervasives.ref = Pervasives.ref []
+let loggers : logger_data list Stdlib.ref = Stdlib.ref []
 
 (** [default_loggers] give the loggers enabled by default. *)
-let default_loggers : string Pervasives.ref = Pervasives.ref ""
+let default_loggers : string Stdlib.ref = Stdlib.ref ""
 
 (** [log_summary ()] gives the keys and descriptions for logging options. *)
 let log_summary : unit -> (char * string) list = fun () ->
   let fn data = (data.logger_key, data.logger_desc) in
   let compare (c1, _) (c2, _) = Char.compare c1 c2 in
-  List.sort compare (List.map fn Pervasives.(!loggers))
+  List.sort compare (List.map fn Stdlib.(!loggers))
 
 (** [set_log value key] enables or disables the loggers corresponding to every
     character of [str] according to [value]. *)
@@ -112,14 +112,14 @@ let set_debug : bool -> string -> unit = fun value str ->
   let fn {logger_key; logger_enabled; _} =
     if String.contains str logger_key then logger_enabled := value
   in
-  List.iter fn Pervasives.(!loggers);
+  List.iter fn Stdlib.(!loggers);
   let is_enabled data = !(data.logger_enabled) in
-  log_enabled := List.exists is_enabled Pervasives.(!loggers)
+  log_enabled := List.exists is_enabled Stdlib.(!loggers)
 
 (** [set_default_debug str] declares the debug flags of [str] to be enabled by
     default. *)
 let set_default_debug : string -> unit = fun str ->
-  Pervasives.(default_loggers := str); set_debug true str
+  Stdlib.(default_loggers := str); set_debug true str
 
 (** [new_logger key name desc] returns (and registers) a new logger. *)
 let new_logger : char -> string -> string -> logger = fun key name desc ->
@@ -132,7 +132,7 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
     if name = data.logger_name then
       invalid_arg "Console.new_logger: already used name"
   in
-  List.iter check Pervasives.(!loggers);
+  List.iter check Stdlib.(!loggers);
   (* Logger registration. *)
   let enabled = ref false in
   let data =
@@ -140,11 +140,11 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
     ; logger_desc = desc ; logger_enabled = enabled }
   in
   let cmp_loggers l1 l2 = Char.compare l1.logger_key l2.logger_key in
-  Pervasives.(loggers := List.sort cmp_loggers (data :: !loggers));
+  Stdlib.(loggers := List.sort cmp_loggers (data :: !loggers));
   (* Actual printing function. *)
   let logger fmt =
     let pp = Format.(if !enabled then fprintf else ifprintf) in
-    pp Pervasives.(!err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
+    pp Stdlib.(!err_fmt) ((cya "[%s] ") ^^ fmt ^^ "\n%!") name
   in
   {logger}
 
@@ -152,11 +152,11 @@ let new_logger : char -> string -> string -> logger = fun key name desc ->
 let verbose = ref 1
 
 (** Default verbosity level (may be set with command line arguments). *)
-let default_verbose = Pervasives.ref 1
+let default_verbose = Stdlib.ref 1
 
 (** [set_default_verbose i] sets the default verbosity level to [i]. *)
 let set_default_verbose : int -> unit = fun i ->
-  Pervasives.(default_verbose := i); verbose := i
+  Stdlib.(default_verbose := i); verbose := i
 
 (** [out lvl fmt] prints an output message using the format [fmt], but only if
     [lvl] is strictly greater than the current verbosity level.  Note that the
@@ -164,42 +164,42 @@ let set_default_verbose : int -> unit = fun i ->
     magenta (and not default terminal color) if logging modes are enabled. *)
 let out : int -> 'a outfmt -> 'a = fun lvl fmt ->
   let fmt = if !log_enabled then mag fmt else fmt ^^ "%!" in
-  if lvl > !verbose then Format.ifprintf Pervasives.(!out_fmt) fmt
-  else Format.fprintf Pervasives.(!out_fmt) fmt
+  if lvl > !verbose then Format.ifprintf Stdlib.(!out_fmt) fmt
+  else Format.fprintf Stdlib.(!out_fmt) fmt
 
 (** List of registered boolean flags, with their default values. *)
-let boolean_flags : (bool * bool ref) StrMap.t Pervasives.ref =
-  Pervasives.ref StrMap.empty
+let boolean_flags : (bool * bool ref) StrMap.t Stdlib.ref =
+  Stdlib.ref StrMap.empty
 
 (** [register_flag id d] registers a new boolean flag named [id], with default
     value of [d]. Note the name should not have been used previously. *)
 let register_flag : string -> bool -> bool ref = fun id default ->
-  if StrMap.mem id Pervasives.(!boolean_flags) then
+  if StrMap.mem id Stdlib.(!boolean_flags) then
     invalid_arg "Console.register_flag: already registered";
   let r = ref default in
-  Pervasives.(boolean_flags := StrMap.add id (default, r) !boolean_flags); r
+  Stdlib.(boolean_flags := StrMap.add id (default, r) !boolean_flags); r
 
 (** [set_flag id b] sets the value of the flag named [id] to be [b], or raises
     [Not_found] if no flag with this name was registered. *)
 let set_flag : string -> bool -> unit = fun id b ->
-  snd (StrMap.find id Pervasives.(!boolean_flags)) := b
+  snd (StrMap.find id Stdlib.(!boolean_flags)) := b
 
 (** [reset_default ()] resets the verbosity level and the state of the loggers
     to their default value (configurable by the user with command line flags).
     The boolean flags are also reset to their default values. *)
 let reset_default : unit -> unit = fun () ->
   (* Reset verbosity level. *)
-  verbose := Pervasives.(!default_verbose);
+  verbose := Stdlib.(!default_verbose);
   (* Reset debugging flags. *)
   log_enabled := false;
   let reset l =
-    let v = String.contains Pervasives.(!default_loggers) l.logger_key in
+    let v = String.contains Stdlib.(!default_loggers) l.logger_key in
     l.logger_enabled := v; if v then log_enabled := true;
   in
-  List.iter reset Pervasives.(!loggers);
+  List.iter reset Stdlib.(!loggers);
   (* Reset flags to their default values. *)
   let reset _ (default, r) = r := default in
-  StrMap.iter reset Pervasives.(!boolean_flags)
+  StrMap.iter reset Stdlib.(!boolean_flags)
 
 (** Stack of saved state for verbosity, loggers and boolean flags. *)
 let saved_state : (int * (char * bool) list * bool StrMap.t) list ref = ref []
@@ -210,11 +210,11 @@ let push_state : unit -> unit = fun () ->
   let verbose = !verbose in
   let loggers =
     let fn l = (l.logger_key, !(l.logger_enabled)) in
-    List.map fn Pervasives.(!loggers)
+    List.map fn Stdlib.(!loggers)
   in
   let flags : bool StrMap.t =
     let fn (_,r) = !r in
-    StrMap.map fn Pervasives.(!boolean_flags)
+    StrMap.map fn Stdlib.(!boolean_flags)
   in
   saved_state := (verbose, loggers, flags) :: !saved_state
 
@@ -234,10 +234,10 @@ let pop_state : unit -> unit = fun () ->
     let v = try List.assoc logger.logger_key l with Not_found -> false in
     logger.logger_enabled := v; if v then log_enabled := true;
   in
-  List.iter reset Pervasives.(!loggers);
+  List.iter reset Stdlib.(!loggers);
   (* Reset boolean flags. *)
   let reset k (_,r) =
     try r := StrMap.find k f
     with Not_found -> ()
   in
-  StrMap.iter reset Pervasives.(!boolean_flags)
+  StrMap.iter reset Stdlib.(!boolean_flags)
