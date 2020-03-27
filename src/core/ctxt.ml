@@ -2,6 +2,7 @@
 
 open Extra
 open Terms
+open Timed
 
 (** [unbind ctx a def b] returns a triple [(x,t,new_ctx)] such that [(x,t)] is
     an unbinding of [b] (in the sense of [Bindlib.unbind]) and [new_ctx] is an
@@ -50,3 +51,36 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
     if Array.exists (Bindlib.eq_vars x) vs then hyp::ctx else ctx
   in
   List.fold_right f ctx []
+
+(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
+    appears, and [None] otherwise *)
+let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
+  match ctx with
+  | []         -> None
+  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
+
+(** [unfold ctx t] behaves like {!val:Terms.unfold t} except when [t] is a
+    term of the form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is
+    replaced by the definition of [x] in [ctx]. *)
+let rec unfold : ctxt -> term -> term = fun ctx t ->
+  match t with
+  | Meta(m, ar)          ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold ctx (Bindlib.msubst b ar)
+      end
+  | TEnv(TE_Some(b), ar) -> unfold ctx (Bindlib.msubst b ar)
+  | TRef(r)              ->
+      begin
+        match !r with
+        | None    -> t
+        | Some(v) -> unfold ctx v
+      end
+  | Vari(x)              ->
+      begin
+        match def_of x ctx with
+        | None    -> t
+        | Some(t) -> unfold ctx t
+      end
+  | _                    -> t

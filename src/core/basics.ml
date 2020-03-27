@@ -72,7 +72,7 @@ let get_args_len : term -> term * term list * int = fun t ->
     exists). *)
 let get_args_ctx : ctxt -> term -> term * term list = fun ctx t ->
   let rec get_args acc t =
-    match unfold_ctx ctx t with
+    match Ctxt.unfold ctx t with
     | Appl(t,u)    -> get_args (u::acc) t
     | t            -> (t, acc)
   in
@@ -103,7 +103,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     match l with
     | []       -> ()
     | (a,b)::l ->
-    match (unfold_ctx ctx a, unfold_ctx ctx b) with
+    match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
     | (a          , b          ) when a == b -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
@@ -224,7 +224,7 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   let open Stdlib in
   let vars = ref VarSet.empty in
   let to_var t =
-    match unfold_ctx ctx t with
+    match Ctxt.unfold ctx t with
     | Vari(x) ->
         if VarSet.mem x !vars then raise Not_unique_var;
         vars := VarSet.add x !vars;
@@ -243,7 +243,7 @@ let nl_distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   let vars = ref VarSet.empty
   and nl_vars = ref VarSet.empty in
   let to_var t =
-    match unfold_ctx ctx t with
+    match Ctxt.unfold ctx t with
     | Vari(x) ->
         if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars else
         vars := VarSet.add x !vars;
