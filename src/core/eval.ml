@@ -118,7 +118,7 @@ and whnf_stk : term -> stack -> term * stack = fun t stk ->
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  if !log_enabled then log_conv "%a[%a] == [%a]" pp_ctxt ctx pp a pp b;
+  if !log_enabled then log_conv "%a[%a] ≡ [%a]" pp_ctxt ctx pp a pp b;
   let rec eq_modulo l =
     match l with
     | []       -> ()
