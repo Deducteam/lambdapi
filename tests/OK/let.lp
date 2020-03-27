@@ -1,6 +1,6 @@
 // Let syntax
-symbol T : TYPE
-symbol a : T
+constant symbol T : TYPE
+constant symbol a : T
 
 // Simple
 type let x ≔ a in x
@@ -14,6 +14,7 @@ type let f x ≔ x in f a
 assert let f x ≔ x in f a ≡ a
 
 // With type annotated arguments
+set flag "print_domains" on
 type let f (x : T) ≔ λ _, x in f a
 assert let f (x: T) ≔ λ_, x in f a ≡ λ_, a
 
@@ -21,6 +22,3 @@ assert let f (x: T) ≔ λ_, x in f a ≡ λ_, a
 symbol f : T ⇒ T
 rule f _ → let x ≔ a in x
 assert f a ≡ a
-
-// Should raise a warning (x not used in body)
-assert f a ≡ let x ≔ a in a
