@@ -1,6 +1,7 @@
 ;;; lambdapi-mode --- A major mode to edit Dedukti files -*- lexical-binding: t; -*-
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
+;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Keywords: lambdapi dedukti proof-assistant
 ;; Compatibility: GNU Emacs 26.1
 ;; Package-Requires: ((emacs "26.1") (quail))
@@ -70,6 +71,7 @@
                     "abort"
                     "qed"
                     "symbol"
+                    "definition"
                     "rule"
                     "and"))
                  "\\>")
@@ -90,12 +92,24 @@
         (cons
          (concat "\\<"
                  (regexp-opt
-                  '("refine"
+                  '("protected"
+                    "private"
+                    "injective"
+                    "constant"))
+                 "\\>")
+         'font-lock-warning-face)
+        (cons
+         (concat "\\<"
+                 (regexp-opt
+                  '("apply"
                     "assume"
-                    "apply"
+                    "print"
                     "proofterm"
+                    "refine"
+                    "reflexivity"
                     "rewrite"
-                    "print"))
+                    "symmetry"
+                    "why3"))
                  "\\>")
          'font-lock-builtin-face)
         (cons
@@ -139,10 +153,10 @@
   (setq-local comment-start "//")
   (setq-local comment-end "")
   (smie-setup
-   lp-smie-grammar
-   #'lp-smie-rules
-   :forward-token #'dedukti-smie-forward-token
-   :backward-token #'dedukti-smie-backward-token)
+   lambdapi--smie-prec
+   #'lambdapi--smie-rules
+   :forward-token #'lambdapi--smie-forward-token
+   :backward-token #'lambdapi--smie-backward-token)
   (setq-default indent-tabs-mode nil)
   (set-input-method "LambdaPi"))
 
