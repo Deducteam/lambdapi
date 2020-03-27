@@ -264,6 +264,39 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
     definition. *)
 type ctxt = (term Bindlib.var * term * term option) list
 
+(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
+    appears, and [None] otherwise *)
+let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
+  match ctx with
+  | []         -> None
+  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
+
+(** [unfold_ctx ctx t] behaves like {!val:Terms.unfold t} except when [t] is a
+    term of the form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is
+    replaced by the definition of [x] in [ctx]. *)
+let rec unfold_ctx : ctxt -> term -> term = fun ctx t ->
+  match t with
+  | Meta(m, ar)          ->
+      begin
+        match !(m.meta_value) with
+        | None    -> t
+        | Some(b) -> unfold_ctx ctx (Bindlib.msubst b ar)
+      end
+  | TEnv(TE_Some(b), ar) -> unfold_ctx ctx (Bindlib.msubst b ar)
+  | TRef(r)              ->
+      begin
+        match !r with
+        | None    -> t
+        | Some(v) -> unfold_ctx ctx v
+      end
+  | Vari(x)              ->
+      begin
+        match def_of x ctx with
+        | None    -> t
+        | Some(t) -> unfold_ctx ctx t
+      end
+  | _                    -> t
+
 (** Type of a list of unification constraints. *)
 type unif_constrs = (ctxt * term * term) list
 
@@ -288,6 +321,9 @@ let rec unfold : term -> term = fun t ->
         | Some(v) -> unfold v
       end
   | _                    -> t
+
+(** {b NOTE} [unfold] could be defined as [unfold_ctx []], but since [unfold]
+    is critical regarding performance, it is kept as simple as possible. *)
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)

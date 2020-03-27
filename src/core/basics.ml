@@ -72,10 +72,8 @@ let get_args_len : term -> term * term list * int = fun t ->
     exists). *)
 let get_args_ctx : ctxt -> term -> term * term list = fun ctx t ->
   let rec get_args acc t =
-    match unfold t with
+    match unfold_ctx ctx t with
     | Appl(t,u)    -> get_args (u::acc) t
-    | Vari(x) as t ->
-        Option.map_default (get_args acc) (t, acc) (Ctxt.def_of x ctx)
     | t            -> (t, acc)
   in
   get_args [] t
@@ -105,7 +103,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     match l with
     | []       -> ()
     | (a,b)::l ->
-    match (unfold a, unfold b) with
+    match (unfold_ctx ctx a, unfold_ctx ctx b) with
     | (a          , b          ) when a == b -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
@@ -124,14 +122,6 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (TRef(r)    , b          ) -> r := Some(b); eq l
     | (a          , TRef(r)    ) -> r := Some(a); eq l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
-    (* Try unfolding variable definitions. *)
-    | (Vari(x)    , t          )
-    | (t          , Vari(x)    ) ->
-        begin
-          match Ctxt.def_of x ctx with
-          | None    -> raise Not_equal
-          | Some(u) -> eq ((t, u) :: l)
-        end
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
@@ -233,16 +223,38 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
   let exception Not_unique_var in
   let open Stdlib in
   let vars = ref VarSet.empty in
-  let rec to_var t =
-    match unfold t with
+  let to_var t =
+    match unfold_ctx ctx t with
     | Vari(x) ->
-        let x = Option.map_default to_var x (Ctxt.def_of x ctx) in
         if VarSet.mem x !vars then raise Not_unique_var;
         vars := VarSet.add x !vars;
         x
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
+
+(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
+    and returns some copy of [vs] where variables occurring more than once are
+    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
+    returns [None] otherwise. *)
+let nl_distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
+  let exception Not_a_var in
+  let open Stdlib in
+  let vars = ref VarSet.empty
+  and nl_vars = ref VarSet.empty in
+  let to_var t =
+    match unfold_ctx ctx t with
+    | Vari(x) ->
+        if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars else
+        vars := VarSet.add x !vars;
+        x
+    | _       -> raise Not_a_var
+  in
+  let replace_nl_var x =
+    if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
+  in
+  try Some (Array.map replace_nl_var (Array.map to_var ts))
+  with Not_a_var -> None
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
