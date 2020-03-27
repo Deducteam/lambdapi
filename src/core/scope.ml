@@ -262,7 +262,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
-          let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
+          let t = aux ((x.elt,(v,is_let,a)) :: env) ((l,d,i) :: xs) in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos
               (if is_let then "Useless let-binding (variable [%s] not bound)."
@@ -531,19 +531,19 @@ let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
   | P_rw_InIdInTerm(x,t)       ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
       RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_IdInTerm(x,t)         ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
       RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermInIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
       RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermAsIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
       RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

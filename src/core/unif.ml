@@ -187,7 +187,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       | Prod(a,b) ->
          let x,b = Bindlib.unbind b in
          let a = lift a in
-         let env' = Env.add x a env in
+         let env' = Env.add x false a env in
          x,a,env',lift b,p
       | _ ->
          (* After type inference, a similar constraint should have already
@@ -196,7 +196,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
          let m2 = fresh_meta t2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = Bindlib.new_var mkfree "x" in
-         let env' = Env.add x a env in
+         let env' = Env.add x false a env in
          let t3 = Env.to_prod env' _Kind in
          let m3 = fresh_meta t3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in

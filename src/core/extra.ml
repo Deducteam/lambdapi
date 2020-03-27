@@ -110,6 +110,19 @@ module List =
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
 
+    (** [filter_rev_map f l] is [filter_map f l] reversing the list, and being
+        tail recursive. *)
+    let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+      let rec frm acc l =
+        match l with
+        | []     -> acc
+        | hd::tl ->
+            match f hd with
+              | Some(x) -> frm (x::acc) tl
+              | None    -> frm acc tl
+      in
+      frm []
+
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)
     let filteri_map : (int -> 'a -> 'b option) -> 'a list -> 'b list =
