@@ -104,7 +104,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    let translate_hyp (tbl, map) (name, (_, _, hyp)) =
+    let translate_hyp (tbl, map) (name, (_, hyp, _)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
       | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
       | None                -> (tbl, map)

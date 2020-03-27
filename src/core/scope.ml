@@ -248,13 +248,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
   (* Scoping of a binder (abstraction, product or let-binding with [is_let] to
      true). *)
-  and scope_binder ?(is_let=false) cons env xs t =
+  and scope_binder ?let_bound cons env xs t =
     let rec aux env xs =
       match xs with
       | []                  -> scope env t
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
-          assert (not is_let); (* Let with wildcard rejected at parsing *)
+          (* Let with wildcard rejected at parsing *)
+          assert (let_bound = None);
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
           let t = aux env ((l,d,i)::xs) in
@@ -262,10 +263,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
-          let t = aux ((x.elt,(v,is_let,a)) :: env) ((l,d,i) :: xs) in
+          let t = aux ((x.elt,(v,a,let_bound)) :: env) ((l,d,i) :: xs) in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos
-              (if is_let then "Useless let-binding (variable [%s] not bound)."
+              (if let_bound <> None
+               then "Useless let-binding (variable [%s] not bound)."
                else "Variable [%s] could be replaced by [_].") x.elt;
           cons a (Bindlib.bind_var v t)
     in
@@ -377,7 +379,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let t = scope_binder _Abst env xs t in
         (* Scope all the [let x xs := t in u] *)
         let cons a u = _LLet t a u in
-        scope_binder ~is_let:true cons env [[Some(x)], None, false] u
+        scope_binder ~let_bound:t cons env [[Some(x)], None, false] u
     | (P_LLet(_)       , M_LHS(_)         ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt           ) ->
@@ -531,19 +533,19 @@ let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
   | P_rw_InIdInTerm(x,t)       ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_IdInTerm(x,t)         ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermInIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermAsIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, false, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

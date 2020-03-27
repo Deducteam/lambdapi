@@ -7,19 +7,20 @@ open Terms
 
 (** Type of an environment, used in scoping to associate names to
     corresponding Bindlib variables and types. Note that it cannot be
-    implemented by a map as the order is important. The boolean is used to
-    indicate whether the variable is defined in some context. *)
-type env = (string * (tvar * bool * tbox)) list
+    implemented by a map as the order is important. The structure is similar
+    to then one of {!type:Terms.ctxt}, a tuple [(x,a,t)] is a variable [x],
+    its type [a] and possibly its definition [t] *)
+type env = (string * (tvar * tbox * tbox option)) list
 
 type t = env
 
 (** [empty] is the empty environment. *)
 let empty : env = []
 
-(** [add v d a env] extends the environment [env] by mapping the string
-    [Bindlib.name_of v] to [(v,d,a)]. *)
-let add : tvar -> bool -> tbox -> env -> env = fun v d a env ->
-  (Bindlib.name_of v, (v, d, a)) :: env
+(** [add v a t env] extends the environment [env] by mapping the string
+    [Bindlib.name_of v] to [(v,a,t)]. *)
+let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
+  (Bindlib.name_of v, (v, a, t)) :: env
 
 (** [find n env] returns the Bindlib variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
@@ -31,7 +32,11 @@ let find : string -> env -> tvar = fun n env ->
     which body is the term [t]: [to_prod [(xn,an);..;(x1,a1)] t =
     ∀x1:a1,..,∀xn:an,t]. *)
 let to_prod : env -> tbox -> term = fun env t ->
-  let fn t (_,(x,d,a)) = if d then t else _Prod a (Bindlib.bind_var x t) in
+  let fn t (_,(x,a,u)) =
+    match u with
+    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
+    | None    -> _Prod a (Bindlib.bind_var x t)
+  in
   Bindlib.unbox (List.fold_left fn t env)
 
 (** [to_abst env t] builds a sequence of abstractions whose domains are the {b
@@ -39,13 +44,17 @@ let to_prod : env -> tbox -> term = fun env t ->
     which body is the term [t]: [to_prod [(xn,an);..;(x1,a1)] t =
     λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
-  let fn t (_,(x,d,a)) = if d then t else _Abst a (Bindlib.bind_var x t) in
+  let fn t (_,(x,a,u)) =
+    match u with
+    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
+    | None    -> _Abst a (Bindlib.bind_var x t)
+  in
   Bindlib.unbox (List.fold_left fn t env)
 
 (** [vars env] extracts the array of the Bindlib variables in [env]. Note that
     the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
 let vars : env -> tvar array = fun env ->
-  let f (_, (x, d, _)) = if d then None else Some(x) in
+  let f (_, (x, _, u)) = if u = None then Some(x) else None in
   Array.of_list (List.filter_rev_map f env)
 
 (** [to_term env] extracts the array of the {e not defined} variables in [env]
@@ -53,7 +62,7 @@ let vars : env -> tvar array = fun env ->
     (vars env)]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
 let to_tbox : env -> tbox array = fun env ->
-  let f (_, (x, d, _)) = if d then None else Some(_Vari x) in
+  let f (_, (x, _, u)) = if u = None then Some(_Vari x) else None in
   Array.of_list (List.filter_rev_map f env)
 
 (** [of_prod_arity n t] returns the environment [(xn,an),..,(x1,a1)] and the
@@ -66,7 +75,7 @@ let of_prod_arity : int -> term -> env * term = fun n t ->
       | Prod(a,b) ->
           let v,b = Bindlib.unbind b in
           let a = Eval.simplify [] a in
-          let env = add v false (lift a) env in
+          let env = add v (lift a) None env in
           build_env (i+1) env b
       | _         -> raise (Invalid_argument "of_prod_arity")
   in
@@ -83,7 +92,7 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
     match Eval.whnf [] t with
       | Prod(a,b) ->
           let v = vars.(i) in
-          let env = add v false (lift a) env in
+          let env = add v (lift a) None env in
           build_env (i+1) env (Bindlib.subst b (Vari v))
       | _         -> raise (Invalid_argument "of_prod_vars")
   in
@@ -91,8 +100,6 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
 
 (** [to_ctxt env] builds a context made from undefined variables of
     environment [env]. *)
-let to_ctxt : env -> ctxt = fun e ->
-  let f (_, (v, d, bt)) =
-    if d then None else Some(v, Bindlib.unbox bt, None)
-  in
-  List.filter_map f e
+let to_ctxt : env -> ctxt =
+  let f (_,(v,bt,bu)) = (v, Bindlib.unbox bt, Option.map Bindlib.unbox bu) in
+  List.map f

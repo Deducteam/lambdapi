@@ -80,7 +80,7 @@ let pp_goals : _ pp = fun oc gl ->
     let (hyps, _) = Goal.get_type g in
     if hyps <> [] then
       begin
-        let print_hyp (s,(_,_,t)) =
+        let print_hyp (s,(_,t,_)) =
           Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);

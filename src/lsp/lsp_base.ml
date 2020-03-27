@@ -36,7 +36,7 @@ let mk_range (p : Pos.pos) : J.t =
           "end",   `Assoc ["line", `Int (line2 - 1); "character", `Int col2]]
 
 let json_of_goal g =
-  let pr_hyp (s,(_,_,t)) =
+  let pr_hyp (s,(_,t,_)) =
     `Assoc ["hname", `String s;
             "htype", `String (Format.asprintf "%a" Print.pp_term (Bindlib.unbox t))] in
   let open Proof in
