@@ -341,8 +341,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 (add_args h2 ts2)
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 (add_args h1 ts1)
+  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
+  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
 
   | (_          , _          ) -> error ()
 
