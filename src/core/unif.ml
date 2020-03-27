@@ -70,21 +70,19 @@ let rec solve : problems -> unif_constrs = fun p ->
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   fun ctx t1 t2 p ->
-  let (h1, ts1) = Basics.get_args (Eval.whnf ctx t1) in
-  let (h2, ts2) = Basics.get_args (Eval.whnf ctx t2) in
-  if !log_enabled then
-    log_unif "solve %a" pp_constr (ctx, add_args h1 ts1, add_args h2 ts2);
+  let t1 = Eval.whnf ctx t1 in
+  let t2 = Eval.whnf ctx t2 in
+  let (h1, ts1) = Basics.get_args t1 in
+  let (h2, ts2) = Basics.get_args t2 in
+  if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
 
   let add_to_unsolved () =
-    let t1 = add_args h1 ts1 in
-    let t2 = add_args h2 ts2 in
     if Eval.eq_modulo ctx t1 t2 then solve p else
     (* Keep the context *)
     solve {p with unsolved = (ctx,t1,t2) :: p.unsolved}
   in
 
   let error () =
-    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
     raise Unsolvable
   in
@@ -131,7 +129,6 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
-      let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
       solve_aux ctx t1 t2 p
     with Cannot_imitate -> add_to_unsolved ()
   in
@@ -314,22 +311,20 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
          | Const, Const -> error ()
          | _, _ ->
            begin
-             match inverse_opt s1 ts1 (add_args h2 ts2) with
+             match inverse_opt s1 ts1 t2 with
              | Some (t, u) -> solve_aux ctx t u p
              | None ->
                begin
-                 match inverse_opt s2 ts2 (add_args h1 ts1) with
+                 match inverse_opt s2 ts2 t1 with
                  | Some (t, u) -> solve_aux ctx t u p
                  | None -> add_to_unsolved ()
                end
            end
        end
 
-  | (Meta(m,ts) , _          )
-       when ts1 = [] && instantiate ctx m ts (add_args h2 ts2) ->
+  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate ctx m ts t2 ->
      solve {p with recompute = true}
-  | (_          , Meta(m,ts) )
-       when ts2 = [] && instantiate ctx m ts (add_args h1 ts1) ->
+  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate ctx m ts t1 ->
      solve {p with recompute = true}
 
   | (Meta(m,ts)  , Prod(_,_) )
@@ -352,9 +347,9 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (_          , _          ) -> error ()
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
-   sets the value of [can_instantiate] to [flag].  If there is no solution,
-   the value [None] is returned. Otherwise [Some(cs)] is returned, where the
-   list [cs] is a list of unsolved convertibility constraints. *)
+    sets the value of [can_instantiate] to [flag].  If there is no solution,
+    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
+    list [cs] is a list of unsolved convertibility constraints. *)
 let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
   fun _builtins b p ->
   can_instantiate := b;
