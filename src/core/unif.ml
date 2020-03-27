@@ -40,8 +40,7 @@ let can_instantiate : bool ref = ref true
     be instantiated and returns the corresponding instantiation. It does not
     check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
-  (term, term) Bindlib.mbinder Bindlib.box option
-  = fun ctx m ts u ->
+  tmbinder Bindlib.box option = fun ctx m ts u ->
   if (!can_instantiate || internal m) && not (occurs m u) then
     match nl_distinct_vars ctx ts with
     | None     -> None
@@ -114,7 +113,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
         | Some vars -> vars
       in
       (* Build the environment (yk-1,ak-1{y0=v0,..,yk-2=vk-2});..;(y0,a0). *)
-      let env, _ = Env.of_prod_vars vars !(m.meta_type) in
+      let env = Env.copy_prod_env vars !(m.meta_type) in
       (* Build the term s(m0[vs],..,mn-1[vs]). *)
       let k = Array.length vars in
       let t =
@@ -159,7 +158,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      ∀x1:a1,..,∀xn:an,∀x:m2[x1,..,xn],KIND, and do as in the previous case. *)
   let imitate_lam m =
     let n = m.meta_arity in
-    let env, t = Env.of_prod_arity n !(m.meta_type) in
+    let (env, t) = Env.destruct_prod n !(m.meta_type) in
     let x,a,env',b,p =
       match Eval.whnf [] t with
       | Prod(a,b) ->
