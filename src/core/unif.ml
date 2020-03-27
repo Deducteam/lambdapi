@@ -36,20 +36,25 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [instantiate ctx m ts u] check whether [m] can be instantiated for solving
-    the unification problem “m[ts] = u” in context [ctx]. The returned boolean
-    tells whether [m] was instantiated or not. *)
+(** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
+    be instantiated and returns the corresponding instantiation. It does not
+    check whether the instantiation is closed though. *)
+let instantiation : ctxt -> meta -> term array -> term ->
+  (term, term) Bindlib.mbinder Bindlib.box option
+  = fun ctx m ts u ->
+  if (!can_instantiate || internal m) && not (occurs m u) then
+    match nl_distinct_vars ctx ts with
+    | None     -> None
+    | Some(vs) -> Some (Bindlib.bind_mvar vs (lift u))
+  else None
+
+(** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
+    instantiated and, if so, instantiate it. *)
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
-  (!can_instantiate || internal m)
-  && not (occurs m u)
-  && match nl_distinct_vars ctx ts with
-     | None -> false
-     | Some vs ->
-        let bu = Bindlib.bind_mvar vs (lift u) in
-        Bindlib.is_closed bu (* To make sure that there is no non-linear
-                                variable of [vs] occurring in [u]. *)
-        && (set_meta m (Bindlib.unbox bu); true)
+  match instantiation ctx m ts u with
+  | Some(bu) when Bindlib.is_closed bu -> set_meta m (Bindlib.unbox bu); true
+  | _ -> false
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
     returns the constraints that could not be solved. *)
@@ -79,8 +84,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   let error () =
-    let t1 = add_args h1 ts1 in
-    let t2 = add_args h2 ts2 in
+    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
     raise Unsolvable
   in
@@ -127,6 +131,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+      let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
       solve_aux ctx t1 t2 p
     with Cannot_imitate -> add_to_unsolved ()
   in
@@ -143,6 +148,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
          | _ -> false
        end
   in
+
   (* For a problem of the form Appl(m[ts],[Vari x;_])=_, where m is a
      metavariable of arity n and type ∀x1:a1,..,∀xn:an,t and x does not occur
      in m[ts], instantiate m by λx1:a1,..,λxn:an,λx:a,m1[x1,..,xn,x] where
@@ -167,13 +173,13 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       | _ ->
          (* After type inference, a similar constraint should have already
             been generated but has not been processed yet. *)
-         let t2 = Env.to_prod env _Kind in
-         let m2 = fresh_meta t2 n in
+         let tm2 = Env.to_prod env _Kind in
+         let m2 = fresh_meta tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = Bindlib.new_var mkfree "x" in
          let env' = Env.add x a None env in
-         let t3 = Env.to_prod env' _Kind in
-         let m3 = fresh_meta t3 (n+1) in
+         let tm3 = Env.to_prod env' _Kind in
+         let m3 = fresh_meta tm3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
@@ -185,6 +191,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
+    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     solve_aux ctx t1 t2 p
   in
 
@@ -266,12 +273,21 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   (* [solve_inj s ts v] tries to replace a problem of the form [s(ts) = v] by
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
-    if !log_enabled then log_unif "solve_inj [%a] [%a]"
-        pp (add_args (symb s) ts) pp v;
-    if is_constant s then error ()
-    else match inverse_opt s ts v with
-         | Some (t1, s_1_v) -> solve_aux ctx t1 s_1_v p
-         | None -> add_to_unsolved ()
+    if !log_enabled then
+      log_unif "solve_inj [%a] [%a]" pp (add_args (symb s) ts) pp v;
+    if is_constant s then error ();
+    match inverse_opt s ts v with
+    | Some (a, b) -> solve_aux ctx a b p
+    | None -> add_to_unsolved ()
+  in
+
+  (* For a problem of the form [m[ts] = ∀x:_,_] with [ts] distinct bound
+     variables, [imitate_prod m ts] instantiates [m] by a fresh product and
+     continue. *)
+  let imitate_prod m =
+    let mxs, prod, _, _ = Env.extend_meta_type m in
+    (* ts1 and ts2 are equal to [] *)
+    solve_aux ctx mxs prod { p with to_solve = (ctx,h1,h2)::p.to_solve }
   in
 
   match (h1, h2) with
@@ -298,21 +314,28 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
          | Const, Const -> error ()
          | _, _ ->
            begin
-             match inverse_opt s1 ts1 t2 with
+             match inverse_opt s1 ts1 (add_args h2 ts2) with
              | Some (t, u) -> solve_aux ctx t u p
              | None ->
                begin
-                 match inverse_opt s2 ts2 t1 with
+                 match inverse_opt s2 ts2 (add_args h1 ts1) with
                  | Some (t, u) -> solve_aux ctx t u p
                  | None -> add_to_unsolved ()
                end
            end
        end
 
-  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate ctx m ts t2 ->
+  | (Meta(m,ts) , _          )
+       when ts1 = [] && instantiate ctx m ts (add_args h2 ts2) ->
      solve {p with recompute = true}
-  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate ctx m ts t1 ->
+  | (_          , Meta(m,ts) )
+       when ts2 = [] && instantiate ctx m ts (add_args h1 ts1) ->
      solve {p with recompute = true}
+
+  | (Meta(m,ts)  , Prod(_,_) )
+       when ts1 = [] && instantiation ctx m ts h2 <> None -> imitate_prod m
+  | (Prod(_,_)   , Meta(m,ts))
+       when ts2 = [] && instantiation ctx m ts h1 <> None -> imitate_prod m
 
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
@@ -323,8 +346,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
+  | (Symb(s,_)  , _          ) -> solve_inj s ts1 (add_args h2 ts2)
+  | (_          , Symb(s,_)  ) -> solve_inj s ts2 (add_args h1 ts1)
 
   | (_          , _          ) -> error ()
 
