@@ -47,36 +47,45 @@ let vars : env -> tvar array = fun env ->
 let to_tbox : env -> tbox array = fun env ->
   Array.of_list (List.rev_map (fun (_,(x,_)) -> _Vari x) env)
 
-(** [of_prod n t] returns the environment [(xn,an),..,(x1,a1)] and the term
-   [b] if [t] is of the form [∀x1:a1,..,∀xn:an,b]. Raises [Invalid_argument]
-   if [t] is not of this form. *)
-let of_prod_arity : int -> term -> env * term = fun n t ->
+(** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed
+    from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
+    terminology) a total [n] dependent products. The free variables created by
+    the process are are given (with their types) in the environment [env]. The
+    function raises [Invalid_argument] if [prod] does not evaluate to a series
+    of (at least) [n] product types. Intuitively, if the term [prod] is of the
+    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
+    the environment [(xn, an) ; ⋯ ; (x1, a1)]. *)
+let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
-    if i >= n then env, t
-    else match Eval.whnf t with
-         | Prod(a,b) ->
-            let v,b = Bindlib.unbind b in
-            let a = Eval.simplify a in
-            let env = add v (lift a) env in
-            build_env (i+1) env b
-         | _ -> raise (Invalid_argument "of_prod")
-  in build_env 0 [] t
+    if i >= n then (env, t) else
+    match Eval.whnf t with
+    | Prod(a,b) -> let (x, b) = Bindlib.unbind b in
+                   build_env (i+1) (add x (lift (Eval.simplify a)) env) b
+    | _         -> invalid_arg "destruct_prod"
+  in
+  build_env 0 [] t
 
-(** [of_prod vs t] returns the environment [(vn,an{x1=v1,..,xn-1=vn-1}),..,
-   (v1,a1)] and the term [b{x1=v1,..,xn=vn}] if [t] is of the form
-   [∀x1:a1,..,∀xn:an,b]. Raises [Invalid_argument] if [t] is not of this
-   form. *)
-let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
-  let n = Array.length vars in
+(** [copy_prod_env xs prod] constructs an environment mapping the variables of
+    [xs] to successive dependent product type domains of the term [prod]. Note
+    that dependencies are preserved in the process,  and types of the produced
+    environment can hence refer to other variables of the environment whenever
+    this is necessary. Note that the produced environment is equivalent to the
+    environment [fst (destruct_prod (Array,length xs) prod)] if the variables
+    of its domain are substituted by those of [xs]. Intuitively,  if [prod] is
+    of the form [∀ (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
+    function is (roughly) [(xn, an{y1≔x1, ⋯, yn-1≔xn-1}) ; ⋯ ; (x1, a1)]. Note
+    that the function raises [Invalid_argument] if [prod] does not evaluate to
+    a sequence of [Array.length xs] dependent products. *)
+let copy_prod_env : tvar array -> term -> env = fun xs t ->
+  let n = Array.length xs in
   let rec build_env i env t =
-    if i >= n then env, t
-    else match Eval.whnf t with
-         | Prod(a,b) ->
-            let v = vars.(i) in
-            let env = add v (lift a) env in
-            build_env (i+1) env (Bindlib.subst b (Vari v))
-         | _ -> raise (Invalid_argument "of_prod")
-  in build_env 0 [] t
+    if i >= n then env else
+    match Eval.whnf t with
+    | Prod(a,b) -> let env = add xs.(i) (lift a) env in
+                   build_env (i+1) env (Bindlib.subst b (Vari(xs.(i))))
+    | _         -> invalid_arg "of_prod_vars"
+  in
+  build_env 0 [] t
 
 (** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
    [B] being a sort normally), [extend_meta_type m] returns
@@ -85,11 +94,10 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
    arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
    [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
-let extend_meta_type : meta -> term * term
-    * (term, term) Bindlib.mbinder * (term, tbinder) Bindlib.mbinder
-  = fun m ->
+let extend_meta_type : meta -> term * term *
+    tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in
-  let (env, s) = of_prod_arity n Timed.(!(m.meta_type)) in
+  let (env, s) = destruct_prod n Timed.(!(m.meta_type)) in
   let vs = vars env in
   let xs = Array.map _Vari vs in
 

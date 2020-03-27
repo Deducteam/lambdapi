@@ -332,6 +332,9 @@ let term_of_meta : meta -> term array -> term = fun m e ->
 (** A short name for the binding of a term in a term. *)
 type tbinder = (term, term) Bindlib.binder
 
+(** A short name for the binding of multiple terms in a term. *)
+type tmbinder = (term, term) Bindlib.mbinder
+
 (** A short name for the type of a free term variable. *)
 type tvar = term Bindlib.var
 
