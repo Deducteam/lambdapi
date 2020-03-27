@@ -136,6 +136,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Kind       , _          )
     | (_          , Kind       ) -> assert false
     | (Type       , Type       ) -> eq_modulo l
+    | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq_modulo l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) ->
@@ -148,7 +149,6 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Appl(t1,u1), Appl(t2,u2)) -> eq_modulo ((u1,u2)::(t1,t2)::l)
     | (Meta(m1,a1), Meta(m2,a2)) when m1 == m2 ->
         eq_modulo (if a1 == a2 then l else List.add_array2 a1 a2 l)
-    | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in

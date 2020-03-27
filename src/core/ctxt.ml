@@ -19,6 +19,13 @@ let unbind : ctxt -> term -> term option -> tbinder ->
 let type_of : tvar -> ctxt -> term = fun x ctx ->
   let (_,a,_) = List.find (fun (y,_,_) -> Bindlib.eq_vars x y) ctx in a
 
+(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
+    appears, and [None] otherwise *)
+let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
+  match ctx with
+  | []         -> None
+  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
+
 (** [mem x ctx] tells whether variable [x] is mapped in the context [ctx]. *)
 let mem : tvar -> ctxt -> bool = fun x ->
   List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
@@ -52,13 +59,6 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
   in
   List.fold_right f ctx []
 
-(** [def_of x ctx] returns the definition of [x] in the context [ctx] if it
-    appears, and [None] otherwise *)
-let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
-  match ctx with
-  | []         -> None
-  | (y,_,d)::l -> if Bindlib.eq_vars x y then d else def_of x l
-
 (** [unfold ctx t] behaves like {!val:Terms.unfold t} except when [t] is a
     term of the form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is
     replaced by the definition of [x] in [ctx]. *)
@@ -84,3 +84,17 @@ let rec unfold : ctxt -> term -> term = fun ctx t ->
         | Some(t) -> unfold ctx t
       end
   | _                    -> t
+
+(** [get_args ctx t] decomposes term [t] as {!val:Basics.get_args} does, but
+    any variable encountered is replaced by its definition in [ctx] (if it
+    exists). *)
+let get_args : ctxt -> term -> term * term list = fun ctx t ->
+  let rec get_args acc t =
+    match unfold ctx t with
+    | Appl(t,u)    -> get_args (u::acc) t
+    | t            -> (t, acc)
+  in
+  get_args [] t
+
+(** {b NOTE} that both [unfold] and [get_args] redefine the functions in
+    {!module:Basics} and {!module:Terms}. *)

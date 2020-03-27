@@ -67,17 +67,6 @@ let get_args_len : term -> term * term list * int = fun t ->
   in
   get_args_len [] 0 t
 
-(** [get_args_ctx ctx t] decomposes term [t] as [get_args] does, but any
-    variable encountered is replaced by its definition in [ctx] (if it
-    exists). *)
-let get_args_ctx : ctxt -> term -> term * term list = fun ctx t ->
-  let rec get_args acc t =
-    match Ctxt.unfold ctx t with
-    | Appl(t,u)    -> get_args (u::acc) t
-    | t            -> (t, acc)
-  in
-  get_args [] t
-
 (** [add_args t args] builds the application of the {!type:term} [t] to a list
     arguments [args]. When [args] is empty, the returned value is (physically)
     equal to [t]. *)
@@ -105,6 +94,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (a,b)::l ->
     match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
     | (a          , b          ) when a == b -> eq l
+    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
     | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
@@ -121,7 +111,6 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (_          , Wild       ) -> eq l
     | (TRef(r)    , b          ) -> r := Some(b); eq l
     | (a          , TRef(r)    ) -> r := Some(a); eq l
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
