@@ -77,3 +77,34 @@ let of_prod_vars : tvar array -> term -> env * term = fun vars t ->
             build_env (i+1) env (Bindlib.subst b (Vari v))
          | _ -> raise (Invalid_argument "of_prod")
   in build_env 0 [] t
+
+(** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
+   [B] being a sort normally), [extend_meta_type m] returns
+   [m[x1,..,xn],(∀y:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
+   a mbinder of [x1,..,xn] over p, and bq is a mbinder of [x1,..,xn] over q,
+   where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
+   arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
+   [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
+let extend_meta_type : meta -> term * term
+    * (term, term) Bindlib.mbinder * (term, tbinder) Bindlib.mbinder
+  = fun m ->
+  let n = m.meta_arity in
+  let (env, s) = of_prod_arity n Timed.(!(m.meta_type)) in
+  let vs = vars env in
+  let xs = Array.map _Vari vs in
+
+  let t1 = to_prod env _Type in
+  let m1 = fresh_meta t1 n in
+
+  let y = Bindlib.new_var mkfree "y" in
+  let env = add y (_Meta m1 xs) env in
+  let t2 = to_prod env (lift s) in
+  let m2 = fresh_meta t2 (n+1) in
+
+  let r1 = Bindlib.unbox (_Meta m xs) in
+  let p = _Meta m1 xs in
+  let q = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  let r2 = Bindlib.unbox (_Prod p q) in
+
+  let f x = Bindlib.unbox (Bindlib.bind_mvar vs x) in
+  r1, r2, f p, f q
