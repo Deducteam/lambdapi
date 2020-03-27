@@ -16,7 +16,8 @@ assert let f x ≔ x in f a ≡ a
 // With type annotated arguments
 set flag "print_domains" on
 type let f (x : T) ≔ λ _, x in f a
-assert let f (x: T) ≔ λ_, x in f a ≡ λ_, a
+// assert let f (x: T) ≔ λ(_:T), x in f a ≡ λ(_:T), a
+// TODO: need type annotation for bound variable of let
 
 // In rewrite rules
 symbol f : T ⇒ T
