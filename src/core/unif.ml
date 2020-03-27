@@ -93,18 +93,19 @@ let rec solve : problems -> unif_constrs = fun p ->
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
 and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
-  let (h1, ts1) = Eval.whnf_stk t1 [] in
-  let (h2, ts2) = Eval.whnf_stk t2 [] in
-  let t1 = add_args h1 ts1 in
-  let t2 = add_args h2 ts2 in
-  if !log_enabled then log_unif "solve %a ≡ %a" pp t1 pp t2;
+  let (h1, ts1) = Eval.whnf_stk t1 []
+  and (h2, ts2) = Eval.whnf_stk t2 [] in
+  if !log_enabled then
+    log_unif "solve %a ≡ %a" pp (add_args h1 ts1) pp (add_args h2 ts2);
 
   let add_to_unsolved () =
+    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     if Eval.eq_modulo t1 t2 then solve p
     else solve {p with unsolved = (t1,t2) :: p.unsolved}
   in
 
   let error () =
+    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
     raise Unsolvable
   in
@@ -150,6 +151,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
         in build (List.length ts) [] !(s.sym_type)
       in
       set_meta m (Bindlib.unbox (Bindlib.bind_mvar vars (lift t)));
+      let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
       solve_aux t1 t2 p
     with Cannot_imitate -> add_to_unsolved ()
   in
@@ -166,6 +168,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          | _ -> false
        end
   in
+
   (* For a problem of the form Appl(m[ts],[Vari x;_])=_, where m is a
      metavariable of arity n and type ∀x1:a1,..,∀xn:an,t and x does not occur
      in m[ts], instantiate m by λx1:a1,..,λxn:an,λx:a,m1[x1,..,xn,x] where
@@ -190,13 +193,13 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
       | _ ->
          (* After type inference, a similar constraint should have already
             been generated but has not been processed yet. *)
-         let t2 = Env.to_prod env _Kind in
-         let m2 = fresh_meta t2 n in
+         let tm2 = Env.to_prod env _Kind in
+         let m2 = fresh_meta tm2 n in
          let a = _Meta m2 (Env.to_tbox env) in
          let x = Bindlib.new_var mkfree "x" in
          let env' = Env.add x a env in
-         let t3 = Env.to_prod env' _Kind in
-         let m3 = fresh_meta t3 (n+1) in
+         let tm3 = Env.to_prod env' _Kind in
+         let m3 = fresh_meta tm3 (n+1) in
          let b = _Meta m3 (Env.to_tbox env') in
          (* Could be optimized by extending [Env.to_tbox env]. *)
          let u = Bindlib.unbox (_Prod a (Bindlib.bind_var x b)) in
@@ -208,6 +211,7 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
     let xu1 = _Abst a (Bindlib.bind_var x u1) in
     let v = Bindlib.bind_mvar (Env.vars env) xu1 in
     set_meta m (Bindlib.unbox v);
+    let t1 = add_args h1 ts1 and t2 = add_args h2 ts2 in
     solve_aux t1 t2 p
   in
 
@@ -289,12 +293,12 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   (* [solve_inj s ts v] tries to replace a problem of the form [s(ts) = v] by
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
-    if !log_enabled then log_unif "solve_inj [%a] [%a]"
-        pp (add_args (symb s) ts) pp v;
-    if is_constant s then error ()
-    else match inverse_opt s ts v with
-         | Some (a, b) -> solve_aux a b p
-         | None -> add_to_unsolved ()
+    if !log_enabled then
+      log_unif "solve_inj [%a] [%a]" pp (add_args (symb s) ts) pp v;
+    if is_constant s then error ();
+    match inverse_opt s ts v with
+    | Some (a, b) -> solve_aux a b p
+    | None -> add_to_unsolved ()
   in
 
   (* For a problem of the form [m[ts] = ∀x:_,_] with [ts] distinct bound
@@ -302,7 +306,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
      continue. *)
   let imitate_prod m =
     let mxs, prod, _, _ = Env.extend_meta_type m in
-    solve_aux mxs prod { p with to_solve = (t1,t2)::p.to_solve }
+    (* ts1 and ts2 are equal to [] *)
+    solve_aux mxs prod { p with to_solve = (h1,h2)::p.to_solve }
   in
 
   match (h1, h2) with
@@ -331,26 +336,28 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
          | Const, Const -> error ()
          | _, _ ->
            begin
-             match inverse_opt s1 ts1 t2 with
+             match inverse_opt s1 ts1 (add_args h2 ts2) with
              | Some (t, u) -> solve_aux t u p
              | None ->
                begin
-                 match inverse_opt s2 ts2 t1 with
+                 match inverse_opt s2 ts2 (add_args h1 ts1) with
                  | Some (t, u) -> solve_aux t u p
                  | None -> add_to_unsolved ()
                end
            end
        end
 
-  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts) , _          )
+       when ts1 = [] && instantiate m ts (add_args h2 ts2) ->
      solve {p with recompute = true}
-  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
+  | (_          , Meta(m,ts) )
+       when ts2 = [] && instantiate m ts (add_args h1 ts1) ->
      solve {p with recompute = true}
 
   | (Meta(m,ts)  , Prod(_,_) )
-       when ts1 = [] && instantiation m ts t2 <> None -> imitate_prod m
+       when ts1 = [] && instantiation m ts h2 <> None -> imitate_prod m
   | (Prod(_,_)   , Meta(m,ts))
-       when ts2 = [] && instantiation m ts t1 <> None -> imitate_prod m
+       when ts2 = [] && instantiation m ts h1 <> None -> imitate_prod m
 
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
@@ -361,8 +368,8 @@ and solve_aux : term -> term -> problems -> unif_constrs = fun t1 t2 p ->
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
+  | (Symb(s,_)  , _          ) -> solve_inj s ts1 (add_args h2 ts2)
+  | (_          , Symb(s,_)  ) -> solve_inj s ts2 (add_args h1 ts1)
 
   | (_          , _          ) -> error ()
 

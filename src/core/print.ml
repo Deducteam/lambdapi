@@ -114,7 +114,7 @@ and pp_term : term pp = fun oc t ->
         if wrap then out oc ")"
     | Prod(a,b)   ->
         if wrap then out oc "(";
-        let pp_arg oc (x,a) = out oc "%a:%a" pp_tvar x (pp `Func) a in
+        let pp_arg oc (x,a) = out oc "(%a:%a)" pp_tvar x (pp `Func) a in
         let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
           begin
