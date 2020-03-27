@@ -8,10 +8,13 @@ in the [documentation](doc/DOCUMENTATION.md).
 Installation via [Opam](http://opam.ocaml.org/)
 ---------------------
 
-```bash
-opam install lambdapi
-```
+We will only publish a new version of `lambdapi` Opam pacakge when the
+development has reached a more stable test. For now, we advise you to
+pin the development repository to get the latest bug fixes.
 
+```bash
+opam pin add lambdapi https://github.com/Deducteam/lambdapi.git
+```
 Dependencies and compilation
 ----------------------------
 
@@ -19,19 +22,21 @@ Lambdapi requires a Unix-like system. It should work on Linux as well as on
 MacOS. It might also be possible to make it work on Windows with Cygwin or
 with "bash on Windows".
 
-List of dependencies:
+List of dependencies (for version numbers refer to `lambdapi.opam`):
  - GNU make
- - [ocaml](https://ocaml.org/) >= 4.04.1
- - [dune](https://dune.build/) >= 1.2.0
- - odoc (for documentation only)
- - [bindlib](https://github.com/rlepigre/ocaml-bindlib) >= 5.0.0
- - [earley](https://github.com/rlepigre/ocaml-earley) >= 2.0.0
- - [timed](https://github.com/rlepigre/ocaml-timed) >= 1.0
+ - [ocaml](https://ocaml.org/) (at least 4.05.0 and at most 4.07.1)
+ - [dune](https://dune.build/)
+ - [odoc](https://github.com/ocaml/odoc) (for documentation only)
+ - [bindlib](https://github.com/rlepigre/ocaml-bindlib)
+ - [earley](https://github.com/rlepigre/ocaml-earley)
+ - [timed](https://github.com/rlepigre/ocaml-timed)
  - [menhir](http://gallium.inria.fr/~fpottier/menhir/)
- - yojson >= 1.6.0
- - cmdliner
- - ppx\_inline\_test
- - [why3](http://why3.lri.fr/) >= 1.2.0
+ - [yojson](https://github.com/ocaml-community/yojson)
+ - [cmdliner](https://erratique.ch/logiciel/cmdliner)
+ - [why3](http://why3.lri.fr/)
+
+**Note on OCaml versions:** more recent versions of OCaml will be supported
+soon, once the new parsing technology that we are using has stabilized.
 
 **Note on the use of Why3:** the command `why3 config --detect` must be run to
 update the Why3 configuration when a new prover is installed (including on the
@@ -39,9 +44,9 @@ first installation of Why3).
 
 Using Opam, a suitable OCaml environment can be setup as follows.
 ```bash
-opam switch 4.05.0
+opam switch 4.07.1
 eval `opam config env`
-opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 ppx_inline_test why3.1.2.0
+opam install dune odoc menhir yojson cmdliner bindlib.5.0.0 timed.1.0 earley.2.0.0 why3.1.3.1
 why3 config --detect
 ```
 

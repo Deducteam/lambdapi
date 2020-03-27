@@ -1,13 +1,22 @@
 #!/bin/bash
 
-awk 'length>78 {print "In " FILENAME ", line " FNR " more than 78 characters..."}' src/*.ml
-awk '/.*\s$/   {print "In " FILENAME ", line " FNR " has trailing spaces..."}    ' src/*.ml
-awk '/.*\t.*/  {print "In " FILENAME ", line " FNR " contains tabulations..."}   ' src/*.ml
+# Check for long lines.
+awk 'length>78    {print "In " FILENAME ", line " FNR " more than 78 characters..."}' \
+  src/lambdapi.ml src/core/*.ml src/core/*.mll \
+  src/pure/*.ml src/pure/*.mli
+# FIXME src/core/*.mly src/lsp/*.ml src/lsp/*.mli
 
-awk 'length>78 {print "In " FILENAME ", line " FNR " more than 78 characters..."}' src/pure/*.ml src/pure/*.mli
-awk '/.*\s$/   {print "In " FILENAME ", line " FNR " has trailing spaces..."}    ' src/pure/*.ml src/pure/*.mli
-awk '/.*\t.*/  {print "In " FILENAME ", line " FNR " contains tabulations..."}   ' src/pure/*.ml src/pure/*.mli
+# Check for trailing spaces.
+awk '/.*\s$/      {print "In " FILENAME ", line " FNR " has trailing spaces..."}    ' \
+  src/lambdapi.ml src/core/*.ml src/core/*.mll src/core/*.mly \
+  src/pure/*.ml src/pure/*.mli src/lsp/*.ml src/lsp/*.mli
 
-#awk 'length>78 {print "In " FILENAME ", line " FNR " more than 78 characters..."}' lp-lsp/*.ml
-awk '/.*\s$/   {print "In " FILENAME ", line " FNR " has trailing spaces..."}    ' lp-lsp/*.ml
-awk '/.*\t.*/  {print "In " FILENAME ", line " FNR " contains tabulations..."}   ' lp-lsp/*.ml
+# Check for tabulations.
+awk '/.*\t.*/     {print "In " FILENAME ", line " FNR " contains tabulations..."}   ' \
+  src/lambdapi.ml src/core/*.ml src/core/*.mll src/core/*.mly \
+  src/pure/*.ml src/pure/*.mli src/lsp/*.ml src/lsp/*.mli
+
+# Check for [Pervasives].
+awk '/Pervasives/ {print "In " FILENAME ", line " FNR " use of [Pervasives] should be replaced by [Stdlib]..."}    ' \
+  src/lambdapi.ml src/core/*.ml src/core/*.mll src/core/*.mly \
+  src/pure/*.ml src/pure/*.mli src/lsp/*.ml src/lsp/*.mli

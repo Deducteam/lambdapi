@@ -9,10 +9,8 @@ env:
   global:
   - OPAMJOBS="2"
   - OPAMYES="true"
-  - TEST_TARGETS="unit_tests real_tests"
+  - TEST_TARGETS="real_tests"
   matrix:
-  - OCAML_VERSION=4.04.1
-  - OCAML_VERSION=4.04.2
   - OCAML_VERSION=4.05.0
   - OCAML_VERSION=4.06.0
   - OCAML_VERSION=4.06.1
@@ -30,12 +28,12 @@ before_install:
   - opam update
   - opam switch "$OCAML_VERSION"
   - eval $(opam env)
+  - opam install alt-ergo.2.3.0
   - opam pin add -n -k path lambdapi .
   - opam install --deps-only -d -t lambdapi
   - opam pin remove lambdapi
-  - opam install alt-ergo
   # Update why3 config after installing alt-ergo
-  - why3 config --detect
+  - why3 config --full-config
 
 script:
   - make $TEST_TARGETS
