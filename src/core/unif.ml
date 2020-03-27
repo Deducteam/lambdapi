@@ -36,24 +36,24 @@ let no_problems : problems =
 (** Boolean saying whether user metavariables can be set or not. *)
 let can_instantiate : bool ref = ref true
 
-(** [nl_distinct_vars ts] checks that [ts] is made of variables [vs] only
-   and returns some copy of [vs] where variables occurring more than
-   once are replaced by fresh variables. It returns [None]
-   otherwise. *)
-let nl_distinct_vars : term array -> tvar array option =
-  let exception Not_a_var in fun ts ->
+(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
+    and returns some copy of [vs] where variables occurring more than once are
+    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
+    returns [None] otherwise. *)
+let nl_distinct_vars : ctxt -> term array -> tvar array option =
+  fun ctx ts ->
+  let exception Not_a_var in
   let open Stdlib in
   let vars = ref VarSet.empty
   and nl_vars = ref VarSet.empty in
-  let to_var t =
+  let rec to_var t =
     match unfold t with
-    | Vari x ->
-       begin
-         if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars
-         else vars := VarSet.add x !vars;
-         x
-       end
-    | _ -> raise Not_a_var
+    | Vari(x) ->
+        let x = Option.map_default to_var x (Ctxt.def_of x ctx) in
+        if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars else
+        vars := VarSet.add x !vars;
+        x
+    | _       -> raise Not_a_var
   in
   let replace_nl_var x =
     if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
@@ -61,13 +61,14 @@ let nl_distinct_vars : term array -> tvar array option =
   try Some (Array.map replace_nl_var (Array.map to_var ts))
   with Not_a_var -> None
 
-(** [instantiate m ts u] check whether [m] can be instantiated for solving the
-    unification problem “m[ts] = u”. The returned boolean tells whether [m]
-    was instantiated or not. *)
-let instantiate : meta -> term array -> term -> bool = fun m ts u ->
+(** [instantiate ctx m ts u] check whether [m] can be instantiated for solving
+    the unification problem “m[ts] = u” in context [ctx]. The returned boolean
+    tells whether [m] was instantiated or not. *)
+let instantiate : ctxt -> meta -> term array -> term -> bool =
+  fun ctx m ts u ->
   (!can_instantiate || internal m)
   && not (occurs m u)
-  && match nl_distinct_vars ts with
+  && match nl_distinct_vars ctx ts with
      | None -> false
      | Some vs ->
         let bu = Bindlib.bind_mvar vs (lift u) in
@@ -333,9 +334,9 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
            end
        end
 
-  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate m ts t2 ->
+  | (Meta(m,ts) , _          ) when ts1 = [] && instantiate ctx m ts t2 ->
      solve {p with recompute = true}
-  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate m ts t1 ->
+  | (_          , Meta(m,ts) ) when ts2 = [] && instantiate ctx m ts t1 ->
      solve {p with recompute = true}
 
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
