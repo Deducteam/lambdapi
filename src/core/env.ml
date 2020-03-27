@@ -25,12 +25,12 @@ let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
 (** [find n env] returns the Bindlib variable associated to the variable  name
     [n] in the environment [env]. If none is found, [Not_found] is raised. *)
 let find : string -> env -> tvar = fun n env ->
-  let (x,_,_) = (List.assoc n env) in x
+  let (x,_,_) = List.assoc n env in x
 
-(** [to_prod env t] builds a sequence of products whose domains are the {e not
-    defined} variables of the environment [env] (from left to right), and
-    which body is the term [t]: [to_prod [(xn,an);..;(x1,a1)] t =
-    ∀x1:a1,..,∀xn:an,t]. *)
+(** [to_prod env t] builds a sequence of products or let-bindings whose
+    domains are the variables of the environment [env] (from left to right),
+    and which body is the term [t]:
+    [to_prod [(xn,an,None);..;(x1,a1,None)] t = ∀x1:a1,..,∀xn:an,t]. *)
 let to_prod : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -39,10 +39,11 @@ let to_prod : env -> tbox -> term = fun env t ->
   in
   Bindlib.unbox (List.fold_left fn t env)
 
-(** [to_abst env t] builds a sequence of abstractions whose domains are the {b
-    not defined} variables of the environment [env] (from left to right), and
-    which body is the term [t]: [to_prod [(xn,an);..;(x1,a1)] t =
-    λx1:a1,..,λxn:an,t]. *)
+(** [to_abst env t] builds a sequence of abstractions or let bindings,
+    depending on the definition of the elements in the environment whose
+    domains are the variables of the environment [env] (from left to right),
+    and which body is the term [t]:
+    [to_abst [(xn,an,None);..;(x1,a1,None)] t = λx1:a1,..,λxn:an,t]. *)
 let to_abst : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -51,13 +52,14 @@ let to_abst : env -> tbox -> term = fun env t ->
   in
   Bindlib.unbox (List.fold_left fn t env)
 
-(** [vars env] extracts the array of the Bindlib variables in [env]. Note that
-    the order is reversed: [vars [(xn,an);..;(x1,a1)] = [|x1;..;xn|]]. *)
+(** [vars env] extracts the array of the {e not defined} Bindlib variables in
+    [env]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
+    [|x1;..;xn|]]. *)
 let vars : env -> tvar array = fun env ->
   let f (_, (x, _, u)) = if u = None then Some(x) else None in
   Array.of_list (List.filter_rev_map f env)
 
-(** [to_term env] extracts the array of the {e not defined} variables in [env]
+(** [to_tbox env] extracts the array of the {e not defined} variables in [env]
     and injects them in the [tbox] type.  This is the same as [Array.map _Vari
     (vars env)]. Note that the order is reversed: [vars [(xn,an);..;(x1,a1)] =
     [|x1;..;xn|]]. *)
