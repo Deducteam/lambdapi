@@ -246,32 +246,50 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
-  (* Scoping of a binder (abstraction, product or let-binding with [is_let] to
-     true). *)
+  (* Scoping of a binder (abstraction, product or let-binding with [let_bound]
+   * set to the let-bound term). The environment made of the variables is also
+   * returned. *)
   and scope_binder ?let_bound cons env xs t =
     let rec aux env xs =
       match xs with
-      | []                  -> scope env t
+      | []                  -> (scope env t, [])
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           (* Let with wildcard rejected at parsing *)
           assert (let_bound = None);
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
-          let t = aux env ((l,d,i)::xs) in
-          cons a (Bindlib.bind_var v t)
+          let (t,env) = aux env ((l,d,i)::xs) in
+          (cons a (Bindlib.bind_var v t), Env.add v a None env)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
-          let t = aux ((x.elt,(v,a,let_bound)) :: env) ((l,d,i) :: xs) in
+          let (t,env) =
+            aux ((x.elt,(v,a,let_bound)) :: env) ((l,d,i) :: xs)
+          in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos
               (if let_bound <> None
                then "Useless let-binding (variable [%s] not bound)."
                else "Variable [%s] could be replaced by [_].") x.elt;
-          cons a (Bindlib.bind_var v t)
+          (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
     aux env xs
+  and scope_let f xs t a u env =
+    (* We start by transforming [let f x y : a ≔ t in u] in
+     * [let f : a ≔ λx y, t in u] *)
+    let (t,fenv) = scope_binder _Abst env xs t in
+    (* We scope the whole let *)
+    let ty =
+      (* Add the type annotation to the type of binder, that is,
+       * [∀(x: ?) (y: ?[x]), a] *)
+      match a with Some(a) -> let a = scope env a in lift (Env.to_prod fenv a)
+                 | None    -> scope_domain env None
+    in
+    let cons _ u = _LLet t ty u in (* Force the injection of computed type. *)
+    (* Final scoping can be seen as scoping a binder [let f, u] *)
+    (* TODO: we must be able to shortcut the call to scope_binder. *)
+    fst (scope_binder ~let_bound:t cons env [[Some(f)], None, false] u)
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -356,57 +374,55 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                           fatal t.pos "Pattern variable not in scope."
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
-    | (P_Patt(_,_)     , _                ) ->
+    | (P_Patt(_,_)     , _                  ) ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
-    | (P_Appl(_,_)     , _                ) -> assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_)         ) ->
+    | (P_Appl(_,_)     , _                  ) ->
+        assert false (* Unreachable. *)
+    | (P_Impl(_,_)     , M_LHS(_)           ) ->
         fatal t.pos "Implications are not allowed in a LHS."
-    | (P_Impl(_,_)     , M_Patt           ) ->
+    | (P_Impl(_,_)     , M_Patt             ) ->
         fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Impl(a,b)     , _                ) ->
+    | (P_Impl(a,b)     , _                  ) ->
         _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_)     , M_Patt           ) ->
+    | (P_Abst(_,_)     , M_Patt             ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
-    | (P_Abst(xs,t)    , _                ) -> scope_binder _Abst env xs t
-    | (P_Prod(_,_)     , M_LHS(_)         ) ->
+    | (P_Abst(xs,t)    , _                  ) ->
+        fst (scope_binder _Abst env xs t)
+    | (P_Prod(_,_)     , M_LHS(_)           ) ->
         fatal t.pos "Dependent products are not allowed in a LHS."
-    | (P_Prod(_,_)     , M_Patt           ) ->
+    | (P_Prod(_,_)     , M_Patt             ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
-    | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
-    | (P_LLet(x,xs,t,u), M_Term(_)        )
-    | (P_LLet(x,xs,t,u), M_RHS(_)         ) ->
-        (* Scope the binding [x xs := t] as [x := λxs, t]. *)
-        let t = scope_binder _Abst env xs t in
-        (* Scope all the [let x xs := t in u] *)
-        let cons a u = _LLet t a u in
-        scope_binder ~let_bound:t cons env [[Some(x)], None, false] u
-    | (P_LLet(_)       , M_LHS(_)         ) ->
+    | (P_Prod(xs,b)    , _                  ) ->
+        fst (scope_binder _Prod env xs b)
+    | (P_LLet(x,xs,t,a,u), M_Term(_)        )
+    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) -> scope_let x xs t a u env
+    | (P_LLet(_)       , M_LHS(_)           ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
-    | (P_LLet(_)       , M_Patt           ) ->
+    | (P_LLet(_)       , M_Patt             ) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
-    | (P_NLit(n)       , _                ) ->
+    | (P_NLit(n)       , _                  ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
-    | (P_UnaO(u,t)    , _                 ) ->
+    | (P_UnaO(u,t)    , _                   ) ->
         let (s, impl) =
           let (op,_,qid) = u in
           let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Unary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [t]
-    | (P_BinO(l,b,r)  , _                 ) ->
+    | (P_BinO(l,b,r)  , _                   ) ->
         let (s, impl) =
           let (op,_,_,qid) = b in
           let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Binary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]
-    | (P_Wrap(t)      , _                 ) -> scope env t
-    | (P_Expl(_)      , _                 ) ->
+    | (P_Wrap(t)      , _                   ) -> scope env t
+    | (P_Expl(_)      , _                   ) ->
         fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
@@ -429,21 +445,27 @@ let scope_term : expo -> sig_state -> env -> p_term -> term =
 let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars acc t =
     match t.elt with
-    | P_Type           -> acc
-    | P_Iden(_)        -> acc
-    | P_Wild           -> acc
-    | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
-    | P_Patt(id,ts)    -> add_patt (Array.fold_left patt_vars acc ts) id ts
-    | P_Appl(t,u)      -> patt_vars (patt_vars acc t) u
-    | P_Impl(a,b)      -> patt_vars (patt_vars acc a) b
-    | P_Abst(xs,t)     -> patt_vars (arg_patt_vars acc xs) t
-    | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
-    | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
-    | P_NLit(_)        -> acc
-    | P_UnaO(_,t)      -> patt_vars acc t
-    | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
-    | P_Wrap(t)        -> patt_vars acc t
-    | P_Expl(t)        -> patt_vars acc t
+    | P_Type             -> acc
+    | P_Iden(_)          -> acc
+    | P_Wild             -> acc
+    | P_Meta(_,ts)       -> Array.fold_left patt_vars acc ts
+    | P_Patt(id,ts)      -> add_patt (Array.fold_left patt_vars acc ts) id ts
+    | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
+    | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
+    | P_Abst(xs,t)       -> patt_vars (arg_patt_vars acc xs) t
+    | P_Prod(xs,b)       -> patt_vars (arg_patt_vars acc xs) b
+    | P_LLet(_,xs,t,a,u) ->
+        let pvs = patt_vars (patt_vars (arg_patt_vars acc xs) t) u in
+        begin
+          match a with
+          | None    -> pvs
+          | Some(a) -> patt_vars pvs a
+        end
+    | P_NLit(_)          -> acc
+    | P_UnaO(_,t)        -> patt_vars acc t
+    | P_BinO(t,_,u)      -> patt_vars (patt_vars acc t) u
+    | P_Wrap(t)          -> patt_vars acc t
+    | P_Expl(t)          -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =
     match id with
     | None     -> acc
