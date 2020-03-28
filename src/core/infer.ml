@@ -98,15 +98,9 @@ let rec infer : Ctxt.t -> term -> term = fun ctx t ->
         let c = Eval.whnf (infer ctx t) in
         match c with
         | Prod(a,b) -> (a,b)
-        | Meta(_,ts) ->
-            let ctx =
-              match Basics.distinct_vars_opt ts with
-              | None -> ctx
-              | Some vs -> Ctxt.sub ctx vs
-            in
-            let a = Ctxt.make_meta ctx Type in
-            let b = make_meta_codomain ctx a in
-            conv c (Prod(a,b)); (a,b)
+        | Meta(m,ts) ->
+            let mxs, p, bp1, bp2 = Env.extend_meta_type m in
+            conv mxs p; (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Ctxt.make_meta ctx Type in
             let b = make_meta_codomain ctx a in
@@ -153,15 +147,10 @@ and check : Ctxt.t -> term -> term -> unit = fun ctx t c ->
         let c = Eval.whnf c in
         match c with
         | Prod(d,b) -> conv d a; b (* Domains must be convertible. *)
-        | Meta(_,ts) ->
-           let ctx =
-             match Basics.distinct_vars_opt ts with
-             | None -> ctx
-             | Some vs -> Ctxt.sub ctx vs
-           in
-           let b = make_meta_codomain ctx a in
-           conv c (Prod(a,b)); b
-        | _         -> (* Generate product type with codomain [a]. *)
+        | Meta(m,ts) ->
+            let mxs, p, _bp1, bp2 = Env.extend_meta_type m in
+            conv mxs p; Bindlib.msubst bp2 ts
+        | _         ->
            let b = make_meta_codomain ctx a in
            conv c (Prod(a,b)); b
       in
