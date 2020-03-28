@@ -269,26 +269,6 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
     aux env xs
-  (* scope let-binding of the form [let f xs : a ≔ t in u] in environment
-   * [env]. *)
-  and scope_let env f xs t a u =
-    (* We start by transforming [let f x y : a ≔ t in u] in
-     * [let f : a ≔ λx y, t in u] *)
-    let (t,fenv) = scope_binder _Abst env xs t in
-    let env = fenv @ env in (* FIXME is order important? *)
-    (* We scope the whole let *)
-    let ty =
-      (* Add the type annotation to the type of binder, that is,
-       * [∀(x: ?) (y: ?[x]), a] *)
-      match a with Some(a) -> Env.to_prodbox fenv (scope env a)
-                 | None    -> scope_domain env None
-    in
-    (* Final scoping can be seen as scoping a binder [let f, u] *)
-    let v = Bindlib.new_var mkfree f.elt in
-    let u = scope (Env.add v ty (Some(t)) env) u in
-    if not (Bindlib.occur v u) then
-      wrn f.pos "Useless let-binding ([%s] not bound)." f.elt;
-    _LLet t ty (Bindlib.bind_var v u)
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -394,7 +374,17 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _                  ) ->
         fst (scope_binder _Prod env xs b)
     | (P_LLet(x,xs,t,a,u), M_Term(_)        )
-    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) -> scope_let env x xs t a u
+    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) ->
+        let a =
+          let a = Option.get (Pos.none P_Wild) a in
+          scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
+        in
+        let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs, t))) in
+        let v = Bindlib.new_var mkfree x.elt in
+        let u = scope (Env.add v a (Some(t)) env) u in
+        if not (Bindlib.occur v u) then
+          wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
+        _LLet t a (Bindlib.bind_var v u)
     | (P_LLet(_)       , M_LHS(_)           ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt             ) ->
