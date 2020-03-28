@@ -30,9 +30,9 @@ let rec def_of : term Bindlib.var -> ctxt -> term option = fun x ctx ->
 let mem : tvar -> ctxt -> bool = fun x ->
   List.exists (fun (y,_,_) -> Bindlib.eq_vars x y)
 
-(** [prod ctx t] builds a product by abstracting over the context [ctx], in
+(** [to_prod ctx t] builds a product by abstracting over the context [ctx], in
     the term [t]. It returns the number of products as well. *)
-let prod : ctxt -> term -> term * int = fun ctx t ->
+let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let fn (t,c) elt =
     match elt with
     | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
@@ -41,15 +41,15 @@ let prod : ctxt -> term -> term * int = fun ctx t ->
   let t, c = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
 
-(** [llet ctx t] builds one let-binding on top of [t] for each defined
+(** [to_llet ctx t] builds one let-binding on top of [t] for each defined
     variable in [ctx]. *)
-let rec llet ctx t =
+let rec to_llet ctx t =
   match ctx with
   | []                 -> t
-  | (_,_,None)::ctx    -> llet ctx t
+  | (_,_,None)::ctx    -> to_llet ctx t
   | (x,a,Some(u))::ctx ->
       let body = Bindlib.bind_var x (lift t) in
-      llet ctx (LLet(u,a,Bindlib.unbox body))
+      to_llet ctx (LLet(u,a,Bindlib.unbox body))
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)

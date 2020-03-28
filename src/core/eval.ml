@@ -345,13 +345,13 @@ and snf : term -> term = fun t ->
 
 (** [snf ctx t] computes the strong normal form of term [t] in context
     [ctx]. *)
-let snf : ctxt -> term -> term = fun ctx t -> snf (Ctxt.llet ctx t)
+let snf : ctxt -> term -> term = fun ctx t -> snf (Ctxt.to_llet ctx t)
 
 (** [whnf t] computes a weak head-normal form of [t]. *)
 let whnf : ctxt -> term -> term = fun ctx t ->
   Stdlib.(steps := 0);
   let t = unfold t in
-  let u = whnf (Ctxt.llet ctx t) in
+  let u = whnf (Ctxt.to_llet ctx t) in
   if Stdlib.(!steps = 0) then t else u
 
 (** [simplify t] reduces simple redexes of [t]. *)
