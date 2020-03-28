@@ -14,7 +14,9 @@ and with LSP, `eglot` (and Emacs 26.1 or higher):
 In the long term, the package should be available on MELPA, and only `M-x
 package-install RET lambdapi-mode` should then be necessary.
 
-In the meantime, `make install` should do the job.
+Meanwhile, the package archive can be generated with 
+`make dist` and then installed from within emacs with
+`M-x package-install-file RET <path/to/package.tar>`.
 
 ## Other relevant packages
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion

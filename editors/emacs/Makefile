@@ -1,6 +1,12 @@
-dist:
-	tar --create --file lambdapi-mode.tar *.el
+lambdapi-mode-0.1.tar:
+	mkdir lambdapi-mode-0.1
+	cp *.el lambdapi-mode-0.1
+	tar --create --file $@ lambdapi-mode-0.1
+	$(RM) -rf lambdapi-mode-0.1
+
+.PHONY: dist
+dist: lambdapi-mode-0.1.tar
 
 .PHONY: install
-install: lambdapi-mode.tar
-	emacs --batch --eval '(package-install-file $<)'
+install: lambdapi-mode-0.1.tar
+	emacs --eval "(package-install-file \"$<\")"
