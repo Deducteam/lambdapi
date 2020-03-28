@@ -13,7 +13,6 @@
 ;;
 ;;; Commentary:
 ;;
-;; Many thanks to nim and nim-mode <https://github.com/nim-lang/nim-mode>
 ;; TODO: more support for company
 ;;
 ;;; Code:
