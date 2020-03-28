@@ -269,6 +269,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
     aux env xs
+  (* scope let-binding of the form [let f xs : a ≔ t in u] in environment
+   * [env]. *)
   and scope_let env f xs t a u =
     (* We start by transforming [let f x y : a ≔ t in u] in
      * [let f : a ≔ λx y, t in u] *)
@@ -278,7 +280,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     let ty =
       (* Add the type annotation to the type of binder, that is,
        * [∀(x: ?) (y: ?[x]), a] *)
-      match a with Some(a) -> let a = scope env a in lift (Env.to_prod fenv a)
+      match a with Some(a) -> Env.to_prodbox fenv (scope env a)
                  | None    -> scope_domain env None
     in
     (* Final scoping can be seen as scoping a binder [let f, u] *)
