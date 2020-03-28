@@ -246,17 +246,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
-  (* Scoping of a binder (abstraction, product or let-binding with [let_bound]
-   * set to the let-bound term). The environment made of the variables is also
-   * returned. *)
-  and scope_binder ?let_bound cons env xs t =
+  (* Scoping of a binder (abstraction or product). The environment made of the
+   * variables is also returned. *)
+  and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
       | []                  -> (scope env t, [])
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
-          (* Let with wildcard rejected at parsing *)
-          assert (let_bound = None);
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
           let (t,env) = aux env ((l,d,i)::xs) in
@@ -265,20 +262,18 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
           let (t,env) =
-            aux ((x.elt,(v,a,let_bound)) :: env) ((l,d,i) :: xs)
+            aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
           in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
-            wrn x.pos
-              (if let_bound <> None
-               then "Useless let-binding (variable [%s] not bound)."
-               else "Variable [%s] could be replaced by [_].") x.elt;
+            wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
     aux env xs
-  and scope_let f xs t a u env =
+  and scope_let env f xs t a u =
     (* We start by transforming [let f x y : a ≔ t in u] in
      * [let f : a ≔ λx y, t in u] *)
     let (t,fenv) = scope_binder _Abst env xs t in
+    let env = fenv @ env in (* FIXME is order important? *)
     (* We scope the whole let *)
     let ty =
       (* Add the type annotation to the type of binder, that is,
@@ -286,10 +281,12 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       match a with Some(a) -> let a = scope env a in lift (Env.to_prod fenv a)
                  | None    -> scope_domain env None
     in
-    let cons _ u = _LLet t ty u in (* Force the injection of computed type. *)
     (* Final scoping can be seen as scoping a binder [let f, u] *)
-    (* TODO: we must be able to shortcut the call to scope_binder. *)
-    fst (scope_binder ~let_bound:t cons env [[Some(f)], None, false] u)
+    let v = Bindlib.new_var mkfree f.elt in
+    let u = scope (Env.add v ty (Some(t)) env) u in
+    if not (Bindlib.occur v u) then
+      wrn f.pos "Useless let-binding ([%s] not bound)." f.elt;
+    _LLet t ty (Bindlib.bind_var v u)
   (* Scoping function for head terms. *)
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
@@ -395,7 +392,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Prod(xs,b)    , _                  ) ->
         fst (scope_binder _Prod env xs b)
     | (P_LLet(x,xs,t,a,u), M_Term(_)        )
-    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) -> scope_let x xs t a u env
+    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) -> scope_let env x xs t a u
     | (P_LLet(_)       , M_LHS(_)           ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt             ) ->

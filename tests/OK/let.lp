@@ -25,4 +25,7 @@ compute let x : T ≔ a in x
 type let f x : T ≔ a in f
 type let f (x : T) ≔ λ _, x in f a
 assert let f (x:T) : T ⇒ T ≔ λ(_:T), x in f a ≡ λ(_:T), a
-// TODO: need type annotation for bound variable of let
+// dependent type let
+symbol Dt : T ⇒ TYPE
+symbol dt x : Dt x
+type let f x : Dt x ≔ dt x in f
