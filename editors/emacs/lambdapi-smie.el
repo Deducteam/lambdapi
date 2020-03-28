@@ -9,6 +9,7 @@
 ;;
 ;;; Commentary:
 ;;
+;; Many thanks to Nim and Nim mode
 ;; TODO: refine editing of proofs, perhaps make a single token PRFTAC for
 ;; tactics, adjust backward parsing (greed and lookahead of `looking-back`) to
 ;; avoid finding token `in` in `refine` and `definition`.

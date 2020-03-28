@@ -4,13 +4,15 @@
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Keywords: lambdapi dedukti proof-assistant
 ;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((emacs "26.1") (quail))
+;; Package-Requires: ((emacs "26.1") (eglot))
 
 ;;; Commentary:
 ;;
 ;;; Code:
 
+(require 'lambdapi-vars)
 (require 'lambdapi-smie)
+(require 'lambdapi-capf)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
@@ -63,59 +65,19 @@
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
   (list (cons
-         (concat "\\<"
-                 (regexp-opt
-                  '("theorem"
-                    "proof"
-                    "admit"
-                    "abort"
-                    "qed"
-                    "symbol"
-                    "definition"
-                    "rule"
-                    "and"))
-                 "\\>")
+         (concat "\\<" (regexp-opt lambdapi-sig-commands) "\\>")
          'font-lock-keyword-face)
         (cons
-         (concat "\\<"
-                 (regexp-opt
-                  '("set"
-                    "require"
-                    "open"
-                    "as"
-                    "type"
-                    "assert"
-                    "assertnot"
-                    "compute"))
-                 "\\>")
+         (concat "\\<" (regexp-opt lambdapi-misc-commands) "\\>")
          'font-lock-preprocessor-face)
         (cons
-         (concat "\\<"
-                 (regexp-opt
-                  '("protected"
-                    "private"
-                    "injective"
-                    "constant"))
-                 "\\>")
+         (concat "\\<" (regexp-opt lambdapi-modifiers) "\\>")
          'font-lock-warning-face)
         (cons
-         (concat "\\<"
-                 (regexp-opt
-                  '("apply"
-                    "assume"
-                    "print"
-                    "proofterm"
-                    "refine"
-                    "reflexivity"
-                    "rewrite"
-                    "symmetry"
-                    "why3"))
-                 "\\>")
+         (concat "\\<" (regexp-opt lambdapi-tactics) "\\>")
          'font-lock-builtin-face)
         (cons
-         (concat "\\<"
-                 (regexp-opt '("TYPE" "left" "right" "infix" "prefix"))
-                 "\\>")
+         (concat "\\<" (regexp-opt lambdapi-misc-keywords) "\\>")
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
 
@@ -152,6 +114,7 @@
   (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
   (setq-local comment-start "//")
   (setq-local comment-end "")
+  (lambdapi-capf-setup)
   (smie-setup
    lambdapi--smie-prec
    #'lambdapi--smie-rules
