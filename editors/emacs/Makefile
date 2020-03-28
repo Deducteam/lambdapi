@@ -1,5 +1,5 @@
 dist:
-	tar --create --file lambdapi-mode.tar *.tar
+	tar --create --file lambdapi-mode.tar *.el
 
 .PHONY: install
 install: lambdapi-mode.tar
