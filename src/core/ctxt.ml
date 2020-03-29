@@ -9,8 +9,8 @@ open Timed
     extension of context [ctx] with the assumption that [x] has type [a] (only
     if [x] occurs in [t]). If [def] is of the form [Some(u)], the context also
     registers the term [u] as the definition of variable [x]. *)
-let unbind : ctxt -> term -> term option -> tbinder ->
-  tvar * term * ctxt = fun ctx a def b ->
+let unbind : ctxt -> term -> term option -> tbinder -> tvar * term * ctxt =
+  fun ctx a def b ->
   let (x, t) = Bindlib.unbind b in
   (x, t, if Bindlib.binder_occur b then (x, a, def) :: ctx else ctx)
 
@@ -38,7 +38,7 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
     | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
     | (x,a,Some(u)) -> (_LLet (lift u) (lift a) (Bindlib.bind_var x t), c)
   in
-  let t, c = List.fold_left fn (lift t, 0) ctx in
+  let (t, c) = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
 
 (** [to_llet ctx t] builds one let-binding on top of [t] for each defined

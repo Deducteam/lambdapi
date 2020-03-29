@@ -27,22 +27,17 @@ let add : tvar -> tbox -> tbox option -> env -> env = fun v a t env ->
 let find : string -> env -> tvar = fun n env ->
   let (x,_,_) = List.assoc n env in x
 
-(** [to_prodbox env t] is like [to_prod] below except that it does not
-    unbox the term. *)
-let to_prodbox : env -> tbox -> tbox = fun env t ->
-  let fn t (_,(x,a,u)) =
-    match u with
-    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
-    | None    -> _Prod a (Bindlib.bind_var x t)
-  in
-  List.fold_left fn t env
-
 (** [to_prod env t] builds a sequence of products or let-bindings whose
     domains are the variables of the environment [env] (from left to right),
     and which body is the term [t]:
     [to_prod [(xn,an,None);..;(x1,a1,None)] t = ∀x1:a1,..,∀xn:an,t]. *)
 let to_prod : env -> tbox -> term = fun env t ->
-  Bindlib.unbox (to_prodbox env t)
+  let fn t (_,(x,a,u)) =
+    match u with
+    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
+    | None    -> _Prod a (Bindlib.bind_var x t)
+  in
+  Bindlib.unbox (List.fold_left fn t env)
 
 (** [to_abst env t] builds a sequence of abstractions or let bindings,
     depending on the definition of the elements in the environment whose

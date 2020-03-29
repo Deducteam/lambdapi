@@ -29,9 +29,9 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
           let infer = Typing.infer ss.builtins (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
+              let pb = { no_problems with to_solve = [[], a, b] } in
               begin
-                match solve ss.builtins true
-                        { no_problems with to_solve = [[],a,b] } with
+                match solve ss.builtins true pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
