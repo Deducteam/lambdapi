@@ -1,12 +1,19 @@
-lambdapi-mode-0.1.tar: $(wildcard *.el)
-	mkdir lambdapi-mode-0.1
-	cp *.el lambdapi-mode-0.1
-	tar --create --file $@ lambdapi-mode-0.1
-	$(RM) -rf lambdapi-mode-0.1
+VERSION = 0.1
+PKG = lambdapi-mode-$(VERSION).tar
+
+$(PKG): $(wildcard *.el)
+	mkdir lambdapi-mode-$(VERSION)
+	cp *.el lambdapi-mode-$(VERSION)
+	tar --create --file $@ lambdapi-mode-$(VERSION)
+	$(RM) -rf lambdapi-mode-$(VERSION)
 
 .PHONY: dist
-dist: lambdapi-mode-0.1.tar
+dist: $(PKG)
+
+.PHONY: tests
+tests:
+	cd tests && ./test.sh $(VERSION)
 
 .PHONY: install
-install: lambdapi-mode-0.1.tar
+install: $(PKG)
 	emacs --eval "(package-install-file \"$<\")"
