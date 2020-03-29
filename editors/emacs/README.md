@@ -10,15 +10,16 @@ and with LSP, `eglot` (and Emacs 26.1 or higher):
 * Typing of symbol at point (in minibuffer)
 * Type checking declarations
 
-## Installation
+Installation
+------------
 In the long term, the package should be available on MELPA, and only `M-x
 package-install RET lambdapi-mode` should then be necessary.
 
 Meanwhile, the package archive can be generated with 
-`make dist` and then installed from within emacs with
-`M-x package-install-file RET <path/to/package.tar>`.
+`make dist` and `make install`.
 
-## Other relevant packages
+Other relevant packages
+-----------------------
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion
 
 The author thanks the [nim-mode](https://github.com/nim-lang/nim-mode) for

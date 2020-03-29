@@ -1,4 +1,4 @@
-lambdapi-mode-0.1.tar:
+lambdapi-mode-0.1.tar: $(wildcard *.el)
 	mkdir lambdapi-mode-0.1
 	cp *.el lambdapi-mode-0.1
 	tar --create --file $@ lambdapi-mode-0.1

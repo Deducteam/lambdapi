@@ -2,9 +2,9 @@
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Keywords: lambdapi dedukti proof-assistant
+;; Keywords: lambdapi dedukti proof-assistant logical-framework LP
 ;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((emacs "26.1") (eglot))
+;; Package-Requires: ((emacs "26.1") (eglot "1.5"))
 
 ;;; Commentary:
 ;;
@@ -13,6 +13,7 @@
 (require 'lambdapi-vars)
 (require 'lambdapi-smie)
 (require 'lambdapi-capf)
+(require 'eglot)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
 (defvar lambdapi-mode-legacy-syntax-table nil "Syntax table for LambdaPi.")
@@ -48,7 +49,12 @@
   (setq-local font-lock-defaults '(lambdapi-legacy-font-lock-keywords))
   (setq-local comment-start "(;")
   (setq-local comment-end ";)")
-  (setq-default indent-tabs-mode nil))
+  (setq-default indent-tabs-mode nil)
+  (add-to-list 'eglot-server-programs
+               '(lambdapi-legacy-mode . ("lambdapi" "lsp" "--standard-lsp")))
+  (add-hook 'lambdapi-legacy-mode-hook 'eglot-ensure))
+
+(provide 'lambdapi-legacy-mode)
 
 ;;; Dedukti3
 ;; Syntax table
@@ -106,40 +112,40 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
+;; LSP
+(add-to-list
+ 'eglot-server-programs
+ '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
+
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
   "A mode for editing LambdaPi files."
   (set-syntax-table lambdapi-mode-syntax-table)
   (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
+  (setq-default indent-tabs-mode nil) ; Indent with spaces
+  (set-input-method "LambdaPi")
+
+  ;; Comments
   (setq-local comment-start "//")
   (setq-local comment-end "")
+
+  ;; Completion
   (lambdapi-capf-setup)
+  ;; Indentation
   (smie-setup
    lambdapi--smie-prec
    #'lambdapi--smie-rules
    :forward-token #'lambdapi--smie-forward-token
-   :backward-token #'lambdapi--smie-backward-token)
-  (setq-default indent-tabs-mode nil)
-  (set-input-method "LambdaPi"))
-
-;; LSP mode
-(if (not (version<= emacs-version "26"))
-    (progn
-      (require 'eglot)
-      (add-to-list 'eglot-server-programs
-                   '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
-      (add-to-list 'eglot-server-programs
-                   '(lambdapi-legacy-mode . ("lambdapi" "lsp" "--standard-lsp")))
-      (add-hook 'lambdapi-mode-hook 'eglot-ensure)
-      (add-hook 'lambdapi-legacy-mode-hook 'eglot-ensure)))
+   :backward-token #'lambdapi--smie-backward-token))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
+;;;###autoload
+(add-hook 'lambdapi-mode-hook #'eglot-ensure)
 
 (provide 'lambdapi-mode)
-(provide 'lambdapi-legacy-mode)
-;;; lambdapi.el ends here
+;;; lambdapi-mode.el ends here
