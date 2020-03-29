@@ -3,8 +3,6 @@
 ;; Copyright (C) 2020 Deducteam
 ;;
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Created: March 28, 2020
-;; Modified: March 28, 2020
 ;; Package-Requires: ((emacs 26.1) (cl-lib "0.5"))
 ;;
 ;; This file is not part of GNU Emacs.
@@ -31,6 +29,7 @@
     "admit"
     "and"
     "definition"
+    "in"
     "let"
     "proof"
     "qed"

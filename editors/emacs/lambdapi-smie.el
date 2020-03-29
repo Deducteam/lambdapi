@@ -132,7 +132,6 @@
                ("set" "declared" ident)))
     '((assoc ",") (assoc "in") (assoc "⇒")))))
 
-;; TODO: literals with double quotes for set infix etc
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
   ;; Skip comments
@@ -238,23 +237,6 @@
     (`(:before . "symbol") '(column . 0))
     (`(:before . "rule") '(column . 0))
     (`(:before . "and") '(column . 1))))
-
-;; DEBUG
-(defun dedukti-backward ()
-  "Move backward by one token or by a sexp."
-  (interactive)
-  (let ((beg (point)))
-    (prog1
-        (or (lambdapi--smie-backward-token)
-            (backward-sexp))
-      (when (eq beg (point))
-        (backward-char)))))
-
-(defun dedukti-smie-backward-debug ()
-  "Print the current value of `dedukti-smie-backward-token'."
-  (interactive)
-  (let ((v (dedukti-backward)))
-    (when v (princ v))))
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here
