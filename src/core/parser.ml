@@ -375,11 +375,9 @@ let parser term @(p : prio) =
   | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "≔" t:(term PFunc) _in_ u:(term PFunc)
-      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,None,u))
-  | _let_ x:ident a:arg* ":" b:(term PFunc) "≔" t:(term PFunc) _in_
+  | _let_ x:ident a:arg* b:{":" (term PFunc)}? "≔" t:(term PFunc) _in_
       u:(term PFunc)
-      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,Some(b),u))
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,b,u))
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
