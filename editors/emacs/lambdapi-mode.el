@@ -56,18 +56,7 @@
 
 (provide 'lambdapi-legacy-mode)
 
-;;; Dedukti3
-;; Syntax table
-(defvar lambdapi-mode-syntax-table nil "Syntax table for LambdaPi.")
-
-(setq lambdapi-mode-syntax-table
-  (let ((st (make-syntax-table)))
-    (modify-syntax-entry ?\/ ". 12b" st)
-    (modify-syntax-entry ?\n "> b" st)
-    (modify-syntax-entry ?_ "_" st)
-    (modify-syntax-entry ?& "_" st)
-    st))
-
+;;; lambdapi
 ;; Keywords
 (defconst lambdapi-font-lock-keywords
   (list (cons
@@ -116,7 +105,7 @@
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
   "A mode for editing LambdaPi files."
-  (set-syntax-table lambdapi-mode-syntax-table)
+  (set-syntax-table lambdapi-syntax-table)
   (setq-local font-lock-defaults '(lambdapi-font-lock-keywords))
   (setq-default indent-tabs-mode nil) ; Indent with spaces
   (set-input-method "LambdaPi")

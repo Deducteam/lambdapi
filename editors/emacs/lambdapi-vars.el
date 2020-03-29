@@ -54,5 +54,13 @@
   '("protected" "private" "injective" "constant" "open" "as")
   "Symbol modifiers.")
 
+(defvar lambdapi-syntax-table
+  (let ((table (make-syntax-table)))
+    (modify-syntax-entry ?\/ ". 12b" table)
+    (modify-syntax-entry ?\n "> b" table)
+    (modify-syntax-entry ?_ "w" table)
+    table)
+  "Syntax table for lambdapi-mode.")
+
 (provide 'lambdapi-vars)
 ;;; lambdapi-vars.el ends here
