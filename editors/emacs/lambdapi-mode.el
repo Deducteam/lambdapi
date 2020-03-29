@@ -112,11 +112,6 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
-;; LSP
-(add-to-list
- 'eglot-server-programs
- '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
-
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
 (define-derived-mode lambdapi-mode prog-mode "LambdaPi"
@@ -137,15 +132,19 @@
    lambdapi--smie-prec
    #'lambdapi--smie-rules
    :forward-token #'lambdapi--smie-forward-token
-   :backward-token #'lambdapi--smie-backward-token))
+   :backward-token #'lambdapi--smie-backward-token)
+
+  ;; LSP
+  (add-to-list
+   'eglot-server-programs
+   '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
+  (add-hook 'lambdapi-mode-hook #'eglot-ensure))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.lp\\'" . lambdapi-mode))
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.dk\\'" . lambdapi-legacy-mode))
-;;;###autoload
-(add-hook 'lambdapi-mode-hook #'eglot-ensure)
 
 (provide 'lambdapi-mode)
 ;;; lambdapi-mode.el ends here
