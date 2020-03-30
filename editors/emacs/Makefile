@@ -1,11 +1,9 @@
 VERSION = 0.1
 PKG = lambdapi-mode-$(VERSION).tar
+SRC = $(wildcard *.el)
 
-$(PKG): $(wildcard *.el)
-	mkdir lambdapi-mode-$(VERSION)
-	cp *.el lambdapi-mode-$(VERSION)
-	tar --create --file $@ lambdapi-mode-$(VERSION)
-	$(RM) -rf lambdapi-mode-$(VERSION)
+$(PKG): $(SRC)
+	tar --create --file $@ --transform 's,^,$(patsubst %.tar,%,$@)/,' $^
 
 .PHONY: dist
 dist: $(PKG)
