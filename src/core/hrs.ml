@@ -26,7 +26,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Wild         -> assert false
     | Kind         -> assert false
     (* Printing of atoms. *)
-    | Vari(x)      -> out "v_%s" (Bindlib.name_of x)
+    | Vari(x)      -> out "%s" (Bindlib.name_of x)
     | Type         -> out "TYPE"
     | Symb(s,_)    -> print_sym oc s
     | Patt(i,n,ts) ->
@@ -35,38 +35,49 @@ let print_term : bool -> term pp = fun lhs ->
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
         let (x, t) = Bindlib.unbind t in
-        if lhs then out "lam(m_typ,\\v_%s.%a)" (Bindlib.name_of x) pp t
-        else out "lam(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp t
+        if lhs then out "lam(m_typ,\\%s.%a)" (Bindlib.name_of x) pp t
+        else out "lam(%a,\\%s.%a)" pp a (Bindlib.name_of x) pp t
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
-        out "pi(%a,\\v_%s.%a)" pp a (Bindlib.name_of x) pp b
+        out "pi(%a,\\%s.%a)" pp a (Bindlib.name_of x) pp b
   in pp
 
-(** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
-    symbol [s]), to the output channel [oc]. *)
-let print_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
-  (* Print the pattern variable declarations. *)
-  let get_patt_names : term list -> string list = fun ts ->
-    let names = Stdlib.ref [] in
+(** [print_rule oc lhs rhs] outputs the rule declaration [lhs]->[rhs]
+    to the output channel [oc] *)
+let print_rule : Format.formatter -> term -> term -> unit =
+  fun oc lhs rhs ->
+  (* gets pattern and binded variable names *)
+  let add_var_names : StrSet.t -> term -> StrSet.t = fun ns t ->
+    let names = Stdlib.ref ns in
     let fn t =
       match t with
-      | Patt(_,n,_) -> Stdlib.(names := n :: !names)
+      | Patt(_,n,_) -> Stdlib.(names := StrSet.add ("&" ^ n) !names)
+      | Abst(_,b) ->
+        let (x, _) = Bindlib.unbind b in
+        Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)
       | _           -> ()
     in
-    List.iter (Basics.iter fn) ts;
-    List.sort_uniq String.compare Stdlib.(!names)
+    Basics.iter fn t;
+    Stdlib.(!names)
   in
-  let names = get_patt_names r.lhs in
-  if names <> [] then
+  let names = add_var_names StrSet.empty lhs in
+  let names = add_var_names names rhs in
+  if not (StrSet.is_empty names) then
     begin
-      let print_name oc x = Format.fprintf oc "  &%s : term" x in
-      Format.fprintf oc "(VAR\n%a\n)\n" (List.pp print_name "\n") names
+      let print_name oc x = Format.fprintf oc "  %s : term\n" x in
+      let pp_strset oc = StrSet.iter (print_name oc) in
+      Format.fprintf oc "(VAR\n%a)\n" pp_strset names
     end;
   (* Print the rewriting rule. *)
-  let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
   Format.fprintf oc "(RULES %a" (print_term true) lhs;
-  let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
+
+(** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on the
+    symbol [s]), to the output channel [oc]. *)
+let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
+  let lhs = Basics.add_args (symb s) r.lhs in
+  let rhs = Basics.term_of_rhs r in
+  print_rule oc lhs rhs
 
 (** [to_HRS oc sign] outputs a TPDB representation of the rewriting system of
     the signature [sign] to the output channel [oc]. *)
@@ -110,8 +121,7 @@ let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
   Format.fprintf oc "\n(COMMENT rewriting rules)\n";
   let print_rules s =
     match !(s.sym_def) with
-    | Some(d) -> Format.fprintf oc "(RULES %a\n" print_sym s;
-                 Format.fprintf oc "    -> %a)\n" (print_term false) d
-    | None    -> List.iter (print_rule oc s) !(s.sym_rules)
+    | Some(d) -> print_rule oc (symb s) d
+    | None    -> List.iter (print_sym_rule oc s) !(s.sym_rules)
   in
   iter_symbols print_rules
