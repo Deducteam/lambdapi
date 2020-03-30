@@ -72,8 +72,8 @@ let print_rule : Format.formatter -> term -> term -> unit =
   Format.fprintf oc "(RULES %a" (print_term true) lhs;
   Format.fprintf oc "\n    -> %a)\n" (print_term false) rhs
 
-(** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on the
-    symbol [s]), to the output channel [oc]. *)
+(** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
+   the symbol [s]), to the output channel [oc]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
   let lhs = Basics.add_args (symb s) r.lhs in
   let rhs = Basics.term_of_rhs r in
