@@ -373,8 +373,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         fatal t.pos "Dependent products are not allowed in a pattern."
     | (P_Prod(xs,b)    , _                  ) ->
         fst (scope_binder _Prod env xs b)
-    | (P_LLet(x,xs,t,a,u), M_Term(_)        )
-    | (P_LLet(x,xs,t,a,u), M_RHS(_)         ) ->
+    | (P_LLet(x,xs,a,t,u), M_Term(_)        )
+    | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
         let a =
           let a = Option.get (Pos.none P_Wild) a in
           scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
@@ -443,7 +443,7 @@ let patt_vars : p_term -> (string * int) list * string list =
     | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
     | P_Abst(xs,t)       -> patt_vars (arg_patt_vars acc xs) t
     | P_Prod(xs,b)       -> patt_vars (arg_patt_vars acc xs) b
-    | P_LLet(_,xs,t,a,u) ->
+    | P_LLet(_,xs,a,t,u) ->
         let pvs = patt_vars (patt_vars (arg_patt_vars acc xs) t) u in
         begin
           match a with

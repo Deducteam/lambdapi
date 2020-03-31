@@ -377,7 +377,7 @@ let parser term @(p : prio) =
   (* Local let. *)
   | _let_ x:ident a:arg* b:{":" (term PFunc)}? "≔" t:(term PFunc) _in_
       u:(term PFunc)
-      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,b,u))
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,b,t,u))
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))

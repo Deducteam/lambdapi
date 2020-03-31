@@ -49,7 +49,7 @@ and p_term_aux =
   (** Abstraction over several variables. *)
   | P_Prod of p_arg list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_arg list * p_term * p_type option * p_term
+  | P_LLet of ident * p_arg list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -219,7 +219,7 @@ let rec eq_p_term : p_term eq = fun t1 t2 ->
   | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)            )
   | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)            ) ->
       List.equal eq_p_arg xs1 xs2 && eq_p_term t1 t2
-  | (P_LLet(x1,xs1,t1,a1,u1), P_LLet(x2,xs2,t2,a2,u2)) ->
+  | (P_LLet(x1,xs1,a1,t1,u1), P_LLet(x2,xs2,a2,t2,u2)) ->
       eq_ident x1 x2 && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
       && eq_p_term u1 u2 && List.equal eq_p_arg xs1 xs2
   | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)             ) ->

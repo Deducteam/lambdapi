@@ -67,7 +67,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | (P_Impl(a,b)         , PFunc) -> out "%a@ ⇒ %a" pp_appl a pp_func b
     | (P_Abst(args,t)      , PFunc) -> out "λ%a,@ %a" pp_p_args args pp_func t
     | (P_Prod(args,b)      , PFunc) -> out "∀%a,@ %a" pp_p_args args pp_func b
-    | (P_LLet(x,args,t,a,u), PFunc) ->
+    | (P_LLet(x,args,a,t,u), PFunc) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@]@ in@ %a"
           pp_ident x pp_p_args args pp_p_annot a pp_func t pp_func u
     | (P_NLit(i)           , _    ) -> out "%i" i
@@ -87,7 +87,7 @@ let rec pp_p_term : p_term pp = fun oc t ->
     | P_Abst(args,t)       -> out "λ%a,@ %a" pp_p_args args pp_toplevel t
     | P_Prod(args,b)       -> out "∀%a,@ %a" pp_p_args args pp_toplevel b
     | P_Impl(a,b)          -> out "%a@ ⇒ %a" (pp PAppl) a pp_toplevel b
-    | P_LLet(x,args,t,a,u) ->
+    | P_LLet(x,args,a,t,u) ->
         out "@[<hov 2>let %a%a%a ≔@ %a@]@ in@ %a" pp_ident x
           pp_p_args args pp_p_annot a pp_toplevel t pp_toplevel u
     | _                    -> out "%a" (pp PFunc) t
