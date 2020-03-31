@@ -325,12 +325,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
 and snf : ctxt -> term -> term = fun ctx t ->
   let h = whnf ctx t in
   match h with
-  | Vari(x)     ->
-      begin
-        match Ctxt.def_of x ctx with
-        | None    -> h
-        | Some(t) -> snf ctx t
-      end
+  | Vari(_)     -> h
   | Type        -> h
   | Kind        -> h
   | Symb(_)     -> h
