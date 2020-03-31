@@ -65,7 +65,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let t = scope pt in
       let a =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
-        | Some(a) -> Eval.eval cfg a
+        | Some(a) -> Eval.eval cfg [] a
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
       out 3 "(infr) %a : %a\n" pp t pp a
@@ -74,7 +74,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let t = scope pt in
       let v =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
-        | Some(_) -> Eval.eval cfg t
+        | Some(_) -> Eval.eval cfg [] t
         | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
       out 3 "(comp) %a\n" pp v
