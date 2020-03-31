@@ -41,12 +41,6 @@ let rec count_products : term -> int = fun t ->
   | Prod(_,b) -> 1 + count_products (Bindlib.subst b Kind)
   | _         -> 0
 
-(** [imply t u] creates the term [t ⇒ u], that is, the dependent product
-    [∀x: t, u] where [u] does not depend on [x]. *)
-let imply : term -> term -> term = fun t u ->
-  let dummy = Bindlib.new_var mkfree "_" in
-  Prod(t, Bindlib.unbox (Bindlib.bind_var dummy (lift u)))
-
 (** [get_args t] decomposes the {!type:term} [t] into a pair [(h,args)], where
     [h] is the head term of [t] and [args] is the list of arguments applied to
     [h] in [t]. The returned [h] cannot be an [Appl] node. *)
