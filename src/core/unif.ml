@@ -88,7 +88,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   let decompose () =
     (* Propagate context *)
-    let add_arg_pb l t1 t2 = (ctx,t1,t2)::l in
+    let add_arg_pb l a b = (ctx,a,b)::l in
     let to_solve =
       try List.fold_left2 add_arg_pb p.to_solve ts1 ts2
       with Invalid_argument _ -> error () in
