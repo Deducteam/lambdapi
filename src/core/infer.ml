@@ -114,7 +114,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
      -------------------------------------------
         ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
-  | LLet(t,a,u) ->
+  | LLet(a,t,u) ->
       check ctx a Type;
       check ctx t a;
       (* Unbind [u] and enrich context with [x: a ≔ t] *)

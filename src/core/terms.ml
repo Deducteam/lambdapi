@@ -60,7 +60,7 @@ type term =
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
   | LLet of term * term * (term, term) Bindlib.binder
-  (** [LLet(t, a, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
+  (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -423,7 +423,7 @@ let _TRef : term option ref -> tbox = fun r ->
 
 (** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
-  Bindlib.box_apply3 (fun t a u -> LLet(t, a, u))
+  Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
 
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.
@@ -447,7 +447,7 @@ let rec lift : term -> tbox = fun t ->
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
   | TRef(r)     -> _TRef r
-  | LLet(t,a,u) -> _LLet (lift t) (lift a) (Bindlib.box_binder lift u)
+  | LLet(a,t,u) -> _LLet (lift a) (lift t) (Bindlib.box_binder lift u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
     metavariable,  instantiated term environment,  and reference cell has been

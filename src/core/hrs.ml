@@ -40,7 +40,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Prod(a,b)    ->
         let (x, b) = Bindlib.unbind b in
         out "pi(%a,\\%s.%a)" pp a (Bindlib.name_of x) pp b
-    | LLet(t,_,u)  -> pp oc (Bindlib.subst u t)
+    | LLet(_,t,u)  -> pp oc (Bindlib.subst u t)
   in pp
 
 (** [print_rule oc lhs rhs] outputs the rule declaration [lhs]->[rhs]

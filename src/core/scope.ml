@@ -384,7 +384,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let u = scope (Env.add v a (Some(t)) env) u in
         if not (Bindlib.occur v u) then
           wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
-        _LLet t a (Bindlib.bind_var v u)
+        _LLet a t (Bindlib.bind_var v u)
     | (P_LLet(_)       , M_LHS(_)           ) ->
         fatal t.pos "Let-bindings are not allowed in a LHS."
     | (P_LLet(_)       , M_Patt             ) ->

@@ -101,7 +101,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
                                     eq ((a1,a2)::(b1,b2)::l)
-    | (LLet(t1,a1,u1), LLet(t2,a2,u2)) ->
+    | (LLet(a1,t1,u1), LLet(a2,t2,u2)) ->
         let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
         eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
     | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
@@ -152,7 +152,7 @@ let iter : (term -> unit) -> term -> unit = fun action ->
     | Prod(a,b)
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
-    | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
   in iter
 
 (** {3 Metavariables} *)
@@ -182,7 +182,7 @@ let iter_meta : bool -> (meta -> unit) -> term -> unit = fun b f ->
     | Abst(a,b)   -> iter a; iter (Bindlib.subst b Kind)
     | Appl(t,u)   -> iter t; iter u
     | Meta(v,ts)  -> f v; Array.iter iter ts; if b then iter !(v.meta_type)
-    | LLet(t,a,u) -> iter t; iter a; iter (Bindlib.subst u Kind)
+    | LLet(a,t,u) -> iter a; iter t; iter (Bindlib.subst u Kind)
   in iter
 
 (** [occurs m t] tests whether the metavariable [m] occurs in the term [t]. *)

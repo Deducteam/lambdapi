@@ -34,7 +34,7 @@ let find : string -> env -> tvar = fun n env ->
 let to_prod : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
-    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
+    | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Prod a (Bindlib.bind_var x t)
   in
   Bindlib.unbox (List.fold_left fn t env)
@@ -47,7 +47,7 @@ let to_prod : env -> tbox -> term = fun env t ->
 let to_abst : env -> tbox -> term = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
-    | Some(u) -> _LLet u a (Bindlib.bind_var x t)
+    | Some(u) -> _LLet a u (Bindlib.bind_var x t)
     | None    -> _Abst a (Bindlib.bind_var x t)
   in
   Bindlib.unbox (List.fold_left fn t env)

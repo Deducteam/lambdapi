@@ -36,7 +36,7 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let fn (t,c) elt =
     match elt with
     | (x,a,None   ) -> (_Prod (lift a) (Bindlib.bind_var x t), c + 1)
-    | (x,a,Some(u)) -> (_LLet (lift u) (lift a) (Bindlib.bind_var x t), c)
+    | (x,a,Some(u)) -> (_LLet (lift a) (lift u) (Bindlib.bind_var x t), c)
   in
   let (t, c) = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
@@ -48,7 +48,7 @@ let rec to_llet ctx t =
   | []                 -> t
   | (_,_,None   )::ctx -> to_llet ctx t
   | (x,a,Some(u))::ctx -> let body = Bindlib.bind_var x (lift t) in
-                          to_llet ctx (LLet(u,a,Bindlib.unbox body))
+                          to_llet ctx (LLet(a,u,Bindlib.unbox body))
 
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)

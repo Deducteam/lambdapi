@@ -135,7 +135,7 @@ and pp_term : term pp = fun oc t ->
         else
           out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
         if wrap then out oc ")"
-    | LLet(t,a,u) ->
+    | LLet(a,t,u) ->
         if wrap then out oc "(";
         let x, u = Bindlib.unbind u in
         out oc "let %a" pp_tvar x;

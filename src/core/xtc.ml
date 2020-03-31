@@ -57,7 +57,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_term i s) t
-  | LLet(t,_,u)             -> print_term i s oc (Bindlib.subst u t)
+  | LLet(_,t,u)             -> print_term i s oc (Bindlib.subst u t)
 
 and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -91,7 +91,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
-  | LLet(t,_,u)             -> print_type i s oc (Bindlib.subst u t)
+  | LLet(_,t,u)             -> print_type i s oc (Bindlib.subst u t)
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
