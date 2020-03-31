@@ -41,15 +41,6 @@ let to_prod : ctxt -> term -> term * int = fun ctx t ->
   let (t, c) = List.fold_left fn (lift t, 0) ctx in
   (Bindlib.unbox t, c)
 
-(** [to_llet ctx t] builds one let-binding on top of [t] for each defined
-    variable in [ctx]. Undefined variables of [ctx] or not bound in [t]. *)
-let rec to_llet ctx t =
-  match ctx with
-  | []                 -> t
-  | (_,_,None   )::ctx -> to_llet ctx t
-  | (x,a,Some(u))::ctx -> let body = Bindlib.bind_var x (lift t) in
-                          to_llet ctx (LLet(a,u,Bindlib.unbox body))
-
 (** [sub ctx vs] returns the sub-context of [ctx] made of the variables of
     [vs]. *)
 let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
