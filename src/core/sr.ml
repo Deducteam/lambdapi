@@ -143,8 +143,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   | Some(cs) ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
-      (* Contexts ignored: [solve] doesn't generate contexts with defined
-         variables. *)
+      (* Contexts ignored: [infer_constr] is called with an empty context and
+       * neither [check] nor [solve] generate contexts with defined
+       * variables. *)
       (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
       (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
     in
