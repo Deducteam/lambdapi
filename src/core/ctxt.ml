@@ -49,10 +49,10 @@ let sub : ctxt -> tvar array -> ctxt = fun ctx vs ->
   in
   List.fold_right f ctx []
 
-(** [unfold ctx t] behaves like {!val:Terms.unfold t} except when [t] is a
-    term of the form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is
-    replaced by the definition of [x] in [ctx]. In particular, if no operation
-    is carried out on [t], we have [unfold ctx t == t]. *)
+(** [unfold ctx t] behaves like {!val:Terms.unfold t} unless term[t] is of the
+    form [Vari(x)] with [x] defined in [ctx]. In this case, [t] is replaced by
+    the definition of [x] in [ctx].  In particular, if no operation is carried
+    out on [t], we have [unfold ctx t == t]. *)
 let rec unfold : ctxt -> term -> term = fun ctx t ->
   match t with
   | Meta(m, ar)          ->
