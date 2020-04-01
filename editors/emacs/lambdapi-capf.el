@@ -13,8 +13,6 @@
 ;;
 ;;; Commentary:
 ;;
-;; TODO: more support for company
-;;
 ;;; Code:
 (require 'lambdapi-vars)
 

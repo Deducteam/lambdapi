@@ -18,9 +18,24 @@ package-install RET lambdapi-mode` should then be necessary.
 Meanwhile, the package archive can be generated with 
 `make dist` and `make install`.
 
+Entering unicode
+----------------
+To enter unicode characters, there are several options. The first is to use
+`company` mode with `company-math`. For this, ensure you have `company-mode`
+enabled, and add to your emacs configuration file
+
+``` emacs-lisp
+(add-hook 'lambdapi-mode-hook
+  (lambda () (setq-local company-backends
+                         (cons #'company-math-symbols-unicode company-backends))))
+```
+
+
 Other relevant packages
 -----------------------
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion
+* [company-math](https://github.com/vspinu/company-math): unicode symbols auto
+  completion
 
 The author thanks the [nim-mode](https://github.com/nim-lang/nim-mode) for
 serving as template for the development of several parts of this mode.
