@@ -147,9 +147,9 @@ else
 endif
 
 # Install for the emacs mode (system-wide).
-EMACS = $(shell command -v emacs)
+EMACS = $(shell which emacs)
 .PHONY: install_emacs
-install_emacs: editors/emacs/lambdapi.el
+install_emacs:
 ifeq ($($(EMACS)/.),)
 	@printf "\e[36mWill not install emacs mode.\e[39m\n"
 else
