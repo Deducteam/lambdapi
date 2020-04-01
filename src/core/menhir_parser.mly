@@ -56,8 +56,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     let nb_args = List.length args in
     begin
       match h.elt with
-      | P_Appl(_,_)     -> assert false (* Cannot happen. *)
-      | P_Iden(x,_)     ->
+      | P_Appl(_,_)       -> assert false (* Cannot happen. *)
+      | P_Iden(x,_)       ->
           let (p,x) = x.elt in
           if p = [] && is_pat_var env x then
             begin
@@ -66,10 +66,10 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 if nb_args > n then Hashtbl.replace arity x nb_args
               with Not_found -> Hashtbl.add arity x nb_args
             end
-      | P_Wild          -> ()
-      | P_Type          -> fatal h.pos "Type in legacy pattern."
-      | P_Prod(_,_)     -> fatal h.pos "Product in legacy pattern."
-      | P_Abst(xs,t)    ->
+      | P_Wild            -> ()
+      | P_Type            -> fatal h.pos "Type in legacy pattern."
+      | P_Prod(_,_)       -> fatal h.pos "Product in legacy pattern."
+      | P_Abst(xs,t)      ->
           begin
             match xs with
             | [(_       ,Some(a),_)] ->
@@ -80,15 +80,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
                 compute_arities env t
             | _                      -> assert false
           end
-      | P_Impl(_,_)     -> fatal h.pos "Implication in legacy pattern."
-      | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-      | P_Meta(_,_)     -> assert false
-      | P_Patt(_,_)     -> assert false
-      | P_NLit(_)       -> assert false
-      | P_UnaO(_,_)     -> assert false
-      | P_BinO(_,_,_)   -> assert false
-      | P_Wrap(_)       -> assert false
-      | P_Expl(_)       -> assert false
+      | P_Impl(_,_)       -> fatal h.pos "Implication in legacy pattern."
+      | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
+      | P_Meta(_,_)       -> assert false
+      | P_Patt(_,_)       -> assert false
+      | P_NLit(_)         -> assert false
+      | P_UnaO(_,_)       -> assert false
+      | P_BinO(_,_,_)     -> assert false
+      | P_Wrap(_)         -> assert false
+      | P_Expl(_)         -> assert false
     end;
     List.iter (fun (_,t) -> compute_arities env t) args
   in
@@ -147,8 +147,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
     match t.elt with
     | P_Iden(_)
     | P_Type
-    | P_Wild          -> t
-    | P_Prod(xs,b)    ->
+    | P_Wild            -> t
+    | P_Prod(xs,b)      ->
         let (x,a) =
           match xs with
           | [([Some x],Some(a),_)] -> (x, build env a)
@@ -156,8 +156,8 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
         in
         let b = build (x.elt::env) b in
         Pos.make t.pos (P_Prod([([Some x],Some(a),false)], b))
-    | P_Impl(a,b)     -> Pos.make t.pos (P_Impl(build env a, build env b))
-    | P_Abst(xs,u)    ->
+    | P_Impl(a,b)       -> Pos.make t.pos (P_Impl(build env a, build env b))
+    | P_Abst(xs,u)      ->
         let (x,a) =
           match xs with
           | [([x],ao,_)] -> (x, Option.map (build env) ao)
@@ -169,15 +169,15 @@ let translate_old_rule : old_p_rule -> p_rule = fun r ->
           | None    -> build env u
         in
         Pos.make t.pos (P_Abst([([x],a,false)], u))
-    | P_Appl(t1,t2)   -> Pos.make t.pos (P_Appl(build env t1, build env t2))
-    | P_Meta(_,_)     -> fatal t.pos "Invalid legacy rule syntax."
-    | P_Patt(_,_)     -> fatal h.pos "Pattern in legacy rule."
-    | P_LLet(_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
-    | P_NLit(_)       -> fatal h.pos "Nat literal in legacy rule."
-    | P_UnaO(_,_)     -> fatal h.pos "Unary operator in legacy rule."
-    | P_BinO(_,_,_)   -> fatal h.pos "Binary operator in legacy rule."
-    | P_Wrap(_)       -> fatal h.pos "Wrapping constructor in legacy rule."
-    | P_Expl(_)       -> fatal h.pos "Explicit argument in legacy rule."
+    | P_Appl(t1,t2)     -> Pos.make t.pos (P_Appl(build env t1, build env t2))
+    | P_Meta(_,_)       -> fatal t.pos "Invalid legacy rule syntax."
+    | P_Patt(_,_)       -> fatal h.pos "Pattern in legacy rule."
+    | P_LLet(_,_,_,_,_) -> fatal h.pos "Let expression in legacy rule."
+    | P_NLit(_)         -> fatal h.pos "Nat literal in legacy rule."
+    | P_UnaO(_,_)       -> fatal h.pos "Unary operator in legacy rule."
+    | P_BinO(_,_,_)     -> fatal h.pos "Binary operator in legacy rule."
+    | P_Wrap(_)         -> fatal h.pos "Wrapping constructor in legacy rule."
+    | P_Expl(_)         -> fatal h.pos "Explicit argument in legacy rule."
   in
   (* NOTE the computation order is important for setting arities properly. *)
   let lhs = build [] lhs in

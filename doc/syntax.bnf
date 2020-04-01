@@ -90,7 +90,7 @@ reserved "why3"
   | <type> "⇒" <type>
   | "∀" <arg>+ "," <type>
   | "λ" <arg>+ "," <term>
-  | "let" <ident> <arg>* "≔" <term> "in" <term>
+  | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
   | <nat_lit>
   | <term> <infix_op> <term>
 

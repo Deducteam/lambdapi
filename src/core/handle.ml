@@ -22,12 +22,10 @@ let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
   match s with
   | "+1" ->
      let builtin = Sign.builtin pos builtins in
-     let symb_0 = builtin "0" in
-     let typ_0 = !(symb_0.sym_type) in
-     let x = Bindlib.new_var mkfree "_" in
-     let typ_s = Ctxt.to_prod [(x, typ_0)] typ_0 in
-     if not (Basics.eq typ_s !(sym.sym_type)) then
-       fatal pos "The type of [%s] is not of the form [%a]"
+     let typ_0 = lift (!((builtin "0").sym_type)) in
+     let typ_s = Bindlib.unbox (_Impl typ_0 typ_0) in
+     if not (Basics.eq [] typ_s !(sym.sym_type)) then
+       fatal pos "The type of [%s] is not of the form [%a]."
          sym.sym_name pp typ_s
   | _ -> ()
 
@@ -107,7 +105,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* We scope the type of the declaration. *)
       let a = scope_basic e a in
       (* We check that [a] is typable by a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains. *)
       if Basics.has_metas true a then
         begin
@@ -170,11 +168,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       let a =
         match ao with
         | Some(a) ->
-            Typing.sort_type ss.builtins Ctxt.empty a;
-            if Typing.check ss.builtins Ctxt.empty t a then a else
+            Typing.sort_type ss.builtins [] a;
+            if Typing.check ss.builtins [] t a then a else
             fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
         | None    ->
-            match Typing.infer ss.builtins Ctxt.empty t with
+            match Typing.infer ss.builtins [] t with
             | Some(a) -> a
             | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
       in
@@ -203,7 +201,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping the type (statement) of the theorem. *)
       let a = scope_basic e a in
       (* Check that [a] is typable and that its type is a sort. *)
-      Typing.sort_type ss.builtins Ctxt.empty a;
+      Typing.sort_type ss.builtins [] a;
       (* We check that no metavariable remains in [a]. *)
       if Basics.has_metas true a then
         begin
