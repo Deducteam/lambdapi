@@ -107,8 +107,8 @@ let declared_id = Prefix.grammar declared_ids
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
 let forbidden_in_ops =
-  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; ":"; "→"; "⇒"
-  ; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
+  [ "("; ")"; "."; "λ"; "∀"; "&"; "["; "]"; "{"; "}"; "?"; ":"; "→"; "⊢"
+  ; "⇒"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
 (** [get_ops loc p] loads the unary and binary operators associated to  module
@@ -375,8 +375,9 @@ let parser term @(p : prio) =
   | "λ" xs:arg_ident+ ":" a:(term PFunc) "," t:(term PFunc)
       when p >= PFunc -> in_pos _loc (P_Abst([xs,Some(a),false],t))
   (* Local let. *)
-  | _let_ x:ident a:arg* "≔" t:(term PFunc) _in_ u:(term PFunc)
-      when p >= PFunc -> in_pos _loc (P_LLet(x,a,t,u))
+  | _let_ x:ident a:arg* b:{":" (term PFunc)}? "≔" t:(term PFunc) _in_
+      u:(term PFunc)
+      when p >= PFunc -> in_pos _loc (P_LLet(x,a,b,t,u))
   (* Natural number literal. *)
   | n:nat_lit
       when p >= PAtom -> in_pos _loc (P_NLit(n))
@@ -480,6 +481,16 @@ let parser query =
       Pos.in_pos _loc (P_query_flag(s, b))
   | mf:assert_must_fail a:assertion ->
       Pos.in_pos _loc (P_query_assert(mf,a))
+  | mf:assert_must_fail ps:arg* "⊢" t:term "≡" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Abst(ps,u)) in
+      let assert_conv = P_assert_conv(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_conv))
+  | mf:assert_must_fail ps:arg* "⊢" t:term ":" u:term ->
+      let ps_t = Pos.in_pos _loc (P_Abst(ps,t)) in
+      let ps_u = Pos.in_pos _loc (P_Prod(ps,u)) in
+      let assert_typing = P_assert_typing(ps_t,ps_u) in
+      Pos.in_pos _loc (P_query_assert(mf,assert_typing))
   | _type_ t:term ->
       let c = Eval.{strategy = NONE; steps = None} in
       Pos.in_pos _loc (P_query_infer(t,c))

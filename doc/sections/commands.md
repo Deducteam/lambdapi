@@ -291,6 +291,7 @@ run the command `lambdapi --help`.
 
 ```
 set flag "print_implicits" on // default is off
+set flag "print_contexts" on // default is off
 set flag "print_domains" on // default is off
 set flag "eta_equality" on // default is off
 ```

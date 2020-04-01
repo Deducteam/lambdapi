@@ -15,6 +15,8 @@ In the interest of code source uniformity, we ask that:
  - lines length should be limited to *78 characters* (excluding newline).
 
 You should at the very least run `make sanity_check` before committing anything.
+Please check you have GNU awk (gawk) installed or another UTF-8 compatible
+implementation of the AWK programming language interpreter.
 
 
 Type annotations and interface

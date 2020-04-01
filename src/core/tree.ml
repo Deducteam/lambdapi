@@ -527,7 +527,7 @@ module CM = struct
       match ph, h with
       | Symb(_), Symb(_)
       | Vari(_), Vari(_) ->
-          if lenh = lenp && Basics.eq ph h
+          if lenh = lenp && Basics.eq [] ph h
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | _      , Patt(_) ->

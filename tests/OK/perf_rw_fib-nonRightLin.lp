@@ -13,4 +13,4 @@ rule fib3 0              → 0
 
 assert fib 15 ≡ 610
 assert fib 24 ≡ 46368
-compute fib3 22
+compute fib3 21

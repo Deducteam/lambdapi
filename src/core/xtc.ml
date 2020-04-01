@@ -1,6 +1,7 @@
 (** This module provides a function to translate a signature to the XTC format
     used in the termination competition.
-    (http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd)
+    @see
+    <http://cl2-informatik.uibk.ac.at/mercurial.cgi/TPDB/file/tip/xml/xtc.xsd>
 *)
 
 open Extra
@@ -56,6 +57,7 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
      let (x, t) = Bindlib.unbind t in
      out "<lambda>@.<var>v_%s</var>@.<type>%a<type>@.%a</lambda>@."
        (Bindlib.name_of x) (print_type i s) a (print_term i s) t
+  | LLet(_,t,u)             -> print_term i s oc (Bindlib.subst u t)
 
 and print_type : int -> string -> term pp = fun i s oc t ->
   let out fmt = Format.fprintf oc fmt in
@@ -89,6 +91,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
        out "<arrow>@.<var>v_%s</var>@." (Bindlib.name_of x);
        out "<type>@.%a</type>@.<type>@.%a</type>@.</arrow>"
          (print_type i s) a (print_type i s) b
+  | LLet(_,t,u)             -> print_type i s oc (Bindlib.subst u t)
 
 (** [print_rule oc s r] outputs the rule declaration corresponding [r] (on the
     symbol [s]), to the output channel [oc]. *)
@@ -126,6 +129,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     | TRef _
     | Wild
     | Prod (_, _)
+    | LLet(_) (* No let in LHS *)
     | Vari _              -> assert false
     | Symb (_, _)         -> t
     | Abst (t1, b)        ->
@@ -159,10 +163,13 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
       (Symb(s,Nothing)) r.lhs
   in
   let ctx =
-    let fn l x = (x,Meta(fresh_meta Type 0,[||]))::l in
+    let fn l x = (x, (Meta(fresh_meta Type 0,[||])), None) :: l in
     List.fold_left fn [] !var_list
   in
   let (_,l) = Infer.infer ctx lhs in
+  (* Discard contexts *)
+  let l = List.map (fun (_,t,u) -> (t,u)) l in
+  let ctx = List.map (fun (x,a,_) -> (x, a)) ctx in
   List.map (fun (v,ty) -> Bindlib.name_of v, List.assoc ty l) ctx
 
 (** [to_XTC oc sign] outputs a XTC representation of the rewriting system of
