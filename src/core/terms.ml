@@ -59,6 +59,8 @@ type term =
   (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
   (** Reference cell (only used for surface matching). *)
+  | LLet of term * term * (term, term) Bindlib.binder
+  (** [LLet(a, t, u)] is [let x : a ≔ t in u] (with [x] bound in [u]). *)
 
 (** {b NOTE} that a wildcard "_" of the concrete (source code) syntax may have
     a different representation depending on the application. For instance, the
@@ -258,8 +260,12 @@ let is_constant : sym -> bool = fun s -> s.sym_prop = Const
 (** [is_private s] tells whether the symbol [s] is private. *)
 let is_private : sym -> bool = fun s -> s.sym_expo = Privat
 
+(** Typing context associating a [Bindlib] variable to a type and possibly a
+    definition. *)
+type ctxt = (term Bindlib.var * term * term option) list
+
 (** Type of a list of unification constraints. *)
-type unif_constrs = (term * term) list
+type unif_constrs = (ctxt * term * term) list
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
@@ -282,6 +288,9 @@ let rec unfold : term -> term = fun t ->
         | Some(v) -> unfold v
       end
   | _                    -> t
+
+(** {b NOTE} [unfold] could be defined as [Ctxt.unfold []], but since [unfold]
+    is critical regarding performance, it is kept as simple as possible. *)
 
 (** {b NOTE} that {!val:unfold} must (almost) always be called before matching
     over a value of type {!type:term}. *)
@@ -412,6 +421,10 @@ let _Wild : tbox = Bindlib.box Wild
 let _TRef : term option ref -> tbox = fun r ->
   Bindlib.box (TRef(r))
 
+(** [_LLet t a u] lifts let binding [let x := t : a in u<x>]. *)
+let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
+  Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
+
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
@@ -434,6 +447,7 @@ let rec lift : term -> tbox = fun t ->
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
   | TRef(r)     -> _TRef r
+  | LLet(a,t,u) -> _LLet (lift a) (lift t) (Bindlib.box_binder lift u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
     metavariable,  instantiated term environment,  and reference cell has been

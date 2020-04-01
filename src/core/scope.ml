@@ -246,24 +246,27 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
-  (* Scoping of a binder (abstraction or product). *)
+  (* Scoping of a binder (abstraction or product). The environment made of the
+   * variables is also returned. *)
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
-      | []                  -> scope env t
+      | []                  -> (scope env t, [])
       | ([]       ,_,_)::xs -> aux env xs
       | (None  ::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree "_" in
           let a = scope_domain env d in
-          let t = aux env ((l,d,i)::xs) in
-          cons a (Bindlib.bind_var v t)
+          let (t,env) = aux env ((l,d,i)::xs) in
+          (cons a (Bindlib.bind_var v t), Env.add v a None env)
       | (Some x::l,d,i)::xs ->
           let v = Bindlib.new_var mkfree x.elt in
           let a = scope_domain env d in
-          let t = aux ((x.elt,(v,a)) :: env) ((l,d,i) :: xs) in
+          let (t,env) =
+            aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
+          in
           if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
-          cons a (Bindlib.bind_var v t)
+          (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
     aux env xs
   (* Scoping function for head terms. *)
@@ -350,52 +353,65 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                           fatal t.pos "Pattern variable not in scope."
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
-    | (P_Patt(_,_)     , _                ) ->
+    | (P_Patt(_,_)     , _                  ) ->
         fatal t.pos "Pattern variables are only allowed in rewriting rules."
-    | (P_Appl(_,_)     , _                ) -> assert false (* Unreachable. *)
-    | (P_Impl(_,_)     , M_LHS(_)         ) ->
+    | (P_Appl(_,_)     , _                  ) ->
+        assert false (* Unreachable. *)
+    | (P_Impl(_,_)     , M_LHS(_)           ) ->
         fatal t.pos "Implications are not allowed in a LHS."
-    | (P_Impl(_,_)     , M_Patt           ) ->
+    | (P_Impl(_,_)     , M_Patt             ) ->
         fatal t.pos "Implications are not allowed in a pattern."
-    | (P_Impl(a,b)     , _                ) ->
+    | (P_Impl(a,b)     , _                  ) ->
         _Impl (scope env a) (scope env b)
-    | (P_Abst(_,_)     , M_Patt           ) ->
+    | (P_Abst(_,_)     , M_Patt             ) ->
         fatal t.pos "Abstractions are not allowed in a pattern."
-    | (P_Abst(xs,t)    , _                ) -> scope_binder _Abst env xs t
-    | (P_Prod(_,_)     , M_LHS(_)         ) ->
+    | (P_Abst(xs,t)    , _                  ) ->
+        fst (scope_binder _Abst env xs t)
+    | (P_Prod(_,_)     , M_LHS(_)           ) ->
         fatal t.pos "Dependent products are not allowed in a LHS."
-    | (P_Prod(_,_)     , M_Patt   ) ->
+    | (P_Prod(_,_)     , M_Patt             ) ->
         fatal t.pos "Dependent products are not allowed in a pattern."
-    | (P_Prod(xs,b)    , _                ) -> scope_binder _Prod env xs b
-    | (P_LLet(x,xs,t,u), M_Term(_)        ) ->
-        (* “let x = t in u” is desugared as “(λx.u) t” (for now). *)
-        let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs,t))) in
-        _Appl (scope env (Pos.none (P_Abst([([Some x],None,false)], u)))) t
-    | (P_LLet(_,_,_,_) , _                ) ->
-        fatal t.pos "Let-bindings are not allowed in rewriting rules."
-    | (P_NLit(n)       , _                ) ->
+    | (P_Prod(xs,b)    , _                  ) ->
+        fst (scope_binder _Prod env xs b)
+    | (P_LLet(x,xs,a,t,u), M_Term(_)        )
+    | (P_LLet(x,xs,a,t,u), M_RHS(_)         ) ->
+        let a =
+          let a = Option.get (Pos.none P_Wild) a in
+          scope env (if xs = [] then a else Pos.none (P_Prod(xs, a)))
+        in
+        let t = scope env (if xs = [] then t else Pos.none (P_Abst(xs, t))) in
+        let v = Bindlib.new_var mkfree x.elt in
+        let u = scope (Env.add v a (Some(t)) env) u in
+        if not (Bindlib.occur v u) then
+          wrn x.pos "Useless let-binding ([%s] not bound)." x.elt;
+        _LLet a t (Bindlib.bind_var v u)
+    | (P_LLet(_)       , M_LHS(_)           ) ->
+        fatal t.pos "Let-bindings are not allowed in a LHS."
+    | (P_LLet(_)       , M_Patt             ) ->
+        fatal t.pos "Let-bindings are not allowed in a pattern."
+    | (P_NLit(n)       , _                  ) ->
         let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
         and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
-    | (P_UnaO(u,t)    , _                 ) ->
+    | (P_UnaO(u,t)    , _                   ) ->
         let (s, impl) =
           let (op,_,qid) = u in
           let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Unary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [t]
-    | (P_BinO(l,b,r)  , _                 ) ->
+    | (P_BinO(l,b,r)  , _                   ) ->
         let (s, impl) =
           let (op,_,_,qid) = b in
           let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
           (_Symb s (Binary(op)), s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]
-    | (P_Wrap(t)      , _                 ) -> scope env t
-    | (P_Expl(_)      , _                 ) ->
+    | (P_Wrap(t)      , _                   ) -> scope env t
+    | (P_Expl(_)      , _                   ) ->
         fatal t.pos "Explicit argument not allowed here."
   in
   scope env t
@@ -418,21 +434,27 @@ let scope_term : expo -> sig_state -> env -> p_term -> term =
 let patt_vars : p_term -> (string * int) list * string list =
   let rec patt_vars acc t =
     match t.elt with
-    | P_Type           -> acc
-    | P_Iden(_)        -> acc
-    | P_Wild           -> acc
-    | P_Meta(_,ts)     -> Array.fold_left patt_vars acc ts
-    | P_Patt(id,ts)    -> add_patt (Array.fold_left patt_vars acc ts) id ts
-    | P_Appl(t,u)      -> patt_vars (patt_vars acc t) u
-    | P_Impl(a,b)      -> patt_vars (patt_vars acc a) b
-    | P_Abst(xs,t)     -> patt_vars (arg_patt_vars acc xs) t
-    | P_Prod(xs,b)     -> patt_vars (arg_patt_vars acc xs) b
-    | P_LLet(_,xs,t,u) -> patt_vars (patt_vars (arg_patt_vars acc xs) t) u
-    | P_NLit(_)        -> acc
-    | P_UnaO(_,t)      -> patt_vars acc t
-    | P_BinO(t,_,u)    -> patt_vars (patt_vars acc t) u
-    | P_Wrap(t)        -> patt_vars acc t
-    | P_Expl(t)        -> patt_vars acc t
+    | P_Type             -> acc
+    | P_Iden(_)          -> acc
+    | P_Wild             -> acc
+    | P_Meta(_,ts)       -> Array.fold_left patt_vars acc ts
+    | P_Patt(id,ts)      -> add_patt (Array.fold_left patt_vars acc ts) id ts
+    | P_Appl(t,u)        -> patt_vars (patt_vars acc t) u
+    | P_Impl(a,b)        -> patt_vars (patt_vars acc a) b
+    | P_Abst(xs,t)       -> patt_vars (arg_patt_vars acc xs) t
+    | P_Prod(xs,b)       -> patt_vars (arg_patt_vars acc xs) b
+    | P_LLet(_,xs,a,t,u) ->
+        let pvs = patt_vars (patt_vars (arg_patt_vars acc xs) t) u in
+        begin
+          match a with
+          | None    -> pvs
+          | Some(a) -> patt_vars pvs a
+        end
+    | P_NLit(_)          -> acc
+    | P_UnaO(_,t)        -> patt_vars acc t
+    | P_BinO(t,_,u)      -> patt_vars (patt_vars acc t) u
+    | P_Wrap(t)          -> patt_vars acc t
+    | P_Expl(t)          -> patt_vars acc t
   and add_patt ((pvs, nl) as acc) id ts =
     match id with
     | None     -> acc
@@ -522,19 +544,19 @@ let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)
   | P_rw_InIdInTerm(x,t)       ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_InIdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_IdInTerm(x,t)         ->
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_IdInTerm(Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermInIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermInIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))
   | P_rw_TermAsIdInTerm(u,x,t) ->
       let u = scope_pattern ss env u in
       let v = Bindlib.new_var mkfree x.elt in
-      let t = scope_pattern ss ((x.elt,(v, _Kind))::env) t in
+      let t = scope_pattern ss ((x.elt,(v, _Kind, None))::env) t in
       RW_TermAsIdInTerm(u, Bindlib.unbox (Bindlib.bind_var v (lift t)))

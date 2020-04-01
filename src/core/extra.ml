@@ -102,13 +102,26 @@ module List =
 
     (** [filter_map f l] applies [f] to the elements of [l] and keeps the [x]
         such that [Some(x)] in [List.map f l]. *)
-    let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
-      function
+    let rec filter_map : ('a -> 'b option) -> 'a list -> 'b list = fun f l ->
+      match l with
       | []     -> []
       | h :: t ->
           match f h with
           | Some(x) -> x :: filter_map f t
           | None    -> filter_map f t
+
+    (** [filter_rev_map f l] is equivalent to [filter_map f (List.rev l)], but
+        it only traverses the list once and is tail-recursive. *)
+    let filter_rev_map : ('a -> 'b option) -> 'a list -> 'b list = fun f ->
+      let rec frm acc l =
+        match l with
+        | []     -> acc
+        | hd::tl ->
+            match f hd with
+            | Some(x) -> frm (x::acc) tl
+            | None    -> frm acc tl
+      in
+      frm []
 
     (** [filteri_map f l] applies [f] element wise on [l] and keeps [x] such
         that for [e] in [l], [f e = Some(x)]. *)

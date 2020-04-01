@@ -88,7 +88,7 @@ let translate_term : config -> cnst_table -> term ->
         (tbl, Why3.Term.t_true)
     | (_        , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
-        try (tbl, Why3.Term.ps_app (List.assoc_eq Basics.eq t tbl) [])
+        try (tbl, Why3.Term.ps_app (List.assoc_eq (Basics.eq []) t tbl) [])
         with Not_found ->
           (* Otherwise generate a new constant in why3. *)
           let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
@@ -104,7 +104,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
-    let translate_hyp (tbl, map) (name, (_, hyp)) =
+    let translate_hyp (tbl, map) (name, (_, hyp, _)) =
       match translate_term cfg tbl (Bindlib.unbox hyp) with
       | Some(tbl, why3_hyp) -> (tbl, StrMap.add name why3_hyp map)
       | None                -> (tbl, map)
@@ -197,6 +197,6 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Tell the user that the goal is proved (verbose 2). *)
   if !log_enabled then log_why3 "goal proved: axiom [%s] created" axiom_name;
   (* Return the variable terms of each item in the context. *)
-  let terms = List.rev_map (fun (_, (x, _)) -> Vari x) hyps in
+  let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
   Basics.add_args (symb a) terms

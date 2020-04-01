@@ -17,15 +17,15 @@ type subst = tvar array * term array
     constraints [cs]. The returned substitution is given by a couple of arrays
     [(xs,ts)] of the same length.  The array [xs] contains the variables to be
     substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : (term * term) list -> subst = fun cs ->
+let subst_from_constrs : unif_constrs -> subst = fun cs ->
   let rec build_sub acc cs =
     match cs with
-    | []        -> List.split acc
-    | (a,b)::cs ->
-      match Basics.get_args a with
+    | []          -> List.split acc
+    | (c,a,b)::cs ->
+      match Ctxt.get_args c a with
       | Vari(x), [] -> build_sub ((x,b)::acc) cs
       | _, _ ->
-        match Basics.get_args b with
+        match Ctxt.get_args c b with
         | Vari(x), [] -> build_sub ((x,a)::acc) cs
         | _, _ -> build_sub acc cs
   in
@@ -96,6 +96,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     | Type        -> assert false (* Cannot appear in LHS. *)
     | Kind        -> assert false (* Cannot appear in LHS. *)
     | Prod(_,_)   -> assert false (* Cannot appear in LHS. *)
+    | LLet(_,_,_) -> assert false (* Cannot appear in LHS. *)
     | Meta(_,_)   -> assert false (* Cannot appear in LHS. *)
     | TEnv(_,_)   -> assert false (* Cannot appear in LHS. *)
     | Wild        -> assert false (* Cannot appear in LHS. *)
@@ -114,13 +115,13 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let te_envs = Array.map fn metas in
   let rhs = Bindlib.msubst r.elt.rhs te_envs in
   (* Infer the type of the LHS and the constraints. *)
-  match Typing.infer_constr builtins Ctxt.empty lhs with
+  match Typing.infer_constr builtins [] lhs with
   | None                      -> wrn r.pos "Untypable LHS."
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
       log_subj "LHS has type [%a]" pp ty_lhs;
-      let fn (t,u) = log_subj "  if [%a] ~ [%a]" pp t pp u in
+      let fn (c,t,u) = log_subj "  if %a[%a] ~ [%a]" pp_ctxt c pp t pp u in
       List.iter fn lhs_constrs
     end;
   (* Turn constraints into a substitution and apply it. *)
@@ -129,7 +130,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
   let (rhs,ty_lhs) = Bindlib.msubst p ts in
   (* Check that the RHS has the same type as the LHS. *)
-  let to_solve = Infer.check Ctxt.empty rhs ty_lhs in
+  let to_solve = Infer.check [] rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
       log_subj "RHS has type [%a]" pp ty_lhs;
@@ -141,9 +142,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
       fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
   | Some(cs) ->
   let is_constr c =
-    let eq_comm (t1,u1) (t2,u2) =
-      (Eval.eq_modulo t1 t2 && Eval.eq_modulo u1 u2) ||
-      (Eval.eq_modulo t1 u2 && Eval.eq_modulo t2 u1)
+    let eq_comm (_,t1,u1) (_,t2,u2) =
+      (* Contexts ignored: [infer_constr] is called with an empty context and
+       * neither [check] nor [solve] generate contexts with defined
+       * variables. *)
+      (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
+      (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
     in
     List.exists (eq_comm c) lhs_constrs
   in

@@ -59,7 +59,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
   | "T" | "P" ->
      begin
        let exception Invalid_type in
-       try match Eval.whnf !(sym.sym_type) with
+       try match Eval.whnf [] !(sym.sym_type) with
            | Prod (_, b) ->
               let _, b = Bindlib.unbind b in
               if b <> Type then raise Invalid_type
@@ -84,9 +84,9 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        and x = Bindlib.new_var mkfree "x"
        and y = Bindlib.new_var mkfree "y" in
        let ta = Appl (symb symb_T, Vari a) in
-       let c = [(y, ta); (x, ta); (a, term_U)] in
-       let eq_type = Ctxt.to_prod c term_Prop in
-       if not (Basics.eq eq_type !(sym.sym_type)) then
+       let c = [(y, ta, None); (x, ta, None); (a, term_U, None)] in
+       let (eq_type, _) = Ctxt.to_prod c term_Prop in
+       if not (Basics.eq [] eq_type !(sym.sym_type)) then
          fatal pos "The type of [%s] is not of the form [%a]"
            sym.sym_name pp eq_type
      end
@@ -101,10 +101,10 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        in
        let a = Bindlib.new_var mkfree "a"
        and x = Bindlib.new_var mkfree "x" in
-       let c = [(x, Appl (symb symb_T, Vari a)); (a, term_U)] in
+       let c = [(x, Appl(symb symb_T, Vari a), None); (a, term_U, None)] in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
-       let refl_type = Ctxt.to_prod c (Appl (symb symb_P, t)) in
-       if not (Basics.eq refl_type !(sym.sym_type))
+       let (refl_type, _) = Ctxt.to_prod c (Appl (symb symb_P, t)) in
+       if not (Basics.eq [] refl_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp refl_type
      end
@@ -129,17 +129,19 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        and py = Bindlib.new_var mkfree "py"
        and z = Bindlib.new_var mkfree "z" in
        let ta = Appl (symb symb_T, Vari a) in
-       let typ_p = Ctxt.to_prod [(z,ta)] term_Prop in
+       let (typ_p, _) = Ctxt.to_prod [(z, ta, None)] term_Prop in
        let eqaxy = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari y] in
        let p_of y = Appl (symb symb_P, Appl (Vari p, Vari y)) in
-       let c = [(py, p_of y)
-               ;(p, typ_p)
-               ;(xy, Appl (symb symb_P, eqaxy))
-               ;(y, ta)
-               ;(x, ta)
-               ;(a, term_U)] in
-       let eqind_type = Ctxt.to_prod c (p_of x) in
-       if not (Basics.eq eqind_type !(sym.sym_type))
+       let c =
+         [(py, p_of y                  , None)
+         ;(p , typ_p                   , None)
+         ;(xy, Appl(symb symb_P, eqaxy), None)
+         ;(y , ta                      , None)
+         ;(x , ta                      , None)
+         ;(a , term_U                  , None)]
+       in
+       let (eqind_type, _) = Ctxt.to_prod c (p_of x) in
+       if not (Basics.eq [] eqind_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp eqind_type
      end
@@ -179,7 +181,7 @@ let rec add_refs : term -> term = fun t ->
     products. These variables may appear free in the returned term. *)
 let break_prod : term -> term * tvar array = fun a ->
   let rec aux : term -> tvar list -> term * tvar array = fun a vs ->
-    match Eval.whnf a with
+    match Eval.whnf [] a with
     | Prod(_,b) -> let (v,b) = Bindlib.unbind b in aux b (v::vs)
     | a         -> (a, Array.of_list (List.rev vs))
   in aux a []
@@ -192,7 +194,7 @@ let break_prod : term -> term * tvar array = fun a ->
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if Basics.eq p t then Some(Array.map unfold ts) else None
+  if Basics.eq [] p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
     variables” of [xs]),  and it finds the first instance of (a term matching)
@@ -225,7 +227,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if Basics.eq t p then true else
+    if Basics.eq [] t p then true else
       begin
         Time.restore time;
         match unfold t with
@@ -245,17 +247,18 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
-    if Basics.eq p t then _Vari x else
+    if Basics.eq [] p t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type
     | Kind        -> _Kind
     | Symb(s,h)   -> _Symb s h
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
-    (* For now, we fail on products, abstractions and metavariables. *)
+    (* For now, we fail on products, abstractions, metavariables and let. *)
     | Prod(_)     -> fatal None "Cannot rewrite under products."
     | Abst(_)     -> fatal None "Cannot rewrite under abstractions."
     | Meta(_)     -> fatal None "Cannot rewrite metavariables."
+    | LLet(_)     -> fatal None "Cannot rewrite in let."
     (* Forbidden cases. *)
     | Patt(_,_,_) -> assert false
     | TEnv(_,_)   -> assert false
@@ -280,7 +283,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   let (g_env, g_type) = Proof.focus_goal pos ps in
 
   (* Infer the type of [t] (the argument given to the tactic). *)
-  let g_ctxt = Ctxt.of_env g_env in
+  let g_ctxt = Env.to_ctxt g_env in
   let t_type =
     match Typing.infer ps.proof_builtins g_ctxt t with
     | Some(a) -> a
@@ -603,7 +606,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
 
   (* Construct the new goal and its type. *)
   let goal_type = Appl(symb cfg.symb_P, new_term) in
-  let goal_term = Ctxt.make_meta g_ctxt goal_type in
+  let goal_term = make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
   let eqind = symb cfg.symb_eqind in
@@ -634,8 +637,8 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   (* Get the type of the focused goal. *)
   let _, g_type = Proof.focus_goal pos ps in
   (* Check that the type of [g] is of the form “P (eq a t t)”. *)
-  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf g_type) in
-  if not (Eval.eq_modulo l r) then fatal pos "Cannot apply reflexivity.";
+  let (a, l, r)  = get_eq_data pos cfg (Eval.whnf [] g_type) in
+  if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
   (* Build the witness. *)
   add_args (symb cfg.symb_refl) [a; l]
 
@@ -653,7 +656,7 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* We create a new metavariable (“M” in the above). *)
   let meta_type =
     Appl(symb cfg.symb_P, (add_args (symb cfg.symb_eq) [a; r; l])) in
-  let meta_term = Ctxt.make_meta (Ctxt.of_env g_env) meta_type in
+  let meta_term = make_meta (Env.to_ctxt g_env) meta_type in
   (* We build the predicate (“λx, eq a r x” in the above). *)
   let pred =
     let x = Bindlib.new_var mkfree "X" in

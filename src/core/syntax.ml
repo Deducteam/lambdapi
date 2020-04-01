@@ -49,7 +49,7 @@ and p_term_aux =
   (** Abstraction over several variables. *)
   | P_Prod of p_arg list * p_term
   (** Product over several variables. *)
-  | P_LLet of ident * p_arg list * p_term * p_term
+  | P_LLet of ident * p_arg list * p_type option * p_term * p_term
   (** Local let. *)
   | P_NLit of int
   (** Natural number literal. *)
@@ -207,30 +207,30 @@ let eq_binop : binop eq = fun (n1,a1,p1,id1) (n2,a2,p2,id2) ->
 
 let rec eq_p_term : p_term eq = fun t1 t2 ->
   match (t1.elt, t2.elt) with
-  | (P_Iden(q1,b1)       , P_Iden(q2,b2)       ) ->
+  | (P_Iden(q1,b1)       , P_Iden(q2,b2)             ) ->
       eq_qident q1 q2 && b1 = b2
-  | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)      ) ->
+  | (P_Meta(x1,ts1)      , P_Meta(x2,ts2)            ) ->
       eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
-  | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)      ) ->
+  | (P_Patt(x1,ts1)      , P_Patt(x2,ts2)            ) ->
       Option.equal eq_ident x1 x2 && Array.equal eq_p_term ts1 ts2
-  | (P_Appl(t1,u1)       , P_Appl(t2,u2)       )
-  | (P_Impl(t1,u1)       , P_Impl(t2,u2)       ) ->
+  | (P_Appl(t1,u1)       , P_Appl(t2,u2)             )
+  | (P_Impl(t1,u1)       , P_Impl(t2,u2)             ) ->
       eq_p_term t1 t2 && eq_p_term u1 u2
-  | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)      )
-  | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)      ) ->
+  | (P_Abst(xs1,t1)      , P_Abst(xs2,t2)            )
+  | (P_Prod(xs1,t1)      , P_Prod(xs2,t2)            ) ->
       List.equal eq_p_arg xs1 xs2 && eq_p_term t1 t2
-  | (P_LLet(x1,xs1,t1,u1), P_LLet(x2,xs2,t2,u2)) ->
-      eq_ident x1 x2 && eq_p_term t1 t2 && eq_p_term u1 u2
-      && List.equal eq_p_arg xs1 xs2
-  | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)       ) ->
+  | (P_LLet(x1,xs1,a1,t1,u1), P_LLet(x2,xs2,a2,t2,u2)) ->
+      eq_ident x1 x2 && Option.equal eq_p_term a1 a2 && eq_p_term t1 t2
+      && eq_p_term u1 u2 && List.equal eq_p_arg xs1 xs2
+  | (P_UnaO(u1,t1)       , P_UnaO(u2,t2)             ) ->
       eq_unop u1 u2 && eq_p_term t1 t2
-  | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)    ) ->
+  | (P_BinO(t1,b1,u1)    , P_BinO(t2,b2,u2)          ) ->
       eq_binop b1 b2 && eq_p_term t1 t2 && eq_p_term u1 u2
-  | (P_Wrap(t1)          , P_Wrap(t2)          ) ->
+  | (P_Wrap(t1)          , P_Wrap(t2)                ) ->
       eq_p_term t1 t2
-  | (P_Expl(t1)          , P_Expl(t2)          ) ->
+  | (P_Expl(t1)          , P_Expl(t2)                ) ->
       eq_p_term t1 t2
-  | (t1                  ,                   t2) ->
+  | (t1                  ,                   t2      ) ->
       t1 = t2
 
 and eq_p_arg : p_arg eq = fun (x1,ao1,b1) (x2,ao2,b2) ->
