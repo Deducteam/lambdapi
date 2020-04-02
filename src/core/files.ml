@@ -1,5 +1,6 @@
 (** File utilities. *)
 
+open Timed
 open Extra
 open Console
 
@@ -126,12 +127,12 @@ let set_lib_root : string -> unit = fun path ->
   try
     let path = Filename.realpath path in
     if not (Sys.is_directory path) then
-      exit_with "Invalid library root ([%s] is not a directory)." path;
+      fatal_no_pos "Invalid library root: [%s] is not a directory." path;
     match Stdlib.(!lib_root) with
     | None    -> Stdlib.(lib_root := Some(path))
-    | Some(_) -> exit_with "The library root was already set."
+    | Some(_) -> fatal_no_pos "The library root was already set."
   with Sys_error(_) | Invalid_argument(_) ->
-    exit_with "Invalid library root (no such file or directory [%s])." path
+    fatal_no_pos "Invalid library root: no such file or directory [%s]." path
 
 (** [default_lib_root ()] returns the default library root curently configured
     for the system. It depends on the current Opam switch (if any), and it may
@@ -153,21 +154,22 @@ let lib_root_path : unit -> string = fun _ ->
   try
     let path = Filename.realpath path in
     if not (Sys.is_directory path) then
-      exit_with "Invalid default library root [%s] (not a directory)." path;
+      fatal_no_pos "Invalid default library root [%s]: this is not a \
+                    directory." path;
     path
   with Sys_error(_) | Invalid_argument(_) ->
-    exit_with "Default library root [%s] does not exist." path
+    fatal_no_pos "Default library root [%s] does not exist." path
 
 (** [lib_mappings] stores the specified mappings of library paths. *)
-let lib_mappings : ModMap.t Stdlib.ref =
-  Stdlib.ref ModMap.empty
+let lib_mappings : ModMap.t ref =
+  ref ModMap.empty
 
 (** [init_lib_root ()] registers the currently set library root as part of our
     module mapping. This function MUST be called before one can consider using
     [module_to_file] or [module_path]. *)
 let init_lib_root : unit -> unit = fun _ ->
   let root = lib_root_path () in
-  Stdlib.(lib_mappings := ModMap.set_root root !lib_mappings)
+  lib_mappings := ModMap.set_root root !lib_mappings
 
 (** [new_lib_mapping s] attempts to parse [s] as a library mapping of the form
     ["<modpath>:<path>"]. Then, if module path ["<modpath>"] is not yet mapped
@@ -175,7 +177,9 @@ let init_lib_root : unit -> unit = fun _ ->
     new mapping is registered. In case of failure the program terminates and a
     graceful error message is displayed. *)
 let new_lib_mapping : string -> unit = fun s ->
-  let fail s = exit_with ("Ill-formed argument to \"--map\": " ^^ s ^^ ".") in
+  let fail fmt =
+    fatal_no_pos ("Ill-formed argument to \"--map\": " ^^ fmt ^^ ".")
+  in
   let (module_path, file_path) =
     match String.split_on_char ':' s with
     | [mp; dir] -> (String.split_on_char '.' mp, dir)
@@ -197,22 +201,21 @@ let new_lib_mapping : string -> unit = fun s ->
     with ModMap.Already_mapped ->
       fail "module path [%a] is already mapped" Path.pp module_path
   in
-  Stdlib.(lib_mappings := new_mapping)
+  lib_mappings := new_mapping
 
 (** [current_path ()] returns the canonical running path of the program. *)
 let current_path : unit -> string = fun _ ->
   Filename.realpath "."
 
 (** [current_mappings ()] gives the currently registered library mappings. *)
-let current_mappings : unit -> ModMap.t = fun _ ->
-  Stdlib.(!lib_mappings)
+let current_mappings : unit -> ModMap.t = fun _ -> !lib_mappings
 
 (** [module_to_file mp] converts module path [mp] into the corresponding "file
     path" (with no attached extension). It is assumed that [init_lib_root] was
     called prior to any call to this function. *)
 let module_to_file : Path.t -> file_path = fun mp ->
   let path =
-    try ModMap.get mp Stdlib.(!lib_mappings) with ModMap.Root_not_set ->
+    try ModMap.get mp !lib_mappings with ModMap.Root_not_set ->
       assert false (* Unreachable after [init_lib_root] is called. *)
   in
   log_file "[%a] points to base name [%s]." Path.pp mp path; path

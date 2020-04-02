@@ -76,10 +76,19 @@ let fatal_no_pos : ('a,'b) koutfmt -> 'a = fun fmt ->
   let cont _ = raise (Fatal(None, Format.flush_str_formatter ())) in
   Format.kfprintf cont Format.str_formatter fmt
 
-(** [exit_with fmt] is similar to [fatal_no_pos fmt], but the whole program is
-    (irrecoverably) stopped with return code [1], indicating failure. *)
-let exit_with : ('a,'b) koutfmt -> 'a = fun fmt ->
-  Format.kfprintf (fun _ -> exit 1) Format.err_formatter (red (fmt ^^ "\n%!"))
+(** [handle_exceptions f] runs [f ()] in an exception handler and handles both
+    expected and unexpected exceptions by displaying a graceful error message.
+    In case of an error, the program is (irrecoverably) stopped with exit code
+    [1] (indicating failure). Hence, [handle_exceptions] should only be called
+    by the main program logic, not by the internals. *)
+let handle_exceptions : (unit -> unit) -> unit = fun f ->
+  let exit_with : type a b. (a,b) koutfmt -> a = fun fmt ->
+    Format.(kfprintf (fun _ -> exit 1) err_formatter (red (fmt ^^ "\n%!")))
+  in
+  try f () with
+  | Fatal(None,    msg) -> exit_with "%s" msg
+  | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
+  | e                   -> exit_with "Uncaught [%s]." (Printexc.to_string e)
 
 (** Type of a logging function. *)
 type logger = { logger : 'a. 'a outfmt -> 'a }
