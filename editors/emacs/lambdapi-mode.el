@@ -13,6 +13,7 @@
 (require 'lambdapi-vars)
 (require 'lambdapi-smie)
 (require 'lambdapi-capf)
+(require 'lambdapi-abbrev)
 (require 'eglot)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
@@ -122,6 +123,9 @@
    #'lambdapi--smie-rules
    :forward-token #'lambdapi--smie-forward-token
    :backward-token #'lambdapi--smie-backward-token)
+
+  ;; Abbrev mode
+  (lambdapi-abbrev-setup)
 
   ;; LSP
   (add-to-list

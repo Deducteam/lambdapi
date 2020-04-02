@@ -20,16 +20,26 @@ Meanwhile, the package archive can be generated with
 
 Entering unicode
 ----------------
-To enter unicode characters, there are several options. The first is to use
-`company` mode with `company-math`. For this, ensure you have `company-mode`
-enabled, and add to your emacs configuration file
+To enter unicode characters, there are several options. 
 
-``` emacs-lisp
-(add-hook 'lambdapi-mode-hook
-  (lambda () (setq-local company-backends
-                         (cons #'company-math-symbols-unicode company-backends))))
-```
+### The `LambdaPi` input method
+LaTeX characters can be entered via the input method. Bindings come from 
+[`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html),
+that is, α can be accessed with `\`a`, β with `\``, &c. This method has the
+advantage of being lightweight and easy to use, but is not extensible.
 
+### The `abbrev` mode
+The `abbrev` mode is an emacs minor mode allowing the user to define
+abbreviations. The function `lambdapi-local-abbrev` can be called when the
+cursor is at the end of a word to define the word as an abbreviation. When
+called, the user can input the expanded form in the minibuffer. Additionnally,
+the abbreviation is added as a directory local variable, so it will be available
+the next time a file of the project is opened. The function
+`lambdapi-local-abbrev` is bound to `C-c a`.
+
+To enter unicode characters in the minibuffer using LaTeX, the TeX input method
+can be used, for this, once in the minibuffer, enter `C-x RET C-\\` and select
+`TeX` in the list.
 
 Other relevant packages
 -----------------------
