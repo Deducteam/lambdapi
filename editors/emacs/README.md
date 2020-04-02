@@ -22,9 +22,10 @@ Entering unicode
 ----------------
 ### The `LambdaPi` input method
 LaTeX characters can be entered via the `LambdaPi` input method. 
-Greek characters can be accessed using the backquote (as done in
+Greek characters can be accessed using backquoted letters (as done in
 [`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html)
-): α can be accessed with `` `a ``, β with `` `b ``, &c.
+), or with the LaTeX command, α can be accessed with `` `a `` or `\alpha`, β
+with `` `b `` or `\beta` &c.
 
 This method has the advantage of being lightweight and easy to use, but is not
 extensible.

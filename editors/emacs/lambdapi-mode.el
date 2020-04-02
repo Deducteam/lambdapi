@@ -4,7 +4,7 @@
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Keywords: lambdapi dedukti proof-assistant logical-framework LP
 ;; Compatibility: GNU Emacs 26.1
-;; Package-Requires: ((emacs "26.1") (eglot "1.5"))
+;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))
 
 ;;; Commentary:
 ;;
@@ -14,6 +14,7 @@
 (require 'lambdapi-smie)
 (require 'lambdapi-capf)
 (require 'lambdapi-abbrev)
+(require 'lambdapi-input)
 (require 'eglot)
 ;;; Legacy
 ;; Syntax table (legacy syntax)
@@ -76,31 +77,6 @@
          (concat "\\<" (regexp-opt lambdapi-misc-keywords) "\\>")
          'font-lock-constant-face))
   "Keyword highlighting for the LambdaPi mode.")
-
-;; Unicode support
-(require 'quail)
-(quail-define-package
-  "LambdaPi" "LambdaPi" "LambdaPi" t
-  "A transliteration scheme for LambdaPi."
-  nil t t t t nil t nil nil nil t)
-(quail-define-rules
-  ("->" ?→) ("\\to" ?→) ("\\rightarrow" ?→)
-  ("=>" ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
-  ("!!" ?∀) ("\\forall" ?∀)
-  ("\\\\" ?λ) ("\\lambda" ?λ)
-  (":=" ?≔) ("\\defeq"  ?≔)
-  ("==" ?≡) ("\\equiv"  ?≡)
-  ("&&" ?∧) ("\\wedge"  ?∧) ("/\\" ?∧)
-  ("||" ?∨) ("\\vee"    ?∨) ("\\/" ?∨)
-  ("~~" ?¬) ("\\neg"    ?¬)
-  ("??" ?∃) ("\\exists" ?∃)
-  ("`a" ?α) ("`b" ?β) ("`c" ?γ) ("`d" ?δ)
-  ("`e" ?ε) ("`h" ?η) ("`i" ?ι) ("`k" ?κ)
-  ("`m" ?μ) ("`n" ?ν) ("`o" ?ω) ("`p" ?π)
-  ("`r" ?ρ) ("`s" ?σ) ("`t" ?τ) ("`u" ?υ)
-  ("`w" ?ω) ("`x" ?χ) ("`y" ?υ) ("`z" ?ζ)
-  ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
-  ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
 ;; Main function creating the mode (lambdapi)
 ;;;###autoload
