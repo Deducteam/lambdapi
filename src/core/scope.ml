@@ -144,8 +144,7 @@ type mode =
   | M_LHS  of (string * int) list * bool
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
       a map associating an index to every free variable along with a flag set
-      to [true] if {!constructor:Terms.expo.Privat} symbols are
-      allowed. *)
+      to [true] if {!constructor:Terms.expo.Privat} symbols are allowed. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
       the environment for variables that will be bound in the representation
