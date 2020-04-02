@@ -178,13 +178,13 @@ let occurs : meta -> term -> bool =
   let fn p = if m == p then raise Found in
   try iter_meta false fn t; false with Found -> true
 
-(** [get_metas b t] returns the list of all the metavariables in [t], and in
-    the types of metavariables recursively if [b], sorted wrt [cmp_meta]. *)
-let get_metas : bool -> term -> meta list = fun b t ->
+(** [get_metas b t] returns the set of all the metavariables in [t], and in
+    the types of metavariables recursively if [b]. *)
+let get_metas : bool -> term -> MetaSet.t = fun b t ->
   let open Stdlib in
-  let l = ref [] in
-  iter_meta b (fun m -> l := m :: !l) t;
-  List.sort_uniq cmp_meta !l
+  let ms = ref MetaSet.empty in
+  iter_meta b (fun m -> ms := MetaSet.add m !ms) t;
+  !ms
 
 (** [has_metas b t] checks whether there are metavariables in [t], and in the
     types of metavariables recursively if [b] is true. *)
@@ -246,4 +246,4 @@ let term_of_rhs : rule -> term = fun r ->
     let p = _Patt (Some(i)) name (Array.map Bindlib.box_var vars) in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar vars p))
   in
-  Bindlib.msubst r.rhs (Array.mapi fn r.vars)
+  Bindlib.msubst r.rhs (Array.mapi fn r.pvs)

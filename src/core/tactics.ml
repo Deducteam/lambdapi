@@ -56,9 +56,12 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
     (* New subgoals and focus. *)
     let metas = Basics.get_metas true t in
-    let new_goals = List.map Proof.Goal.of_meta metas in
+    let add_goal m = List.insert Proof.Goal.compare (Proof.Goal.of_meta m) in
+    let new_goals = MetaSet.fold add_goal metas [] in
+    (* New goals must appear first. *)
     Proof.({ps with proof_goals = new_goals @ gs})
   in
+
   match tac.elt with
   | P_tac_print
   | P_tac_proofterm

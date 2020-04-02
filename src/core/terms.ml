@@ -143,8 +143,10 @@ type term =
   (** Right hand side (or RHS). *)
   ; arity : int
   (** Required number of arguments to be applicable. *)
-  ; vars  : (string * int) array
-  (** Name and arity of the pattern variables bound in the RHS. *) }
+  ; pvs   : (string * int) array
+  (** Name and arity of the pattern variables bound in the RHS. *)
+  ; vars  : term_env Bindlib.var array
+  (** Bindlib variables used to build [rhs]. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -242,11 +244,12 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** Comparison function on metavariables. *)
-let cmp_meta : meta -> meta -> int = fun m1 m2 -> m1.meta_key - m2.meta_key
+module Meta = struct
+  type t = meta
+  let compare m1 m2 = m1.meta_key - m2.meta_key
+end
 
-(** Equality on metavariables. *)
-let eq_meta : meta -> meta -> bool = fun m1 m2 -> m1.meta_key = m2.meta_key
+module MetaSet = Set.Make(Meta)
 
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb : sym -> term = fun s -> Symb (s, Nothing)

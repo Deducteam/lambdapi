@@ -66,8 +66,11 @@ let build_meta_type : int -> term = fun k ->
 let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     fun builtins (s,h,r) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
-  (* We process the LHS to replace pattern variables by metavariables. *)
   let binder_arity = Bindlib.mbinder_arity r.elt.rhs in
+  (* Compute the metavariables of the RHS. *)
+  let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
+  let rhs_metas = Basics.get_metas true rhs in
+  (* We process the LHS to replace pattern variables by metavariables. *)
   let metas = Array.make binder_arity None in
   let rec to_m : int -> term -> tbox = fun k t ->
     (* [k] is the number of arguments to which [m] is applied. *)
@@ -102,8 +105,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
-  let lhs = Basics.add_args (Symb(s,h)) lhs in
+  let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
+  let lhs = Basics.add_args (Symb(s,h)) lhs_args in
   let metas = Array.map (function Some m -> m | None -> assert false) metas in
   (* We substitute the RHS with the corresponding metavariables. *)
   let fn m =
@@ -113,7 +116,14 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m e)))
   in
   let te_envs = Array.map fn metas in
-  let rhs = Bindlib.msubst r.elt.rhs te_envs in
+  let subst t = Bindlib.msubst t te_envs in
+  let rhs = subst r.elt.rhs in
+  (* We substitute the metavariables of the RHS as well. *)
+  let fn m =
+    let bt = lift !(m.meta_type) in
+    m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar r.elt.vars bt))
+  in
+  MetaSet.iter fn rhs_metas;
   (* Infer the type of the LHS and the constraints. *)
   match Typing.infer_constr builtins [] lhs with
   | None                      -> wrn r.pos "Untypable LHS."
@@ -160,7 +170,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   (* Check that there is no uninstanciated metas left. *)
   let lhs_metas = Basics.get_metas false lhs in
   let f m =
-    if not (List.in_sorted cmp_meta m lhs_metas) then
+    if not (MetaSet.mem m lhs_metas) then
       fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
         pp_rule (s,h,r.elt)
   in

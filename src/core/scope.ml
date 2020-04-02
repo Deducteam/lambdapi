@@ -282,13 +282,14 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Wild          , M_LHS(_)         ) -> fresh_patt env
     | (P_Wild          , M_Patt           ) -> _Wild
     | (P_Wild          , _                ) ->
-        (* We create a metavariable [m] of type [m_ty], which is itself also a
-           metavariable (of type [Type]).  Note that this case applies both to
-           regular terms, and to the RHS of rewriting rules. *)
+        (* We create a metavariable [m] of type [tm], which itself is also a
+           metavariable [x] of type [Type].  Note that this case applies both
+           to regular terms, and to the RHS of rewriting rules. *)
         let vs = Env.to_tbox env in
-        let m_ty = fresh_meta (Env.to_prod env _Type) (Array.length vs) in
-        let a = Env.to_prod env (_Meta m_ty vs) in
-        let m = fresh_meta a (Array.length vs) in
+        let n = Array.length vs in
+        let x = fresh_meta (Env.to_prod env _Type) n in
+        let tm = Env.to_prod env (_Meta x vs) in
+        let m = fresh_meta tm n in
         _Meta m vs
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
@@ -480,7 +481,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (pvs_lhs, nl) = patt_vars p_lhs in
   let (pvs_rhs, _ ) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
-  (* Check that the meta-variables of the RHS exist in the LHS. *)
+  (* Check that the pattern variables of the RHS exist in the LHS. *)
   let check_in_lhs (m,i) =
     let j =
       try List.assoc m pvs_lhs with Not_found ->
@@ -491,11 +492,11 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   List.iter check_in_lhs pvs_rhs;
   (* Get the non-linear variables not in the RHS. *)
   let nl = List.filter (fun m -> not (List.mem_assoc m pvs_rhs)) nl in
-  (* Reserve space for meta-variables that appear non-linearly in the LHS. *)
+  (* Reserve space for pattern variables that appear non-linearly in the LHS. *)
   let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
-  (* NOTE [map] maps meta-variables to their position in the environment. *)
-  (* NOTE meta-variables not in [map] can be considered as wildcards. *)
+  (* NOTE [map] maps pattern variables to their position in the environment. *)
+  (* NOTE pattern variables not in [map] can be considered as wildcards. *)
   (* Get privacy of the head of the rule, and scope the rest with this
      privacy. *)
   let prv = is_private (fst (get_root p_lhs ss)) in
@@ -515,7 +516,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
-  (* We scope the RHS and bind the meta-variables. *)
+  (* We scope the RHS and bind the pattern variables. *)
   let names = Array.of_list (List.map fst map) in
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
@@ -524,9 +525,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     Bindlib.unbox (Bindlib.bind_mvar vars (scope mode ss Env.empty p_rhs))
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
-  let vars = Array.of_list pvs in
+  let pvs = Array.of_list pvs in
   (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; vars})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; pvs; vars})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
