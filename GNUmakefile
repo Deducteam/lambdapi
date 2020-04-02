@@ -1,4 +1,5 @@
-VIMDIR   = $(HOME)/.vim
+VIMDIR = $(HOME)/.vim
+EMACS  = $(shell which emacs)
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -147,10 +148,9 @@ else
 endif
 
 # Install for the emacs mode (system-wide).
-EMACS = $(shell which emacs)
 .PHONY: install_emacs
 install_emacs:
-ifeq ($($(EMACS)/.),)
+ifeq ($(EMACS),)
 	@printf "\e[36mWill not install emacs mode.\e[39m\n"
 else
 	@cd editors/emacs && $(MAKE) install
