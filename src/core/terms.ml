@@ -186,7 +186,7 @@ type term =
     minimal number of arguments required to match the LHS of the rule. *)
 
 (** The RHS (or action) or a rewriting rule is represented by a term, in which
-    (higher-order) variables representing a "terms with environments" (see the
+    (higher-order) variables representing "terms with environments" (see the
     {!type:term_env} type) are bound. To effectively apply the rewriting rule,
     these  bound variables must be substituted using "terms with environments"
     that are constructed when matching the LHS of the rule. *)

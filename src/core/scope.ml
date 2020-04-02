@@ -33,15 +33,15 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym ~prt ~prv b st qid] returns the symbol and printing hint
+(** [find_sym prt prv b st qid] returns the symbol and printing hint
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
     empty, we search for the name [snd qid.elt] in the opened modules of [st].
     The boolean [b] only indicates if the error message should mention
     variables, in the case where the module path is empty and the symbol is
     unbound. This is reported using the [Fatal] exception.
-    {!constructor:Terms.sym_exposition.Protected} symbols from other modules
+    {!constructor:Terms.expo.Protec} symbols from other modules
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
-    {!constructor:Terms.sym_exposition.Private} symbols are allowed iff [~prv]
+    {!constructor:Terms.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
 let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
   sym * pp_hint = fun ~prt ~prv b st qid ->
@@ -100,10 +100,10 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
     first search for the name [snd qid.elt] in the environment, and if it is
     not mapped we also search in the opened modules. The exception [Fatal] is
     raised if an error occurs (e.g., when the name cannot be found). If [prt]
-    is true, {!constructor:Terms.sym_exposition.Protected} symbols from
+    is true, {!constructor:Terms.expo.Protec} symbols from
     foreign modules are allowed (protected symbols from current modules are
     always allowed). If [prv] is true,
-    {!constructor:Terms.sym_exposition.Private} symbols are allowed. *)
+    {!constructor:Terms.expo.Privat} symbols are allowed. *)
 let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
   fun prt prv st env qid ->
   let (mp, s) = qid.elt in
@@ -144,13 +144,13 @@ type mode =
   | M_LHS  of (string * int) list * bool
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
       a map associating an index to every free variable along with a flag set
-      to [true] if {!constructor:Terms.sym_exposition.Private} symbols are
+      to [true] if {!constructor:Terms.expo.Privat} symbols are
       allowed. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
       the environment for variables that will be bound in the representation
       of the RHS along with a flag indicating whether
-      {!constructor:Terms.sym_exposition.Private} terms are allowed. *)
+      {!constructor:Terms.expo.Privat} terms are allowed. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
