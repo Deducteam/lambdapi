@@ -1,4 +1,4 @@
-`lambdapi-mode`, a major mode for editing lambdapi code
+`lambdapi-mode` a major mode for editing lambdapi code
 =======================================================
 
 This packages provides (with Emacs 24 or higher):
@@ -20,17 +20,23 @@ Meanwhile, the package archive can be generated with
 
 Entering unicode
 ----------------
-To enter unicode characters, there are several options. 
-
 ### The `LambdaPi` input method
-LaTeX characters can be entered via the input method. Bindings come from 
-[`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html),
-that is, α can be accessed with `\`a`, β with `\``, &c. This method has the
-advantage of being lightweight and easy to use, but is not extensible.
+LaTeX characters can be entered via the `LambdaPi` input method. 
+Greek characters can be accessed using the backquote (as done in
+[`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html)
+): α can be accessed with `` `a ``, β with `` `b ``, &c.
+
+This method has the advantage of being lightweight and easy to use, but is not
+extensible.
 
 ### The `abbrev` mode
 The `abbrev` mode is an emacs minor mode allowing the user to define
-abbreviations. The function `lambdapi-local-abbrev` can be called when the
+abbreviations. For instance, one may define "btw" to be an abbreviation of "by
+the way" with, for instance, `add-global-abbrev`. Doing so will cause the
+sequence "btw" to be automatically expanded when the user hits `SPC` or `TAB`.
+The expansion can be inhibited by hitting `C-q` before `SPC`.
+
+The function `lambdapi-local-abbrev` can be called when the
 cursor is at the end of a word to define the word as an abbreviation. When
 called, the user can input the expanded form in the minibuffer. Additionnally,
 the abbreviation is added as a directory local variable, so it will be available
@@ -38,7 +44,7 @@ the next time a file of the project is opened. The function
 `lambdapi-local-abbrev` is bound to `C-c a`.
 
 To enter unicode characters in the minibuffer using LaTeX, the TeX input method
-can be used, for this, once in the minibuffer, enter `C-x RET C-\\` and select
+can be used, for this, once in the minibuffer, enter `C-x RET C-\` and select
 `TeX` in the list.
 
 Other relevant packages
