@@ -52,9 +52,9 @@ type term =
   | Meta of meta * term array
   (** Metavariable application (used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable application (only used in a rewriting rules LHS). *)
+  (** Pattern variable application (only used in rewriting rule LHS). *)
   | TEnv of term_env * term array
-  (** Term environment (only used in a rewriting rules RHS). *)
+  (** Term environment (only used in rewriting rules RHS). *)
   | Wild
   (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
