@@ -37,13 +37,18 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
-;; Add greek letters from `math-symbol-list-basic'
-(cl-map
- nil
- (lambda (sym)
-   (when (string= (car sym) "greek")
+(defun lambdapi--add-translation (tbl tags)
+  "Add translation from list TBL whose tag is in TAGS."
+  (cl-map
+   nil
+   (lambda (sym)
+     (when (cl-member (car sym) tags :test 'string=)
        (quail-defrule (cadr sym) (cddr sym))))
- math-symbol-list-basic)
+   tbl))
+
+;; Add greek letters and binary operators from `math-symbol-list-basic'
+(lambdapi--add-translation math-symbol-list-basic
+                           '("greek" "Greek" "bin" "rel" "misc"))
 
 (provide 'lambdapi-input)
 ;;; lambdapi-input.el ends here
