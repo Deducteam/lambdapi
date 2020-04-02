@@ -54,57 +54,44 @@ let init : config -> unit = fun cfg ->
 let check_cmd : config -> int option -> string list -> unit =
     fun cfg timeout files ->
   let handle file =
-    try
-      let sign =
-        match timeout with
-        | None    -> Compile.compile_file file
-        | Some(i) ->
-            if i <= 0 then exit_with "Invalid timeout value [%i] (≤ 0)." i;
-            try with_timeout i Compile.compile_file file
-            with Timeout ->
-              fatal_no_pos "Compilation timed out for [%s]." file
+    let sign =
+      match timeout with
+      | None    -> Compile.compile_file file
+      | Some(i) ->
+          if i <= 0 then fatal_no_pos "Invalid timeout value [%i] (≤ 0)." i;
+          try with_timeout i Compile.compile_file file
+          with Timeout ->
+            fatal_no_pos "Compilation timed out for [%s]." file
+    in
+    let run_checker prop fn chk kw =
+      let run cmd =
+        match External.run prop fn cmd sign with
+        | Some(true ) -> ()
+        | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
+        | None        -> fatal_no_pos "The rewrite system may not be %s." kw
       in
-      let run_checker prop fn chk kw =
-        let run cmd =
-          match External.run prop fn cmd sign with
-          | Some(true ) -> ()
-          | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
-          | None        -> fatal_no_pos "The rewrite system may not be %s." kw
-        in
-        Option.iter run chk
-      in
-      run_checker "confluence"  Hrs.to_HRS cfg.confluence  "confluent";
-      run_checker "termination" Xtc.to_XTC cfg.termination "terminating"
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
+      Option.iter run chk
+    in
+    run_checker "confluence"  Hrs.to_HRS cfg.confluence  "confluent";
+    run_checker "termination" Xtc.to_XTC cfg.termination "terminating"
   in
-  init cfg; List.iter handle files
+  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
 
 (** Running the parsing mode. *)
 let parse_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file =
-    try ignore (Compile.parse_file file)
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
-  in
-  init cfg; List.iter handle files
+  let handle file = ignore (Compile.parse_file file) in
+  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
 
 (** Running the pretty-printing mode. *)
 let beautify_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file =
-    try Pretty.beautify (Compile.parse_file file)
-    with
-    | Fatal(None,    msg) -> exit_with "%s" msg
-    | Fatal(Some(p), msg) -> exit_with "[%a] %s" Pos.print p msg
-  in
-  init cfg; List.iter handle files
+  let handle file = Pretty.beautify (Compile.parse_file file) in
+  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
 
 (** Running the LSP server. *)
 let lsp_server_cmd : config -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file
+  let run_server () = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  Console.handle_exceptions run_server
 
 (** {3 Command line argument parsing} *)
 
