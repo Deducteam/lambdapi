@@ -53,11 +53,14 @@ type tactic_result =
   | Tac_OK    of proof_state
   | Tac_Error of Pos.popt option * string
 
-let t0 = Time.save ()
+let t0 : Time.t Stdlib.ref = Stdlib.ref (Time.save ())
+
+let set_initial_time : unit -> unit = fun _ ->
+  Stdlib.(t0 := Time.save ())
 
 let initial_state : file_path -> state = fun fname ->
   Console.reset_default ();
-  Time.restore t0;
+  Time.restore Stdlib.(!t0);
   Config.apply_config fname;
   let mp = Files.file_to_module fname in
   Sign.loading := [mp];

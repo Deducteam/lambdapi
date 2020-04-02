@@ -48,7 +48,9 @@ let init : config -> unit = fun cfg ->
       Files.ModMap.iter fn (Files.current_mappings ())
     end;
   (* Register the library root. *)
-  Files.init_lib_root ()
+  Files.init_lib_root ();
+  (* Initialise the [Pure] interface (this must come last). *)
+  Pure.set_initial_time ()
 
 (** Running the main type-checking mode. *)
 let check_cmd : config -> int option -> string list -> unit =
