@@ -63,12 +63,13 @@ let build_meta_type : int -> term = fun k ->
 
 (** [check_rule builtins r] checks whether rule [r] is well-typed. The [Fatal]
     exception is raised in case of error. *)
-let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
-    fun builtins (s,h,r) ->
-  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, r.elt);
-  let binder_arity = Bindlib.mbinder_arity r.elt.rhs in
+let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
+                 -> sym * pp_hint * rule Pos.loc =
+    fun builtins ((s, h, { elt = rule; pos = pos }) as shrp) ->
+  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
+  let binder_arity = Bindlib.mbinder_arity rule.rhs in
   (* Compute the metavariables of the RHS. *)
-  let rhs = Bindlib.msubst r.elt.rhs (Array.make binder_arity TE_None) in
+  let rhs = Bindlib.msubst rule.rhs (Array.make binder_arity TE_None) in
   let rhs_metas = Basics.get_metas true rhs in
   (* We process the LHS to replace pattern variables by metavariables. *)
   let metas = Array.make binder_arity None in
@@ -105,28 +106,28 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) r.elt.lhs in
+  let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs_args in
   let metas = Array.map (function Some m -> m | None -> assert false) metas in
   (* We substitute the RHS with the corresponding metavariables. *)
   let fn m =
-    let xs = Array.init m.meta_arity (Printf.sprintf "x%i") in
-    let xs = Bindlib.new_mvar mkfree xs in
+    let ns = Array.init m.meta_arity (Printf.sprintf "x%i") in
+    let xs = Bindlib.new_mvar mkfree ns in
     let e = Array.map _Vari xs in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m e)))
   in
   let te_envs = Array.map fn metas in
   let subst t = Bindlib.msubst t te_envs in
-  let rhs = subst r.elt.rhs in
+  let rhs = subst rule.rhs in
   (* We substitute the metavariables of the RHS as well. *)
   let fn m =
     let bt = lift !(m.meta_type) in
-    m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar r.elt.vars bt))
+    m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar rule.vars bt))
   in
   MetaSet.iter fn rhs_metas;
   (* Infer the type of the LHS and the constraints. *)
   match Typing.infer_constr builtins [] lhs with
-  | None                      -> wrn r.pos "Untypable LHS."
+  | None                      -> wrn pos "Untypable LHS."; shrp
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
@@ -149,7 +150,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   (* Solving the constraints. *)
   match Unif.(solve builtins false {no_problems with to_solve}) with
   | None     ->
-      fatal r.pos "Rule [%a] does not preserve typing." pp_rule (s,h,r.elt)
+      fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)
   | Some(cs) ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
@@ -165,13 +166,19 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc -> unit =
   if cs <> [] then
     begin
       List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
-      fatal r.pos "Unable to prove SR for rule [%a]." pp_rule (s,h,r.elt)
+      fatal pos "Unable to prove SR for rule [%a]." pp_rule (s,h,rule)
     end;
   (* Check that there is no uninstanciated metas left. *)
   let lhs_metas = Basics.get_metas false lhs in
   let f m =
     if not (MetaSet.mem m lhs_metas) then
-      fatal r.pos "Cannot instantiate all metavariables in rule [%a]."
-        pp_rule (s,h,r.elt)
+      fatal pos "Cannot instantiate all metavariables in rule [%a]."
+        pp_rule (s,h,rule)
   in
-  Basics.iter_meta false f rhs
+  Basics.iter_meta false f rhs;
+  (* Return rule with metavariables instanciated. We need to replace
+     metavariables by term_env variables, and bind them. *)
+  let new_rhs = rule.rhs in
+  (*Bindlib.unbox (Bindlib.bind_mvar rule.vars (lift rhs))*)
+  let new_rule = { rule with rhs = new_rhs } in
+  (s, h, { elt = new_rule; pos = pos })

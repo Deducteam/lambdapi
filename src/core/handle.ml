@@ -123,7 +123,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         if !(s.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
                         symbol [%s]." s.sym_name;
-        Sr.check_rule ss.builtins r; r
+        Sr.check_rule ss.builtins r
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
