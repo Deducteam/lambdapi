@@ -182,13 +182,18 @@ let occurs : meta -> term -> bool =
   let fn p = if m == p then raise Found in
   try iter_meta false fn t; false with Found -> true
 
+(** [add_metas b t ms] extends [ms] with all the metavariables of [t], and
+   those in the types of these metavariables recursively if [b]. *)
+let add_metas : bool -> term -> MetaSet.t -> MetaSet.t = fun b t ms ->
+  let open Stdlib in
+  let ms = ref ms in
+  iter_meta b (fun m -> ms := MetaSet.add m !ms) t;
+  !ms
+
 (** [get_metas b t] returns the set of all the metavariables in [t], and in
     the types of metavariables recursively if [b]. *)
 let get_metas : bool -> term -> MetaSet.t = fun b t ->
-  let open Stdlib in
-  let ms = ref MetaSet.empty in
-  iter_meta b (fun m -> ms := MetaSet.add m !ms) t;
-  !ms
+  add_metas b t MetaSet.empty
 
 (** [has_metas b t] checks whether there are metavariables in [t], and in the
     types of metavariables recursively if [b] is true. *)
