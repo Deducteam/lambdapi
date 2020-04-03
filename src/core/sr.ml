@@ -51,7 +51,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
       (Bindlib.msubst rule.rhs (Array.make binder_arity TE_None))
   in
   (* We process the LHS to replace pattern variables by metavariables. *)
-  let metas = Array.make binder_arity None in
+  let lhs_metas = Array.make binder_arity None in
   let rec to_m : int -> term -> tbox = fun k t ->
     (* [k] is the number of arguments to which [m] is applied. *)
     match unfold t with
@@ -69,11 +69,11 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
              let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
              _Meta m a
           | Some(i) ->
-              match metas.(i) with
+              match lhs_metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
                  let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
-                 metas.(i) <- Some(m);
+                 lhs_metas.(i) <- Some(m);
                  _Meta m a
         end
     | Type        -> assert false (* Cannot appear in LHS. *)
@@ -87,7 +87,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   in
   let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs_args in
-  let metas = Array.map (function Some m -> m | None -> assert false) metas in
+  let lhs_metas =
+    Array.map (function Some m -> m | None -> assert false) lhs_metas
+  in
   (* Infer the typing constraints of the LHS. *)
   match Typing.infer_constr builtins [] lhs with
   | None                      -> wrn pos "Untypable LHS."; shrp
@@ -104,7 +106,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     let ts = Array.map _Vari xs in
     TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
   in
-  let te_envs = Array.map fn metas in
+  let te_envs = Array.map fn lhs_metas in
   let subst t = Bindlib.msubst t te_envs in
   let rhs = subst rule.rhs in
   let fn m =
@@ -112,38 +114,79 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar rule.vars bt))
   in
   MetaSet.iter fn rhs_metas;
-  (* We instantiate the uninstantiated LHS metas by fresh function symbols. *)
-  let sym n t =
-    { sym_name  = "?" ^ n
-    ; sym_type  = ref t
-    ; sym_path  = []
-    ; sym_def   = ref None
-    ; sym_impl  = []
-    ; sym_rules = ref []
-    ; sym_tree  = ref Tree_types.empty_dtree
-    ; sym_prop  = Defin
-    ; sym_expo  = Public }
+  (* We compute the set of all uninstantiated metavariables of the LHS,
+     including in the types of LHS metavariables. *)
+  let all_lhs_metas =
+    let open MetaSet in
+    let add_metas m ms =
+      match !(m.meta_value) with
+      | Some _ ->
+          let t = Meta(m, Array.make m.meta_arity Kind) in
+          Basics.add_metas true t ms
+      | None   -> add m (Basics.add_metas true !(m.meta_type) ms)
+    in
+    Array.fold_right add_metas lhs_metas empty
+  in
+  (* We instantiate these metavariables by fresh function symbols, and create
+     a map metavariable -> function symbol. *)
+  let instantiate m t =
+    let xs = Basics.fresh_vars m.meta_arity in
+    let t = Array.fold_right (fun x t -> _Appl t (_Vari x)) xs t in
+    m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar xs t))
   in
   let fn m =
     let n = match m.meta_name with Some n -> n | None -> assert false in
-    let s = _Symb (sym n !(m.meta_type)) Nothing in
-    let xs = Basics.fresh_vars m.meta_arity in
-    let t = Array.fold_right (fun x t -> _Appl t (_Vari x)) xs s in
-    if !(m.meta_value) = None then
-      m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar xs t))
+    let s = { sym_name  = "?" ^ n
+            ; sym_type  = m.meta_type
+            ; sym_path  = []
+            ; sym_def   = ref None
+            ; sym_impl  = []
+            ; sym_rules = ref []
+            ; sym_tree  = ref Tree_types.empty_dtree
+            ; sym_prop  = Defin
+            ; sym_expo  = Public }
+    in
+    instantiate m (_Symb s Nothing)
   in
-  Array.iter fn metas;
+  MetaSet.iter fn all_lhs_metas;
   (* Here, we should complete the constraints into a set of rewriting rules on
      those function symbols. *)
+  (* We compute the set of metavariables in constraints. *)
+  let lhs_constrs_metas =
+    let open MetaSet in
+    let add_constr ms (_,l,r) =
+      Basics.add_metas false l (Basics.add_metas false r ms)
+    in
+    List.fold_left add_constr empty lhs_constrs
+  in
+  (* We compute the set of LHS metavariables having NO constraints, including
+     in their types. *)
+  let free_lhs_metas =
+    let open MetaSet in
+    let is_cstr m = mem m lhs_constrs_metas in
+    let fn m ms =
+      if is_cstr m || exists is_cstr (Basics.get_metas true !(m.meta_type))
+      then ms
+      else add m ms
+    in
+    MetaSet.fold fn all_lhs_metas empty
+  in
+  (* To help resolution, metavariable symbols with no constraint are
+     replaced by fresh variables. *)
+  let fn m ctx =
+    let n = match m.meta_name with Some n -> n | None -> assert false in
+    let v = Bindlib.new_var mkfree n in
+    instantiate m (_Vari v);
+    (v, !(m.meta_type), None) :: ctx
+  in
+  let ctx = MetaSet.fold fn free_lhs_metas [] in
   (* Check that the RHS has the same type as the LHS. *)
-  let to_solve = Infer.check [] rhs ty_lhs in
+  let to_solve = Infer.check ctx rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
       log_subj (gre "RHS has type %a") pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) to_solve
     end;
-  (* To help resolution, metavariable symbols with no constraint are
-     replaced by fresh variables. *)
   (* Solving the typing constraints of the RHS. *)
   match Unif.(solve builtins true {no_problems with to_solve}) with
   | None     ->
