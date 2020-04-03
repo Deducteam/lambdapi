@@ -477,10 +477,11 @@ let patt_vars : p_term -> (string * int) list * string list =
 let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
-  let (pvs_lhs, nl) = patt_vars p_lhs in
+  let (pvs_lhs, _nl) = patt_vars p_lhs in
   let (pvs_rhs, _ ) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
-  (* Check that the pattern variables of the RHS exist in the LHS. *)
+  (* Check that the pattern variables of the RHS exist in the LHS and have the
+     same arities. *)
   let check_in_lhs (m,i) =
     let j =
       try List.assoc m pvs_lhs with Not_found ->
@@ -489,12 +490,14 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
   List.iter check_in_lhs pvs_rhs;
+  (* Optimization to do *after* SR if really needed:
   (* Get the non-linear variables not in the RHS. *)
   let nl = List.filter (fun m -> not (List.mem_assoc m pvs_rhs)) nl in
-  (* Reserve space for pattern variables that appear non-linearly in the LHS. *)
-  let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in
+  (* Reserve space for non-linear LHS pattern variables. *)
+  let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in*)
+  let pvs = pvs_lhs in
   let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
-  (* NOTE [map] maps pattern variables to their position in the environment. *)
+  (* NOTE [map] maps pattern variables to their position in [pvs]. *)
   (* NOTE pattern variables not in [map] can be considered as wildcards. *)
   (* Get privacy of the head of the rule, and scope the rest with this
      privacy. *)
