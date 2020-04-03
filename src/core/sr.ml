@@ -10,17 +10,12 @@ open Extra
 let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
-(** Representation of a substitution. *)
-type subst = tvar array * term array
-
-(** [build_meta_type k] builds the type “∀(x1:A1) ⋯ (xk:Ak), A(k+1)” where the
-    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” (which has
-    arity “i-1”). The type of “Mi” is “∀(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
+(** [build_meta_type k] builds the type “∀x1:A1,⋯,xk:Ak,A(k+1)” where the
+    type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
+    arity “i-1” and type “∀(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
-  (* We create the variables “xi”. *)
-  let xs = Bindlib.new_mvar mkfree (Array.init k (Printf.sprintf "x%i")) in
-  (* We also make a boxed version of the variables. *)
+  let xs = Basics.fresh_vars k in
   let ts = Array.map _Vari xs in
   (* We create the types for the “Mi” metavariables. *)
   let ty_m = Array.make (k+1) _Type in
@@ -29,7 +24,7 @@ let build_meta_type : int -> term = fun k ->
       ty_m.(i) <- _Prod ty_m.(j) (Bindlib.bind_var xs.(j) ty_m.(i))
     done
   done;
-  (* We create the “Ai” terms (and the “Mi” metavariables). *)
+  (* We create the “Ai” terms and the “Mi” metavariables. *)
   let fn i =
     let m = fresh_meta (Bindlib.unbox ty_m.(i)) i in
     _Meta m (Array.sub ts 0 i)
@@ -99,15 +94,14 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   | Some(ty_lhs, lhs_constrs) ->
   if !log_enabled then
     begin
-      log_subj "LHS has type %a" pp ty_lhs;
+      log_subj (gre "LHS has type %a") pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) lhs_constrs
     end;
   (* We substitute the RHS with the corresponding metavariables. *)
   let fn m =
-    let ns = Array.init m.meta_arity (Printf.sprintf "x%i") in
-    let xs = Bindlib.new_mvar mkfree ns in
-    let e = Array.map _Vari xs in
-    TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m e)))
+    let xs = Basics.fresh_vars m.meta_arity in
+    let ts = Array.map _Vari xs in
+    TE_Some(Bindlib.unbox (Bindlib.bind_mvar xs (_Meta m ts)))
   in
   let te_envs = Array.map fn metas in
   let subst t = Bindlib.msubst t te_envs in
@@ -118,19 +112,39 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar rule.vars bt))
   in
   MetaSet.iter fn rhs_metas;
-  (* Here, we should instantiate the LHS metas by fresh function symbols and
-     complete the constraints into a set of rewriting rules on those function
-     symbols. *)
+  (* We instantiate the LHS metas by fresh function symbols. *)
+  let sym n t =
+    { sym_name  = n
+    ; sym_type  = ref t
+    ; sym_path  = []
+    ; sym_def   = ref None
+    ; sym_impl  = []
+    ; sym_rules = ref []
+    ; sym_tree  = ref Tree_types.empty_dtree
+    ; sym_prop  = Defin
+    ; sym_expo  = Public }
+  in
+  let fn m =
+    let n = match m.meta_name with Some n -> n | None -> assert false in
+    let s = _Symb (sym n !(m.meta_type)) Nothing in
+    let xs = Basics.fresh_vars m.meta_arity in
+    let t = Array.fold_right (fun x t -> _Appl t (_Vari x)) xs s in
+    if !(m.meta_value) = None then
+      m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar xs t))
+  in
+  Array.iter fn metas;
+  (* Here, we should complete the constraints into a set of rewriting rules on
+     those function symbols. *)
   (* Check that the RHS has the same type as the LHS. *)
   let to_solve = Infer.check [] rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
-      log_subj "RHS has type %a" pp ty_lhs;
+      log_subj (gre "RHS has type %a") pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) to_solve
     end;
   (* Solving the constraints. To help resolution, metavariable symbols having
      no constraint could be replaced by fresh variables. *)
-  match Unif.(solve builtins false {no_problems with to_solve}) with
+  match Unif.(solve builtins true {no_problems with to_solve}) with
   | None     ->
       fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)
   | Some(cs) ->
