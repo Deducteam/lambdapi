@@ -11,8 +11,9 @@ constant symbol consC : ∀x, C x (f x)
 symbol k : ∀a, B a ⇒ A
 rule k _ (consB &b) → &b
 
-symbol calc : ∀a b, ∀c : C (f a) (k a b), TYPE
+symbol calc : ∀a b, C (f a) (k a b) ⇒ TYPE
 
 constant symbol D : ∀x, B (f (f x)) ⇒ TYPE
 
+//set debug +siu
 rule calc &a (consB &b) (consC _) → D &b (consB &a)
