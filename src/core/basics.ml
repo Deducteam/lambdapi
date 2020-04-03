@@ -4,6 +4,10 @@ open Extra
 open Timed
 open Terms
 
+(** Create an array of fresh variables [|x1;..;xn|]. *)
+let fresh_vars : int -> tvar array = fun n ->
+  Bindlib.new_mvar mkfree (Array.init n (Printf.sprintf "x%i"))
+
 (** Sets and maps of variables. *)
 module Var =
   struct
