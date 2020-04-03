@@ -250,6 +250,7 @@ module Meta = struct
 end
 
 module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
 
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb : sym -> term = fun s -> Symb (s, Nothing)
