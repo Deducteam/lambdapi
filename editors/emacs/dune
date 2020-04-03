@@ -1,0 +1,17 @@
+(install
+ (package lambdapi)
+ (section share_root)
+ (files
+  (lambdapi-abbrev.el as emacs/site-lisp/lambdapi-abbrev.el)
+  (lambdapi-capf.el as emacs/site-lisp/lambdapi-capf.el)
+  (lambdapi-input.el as emacs/site-lisp/lambdapi-input.el)
+  (lambdapi-mode.el as emacs/site-lisp/lambdapi-mode.el)
+  (lambdapi-smie.el as emacs/site-lisp/lambdapi-smie.el)
+  (lambdapi-vars.el as emacs/site-lisp/lambdapi-vars.el)))
+
+(rule
+ (targets lambdapi-mode.elc)
+ (action
+  (run
+    %{bin:emacs} --batch --no-init-file -f batch-compile-file
+    %{dep:lambdapi-mode.el})))
