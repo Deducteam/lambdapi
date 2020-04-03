@@ -188,7 +188,7 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
   if !log_enabled then
     begin
       log_infr (gre "infer [%a] yields [%a]") pp t pp a;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   (a, constrs)
