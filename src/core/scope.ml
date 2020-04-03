@@ -116,9 +116,6 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
     let (s, hint) = find_sym ~prt ~prv true st qid in
     _Symb s hint
 
-(** Map of metavariables. *)
-type metamap = meta StrMap.t
-
 (** [get_root t ss] returns the symbol at the root of term [t]. *)
 let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
   let rec get_root t =
@@ -135,15 +132,15 @@ let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
-  | M_Term of metamap Stdlib.ref * expo
+  | M_Term of meta StrMap.t Stdlib.ref * expo
   (** Standard scoping mode for terms, holding a map of metavariables that can
       be updated with new metavariables on scoping and the exposition of the
       scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
-  | M_LHS  of (string * int) list * bool
+  | M_LHS  of (string * int) list * bool * int Stdlib.ref
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-      a map associating an index to every free variable along with a flag set
+      a map associating an index to every pattern variable along with a flag set
       to [true] if {!constructor:Terms.expo.Privat} symbols are allowed. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
@@ -181,11 +178,10 @@ let get_args : p_term -> p_term * p_term list =
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
-  let fresh_patt_name =
-    let c = Stdlib.ref (-1) in
-    fun _ -> Stdlib.(incr c; Printf.sprintf "#%i" !c)
+  let fresh_patt_name k = Stdlib.(incr k; Printf.sprintf "#%i" !k) in
+  let fresh_patt k =
+    let n = fresh_patt_name k in _Patt (Some Stdlib.(!k)) n
   in
-  let fresh_patt env = _Patt None (fresh_patt_name ()) (Env.to_tbox env) in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
     (* Extract the spine. *)
@@ -193,9 +189,9 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     (* Check that LHS pattern variables are applied to no argument. *)
     begin
       match (p_head.elt, md) with
-      | (P_Patt(_,_), M_LHS(_,_)) when args <> [] ->
+      | (P_Patt(_,_), M_LHS(_)) when args <> [] ->
           fatal t.pos "Pattern variables cannot be applied."
-      | _                                         -> ()
+      | _                                       -> ()
     end;
     (* Scope the head and obtain the implicitness of arguments. *)
     let h = scope_head env p_head in
@@ -238,10 +234,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
-    | (Some(a), M_LHS(_)) -> fatal a.pos "Annotation not allowed in a LHS."
-    | (None   , M_LHS(_)) -> fresh_patt env
-    | (Some(a), _       ) -> scope env a
-    | (None   , _       ) ->
+    | (Some(a), M_LHS(_)    ) -> fatal a.pos "Annotation not allowed in a LHS."
+    | (None   , M_LHS(_,_,k)) -> fresh_patt k (Env.to_tbox env)
+    | (Some(a), _           ) -> scope env a
+    | (None   , _           ) ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
@@ -274,11 +270,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _                ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(_,p)       ) -> find_qid true p ss env qid
+    | (P_Iden(qid,_)   , M_LHS(_,p,_)     ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
     | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
-    | (P_Wild          , M_LHS(_)         ) -> fresh_patt env
+    | (P_Wild          , M_LHS(_,_,k)     ) -> fresh_patt k (Env.to_tbox env)
     | (P_Wild          , M_Patt           ) -> _Wild
     | (P_Wild          , _                ) ->
         (* We create a metavariable [m] of type [tm], which itself is also a
@@ -306,7 +302,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(m,_)       ) ->
+    | (P_Patt(id,ts)   , M_LHS(m,_,k)     ) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -328,10 +324,11 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         begin
           match id with
           | None     ->
-              if List.length env = Array.length vs then
+              let l = List.length env in
+              if l = Array.length vs then
                 wrn t.pos "Pattern [%a] could be replaced by [_]."
                   Pretty.pp_p_term t;
-              _Patt None (fresh_patt_name ()) (Array.map Bindlib.box_var vs)
+              fresh_patt k (Array.map Bindlib.box_var vs)
           | Some(id) ->
               let i =
                 try Some(List.assoc id.elt m) with Not_found ->
@@ -503,7 +500,9 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
      privacy. *)
   let prv = is_private (fst (get_root p_lhs ss)) in
   (* We scope the LHS and add indexes in the environment for metavariables. *)
-  let lhs = Bindlib.unbox (scope (M_LHS(map, prv)) ss Env.empty p_lhs) in
+  let l = List.length map in
+  let k = Stdlib.ref (l-1) in
+  let lhs = Bindlib.unbox (scope (M_LHS(map,prv,k)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with
@@ -518,8 +517,11 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
+  (* We extend [map] with the fresh pattern variables created in scoping. *)
+  let k = Stdlib.(!k-(l-1)) in
+  let fresh_patts = Array.init k (fun i -> Printf.sprintf "#%i" (l+i)) in
+  let names = Array.append (Array.of_list (List.map fst map)) fresh_patts in
   (* We scope the RHS and bind the pattern variables. *)
-  let names = Array.of_list (List.map fst map) in
   let vars = Bindlib.new_mvar te_mkfree names in
   let rhs =
     let map = Array.map2 (fun n v -> (n,v)) names vars in
