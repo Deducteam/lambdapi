@@ -205,7 +205,7 @@ let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
   if !log_enabled then
     begin
       log_infr (gre "check [%a] [%a]") pp t pp c;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   constrs
