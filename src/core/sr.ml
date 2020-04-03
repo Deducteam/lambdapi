@@ -88,7 +88,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs_args in
   let metas = Array.map (function Some m -> m | None -> assert false) metas in
-  (* Infer the type of the LHS and the constraints. *)
+  (* Infer the typing constraints of the LHS. *)
   match Typing.infer_constr builtins [] lhs with
   | None                      -> wrn pos "Untypable LHS."; shrp
   | Some(ty_lhs, lhs_constrs) ->
@@ -97,7 +97,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
       log_subj (gre "LHS has type %a") pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) lhs_constrs
     end;
-  (* We substitute the RHS with the corresponding metavariables. *)
+  (* We apply the mapping pattern variable -> metavariable to the RHS and the
+     types of its metavariables. *)
   let fn m =
     let xs = Basics.fresh_vars m.meta_arity in
     let ts = Array.map _Vari xs in
@@ -106,15 +107,14 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   let te_envs = Array.map fn metas in
   let subst t = Bindlib.msubst t te_envs in
   let rhs = subst rule.rhs in
-  (* We substitute the metavariables of the RHS as well. *)
   let fn m =
     let bt = lift !(m.meta_type) in
     m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar rule.vars bt))
   in
   MetaSet.iter fn rhs_metas;
-  (* We instantiate the LHS metas by fresh function symbols. *)
+  (* We instantiate the uninstantiated LHS metas by fresh function symbols. *)
   let sym n t =
-    { sym_name  = n
+    { sym_name  = "?" ^ n
     ; sym_type  = ref t
     ; sym_path  = []
     ; sym_def   = ref None
@@ -142,8 +142,9 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
       log_subj (gre "RHS has type %a") pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) to_solve
     end;
-  (* Solving the constraints. To help resolution, metavariable symbols having
-     no constraint could be replaced by fresh variables. *)
+  (* To help resolution, metavariable symbols with no constraint are
+     replaced by fresh variables. *)
+  (* Solving the typing constraints of the RHS. *)
   match Unif.(solve builtins true {no_problems with to_solve}) with
   | None     ->
       fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)
@@ -161,17 +162,18 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   let cs = List.filter (fun c -> not (is_constr c)) cs in
   if cs <> [] then
     begin
-      List.iter (fatal_msg "Cannot solve %a\n" pp_constr) cs;
-      fatal pos "Unable to prove SR for rule [%a]." pp_rule (s,h,rule)
+      List.iter (fatal_msg "\nCannot solve %a" pp_constr) cs;
+      fatal pos "\nUnable to prove type preservation for the rule\n%a."
+        pp_rule (s,h,rule)
     end;
   (* Check that there is no uninstanciated metas left. *)
   let lhs_metas = Basics.get_metas false lhs in
-  let f m =
+  let fn m =
     if not (MetaSet.mem m lhs_metas) then
       fatal pos "Cannot instantiate all metavariables in rule [%a]."
         pp_rule (s,h,rule)
   in
-  Basics.iter_meta false f rhs;
+  Basics.iter_meta false fn rhs;
   (* Return rule with metavariables instanciated. We need to replace
      metavariables by term_env variables, and bind them. *)
   let new_rhs = rule.rhs in
