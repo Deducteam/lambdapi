@@ -93,12 +93,13 @@
 
   ;; Completion
   (lambdapi-capf-setup)
+
   ;; Indentation
   (smie-setup
    lambdapi--smie-prec
-   #'lambdapi--smie-rules
-   :forward-token #'lambdapi--smie-forward-token
-   :backward-token #'lambdapi--smie-backward-token)
+   'lambdapi--smie-rules
+   :forward-token 'lambdapi--smie-forward-token
+   :backward-token 'lambdapi--smie-backward-token)
 
   ;; Abbrev mode
   (lambdapi-abbrev-setup)

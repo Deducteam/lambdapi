@@ -8,6 +8,9 @@
 ;;
 ;;  Input method for lambdapi. Define a quail package with symbols from
 ;;  `math-symbol-lists'.
+;;  The input method is augmented with more latex symbols if company is not
+;;  available because if the input method is active (that is, a sequence of
+;;  characters is candidate to be translated), compnay won't show suggestions.
 ;;
 ;;; Code:
 (require 'cl-lib)
@@ -19,16 +22,11 @@
   "A transliteration scheme for LambdaPi."
   nil t t t t nil t nil nil nil t)
 (quail-define-rules
-  ("->" ?→) ("\\to" ?→) ("\\rightarrow" ?→)
-  ("=>" ?⇒) ("\\To" ?⇒) ("\\Rightarrow" ?⇒)
-  ("!!" ?∀) ("\\forall" ?∀)
-  ("\\\\" ?λ) ("\\lambda" ?λ)
-  (":=" ?≔) ("\\defeq"  ?≔)
-  ("==" ?≡) ("\\equiv"  ?≡)
-  ("&&" ?∧) ("\\wedge"  ?∧) ("/\\" ?∧)
-  ("||" ?∨) ("\\vee"    ?∨) ("\\/" ?∨)
-  ("~~" ?¬) ("\\neg"    ?¬)
-  ("??" ?∃) ("\\exists" ?∃)
+  ("->" ?→) ("=>" ?⇒) ("!!" ?∀) ("\\\\" ?λ)
+  (":=" ?≔) ("==" ?≡)
+  ("&&" ?∧) ("/\\" ?∧)
+  ("||" ?∨) ("\\/" ?∨)
+  ("~~" ?¬) ("??" ?∃)
   ("`a" ?α) ("`b" ?β) ("`c" ?γ) ("`d" ?δ)
   ("`e" ?ε) ("`h" ?η) ("`i" ?ι) ("`k" ?κ)
   ("`m" ?μ) ("`n" ?ν) ("`o" ?ω) ("`p" ?π)
@@ -47,8 +45,9 @@
    tbl))
 
 ;; Add greek letters and binary operators from `math-symbol-list-basic'
-(lambdapi--add-translation math-symbol-list-basic
-                           '("greek" "Greek" "bin" "rel" "misc"))
+(unless (and (require 'company nil 1) (require 'company-math nil 1))
+  (lambdapi--add-translation
+   math-symbol-list-basic '("greek" "Greek" "bin" "rel" "misc")))
 
 (provide 'lambdapi-input)
 ;;; lambdapi-input.el ends here

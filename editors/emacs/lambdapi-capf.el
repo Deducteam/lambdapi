@@ -4,17 +4,16 @@
 ;;
 ;; Author: Gabriel Hondet
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Created: March 28, 2020
-;; Modified: March 28, 2020
-;; Version: 0.0.1
-;; Package-Requires: ((emacs 26.1) (cl-lib "0.5"))
+;; Package-Requires: ((emacs 26.1) (cl-lib "0.5") (eglot "1.5"))
 ;;
 ;; This file is not part of GNU Emacs.
 ;;
 ;;; Commentary:
-;;
+;; If (add-to-list 'eglot-stay-out-of 'company) is not called, Eglot
+;; reinitialises company-backends.
 ;;; Code:
 (require 'lambdapi-vars)
+(require 'eglot)
 
 (defconst lambdapi--all-keywords
   (append lambdapi-sig-commands
@@ -32,6 +31,15 @@
            (end (or (cdr bounds) (point))))
       (list beg end words :exclusive 'no))))
 
+(defun lambdapi--company-setup ()
+  "Setup company for lambdapi."
+  (when (and (require 'company nil 1)
+             (require 'company-math nil 1))
+    (progn
+      (add-to-list 'eglot-stay-out-of 'company) ; Eglot reinits backends
+      (setq-local company-backends
+                  (cons 'company-math-symbols-unicode company-backends)))))
+
 ;;;###autoload
 (defun lambdapi-completion-at-point ()
   "Completion of symbol at point for lambdapi."
@@ -39,9 +47,10 @@
 
 (defun lambdapi-capf-setup ()
   "Setup for `completion-at-point-functions`."
-  (let ((capf #'lambdapi-completion-at-point))
+  (let ((capf 'lambdapi-completion-at-point))
     (unless (memq capf completion-at-point-functions)
-      (add-hook 'completion-at-point-functions capf nil 'local))))
+      (add-hook 'completion-at-point-functions capf nil 'local))
+    (lambdapi--company-setup)))
 
 
 (provide 'lambdapi-capf)

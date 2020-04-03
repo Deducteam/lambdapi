@@ -18,11 +18,23 @@ package-install RET lambdapi-mode` should then be necessary.
 Meanwhile, the package archive can be generated with 
 `make dist` and `make install`.
 
+Remove with `package-delete RET lambdapi-mode`.
+
 Entering unicode
 ----------------
+### Company
+If [`company-mode`](https://github.com/company-mode/company-mode) and
+[`company-math`](https://github.com/vspinu/company-math) are installed, 
+LaTeX commands are autocompleted with the latter tool. Any (or at least a lot
+of) LaTeX symbol can be entered via its LaTeX command, start typing it, and an
+autocompletion tooltip should suggest the LaTeX symbol.
+
+This method is the more complete and easier to use, but depends on `company`.
+
 ### The `LambdaPi` input method
-LaTeX characters can be entered via the `LambdaPi` input method. 
-Greek characters can be accessed using backquoted letters (as done in
+If `company` or `company-math` is not installed, LaTeX characters can be entered
+via the `LambdaPi` input method. Greek characters can be accessed using
+backquoted letters (as done in
 [`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html)
 ), or with the LaTeX command, α can be accessed with `` `a `` or `\alpha`, β
 with `` `b `` or `\beta` &c.
