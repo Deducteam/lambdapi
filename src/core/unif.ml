@@ -52,7 +52,10 @@ let instantiation : ctxt -> meta -> term array -> term ->
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   match instantiation ctx m ts u with
-  | Some(bu) when Bindlib.is_closed bu -> set_meta m (Bindlib.unbox bu); true
+  | Some(bu) when Bindlib.is_closed bu ->
+      if !log_enabled then
+        log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+      set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
