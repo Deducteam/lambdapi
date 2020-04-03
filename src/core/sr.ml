@@ -13,25 +13,6 @@ let log_subj = log_subj.logger
 (** Representation of a substitution. *)
 type subst = tvar array * term array
 
-(** [subst_from_constrs cs] builds a //typing substitution// from the list  of
-    constraints [cs]. The returned substitution is given by a couple of arrays
-    [(xs,ts)] of the same length.  The array [xs] contains the variables to be
-    substituted using the terms of [ts] at the same index. *)
-let subst_from_constrs : unif_constrs -> subst = fun cs ->
-  let rec build_sub acc cs =
-    match cs with
-    | []          -> List.split acc
-    | (c,a,b)::cs ->
-      match Ctxt.get_args c a with
-      | Vari(x), [] -> build_sub ((x,b)::acc) cs
-      | _, _ ->
-        match Ctxt.get_args c b with
-        | Vari(x), [] -> build_sub ((x,a)::acc) cs
-        | _, _ -> build_sub acc cs
-  in
-  let (vs,ts) = build_sub [] cs in
-  (Array.of_list vs, Array.of_list ts)
-
 (** [build_meta_type k] builds the type “∀(x1:A1) ⋯ (xk:Ak), A(k+1)” where the
     type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” (which has
     arity “i-1”). The type of “Mi” is “∀(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
@@ -68,9 +49,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     fun builtins ((s, h, { elt = rule; pos = pos }) as shrp) ->
   if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
   let binder_arity = Bindlib.mbinder_arity rule.rhs in
-  (* Compute the metavariables of the RHS. *)
-  let rhs = Bindlib.msubst rule.rhs (Array.make binder_arity TE_None) in
-  let rhs_metas = Basics.get_metas true rhs in
+  (* Compute the metavariables of the RHS, including the metavariables of
+     their types. *)
+  let rhs_metas =
+    Basics.get_metas true
+      (Bindlib.msubst rule.rhs (Array.make binder_arity TE_None))
+  in
   (* We process the LHS to replace pattern variables by metavariables. *)
   let metas = Array.make binder_arity None in
   let rec to_m : int -> term -> tbox = fun k t ->
@@ -109,6 +93,15 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs_args in
   let metas = Array.map (function Some m -> m | None -> assert false) metas in
+  (* Infer the type of the LHS and the constraints. *)
+  match Typing.infer_constr builtins [] lhs with
+  | None                      -> wrn pos "Untypable LHS."; shrp
+  | Some(ty_lhs, lhs_constrs) ->
+  if !log_enabled then
+    begin
+      log_subj "LHS has type %a" pp ty_lhs;
+      List.iter (log_subj "  if %a" pp_constr) lhs_constrs
+    end;
   (* We substitute the RHS with the corresponding metavariables. *)
   let fn m =
     let ns = Array.init m.meta_arity (Printf.sprintf "x%i") in
@@ -125,38 +118,27 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     m.meta_type := subst (Bindlib.unbox (Bindlib.bind_mvar rule.vars bt))
   in
   MetaSet.iter fn rhs_metas;
-  (* Infer the type of the LHS and the constraints. *)
-  match Typing.infer_constr builtins [] lhs with
-  | None                      -> wrn pos "Untypable LHS."; shrp
-  | Some(ty_lhs, lhs_constrs) ->
-  if !log_enabled then
-    begin
-      log_subj "LHS has type [%a]" pp ty_lhs;
-      let fn (c,t,u) = log_subj "  if %a[%a] ~ [%a]" pp_ctxt c pp t pp u in
-      List.iter fn lhs_constrs
-    end;
-  (* Turn constraints into a substitution and apply it. *)
-  let (xs,ts) = subst_from_constrs lhs_constrs in
-  let p = Bindlib.box_pair (lift rhs) (lift ty_lhs) in
-  let p = Bindlib.unbox (Bindlib.bind_mvar xs p) in
-  let (rhs,ty_lhs) = Bindlib.msubst p ts in
+  (* Here, we should instantiate the LHS metas by fresh function symbols and
+     complete the constraints into a set of rewriting rules on those function
+     symbols. *)
   (* Check that the RHS has the same type as the LHS. *)
   let to_solve = Infer.check [] rhs ty_lhs in
   if !log_enabled && to_solve <> [] then
     begin
-      log_subj "RHS has type [%a]" pp ty_lhs;
+      log_subj "RHS has type %a" pp ty_lhs;
       List.iter (log_subj "  if %a" pp_constr) to_solve
     end;
-  (* Solving the constraints. *)
+  (* Solving the constraints. To help resolution, metavariable symbols having
+     no constraint could be replaced by fresh variables. *)
   match Unif.(solve builtins false {no_problems with to_solve}) with
   | None     ->
       fatal pos "Rule [%a] does not preserve typing." pp_rule (s,h,rule)
   | Some(cs) ->
   let is_constr c =
     let eq_comm (_,t1,u1) (_,t2,u2) =
-      (* Contexts ignored: [infer_constr] is called with an empty context and
-       * neither [check] nor [solve] generate contexts with defined
-       * variables. *)
+      (* Contexts ignored: [Infer.check] is called with an empty context and
+         neither [Infer.check] nor [Unif.solve] generate contexts with defined
+         variables. *)
       (Eval.eq_modulo [] t1 t2 && Eval.eq_modulo [] u1 u2) ||
       (Eval.eq_modulo [] t1 u2 && Eval.eq_modulo [] t2 u1)
     in
