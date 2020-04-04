@@ -48,50 +48,68 @@ let init : config -> unit = fun cfg ->
       Files.ModMap.iter fn (Files.current_mappings ())
     end;
   (* Register the library root. *)
-  Files.init_lib_root ()
+  Files.init_lib_root ();
+  (* Initialise the [Pure] interface (this must come last). *)
+  Pure.set_initial_time ()
 
 (** Running the main type-checking mode. *)
-let check_cmd : config -> int option -> string list -> unit =
-    fun cfg timeout files ->
-  let handle file =
-    let sign =
-      match timeout with
-      | None    -> Compile.compile_file file
-      | Some(i) ->
-          if i <= 0 then fatal_no_pos "Invalid timeout value [%i] (≤ 0)." i;
-          try with_timeout i Compile.compile_file file
-          with Timeout ->
-            fatal_no_pos "Compilation timed out for [%s]." file
-    in
-    let run_checker prop fn chk kw =
-      let run cmd =
-        match External.run prop fn cmd sign with
-        | Some(true ) -> ()
-        | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
-        | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+let check_cmd : config -> int option -> bool -> string list -> unit =
+    fun cfg timeout recompile files ->
+  let run _ =
+    let open Timed in
+    init cfg; Stdlib.(Compile.recompile := recompile);
+    (* We save time to run each file in the same environment. *)
+    let time = Time.save () in
+    let handle file =
+      Console.reset_default ();
+      Time.restore time;
+      let sign =
+        match timeout with
+        | None    -> Compile.compile_file file
+        | Some(i) ->
+            if i <= 0 then fatal_no_pos "Invalid timeout value [%i] (≤ 0)." i;
+            try with_timeout i Compile.compile_file file
+            with Timeout ->
+              fatal_no_pos "Compilation timed out for [%s]." file
       in
-      Option.iter run chk
+      let run_checker prop fn chk kw =
+        let run cmd =
+          match External.run prop fn cmd sign with
+          | Some(true ) -> ()
+          | Some(false) -> fatal_no_pos "The rewrite system is not %s." kw
+          | None        -> fatal_no_pos "The rewrite system may not be %s." kw
+        in
+        Option.iter run chk
+      in
+      run_checker "confluence"  Hrs.to_HRS cfg.confluence  "confluent";
+      run_checker "termination" Xtc.to_XTC cfg.termination "terminating"
     in
-    run_checker "confluence"  Hrs.to_HRS cfg.confluence  "confluent";
-    run_checker "termination" Xtc.to_XTC cfg.termination "terminating"
+    List.iter handle files
   in
-  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
+  Console.handle_exceptions run
 
 (** Running the parsing mode. *)
 let parse_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file = ignore (Compile.parse_file file) in
-  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
+  let run _ =
+    let open Timed in
+    init cfg;
+    (* We save time to run each file in the same environment. *)
+    let time = Time.save () in
+    let handle file = Time.restore time; ignore (Compile.parse_file file) in
+    List.iter handle files
+  in
+  Console.handle_exceptions run
 
 (** Running the pretty-printing mode. *)
-let beautify_cmd : config -> string list -> unit = fun cfg files ->
-  let handle file = Pretty.beautify (Compile.parse_file file) in
-  Console.handle_exceptions (fun _ -> init cfg; List.iter handle files)
+let beautify_cmd : config -> string -> unit = fun cfg file ->
+  let run _ = init cfg; Pretty.beautify (Compile.parse_file file) in
+  Console.handle_exceptions run
 
 (** Running the LSP server. *)
 let lsp_server_cmd : config -> bool -> string -> unit =
     fun cfg standard_lsp lsp_log_file ->
-  let run_server () = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
-  Console.handle_exceptions run_server
+  let run _ = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
+  Console.handle_exceptions run
 
 (** {3 Command line argument parsing} *)
 
@@ -237,6 +255,12 @@ let timeout : int option Term.t =
   in
   Arg.(value & opt (some int) None & info ["timeout"] ~docv:"NUM" ~doc)
 
+let recompile : bool Term.t =
+  let doc =
+    "Recompile the files even if they have an up-to-date object file."
+  in
+  Arg.(value & flag & info ["recompile"] ~doc)
+
 (** Options that are specific to the ["lsp-server"] command. *)
 
 let standard_lsp : bool Term.t =
@@ -256,6 +280,14 @@ let lsp_log_file : string Term.t =
   Arg.(value & opt string default & info ["log-file"] ~docv:"FILE" ~doc)
 
 (** Remaining arguments: source files. *)
+
+let file : string Term.t =
+  let doc =
+    Printf.sprintf
+      "Source file with the [%s] extension (or with the [%s] extension when \
+       using the legacy Dedukti syntax)." src_extension legacy_src_extension
+  in
+  Arg.(required & pos 0 (some non_dir_file) None & info [] ~docv:"FILE" ~doc)
 
 let files : string list Term.t =
   let doc =
@@ -298,7 +330,7 @@ let man_pkg_file =
 
 let check_cmd =
   let doc = "Type-checks the given files." in
-  Term.(const check_cmd $ global_config $ timeout $ files),
+  Term.(const check_cmd $ global_config $ timeout $ recompile $ files),
   Term.info "check" ~doc ~man:man_pkg_file
 
 let parse_cmd =
@@ -308,7 +340,7 @@ let parse_cmd =
 
 let beautify_cmd =
   let doc = "Run the parser and pretty-printer on the given files." in
-  Term.(const beautify_cmd $ global_config $ files),
+  Term.(const beautify_cmd $ global_config $ file),
   Term.info "beautify" ~doc ~man:man_pkg_file
 
 let lsp_server_cmd =

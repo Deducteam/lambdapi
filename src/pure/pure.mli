@@ -72,3 +72,8 @@ val end_proof : proof_state -> command_result
 (** [get_symbols st] returns all the symbols defined in the signature at state
     [st]. This can be used for displaying the type of symbols. *)
 val get_symbols : state -> (Terms.sym * Pos.popt) Extra.StrMap.t
+
+(** [set_initial_time ()] records the current imperative state as the rollback
+    "time" for the [initial_state] function. This is only useful to initialise
+    or reinitialise the pure interface. *)
+val set_initial_time : unit -> unit
