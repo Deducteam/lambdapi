@@ -1,9 +1,10 @@
 `lambdapi-mode` a major mode for editing lambdapi code
-=======================================================
+======================================================
 
 This packages provides (with Emacs 24 or higher):
 * Syntax highlighting for Lambdapi (`*.lp` files) and Dedukti2 (`*.dk` files)
 * Auto indentation for Lambdapi
+* Easier unicode input
 * Completion for Lambdapi
 
 and with LSP, `eglot` (and Emacs 26.1 or higher):
@@ -15,23 +16,36 @@ Installation
 If you installed `lambdapi`, then the mode is already installed. To activate it
 upon opening `.lp` files, add to your `~/.emacs.d/init.el` or `~/.emacs`
 ``` emacs-lisp
+(load "lambdapi-site-file")
+```
+
+If Emacs crashes on startup with the following message
+
+> `Cannot open load file: No such file or directory, lambdapi-site-file`
+
+then add to the same file (before `(load "lambdapi-site-file")`):
+``` emacs-lisp
 (require 'subr-x)
 (let* ((opshare (shell-command-to-string "opam var share"))
        (opshare (string-trim opshare)))
   (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
-(load "lambdapi-site-file")
 ```
-Installation via Dune does not handle dependencies, so afterwards, install
-through emacs (all packages are available on [`elpa`](https://elpa.gnu.org)):
+
+Installation via Dune, opam or `make install` does not handle dependencies.
+Therefore, the following Emacs packages might be missing (available on
+[`elpa`](https://elpa.gnu.org)):
 - [`eglot`](https://github.com/joaotavora/eglot),
 - [`company`](http://company-mode.github.io/) (optional, for tooltip unicode
   completion),
 - [`company-math`](https://github.com/vspinu/company-math) (optional, for
   tooltip unicode completion).
 
-The package can also be installed via the Emacs package manager, run
-`M-x package-install RET lambdapi-mode`. If you have
-[`use-package`](https://github.com/jwiegley/use-package), add
+
+`lambdapi-mode` can also be installed via the Emacs package manager from 
+[MELPA](https://melpa.org), run
+`M-x package-install RET lambdapi-mode`. For instance, if you have
+[`use-package`](https://github.com/jwiegley/use-package), you may install
+`lambdapi-mode` with
 ``` emacs-lisp
 (use-package lambdapi-mode)
 ```
