@@ -12,13 +12,29 @@ and with LSP, `eglot` (and Emacs 26.1 or higher):
 
 Installation
 ------------
-In the long term, the package should be available on MELPA, and only `M-x
-package-install RET lambdapi-mode` should then be necessary.
+If you installed `lambdapi`, then the mode is already installed. To activate it
+upon opening `.lp` files, add to your `~/.emacs.d/init.el` or `~/.emacs`
+``` emacs-lisp
+(require 'subr-x)
+(let* ((opshare (shell-command-to-string "opam var share"))
+       (opshare (string-trim opshare)))
+  (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
+(load "lambdapi-site-file")
+```
+Installation via Dune does not handle dependencies, so afterwards, install
+through emacs (all packages are available on
+[`elpa`](https://elpa.gnu.org/packages)):
+- `eglot`,
+- `company` (optional, for tooltip unicode completion)
+- `company-math` (optional, for tooltip unicode completion)
 
-Meanwhile, the package archive can be generated with 
-`make dist` and `make install`.
-
-Remove with `package-delete RET lambdapi-mode`.
+**MELPA:**
+The package can also be installed via the Emacs package manager, run
+`M-x package-install RET lambdapi-mode`. If you have
+[`use-package`](https://github.com/jwiegley/use-package), add
+``` emacs-lisp
+(use-package lambdapi-mode)
+```
 
 Entering unicode
 ----------------
