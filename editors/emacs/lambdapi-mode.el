@@ -1,13 +1,19 @@
-;;; lambdapi-mode --- A major mode to edit Dedukti files -*- lexical-binding: t; -*-
+;;; lambdapi-mode --- A major mode to edit Lambdapi files -*- lexical-binding: t; -*-
+
+;; Copyright (C) 2020  Deducteam
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Maintainer: %%PKG_MAINTAINER%%
+;; Version: %%VERSION%%
 ;; Homepage: %%PKG_HOMEPAGE%%
-;; Keywords: lambdapi dedukti proof-assistant logical-framework LP
+;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1
 ;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))
 
 ;;; Commentary:
+;;
+;;  A major mode for editing Lambdapi source code. This major mode provides
+;;  indentation, syntax highlighting, completion, easy unicode input, and more.
 ;;
 ;;; Code:
 
