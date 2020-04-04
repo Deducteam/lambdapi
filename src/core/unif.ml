@@ -106,7 +106,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
     if !log_enabled then
-      log_unif "imitate_inj [%a] [%a]"
+      log_unif "imitate_inj %a ≡ %a"
         pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
     let exception Cannot_imitate in
     try
@@ -264,7 +264,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let inverse_opt s ts v =
     if is_injective s then
       match ts with
-      | [t] -> begin try Some (t, inverse s v) with Not_invertible -> None end
+      | [t] -> (try Some (t, inverse s v) with Not_invertible -> None)
       | _ -> None
     else None
   in
@@ -273,8 +273,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !log_enabled then
-      log_unif "solve_inj [%a] [%a]" pp (add_args (symb s) ts) pp v;
-    if is_constant s then error ();
+      log_unif "solve_inj %a ≡ %a" pp (add_args (symb s) ts) pp v;
     match inverse_opt s ts v with
     | Some (a, b) -> solve_aux ctx a b p
     | None -> add_to_unsolved ()
@@ -343,10 +342,18 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
+  | (Symb(s,_)  , _          ) when not (is_constant s) -> solve_inj s ts1 t2
+  | (_          , Symb(s,_)  ) when not (is_constant s) -> solve_inj s ts2 t1
 
-  | (_          , _          ) -> error ()
+  (* Cases of error *)
+  | (Type, (Kind|Prod(_)|Symb(_)|Vari(_)|Abst(_)))
+  | (Kind, (Type|Prod(_)|Symb(_)|Vari(_)|Abst(_)))
+  | (Prod(_), (Type|Kind|Vari(_)|Abst(_)))
+  | (Vari(_), (Type|Kind|Vari(_)|Prod(_)))
+  | (Abst(_), (Type|Kind|Prod(_)))
+    -> error ()
+
+  | (_          , _          ) -> add_to_unsolved ()
 
 (** [solve builtins flag problems] attempts to solve [problems], after having
     sets the value of [can_instantiate] to [flag].  If there is no solution,
