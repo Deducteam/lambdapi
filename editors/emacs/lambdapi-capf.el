@@ -1,16 +1,9 @@
 ;;; lambdapi-capf.el --- Completion for lambdapi -*- lexical-binding: t; -*-
-;;
-;; Copyright (C) 2020 Deducteam
-;;
-;; Author: Gabriel Hondet
-;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Package-Requires: ((emacs 26.1) (cl-lib "0.5") (eglot "1.5"))
-;;
-;; This file is not part of GNU Emacs.
-;;
 ;;; Commentary:
+;;
 ;; If (add-to-list 'eglot-stay-out-of 'company) is not called, Eglot
 ;; reinitialises company-backends.
+;;
 ;;; Code:
 (require 'lambdapi-vars)
 (require 'eglot)

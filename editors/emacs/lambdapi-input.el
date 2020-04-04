@@ -1,9 +1,4 @@
 ;;; lambdapi-input.el --- Input method for lambdapi -*- lexical-binding: t; -*-
-;;
-;; Package-Requires: ((emacs 26.1) (cl-lib "0.5") (math-symbol-lists "1.2.1"))
-;;
-;; This file is not part of GNU Emacs.
-;;
 ;;; Commentary:
 ;;
 ;;  Input method for lambdapi. Define a quail package with symbols from

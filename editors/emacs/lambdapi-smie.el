@@ -1,18 +1,11 @@
 ;;; lambdapi-smie.el --- Indentation for lambdapi -*- lexical-binding: t; -*-
-;;
-;; Copyright (C) 2020 Gabriel Hondet
-;;
-;; Author: Gabriel Hondet
-;; Package-Requires: ((emacs 26.1) (smie))
-;;
-;; This file is not part of GNU Emacs.
-;;
 ;;; Commentary:
 ;;
 ;; TODO: refine editing of proofs, perhaps make a single token PRFTAC for
 ;; tactics, adjust backward parsing (greed and lookahead of `looking-back`) to
 ;; avoid finding token `in` in `refine` and `definition`.
 ;; TODO: escaped identifier
+;;
 ;;; Code:
 (require 'smie)
 

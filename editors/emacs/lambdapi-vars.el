@@ -1,12 +1,4 @@
 ;;; lambdapi-vars.el --- Variables for lambadpi-mode -*- lexical-binding: t; -*-
-;;
-;; Copyright (C) 2020 Deducteam
-;;
-;; Maintainer: Deducteam <dedukti-dev@inria.fr>
-;; Package-Requires: ((emacs 26.1) (cl-lib "0.5"))
-;;
-;; This file is not part of GNU Emacs.
-;;
 ;;; Commentary:
 ;;
 ;; The lists defined are mainly used for syntax colouring and completion.

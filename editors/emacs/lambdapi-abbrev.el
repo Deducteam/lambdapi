@@ -1,9 +1,4 @@
 ;;; lambdapi-abbrev.el --- Abbrevs for lambdapi -*- lexical-binding: t; -*-
-;;
-;; Package-Requires: ((emacs 26.1) (cl-lib "0.5"))
-;;
-;; This file is not part of GNU Emacs.
-;;
 ;;; Commentary:
 ;;
 ;;  Abbreviations can be used to enter UTF-8 characters.
@@ -26,11 +21,10 @@ local variables at each new definition."
     (save-buffer)
     (switch-to-buffer bufname)))
 
-;;;###autoload
 (defun lambdapi-abbrev-setup ()
   "Set up lambdapi abbreviation."
   (abbrev-mode 1)
-  (define-key lambdapi-mode-map (kbd "C-c a") #'lambdapi-local-abbrev))
+  (define-key lambdapi-mode-map (kbd "C-c a") 'lambdapi-local-abbrev))
 
 (provide 'lambdapi-abbrev)
 ;;; lambdapi-abbrev.el ends here

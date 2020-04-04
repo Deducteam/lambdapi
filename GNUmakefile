@@ -1,5 +1,5 @@
-VIMDIR = $(HOME)/.vim
-EMACS  = $(shell which emacs)
+VIMDIR   = $(HOME)/.vim
+EMACSDIR = $(shell opam var share)/emacs/site-lisp
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -147,15 +147,10 @@ else
 	@printf "\e[36mVim mode installed.\e[39m\n"
 endif
 
-# Install for the emacs mode (system-wide).
 .PHONY: install_emacs
 install_emacs:
-ifeq ($(EMACS),)
-	@printf "\e[36mWill not install emacs mode.\e[39m\n"
-else
-	@cd editors/emacs && $(MAKE) install
-	@printf "\e[36mEmacs mode installed.\e[39m\n"
-endif
+	@printf "\e[36mAdd (load \"$(EMACSDIR)/lambdapi-site-file\") to \
+your Emacs configuration file.\e[39m\n"
 
 opam-release:
 	dune-release distrib
