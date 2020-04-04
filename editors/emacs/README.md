@@ -22,13 +22,13 @@ upon opening `.lp` files, add to your `~/.emacs.d/init.el` or `~/.emacs`
 (load "lambdapi-site-file")
 ```
 Installation via Dune does not handle dependencies, so afterwards, install
-through emacs (all packages are available on
-[`elpa`](https://elpa.gnu.org/packages)):
-- `eglot`,
-- `company` (optional, for tooltip unicode completion)
-- `company-math` (optional, for tooltip unicode completion)
+through emacs (all packages are available on [`elpa`](https://elpa.gnu.org)):
+- [`eglot`](https://github.com/joaotavora/eglot),
+- [`company`](http://company-mode.github.io/) (optional, for tooltip unicode
+  completion),
+- [`company-math`](https://github.com/vspinu/company-math) (optional, for
+  tooltip unicode completion).
 
-**MELPA:**
 The package can also be installed via the Emacs package manager, run
 `M-x package-install RET lambdapi-mode`. If you have
 [`use-package`](https://github.com/jwiegley/use-package), add
