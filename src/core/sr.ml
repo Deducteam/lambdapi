@@ -42,7 +42,7 @@ let build_meta_type : int -> term = fun k ->
 let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
                  -> sym * pp_hint * rule Pos.loc =
     fun builtins ((s, h, { elt = rule; pos = pos }) as shrp) ->
-  if !log_enabled then log_subj "check_rule [%a]" pp_rule (s, h, rule);
+  if !log_enabled then log_subj "check_rule %a" pp_rule (s, h, rule);
   let binder_arity = Bindlib.mbinder_arity rule.rhs in
   (* Compute the metavariables of the RHS, including the metavariables of
      their types. *)
