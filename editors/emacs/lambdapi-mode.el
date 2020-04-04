@@ -1,7 +1,8 @@
 ;;; lambdapi-mode --- A major mode to edit Dedukti files -*- lexical-binding: t; -*-
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
-;; Maintainer: Deducteam <dedukti-dev@inria.fr>
+;; Maintainer: %%PKG_MAINTAINER%%
+;; Homepage: %%PKG_HOMEPAGE%%
 ;; Keywords: lambdapi dedukti proof-assistant logical-framework LP
 ;; Compatibility: GNU Emacs 26.1
 ;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))

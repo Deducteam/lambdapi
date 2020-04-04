@@ -1,5 +1,4 @@
 VIMDIR   = $(HOME)/.vim
-EMACSDIR = $(shell opam var share)/emacs/site-lisp
 
 #### Compilation (binary, library and documentation) #########################
 
@@ -146,11 +145,6 @@ else
 	install -m 644 editors/vim/ftdetect/lambdapi.vim $(VIMDIR)/ftdetect
 	@printf "\e[36mVim mode installed.\e[39m\n"
 endif
-
-.PHONY: install_emacs
-install_emacs:
-	@printf "\e[36mAdd (load \"$(EMACSDIR)/lambdapi-site-file\") to \
-your Emacs configuration file.\e[39m\n"
 
 opam-release:
 	dune-release distrib
