@@ -26,8 +26,8 @@
 
 (defun lambdapi--company-setup ()
   "Setup company for lambdapi."
-  (when (and (require 'company nil 1)
-             (require 'company-math nil 1))
+  (when (and (require 'company-math nil 1)
+             (not lambdapi-unicode-force-quail))
     (progn
       (add-to-list 'eglot-stay-out-of 'company) ; Eglot reinits backends
       (setq-local company-backends

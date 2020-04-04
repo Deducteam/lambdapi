@@ -55,5 +55,11 @@
     table)
   "Syntax table for lambdapi-mode.")
 
+(defvar lambdapi-mode-map
+  (make-sparse-keymap))
+
+(defvar lambdapi-unicode-force-quail nil
+  "Set to non-nil to use Quail rather that company-math for unicode.")
+
 (provide 'lambdapi-vars)
 ;;; lambdapi-vars.el ends here

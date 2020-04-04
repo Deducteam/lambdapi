@@ -69,6 +69,13 @@ backquoted letters (as done in
 ), or with the LaTeX command: α can be accessed with `` `a `` or `\alpha`, β
 with `` `b `` or `\beta` &c.
 
+To force using the input method rather than `company`, set the variable
+`lambdapi-unicode-force-quail` to a non-nil value in `~/.emacs` or
+`~/.emacs.d/init.el`:
+``` emacs-lisp
+(setq lambdapi-unicode-force-quail 1)
+```
+
 **`abbrev` mode:**
 the `abbrev` mode is an emacs minor mode allowing the user to define
 abbreviations. For instance, one may define "btw" to be an abbreviation of "by

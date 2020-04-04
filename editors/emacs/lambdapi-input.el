@@ -8,6 +8,7 @@
 ;;  characters is candidate to be translated), compnay won't show suggestions.
 ;;
 ;;; Code:
+(require 'lambdapi-vars)
 (require 'cl-lib)
 (require 'quail)
 (require 'math-symbol-lists)
@@ -40,7 +41,8 @@
    tbl))
 
 ;; Add greek letters and binary operators from `math-symbol-list-basic'
-(unless (and (require 'company nil 1) (require 'company-math nil 1))
+;; Use quail when can't use company-math or quail is forced
+(when (or lambdapi-unicode-force-quail (not (require 'company-math nil 1)))
   (lambdapi--add-translation
    math-symbol-list-basic '("greek" "Greek" "bin" "rel" "misc")))
 
