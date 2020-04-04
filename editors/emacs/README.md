@@ -22,32 +22,29 @@ Remove with `package-delete RET lambdapi-mode`.
 
 Entering unicode
 ----------------
-### Company
-If [`company-mode`](https://github.com/company-mode/company-mode) and
+**Company:**
+if [`company-mode`](https://github.com/company-mode/company-mode) and
 [`company-math`](https://github.com/vspinu/company-math) are installed, 
 LaTeX commands are autocompleted with the latter tool. Any (or at least a lot
-of) LaTeX symbol can be entered via its LaTeX command, start typing it, and an
-autocompletion tooltip should suggest the LaTeX symbol.
+of) LaTeX symbol can be entered via its LaTeX command: start typing it, and an
+autocompletion tooltip should suggest the unicode symbol.
 
 This method is the more complete and easier to use, but depends on `company`.
 
-### The `LambdaPi` input method
-If `company` or `company-math` is not installed, LaTeX characters can be entered
+**`LambdaPi` input method:**
+if `company` or `company-math` is not installed, LaTeX characters can be entered
 via the `LambdaPi` input method. Greek characters can be accessed using
 backquoted letters (as done in
 [`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html)
-), or with the LaTeX command, α can be accessed with `` `a `` or `\alpha`, β
+), or with the LaTeX command: α can be accessed with `` `a `` or `\alpha`, β
 with `` `b `` or `\beta` &c.
 
-This method has the advantage of being lightweight and easy to use, but is not
-extensible.
-
-### The `abbrev` mode
-The `abbrev` mode is an emacs minor mode allowing the user to define
+**`abbrev` mode:**
+the `abbrev` mode is an emacs minor mode allowing the user to define
 abbreviations. For instance, one may define "btw" to be an abbreviation of "by
-the way" with, for instance, `add-global-abbrev`. Doing so will cause the
-sequence "btw" to be automatically expanded when the user hits `SPC` or `TAB`.
-The expansion can be inhibited by hitting `C-q` before `SPC`.
+the way" with, `add-global-abbrev`. Doing so will cause the sequence "btw" to be
+automatically expanded when the user hits `SPC` or `TAB`. The expansion can be
+inhibited by hitting `C-q` before `SPC`.
 
 The function `lambdapi-local-abbrev` can be called when the
 cursor is at the end of a word to define the word as an abbreviation. When
@@ -65,6 +62,6 @@ Other relevant packages
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion
 * [company-math](https://github.com/vspinu/company-math): unicode symbols auto
   completion
-
-The author thanks the [nim-mode](https://github.com/nim-lang/nim-mode) for
-serving as template for the development of several parts of this mode.
+* [unicode-fonts](https://github.com/rolandwalker/unicode-fonts): to configure
+  correctly Emacs' unicode fonts
+* `paredit.el`: to help keeping the parentheses balanced
