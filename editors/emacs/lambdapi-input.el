@@ -31,6 +31,9 @@
   ("`C" ?Γ) ("`D" ?Δ) ("`G" ?Γ) ("`L" ?Λ)
   ("`O" ?Ω) ("`P" ?Π) ("`S" ?Σ) ("`W" ?Ω))
 
+;; If loading time becomes too long because loading lists too big, sublists can
+;; be computed at compile time with (eval-when-compile) which can then be loaded
+
 (defun lambdapi--add-translation (tbl tags)
   "Add translation from list TBL whose tag is in TAGS."
   (cl-map
@@ -40,11 +43,21 @@
        (quail-defrule (cadr sym) (cddr sym))))
    tbl))
 
+(defun lambdapi--add-ext-translation (tbl com-rx)
+  "Add translation from list TBL whose command matches COM-RX."
+  (cl-map
+   nil
+   (lambda (sym)
+     (when (string-match-p com-rx (cadr sym))
+       (quail-defrule (cadr sym) (cdddr sym))))
+   tbl))
+
 ;; Add greek letters and binary operators from `math-symbol-list-basic'
 ;; Use quail when can't use company-math or quail is forced
 (when (or lambdapi-unicode-force-quail (not (require 'company-math nil 1)))
   (lambdapi--add-translation
-   math-symbol-list-basic '("greek" "Greek" "bin" "rel" "misc")))
-
+   math-symbol-list-basic '("greek" "Greek" "bin" "rel" "misc"))
+  ;; Add blackboard bold
+  (lambdapi--add-ext-translation math-symbol-list-extended "\\Bbb."))
 (provide 'lambdapi-input)
 ;;; lambdapi-input.el ends here

@@ -101,4 +101,6 @@ Other relevant packages
   completion
 * [unicode-fonts](https://github.com/rolandwalker/unicode-fonts): to configure
   correctly Emacs' unicode fonts
+* [rainbow-delimiters](https://github.com/Fanael/rainbow-delimiters): to
+  appreciate having a lot of parentheses
 * `paredit.el`: to help keeping the parentheses balanced
