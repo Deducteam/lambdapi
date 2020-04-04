@@ -4,11 +4,10 @@
 ;; TODO: refine editing of proofs, perhaps make a single token PRFTAC for
 ;; tactics, adjust backward parsing (greed and lookahead of `looking-back`) to
 ;; avoid finding token `in` in `refine` and `definition`.
-;; TODO: escaped identifier
 ;;
 ;;; Code:
 (require 'smie)
-
+(defconst lambdapi--rx-escident "{|\\([^|]\\|\\(|[^}]\\)\\)*|*|}")
 (defconst lambdapi--rx-ident "[a-zA-Z_][a-zA-Z0-9_]*")
 (defconst lambdapi--rx-natlit "[0-9]+")
 (defconst lambdapi--rx-floatlit "[0-9]+\\([.][0-9]+\\)?")
@@ -26,7 +25,7 @@
     "symmetry"
     "why3"))
 (defconst lambdapi--prf-finish '("abort" "admit" "qed"))
-(defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":"))
+(defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":" "?" "&"))
 (defconst lambdapi--keywords
   '("let"
     "in"
@@ -70,6 +69,8 @@
     '((ident ("ID"))
       (qident (ident)
               (qident "." ident))
+      (env (ident)
+           (csidentl "," ident))
       (rw-patt)
       (args (ident)
             ("{" ident ":" sterm "}")
@@ -77,6 +78,10 @@
       (sterm ("TYPE")
              ("_")
              (ident)
+             ("?" ident "[" env "]") ;; ?M[x,y,z]
+             ("&" ident "[" env "]") ;; &X[x,y,z]
+             ( "(" sterm ")" )
+             ( "{" sterm "}" )
              (sterm "⇒" sterm)
              ("λ" args "," sterm)
              ("∀" args "," sterm)
@@ -85,7 +90,7 @@
               ("assume" sterm)
               ("apply" sterm)
               ("simpl")
-              ("rewrite" "[" rw-patt "]" sterm)
+              ("rewrite" "[" rw-patt "]")
               ("reflexivity")
               ("focus" "NATLIT")
               ("print")
@@ -155,6 +160,10 @@
    ((looking-at lambdapi--rx-ident)
     (goto-char (match-end 0))
     "ID")
+   ;; escaped identifiers
+   ((looking-at lambdapi--rx-escident)
+    (goto-char (match-end 0))
+    "ID")
    (t (buffer-substring-no-properties
        (point)
        (progn (skip-syntax-forward "w_")
@@ -184,6 +193,10 @@
     "STRINGLIT")
    ;; identifiers
    ((looking-back lambdapi--rx-ident nil t)
+    (goto-char (match-beginning 0))
+    "ID")
+   ;; escaped identifiers
+   ((looking-back lambdapi--rx-escident nil t)
     (goto-char (match-beginning 0))
     "ID")
    (t (buffer-substring-no-properties
