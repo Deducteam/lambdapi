@@ -12,6 +12,7 @@
     "refine"
     "reflexivity"
     "rewrite"
+    "simpl"
     "symmetry"
     "why3")
   "Proof tactics.")

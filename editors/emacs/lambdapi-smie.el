@@ -84,7 +84,9 @@
              ( "{" sterm "}" )
              (sterm "⇒" sterm)
              ("λ" args "," sterm)
+             ("λ" "ID" ":" sterm "," sterm)
              ("∀" args "," sterm)
+             ("∀" "ID" ":" sterm "," sterm)
              ("let" args "≔" sterm "in" sterm))
       (tactic ("refine" sterm)
               ("assume" sterm)
@@ -128,7 +130,8 @@
                ("set" "prover") ; no stringlit because of conflict
                ("set" "prover_timeout" "NATLIT")
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "⇒")))))
+    '((assoc ",") (assoc "in") (assoc "⇒")
+      (assoc "λ" "∀") (assoc ":") (assoc "ID")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
