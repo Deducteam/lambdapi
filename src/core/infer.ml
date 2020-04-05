@@ -37,7 +37,7 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer [%a]" pp t;
+  if !log_enabled then log_infr "infer %a" pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -147,34 +147,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
    This avoids to build a product to destructure it just after. *)
 and check : ctxt -> term -> term -> unit = fun ctx t c ->
-  if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
-  match unfold t with
-  (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
-      ----------------------------------------------------
-                         ctx ⊢ Abst(a,t) ⇐ c                   *)
-  | Abst(a,t)   ->
-      (* We ensure that [a] is of type [Type]. *)
-      check ctx a Type;
-      (* We (hopefully) evaluate [c] to a product, and get its body. *)
-      let b =
-        let c = Eval.whnf ctx c in
-        match c with
-        | Prod(d,b)  -> conv ctx d a; b (* Domains must be convertible. *)
-        | Meta(m,ts) ->
-            let mxs, p, _bp1, bp2 = Env.extend_meta_type m in
-            conv ctx mxs p; Bindlib.msubst bp2 ts
-        | _         ->
-           let b = make_meta_codomain ctx a in
-           conv ctx c (Prod(a,b)); b
-      in
-      (* We type-check the body with the codomain. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a None t in
-      check ctx' t (Bindlib.subst b (Vari(x)))
-  | t           ->
-      (*  ctx ⊢ t ⇒ a
-         -------------
-          ctx ⊢ t ⇐ a  *)
-      conv ctx (infer ctx t) c
+  if !log_enabled then log_infr "check %a : %a" pp t pp c;
+  conv ctx (infer ctx t) c
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the
    term [t] in the context [ctx], under unification constraints [cs].
