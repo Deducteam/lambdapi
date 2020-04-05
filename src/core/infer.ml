@@ -136,16 +136,6 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
    [ctx], possibly under some constraints recorded in [constraints]
    using [conv]. [ctx] must be well-formed and [c] well-sorted. This
    function never fails (but constraints may be unsatisfiable). *)
-
-(* [check ctx t c] could be reduced to the default case [conv
-   (infer ctx t) c]. We however provide some more efficient
-   code when [t] is an abstraction, as witnessed by 'make holide':
-
-   Finished in 3:56.61 at 99% with 3180096Kb of RAM
-
-   Finished in 3:46.13 at 99% with 2724844Kb of RAM
-
-   This avoids to build a product to destructure it just after. *)
 and check : ctxt -> term -> term -> unit = fun ctx t c ->
   if !log_enabled then log_infr "check %a : %a" pp t pp c;
   conv ctx (infer ctx t) c
