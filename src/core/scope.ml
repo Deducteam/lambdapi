@@ -140,8 +140,8 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list * bool * int Stdlib.ref
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-      a map associating an index to every pattern variable along with a flag set
-      to [true] if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+     a map associating an index to every pattern variable along with a flag
+     set to [true] if {!constructor:Terms.expo.Privat} symbols are allowed. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
       the environment for variables that will be bound in the representation
@@ -234,7 +234,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Scoping function for the domain of functions or products. *)
   and scope_domain : env -> p_term option -> tbox = fun env a ->
     match (a, md) with
-    | (Some(a), M_LHS(_)    ) -> fatal a.pos "Annotation not allowed in a LHS."
+    | (Some(a), M_LHS(_)    ) ->
+        fatal a.pos "Annotation not allowed in a LHS."
     | (None   , M_LHS(_,_,k)) -> fresh_patt k (Env.to_tbox env)
     | (Some(a), _           ) -> scope env a
     | (None   , _           ) ->
