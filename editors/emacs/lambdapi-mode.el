@@ -1,6 +1,6 @@
-;;; lambdapi-mode --- A major mode to edit Lambdapi files -*- lexical-binding: t; -*-
+;;; lambdapi-mode.el --- A major mode for editing Lambdapi source code -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2020  Deducteam
+;; Copyright (C) 2020 Deducteam
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
@@ -11,10 +11,10 @@
 ;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))
 
 ;;; Commentary:
-;;
+
 ;;  A major mode for editing Lambdapi source code. This major mode provides
 ;;  indentation, syntax highlighting, completion, easy unicode input, and more.
-;;
+
 ;;; Code:
 
 (require 'lambdapi-vars)

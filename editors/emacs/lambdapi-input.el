@@ -9,7 +9,6 @@
 ;;
 ;;; Code:
 (require 'lambdapi-vars)
-(require 'cl-lib)
 (require 'quail)
 (require 'math-symbol-lists)
 
@@ -53,7 +52,7 @@ An element of this list is a dotted pair (COM . CH) where com is the LaTeX
 command (e.g. \alpha) and CH is the character (e.g. α).")
 
 (when (or lambdapi-unicode-force-quail (not (require 'company-math nil 1)))
-  (cl-map nil (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
+  (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic
                            lambdapi--math-symbol-list-extended)))
