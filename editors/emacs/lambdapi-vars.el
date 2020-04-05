@@ -47,6 +47,9 @@
   '("protected" "private" "injective" "constant" "open" "as")
   "Symbol modifiers.")
 
+(defvar lambdapi-indent-basic 2
+  "Basic indentation for lambdapi-mode.")
+
 (defvar lambdapi-syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?\/ ". 12b" table)

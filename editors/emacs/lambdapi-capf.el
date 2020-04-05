@@ -40,7 +40,7 @@
 
 (defun lambdapi-capf-setup ()
   "Setup for `completion-at-point-functions`."
-  (let ((capf 'lambdapi-completion-at-point))
+  (let ((capf #'lambdapi-completion-at-point))
     (unless (memq capf completion-at-point-functions)
       (add-hook 'completion-at-point-functions capf nil 'local))
     (lambdapi--company-setup)))

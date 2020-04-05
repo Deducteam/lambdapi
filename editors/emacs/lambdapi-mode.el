@@ -3,9 +3,9 @@
 ;; Copyright (C) 2020  Deducteam
 
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
-;; Maintainer: %%PKG_MAINTAINER%%
-;; Version: %%VERSION%%
-;; Homepage: %%PKG_HOMEPAGE%%
+;; Maintainer: Deducteam <dedukti-dev@inria.fr>
+;; Version: 1.0
+;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1
 ;; Package-Requires: ((emacs "26.1") (eglot "1.5") (math-symbol-lists "1.2.1"))
@@ -61,7 +61,7 @@
   (setq-default indent-tabs-mode nil)
   (add-to-list 'eglot-server-programs
                '(lambdapi-legacy-mode . ("lambdapi" "lsp" "--standard-lsp")))
-  (add-hook 'lambdapi-legacy-mode-hook 'eglot-ensure))
+  (add-hook 'lambdapi-legacy-mode-hook #'eglot-ensure))
 
 (provide 'lambdapi-legacy-mode)
 
@@ -105,8 +105,8 @@
   (smie-setup
    lambdapi--smie-prec
    'lambdapi--smie-rules
-   :forward-token 'lambdapi--smie-forward-token
-   :backward-token 'lambdapi--smie-backward-token)
+   :forward-token #'lambdapi--smie-forward-token
+   :backward-token #'lambdapi--smie-backward-token)
 
   ;; Abbrev mode
   (lambdapi-abbrev-setup)

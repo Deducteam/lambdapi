@@ -6,6 +6,7 @@
 ;; avoid finding token `in` in `refine` and `definition`.
 ;;
 ;;; Code:
+(require 'lambdapi-vars)
 (require 'smie)
 (defconst lambdapi--rx-escident "{|\\([^|]\\|\\(|[^}]\\)\\)*|*|}")
 (defconst lambdapi--rx-ident "[a-zA-Z_][a-zA-Z0-9_]*")
@@ -206,9 +207,6 @@
        (point)
        (progn (skip-syntax-backward "w_")
               (point))))))
-
-(defvar lambdapi-indent-basic 2
-  "Basic indentation for lambdapi-mode.")
 
 (defun lambdapi--smie-rules (kind token)
   "Indentation rule for case KIND and token TOKEN."
