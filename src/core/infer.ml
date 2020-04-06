@@ -135,8 +135,8 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,e)   ->
-      infer ctx (term_of_meta m e)
+  | Meta(m,ts)   ->
+      infer ctx (term_of_meta m ts)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
    [ctx], possibly under some constraints recorded in [constraints]
@@ -157,7 +157,7 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "%a : %a") pp t pp a;
+      log_infr (gre "infer %a : %a") pp t pp a;
       List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
@@ -174,7 +174,7 @@ let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "check [%a] [%a]") pp t pp c;
+      log_infr (gre "check %a : %a") pp t pp c;
       List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
