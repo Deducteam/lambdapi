@@ -525,9 +525,12 @@ module CM = struct
       let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(_), Symb(_)
-      | Vari(_), Vari(_) ->
-          if lenh = lenp && Basics.eq [] ph h
+      | Symb(f,_), Symb(g,_) ->
+          if lenh = lenp && f == g
+          then Some({r with c_lhs = insert (Array.of_list args)})
+          else None
+      | Vari(x), Vari(y) ->
+          if lenh = lenp && Bindlib.eq_vars x y
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None
       | _      , Patt(_) ->

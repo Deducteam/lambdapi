@@ -13,6 +13,51 @@ open Print
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
 
+(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence). It
+    fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
+    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
+    [u] may be set with the corresponding value to enforce equality, and
+    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
+    be used to implement non-linear matching (see {!module:Rewrite}). When the
+    matching feature is used, one should make sure that [TRef] constructors do
+    not appear both in [t] and in [u] at the same time. Indeed, the references
+    are set naively, without checking occurrence. *)
+let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
+  let exception Not_equal in
+  let rec eq l =
+    match l with
+    | []       -> ()
+    | (a,b)::l ->
+    begin
+    if !log_enabled then log_rewr "eq [%a] [%a]" pp_term a pp_term b;
+    match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
+    | (a          , b          ) when a == b -> eq l
+    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
+    | (Type       , Type       )
+    | (Kind       , Kind       ) -> eq l
+    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
+    | (Prod(a1,b1), Prod(a2,b2))
+    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
+                                    eq ((a1,a2)::(b1,b2)::l)
+    | (LLet(a1,t1,u1), LLet(a2,t2,u2)) ->
+        let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
+        eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
+    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
+    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
+        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
+    | (Wild       , _          )
+    | (_          , Wild       ) -> eq l
+    | (TRef(r)    , b          ) -> r := Some(b); eq l
+    | (a          , TRef(r)    ) -> r := Some(a); eq l
+    | (Patt(_,_,_), _          )
+    | (_          , Patt(_,_,_))
+    | (TEnv(_,_)  , _          )
+    | (_          , TEnv(_,_)  ) -> assert false
+    | (_          , _          ) -> raise Not_equal
+    end
+  in
+  try eq [(a,b)]; true with Not_equal -> false
+
 (** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
    Reflection Extension for the Coq system", by Georges Gonthier,
    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
@@ -86,7 +131,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let ta = Appl (symb symb_T, Vari a) in
        let c = [(y, ta, None); (x, ta, None); (a, term_U, None)] in
        let (eq_type, _) = Ctxt.to_prod c term_Prop in
-       if not (Basics.eq [] eq_type !(sym.sym_type)) then
+       if not (eq [] eq_type !(sym.sym_type)) then
          fatal pos "The type of [%s] is not of the form [%a]"
            sym.sym_name pp eq_type
      end
@@ -104,7 +149,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let c = [(x, Appl(symb symb_T, Vari a), None); (a, term_U, None)] in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
        let (refl_type, _) = Ctxt.to_prod c (Appl (symb symb_P, t)) in
-       if not (Basics.eq [] refl_type !(sym.sym_type))
+       if not (eq [] refl_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp refl_type
      end
@@ -141,7 +186,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
          ;(a , term_U                  , None)]
        in
        let (eqind_type, _) = Ctxt.to_prod c (p_of x) in
-       if not (Basics.eq [] eqind_type !(sym.sym_type))
+       if not (eq [] eqind_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp eqind_type
      end
@@ -194,7 +239,7 @@ let break_prod : term -> term * tvar array = fun a ->
 let match_pattern : to_subst -> term -> term array option = fun (xs,p) t ->
   let ts = Array.map (fun _ -> TRef(ref None)) xs in
   let p = Bindlib.msubst (Bindlib.unbox (Bindlib.bind_mvar xs (lift p))) ts in
-  if Basics.eq [] p t then Some(Array.map unfold ts) else None
+  if eq [] p t then Some(Array.map unfold ts) else None
 
 (** [find_subst t (xs,p)] is given a term [t] and a pattern [p] (with “pattern
     variables” of [xs]),  and it finds the first instance of (a term matching)
@@ -227,7 +272,7 @@ let find_subst : term -> to_subst -> term array option = fun t (xs,p) ->
 let make_pat : term -> term -> bool = fun t p ->
   let time = Time.save () in
   let rec make_pat_aux : term -> bool = fun t ->
-    if Basics.eq [] t p then true else
+    if eq [] t p then true else
       begin
         Time.restore time;
         match unfold t with
@@ -247,7 +292,7 @@ let make_pat : term -> term -> bool = fun t p ->
 let bind_match : term -> term -> tbinder =  fun p t ->
   let x = Bindlib.new_var mkfree "X" in
   let rec lift_subst : term -> tbox = fun t ->
-    if Basics.eq [] p t then _Vari x else
+    if eq [] p t then _Vari x else
     match unfold t with
     | Vari(y)     -> _Vari y
     | Type        -> _Type

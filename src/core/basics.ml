@@ -75,48 +75,6 @@ let add_args : term -> term list -> term = fun t args ->
     | u::args -> add_args (Appl(t,u)) args
   in add_args t args
 
-(** [eq ctx t u] tests the equality of [t] and [u] (up to α-equivalence). It
-    fails if [t] or [u] contain terms of the form [Patt(i,s,e)] or
-    [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
-    [u] may be set with the corresponding value to enforce equality, and
-    variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
-    be used to implement non-linear matching (see {!module:Rewrite}). When the
-    matching feature is used, one should make sure that [TRef] constructors do
-    not appear both in [t] and in [u] at the same time. Indeed, the references
-    are set naively, without checking occurrence. *)
-let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
-  let exception Not_equal in
-  let rec eq l =
-    match l with
-    | []       -> ()
-    | (a,b)::l ->
-    match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
-    | (a          , b          ) when a == b -> eq l
-    | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
-    | (Type       , Type       )
-    | (Kind       , Kind       ) -> eq l
-    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
-    | (Prod(a1,b1), Prod(a2,b2))
-    | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
-                                    eq ((a1,a2)::(b1,b2)::l)
-    | (LLet(a1,t1,u1), LLet(a2,t2,u2)) ->
-        let (_, u1, u2) = Bindlib.unbind2 u1 u2 in
-        eq ((a1,a2)::(t1,t2)::(u1,u2)::l)
-    | (Appl(t1,u1), Appl(t2,u2)) -> eq ((t1,t2)::(u1,u2)::l)
-    | (Meta(m1,e1), Meta(m2,e2)) when m1 == m2 ->
-        eq (if e1 == e2 then l else List.add_array2 e1 e2 l)
-    | (Wild       , _          )
-    | (_          , Wild       ) -> eq l
-    | (TRef(r)    , b          ) -> r := Some(b); eq l
-    | (a          , TRef(r)    ) -> r := Some(a); eq l
-    | (Patt(_,_,_), _          )
-    | (_          , Patt(_,_,_))
-    | (TEnv(_,_)  , _          )
-    | (_          , TEnv(_,_)  ) -> assert false
-    | (_          , _          ) -> raise Not_equal
-  in
-  try eq [(a,b)]; true with Not_equal -> false
-
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with

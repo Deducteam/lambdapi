@@ -88,7 +88,7 @@ let translate_term : config -> cnst_table -> term ->
         (tbl, Why3.Term.t_true)
     | (_        , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
-        try (tbl, Why3.Term.ps_app (List.assoc_eq (Basics.eq []) t tbl) [])
+        try (tbl, Why3.Term.ps_app (List.assoc_eq (Rewrite.eq []) t tbl) [])
         with Not_found ->
           (* Otherwise generate a new constant in why3. *)
           let sym = Why3.Term.create_psymbol (Why3.Ident.id_fresh "P") [] in
