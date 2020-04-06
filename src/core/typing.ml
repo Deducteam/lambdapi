@@ -11,7 +11,7 @@ open Unif
 let check : sym StrMap.t -> ctxt -> term -> term -> bool =
   fun builtins ctx t a ->
   let to_solve = Infer.check ctx t a in
-  match solve builtins true {no_problems with to_solve} with
+  match solve builtins {no_problems with to_solve} with
   | None     -> false
   | Some([]) -> true
   | Some(cs) ->
@@ -28,7 +28,7 @@ let infer_constr
   fun builtins ctx t ->
   let (a, to_solve) = Infer.infer ctx t in
   Option.map (fun cs -> (a, cs))
-    (solve builtins true {no_problems with to_solve})
+    (solve builtins {no_problems with to_solve})
 
 (** [infer builtins ctx t] tries to infer a type [a] for [t] in the context
    [ctx]. The function returns [Some(a)] in case of success, and [None]

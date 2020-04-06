@@ -307,7 +307,7 @@ let fresh_meta : ?name:string -> term -> int -> meta =
   let counter = Stdlib.ref (-1) in
   let fresh_meta ?name a n =
    { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
-   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None}
+     ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
   in fresh_meta
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
@@ -315,14 +315,11 @@ let fresh_meta : ?name:string -> term -> int -> meta =
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
   m.meta_value := Some(v)
 
-(** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
-let internal : meta -> bool = fun m -> m.meta_name = None
-
 (** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->
-  match m.meta_name with
-  | Some(n) -> "?" ^ n
-  | None    -> "?" ^ string_of_int m.meta_key
+  "?" ^ match m.meta_name with
+        | Some(n) -> n
+        | None    -> string_of_int m.meta_key
 
 (** [term_of_meta m env] constructs the application of a dummy symbol with the
     same type as [m], to the element of the environment [env].  The idea is to

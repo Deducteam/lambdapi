@@ -33,15 +33,12 @@ let pp_problem oc p =
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
 
-(** Boolean saying whether user metavariables can be set or not. *)
-let can_instantiate : bool ref = ref true
-
 (** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
     be instantiated and returns the corresponding instantiation. It does not
     check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
-  if (!can_instantiate || internal m) && not (occurs m u) then
+  if not (occurs m u) then
     match nl_distinct_vars ctx ts with
     | None     -> None
     | Some(vs) -> Some (Bindlib.bind_mvar vs (lift u))
@@ -355,11 +352,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> add_to_unsolved ()
 
-(** [solve builtins flag problems] attempts to solve [problems], after having
-    sets the value of [can_instantiate] to [flag].  If there is no solution,
-    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
-    list [cs] is a list of unsolved convertibility constraints. *)
-let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
-  fun _builtins b p ->
-  can_instantiate := b;
+(** [solve builtins flag problems] attempts to solve [problems]. If there is
+   no solution, the value [None] is returned. Otherwise [Some(cs)] is
+   returned, where the list [cs] is a list of unsolved convertibility
+   constraints. *)
+let solve : sym StrMap.t -> problems -> unif_constrs option =
+  fun _builtins p ->
   try Some (solve p) with Unsolvable -> None
