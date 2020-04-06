@@ -14,7 +14,7 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Basics.eq ctx a b) then
+  if not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
@@ -51,11 +51,19 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
+  | Vari(x)     ->
+      let a = try Ctxt.type_of x ctx with Not_found -> assert false in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   -> !(s.sym_type)
+  | Symb(s,_)   ->
+      let a = !(s.sym_type) in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
      -----------------------------------------
@@ -128,8 +136,6 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
   | Meta(m,e)   ->
-      if !log_enabled then
-        log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
       infer ctx (term_of_meta m e)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
@@ -151,7 +157,7 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "infer [%a] yields [%a]") pp t pp a;
+      log_infr (gre "%a : %a") pp t pp a;
       List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
