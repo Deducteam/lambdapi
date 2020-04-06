@@ -249,12 +249,11 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
-            let builtins = !(ss.signature.sign_builtins) in
-            if StrMap.mem s builtins then
+            if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
-            check_builtin_nat cmd.pos builtins s sym;
-            Rewrite.check_builtin cmd.pos builtins s sym;
+            check_builtin_nat cmd.pos ss.builtins s sym;
+            Rewrite.check_builtin cmd.pos ss.builtins s sym;
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
