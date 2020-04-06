@@ -18,10 +18,10 @@ let log_rewr = log_rewr.logger
     [TEnv(te,env)].  In the process, subterms of the form [TRef(r)] in [t] and
     [u] may be set with the corresponding value to enforce equality, and
     variables appearing in [ctx] can be unfolded. In other words, [eq t u] can
-    be used to implement non-linear matching (see {!module:Rewrite}). When the
+    be used to implement non-linear matching. When the
     matching feature is used, one should make sure that [TRef] constructors do
     not appear both in [t] and in [u] at the same time. Indeed, the references
-    are set naively, without checking occurrence. *)
+    are set naively, without occurrence checking. *)
 let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   let exception Not_equal in
   let rec eq l =
