@@ -131,7 +131,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let ta = Appl (symb symb_T, Vari a) in
        let c = [(y, ta, None); (x, ta, None); (a, term_U, None)] in
        let (eq_type, _) = Ctxt.to_prod c term_Prop in
-       if not (eq [] eq_type !(sym.sym_type)) then
+       if not (Eval.eq_modulo [] eq_type !(sym.sym_type)) then
          fatal pos "The type of [%s] is not of the form [%a]"
            sym.sym_name pp eq_type
      end
@@ -149,7 +149,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
        let c = [(x, Appl(symb symb_T, Vari a), None); (a, term_U, None)] in
        let t = Basics.add_args (symb symb_eq) [Vari a; Vari x; Vari x] in
        let (refl_type, _) = Ctxt.to_prod c (Appl (symb symb_P, t)) in
-       if not (eq [] refl_type !(sym.sym_type))
+       if not (Eval.eq_modulo [] refl_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp refl_type
      end
@@ -186,7 +186,7 @@ let check_builtin : popt -> sym StrMap.t -> string -> sym -> unit
          ;(a , term_U                  , None)]
        in
        let (eqind_type, _) = Ctxt.to_prod c (p_of x) in
-       if not (eq [] eqind_type !(sym.sym_type))
+       if not (Eval.eq_modulo [] eqind_type !(sym.sym_type))
        then fatal pos "The type of [%s] is not of the form [%a]."
               sym.sym_name pp eqind_type
      end
