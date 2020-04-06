@@ -140,8 +140,9 @@ type mode =
   (** Scoping mode for patterns in the rewrite tactic. *)
   | M_LHS  of (string * int) list * bool * int Stdlib.ref
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-     a map associating an index to every pattern variable along with a flag
-     set to [true] if {!constructor:Terms.expo.Privat} symbols are allowed. *)
+     a map associating an index to every pattern variable, a flag set to
+     [true] if {!constructor:Terms.expo.Privat} symbols are allowed, and an
+     index counter to be incremented for every implicit argument. *)
   | M_RHS  of (string * tevar) list * bool
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
       the environment for variables that will be bound in the representation
@@ -488,14 +489,8 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
   List.iter check_in_lhs pvs_rhs;
-  (* Optimization to do *after* SR if really needed:
-  (* Get the non-linear variables not in the RHS. *)
-  let nl = List.filter (fun m -> not (List.mem_assoc m pvs_rhs)) nl in
-  (* Reserve space for non-linear LHS pattern variables. *)
-  let pvs = List.map (fun m -> (m, List.assoc m pvs_lhs)) nl @ pvs_rhs in*)
-  let pvs = pvs_lhs in
-  let map = List.mapi (fun i (m,_) -> (m,i)) pvs in
-  (* NOTE [map] maps pattern variables to their position in [pvs]. *)
+  let map = List.mapi (fun i (m,_) -> (m,i)) pvs_lhs in
+  (* NOTE [map] maps pattern variables to their position in [pvs_lhs]. *)
   (* NOTE pattern variables not in [map] can be considered as wildcards. *)
   (* Get privacy of the head of the rule, and scope the rest with this
      privacy. *)
@@ -529,10 +524,10 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     let mode = M_RHS(Array.to_list map, is_private sym) in
     Bindlib.unbox (Bindlib.bind_mvar vars (scope mode ss Env.empty p_rhs))
   in
-  (* We also store [pvs] to facilitate confluence / termination checking. *)
-  let pvs = Array.of_list pvs in
+  (* We also store [pvs_lhs] to facilitate confluence/termination checking. *)
+  let pvs = Array.of_list pvs_lhs and arity = List.length lhs in
   (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity = List.length lhs; pvs; vars})
+  (sym, hint, Pos.make r.pos {lhs; rhs; arity; pvs; vars})
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
