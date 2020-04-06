@@ -168,16 +168,21 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
      those function symbols. *)
   (* TODO *)
 
+  (* The following piece of code doesn't work as metavariables cannot be
+     instantiated by terms containing free variables. *)
+  (*
   (* To help resolution, metavariable symbols with no constraint are
      replaced by fresh variables. *)
   (* We compute the set of metavariables in constraints. *)
-  (*let lhs_constrs_metas =
+  let lhs_constrs_metas =
     let open MetaSet in
     let add_constr ms (_,l,r) =
       Basics.add_metas false l (Basics.add_metas false r ms)
     in
     List.fold_left add_constr empty lhs_constrs
   in
+  let pp_metas oc = MetaSet.iter (Format.fprintf oc "%a, " pp_meta) in
+  log_subj "lhs_constr_metas: %a" pp_metas lhs_constrs_metas;
   (* We compute the set of LHS metavariables having NO constraints, including
      in their types. *)
   let free_lhs_metas =
@@ -189,15 +194,15 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
       else add m ms
     in
     MetaSet.fold fn all_lhs_metas empty
-  in*)
-  (*
+  in
+  log_subj "free_lhs_metas: %a" pp_metas free_lhs_metas;
   let fn m ctx =
-    let n = match m.meta_name with Some n -> n | None -> assert false in
-    let v = Bindlib.new_var mkfree n in
+    let v = Bindlib.new_var mkfree (meta_name m) in
     instantiate m (_Vari v);
     (v, !(m.meta_type), None) :: ctx
   in
-  let ctx = MetaSet.fold fn free_lhs_metas [] in*)
+  let ctx = MetaSet.fold fn free_lhs_metas [] in
+   *)
 
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let to_solve = Infer.check [] rhs ty_lhs in
@@ -237,16 +242,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     let h, ts = Basics.get_args t in
     let ts = List.map to_tenv ts in
     match h with
-    | Symb(f,_)   ->
-        if f.sym_name = "" || f.sym_name.[0] <> '?' then Basics.add_args h ts
-        else
-          begin
-            try
-              let (v,k) = StrMap.find f.sym_name map in
-              let (ts1,ts2) = List.cut ts k in
-              Basics.add_args (TEnv (TE_Vari v, Array.of_list ts1)) ts2
-            with Not_found -> assert false
-          end
+    (*| Vari(x)     -> to_tenv_patt h ts (Bindlib.name_of x)*)
+    | Symb(f,_)   -> to_tenv_patt h ts f.sym_name
     | Prod(a,b)   -> Prod(to_tenv a, to_tenv_binder b)
     | Abst(a,b)   -> Basics.add_args (Abst(to_tenv a, to_tenv_binder b)) ts
     | LLet(a,t,u) ->
@@ -259,6 +256,16 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   and to_tenv_binder b =
     let (x,b) = Bindlib.unbind b in
     Bindlib.unbox (Bindlib.bind_var x (lift (to_tenv b)))
+  and to_tenv_patt h ts s =
+    if s = "" || s.[0] <> '?' then Basics.add_args h ts
+    else
+      begin
+        try
+          let (v,k) = StrMap.find s map in
+          let (ts1,ts2) = List.cut ts k in
+          Basics.add_args (TEnv (TE_Vari v, Array.of_list ts1)) ts2
+        with Not_found -> assert false
+      end
   in
   log_subj "rhs %a" pp_term rhs;
   let rhs = to_tenv rhs in
