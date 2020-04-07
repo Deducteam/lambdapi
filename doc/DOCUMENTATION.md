@@ -25,7 +25,7 @@ Table of contents
 
  - [Tactics](sections/tactics.md)
 
- - [Editing Lambdapi source code](sections/editors.md)
+ - [Editing Lambdapi source code with Emacs](sections/emacs.md)
 
  - [Structure of directories and files](sections/structure.md)
 

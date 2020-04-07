@@ -1,14 +1,10 @@
-Editing lambdapi source code
-----------------------------
+Editing lambdapi source code with Emacs
+---------------------------------------
 
-Although lambdapi source code can be edited with any text editors, users are
-encouraged to use [Emacs](https://www.gnu.org/software/emacs/),
-[Vim](https://www.vim.org/) or [VsCode](https://code.visualstudio.com/).
-
-### Emacs
-
-`lambdapi-mode` is a major mode for editing lambdapi source code. It requires
-Emacs 26.1 and provides:
+Lambdapi source code can be edited with the
+[Emacs](https://www.gnu.org/software/emacs/) editor with the `lambdapi-mode`, a
+major mode for editing lambdapi source code. It requires Emacs 26.1 or higher
+and provides:
 * Syntax highlighting for Lambdapi (`*.lp` files) and Dedukti2 (`*.dk` files)
 * Auto indentation for Lambdapi
 * Easier unicode input
@@ -132,7 +128,3 @@ To have everything configured using `use-package`, use
 (use-package lambdapi-mode
     :hook (paredit-mode rainbow-delimiters-mode-enable))
 ```
-
-### Vim
-
-### VsCode
