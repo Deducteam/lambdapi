@@ -70,6 +70,7 @@ let nl_distinct_vars
   try
     let vs = Array.map to_var ts in
     let vs = Array.map replace_nl_var vs in
+    (* We remove non-linear variables from [!patt_vars] as well. *)
     let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
     let map = StrMap.fold fn !patt_vars StrMap.empty in
     Some (vs, map)
@@ -103,7 +104,9 @@ let instantiation : ctxt -> meta -> term array -> term ->
   if not (occurs m u) then
     match nl_distinct_vars ctx ts with (* Theoretical justification ? *)
     | None       -> None
-    | Some(vs,m) -> Some (Bindlib.bind_mvar vs (lift (sym_to_var m u)))
+    | Some(vs,m) ->
+        let u = if StrMap.is_empty m then u else sym_to_var m u in
+        Some (Bindlib.bind_mvar vs (lift u))
   else None
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
