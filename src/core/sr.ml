@@ -94,10 +94,14 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   in
 
   (* Build a map LHS pattern variable -> term_env variable. *)
+  let sym_name m = "&" ^ match m.meta_name with
+                         | Some(n) -> n
+                         | None    -> string_of_int m.meta_key
+  in
   let map =
     let map = ref StrMap.empty in
     let fn i m =
-      map := StrMap.add (meta_name m) (rule.vars.(i), m.meta_arity) !map
+      map := StrMap.add (sym_name m) (rule.vars.(i), m.meta_arity) !map
     in
     Array.iteri fn lhs_metas;
     !map
@@ -150,7 +154,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar xs t))
   in
   let fn m =
-    let s = { sym_name  = meta_name m
+    let s = { sym_name  = sym_name m
             ; sym_type  = m.meta_type
             ; sym_path  = []
             ; sym_def   = ref None
@@ -167,42 +171,6 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   (* Here, we should complete the constraints into a set of rewriting rules on
      those function symbols. *)
   (* TODO *)
-
-  (* The following piece of code doesn't work as metavariables cannot be
-     instantiated by terms containing free variables. *)
-  (*
-  (* To help resolution, metavariable symbols with no constraint are
-     replaced by fresh variables. *)
-  (* We compute the set of metavariables in constraints. *)
-  let lhs_constrs_metas =
-    let open MetaSet in
-    let add_constr ms (_,l,r) =
-      Basics.add_metas false l (Basics.add_metas false r ms)
-    in
-    List.fold_left add_constr empty lhs_constrs
-  in
-  let pp_metas oc = MetaSet.iter (Format.fprintf oc "%a, " pp_meta) in
-  log_subj "lhs_constr_metas: %a" pp_metas lhs_constrs_metas;
-  (* We compute the set of LHS metavariables having NO constraints, including
-     in their types. *)
-  let free_lhs_metas =
-    let open MetaSet in
-    let is_cstr m = mem m lhs_constrs_metas in
-    let fn m ms =
-      if is_cstr m || exists is_cstr (Basics.get_metas true !(m.meta_type))
-      then ms
-      else add m ms
-    in
-    MetaSet.fold fn all_lhs_metas empty
-  in
-  log_subj "free_lhs_metas: %a" pp_metas free_lhs_metas;
-  let fn m ctx =
-    let v = Bindlib.new_var mkfree (meta_name m) in
-    instantiate m (_Vari v);
-    (v, !(m.meta_type), None) :: ctx
-  in
-  let ctx = MetaSet.fold fn free_lhs_metas [] in
-   *)
 
   (* Compute the constraints for the RHS to have the same type as the LHS. *)
   let to_solve = Infer.check [] rhs ty_lhs in
@@ -242,7 +210,6 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     let h, ts = Basics.get_args t in
     let ts = List.map to_tenv ts in
     match h with
-    (*| Vari(x)     -> to_tenv_patt h ts (Bindlib.name_of x)*)
     | Symb(f,_)   -> to_tenv_patt h ts f.sym_name
     | Prod(a,b)   -> Prod(to_tenv a, to_tenv_binder b)
     | Abst(a,b)   -> Basics.add_args (Abst(to_tenv a, to_tenv_binder b)) ts
@@ -257,7 +224,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     let (x,b) = Bindlib.unbind b in
     Bindlib.unbox (Bindlib.bind_var x (lift (to_tenv b)))
   and to_tenv_patt h ts s =
-    if s = "" || s.[0] <> '?' then Basics.add_args h ts
+    if s = "" || s.[0] <> '&' then Basics.add_args h ts
     else
       begin
         try
