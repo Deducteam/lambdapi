@@ -15,19 +15,13 @@ open Scope
     of decision trees should be created. *)
 let write_trees : bool Stdlib.ref = Stdlib.ref false
 
-(** [check_builtin_nat s] checks that the builtin symbol [s] for
-   non-negative literals has a good type. *)
-let check_builtin_nat : popt -> sym StrMap.t -> string -> sym -> unit
-  = fun pos builtins s sym ->
-  match s with
-  | "+1" ->
-     let builtin = Sign.builtin pos builtins in
-     let typ_0 = lift (!((builtin "0").sym_type)) in
-     let typ_s = Bindlib.unbox (_Impl typ_0 typ_0) in
-     if not (Eval.eq_modulo [] typ_s !(sym.sym_type)) then
-       fatal pos "The type of [%s] is not of the form [%a]."
-         sym.sym_name pp typ_s
-  | _ -> ()
+(* Register a check for the type of builtin successor symbol ["+1"]. *)
+let _ =
+  let expected_successor pos map =
+    let typ_0 = lift !((Builtin.get pos map "0").sym_type) in
+    Bindlib.unbox (_Impl typ_0 typ_0)
+  in
+  Builtin.Check.register_expected_type "+1" expected_successor
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -252,8 +246,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
-            check_builtin_nat cmd.pos ss.builtins s sym;
-            Rewrite.check_builtin cmd.pos ss.builtins s sym;
+            Builtin.Check.check  cmd.pos ss.builtins s sym;
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
