@@ -16,7 +16,8 @@ doc:
 
 #### Unit tests and sanity check #############################################
 
-LAMBDAPI     = dune exec -- lambdapi check
+LIB_ROOT = $(shell pwd)
+LAMBDAPI     = dune exec -- lambdapi check --lib-root $(LIB_ROOT)
 OK_TESTFILES = $(sort $(wildcard tests/OK/*.dk tests/OK/*.lp))
 KO_TESTFILES = $(sort $(wildcard tests/KO/*.dk tests/KO/*.lp))
 
