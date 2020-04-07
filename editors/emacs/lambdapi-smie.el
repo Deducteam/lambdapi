@@ -103,7 +103,10 @@
       (rules (rule)
              (rule "and" rule))
       ; TODO: token SYMTAG?
-      (symtag ("constant" "injective" "protected" "private"))
+      (symtag ("constant")
+              ("injective")
+              ("protected")
+              ("private"))
       (command (symtag "symbol" args ":" sterm)
                ("theorem" args ":" sterm "proof" tactic "PRFEND")
                ("definition" args "≔" sterm)
@@ -119,7 +122,6 @@
                ("require" qident)
                ("require" "open" qident)
                ("require" qident "as" ident)
-               ("require" "open" qident)
 
                ("set" "verbose" "NATLIT")
                ("set" "debug" ident)
@@ -223,7 +225,6 @@
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
     (`(:before . "PRFEND") '(column . 0))
-    (`(:after . "PRFEND") '(column . 0))
 
     (`(:before . "protected") '(column . 0))
     (`(:before . "private") '(column . 0))
