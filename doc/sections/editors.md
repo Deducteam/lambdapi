@@ -39,10 +39,10 @@ of Emacs. For this, there are two options
 * it can be done manually, editing Emacs' configuration file, adding *before*
   `(load "lambdapi-site-file")`
   ``` emacs-lisp
-(require 'subr-x)
-(let* ((opshare (shell-command-to-string "opam var share"))
-       (opshare (string-trim opshare)))
-  (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
+  (require 'subr-x)
+  (let* ((opshare (shell-command-to-string "opam var share"))
+         (opshare (string-trim opshare)))
+    (add-to-list 'load-path (concat opshare "/emacs/site-lisp/")))
   ```
 
 The `opam` installation does not handle dependencies. The following packages
