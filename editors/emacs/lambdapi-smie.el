@@ -236,6 +236,8 @@
     (`(:before . "assert") '(column . 0))
     (`(:before . "assertnot") '(column . 0))
 
+    (`(:before . ":") (lambdapi--colon-indent))
+
     (`(:before . "require") '(column . 0))
     (`(:before . "set") '(column . 0))
 
@@ -245,6 +247,12 @@
     (`(:before . "symbol") '(column . 0))
     (`(:before . "rule") '(column . 0))
     (`(:before . "and") '(column . 1))))
+
+(defun lambdapi--colon-indent ()
+  "Indent before colon."
+  (let ((ppss (syntax-ppss)))
+    (when (= 0 (nth 0 ppss))
+      '(column 0)))) ; At beginning of line if not inside parentheses
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here
