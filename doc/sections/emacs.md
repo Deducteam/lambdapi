@@ -2,9 +2,8 @@ Editing lambdapi source code with Emacs
 ---------------------------------------
 
 Lambdapi source code can be edited with the
-[Emacs](https://www.gnu.org/software/emacs/) editor with the `lambdapi-mode`, a
-major mode for editing lambdapi source code. It requires Emacs 26.1 or higher
-and provides:
+[Emacs](https://www.gnu.org/software/emacs/) editor with the major mode
+`lambdapi-mode`. It requires Emacs 26.1 or higher and provides:
 * Syntax highlighting for Lambdapi (`*.lp` files) and Dedukti2 (`*.dk` files)
 * Auto indentation for Lambdapi
 * Easier unicode input
