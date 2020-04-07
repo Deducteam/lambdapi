@@ -214,6 +214,9 @@
   "Indentation rule for case KIND and token TOKEN."
   (pcase (cons kind token)
     (`(:elem . basic) 0)
+
+    (`(:before . "ID") (lambdapi--id-indent))
+
     ;; tactics
     (`(:before . "simpl") `(column . ,lambdapi-indent-basic))
     (`(:before . "rewrite") `(column . ,lambdapi-indent-basic))
@@ -247,6 +250,17 @@
     (`(:before . "symbol") '(column . 0))
     (`(:before . "rule") '(column . 0))
     (`(:before . "and") '(column . 1))))
+
+(defun lambdapi--id-indent ()
+  "Indentation before identifier.
+Yield nil except when identifier is top (no parentheses) and at the beginning
+of line and not before a colon. In this case, it returns
+`lambdapi-indent-basic'. It applies for arguments of a `require'."
+  (let ((ppss (syntax-ppss)))
+    (when (and (= 0 (nth 0 ppss))
+               (smie-rule-bolp)
+               (not (smie-rule-parent-p ":")))
+      `(column . ,lambdapi-indent-basic))))
 
 (defun lambdapi--colon-indent ()
   "Indent before colon."
