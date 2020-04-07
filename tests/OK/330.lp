@@ -6,4 +6,4 @@ symbol equals : Term ⇒ Term ⇒ Prop
 //set flag "print_implicits" on
 //set debug +siu
 
-//rule prf (equals &x &y) → ∀ P, prf (P &x) ⇒ prf (P &y)
+rule prf (equals &x &y) → ∀ P, prf (P &x) ⇒ prf (P &y)

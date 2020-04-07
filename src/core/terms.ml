@@ -244,14 +244,6 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-module Meta = struct
-  type t = meta
-  let compare m1 m2 = m1.meta_key - m2.meta_key
-end
-
-module MetaSet = Set.Make(Meta)
-module MetaMap = Map.Make(Meta)
-
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb : sym -> term = fun s -> Symb (s, Nothing)
 
@@ -456,3 +448,22 @@ let rec lift : term -> tbox = fun t ->
     the names of bound variables updated.  This is useful to avoid any form of
     "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(** Sets and maps of metavariables. *)
+module Meta = struct
+  type t = meta
+  let compare m1 m2 = m1.meta_key - m2.meta_key
+end
+
+module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
+
+(** Sets and maps of variables. *)
+module Var =
+  struct
+    type t = term Bindlib.var
+    let compare = Bindlib.compare_vars
+  end
+
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)

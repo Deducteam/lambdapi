@@ -8,16 +8,6 @@ open Terms
 let fresh_vars : int -> tvar array = fun n ->
   Bindlib.new_mvar mkfree (Array.init n (Printf.sprintf "x%i"))
 
-(** Sets and maps of variables. *)
-module Var =
-  struct
-    type t = term Bindlib.var
-    let compare = Bindlib.compare_vars
-  end
-
-module VarSet = Set.Make(Var)
-module VarMap = Map.Make(Var)
-
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
 let to_tvar : term -> tvar = fun t ->
@@ -175,29 +165,6 @@ let distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
     | _       -> raise Not_unique_var
   in
   try Some (Array.map to_var ts) with Not_unique_var -> None
-
-(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
-    and returns some copy of [vs] where variables occurring more than once are
-    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
-    returns [None] otherwise. *)
-let nl_distinct_vars : ctxt -> term array -> tvar array option = fun ctx ts ->
-  let exception Not_a_var in
-  let open Stdlib in
-  let vars = ref VarSet.empty
-  and nl_vars = ref VarSet.empty in
-  let to_var t =
-    match Ctxt.unfold ctx t with
-    | Vari(x) ->
-        if VarSet.mem x !vars then nl_vars := VarSet.add x !nl_vars else
-        vars := VarSet.add x !vars;
-        x
-    | _       -> raise Not_a_var
-  in
-  let replace_nl_var x =
-    if VarSet.mem x !nl_vars then Bindlib.new_var mkfree "_" else x
-  in
-  try Some (Array.map replace_nl_var (Array.map to_var ts))
-  with Not_a_var -> None
 
 (** {3 Conversion of a rule into a "pair" of terms} *)
 
