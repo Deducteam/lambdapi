@@ -389,8 +389,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(_)       , M_Patt             ) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
     | (P_NLit(n)       , _                  ) ->
-        let sym_z = _Symb (Sign.builtin t.pos ss.builtins "0") Nothing
-        and sym_s = _Symb (Sign.builtin t.pos ss.builtins "+1") Nothing in
+        let sym_z = _Symb (Builtin.get t.pos ss.builtins "0") Nothing
+        and sym_s = _Symb (Builtin.get t.pos ss.builtins "+1") Nothing in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in

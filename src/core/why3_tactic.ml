@@ -42,15 +42,16 @@ type config =
   ; symb_not : sym (** Not(¬) symbol.            *) }
 
 (** [get_config pos builtins] build the configuration using [builtins]. *)
-let get_config : Pos.popt -> sym StrMap.t -> config = fun pos builtins ->
-  { symb_P   = Sign.builtin pos builtins "P"
-  ; symb_T   = Sign.builtin pos builtins "T"
-  ; symb_or  = Sign.builtin pos builtins "or"
-  ; symb_and = Sign.builtin pos builtins "and"
-  ; symb_imp = Sign.builtin pos builtins "imp"
-  ; symb_bot = Sign.builtin pos builtins "bot"
-  ; symb_top = Sign.builtin pos builtins "top"
-  ; symb_not = Sign.builtin pos builtins "not" }
+let get_config : Pos.popt -> Builtin.map -> config = fun pos map ->
+  let builtin = Builtin.get pos map in
+  { symb_P   = builtin "P"
+  ; symb_T   = builtin "T"
+  ; symb_or  = builtin "or"
+  ; symb_and = builtin "and"
+  ; symb_imp = builtin "imp"
+  ; symb_bot = builtin "bot"
+  ; symb_top = builtin "top"
+  ; symb_not = builtin "not" }
 
 (** A map from lambdapi terms to Why3 constants. *)
 type cnst_table = (term * Why3.Term.lsymbol) list
