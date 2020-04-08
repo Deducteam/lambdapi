@@ -61,7 +61,7 @@
   (setq-default indent-tabs-mode nil)
   (add-to-list 'eglot-server-programs
                '(lambdapi-legacy-mode . ("lambdapi" "lsp" "--standard-lsp")))
-  (add-hook 'lambdapi-legacy-mode-hook #'eglot-ensure))
+  (eglot-ensure))
 
 (provide 'lambdapi-legacy-mode)
 
@@ -115,7 +115,7 @@
   (add-to-list
    'eglot-server-programs
    '(lambdapi-mode . ("lambdapi" "lsp" "--standard-lsp")))
-  (add-hook 'lambdapi-mode-hook #'eglot-ensure))
+  (eglot-ensure))
 
 ;; Register mode the the ".lp" extension
 ;;;###autoload
