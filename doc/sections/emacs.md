@@ -122,7 +122,7 @@ lambdapi while editing a buffer. It can be configured for lambdapi with
   :mode 'lambdapi-mode)
 (define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)
 ```
-to run lambdapi on the edited buffer with `C-c r`. It can be handful to display
+to run lambdapi on the edited buffer with `C-c r`. It can be used to display
 goals while doing a proof.
 
 ### Other relevant packages
