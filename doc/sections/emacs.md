@@ -112,6 +112,19 @@ If for any reason the LSP server consumes too much power (e.g. if a
 non-terminating rewrite system is edited), it can be disabled with
 `M-x eglot-shutdown`.
 
+#### Pseudo interactive proof mode
+One can use [`quickrun.el`](https://github.com/emacsorphanage/quickrun) to call
+lambdapi while editing a buffer. It can be configured for lambdapi with
+```emacs-lisp
+(quickrun-add-command "lambdapi"
+  '((:command . "lambdapi check")
+    (:exec    . ("%c %s")))
+  :mode 'lambdapi-mode)
+(define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)
+```
+to run lambdapi on the edited buffer with `C-c r`. It can be handful to display
+goals while doing a proof.
+
 ### Other relevant packages
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion
 * [company-math](https://github.com/vspinu/company-math): unicode symbols auto
@@ -121,6 +134,8 @@ non-terminating rewrite system is edited), it can be disabled with
 * [rainbow-delimiters](https://github.com/Fanael/rainbow-delimiters): to
   appreciate having a lot of parentheses
 * `paredit.el`: to help keeping the parentheses balanced
+* [`quickrun.el`](https://github.com/emacsorphanage/quickrun): for code 
+  evaluation
 
 To have everything configured using `use-package`, use
 ```emacs-lisp
