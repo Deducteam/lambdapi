@@ -12,8 +12,7 @@
   (append lambdapi-sig-commands
           lambdapi-tactics
           lambdapi-misc-commands
-          lambdapi-misc-keywords
-          lambdapi-modifiers)
+          lambdapi-misc-keywords)
   "All keywords to complete.")
 
 (defun lambdapi--static-completion (words)

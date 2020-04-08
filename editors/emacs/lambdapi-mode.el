@@ -75,11 +75,11 @@
          (concat "\\<" (regexp-opt lambdapi-misc-commands) "\\>")
          'font-lock-preprocessor-face)
         (cons
-         (concat "\\<" (regexp-opt lambdapi-modifiers) "\\>")
-         'font-lock-warning-face)
-        (cons
          (concat "\\<" (regexp-opt lambdapi-tactics) "\\>")
          'font-lock-builtin-face)
+        (cons
+         (concat "\\<" (regexp-opt lambdapi-warning) "\\>")
+         'font-lock-warning-face)
         (cons
          (concat "\\<" (regexp-opt lambdapi-misc-keywords) "\\>")
          'font-lock-constant-face))

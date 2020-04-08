@@ -18,9 +18,7 @@
   "Proof tactics.")
 
 (defconst lambdapi-sig-commands
-  '("abort"
-    "admit"
-    "and"
+  '("and"
     "definition"
     "in"
     "let"
@@ -32,6 +30,10 @@
     "theorem")
   "Commands that enrich the signature.")
 
+(defconst lambdapi-warning
+  '("abort" "admit")
+  "To be displayed in red.")
+
 (defconst lambdapi-misc-commands
   '("type"
     "assert"
@@ -41,11 +43,8 @@
   "Commands producing side-effects.")
 
 (defconst lambdapi-misc-keywords
-  '("TYPE" "left" "right" "infix" "prefix"))
-
-(defconst lambdapi-modifiers
-  '("protected" "private" "injective" "constant" "open" "as")
-  "Symbol modifiers.")
+  '("TYPE" "left" "right" "infix" "prefix"
+    "protected" "private" "injective" "constant" "open" "as"))
 
 (defvar lambdapi-indent-basic 2
   "Basic indentation for lambdapi-mode.")

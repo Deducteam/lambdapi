@@ -120,7 +120,8 @@ lambdapi while editing a buffer. It can be configured for lambdapi with
   '((:command . "lambdapi check")
     (:exec    . ("%c %s")))
   :mode 'lambdapi-mode)
-(define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)
+(add-hook 'lambdapi-mode-hook
+  (lambda () (define-key lambdapi-mode-map (kbd "C-c r") #'quickrun)))
 ```
 to run lambdapi on the edited buffer with `C-c r`. It can be used to display
 goals while doing a proof.
