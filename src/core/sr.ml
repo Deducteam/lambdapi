@@ -94,9 +94,12 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   in
 
   (* Build a map LHS pattern variable -> term_env variable. *)
-  let sym_name m = "&" ^ match m.meta_name with
-                         | Some(n) -> n
-                         | None    -> string_of_int m.meta_key
+  let sym_name m =
+    let name =
+      match m.meta_name with
+      | Some(n) -> n
+      | None    -> string_of_int m.meta_key
+    in "&" ^ name
   in
   let map =
     let map = ref StrMap.empty in
