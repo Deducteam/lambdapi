@@ -137,15 +137,15 @@ type term =
     rule to apply, and a RHS (right hand side) giving the action to perform if
     the rule applies. More explanations are given below. *)
  and rule =
-  { lhs   : term list
+  { lhs     : term list
   (** Left hand side (or LHS). *)
-  ; rhs   : (term_env, term) Bindlib.mbinder
+  ; rhs     : (term_env, term) Bindlib.mbinder
   (** Right hand side (or RHS). *)
-  ; arity : int
+  ; arity   : int
   (** Required number of arguments to be applicable. *)
-  ; pvs   : (string * int) array
-  (** Name and arity of the pattern variables bound in the RHS. *)
-  ; vars  : term_env Bindlib.var array
+  ; arities : int array
+  (** Arrities of the pattern variables bound in the RHS. *)
+  ; vars    : term_env Bindlib.var array
   (** Bindlib variables used to build [rhs]. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
@@ -294,12 +294,13 @@ let rec unfold : term -> term = fun t ->
 (** [unset m] returns [true] if [m] is not instantiated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [fresh_meta a n] creates a new metavariable of type [a] and arity [n]. *)
+(** [fresh_meta ?name a n] creates a fresh metavariable with the optional name
+    [name], and of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta =
   let counter = Stdlib.ref (-1) in
   let fresh_meta ?name a n =
    { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
-     ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
+   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
   in fresh_meta
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
@@ -309,9 +310,12 @@ let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
 
 (** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->
-  "?" ^ match m.meta_name with
-        | Some(n) -> n
-        | None    -> string_of_int m.meta_key
+  let name =
+    match m.meta_name with
+    | Some(n) -> n
+    | None    -> string_of_int m.meta_key
+  in
+  "?" ^ name
 
 (** [term_of_meta m env] constructs the application of a dummy symbol with the
     same type as [m], to the element of the environment [env].  The idea is to
@@ -448,6 +452,25 @@ let rec lift : term -> tbox = fun t ->
     the names of bound variables updated.  This is useful to avoid any form of
     "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
+    only useful in the rare cases where the type of a metavariables contains a
+    free term variable environement. This should only happens when scoping the
+    rewriting rules, use this function with care.  The metavariable is created
+    immediately with a dummy type, and the type becomes valid at unboxing. The
+    boxed metavariable should be unboxed at most once,  otherwise its type may
+    be rendered invalid in some contexts. *)
+let fresh_meta_box : ?name:string -> tbox -> int -> meta Bindlib.box =
+  fun ?name a n ->
+    let m = fresh_meta ?name Kind n in
+    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
+
+(** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
+    that is boxed. This is useful in very rare cases,  when metavariables need
+    to be able to contain free term environment variables. Using this function
+    in bad places is harmful for efficiency but not unsound. *)
+let _Meta_full : meta Bindlib.box -> tbox array -> tbox = fun u ar ->
+  Bindlib.box_apply2 (fun u ar -> Meta(u,ar)) u (Bindlib.box_array ar)
 
 (** Sets and maps of metavariables. *)
 module Meta = struct

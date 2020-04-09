@@ -129,6 +129,19 @@ let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
   in
   get_root t
 
+(** Data used when scoping a LHS. *)
+type m_lhs_data =
+  { m_lhs_indices : (string, int   ) Hashtbl.t
+  (** Stores the index reserved for a pattern variable of the given name. *)
+  ; m_lhs_arities : (int   , int   ) Hashtbl.t
+  (** Stores the arity of the pattern variable at the given index. *)
+  ; m_lhs_names   : (int   , string) Hashtbl.t
+  (** Stores the name of the pattern variable at the given index (if any). *)
+  ; mutable m_lhs_size : int
+  (** Stores the current known size of the environment of the RHS. *)
+  ; m_lhs_in_env  : string list
+  (** Pattern variables definitely needed in the RHS environment. *) }
+
 (** Representation of the different scoping modes.  Note that the constructors
     hold specific information for the given mode. *)
 type mode =
@@ -138,16 +151,15 @@ type mode =
       scoped term. *)
   | M_Patt
   (** Scoping mode for patterns in the rewrite tactic. *)
-  | M_LHS  of (string * int) list * bool * int Stdlib.ref
+  | M_LHS  of bool * m_lhs_data
   (** Scoping mode for rewriting rule left-hand sides. The constructor carries
-     a map associating an index to every pattern variable, a flag set to
-     [true] if {!constructor:Terms.expo.Privat} symbols are allowed, and an
-     index counter to be incremented for every implicit argument. *)
-  | M_RHS  of (string * tevar) list * bool
+      a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
+      are allowed, and also additional data. *)
+  | M_RHS  of bool * (string, tevar) Hashtbl.t
   (** Scoping mode for rewriting rule righ-hand sides. The constructor carries
-      the environment for variables that will be bound in the representation
-      of the RHS along with a flag indicating whether
-      {!constructor:Terms.expo.Privat} terms are allowed. *)
+      a flag that is set to [true] if {!constructor:Terms.expo.Privat} symbols
+      are allowed, and the environment for variables that we known to be bound
+      in the RHS. *)
 
 (** [get_implicitness t] gives the specified implicitness of the parameters of
     a symbol having the (parser-level) type [t]. *)
@@ -179,9 +191,25 @@ let get_args : p_term -> p_term * p_term list =
     state [ss] is used to hande module aliasing according to [find_qid]. *)
 let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
-  let fresh_patt_name k = Stdlib.(incr k; Printf.sprintf "#%i" !k) in
-  let fresh_patt k =
-    let n = fresh_patt_name k in _Patt (Some Stdlib.(!k)) n
+  let fresh_patt data name env =
+    let fresh_index () =
+      let i = data.m_lhs_size in
+      data.m_lhs_size <- i + 1;
+      let arity = Array.length env in
+      Hashtbl.add data.m_lhs_arities i arity; i
+    in
+    match name with
+    | Some(name) ->
+        let i =
+          try Hashtbl.find data.m_lhs_indices name with Not_found ->
+          let i = fresh_index () in
+          Hashtbl.add data.m_lhs_indices name i;
+          Hashtbl.add data.m_lhs_names i name; i
+        in
+        _Patt (Some(i)) (Printf.sprintf "#%i_%s" i name) env
+    | None       ->
+        let i = fresh_index () in
+        _Patt (Some(i)) (Printf.sprintf "#%i" i) env
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -237,14 +265,20 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     match (a, md) with
     | (Some(a), M_LHS(_)    ) ->
         fatal a.pos "Annotation not allowed in a LHS."
-    | (None   , M_LHS(_,_,k)) -> fresh_patt k (Env.to_tbox env)
+    | (None   , M_LHS(_,d)  ) -> fresh_patt d None (Env.to_tbox env)
     | (Some(a), _           ) -> scope env a
     | (None   , _           ) ->
         (* Create a new metavariable of type [TYPE] for the missing domain. *)
         let vs = Env.to_tbox env in
-        _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
+        let a = Env.to_prod_box env _Type in
+        let m = _Meta_full (fresh_meta_box a (Array.length vs)) vs in
+        (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+        match md with
+        | M_RHS(_,_) -> m
+        | _          ->
+        assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
   (* Scoping of a binder (abstraction or product). The environment made of the
-   * variables is also returned. *)
+     variables is also returned. *)
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
@@ -272,22 +306,31 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_Type          , M_LHS(_)         ) ->
         fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
     | (P_Type          , _                ) -> _Type
-    | (P_Iden(qid,_)   , M_LHS(_,p,_)     ) -> find_qid true p ss env qid
+    | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
-    | (P_Iden(qid,_)   , M_RHS(_,p)       ) -> find_qid false p ss env qid
+    | (P_Iden(qid,_)   , M_RHS(p,_)       ) -> find_qid false p ss env qid
     | (P_Iden(qid,_)   , _                ) -> find_qid false false ss env qid
-    | (P_Wild          , M_LHS(_,_,k)     ) -> fresh_patt k (Env.to_tbox env)
+    | (P_Wild          , M_LHS(_,d)       ) ->
+        fresh_patt d None (Env.to_tbox env)
     | (P_Wild          , M_Patt           ) -> _Wild
     | (P_Wild          , _                ) ->
         (* We create a metavariable [m] of type [tm], which itself is also a
            metavariable [x] of type [Type].  Note that this case applies both
            to regular terms, and to the RHS of rewriting rules. *)
         let vs = Env.to_tbox env in
-        let n = Array.length vs in
-        let x = fresh_meta (Env.to_prod env _Type) n in
-        let tm = Env.to_prod env (_Meta x vs) in
-        let m = fresh_meta tm n in
-        _Meta m vs
+        let arity = Array.length vs in
+        let tm =
+          let x = fresh_meta_box (Env.to_prod_box env _Type) arity in
+          Env.to_prod_box env (_Meta_full x vs)
+        in
+        let m = _Meta_full (fresh_meta_box tm arity) vs in
+        (* Sanity check: only variables of [env] free in [m] if not in RHS. *)
+        begin
+          match md with
+          | M_RHS(_,_) -> m
+          | _          ->
+          assert (Bindlib.is_closed (Bindlib.bind_mvar (Env.vars env) m)); m
+        end
     | (P_Meta(id,ts)   , M_Term(m,_)      ) ->
         let m2 =
           (* We first check if the metavariable is in the map. *)
@@ -304,7 +347,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         _Meta m2 (Array.map (scope env) ts)
     | (P_Meta(_,_)     , _                ) ->
         fatal t.pos "Metavariables are not allowed in rewriting rules."
-    | (P_Patt(id,ts)   , M_LHS(m,_,k)     ) ->
+    | (P_Patt(id,ts)   , M_LHS(_,d)       ) ->
         (* Check that [ts] are variables. *)
         let scope_var t =
           match unfold (Bindlib.unbox (scope env t)) with
@@ -322,33 +365,28 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                                 environment of a pattern variable." name
           done
         done;
-        (* Find the reserved index, if any. *)
+        let ar = Array.map Bindlib.box_var vs in
         begin
           match id with
-          | None     ->
+          | None     when List.length env = Array.length vs    ->
+              wrn t.pos "Pattern [%a] could be replaced by [_]." Pretty.pp t;
+          | Some(id) when not (List.mem id.elt d.m_lhs_in_env) ->
               if List.length env = Array.length vs then
-                wrn t.pos "Pattern [%a] could be replaced by [_]."
-                  Pretty.pp_p_term t;
-              fresh_patt k (Array.map Bindlib.box_var vs)
-          | Some(id) ->
-              let i =
-                try Some(List.assoc id.elt m) with Not_found ->
-                  if List.length env = Array.length vs then
-                    wrn t.pos "Pattern variable [%a] can be replaced by a \
-                               wildcard [_]." Pretty.pp_p_term t
-                  else
-                    wrn t.pos "Pattern variable [&%s] does not need to be \
-                               named." id.elt;
-                  None
-              in
-              _Patt i id.elt (Array.map Bindlib.box_var vs)
-        end
-    | (P_Patt(id,ts)   , M_RHS(m,_)       ) ->
+                wrn t.pos "Pattern variable [%a] can be replaced by a \
+                           wildcard [_]." Pretty.pp t
+              else
+                wrn t.pos "Pattern variable [&%s] does not need to be \
+                           named." id.elt
+          | _                                                  -> ()
+        end;
+        fresh_patt d (Option.map (fun id -> id.elt) id) ar
+    | (P_Patt(id,ts)   , M_RHS(_,h)         ) ->
         let x =
           match id with
           | None     -> fatal t.pos "Wildcard pattern not allowed in a RHS."
-          | Some(id) -> try List.assoc id.elt m with Not_found ->
-                          fatal t.pos "Pattern variable not in scope."
+          | Some(id) ->
+          try Hashtbl.find h id.elt with Not_found ->
+            fatal t.pos "Pattern variable not in scope."
         in
         _TEnv (Bindlib.box_var x) (Array.map (scope env) ts)
     | (P_Patt(_,_)     , _                  ) ->
@@ -470,16 +508,30 @@ let patt_vars : p_term -> (string * int) list * string list =
   in
   patt_vars ([],[])
 
+(** Representation of a rewriting rule prior to SR-checking. *)
+type pre_rule =
+  { pr_sym     : sym * pp_hint
+  (** Head symbol of the LHS with its printing hint. *)
+  ; pr_lhs     : term list
+  (** Arguments of the LHS. *)
+  ; pr_vars    : term_env Bindlib.mvar
+  (** Pattern variables that can appear in the RHS. *)
+  ; pr_rhs     : tbox
+  (** Body of the RHS, should only be unboxed once. *)
+  ; pr_names   : (int, string) Hashtbl.t
+  (** Gives the original name (if any) of pattern variable at given index. *)
+  ; pr_arities : int array
+  (** Gives the arity of all the pattern varialbes in field [pr_vars]. *) }
+
 (** [scope_rule ss r] turns a parser-level rewriting rule [r] into a rewriting
     rule (and the associated head symbol). *)
-let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
+let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
-  let (pvs_lhs, _nl) = patt_vars p_lhs in
-  (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
-  let (pvs_rhs, _) = patt_vars p_rhs in
-  (* Check that the pattern variables of the RHS exist in the LHS and have the
-     same arities. *)
+  let (pvs_lhs, nl) = patt_vars p_lhs in
+  (* NOTE to reject non-left-linear rules check [nl = []] here. *)
+  let (pvs_rhs, _ ) = patt_vars p_rhs in
+  (* Check that pattern variables of RHS exist LHS (with right arities). *)
   let check_in_lhs (m,i) =
     let j =
       try List.assoc m pvs_lhs with Not_found ->
@@ -488,45 +540,68 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
     if i <> j then fatal p_lhs.pos "Arity mismatch for [%s]." m
   in
   List.iter check_in_lhs pvs_rhs;
-  let map = List.mapi (fun i (m,_) -> (m,i)) pvs_lhs in
-  (* NOTE [map] maps pattern variables to their position in [pvs_lhs]. *)
-  (* NOTE pattern variables not in [map] can be considered as wildcards. *)
-  (* Get privacy of the head of the rule, and scope the rest with this
-     privacy. *)
+  (* Get privacy of head of the rule, scope the rest accordingly. *)
   let prv = is_private (fst (get_root p_lhs ss)) in
-  (* We scope the LHS and add indexes in the environment for metavariables. *)
-  let l = List.length map in
-  let k = Stdlib.ref (l-1) in
-  let lhs = Bindlib.unbox (scope (M_LHS(map,prv,k)) ss Env.empty p_lhs) in
-  let (sym, hint, lhs) =
-    let (h, args) = Basics.get_args lhs in
+  (* Scope the LHS and get the reserved index for named pattern variables. *)
+  let (pr_lhs, data) =
+    let data =
+      { m_lhs_indices = Hashtbl.create 7
+      ; m_lhs_arities = Hashtbl.create 7
+      ; m_lhs_names   = Hashtbl.create 7
+      ; m_lhs_size    = 0
+      ; m_lhs_in_env  = nl @ (List.map fst pvs_rhs) }
+    in
+    let pr_lhs = scope (M_LHS(prv, data)) ss Env.empty p_lhs in
+    (Bindlib.unbox pr_lhs, data)
+  in
+  (* Check the head symbol and build actual LHS. *)
+  let (sym, hint, pr_lhs) =
+    let (h, args) = Basics.get_args pr_lhs in
     match h with
-    | Symb(s,_) when is_constant s                  ->
-        fatal p_lhs.pos "Constant LHS head symbol."
-    | Symb(({sym_expo=Protec; sym_path; _} as s),h) ->
-        if ss.signature.sign_path <> sym_path then
-          fatal p_lhs.pos "Cannot define rules on foreign protected symbols."
-        else (s, h, args)
-    | Symb(s,h)                                     -> (s, h, args)
-    | _                                             ->
+    | Symb(s,h) ->
+        if is_constant s then
+          fatal p_lhs.pos "Constant LHS head symbol.";
+        if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
+          fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
+        (s, h, args)
+    | _         ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
-  if lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
-  (* We extend [map] with the fresh pattern variables created in scoping. *)
-  let k = Stdlib.(!k-(l-1)) in
-  let fresh_patts = Array.init k (fun i -> Printf.sprintf "#%i" (l+i)) in
-  let names = Array.append (Array.of_list (List.map fst map)) fresh_patts in
-  (* We scope the RHS and bind the pattern variables. *)
-  let vars = Bindlib.new_mvar te_mkfree names in
-  let rhs =
-    let map = Array.map2 (fun n v -> (n,v)) names vars in
-    let mode = M_RHS(Array.to_list map, is_private sym) in
-    Bindlib.unbox (Bindlib.bind_mvar vars (scope mode ss Env.empty p_rhs))
+  if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
+  (* Create the pattern variables that can be bound in the RHS. *)
+  let pr_vars =
+    let fn i =
+      let name =
+        try Printf.sprintf "#%i_%s" i (Hashtbl.find data.m_lhs_names i)
+        with Not_found -> Printf.sprintf "#%i" i
+      in
+      Bindlib.new_var te_mkfree name
+    in
+    Array.init data.m_lhs_size fn
   in
-  (* We also store [pvs_lhs] to facilitate confluence/termination checking. *)
-  let pvs = Array.of_list pvs_lhs and arity = List.length lhs in
-  (* We put everything together to build the rule. *)
-  (sym, hint, Pos.make r.pos {lhs; rhs; arity; pvs; vars})
+  (* We scope the RHS. *)
+  let pr_rhs =
+    let mode =
+      let htbl_vars = Hashtbl.create (Hashtbl.length data.m_lhs_indices) in
+      let fn k i = Hashtbl.add htbl_vars k pr_vars.(i) in
+      Hashtbl.iter fn data.m_lhs_indices;
+      M_RHS(is_private sym, htbl_vars)
+    in
+    scope mode ss Env.empty p_rhs
+  in
+  (* We put everything together to build the pre-rule. *)
+  let pr_arities =
+    let fn i =
+      try Hashtbl.find data.m_lhs_arities i
+      with Not_found -> assert false (* Unreachable. *)
+    in
+    Array.init data.m_lhs_size fn
+  in
+  let pr =
+    { pr_sym = (sym, hint) ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
+    ; pr_names = data.m_lhs_names }
+  in
+  Pos.make r.pos pr
 
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
