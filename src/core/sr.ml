@@ -100,11 +100,8 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
   in
   let map =
     let map = ref StrMap.empty in
-    let fn i m =
-      map := StrMap.add (sym_name m) (rule.vars.(i), m.meta_arity) !map
-    in
-    Array.iteri fn lhs_metas;
-    !map
+    let fn x m = map := StrMap.add (sym_name m) (x, m.meta_arity) !map in
+    Array.iter2 fn rule.vars lhs_metas; !map
   in
 
   (* Infer the typing constraints of the LHS. *)
@@ -154,15 +151,16 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     m.meta_value := Some (Bindlib.unbox (Bindlib.bind_mvar xs t))
   in
   let fn m =
-    let s = { sym_name  = sym_name m
-            ; sym_type  = m.meta_type
-            ; sym_path  = []
-            ; sym_def   = ref None
-            ; sym_impl  = []
-            ; sym_rules = ref []
-            ; sym_tree  = ref Tree_types.empty_dtree
-            ; sym_prop  = Defin
-            ; sym_expo  = Public }
+    let s =
+      { sym_name  = sym_name m
+      ; sym_type  = m.meta_type
+      ; sym_path  = []
+      ; sym_def   = ref None
+      ; sym_impl  = []
+      ; sym_rules = ref []
+      ; sym_tree  = ref Tree_types.empty_dtree
+      ; sym_prop  = Defin
+      ; sym_expo  = Public }
     in
     instantiate m (_Symb s Nothing)
   in

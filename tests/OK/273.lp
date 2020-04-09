@@ -15,5 +15,4 @@ symbol calc : ∀a b, C (f a) (k a b) ⇒ TYPE
 
 constant symbol D : ∀x, B (f (f x)) ⇒ TYPE
 
-//set debug +siu
 rule calc &a (consB &b) (consC _) → D &b (consB &a)
