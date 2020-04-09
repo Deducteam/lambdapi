@@ -33,7 +33,7 @@
 (require 'seq)
 (defconst lambdapi--math-symbol-list-basic
   (eval-when-compile
-    (let* ((cat-rx (rx (or "greek" "Greek" "bin" "rel" "misc")))
+    (let* ((cat-rx (rx (or "arrow" "greek" "Greek" "bin" "rel" "misc")))
            (pred (lambda (sym) (string-match-p cat-rx (car sym))))
            (filt (seq-filter pred math-symbol-list-basic)))
       (seq-map (lambda (sym) `(,(cadr sym) . ,(cddr sym))) filt)))
