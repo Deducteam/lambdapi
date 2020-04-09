@@ -107,6 +107,8 @@
    'lambdapi--smie-rules
    :forward-token #'lambdapi--smie-forward-token
    :backward-token #'lambdapi--smie-backward-token)
+  ;; Reindent on colon
+  (setq-local electric-indent-chars (cons ?: electric-indent-chars))
 
   ;; Abbrev mode
   (lambdapi-abbrev-setup)
