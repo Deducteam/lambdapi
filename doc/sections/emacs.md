@@ -125,6 +125,8 @@ lambdapi while editing a buffer. It can be configured for lambdapi with
 ```
 to run lambdapi on the edited buffer with `C-c r`. It can be used to display
 goals while doing a proof.
+To display the result of `compute`, `type`, &c. as well, write
+`"%c --verbose 1 %s"` instead of `"%c %s"`.
 
 ### Other relevant packages
 * [company-mode](https://github.com/company-mode/company-mode): auto-completion
