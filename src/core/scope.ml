@@ -326,8 +326,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         begin
           match id with
           | None     ->
-              let l = List.length env in
-              if l = Array.length vs then
+              if List.length env = Array.length vs then
                 wrn t.pos "Pattern [%a] could be replaced by [_]."
                   Pretty.pp_p_term t;
               fresh_patt k (Array.map Bindlib.box_var vs)
@@ -477,7 +476,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, _nl) = patt_vars p_lhs in
-  let (pvs_rhs, _ ) = patt_vars p_rhs in
+  let (pvs_rhs, _nl) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
   (* Check that the pattern variables of the RHS exist in the LHS and have the
      same arities. *)
