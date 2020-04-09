@@ -476,8 +476,8 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let (p_lhs, p_rhs) = r.elt in
   (* Compute the set of pattern variables on both sides. *)
   let (pvs_lhs, _nl) = patt_vars p_lhs in
-  let (pvs_rhs, _nl) = patt_vars p_rhs in
   (* NOTE to reject non-left-linear rules, we can check [nl = []] here. *)
+  let (pvs_rhs, _) = patt_vars p_rhs in
   (* Check that the pattern variables of the RHS exist in the LHS and have the
      same arities. *)
   let check_in_lhs (m,i) =
