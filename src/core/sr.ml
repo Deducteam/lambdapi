@@ -54,27 +54,26 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
 
   (* We process the LHS to replace pattern variables by metavariables. *)
   let lhs_metas = Array.make binder_arity None in
-  let rec to_m : int -> term -> tbox = fun k t ->
-    (* [k] is the number of arguments to which [m] is applied. *)
+  let rec to_m : term -> tbox = fun t ->
     match unfold t with
     | Vari(x)     -> _Vari x
     | Symb(s,h)   -> _Symb s h
     | Abst(a,t)   -> let (x,t) = Bindlib.unbind t in
-                     _Abst (to_m 0 a) (Bindlib.bind_var x (to_m 0 t))
-    | Appl(t,u)   -> _Appl (to_m (k+1) t) (to_m 0 u)
+                     _Abst (to_m a) (Bindlib.bind_var x (to_m t))
+    | Appl(t,u)   -> _Appl (to_m t) (to_m u)
     | Patt(i,n,a) ->
         begin
-          let a = Array.map (to_m 0) a in
+          let a = Array.map to_m a in
           let l = Array.length a in
           match i with
           | None    ->
-             let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
+             let m = fresh_meta ~name:n (build_meta_type l) l in
              _Meta m a
           | Some(i) ->
               match lhs_metas.(i) with
               | Some(m) -> _Meta m a
               | None    ->
-                 let m = fresh_meta ~name:n (build_meta_type (l+k)) l in
+                 let m = fresh_meta ~name:n (build_meta_type l) l in
                  lhs_metas.(i) <- Some(m);
                  _Meta m a
         end
@@ -87,7 +86,7 @@ let check_rule : sym StrMap.t -> sym * pp_hint * rule Pos.loc
     | Wild        -> assert false (* Cannot appear in LHS. *)
     | TRef(_)     -> assert false (* Cannot appear in LHS. *)
   in
-  let lhs_args = List.map (fun p -> Bindlib.unbox (to_m 0 p)) rule.lhs in
+  let lhs_args = List.map (fun p -> Bindlib.unbox (to_m p)) rule.lhs in
   let lhs = Basics.add_args (Symb(s,h)) lhs_args in
   let lhs_metas =
     Array.map (function Some m -> m | None -> assert false) lhs_metas
