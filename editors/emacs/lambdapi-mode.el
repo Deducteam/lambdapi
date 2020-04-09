@@ -109,6 +109,7 @@
    :backward-token #'lambdapi--smie-backward-token)
   ;; Reindent on colon
   (setq-local electric-indent-chars (cons ?: electric-indent-chars))
+  (setq-local electric-indent-chars (append '(?→ ?≔ ?:) electric-indent-chars))
 
   ;; Abbrev mode
   (lambdapi-abbrev-setup)
