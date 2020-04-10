@@ -481,12 +481,16 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(** Sets and maps of variables. *)
-module Var =
+(** Sets of term variables. *)
+module VarSet = Set.Make(
   struct
-    type t = term Bindlib.var
+    type t = tvar
     let compare = Bindlib.compare_vars
-  end
+  end)
 
-module VarSet = Set.Make(Var)
-module VarMap = Map.Make(Var)
+(** Maps over term variables. *)
+module VarMap = Map.Make(
+  struct
+    type t = tvar
+    let compare = Bindlib.compare_vars
+  end)

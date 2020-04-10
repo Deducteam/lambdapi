@@ -4,9 +4,11 @@ open Extra
 open Timed
 open Terms
 
-(** Create an array of fresh variables [|x1;..;xn|]. *)
+(** [fresh_vars n] creates an array of [n] fresh variables. The names of these
+    variables is ["_var_i"], where [i] is a number introduced by the [Bindlib]
+    library to avoid name clashes (minimal renaming is done). *)
 let fresh_vars : int -> tvar array = fun n ->
-  Bindlib.new_mvar mkfree (Array.init n (Printf.sprintf "x%i"))
+  Bindlib.new_mvar mkfree (Array.make n "_var_")
 
 (** [to_tvar t] returns [x] if [t] is of the form [Vari x] and fails
     otherwise. *)
