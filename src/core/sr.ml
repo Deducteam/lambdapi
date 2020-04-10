@@ -38,6 +38,9 @@ let build_meta_type : int -> term = fun k ->
   done;
   Bindlib.unbox !res
 
+(** [patt_to_tenv vars t] converts pattern variables of [t] into corresponding
+    term environment variables of [vars]. The index [i] in [Patt(Some(i),_,_)]
+    indicates the index of the corresponding variable in [vars]. *)
 let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
   let get_te i =
     match i with
