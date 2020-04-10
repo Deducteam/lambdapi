@@ -77,7 +77,7 @@ let handle_require_as : popt -> sig_state -> Path.t -> ident -> sig_state =
     separately. Note that [Fatal] is raised in case of an error. *)
 let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
   fun ss cmd ->
-  let scope_basic exp = Scope.scope_term exp ss Env.empty in
+  let scope_basic exp = Scope.scope_term true exp ss Env.empty in
   match cmd.elt with
   | P_require(b,ps)            ->
      let ps = List.map (List.map fst) ps in
@@ -155,7 +155,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let a = if xs = [] then a else Pos.none (P_Prod(xs,a)) in
             (Some(a), Scope.get_implicitness a)
       in
-      let ao = Option.map (scope_basic e) ao in
+      let ao = Option.map (Scope.scope_term false e ss Env.empty) ao in
       (* If a type [a] is given, then we check that [a] is typable by a sort
          and that [t] has type [a]. Otherwise, we try to infer the type of
          [t] and return it. *)

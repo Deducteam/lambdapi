@@ -176,11 +176,15 @@ let get_args : p_term -> p_term * p_term list =
     | _           -> (t, args)
   in get_args []
 
-(** [scope md ss env t] turns a parser-level term [t] into an actual term. The
-    variables of the environment [env] may appear in [t], and the scoping mode
-    [md] changes the behaviour related to certain constructors.  The signature
-    state [ss] is used to hande module aliasing according to [find_qid]. *)
-let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
+(** [scope ?wrn md ss env t] turns a parser-level term [t] into an actual
+   term. The variables of the environment [env] may appear in [t], and the
+   scoping mode [md] changes the behaviour related to certain constructors.
+   The signature state [ss] is used to hande module aliasing according to
+   [find_qid]. If [wrn] and a variables is not used, then a warning is
+   output. *)
+let scope : bool -> mode -> sig_state -> env -> p_term -> tbox
+  = fun b md ss env t ->
+  let wrn_unused_vars = Stdlib.ref b in
   (* Unique pattern variable generation for wildcards in a LHS. *)
   let fresh_patt_name =
     let c = Stdlib.ref (-1) in
@@ -247,7 +251,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
         let vs = Env.to_tbox env in
         _Meta (fresh_meta (Env.to_prod env _Type) (Array.length vs)) vs
   (* Scoping of a binder (abstraction or product). The environment made of the
-   * variables is also returned. *)
+     variables is also returned. *)
   and scope_binder cons env xs t =
     let rec aux env xs =
       match xs with
@@ -264,7 +268,8 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           let (t,env) =
             aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
           in
-          if x.elt.[0] <> '_' && not (Bindlib.occur v t) then
+          if Stdlib.(!wrn_unused_vars)
+             && x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
     in
@@ -416,15 +421,15 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   in
   scope env t
 
-(** [scope ?exp ss env t] turns a parser-level term [t] into an actual term.
+(** [scope exp ss env t] turns a parser-level term [t] into an actual term.
     The variables of the environment [env] may appear in [t]. The signature
     state [ss] is used to handle module aliasing according to [find_qid]. If
-    [?exp] is {!constructor:Public}, then the term mustn't contain any private
+    [exp] is {!constructor:Public}, then the term mustn't contain any private
     subterms. *)
-let scope_term : expo -> sig_state -> env -> p_term -> term =
-  fun expo ss env t ->
+let scope_term : bool -> expo -> sig_state -> env -> p_term -> term =
+  fun b expo ss env t ->
   let m = Stdlib.ref StrMap.empty in
-  Bindlib.unbox (scope (M_Term(m, expo)) ss env t)
+  Bindlib.unbox (scope b (M_Term(m, expo)) ss env t)
 
 (** [patt_vars t] returns a couple [(pvs,nl)]. The first compoment [pvs] is an
     association list giving the arity of all the “pattern variables” appearing
@@ -500,7 +505,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
      privacy. *)
   let prv = is_private (fst (get_root p_lhs ss)) in
   (* We scope the LHS and add indexes in the environment for metavariables. *)
-  let lhs = Bindlib.unbox (scope (M_LHS(map, prv)) ss Env.empty p_lhs) in
+  let lhs = Bindlib.unbox (scope true (M_LHS(map, prv)) ss Env.empty p_lhs) in
   let (sym, hint, lhs) =
     let (h, args) = Basics.get_args lhs in
     match h with
@@ -521,7 +526,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
   let rhs =
     let map = Array.map2 (fun n v -> (n,v)) names vars in
     let mode = M_RHS(Array.to_list map, is_private sym) in
-    Bindlib.unbox (Bindlib.bind_mvar vars (scope mode ss Env.empty p_rhs))
+    Bindlib.unbox (Bindlib.bind_mvar vars (scope true mode ss Env.empty p_rhs))
   in
   (* We also store [pvs] to facilitate confluence / termination checking. *)
   let vars = Array.of_list pvs in
@@ -531,7 +536,7 @@ let scope_rule : sig_state -> p_rule -> sym * pp_hint * rule loc = fun ss r ->
 (** [scope_pattern ss env t] turns a parser-level term [t] into an actual term
     that will correspond to selection pattern (rewrite tactic). *)
 let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
-  Bindlib.unbox (scope M_Patt ss env t)
+  Bindlib.unbox (scope true M_Patt ss env t)
 
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
