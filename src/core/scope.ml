@@ -192,8 +192,7 @@ let get_args : p_term -> p_term * p_term list =
    [find_qid]. If [wrn] and a variables is not used, then a warning is
    output. *)
 let scope : bool -> mode -> sig_state -> env -> p_term -> tbox
-  = fun b md ss env t ->
-  let wrn_unused_vars = Stdlib.ref b in
+  = fun wrn_unused_vars md ss env t ->
   (* Unique pattern variable generation for wildcards in a LHS. *)
   let fresh_patt data name env =
     let fresh_index () =
@@ -299,7 +298,7 @@ let scope : bool -> mode -> sig_state -> env -> p_term -> tbox
           let (t,env) =
             aux ((x.elt,(v,a,None)) :: env) ((l,d,i) :: xs)
           in
-          if Stdlib.(!wrn_unused_vars)
+          if wrn_unused_vars
              && x.elt.[0] <> '_' && not (Bindlib.occur v t) then
             wrn x.pos "Variable [%s] could be replaced by [_]." x.elt;
           (cons a (Bindlib.bind_var v t), Env.add v a None env)
