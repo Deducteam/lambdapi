@@ -113,8 +113,7 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
           let (x, u) = Bindlib.unbind b in
           let b = Bindlib.bind_var x (symb_to_tenv u) in
           (_LLet (symb_to_tenv a) (symb_to_tenv t) b, ts)
-      | Meta(m,ar)  ->
-          ignore (m, ar);
+      | Meta(_,_)   ->
           fatal pos "A metavariable could not be instantiated in the RHS."
       | TEnv(_,_)   -> assert false (* TEnv have been replaced in [t]. *)
       | Appl(_,_)   -> assert false (* Cannot appear in RHS. *)
