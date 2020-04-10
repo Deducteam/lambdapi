@@ -1,14 +1,6 @@
-/// Implementation of vectors
-/// =========================
-///
-/// This module provides:
-///  - a definition of vectors (lists of a given length),
-///  - the usual **append** function for concatenation.
-
 constant symbol A : TYPE
 
 constant symbol Nat : TYPE
-
 constant symbol zero : Nat
 constant symbol succ : Nat ⇒ Nat
 
@@ -24,10 +16,3 @@ symbol append : ∀ (n:Nat) (m:Nat), Vec n ⇒ Vec m ⇒ Vec (plus n m)
 rule append _  _ nil             &l2 → &l2
 rule append _ &m (cns &n &e &l1) &l2 →
   cns (plus &n &m) &e (append &n &m &l1 &l2)
-
-// FIXME add more functions.
-
-//theorem add_comm : ∀ (m:Nat) (n:Nat), eq Nat (add m n) (add n m)
-//proof
-//  intro m n
-//abort

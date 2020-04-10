@@ -112,12 +112,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
   | P_rules(rs)                ->
       (* Scoping and checking each rule in turn. *)
-      let handle_rule pr =
-        let (s,_,_) as r = scope_rule ss pr in
-        if !(s.sym_def) <> None then
+      let handle_rule r =
+        let pr = scope_rule ss r in
+        let (sym, hint) = pr.elt.pr_sym in
+        if !(sym.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
-                        symbol [%s]." s.sym_name;
-        Sr.check_rule ss.builtins r; r
+                        symbol [%s]." sym.sym_name;
+        (sym, hint, Pos.make r.pos (Sr.check_rule ss.builtins pr))
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)

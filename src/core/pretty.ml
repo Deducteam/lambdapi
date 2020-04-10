@@ -235,6 +235,9 @@ let rec pp_ast : ast pp = fun oc cs ->
   | [c]   -> Format.fprintf oc "%a@." pp_command c
   | c::cs -> Format.fprintf oc "%a\n@.%a" pp_command c pp_ast cs
 
+(** Short synonym of [pp_p_term]. *)
+let pp : p_term pp = pp_p_term
+
 (** [beautify cmds] pretty-prints the commands [cmds] to standard output. *)
 let beautify : ast -> unit =
   pp_ast Format.std_formatter
