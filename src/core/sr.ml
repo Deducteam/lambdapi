@@ -96,6 +96,9 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
       | Symb(f,_) when List.memq f syms ->
           let i =
             try Hashtbl.find htbl f.sym_name with Not_found ->
+            (* A symbol may also come from a metavariable that appeared in the
+               type of a metavariable that was replaced by a symbol. We do not
+               have concrete examples of that happening yet. *)
             fatal pos "Introduced symbol [%s] cannot be removed." f.sym_name
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
