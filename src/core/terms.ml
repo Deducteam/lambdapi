@@ -52,9 +52,9 @@ type term =
   | Meta of meta * term array
   (** Metavariable application (used by unification and for proof goals). *)
   | Patt of int option * string * term array
-  (** Pattern variable application (only used in a rewriting rules LHS). *)
+  (** Pattern variable application (only used in rewriting rules LHS). *)
   | TEnv of term_env * term array
-  (** Term environment (only used in a rewriting rules RHS). *)
+  (** Term environment (only used in rewriting rules RHS). *)
   | Wild
   (** Wildcard (only used for surface matching, never in a LHS). *)
   | TRef of term option ref
@@ -137,14 +137,16 @@ type term =
     rule to apply, and a RHS (right hand side) giving the action to perform if
     the rule applies. More explanations are given below. *)
  and rule =
-  { lhs   : term list
+  { lhs     : term list
   (** Left hand side (or LHS). *)
-  ; rhs   : (term_env, term) Bindlib.mbinder
+  ; rhs     : (term_env, term) Bindlib.mbinder
   (** Right hand side (or RHS). *)
-  ; arity : int
+  ; arity   : int
   (** Required number of arguments to be applicable. *)
-  ; vars  : (string * int) array
-  (** Name and arity of the pattern variables bound in the RHS. *) }
+  ; arities : int array
+  (** Arrities of the pattern variables bound in the RHS. *)
+  ; vars    : term_env Bindlib.var array
+  (** Bindlib variables used to build [rhs]. *) }
 
 (** The LHS (or pattern) of a rewriting rule is always formed of a head symbol
     (on which the rule is defined) applied to a list of pattern arguments. The
@@ -184,7 +186,7 @@ type term =
     minimal number of arguments required to match the LHS of the rule. *)
 
 (** The RHS (or action) or a rewriting rule is represented by a term, in which
-    (higher-order) variables representing a "terms with environments" (see the
+    (higher-order) variables representing "terms with environments" (see the
     {!type:term_env} type) are bound. To effectively apply the rewriting rule,
     these  bound variables must be substituted using "terms with environments"
     that are constructed when matching the LHS of the rule. *)
@@ -242,12 +244,6 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** Comparison function on metavariables. *)
-let cmp_meta : meta -> meta -> int = fun m1 m2 -> m1.meta_key - m2.meta_key
-
-(** Equality on metavariables. *)
-let eq_meta : meta -> meta -> bool = fun m1 m2 -> m1.meta_key = m2.meta_key
-
 (** [symb s] returns the term [Symb (s, Nothing)]. *)
 let symb : sym -> term = fun s -> Symb (s, Nothing)
 
@@ -298,27 +294,28 @@ let rec unfold : term -> term = fun t ->
 (** [unset m] returns [true] if [m] is not instantiated. *)
 let unset : meta -> bool = fun m -> !(m.meta_value) = None
 
-(** [fresh_meta a n] creates a new metavariable of type [a] and arity [n]. *)
+(** [fresh_meta ?name a n] creates a fresh metavariable with the optional name
+    [name], and of type [a] and arity [n]. *)
 let fresh_meta : ?name:string -> term -> int -> meta =
   let counter = Stdlib.ref (-1) in
   let fresh_meta ?name a n =
    { meta_key =  Stdlib.(incr counter; !counter) ; meta_name = name
-   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None}
+   ; meta_type = ref a ; meta_arity = n ; meta_value = ref None }
   in fresh_meta
 
 (** [set_meta m v] sets the value of the metavariable [m] to [v]. Note that no
     specific check is performed, so this function may lead to cyclic terms. *)
 let set_meta : meta -> (term, term) Bindlib.mbinder -> unit = fun m v ->
-  m.meta_type := Kind (* to save memory *); m.meta_value := Some(v)
-
-(** [internal m] returns [true] if [m] is unnamed (i.e., not user-defined). *)
-let internal : meta -> bool = fun m -> m.meta_name = None
+  m.meta_type := Kind; (* to save memory *) m.meta_value := Some(v)
 
 (** [meta_name m] returns a string representation of [m]. *)
 let meta_name : meta -> string = fun m ->
-  match m.meta_name with
-  | Some(n) -> "?" ^ n
-  | None    -> "?" ^ string_of_int m.meta_key
+  let name =
+    match m.meta_name with
+    | Some(n) -> n
+    | None    -> string_of_int m.meta_key
+  in
+  "?" ^ name
 
 (** [term_of_meta m env] constructs the application of a dummy symbol with the
     same type as [m], to the element of the environment [env].  The idea is to
@@ -455,3 +452,45 @@ let rec lift : term -> tbox = fun t ->
     the names of bound variables updated.  This is useful to avoid any form of
     "visual capture" while printing terms. *)
 let cleanup : term -> term = fun t -> Bindlib.unbox (lift t)
+
+(** [fresh_meta_box ?name a n] is the boxed counterpart of [fresh_meta]. It is
+    only useful in the rare cases where the type of a metavariables contains a
+    free term variable environement. This should only happens when scoping the
+    rewriting rules, use this function with care.  The metavariable is created
+    immediately with a dummy type, and the type becomes valid at unboxing. The
+    boxed metavariable should be unboxed at most once,  otherwise its type may
+    be rendered invalid in some contexts. *)
+let fresh_meta_box : ?name:string -> tbox -> int -> meta Bindlib.box =
+  fun ?name a n ->
+    let m = fresh_meta ?name Kind n in
+    Bindlib.box_apply (fun a -> m.meta_type := a; m) a
+
+(** [_Meta_full m ar] is similar to [_Meta m ar] but works with a metavariable
+    that is boxed. This is useful in very rare cases,  when metavariables need
+    to be able to contain free term environment variables. Using this function
+    in bad places is harmful for efficiency but not unsound. *)
+let _Meta_full : meta Bindlib.box -> tbox array -> tbox = fun u ar ->
+  Bindlib.box_apply2 (fun u ar -> Meta(u,ar)) u (Bindlib.box_array ar)
+
+(** Sets and maps of metavariables. *)
+module Meta = struct
+  type t = meta
+  let compare m1 m2 = m1.meta_key - m2.meta_key
+end
+
+module MetaSet = Set.Make(Meta)
+module MetaMap = Map.Make(Meta)
+
+(** Sets of term variables. *)
+module VarSet = Set.Make(
+  struct
+    type t = tvar
+    let compare = Bindlib.compare_vars
+  end)
+
+(** Maps over term variables. *)
+module VarMap = Map.Make(
+  struct
+    type t = tvar
+    let compare = Bindlib.compare_vars
+  end)

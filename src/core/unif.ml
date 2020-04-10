@@ -33,18 +33,80 @@ let pp_problem oc p =
 let no_problems : problems =
   {to_solve  = []; unsolved = []; recompute = false}
 
-(** Boolean saying whether user metavariables can be set or not. *)
-let can_instantiate : bool ref = ref true
+(** [nl_distinct_vars ctx ts] checks that [ts] is made of variables  [vs] only
+    and returns some copy of [vs] where variables occurring more than once are
+    replaced by fresh variables.  Variables defined in  [ctx] are unfolded. It
+    returns [None] otherwise. *)
+let nl_distinct_vars
+    : ctxt -> term array -> (tvar array * tvar StrMap.t) option
+  = fun ctx ts ->
+  let exception Not_a_var in
+  let open Stdlib in
+  let vars = ref VarSet.empty
+  and nl_vars = ref VarSet.empty
+  and patt_vars = ref StrMap.empty in
+  let rec to_var t =
+    match Ctxt.unfold ctx t with
+    | Vari(v) ->
+        if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
+        else vars := VarSet.add v !vars;
+        v
+    | Symb(f,_) when f.sym_name <> "" && f.sym_name.[0] = '&' ->
+        (* Symbols replacing pattern variables are considered as variables. *)
+        let v =
+          try StrMap.find f.sym_name !patt_vars
+          with Not_found ->
+            let v = Bindlib.new_var mkfree f.sym_name in
+            patt_vars := StrMap.add f.sym_name v !patt_vars;
+            v
+        in to_var (Vari v)
+    | _ -> raise Not_a_var
+  in
+  let replace_nl_var v =
+    if VarSet.mem v !nl_vars
+    then Bindlib.new_var mkfree (Bindlib.name_of v)
+    else v
+  in
+  try
+    let vs = Array.map to_var ts in
+    let vs = Array.map replace_nl_var vs in
+    (* We remove non-linear variables from [!patt_vars] as well. *)
+    let fn n v m = if VarSet.mem v !nl_vars then m else StrMap.add n v m in
+    let map = StrMap.fold fn !patt_vars StrMap.empty in
+    Some (vs, map)
+  with Not_a_var -> None
+
+(** [sym_to_var m t] replaces in [t] every symbol [f] by a variable according
+   to [m]. *)
+let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
+  let rec to_var t =
+    match unfold t with
+    | Symb(f,_) -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
+    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
+    | Appl(a,b) -> Appl(to_var a, to_var b)
+    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
+    | Patt(_) -> assert false
+    | TEnv(_) -> assert false
+    | TRef(_) -> assert false
+    | _ -> t
+  and to_var_binder b =
+    let (x,b) = Bindlib.unbind b in
+    Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
+  in to_var
 
 (** [instantiation ctx m ts u] checks whether, in a problem [m[ts]=u], [m] can
     be instantiated and returns the corresponding instantiation. It does not
     check whether the instantiation is closed though. *)
 let instantiation : ctxt -> meta -> term array -> term ->
   tmbinder Bindlib.box option = fun ctx m ts u ->
-  if (!can_instantiate || internal m) && not (occurs m u) then
-    match nl_distinct_vars ctx ts with
-    | None     -> None
-    | Some(vs) -> Some (Bindlib.bind_mvar vs (lift u))
+  if not (occurs m u) then
+    match nl_distinct_vars ctx ts with (* Theoretical justification ? *)
+    | None       -> None
+    | Some(vs,m) ->
+        let u = if StrMap.is_empty m then u else sym_to_var m u in
+        Some (Bindlib.bind_mvar vs (lift u))
   else None
 
 (** [instantiate ctx m ts u] check whether, in a problem [m[ts]=u], [m] can be
@@ -52,7 +114,10 @@ let instantiation : ctxt -> meta -> term array -> term ->
 let instantiate : ctxt -> meta -> term array -> term -> bool =
   fun ctx m ts u ->
   match instantiation ctx m ts u with
-  | Some(bu) when Bindlib.is_closed bu -> set_meta m (Bindlib.unbox bu); true
+  | Some(bu) when Bindlib.is_closed bu ->
+      if !log_enabled then
+        log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+      set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
 (** [solve cfg p] tries to solve the unification problems of [p] and
@@ -103,7 +168,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
     if !log_enabled then
-      log_unif "imitate_inj [%a] [%a]"
+      log_unif "imitate_inj %a ≡ %a"
         pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
     let exception Cannot_imitate in
     try
@@ -261,7 +326,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let inverse_opt s ts v =
     if is_injective s then
       match ts with
-      | [t] -> begin try Some (t, inverse s v) with Not_invertible -> None end
+      | [t] -> (try Some (t, inverse s v) with Not_invertible -> None)
       | _ -> None
     else None
   in
@@ -270,8 +335,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !log_enabled then
-      log_unif "solve_inj [%a] [%a]" pp (add_args (symb s) ts) pp v;
-    if is_constant s then error ();
+      log_unif "solve_inj %a ≡ %a" pp (add_args (symb s) ts) pp v;
     match inverse_opt s ts v with
     | Some (a, b) -> solve_aux ctx a b p
     | None -> add_to_unsolved ()
@@ -340,16 +404,23 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) -> solve_inj s ts2 t1
+  | (Symb(s,_)  , _          ) when not (is_constant s) -> solve_inj s ts1 t2
+  | (_          , Symb(s,_)  ) when not (is_constant s) -> solve_inj s ts2 t1
 
-  | (_          , _          ) -> error ()
+  (* Cases of error *)
+  | (Type, (Kind|Prod(_)|Symb(_)|Vari(_)|Abst(_)))
+  | (Kind, (Type|Prod(_)|Symb(_)|Vari(_)|Abst(_)))
+  | (Prod(_), (Type|Kind|Vari(_)|Abst(_)))
+  | (Vari(_), (Type|Kind|Vari(_)|Prod(_)))
+  | (Abst(_), (Type|Kind|Prod(_)))
+    -> error ()
 
-(** [solve builtins flag problems] attempts to solve [problems], after having
-    sets the value of [can_instantiate] to [flag].  If there is no solution,
-    the value [None] is returned. Otherwise [Some(cs)] is returned, where the
-    list [cs] is a list of unsolved convertibility constraints. *)
-let solve : sym StrMap.t -> bool -> problems -> unif_constrs option =
-  fun _builtins b p ->
-  can_instantiate := b;
+  | (_          , _          ) -> add_to_unsolved ()
+
+(** [solve builtins flag problems] attempts to solve [problems]. If there is
+   no solution, the value [None] is returned. Otherwise [Some(cs)] is
+   returned, where the list [cs] is a list of unsolved convertibility
+   constraints. *)
+let solve : sym StrMap.t -> problems -> unif_constrs option =
+  fun _builtins p ->
   try Some (solve p) with Unsolvable -> None

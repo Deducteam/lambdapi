@@ -14,7 +14,7 @@ let constraints = Stdlib.ref []
 
 (** Function adding a constraint. *)
 let conv ctx a b =
-  if not (Basics.eq ctx a b) then
+  if not (Eval.eq_modulo ctx a b) then
     begin
       if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
@@ -37,7 +37,7 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer [%a]" pp t;
+  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -51,11 +51,19 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
   (* ---------------------------------
       ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
-  | Vari(x)     -> (try Ctxt.type_of x ctx with Not_found -> assert false)
+  | Vari(x)     ->
+      let a = try Ctxt.type_of x ctx with Not_found -> assert false in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   -> !(s.sym_type)
+  | Symb(s,_)   ->
+      let a = !(s.sym_type) in
+      if !log_enabled then
+        log_infr (blu "%a : %a") pp_term t pp_term a;
+      a
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
      -----------------------------------------
@@ -127,54 +135,16 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   (*  ctx ⊢ term_of_meta m e ⇒ a
      ----------------------------
          ctx ⊢ Meta(m,e) ⇒ a      *)
-  | Meta(m,e)   ->
-      if !log_enabled then
-        log_infr (yel "%s is of type [%a]") (meta_name m) pp !(m.meta_type);
-      infer ctx (term_of_meta m e)
+  | Meta(m,ts)   ->
+      infer ctx (term_of_meta m ts)
 
 (** [check ctx t c] checks that the term [t] has type [c] in context
    [ctx], possibly under some constraints recorded in [constraints]
    using [conv]. [ctx] must be well-formed and [c] well-sorted. This
    function never fails (but constraints may be unsatisfiable). *)
-
-(* [check ctx t c] could be reduced to the default case [conv
-   (infer ctx t) c]. We however provide some more efficient
-   code when [t] is an abstraction, as witnessed by 'make holide':
-
-   Finished in 3:56.61 at 99% with 3180096Kb of RAM
-
-   Finished in 3:46.13 at 99% with 2724844Kb of RAM
-
-   This avoids to build a product to destructure it just after. *)
 and check : ctxt -> term -> term -> unit = fun ctx t c ->
-  if !log_enabled then log_infr "check [%a] [%a]" pp t pp c;
-  match unfold t with
-  (*  c → Prod(d,b)    a ~ d    ctx, x : A ⊢ t<x> ⇐ b<x>
-      ----------------------------------------------------
-                         ctx ⊢ Abst(a,t) ⇐ c                   *)
-  | Abst(a,t)   ->
-      (* We ensure that [a] is of type [Type]. *)
-      check ctx a Type;
-      (* We (hopefully) evaluate [c] to a product, and get its body. *)
-      let b =
-        let c = Eval.whnf ctx c in
-        match c with
-        | Prod(d,b)  -> conv ctx d a; b (* Domains must be convertible. *)
-        | Meta(m,ts) ->
-            let mxs, p, _bp1, bp2 = Env.extend_meta_type m in
-            conv ctx mxs p; Bindlib.msubst bp2 ts
-        | _         ->
-           let b = make_meta_codomain ctx a in
-           conv ctx c (Prod(a,b)); b
-      in
-      (* We type-check the body with the codomain. *)
-      let (x,t,ctx') = Ctxt.unbind ctx a None t in
-      check ctx' t (Bindlib.subst b (Vari(x)))
-  | t           ->
-      (*  ctx ⊢ t ⇒ a
-         -------------
-          ctx ⊢ t ⇐ a  *)
-      conv ctx (infer ctx t) c
+  if !log_enabled then log_infr "check %a : %a" pp t pp c;
+  conv ctx (infer ctx t) c
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the
    term [t] in the context [ctx], under unification constraints [cs].
@@ -187,8 +157,8 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "infer [%a] yields [%a]") pp t pp a;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      log_infr (gre "infer %a : %a") pp t pp a;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   (a, constrs)
@@ -204,8 +174,8 @@ let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "check [%a] [%a]") pp t pp c;
-      List.iter (log_infr "  assuming %a" pp_constr) constrs;
+      log_infr (gre "check %a : %a") pp t pp c;
+      List.iter (log_infr "  if %a" pp_constr) constrs;
     end;
   Stdlib.(constraints := []);
   constrs

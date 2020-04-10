@@ -239,6 +239,14 @@ module List =
             | _ -> false
       in in_sorted
 
+    (** [insert cmp x l] inserts [x] in the list [l] assuming that [l] is
+        sorted wrt [cmp]. *)
+    let insert : 'a cmp -> 'a -> 'a list -> 'a list = fun cmp x ->
+      let rec insert acc l =
+        match l with
+        | y :: l when cmp x y > 0 -> insert (y::acc) l
+        | _                       -> List.rev_append acc (x::l)
+      in insert []
   end
 
 module Array =

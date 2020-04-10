@@ -49,7 +49,7 @@ type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating [%a]" pp t;
+  if !log_enabled then log_eval "evaluating %a" pp t;
   let s = Stdlib.(!steps) in
   let (u, stk) = whnf_beta_stk t [] in
   if Stdlib.(!steps) <> s then add_args u stk else unfold t

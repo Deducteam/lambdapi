@@ -22,6 +22,9 @@ module Goal :
 
     (** [simpl g] simplifies the given goal, evaluating its type to SNF. *)
     val simpl : t -> t
+
+    (** Comparison function. *)
+    val compare : t -> t -> int
   end =
   struct
     type t =
@@ -42,6 +45,9 @@ module Goal :
 
     let simpl : t -> t = fun g ->
       {g with goal_type = Eval.snf (Env.to_ctxt g.goal_hyps) g.goal_type}
+
+    let compare : t -> t -> int = fun g1 g2 ->
+      Meta.compare g1.goal_meta g2.goal_meta
   end
 
 (** Representation of the proof state of a theorem. *)
