@@ -190,8 +190,8 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
   let htbl : index_tbl = Hashtbl.create (Array.length vars) in
   Array.iteri (fun i name -> Hashtbl.add htbl name i) var_names;
   (* We instantiate all the uninstantiated metavariables of the LHS (including
-     those appearing in the types of LHS metavariabeles) with a fresh function
-     symbol. We also keep a list of those symbols. *)
+     those appearing in the types of these metavariables) using fresh function
+     symbols. We also keep a list of those symbols. *)
   let symbols =
     let symbols = Stdlib.ref [] in
     let rec instantiate m =
