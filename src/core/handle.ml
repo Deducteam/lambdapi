@@ -133,7 +133,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       if Stdlib.(!write_trees) then
         begin
           let write_tree s =
-            let fname = String.concat Filename.dir_sep s.sym_path in
+            let fname = String.concat "%" s.sym_path in
             let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
             Console.out 3 "Writing file [%s]\n" fname;
             Tree_graphviz.to_dot fname s
