@@ -27,6 +27,9 @@
     "why3"))
 (defconst lambdapi--prf-finish '("abort" "admit" "qed"))
 (defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":" "?" "&"))
+(defconst lambdapi--misc-cmds
+  '("set" "assert" "assertnot" "type" "compute")
+  "Commands that can appear in proofs.")
 (defconst lambdapi--keywords
   '("let"
     "in"
@@ -229,21 +232,20 @@
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
     (`(:before . "PRFEND") '(column . 0))
 
+    (`(:before . "set") (lambdapi--misc-cmd-indent))
+    (`(:before . "compute") (lambdapi--misc-cmd-indent))
+    (`(:before . "type") (lambdapi--misc-cmd-indent))
+    (`(:before . "assert") (lambdapi--misc-cmd-indent))
+    (`(:before . "assertnot") (lambdapi--misc-cmd-indent))
+
+    (`(:before . ":") (lambdapi--colon-indent))
+
+    ;; Toplevel
     (`(:before . "protected") '(column . 0))
     (`(:before . "private") '(column . 0))
     (`(:before . "injective") '(column . 0))
     (`(:before . "constant") '(column . 0))
-    ;; Toplevel
-    (`(:before . "compute") '(column . 0))
-    (`(:before . "type") '(column . 0))
-    (`(:before . "assert") '(column . 0))
-    (`(:before . "assertnot") '(column . 0))
-
-    (`(:before . ":") (lambdapi--colon-indent))
-
     (`(:before . "require") '(column . 0))
-    (`(:before . "set") '(column . 0))
-
     (`(:before . "definition") '(column . 0))
     (`(:before . "theorem") '(column . 0))
     (`(:before . "proof") '(column . 0))
@@ -267,6 +269,20 @@ of line and not before a colon. In this case, it returns
   (let ((ppss (syntax-ppss)))
     (when (= 0 (nth 0 ppss))
       '(column 0)))) ; At beginning of line if not inside parentheses
+
+(defun lambdapi--misc-cmd-indent ()
+  "Indent commands that may be in proofs.
+Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
+  (save-excursion
+    (forward-line -1)
+    (back-to-indentation)
+    (cond
+     ;; Perhaps `(smie-rule-parent)' would be enough here
+     ((looking-at-p (regexp-opt (cons "proof" lambdapi--tactics)))
+      `(column . ,lambdapi-indent-basic))
+     ((looking-at-p (regexp-opt lambdapi--misc-cmds))
+      (smie-rule-parent))
+     (t '(column . 0)))))
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here
