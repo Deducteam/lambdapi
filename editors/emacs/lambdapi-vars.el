@@ -59,8 +59,10 @@
 
 (defvar lambdapi-mode-map (make-sparse-keymap))
 
-(defvar lambdapi-unicode-force-quail nil
-  "Set to non-nil to use Quail rather that company-math for unicode.")
+(defvar lambdapi-unicode-prefer-company nil
+  "Set to non-nil to favour company-math over quail.
+Useful for people who prefer to have the dropdown window display systematically,
+since the window won't display if there are quail candidates.")
 
 (provide 'lambdapi-vars)
 ;;; lambdapi-vars.el ends here

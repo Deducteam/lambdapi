@@ -82,11 +82,14 @@ backquoted letters (as done in
 ), or with the LaTeX command: α can be accessed with `` `a `` or `\alpha`, β
 with `` `b `` or `\beta` &c.
 
-To force using the input method rather than `company`, set the variable
-`lambdapi-unicode-force-quail` to a non-nil value in `~/.emacs` or
+*NOTE on the interaction between the input method and company:*the dropdown
+window of company-math will not appear as long as the current word is a
+candidate for a completion of the input method. To favour company over the input
+method, the input method can be disabled setting the variable
+`lambdapi-unicode-prefer-company` to a non-nil value in `~/.emacs` or
 `~/.emacs.d/init.el`:
 ``` emacs-lisp
-(setq lambdapi-unicode-force-quail 1)
+(setq lambdapi-unicode-prefer-company 1)
 ```
 
 **`abbrev` mode:**
