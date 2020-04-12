@@ -295,8 +295,8 @@ let qsym : (Path.t * string) Term.t =
     | []   -> assert false (* Unreachable: Cmdliner ensures [l] non-empty *)
     | s::l -> (List.rev l, s)
   in
-  let separate = Term.const separate in
-  Term.(separate $ Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i))
+  let arg = Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i) in
+  Term.(const separate $ arg)
 
 (** Remaining arguments: source files. *)
 
