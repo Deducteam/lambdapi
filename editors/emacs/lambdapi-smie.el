@@ -35,7 +35,7 @@
     ","
     "→"
     "TYPE"
-    "ᐅ"
+    "⟶"
     "≔"
     "symbol"
     "private"
