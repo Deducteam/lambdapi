@@ -115,12 +115,12 @@ let decision_tree_cmd : config -> (Path.t * string) -> unit =
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
     init cfg;
-    let sign = Compile.compile false mp in
-    let (sym, _) =
-      try StrMap.find sym Timed.(!(sign.sign_symbols))
+    let sym =
+      let sign = Compile.compile false mp in
+      try fst (StrMap.find sym Timed.(!(sign.sign_symbols)))
       with Not_found -> fatal_no_pos "Symbol not found."
     in
-    Tree_graphviz.to_dot !out_fmt sym
+    out 0 "%a" Tree_graphviz.to_dot sym
   in
   Console.handle_exceptions run
 
