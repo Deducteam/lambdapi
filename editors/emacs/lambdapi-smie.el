@@ -1,7 +1,7 @@
 ;;; lambdapi-smie.el --- Indentation for lambdapi -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
-;; TODO: refine editing of proofs, perhaps make a single token PRFTAC for
+;; TODO: refine proof edition, perhaps make a single token PRFTAC for
 ;; tactics, adjust backward parsing (greed and lookahead of `looking-back`) to
 ;; avoid finding token `in` in `refine` and `definition`.
 ;;
@@ -102,18 +102,18 @@
               ("print")
               ("proofterm")
               ("why3"))
-      (rule (sterm "→" sterm))
-      (rules (rule)
-             (rule "and" rule))
       ; TODO: token SYMTAG?
-      (symtag ("constant")
-              ("injective")
-              ("protected")
-              ("private"))
-      (command (symtag "symbol" args ":" sterm)
-               ("theorem" args ":" sterm "proof" tactic "PRFEND")
-               ("definition" args "≔" sterm)
-               ("rule" rules)
+      (symdec ("symbol" "ID" args ":" sterm))
+      (command ("injective" symdec)
+               ("constant" symdec)
+               ("private" symdec)
+               ("protected" symdec)
+               (symdec)
+               ("theorem" "ID" args ":" sterm "proof" tactic "PRFEND")
+               ("definition" "ID" args "≔" sterm)
+
+               ("rule" sterm "→" sterm)
+               ("and" sterm "→" sterm)
 
                ("assert" sterm "≡" sterm)
                ("assert" sterm ":" sterm)
@@ -136,7 +136,7 @@
                ("set" "prover") ; no stringlit because of conflict
                ("set" "prover_timeout" "NATLIT")
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "⇒")
+    '((assoc ",") (assoc "in") (assoc "⇒") (assoc "≔")
       (assoc "λ" "∀") (assoc ":") (assoc "ID")))))
 
 (defun lambdapi--smie-forward-token ()
@@ -250,24 +250,26 @@
     (`(:before . "theorem") '(column . 0))
     (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))
+
     (`(:before . "rule") '(column . 0))
-    (`(:before . "and") '(column . 1))))
+    (`(:before . "and") '(column . 1))
+    (`(:before . "→") ,(when (smie-rule-bolp) '(column . 3)))))
 
 (defun lambdapi--id-indent ()
   "Indentation before identifier.
 Yield nil except when identifier is top (no parentheses) and at the beginning
 of line and not before a colon. In this case, it returns
-`lambdapi-indent-basic'. It applies for arguments of a `require'."
+`lambdapi-indent-basic'. It applies for arguments of a `require' or identifiers
+before a top-level colon."
   (let ((ppss (syntax-ppss)))
     (when (and (= 0 (nth 0 ppss))
-               (smie-rule-bolp)
-               (not (smie-rule-parent-p ":")))
+               (smie-rule-bolp))
       `(column . ,lambdapi-indent-basic))))
 
 (defun lambdapi--colon-indent ()
   "Indent before colon."
   (let ((ppss (syntax-ppss)))
-    (when (= 0 (nth 0 ppss))
+    (when (and (= 0 (nth 0 ppss)) (smie-rule-bolp))
       '(column 0)))) ; At beginning of line if not inside parentheses
 
 (defun lambdapi--misc-cmd-indent ()
