@@ -9,12 +9,7 @@
     {{:https://dot2tex.readthedocs.io/}dot2tex}.  For more output formats,
     see
     {{:https://graphviz.gitlab.io/_pages/doc/info/output.html}graphviz doc}.
-
-    To obtain the dot representation of a decision tree, use the
-    [decision-tree] command with a fully qualified symbol name to print the
-    graphviz code on standard output. To display symbol [sym] of module
-    [mod.ule] using [imagemagick],
-    [lambdapi decision-tree mod.ule.sym | dot -Tpng | display]. *)
+*)
 
 (** {b Description of output} we remind that trees are interpreted during
     evaluation of terms to get the correct rule to apply. A node is thus an

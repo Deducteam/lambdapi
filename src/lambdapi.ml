@@ -349,7 +349,9 @@ let check_cmd =
   Term.info "check" ~doc ~man:man_pkg_file
 
 let decision_tree_cmd =
-  let doc = "Prints decision tree of a symbol to standard output." in
+  let doc = "Prints decision tree of a symbol to standard output using the \
+             Dot language. Piping to `dot -Tpng | display' displays the tree."
+  in
   Term.(const decision_tree_cmd $ global_config $ qsym),
   Term.info "decision-tree" ~doc ~man:man_pkg_file
 
