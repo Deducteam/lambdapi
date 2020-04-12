@@ -18,7 +18,7 @@
   "Proof tactics.")
 
 (defconst lambdapi-sig-commands
-  '("and"
+  '("with"
     "definition"
     "in"
     "let"

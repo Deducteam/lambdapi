@@ -1,13 +1,13 @@
 constant symbol Type : TYPE
-injective symbol eta : Type ⇒ TYPE
+injective symbol eta : Type → TYPE
 
 // function type
-constant symbol Ar : Type ⇒ Type ⇒ Type
+constant symbol Ar : Type → Type → Type
 set infix right 6 ">" ≔ Ar
-rule eta (&a > &b) → eta &a ⇒ eta &b
+rule eta ($a > $b) ⟶ eta $a → eta $b
 
-definition fst : ∀ (A B : Type), eta (A > B > A) ≔
+definition fst : Π (A B : Type), eta (A > B > A) ≔
   λ A B a b, a
 
-definition snd : ∀ (A B : Type), eta (A > B > B) ≔
+definition snd : Π (A B : Type), eta (A > B > B) ≔
   λ A B a b, a

@@ -51,7 +51,7 @@ let nl_distinct_vars
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;
         v
-    | Symb(f,_) when f.sym_name <> "" && f.sym_name.[0] = '&' ->
+    | Symb(f,_) when f.sym_name <> "" && f.sym_name.[0] = '$' ->
         (* Symbols replacing pattern variables are considered as variables. *)
         let v =
           try StrMap.find f.sym_name !patt_vars
@@ -161,10 +161,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   (* For a problem m[vs]=s(ts), where [vs] are distinct variables, m
-     is a meta of type ∀y0:a0,..,∀yk-1:ak-1,b (k = length vs), s is an
-     injective symbol of type ∀x0:b0,..,∀xn-1:bn-1,c (n = length ts),
+     is a meta of type Πy0:a0,..,Πyk-1:ak-1,b (k = length vs), s is an
+     injective symbol of type Πx0:b0,..,Πxn-1:bn-1,c (n = length ts),
      we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
-     meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
+     meta of type Πv0:a0,..,Πvk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
   let imitate_inj m vs us s h ts =
     if !log_enabled then
@@ -211,16 +211,16 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   (* For a problem of the form Appl(m[ts],[Vari x;_])=_, where m is a
-     metavariable of arity n and type ∀x1:a1,..,∀xn:an,t and x does not occur
+     metavariable of arity n and type Πx1:a1,..,Πxn:an,t and x does not occur
      in m[ts], instantiate m by λx1:a1,..,λxn:an,λx:a,m1[x1,..,xn,x] where
      m1 is a new metavariable of arity n+1 and:
 
-     - either t = ∀x:a,b and m1 is of type ∀x1:a1,..,∀xn:an,∀x:a,b,
+     - either t = Πx:a,b and m1 is of type Πx1:a1,..,Πxn:an,Πx:a,b,
 
-     - or we add the problem t = ∀x:m2[x1,..,xn],m3[x1,..,xn,x] where m2 is a
-     new metavariable of arity n and type ∀x1:a1,..,∀xn:an,KIND and m3 is a
+     - or we add the problem t = Πx:m2[x1,..,xn],m3[x1,..,xn,x] where m2 is a
+     new metavariable of arity n and type Πx1:a1,..,Πxn:an,KIND and m3 is a
      new metavariable of arity n+1 and type
-     ∀x1:a1,..,∀xn:an,∀x:m2[x1,..,xn],KIND, and do as in the previous case. *)
+     Πx1:a1,..,Πxn:an,Πx:m2[x1,..,xn],KIND, and do as in the previous case. *)
   let imitate_lam m =
     let n = m.meta_arity in
     let (env, t) = Env.destruct_prod n !(m.meta_type) in
@@ -257,7 +257,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   (* [inverses_for_prod s] returns the list of triples [(s0,s1,s2,b)] such
-     that [s] has a rule of the form [s(s0 l1 l2) → ∀x:s1(r1),s2(r2)] with
+     that [s] has a rule of the form [s(s0 l1 l2) ᐅ Πx:s1(r1),s2(r2)] with
      [b=true] iff [x] occurs in [r2]. *)
   let inverses_for_prod : sym -> (sym * sym * sym * bool) list = fun s ->
     let f l rule =
@@ -341,7 +341,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     | None -> add_to_unsolved ()
   in
 
-  (* For a problem of the form [m[ts] = ∀x:_,_] with [ts] distinct bound
+  (* For a problem of the form [m[ts] = Πx:_,_] with [ts] distinct bound
      variables, [imitate_prod m ts] instantiates [m] by a fresh product and
      continue. *)
   let imitate_prod m =

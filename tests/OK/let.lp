@@ -14,8 +14,8 @@ type let f x ≔ x in f a
 assert let f x ≔ x in f a ≡ a
 
 // In rewrite rules
-symbol f : T ⇒ T
-rule f _ → let x ≔ a in x
+symbol f : T → T
+rule f _ ⟶ let x ≔ a in x
 assert f a ≡ a
 
 // With type annotated arguments
@@ -24,8 +24,8 @@ compute let x : T ≔ a in x
 // Type annotation on products
 type let f x : T ≔ a in f
 type let f (x : T) ≔ λ _, x in f a
-assert let f (x:T) : T ⇒ T ≔ λ(_:T), x in f a ≡ λ(_:T), a
+assert let f (x:T) : T → T ≔ λ(_:T), x in f a ≡ λ(_:T), a
 // dependent type let
-symbol Dt : T ⇒ TYPE
+symbol Dt : T → TYPE
 symbol dt x : Dt x
 type let f x : Dt x ≔ dt x in f

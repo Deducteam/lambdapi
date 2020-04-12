@@ -3,8 +3,8 @@
 constant symbol Nat : TYPE
 
 constant symbol z : Nat
-constant symbol s : Nat ⇒ Nat
+constant symbol s : Nat → Nat
 
-symbol f : (Nat ⇒ Nat) ⇒ Nat
+symbol f : (Nat → Nat) → Nat
 
-rule f (λx, &m[x,z]) → z
+rule f (λx, $m[x,z]) ⟶ z

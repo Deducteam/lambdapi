@@ -7,87 +7,87 @@ constant symbol U : TYPE
 
 // Interpretation function (for data types as types).
 
-injective symbol T : U ⇒ TYPE
+injective symbol T : U → TYPE
 
 // Examples of data types and their interpretations.
 
 constant symbol bool : U
 constant symbol nat  : U
-constant symbol pi   : ∀ (a : U), (T a ⇒ U) ⇒ U
+constant symbol pi   : Π (a : U), (T a → U) → U
 
-rule T bool       → B
-rule T nat        → N
-rule T (pi &a &f) → ∀ (x : T &a), T (&f x)
+rule T bool       ⟶ B
+rule T nat        ⟶ N
+rule T (pi $a $f) ⟶ Π (x : T $a), T ($f x)
 
 // Type of propositions and their interpretation as types.
 
 constant symbol Prop : TYPE
 
-constant symbol all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
+constant symbol all : Π (a : U), (T a → Prop) → Prop
 
 // Interpretation function (for propositions as types).
 
-injective symbol P : Prop ⇒ TYPE
+injective symbol P : Prop → TYPE
 
-rule P (all &a &f) → ∀ (x : T &a), P (&f x)
+rule P (all $a $f) ⟶ Π (x : T $a), P ($f x)
 
 // Induction principle on B.
 
-symbol bool_ind : ∀ (p:B⇒Prop), P(p true) ⇒ P(p false) ⇒ ∀b, P(p b)
+symbol bool_ind : Π (p:B→Prop), P(p true) → P(p false) → Πb, P(p b)
 
-rule bool_ind _ &t _  true  → &t
-rule bool_ind _ _  &f false → &f
+rule bool_ind _ $t _  true  ⟶ $t
+rule bool_ind _ _  $f false ⟶ $f
 
 // Induction principle on N.
 
-symbol nat_ind : ∀ (p:N⇒Prop), P(p z) ⇒ (∀n, P(p n) ⇒ P(p (s n))) ⇒ ∀n, P(p n)
+symbol nat_ind : Π (p:N→Prop), P(p z) → (Πn, P(p n) → P(p (s n))) → Πn, P(p n)
 
-rule nat_ind _  &u _  z      → &u
-rule nat_ind &p &u &v (s &n) → &v &n (nat_ind &p &u &v &n)
+rule nat_ind _  $u _  z      ⟶ $u
+rule nat_ind $p $u $v (s $n) ⟶ $v $n (nat_ind $p $u $v $n)
 
 // Leibniz equality.
 
-constant symbol eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol eq : Πa, T a → T a → Prop
 
-constant symbol refl  : ∀a x, P (eq a x x)
-constant symbol eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+constant symbol refl  : Πa x, P (eq a x x)
+constant symbol eqind : Πa x y, P (eq a x y) → Π (p:T a→Prop), P (p y) → P (p x)
 
 // Definition of connectors
 constant symbol bot        : Prop
 constant symbol top        : Prop
-constant symbol imp        : Prop ⇒ Prop ⇒ Prop
-constant symbol {|and|}    : Prop ⇒ Prop ⇒ Prop
-constant symbol or         : Prop ⇒ Prop ⇒ Prop
-constant symbol not        : Prop ⇒ Prop
+constant symbol imp        : Prop → Prop → Prop
+constant symbol {|and|}    : Prop → Prop → Prop
+constant symbol or         : Prop → Prop → Prop
+constant symbol not        : Prop → Prop
 
 // Axioms of Classical Natural Deduction
 
 // Intro and Elimination of not
-symbol not_elim         : ∀ (p : Prop), P (not p) ⇒ P p ⇒ P bot
-symbol not_intro        : ∀ (p : Prop), (P p ⇒ P bot) ⇒ P (not p)
+symbol not_elim         : Π (p : Prop), P (not p) → P p → P bot
+symbol not_intro        : Π (p : Prop), (P p → P bot) → P (not p)
 
 // Bot elimation
-symbol bot_elim         : ∀ (p : Prop), P bot ⇒ P p
+symbol bot_elim         : Π (p : Prop), P bot → P p
 
 // Excluded middle
-symbol excl_mid         : ∀ (p : Prop), P (or p (not p))
+symbol excl_mid         : Π (p : Prop), P (or p (not p))
 
 // Intro and Elimination of and
-symbol and_intro        : ∀ (p : Prop) (q : Prop), P p ⇒ P q ⇒ P ({|and|} p q)
-symbol and_elim1        : ∀ (p : Prop) (q : Prop), P ({|and|} p q) ⇒ P p
-symbol and_elim2        : ∀ (p : Prop) (q : Prop), P ({|and|} p q) ⇒ P q
+symbol and_intro        : Π (p : Prop) (q : Prop), P p → P q → P ({|and|} p q)
+symbol and_elim1        : Π (p : Prop) (q : Prop), P ({|and|} p q) → P p
+symbol and_elim2        : Π (p : Prop) (q : Prop), P ({|and|} p q) → P q
 
 // Intro and Elimination of or
-symbol or_intro1        : ∀ (p : Prop) (q : Prop), P p ⇒ P (or p q)
-symbol or_intro2        : ∀ (p : Prop) (q : Prop), P q ⇒ P (or p q)
-symbol or_elim          : ∀ (p : Prop) (q : Prop) (c : Prop), P (or p q) ⇒ (P p ⇒ P c) ⇒ (P q ⇒ P c) ⇒ P c
+symbol or_intro1        : Π (p : Prop) (q : Prop), P p → P (or p q)
+symbol or_intro2        : Π (p : Prop) (q : Prop), P q → P (or p q)
+symbol or_elim          : Π (p : Prop) (q : Prop) (c : Prop), P (or p q) → (P p → P c) → (P q → P c) → P c
 
 // Intro and Elimination of imp
-symbol imp_intro        : ∀ (p : Prop) (q : Prop), (P p ⇒ P q) ⇒ P (imp p q)
-symbol imp_elim         : ∀ (p : Prop) (q : Prop), P (imp p q) ⇒ P p ⇒ P q
+symbol imp_intro        : Π (p : Prop) (q : Prop), (P p → P q) → P (imp p q)
+symbol imp_elim         : Π (p : Prop) (q : Prop), P (imp p q) → P p → P q
 
 
-theorem not_elimp : ∀ (A : Prop), P (not (not A)) ⇒ P A
+theorem not_elimp : Π (A : Prop), P (not (not A)) → P A
 proof
     assume A nnp
     refine or_elim A (not A) A _ _ _

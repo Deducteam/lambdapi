@@ -96,8 +96,8 @@ and pp_term : term pp = fun oc t ->
     | Kind        -> out oc "KIND"
     | Symb(s,h)   -> pp_symbol h oc s
     | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
-    | Patt(_,n,e) -> out oc "&%s%a" n pp_env e
-    | TEnv(t,e)   -> out oc "&%a%a" pp_term_env t pp_env e
+    | Patt(_,n,e) -> out oc "$%s%a" n pp_env e
+    | TEnv(t,e)   -> out oc "$%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
     | Abst(a,t)   ->
         if wrap then out oc "(";
@@ -121,7 +121,7 @@ and pp_term : term pp = fun oc t ->
         let (x,c) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
           begin
-            out oc "∀%a" pp_arg (x,a);
+            out oc "Π%a" pp_arg (x,a);
             let rec pp_prods oc c =
               match unfold c with
               | Prod(a,b) when Bindlib.binder_occur b ->
@@ -133,7 +133,7 @@ and pp_term : term pp = fun oc t ->
             pp_prods oc c
           end
         else
-          out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
+          out oc "%a → %a" (pp `Appl) a (pp `Func) c;
         if wrap then out oc ")"
     | LLet(a,t,u) ->
         if wrap then out oc "(";
@@ -153,7 +153,7 @@ let pp : term pp = pp_term
 let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
   let lhs = Basics.add_args (Symb(s,h)) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
-  Format.fprintf oc "%a → %a" pp lhs pp rhs
+  Format.fprintf oc "%a ᐅ %a" pp lhs pp rhs
 
 (** [pp_ctxt oc ctx] displays context [ctx] if {!val:print_contexts} is
     true, with [ ⊢ ] after; and nothing otherwise. *)

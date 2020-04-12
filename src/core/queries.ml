@@ -48,18 +48,18 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
   | P_query_debug(e,s)     ->
       (* Just update the option, state not modified. *)
       Console.set_debug e s;
-      out 3 "(flag) debug → %s%s\n" (if e then "+" else "-") s
+      out 3 "(flag) debug ᐅ %s%s\n" (if e then "+" else "-") s
   | P_query_verbose(i)     ->
       (* Just update the option, state not modified. *)
       Timed.(Console.verbose := i);
-      out 3 "(flag) verbose → %i\n" i
+      out 3 "(flag) verbose ᐅ %i\n" i
   | P_query_flag(id,b)     ->
       (* We set the value of the flag, if it exists. *)
       begin
         try Console.set_flag id b with Not_found ->
           wrn q.pos "Unknown flag \"%s\"." id
       end;
-      out 3 "(flag) %s → %b\n" id b
+      out 3 "(flag) %s ᐅ %b\n" id b
   | P_query_infer(pt, cfg)            ->
       (* Infer the type of [t]. *)
       let t = scope pt in

@@ -162,7 +162,7 @@ type term =
     the RHS. If it is [Some(_)], then the variables is bound in the RHS, or it
     appears non-linearly in the LHS.
 
-    For instance, with the rule [f &X &Y &Y &Z → &X]:
+    For instance, with the rule [f &X &Y &Y &Z ᐅ &X]:
      - [&X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
        RHS of the rule (and it is actually the only one),
      - [&Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than

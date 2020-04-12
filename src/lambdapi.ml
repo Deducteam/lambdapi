@@ -44,7 +44,7 @@ let init : config -> unit = fun cfg ->
     begin
       Files.log_file "running directory: [%s]" (Files.current_path ());
       Files.log_file "library root path: [%s]" (Files.lib_root_path ());
-      let fn = Files.log_file "mapping: [%a] → [%s]" Files.Path.pp in
+      let fn = Files.log_file "mapping: [%a] ᐅ [%s]" Files.Path.pp in
       Files.ModMap.iter fn (Files.current_mappings ())
     end;
   (* Register the library root. *)

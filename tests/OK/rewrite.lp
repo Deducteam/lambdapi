@@ -10,74 +10,74 @@ constant symbol false : B
 constant symbol N : TYPE
 
 constant symbol z : N
-constant symbol s : N ⇒ N
+constant symbol s : N → N
 
 set builtin "0"  ≔ z
 set builtin "+1" ≔ s
 
 // Addition on natural numbers.
 
-symbol add : N ⇒ N ⇒ N
+symbol add : N → N → N
 
-rule add z      &x → &x
-rule add (s &x) &y → s (add &x &y)
+rule add z      $x ⟶ $x
+rule add (s $x) $y ⟶ s (add $x $y)
 
 // Multiplication on natural numbers.
 
-symbol mul : N ⇒ N ⇒ N
+symbol mul : N → N → N
 
-rule mul z      _  → z
-rule mul (s &x) &y → add &y (mul &x &y)
+rule mul z      _  ⟶ z
+rule mul (s $x) $y ⟶ add $y (mul $x $y)
 
-// Type of data type codes and their interpretation as types.
+// Type of data type codeswith their interpretation as types.
 
 constant symbol U : TYPE
 
-symbol T : U ⇒ TYPE
+symbol T : U → TYPE
 
 constant symbol bool : U
 constant symbol nat  : U
 
-rule T bool → B
-rule T nat  → N
+rule T bool ⟶ B
+rule T nat  ⟶ N
 
-constant symbol pi : ∀ (a : U), (T a ⇒ U) ⇒ U
+constant symbol pi : Π (a : U), (T a → U) → U
 
-rule T (pi &a &f) → ∀ (x : T &a), T (&f x)
+rule T (pi $a $f) ⟶ Π (x : T $a), T ($f x)
 
-// Type of propositions and their interpretation as types.
+// Type of propositionswith their interpretation as types.
 
 constant symbol Prop : TYPE
 
-symbol P : Prop ⇒ TYPE
+symbol P : Prop → TYPE
 
-constant symbol all : ∀ (a : U), (T a ⇒ Prop) ⇒ Prop
+constant symbol all : Π (a : U), (T a → Prop) → Prop
 
-rule P (all &a &f) → ∀ (x : T &a), P (&f x)
+rule P (all $a $f) ⟶ Π (x : T $a), P ($f x)
 
 // Induction principle on N.
 
-symbol nat_ind : ∀ (p:N⇒Prop), P(p z) ⇒ (∀n, P(p n) ⇒ P(p (s n))) ⇒ ∀n, P(p n)
+symbol nat_ind : Π (p:N→Prop), P(p z) → (Πn, P(p n) → P(p (s n))) → Πn, P(p n)
 
-rule nat_ind _  &u _  z      → &u
-rule nat_ind &p &u &v (s &n) → &v &n (nat_ind &p &u &v &n)
+rule nat_ind _  $u _  z      ⟶ $u
+rule nat_ind $p $u $v (s $n) ⟶ $v $n (nat_ind $p $u $v $n)
 
 // Boolean equality on N.
 
-symbol beq : N ⇒ N ⇒ B
+symbol beq : N → N → B
 
-rule beq z      z      → true
-rule beq (s &x) (s &y) → beq &x &y
-rule beq z      (s _ ) → false
-rule beq (s _ ) z      → false
+rule beq z      z      ⟶ true
+rule beq (s $x) (s $y) ⟶ beq $x $y
+rule beq z      (s _ ) ⟶ false
+rule beq (s _ ) z      ⟶ false
 
 // Leibniz equality.
 
-constant symbol eq : ∀a, T a ⇒ T a ⇒ Prop
+constant symbol eq : Πa, T a → T a → Prop
 
-constant symbol refl : ∀a x, P (eq a x x)
+constant symbol refl : Πa x, P (eq a x x)
 
-constant symbol eqind : ∀a x y, P (eq a x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+constant symbol eqind : Πa x y, P (eq a x y) → Π (p:T a→Prop), P (p y) → P (p x)
 // FIXME Try to infer the type of p.
 
 // Setting up builtins for rewrite.
@@ -88,8 +88,8 @@ set builtin "eq"    ≔ eq
 set builtin "eqind" ≔ eqind
 set builtin "refl"  ≔ refl
 
-// [∀ n m, n + S m = S (n+m)]
-theorem add_succ_r : ∀n m, P (eq nat (add n (s m)) (s (add n m)))
+// [Π n m, n + S m = S (n+m)]
+theorem add_succ_r : Πn m, P (eq nat (add n (s m)) (s (add n m)))
 proof
   assume n m
   refine nat_ind (λn, eq nat (add n (s m)) (s (add n m))) ?CZ[n,m] ?CS[n,m] n
@@ -103,7 +103,7 @@ proof
   reflexivity
 qed
 
-theorem rewriteTest0 : ∀x y z,
+theorem rewriteTest0 : Πx y z,
   P (eq nat (add (add x (s y)) z) (add (s (add x y)) z))
 proof
   assume x y z

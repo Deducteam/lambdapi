@@ -7,9 +7,9 @@ constant symbol false : B
 
 // Declaration of the main boolean functions, with their notation.
 
-symbol bool_neg : B ⇒ B
-symbol bool_and : B ⇒ B ⇒ B
-symbol bool_or  : B ⇒ B ⇒ B
+symbol bool_neg : B → B
+symbol bool_and : B → B → B
+symbol bool_or  : B → B → B
 
 set infix right 18 "∧" ≔ bool_and
 set infix right 16 "∨" ≔ bool_and
@@ -17,30 +17,30 @@ set prefix      20 "¬" ≔ bool_neg
 
 // Definition of negation.
 
-rule ¬ true  → false
-rule ¬ false → true
-rule ¬ ¬ &a  → &a
+rule ¬ true  ⟶ false
+with ¬ false ⟶ true
+with ¬ ¬ $a  ⟶ $a
 
 // Definition of conjunction
 
-rule true  ∧ &b    → &b
- and &b    ∧ true  → &b
- and false ∧ _     → false
- and _     ∧ false → false
+rule true  ∧ $b    ⟶ $b
+with $b    ∧ true  ⟶ $b
+with false ∧ _     ⟶ false
+with _     ∧ false ⟶ false
 
 // Definition of disjunction.
 
-rule true  ∨ _     → true
- and _     ∨ true  → true
- and false ∨ &b    → &b
- and &b    ∨ false → &b
+rule true  ∨ _     ⟶ true
+with _     ∨ true  ⟶ true
+with false ∨ $b    ⟶ $b
+with $b    ∨ false ⟶ $b
 
 // Conditional.
 
-symbol bool_if : B ⇒ B ⇒ B ⇒ B
+symbol bool_if : B → B → B → B
 
-rule bool_if true  &x _  → &x
-rule bool_if false _  &x → &x
+rule bool_if true  $x _  ⟶ $x
+with bool_if false _  $x ⟶ $x
 
 // More (defined) boolean functions.
 

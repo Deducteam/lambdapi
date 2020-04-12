@@ -9,7 +9,7 @@ constant symbol Set : TYPE
 
 set declared "τ"
 
-injective symbol τ : Set ⇒ TYPE
+injective symbol τ : Set → TYPE
 
 // Type of natural numbers
 
@@ -18,33 +18,33 @@ constant symbol nat : Set
 definition N ≔ τ nat
 
 constant symbol zero : N
-constant symbol succ : N ⇒ N
+constant symbol succ : N → N
 
 // Type of polymorphic lists
 
-constant symbol list : Set ⇒ Set
+constant symbol list : Set → Set
 
 definition L a ≔ τ (list a)
 
 set declared "□"
 
 constant symbol □ {a} : L a
-constant symbol cons {a} : τa ⇒ L a ⇒ L a
+constant symbol cons {a} : τa → L a → L a
 
 set infix 4 "⸬" ≔ cons
 
 // Length of a list
 
-symbol length {a} : L a ⇒ N
+symbol length {a} : L a → N
 
-rule length □ → zero
-and length (_ ⸬ &l) → succ (length &l)
+rule length □ ⟶ zero
+with length (_ ⸬ $l) ⟶ succ (length $l)
 
 // Concatenation of two lists
 
-symbol concat {a} : L a ⇒ L a ⇒ L a
+symbol concat {a} : L a → L a → L a
 
 set infix right 5 "⋅" ≔ concat
 
-rule □ ⋅ &m → &m
-and (&x ⸬ &l) ⋅ &m → &x ⸬ (&l ⋅ &m)
+rule □ ⋅ $m ⟶ $m
+with ($x ⸬ $l) ⋅ $m ⟶ $x ⸬ ($l ⋅ $m)

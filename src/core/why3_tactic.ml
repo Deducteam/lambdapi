@@ -36,7 +36,7 @@ type config =
   ; symb_T   : sym (** Encoding of types.        *)
   ; symb_or  : sym (** Disjunction(∨) symbol.    *)
   ; symb_and : sym (** Conjunction(∧) symbol.    *)
-  ; symb_imp : sym (** Implication(⇒) symbol.    *)
+  ; symb_imp : sym (** Implication(→) symbol.    *)
   ; symb_bot : sym (** Bot(⊥) symbol.            *)
   ; symb_top : sym (** Top(⊤) symbol.            *)
   ; symb_not : sym (** Not(¬) symbol.            *) }
