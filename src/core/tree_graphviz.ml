@@ -10,10 +10,11 @@
     see
     {{:https://graphviz.gitlab.io/_pages/doc/info/output.html}graphviz doc}.
 
-    To create dot files, use the [--write-trees] flag on command line: given a
-    module [M], a symbol [s] of the signature of [M], a file [M.s.gv]
-    containing the decision tree will be created. If [M] is [a.b.c], the file
-    will be [a/b/c.s.gv]. *)
+    To obtain the dot representation of a decision tree, use the
+    [decision-tree] command with a fully qualified symbol name to print the
+    graphviz code on standard output. To display symbol [sym] of module
+    [mod.ule] using [imagemagick],
+    [lambdapi decision-tree mod.ule.sym | dot -Tpng | display]. *)
 
 (** {b Description of output} we remind that trees are interpreted during
     evaluation of terms to get the correct rule to apply. A node is thus an
@@ -68,13 +69,13 @@ type dot_term =
   | DotSuccess
   | DotFailure
 
-(** [to_dot f t] creates a dot graphviz file [f].gv for tree [t].  Each node
-    of the tree embodies a pattern matrix.  The label of a node is the
-    column index in the matrix on which the matching is performed to give
-    birth to the child node.  The label on the edge between a node and one of
-    its children represents the term matched to generate the next pattern
-    matrix (the one of the child node). *)
-let to_dot : string -> sym -> unit = fun fname s ->
+(** [to_dot oc sym] prints a dot graphviz representation of the tree of symbol
+    [sym] on output channel [oc]. Each node of the tree embodies a pattern
+    matrix. The label of a node is the column index in the matrix on which the
+    matching is performed to give birth to the child node. The label on the
+    edge between a node and one of its children represents the term matched to
+    generate the next pattern matrix (the one of the child node). *)
+let to_dot : Format.formatter -> sym -> unit = fun oc s ->
   let output_tree oc tree =
     let pp_dotterm : dot_term pp = fun oc dh ->
       let out fmt = Format.fprintf oc fmt in
@@ -147,7 +148,4 @@ let to_dot : string -> sym -> unit = fun fname s ->
     end;
     out "@.}@\n@?"
   in
-  let tree = Lazy.force (snd !(s.sym_tree)) in
-  let oc = open_out fname in
-  output_tree (Format.formatter_of_out_channel oc) tree;
-  close_out oc
+  output_tree oc (Lazy.force (snd !(s.sym_tree)))

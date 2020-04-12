@@ -15,7 +15,6 @@ type config =
   { gen_obj     : bool
   ; lib_root    : string option
   ; map_dir     : (string * string) list
-  ; write_tree  : bool
   ; keep_order  : bool
   ; verbose     : int
   ; no_warnings : bool
@@ -32,7 +31,6 @@ let init : config -> unit = fun cfg ->
   Compile.gen_obj := cfg.gen_obj;
   Option.iter Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
-  Handle.write_trees := cfg.write_tree;
   Tree.rule_order := cfg.keep_order;
   set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
@@ -111,6 +109,30 @@ let lsp_server_cmd : config -> bool -> string -> unit =
   let run _ = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Console.handle_exceptions run
 
+(** Printing a decision tree. *)
+let decision_tree_cmd : config -> string -> unit = fun cfg qsym ->
+  let run _ =
+    init cfg;
+    let (mp, sym) =
+      let rec get red mp =
+        match red with
+        | [sym] -> (mp, sym)
+        | m::ms -> get ms (m::mp)
+        | []    -> assert false
+      in
+      let (mp, sym) = get (String.split_on_char '.' qsym) [] in
+      (List.rev mp, sym)
+    in
+    Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    let sign = Compile.compile false mp in
+    let (sym, _) =
+      try StrMap.find sym Timed.(!(sign.sign_symbols))
+      with Not_found -> fatal_no_pos "Symbol not found."
+    in
+    Tree_graphviz.to_dot !out_fmt sym
+  in
+  Console.handle_exceptions run
+
 (** {3 Command line argument parsing} *)
 
 open Cmdliner
@@ -152,13 +174,6 @@ let map_dir : (string * string) list Term.t =
   in
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
   Arg.(value & opt_all (pair ~sep:':' string dir) [] & i)
-
-let write_tree : bool Term.t =
-  let doc =
-    "Write decision trees to \".gv\" files when reduction rules are added \
-     for a symbol. This is mainly useful for debugging."
-  in
-  Arg.(value & flag & info ["write-trees"] ~doc)
 
 let keep_order : bool Term.t =
   let doc =
@@ -237,14 +252,14 @@ let termination : string option Term.t =
 (** [global_config] gathers the command line arguments that are common to most
     of the commands. *)
 let global_config : config Term.t =
-  let fn gen_obj lib_root map_dir write_tree keep_order verbose no_warnings
+  let fn gen_obj lib_root map_dir keep_order verbose no_warnings
       debug no_colors too_long confluence termination =
-    { gen_obj ; lib_root ; map_dir ; write_tree ; keep_order ; verbose
-    ; no_warnings ; debug ; no_colors ; too_long ; confluence ; termination }
+    { gen_obj ; lib_root ; map_dir ; keep_order ; verbose ; no_warnings
+    ; debug ; no_colors ; too_long ; confluence ; termination }
   in
   let open Term in
-  const fn $ gen_obj $ lib_root $ map_dir $ write_tree $ keep_order $ verbose
-    $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
+  const fn $ gen_obj $ lib_root $ map_dir $ keep_order $ verbose
+  $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
 
 (** Options that are specific to the ["check"] command. *)
 
@@ -278,6 +293,13 @@ let lsp_log_file : string Term.t =
        file is [%s]." default
   in
   Arg.(value & opt string default & info ["log-file"] ~docv:"FILE" ~doc)
+
+(** Specific to the ["decision-tree"] command. *)
+
+let qsym : string Term.t =
+  let doc = "Fully qualified symbol name with dot separated identifiers." in
+  Arg.(required & pos 0 (some string) None
+       & info [] ~docv:"MOD_PATH.SYM" ~doc)
 
 (** Remaining arguments: source files. *)
 
@@ -333,6 +355,11 @@ let check_cmd =
   Term.(const check_cmd $ global_config $ timeout $ recompile $ files),
   Term.info "check" ~doc ~man:man_pkg_file
 
+let decision_tree_cmd =
+  let doc = "Prints decision tree of a symbol to standard output." in
+  Term.(const decision_tree_cmd $ global_config $ qsym),
+  Term.info "decision-tree" ~doc ~man:man_pkg_file
+
 let parse_cmd =
   let doc = "Run the parser on the given files." in
   Term.(const parse_cmd $ global_config $ files),
@@ -368,6 +395,6 @@ let default_cmd =
 let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
-    ; help_cmd ; version_cmd ]
+    ; decision_tree_cmd ; help_cmd ; version_cmd ]
   in
   Term.(exit (eval_choice default_cmd cmds))
