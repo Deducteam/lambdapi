@@ -290,10 +290,7 @@ let lsp_log_file : string Term.t =
 let qsym : (string list * string) Term.t =
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
-  let separate lst =
-    let rv = List.rev lst in
-    ((List.rev (List.tl rv)), List.hd rv)
-  in
+  let separate l = List.(let r = rev l in (rev (tl r), hd r)) in
   let separate = Term.const separate in
   Term.(separate $ Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i))
 
