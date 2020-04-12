@@ -16,7 +16,7 @@ type config =
   ; lib_root    : string option
   ; map_dir     : (string * string) list
   ; keep_order  : bool
-  ; verbose     : int
+  ; verbose     : int option
   ; no_warnings : bool
   ; debug       : string
   ; no_colors   : bool
@@ -32,7 +32,7 @@ let init : config -> unit = fun cfg ->
   Option.iter Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
   Tree.rule_order := cfg.keep_order;
-  set_default_verbose cfg.verbose;
+  Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
   Console.color := not cfg.no_colors;
@@ -113,8 +113,8 @@ let lsp_server_cmd : config -> bool -> string -> unit =
 let decision_tree_cmd : config -> (string list * string) -> unit =
   fun cfg (mp, sym) ->
   let run _ =
-    init cfg;
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    init cfg;
     let sign = Compile.compile false mp in
     let (sym, _) =
       try StrMap.find sym Timed.(!(sign.sign_symbols))
@@ -175,14 +175,14 @@ let keep_order : bool Term.t =
 
 (** Debugging and output options. *)
 
-let verbose : int Term.t =
+let verbose : int option Term.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
      and more informations being written to standard output. There is no \
      difference between the values of 3 and more."
   in
-  Arg.(value & opt int 1 & info ["verbose"; "v"] ~docv:"NUM" ~doc)
+  Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
 let no_warnings : bool Term.t =
   let doc =
