@@ -83,12 +83,13 @@ reserved "why3"
   | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
-  | "&" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
+  | "$" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
   | "{" <term> "}"
   | <term> <term>
   | <type> "⇒" <type>
-  | "∀" <arg>+ "," <type>
+  | "Π" <arg>+ "," <type>
+  | <term> → <term>
   | "λ" <arg>+ "," <term>
   | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
   | <nat_lit>
@@ -108,7 +109,7 @@ reserved "why3"
 
 // Rewriting rule
 <rule> ::=
-  | <patt> "→" <term>
+  | <patt> "⟶" <term>
 
 // TODO rule naming, positive / negative
 
@@ -151,7 +152,7 @@ reserved "why3"
   // Define a new symbol
   | <exposition>? <property>? "symbol" <ident> <arg>* ":" <type>
   // Define a new rewriting rule
-  | "rule" <rule> {"and" <rule>}*
+  | "rule" <rule> {"with" <rule>}*
   // Definition of a symbol or theorem
   | <exposition>? "definition" <ident> <arg>* {":" <type>}? "≔" <term>
   | <exposition>? "theorem" <ident> <arg>* ":" <type> "proof" <tactic>*

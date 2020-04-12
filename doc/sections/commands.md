@@ -20,19 +20,14 @@ One-line comments are introduced by '//':
 In Emacs, one can (un)comment a region by using Meta-; .
 
 <!---------------------------------------------------------------------------->
-### Lexical conventions
-
-TODO
-
-<!---------------------------------------------------------------------------->
 ### `require`
 
 The `require` command informs the type-checker that the current module depends
 on some other module, which must hence be compiled.
 
 ```
-require boolean
-require church.list as list
+require Boolean
+require Church.List as List
 ```
 
 Note that a required module can optionally be aliased, in which case it can be
@@ -45,8 +40,8 @@ The `open` command puts into scope the symbols defined in the given module. It
 can also be combined with the `require` command.
 
 ```
-open booleans
-require open church.sums
+open Boolean
+require open Church.Sums
 ```
 
 <!---------------------------------------------------------------------------->
@@ -60,11 +55,11 @@ modifier and `private` is an exposition marker.
 constant symbol Nat : TYPE
 constant symbol zero : Nat
 constant symbol succ (x:Nat) : Nat
-symbol add : Nat ⇒ Nat ⇒ Nat
-constant symbol list : Nat ⇒ TYPE
+symbol add : Nat → Nat → Nat
+constant symbol list : Nat → TYPE
 constant symbol nil : List zero
-constant symbol cons : Nat ⇒ ∀n, List n ⇒ List(succ n)
-private symbol aux : ∀n, List n ⇒ Nat
+constant symbol cons : Nat → Πn, List n → List(succ n)
+private symbol aux : Πn, List n → Nat
 ```
 
 The command requires a fresh symbol name (it should not have already been used
@@ -74,9 +69,9 @@ It is possible to put arguments on the left side of the `:` symbol (similarly
 to a value declaration in OCaml).
 
 Data types and predicates must be given types of the form
-`∀x1:T1,..,∀xn:Tn,TYPE`.
+`Πx1:T1,..,Πxn:Tn,TYPE`.
 
-`T⇒U` is a shorthand for `∀x:T,U` when `x` does not occur in `U`.
+`T→U` is a shorthand for `Πx:T,U` when `x` does not occur in `U`.
 
 We recommend to start types and predicates by a capital letter.
 
@@ -116,7 +111,7 @@ arguments mechanism is disabled and all the arguments must be
 explicitly given.
 
 ```
-symbol eq {a:U} : T a ⇒ T a ⇒ Prop
+symbol eq {a:U} : T a → T a → Prop
 // The first argument of `eq` is declared as implicit and must not be given
 // unless `eq` is prefixed by `@`.
 // Hence, [eq t u], [eq {_} t u] and [@eq _ t u] are all valid and equivalent.
@@ -131,31 +126,31 @@ An infix notation can be declared for some symbol. See the command `set`.
 Rewriting rules for definable symbols are declared using the `rule` command.
 
 ```
-rule add zero      &n → &n
-rule add (succ &n) &m → succ (add &n &m)
+rule add zero      $n ⟶ $n
+rule add (succ $n) $m ⟶ succ (add $n $m)
 ```
 
 Note that rewriting rules can also be defined simultaneously,  using the `and`
 keyword instead of the `rule` keyword for all but the first rule.
 
 ```
-rule add zero      &n → &n
-and  add (succ &n) &m → succ (add &n &m)
+rule add zero      $n ⟶ $n
+and  add (succ $n) $m ⟶ succ (add $n $m)
 ```
 
-Pattern variables need to be prefixed by `&`.
+Pattern variables need to be prefixed by `$`.
 
 **Higher-order pattern-matching**.
 Lambdapi accepts higher-order pattern variables too:
 
 ```
-rule diff (λx, sin &F[x]) → λx, diff (λx, &F[x]) x × cos &F[x]
-rule lam (λx, app &F x) → &F // η-reduction
+rule diff (λx, sin $F[x]) ⟶ λx, diff (λx, $F[x]) x × cos $F[x]
+rule lam (λx, app $F x) ⟶ $F // η-reduction
 ```
 
-It is possible to define an unnamed pattern variable with the syntax `&_[x,y]`
+It is possible to define an unnamed pattern variable with the syntax `$_[x,y]`
 (it matches any term with at most `x` and `y` as its free variables). If `x`
-and `y` are the only variables in scope, then `_` is equivalent to `&_[x,y]`.
+and `y` are the only variables in scope, then `_` is equivalent to `$_[x,y]`.
 
 In left-hand side, λ-expressions must have no type annotations.
 
@@ -164,27 +159,27 @@ that is, the terms between `[` and `]` must be distinct bound
 variables only.
 
 Lambdapi uses higher-order pattern-matching (not in full generality
-though). Hence, the rule `lam (λx, app &F x) → &F` implements
+though). Hence, the rule `lam (λx, app $F x) ⟶ $F` implements
 η-reduction since no valid instance of `F` can contain `x`.
 
 **Important**. In contrast to languages like OCaml, Coq, Agda, etc. rule
  left-hand sides can contain defined symbols:
 
 ```
-rule add (add x y) z → add x (add y z)
+rule add (add x y) z ⟶ add x (add y z)
 ```
 
 They can overlap:
 
 ```
-rule add zero x → x
-rule add x zero → x
+rule add zero x ⟶ x
+with add x zero ⟶ x
 ```
 
 And they can be non-linear:
 
 ```
-rule minus x x → zero
+rule minus x x ⟶ zero
 ```
 
 <!---------------------------------------------------------------------------->
@@ -195,7 +190,7 @@ be equal to some (closed) term. Definitions can use exposition markers the same
 way the `symbol` command use them.
 
 ```
-definition plus_two : Nat ⇒ Nat ≔ λn,add n (succ (succ zero))
+definition plus_two : Nat ⟶ Nat ≔ λn,add n (succ (succ zero))
 definition plus_two (n : Nat) : Nat ≔ add n (succ (succ zero))
 definition plus_two (n : Nat) ≔ add n (succ (succ zero))
 definition plus_two n ≔ add n (succ (succ zero))
@@ -228,8 +223,8 @@ The `type` command returns the type of a term.
 ```
 symbol N : TYPE
 symbol z : N
-symbol s : N⇒N
-type N⇒N // returns TYPE
+symbol s : N⟶N
+type N⟶N // returns TYPE
 type s z // returns N
 ```
 
@@ -241,10 +236,10 @@ The `compute` command computes the normal form of a term.
 ```
 symbol N : TYPE
 symbol z : N
-symbol s : N⇒N
-symbol add : N⇒N⇒N
-rule add z &x → &x
-and add (s &x) &y → add &x (s &y)
+symbol s : N⟶N
+symbol add : N⟶N⟶N
+rule add z $x ⟶ $x
+and add (s $x) $y ⟶ add $x (s $y)
 compute add (s (s z)) (s (s z)) // returns s (s (s (s z)))
 ```
 
@@ -302,7 +297,7 @@ representing 0 and the successor function as follows:
 
 ```
 set builtin "0"  ≔ zero // : N
-set builtin "+1" ≔ succ // : N ⇒ N
+set builtin "+1" ≔ succ // : N ⟶ N
 ```
 
 **infix symbols** The following code defines infix symbols for
@@ -360,9 +355,9 @@ Leibniz equality, one first has to define a number of builtin symbols
 as follows:
 
 ```
-set builtin "T"     ≔ T     // : U ⇒ TYPE
-set builtin "P"     ≔ P     // : Prop ⇒ TYPE
-set builtin "eq"    ≔ eq    // : ∀ {a}, T a ⇒ T a ⇒ Prop
-set builtin "refl"  ≔ refl  // : ∀ {a} (x:T a), P (x=x)
-set builtin "eqind" ≔ eqind // : ∀ {a} x y, P (x = y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+set builtin "T"     ≔ T     // : U ⟶ TYPE
+set builtin "P"     ≔ P     // : Prop ⟶ TYPE
+set builtin "eq"    ≔ eq    // : Π {a}, T a ⟶ T a ⟶ Prop
+set builtin "refl"  ≔ refl  // : Π {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ eqind // : Π {a} x y, P (x = y) ⟶ Π (p:T a⟶Prop), P (p y) ⟶ P (p x)
 ```

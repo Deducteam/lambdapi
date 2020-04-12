@@ -92,14 +92,14 @@ If no prover name is given, then the globally set prover is used
 A set of symbols should be defined in order to use the `why3` tactic.
 The user should define those symbols using builtins as follow :
 ```
-set builtin "T"     ≔ T       // : U ⇒ TYPE
-set builtin "P"     ≔ P       // : Prop ⇒ TYPE
+set builtin "T"     ≔ T       // : U → TYPE
+set builtin "P"     ≔ P       // : Prop → TYPE
 set builtin "bot"   ≔ bot     // : Prop
 set builtin "top"   ≔ top     // : Prop
-set builtin "imp"   ≔ imp     // : Prop ⇒ Prop ⇒ Prop
-set builtin "and"   ≔ {|and|} // : Prop ⇒ Prop ⇒ Prop
-set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
-set builtin "not"   ≔ not     // : Prop ⇒ Prop
+set builtin "imp"   ≔ imp     // : Prop → Prop → Prop
+set builtin "and"   ≔ {|and|} // : Prop → Prop → Prop
+set builtin "or"    ≔ or      // : Prop → Prop → Prop
+set builtin "not"   ≔ not     // : Prop → Prop
 ```
 
 **Important note:** you must run `why3 config --detect` whenever installing a
@@ -114,12 +114,12 @@ existence of terms of the approriate type mapped to the builtins `T`,
 declarations:
 
 ```
-set builtin "T"     ≔ ... // : U ⇒ TYPE
-set builtin "P"     ≔ ... // : Prop ⇒ TYPE
-set builtin "eq"    ≔ ... // : ∀ {a}, T a ⇒ T a ⇒ Prop
+set builtin "T"     ≔ ... // : U → TYPE
+set builtin "P"     ≔ ... // : Prop → TYPE
+set builtin "eq"    ≔ ... // : Π {a}, T a → T a → Prop
 set infix ... "=" := eq   // optional
-set builtin "refl"  ≔ ... // : ∀ {a} (x:T a), P (x=x)
-set builtin "eqind" ≔ ... // : ∀ {a} x y, P (x=y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π (p:T a→Prop), P (p y) → P (p x)
 ```
 
 <!---------------------------------------------------------------------------->
@@ -136,8 +136,8 @@ The tactic `sym` replaces a goal of the form `P (t = u)` by the goal
 <!---------------------------------------------------------------------------->
 ### `rewrite`
 
-The `rewrite` tactic takes as argument a term `t` of type `∀x1
-.. xn,P(l=r)` prefixed by an optional rewrite pattern in square
+The `rewrite` tactic takes as argument a term `t` of type `Πx₁
+.. xₙ,P(l=r)` prefixed by an optional rewrite pattern in square
 brackets, following the syntax and semantics of SSReflect rewrite
 patterns:
 
@@ -157,7 +157,7 @@ Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
 section 8, p. 48, for more details.
 
 In particular, if `u` is a subterm of the focused goal matching `l`,
-that is, of the form `l` with `x1` replaced by `u1`, ..., `xn`
-replaced by `un`, then the tactic `rewrite t` replaces in the focused
-goal all occurrences of `u` by the term `r` with `x1` replaced by
-`u1`, ..., `xn` replaced by `un`.
+that is, of the form `l` with `x₁` replaced by `u1`, ..., `xₙ`
+replaced by `uₙ`, then the tactic `rewrite t` replaces in the focused
+goal all occurrences of `u` by the term `r` with `x₁` replaced by
+`u₁`, ..., `xₙ` replaced by `uₙ`.
