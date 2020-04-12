@@ -15,9 +15,8 @@ type config =
   { gen_obj     : bool
   ; lib_root    : string option
   ; map_dir     : (string * string) list
-  ; write_tree  : bool
   ; keep_order  : bool
-  ; verbose     : int
+  ; verbose     : int option
   ; no_warnings : bool
   ; debug       : string
   ; no_colors   : bool
@@ -32,9 +31,8 @@ let init : config -> unit = fun cfg ->
   Compile.gen_obj := cfg.gen_obj;
   Option.iter Files.set_lib_root cfg.lib_root;
   List.iter (fun (m,d) -> Files.new_lib_mapping (m ^ ":" ^ d)) cfg.map_dir;
-  Handle.write_trees := cfg.write_tree;
   Tree.rule_order := cfg.keep_order;
-  set_default_verbose cfg.verbose;
+  Option.iter set_default_verbose cfg.verbose;
   no_wrn := cfg.no_warnings;
   set_default_debug cfg.debug;
   Console.color := not cfg.no_colors;
@@ -111,6 +109,21 @@ let lsp_server_cmd : config -> bool -> string -> unit =
   let run _ = init cfg; Lsp.Lp_lsp.main standard_lsp lsp_log_file in
   Console.handle_exceptions run
 
+(** Printing a decision tree. *)
+let decision_tree_cmd : config -> (Path.t * string) -> unit =
+  fun cfg (mp, sym) ->
+  let run _ =
+    Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
+    init cfg;
+    let sym =
+      let sign = Compile.compile false mp in
+      try fst (StrMap.find sym Timed.(!(sign.sign_symbols)))
+      with Not_found -> fatal_no_pos "Symbol not found."
+    in
+    out 0 "%a" Tree_graphviz.to_dot sym
+  in
+  Console.handle_exceptions run
+
 (** {3 Command line argument parsing} *)
 
 open Cmdliner
@@ -153,13 +166,6 @@ let map_dir : (string * string) list Term.t =
   let i = Arg.(info ["map-dir"] ~docv:"MOD:DIR" ~doc) in
   Arg.(value & opt_all (pair ~sep:':' string dir) [] & i)
 
-let write_tree : bool Term.t =
-  let doc =
-    "Write decision trees to \".gv\" files when reduction rules are added \
-     for a symbol. This is mainly useful for debugging."
-  in
-  Arg.(value & flag & info ["write-trees"] ~doc)
-
 let keep_order : bool Term.t =
   let doc =
     "Respect the order of definition of the rewriting rules in files. In \
@@ -169,14 +175,14 @@ let keep_order : bool Term.t =
 
 (** Debugging and output options. *)
 
-let verbose : int Term.t =
+let verbose : int option Term.t =
   let doc =
     "Set the verbosity level to $(docv). A value smaller or equal to 0 will \
      disable all printing (on standard output). Greater numbers lead to more \
      and more informations being written to standard output. There is no \
      difference between the values of 3 and more."
   in
-  Arg.(value & opt int 1 & info ["verbose"; "v"] ~docv:"NUM" ~doc)
+  Arg.(value & opt (some int) None & info ["verbose"; "v"] ~docv:"NUM" ~doc)
 
 let no_warnings : bool Term.t =
   let doc =
@@ -237,14 +243,14 @@ let termination : string option Term.t =
 (** [global_config] gathers the command line arguments that are common to most
     of the commands. *)
 let global_config : config Term.t =
-  let fn gen_obj lib_root map_dir write_tree keep_order verbose no_warnings
+  let fn gen_obj lib_root map_dir keep_order verbose no_warnings
       debug no_colors too_long confluence termination =
-    { gen_obj ; lib_root ; map_dir ; write_tree ; keep_order ; verbose
-    ; no_warnings ; debug ; no_colors ; too_long ; confluence ; termination }
+    { gen_obj ; lib_root ; map_dir ; keep_order ; verbose ; no_warnings
+    ; debug ; no_colors ; too_long ; confluence ; termination }
   in
   let open Term in
-  const fn $ gen_obj $ lib_root $ map_dir $ write_tree $ keep_order $ verbose
-    $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
+  const fn $ gen_obj $ lib_root $ map_dir $ keep_order $ verbose
+  $ no_warnings $ debug $ no_colors $ too_long $ confluence $ termination
 
 (** Options that are specific to the ["check"] command. *)
 
@@ -278,6 +284,19 @@ let lsp_log_file : string Term.t =
        file is [%s]." default
   in
   Arg.(value & opt string default & info ["log-file"] ~docv:"FILE" ~doc)
+
+(** Specific to the ["decision-tree"] command. *)
+
+let qsym : (Path.t * string) Term.t =
+  let doc = "Fully qualified symbol name with dot separated identifiers." in
+  let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
+  let separate l =
+    match List.rev l with
+    | []   -> assert false (* Unreachable: Cmdliner ensures [l] non-empty *)
+    | s::l -> (List.rev l, s)
+  in
+  let arg = Arg.(non_empty & pos 0 (list ~sep:'.' string) [] & i) in
+  Term.(const separate $ arg)
 
 (** Remaining arguments: source files. *)
 
@@ -333,6 +352,14 @@ let check_cmd =
   Term.(const check_cmd $ global_config $ timeout $ recompile $ files),
   Term.info "check" ~doc ~man:man_pkg_file
 
+let decision_tree_cmd =
+  let doc =
+    "Prints decision tree of a symbol to standard output using the \
+     Dot language. Piping to `dot -Tpng | display' displays the tree."
+  in
+  Term.(const decision_tree_cmd $ global_config $ qsym),
+  Term.info "decision-tree" ~doc ~man:man_pkg_file
+
 let parse_cmd =
   let doc = "Run the parser on the given files." in
   Term.(const parse_cmd $ global_config $ files),
@@ -368,6 +395,6 @@ let default_cmd =
 let _ =
   let cmds =
     [ check_cmd ; parse_cmd ; beautify_cmd ; lsp_server_cmd
-    ; help_cmd ; version_cmd ]
+    ; decision_tree_cmd ; help_cmd ; version_cmd ]
   in
   Term.(exit (eval_choice default_cmd cmds))
