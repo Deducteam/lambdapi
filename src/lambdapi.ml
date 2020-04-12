@@ -110,7 +110,7 @@ let lsp_server_cmd : config -> bool -> string -> unit =
   Console.handle_exceptions run
 
 (** Printing a decision tree. *)
-let decision_tree_cmd : config -> (string list * string) -> unit =
+let decision_tree_cmd : config -> (Path.t * string) -> unit =
   fun cfg (mp, sym) ->
   let run _ =
     Timed.(verbose := 0); (* To avoid printing the "Checked ..." line *)
@@ -287,7 +287,7 @@ let lsp_log_file : string Term.t =
 
 (** Specific to the ["decision-tree"] command. *)
 
-let qsym : (string list * string) Term.t =
+let qsym : (Path.t * string) Term.t =
   let doc = "Fully qualified symbol name with dot separated identifiers." in
   let i = Arg.(info [] ~docv:"MOD_PATH.SYM" ~doc) in
   let separate l = List.(let r = rev l in (rev (tl r), hd r)) in
