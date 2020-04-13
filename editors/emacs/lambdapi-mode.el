@@ -5,6 +5,7 @@
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
+;; License: CeCILL-B
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1
