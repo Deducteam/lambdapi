@@ -21,8 +21,7 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-(** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
-    the printing hint [h] to decide qualification. *)
+(** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : sym pp = fun oc s ->
   (*match h with
   | Nothing   ->*) Format.pp_print_string oc s.sym_name
@@ -148,8 +147,8 @@ and pp_term : term pp = fun oc t ->
 (** [pp] is a short synonym of [pp_term]. *)
 let pp : term pp = pp_term
 
-(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hint
-    [h]) to the output channel [oc]. *)
+(** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] to the output
+   channel [oc]. *)
 let pp_rule : (sym * rule) pp = fun oc (s,r) ->
   let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in

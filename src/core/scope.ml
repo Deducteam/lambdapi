@@ -33,7 +33,7 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
   let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
   {ss with in_scope; builtins}
 
-(** [find_sym ~prt ~prv b st qid] returns the symbol and printing hint
+(** [find_sym ~prt ~prv b st qid] returns the symbol
     corresponding to the qualified identifier [qid]. If [fst qid.elt] is
     empty, we search for the name [snd qid.elt] in the opened modules of [st].
     The boolean [b] only indicates if the error message should mention
@@ -510,7 +510,7 @@ let patt_vars : p_term -> (string * int) list * string list =
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
   { pr_sym     : sym
-  (** Head symbol of the LHS with its printing hint. *)
+  (** Head symbol of the LHS. *)
   ; pr_lhs     : term list
   (** Arguments of the LHS. *)
   ; pr_vars    : term_env Bindlib.mvar
