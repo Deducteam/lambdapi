@@ -70,8 +70,8 @@ let add_args : term -> term list -> term = fun t args ->
 (** [is_symb s t] tests whether [t] is of the form [Symb(s)]. *)
 let is_symb : sym -> term -> bool = fun s t ->
   match unfold t with
-  | Symb(r,_) -> r == s
-  | _         -> false
+  | Symb(r) -> r == s
+  | _       -> false
 
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded

@@ -41,7 +41,7 @@ type term =
   (** "TYPE" constant. *)
   | Kind
   (** "KIND" constant. *)
-  | Symb of sym * pp_hint
+  | Symb of sym
   (** User-defined symbol. *)
   | Prod of term * (term, term) Bindlib.binder
   (** Dependent product. *)
@@ -113,22 +113,6 @@ type term =
     set to {!constructor:Constant}. Moreover, a symbol should not be given at
     the same time a definition (i.e., {!field:sym_def} different from [None])
     and rewriting rules (i.e., {!field:sym_rules} is non-empty). *)
-
-(** Pretty-printing hint for a symbol. One hint is attached to each occurrence
-    of a symbol, depending on the corresponding concrete (source code) syntax.
-    The aim of hints is to preserve as much as possible the syntax used by the
-    user in the concrete (source file) syntax. *)
- and pp_hint =
-  | Nothing
-  (** Just print the name of the symbol. *)
-  | Qualified
-  (** Fully qualify the symbol name. *)
-  | Alias  of string
-  (** Use the given alias as qualifier. *)
-  | Binary of string
-  (** Show as the given binary operator. *)
-  | Unary  of string
-  (** Show as the given unary operator. *)
 
 (** {3 Representation of rewriting rules} *)
 
@@ -244,9 +228,6 @@ type term =
   ; meta_value : (term, term) Bindlib.mbinder option ref
   (** Definition of the metavariable, if known. *) }
 
-(** [symb s] returns the term [Symb (s, Nothing)]. *)
-let symb : sym -> term = fun s -> Symb (s, Nothing)
-
 (** [is_injective s] tells whether the symbol is injective. *)
 let is_injective : sym -> bool = fun s -> s.sym_prop = Injec
 
@@ -328,7 +309,7 @@ let term_of_meta : meta -> term array -> term = fun m e ->
     ; sym_impl = []; sym_rules = ref [] ; sym_prop = Const
     ; sym_expo = Privat ; sym_tree = ref Tree_types.empty_dtree }
   in
-  Array.fold_left (fun acc t -> Appl(acc,t)) (symb s) e
+  Array.fold_left (fun acc t -> Appl(acc,t)) (Symb s) e
 
 (** {b NOTE} that {!val:term_of_meta} relies on a dummy symbol and not a fresh
     variable to avoid polluting the context. *)
@@ -373,8 +354,8 @@ let _Kind : tbox = Bindlib.box Kind
 
 (** [_Symb s] injects the constructor [Symb(s)] into the {!type:tbox} type. As
     symbols are closed object they do not require lifting. *)
-let _Symb : sym -> pp_hint -> tbox = fun s h ->
-  Bindlib.box (Symb(s,h))
+let _Symb : sym -> tbox = fun s ->
+  Bindlib.box (Symb s)
 
 (** [_Appl t u] lifts an application node to the {!type:tbox} type given boxed
     terms [t] and [u]. *)
@@ -435,7 +416,7 @@ let rec lift : term -> tbox = fun t ->
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
-  | Symb(s,h)   -> _Symb s h
+  | Symb(s)     -> _Symb s
   | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
   | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)

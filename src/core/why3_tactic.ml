@@ -68,26 +68,26 @@ let translate_term : config -> cnst_table -> term ->
                        (cnst_table * Why3.Term.term) option = fun cfg tbl t ->
   let rec translate_prop tbl t =
     match Basics.get_args t with
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_and ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_and ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_and t1 t2)
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_or  ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_or  ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_or t1 t2)
-    | (Symb(s,_), [t1; t2]) when s == cfg.symb_imp ->
+    | (Symb(s), [t1; t2]) when s == cfg.symb_imp ->
         let (tbl, t1) = translate_prop tbl t1 in
         let (tbl, t2) = translate_prop tbl t2 in
         (tbl, Why3.Term.t_implies t1 t2)
-    | (Symb(s,_), [t]     ) when s == cfg.symb_not ->
+    | (Symb(s), [t]     ) when s == cfg.symb_not ->
         let (tbl, t) = translate_prop tbl t in
         (tbl, Why3.Term.t_not t)
-    | (Symb(s,_), []      ) when s == cfg.symb_bot ->
+    | (Symb(s), []      ) when s == cfg.symb_bot ->
         (tbl, Why3.Term.t_false)
-    | (Symb(s,_), []      ) when s == cfg.symb_top ->
+    | (Symb(s), []      ) when s == cfg.symb_top ->
         (tbl, Why3.Term.t_true)
-    | (_        , _       )                        ->
+    | (_      , _       )                        ->
         (* If the term [p] is mapped in [tbl] then use it. *)
         try
           let sym = List.assoc_eq (Eval.eq_modulo []) t tbl in
@@ -98,8 +98,8 @@ let translate_term : config -> cnst_table -> term ->
           ((t, sym)::tbl, Why3.Term.ps_app sym [])
   in
   match Basics.get_args t with
-  | (Symb(s,_), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
-  | _                                     -> None
+  | (Symb(s), [t]) when s == cfg.symb_P -> Some (translate_prop tbl t)
+  | _                                   -> None
 
 (** [encode pos builtins hs g] translates the hypotheses [hs] and the goal [g]
     into Why3 terms, to construct a Why3 task. *)
@@ -202,4 +202,4 @@ let handle : Pos.popt -> Proof.proof_state -> sig_state -> string option ->
   (* Return the variable terms of each item in the context. *)
   let terms = List.rev_map (fun (_, (x, _, _)) -> Vari x) hyps in
   (* Apply the instance of the axiom with context. *)
-  Basics.add_args (symb a) terms
+  Basics.add_args (Symb a) terms

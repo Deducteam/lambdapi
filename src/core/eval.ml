@@ -102,7 +102,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
       Stdlib.incr steps;
       whnf_stk ctx (Bindlib.subst u t) stk
   (* Try to rewrite. *)
-  | (Symb(s,_), stk   ) ->
+  | (Symb(s), stk     ) ->
       begin
       (* First check for symbol definition. *)
       match !(s.sym_def) with
@@ -136,7 +136,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (_          , Kind       ) -> assert false
     | (Type       , Type       ) -> eq_modulo l
     | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
-    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq_modulo l
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq_modulo l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) ->
         let (_,b1,b2) = Bindlib.unbind2 b1 b2 in
@@ -286,7 +286,7 @@ and tree_walk : dtree -> ctxt -> stack -> (term * stack) option =
             Option.map_default fn None default
           in
           match t with
-          | Symb(s, _) ->
+          | Symb(s)    ->
               let cons = TC.Symb(s.sym_path, s.sym_name, List.length args) in
               begin
                 try

@@ -59,7 +59,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
 
   (* -------------------------------
       ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
-  | Symb(s,_)   ->
+  | Symb(s)     ->
       let a = !(s.sym_type) in
       if !log_enabled then
         log_infr (blu "%a : %a") pp_term t pp_term a;

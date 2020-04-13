@@ -51,7 +51,7 @@ let nl_distinct_vars
         if VarSet.mem v !vars then nl_vars := VarSet.add v !nl_vars
         else vars := VarSet.add v !vars;
         v
-    | Symb(f,_) when f.sym_name <> "" && f.sym_name.[0] = '&' ->
+    | Symb(f) when f.sym_name <> "" && f.sym_name.[0] = '&' ->
         (* Symbols replacing pattern variables are considered as variables. *)
         let v =
           try StrMap.find f.sym_name !patt_vars
@@ -81,16 +81,16 @@ let nl_distinct_vars
 let sym_to_var : tvar StrMap.t -> term -> term = fun m ->
   let rec to_var t =
     match unfold t with
-    | Symb(f,_) -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
-    | Prod(a,b) -> Prod (to_var a, to_var_binder b)
-    | Abst(a,b) -> Abst (to_var a, to_var_binder b)
+    | Symb(f)     -> (try Vari (StrMap.find f.sym_name m) with Not_found -> t)
+    | Prod(a,b)   -> Prod (to_var a, to_var_binder b)
+    | Abst(a,b)   -> Abst (to_var a, to_var_binder b)
     | LLet(a,t,u) -> LLet (to_var a, to_var t, to_var_binder u)
-    | Appl(a,b) -> Appl(to_var a, to_var b)
-    | Meta(m,ts) -> Meta(m, Array.map to_var ts)
-    | Patt(_) -> assert false
-    | TEnv(_) -> assert false
-    | TRef(_) -> assert false
-    | _ -> t
+    | Appl(a,b)   -> Appl(to_var a, to_var b)
+    | Meta(m,ts)  -> Meta(m, Array.map to_var ts)
+    | Patt(_)     -> assert false
+    | TEnv(_)     -> assert false
+    | TRef(_)     -> assert false
+    | _           -> t
   and to_var_binder b =
     let (x,b) = Bindlib.unbind b in
     Bindlib.unbox (Bindlib.bind_var x (lift (to_var b)))
@@ -166,10 +166,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      we instantiate m by s(m0[vs],..,mn-1[vs]) where mi is a fresh
      meta of type ∀v0:a0,..,∀vk-1:ak-1{y0=v0,..,yk-2=vk-2},
      bi{x0=m0[vs],..,xi-1=mi-1[vs]}. *)
-  let imitate_inj m vs us s h ts =
+  let imitate_inj m vs us s ts =
     if !log_enabled then
       log_unif "imitate_inj %a ≡ %a"
-        pp (add_args (Meta(m,vs)) us) pp (add_args (symb s) ts);
+        pp (add_args (Meta(m,vs)) us) pp (add_args (Symb s) ts);
     let exception Cannot_imitate in
     try
       if not (us = [] && is_injective s) then raise Cannot_imitate;
@@ -183,7 +183,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       let k = Array.length vars in
       let t =
         let rec build i acc t =
-          if i <= 0 then add_args (Symb(s,h)) (List.rev acc)
+          if i <= 0 then add_args (Symb s) (List.rev acc)
           else match unfold t with
                | Prod(a,b) ->
                   let m = fresh_meta (Env.to_prod env (lift a)) k in
@@ -265,16 +265,16 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       | [l1] ->
           begin
             match get_args l1 with
-            | Symb(s0,_), [_;_] ->
+            | Symb(s0), [_;_] ->
                 let n = Bindlib.mbinder_arity rule.rhs in
                 begin
                   match Bindlib.msubst rule.rhs (Array.make n TE_None) with
-                  | Prod (Appl (Symb(s1,_), _), b) ->
+                  | Prod (Appl (Symb(s1), _), b) ->
                       begin
                         match Bindlib.subst b Kind with
-                        | Appl (Symb(s2,_), Appl(_,Kind)) ->
+                        | Appl (Symb(s2), Appl(_,Kind)) ->
                             (s0,s1,s2,true) :: l
-                        | Appl (Symb(s2,_), _) ->
+                        | Appl (Symb(s2), _) ->
                             (s0,s1,s2,false) :: l
                         | _ -> l
                       end
@@ -289,7 +289,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       if !log_enabled then
         let f (s0,s1,s2,b) =
           log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
-            pp (symb s) pp (symb s0) pp (symb s1) pp (symb s2) b
+            pp (Symb s) pp (Symb s0) pp (Symb s1) pp (Symb s2) b
         in List.iter f l
     end;
     l
@@ -300,9 +300,9 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let exception Not_invertible in
 
   let rec inverse s v =
-    if !log_enabled then log_unif "inverse [%a] [%a]" pp (symb s) pp v;
+    if !log_enabled then log_unif "inverse [%a] [%a]" pp (Symb s) pp v;
     match get_args (Eval.whnf [] v) with
-    | Symb(s',_), [u] when s' == s -> u
+    | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
     | _, _ -> raise Not_invertible
 
@@ -318,7 +318,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
     let x,b = Bindlib.unbind b in
     let b' = lift (inverse s2 b) in
     let xb' = if d then _Abst (lift a) (Bindlib.bind_var x b') else b' in
-    add_args (symb s0) [a'; Bindlib.unbox xb']
+    add_args (Symb s0) [a'; Bindlib.unbox xb']
   in
 
   (* [inverse_opt s ts v] returns [Some(t,s^{-1}(v))] if [ts=[t]], [s] is
@@ -335,7 +335,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !log_enabled then
-      log_unif "solve_inj %a ≡ %a" pp (add_args (symb s) ts) pp v;
+      log_unif "solve_inj %a ≡ %a" pp (add_args (Symb s) ts) pp v;
     match inverse_opt s ts v with
     | Some (a, b) -> solve_aux ctx a b p
     | None -> add_to_unsolved ()
@@ -362,7 +362,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   (* Other cases. *)
   | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> decompose ()
-  | (Symb(s1,_) , Symb(s2,_) ) ->
+  | (Symb(s1)   , Symb(s2)   ) ->
      if s1 == s2 then
        match s1.sym_prop with
        | Const
@@ -398,14 +398,14 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   | (Meta(m,_)  , _          ) when imitate_lam_cond h1 ts1 -> imitate_lam m
   | (_          , Meta(m,_)  ) when imitate_lam_cond h2 ts2 -> imitate_lam m
 
-  | (Meta(m,ts) , Symb(s,h)  ) -> imitate_inj m ts ts1 s h ts2
-  | (Symb(s,h)  , Meta(m,ts) ) -> imitate_inj m ts ts2 s h ts1
+  | (Meta(m,ts) , Symb(s)    ) -> imitate_inj m ts ts1 s ts2
+  | (Symb(s)    , Meta(m,ts) ) -> imitate_inj m ts ts2 s ts1
 
   | (Meta(_,_)  , _          )
   | (_          , Meta(_,_)  ) -> add_to_unsolved ()
 
-  | (Symb(s,_)  , _          ) when not (is_constant s) -> solve_inj s ts1 t2
-  | (_          , Symb(s,_)  ) when not (is_constant s) -> solve_inj s ts2 t1
+  | (Symb(s)    , _          ) when not (is_constant s) -> solve_inj s ts1 t2
+  | (_          , Symb(s)    ) when not (is_constant s) -> solve_inj s ts2 t1
 
   (* Cases of error *)
   | (Type, (Kind|Prod(_)|Symb(_)|Vari(_)|Abst(_)))

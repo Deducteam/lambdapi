@@ -35,7 +35,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
     | (Type       , Type       )
     | (Kind       , Kind       ) -> eq l
-    | (Symb(s1,_) , Symb(s2,_) ) when s1 == s2 -> eq l
+    | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq l
     | (Prod(a1,b1), Prod(a2,b2))
     | (Abst(a1,b1), Abst(a2,b2)) -> let (_, b1, b2) = Bindlib.unbind2 b1 b2 in
                                     eq ((a1,a2)::(b1,b2)::l)
@@ -115,7 +115,7 @@ let _ =
     let term_U = lift (get_domain_of_type symb_T) in
     let term_Prop = lift (get_domain_of_type symb_P) in
     let a = Bindlib.new_var mkfree "a" in
-    let term_T_a = _Appl (_Symb symb_T Nothing) (_Vari a) in
+    let term_T_a = _Appl (_Symb symb_T) (_Vari a) in
     let impls = _Impl term_T_a (_Impl term_T_a term_Prop) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a impls))
   in
@@ -128,10 +128,10 @@ let _ =
     let term_U = lift (get_domain_of_type symb_T) in
     let a = Bindlib.new_var mkfree "a" in
     let x = Bindlib.new_var mkfree "x" in
-    let appl_eq = _Appl (_Symb symb_eq Nothing) (_Vari a) in
+    let appl_eq = _Appl (_Symb symb_eq) (_Vari a) in
     let appl_eq = _Appl (_Appl appl_eq (_Vari x)) (_Vari x) in
-    let appl = _Appl (_Symb symb_P Nothing) appl_eq in
-    let term_T_a = _Appl (_Symb symb_T Nothing) (_Vari a) in
+    let appl = _Appl (_Symb symb_P) appl_eq in
+    let term_T_a = _Appl (_Symb symb_T) (_Vari a) in
     let prod = _Prod term_T_a (Bindlib.bind_var x appl) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a prod))
   in
@@ -139,11 +139,11 @@ let _ =
   let expected_eqind pos map =
     (* [∀ (a:U) (x y:T a), P (eq x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)] *)
     let symb_T = Builtin.get pos map "T" in
-    let term_T = _Symb symb_T Nothing in
+    let term_T = _Symb symb_T in
     let symb_P = Builtin.get pos map "P" in
-    let term_P = _Symb symb_P Nothing in
+    let term_P = _Symb symb_P in
     let symb_eq = Builtin.get pos map "eq" in
-    let term_eq = _Symb symb_eq Nothing in
+    let term_eq = _Symb symb_eq in
     let term_U = lift (get_domain_of_type symb_T) in
     let term_Prop = lift (get_domain_of_type symb_P) in
     let a = Bindlib.new_var mkfree "a" in
@@ -268,7 +268,7 @@ let bind_match : term -> term -> tbinder =  fun p t ->
     | Vari(y)     -> _Vari y
     | Type        -> _Type
     | Kind        -> _Kind
-    | Symb(s,h)   -> _Symb s h
+    | Symb(s)     -> _Symb s
     | Appl(t,u)   -> _Appl (lift_subst t) (lift_subst u)
     (* For now, we fail on products, abstractions, metavariables and let. *)
     | Prod(_)     -> fatal None "Cannot rewrite under products."
@@ -618,14 +618,14 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   in
 
   (* Construct the predicate (context). *)
-  let pred = Abst(Appl(symb cfg.symb_T, a), pred_bind) in
+  let pred = Abst(Appl(Symb cfg.symb_T, a), pred_bind) in
 
   (* Construct the new goal and its type. *)
-  let goal_type = Appl(symb cfg.symb_P, new_term) in
+  let goal_type = Appl(Symb cfg.symb_P, new_term) in
   let goal_term = make_meta g_ctxt goal_type in
 
   (* Build the final term produced by the tactic, and check its type. *)
-  let eqind = symb cfg.symb_eqind in
+  let eqind = Symb cfg.symb_eqind in
   let term = add_args eqind [a; l; r; t; pred; goal_term] in
 
   (* Debugging data to the log. *)
@@ -656,7 +656,7 @@ let reflexivity : popt -> Proof.t -> term = fun pos ps ->
   let (a, l, r)  = get_eq_data pos cfg (Eval.whnf [] g_type) in
   if not (Eval.eq_modulo [] l r) then fatal pos "Cannot apply reflexivity.";
   (* Build the witness. *)
-  add_args (symb cfg.symb_refl) [a; l]
+  add_args (Symb cfg.symb_refl) [a; l]
 
 (** [symmetry ps] attempts to use symmetry of equality on the focused goal. If
     successful,  a new goal is generated,  and the corresponding proof term is
@@ -671,19 +671,19 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   (* NOTE The proofterm is “eqind a r l M (λx,eq a l x) (refl a l)”. *)
   (* We create a new metavariable (“M” in the above). *)
   let meta_type =
-    Appl(symb cfg.symb_P, (add_args (symb cfg.symb_eq) [a; r; l])) in
+    Appl(Symb cfg.symb_P, (add_args (Symb cfg.symb_eq) [a; r; l])) in
   let meta_term = make_meta (Env.to_ctxt g_env) meta_type in
   (* We build the predicate (“λx, eq a r x” in the above). *)
   let pred =
     let x = Bindlib.new_var mkfree "X" in
-    let pred = add_args (symb cfg.symb_eq) [a; l; Vari(x)] in
+    let pred = add_args (Symb cfg.symb_eq) [a; l; Vari(x)] in
     let pred = Bindlib.unbox (Bindlib.bind_var x (lift pred)) in
-    Abst(Appl(symb cfg.symb_T, a), pred)
+    Abst(Appl(Symb cfg.symb_T, a), pred)
   in
   (* We build the proof term. *)
-  let refl_a_l = add_args (symb cfg.symb_refl) [a; l] in
+  let refl_a_l = add_args (Symb cfg.symb_refl) [a; l] in
   let term =
-    add_args (symb cfg.symb_eqind) [a; r; l; meta_term; pred; refl_a_l] in
+    add_args (Symb cfg.symb_eqind) [a; r; l; meta_term; pred; refl_a_l] in
   (* Debugging data to the log. *)
   if !log_enabled then
     begin

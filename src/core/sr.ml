@@ -50,7 +50,7 @@ let patt_to_tenv : term_env Bindlib.var array -> term -> tbox = fun vars ->
   let rec trans t =
     match unfold t with
     | Vari(x)     -> _Vari x
-    | Symb(s,h)   -> _Symb s h
+    | Symb(s)     -> _Symb s
     | Abst(a,b)   -> let (x, t) = Bindlib.unbind b in
                      _Abst (trans a) (Bindlib.bind_var x (trans t))
     | Appl(t,u)   -> _Appl (trans t) (trans u)
@@ -93,7 +93,7 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
     let ts = List.map symb_to_tenv ts in
     let (h, ts) =
       match h with
-      | Symb(f,_) when List.memq f syms ->
+      | Symb(f) when List.memq f syms ->
           let i =
             try Hashtbl.find htbl f.sym_name with Not_found ->
             (* A symbol may also come from a metavariable that appeared in the
@@ -103,10 +103,10 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
           in
           let (ts1, ts2) = List.cut ts arities.(i) in
           (_TEnv (Bindlib.box_var vars.(i)) (Array.of_list ts1), ts2)
-      | Symb(s,h)   -> (_Symb s h, ts)
-      | Vari(x)     -> (_Vari x  , ts)
-      | Type        -> (_Type    , ts)
-      | Kind        -> (_Kind    , ts)
+      | Symb(s)     -> (_Symb s, ts)
+      | Vari(x)     -> (_Vari x, ts)
+      | Type        -> (_Type  , ts)
+      | Kind        -> (_Kind  , ts)
       | Abst(a,b)   ->
           let (x, t) = Bindlib.unbind b in
           let b = Bindlib.bind_var x (symb_to_tenv t) in
@@ -136,7 +136,7 @@ let symb_to_tenv : pre_rule Pos.loc -> sym list -> index_tbl -> term -> tbox =
     unification engine. Note that [Fatal] is raised in case of error. *)
 let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
   (* Unwrap the contents of the pre-rule. *)
-  let (pos, (s, h), lhs, vars, rhs_vars, arities) =
+  let (pos, s, lhs, vars, rhs_vars, arities) =
     let Pos.{elt={pr_sym;pr_lhs;pr_vars;pr_rhs;pr_arities;_}; pos} = pr in
     (pos, pr_sym, pr_lhs, pr_vars, pr_rhs, pr_arities)
   in
@@ -148,12 +148,12 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
          only used for printing. *)
       let rhs = Bindlib.(unbox (bind_mvar vars rhs_vars)) in
       let naive_rule = {lhs; rhs; arity; arities; vars} in
-      log_subj "check rule [%a]" pp_rule (s, h, naive_rule);
+      log_subj "check rule [%a]" pp_rule (s, naive_rule);
     end;
   (* Replace [Patt] nodes of LHS with corresponding elements of [vars]. *)
   let lhs_vars =
     let args = List.map (patt_to_tenv vars) lhs in
-    List.fold_left _Appl (_Symb s h) args
+    List.fold_left _Appl (_Symb s) args
   in
   (* Create metavariables that will stand for the variables of [vars]. *)
   let var_names = Array.map (fun x -> "&" ^ Bindlib.name_of x) vars in
@@ -219,7 +219,7 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
           Stdlib.(symbols := s :: !symbols);
           (* Build a definition for [m]. *)
           let xs = Basics.fresh_vars m.meta_arity in
-          let s = _Symb s Nothing in
+          let s = _Symb s in
           let def = Array.fold_left (fun t x -> _Appl t (_Vari x)) s xs in
           m.meta_value := Some(Bindlib.unbox (Bindlib.bind_mvar xs def))
     in

@@ -110,20 +110,20 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Scoping and checking each rule in turn. *)
       let handle_rule r =
         let pr = scope_rule ss r in
-        let (sym, hint) = pr.elt.pr_sym in
+        let sym = pr.elt.pr_sym in
         if !(sym.sym_def) <> None then
           fatal pr.pos "Rewriting rules cannot be given for defined \
                         symbol [%s]." sym.sym_name;
-        (sym, hint, Pos.make r.pos (Sr.check_rule ss.builtins pr))
+        (sym, Pos.make r.pos (Sr.check_rule ss.builtins pr))
       in
       let rs = List.map handle_rule rs in
       (* Adding the rules all at once. *)
-      let add_rule (s,h,r) =
+      let add_rule (s,r) =
         Sign.add_rule ss.signature s r.elt;
-        out 3 "(rule) %a\n" Print.pp_rule (s,h,r.elt)
+        out 3 "(rule) %a\n" Print.pp_rule (s,r.elt)
       in
       List.iter add_rule rs;
-      let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
+      let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
       (ss, None)
   | P_definition(e,op,x,xs,ao,t) ->
@@ -231,7 +231,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             (* Set the builtin symbol [s]. *)
             if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
-            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true false ss qid in
             Builtin.Check.check  cmd.pos ss.builtins s sym;
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
@@ -239,13 +239,13 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | P_config_unop(unop)     ->
             let (s, _, qid) = unop in
             (* Define the unary operator [s]. *)
-            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true false ss qid in
             Sign.add_unop ss.signature s (sym, unop);
             out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
-            let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            let sym = find_sym ~prt:true ~prv:true false ss qid in
             Sign.add_binop ss.signature s (sym, binop);
             out 3 "(conf) new infix [%s]\n" s; ss
         | P_config_ident(id)      ->

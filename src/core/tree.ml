@@ -450,11 +450,11 @@ module CM = struct
     let keep_treecons e =
       let h, _, arity = get_args_len e in
       match h with
-      | Symb({sym_name; sym_path; _}, _) ->
+      | Symb({sym_name; sym_path; _}) ->
           Some(TC.Symb(sym_path, sym_name, arity), e)
-      | Vari(x)                          ->
+      | Vari(x)                       ->
           Some(TC.Vari(VarMap.find x vars_id), e)
-      | _                                -> None
+      | _                             -> None
     in
     let tc_fst_cmp (tca, _) (tcb, _) = TC.compare tca tcb in
     List.sort_uniq tc_fst_cmp (List.filter_map keep_treecons telst)
@@ -525,7 +525,7 @@ module CM = struct
       let ph, pargs, lenp = get_args_len pat in
       let h, args, lenh = get_args_len r.c_lhs.(col) in
       match ph, h with
-      | Symb(f,_), Symb(g,_) ->
+      | Symb(f), Symb(g) ->
           if lenh = lenp && f == g
           then Some({r with c_lhs = insert (Array.of_list args)})
           else None

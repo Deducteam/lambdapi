@@ -28,7 +28,7 @@ let print_term : bool -> term pp = fun lhs ->
     (* Printing of atoms. *)
     | Vari(x)      -> out "%s" (Bindlib.name_of x)
     | Type         -> out "TYPE"
-    | Symb(s,_)    -> print_sym oc s
+    | Symb(s)      -> print_sym oc s
     | Patt(i,n,ts) ->
         if ts = [||] then out "&%s" n else
         pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
@@ -76,7 +76,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
 (** [print_sym_rule oc s r] outputs the rule declaration corresponding [r] (on
    the symbol [s]), to the output channel [oc]. *)
 let print_sym_rule : Format.formatter -> sym -> rule -> unit = fun oc s r ->
-  let lhs = Basics.add_args (symb s) r.lhs in
+  let lhs = Basics.add_args (Symb s) r.lhs in
   let rhs = Basics.term_of_rhs r in
   print_rule oc lhs rhs
 
@@ -122,7 +122,7 @@ let to_HRS : Format.formatter -> Sign.t -> unit = fun oc sign ->
   Format.fprintf oc "\n(COMMENT rewriting rules)\n";
   let print_rules s =
     match !(s.sym_def) with
-    | Some(d) -> print_rule oc (symb s) d
+    | Some(d) -> print_rule oc (Symb s) d
     | None    -> List.iter (print_sym_rule oc s) !(s.sym_rules)
   in
   iter_symbols print_rules

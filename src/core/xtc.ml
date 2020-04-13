@@ -45,8 +45,8 @@ let rec print_term : int -> string -> term pp = fun i s oc t ->
   | Prod(_,_)               -> assert false
   (* Printing of atoms. *)
   | Vari(x)                 -> out "<var>v_%s</var>@." (Bindlib.name_of x)
-  | Symb(sy,_)              ->
-     out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym sy
+  | Symb(s)                 ->
+     out "<funapp>@.<name>%a</name>@.</funapp>@." print_sym s
   | Patt(j,n,ts)            ->
      if ts = [||] then out "<var>%s_%i_%s</var>@." s i n else
        print_term i s oc
@@ -73,7 +73,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
   | Patt(_,_,_)             -> assert false
   (* Printing of atoms. *)
   | Type                    -> out "<TYPE/>@."
-  | Symb(s,_)               -> out "<basic>%a</basic>@." print_sym s
+  | Symb(s)                 -> out "<basic>%a</basic>@." print_sym s
   | Appl(t,u)               -> out "<application>@.%a%a</application>@."
                       (print_type i s) t (print_term i s) u
   | Abst(a,t)               ->
@@ -98,7 +98,7 @@ and print_type : int -> string -> term pp = fun i s oc t ->
 let print_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the rewriting rule. *)
-  let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
+  let lhs = Basics.add_args (Symb s) r.lhs in
   Format.fprintf oc "<rule>@.<lhs>@.%a</lhs>@." (print_term i s.sym_name) lhs;
   let rhs = Basics.term_of_rhs r in
   Format.fprintf oc "<rhs>@.%a</rhs>@.</rule>@." (print_term i s.sym_name) rhs
@@ -107,7 +107,7 @@ let print_rule : Format.formatter -> int -> sym -> rule -> unit =
 let print_tl_rule : Format.formatter -> int -> sym -> rule -> unit =
   fun oc i s r ->
   (* Print the type level rewriting rule. *)
-  let lhs = Basics.add_args (Symb(s,Qualified)) r.lhs in
+  let lhs = Basics.add_args (Symb s) r.lhs in
   Format.fprintf oc "<typeLevelRule>@.<TLlhs>@.%a</TLlhs>@."
     (print_type i s.sym_name) lhs;
   let rhs = Basics.term_of_rhs r in
@@ -131,7 +131,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
     | Prod (_, _)
     | LLet(_) (* No let in LHS *)
     | Vari _              -> assert false
-    | Symb (_, _)         -> t
+    | Symb (_)            -> t
     | Abst (t1, b)        ->
        let (x,t2) = Bindlib.unbind b in
        Abst(
@@ -160,7 +160,7 @@ let get_vars : sym -> rule -> (string * Terms.term) list = fun s r ->
   let lhs =
     List.fold_left
       (fun t h -> Appl(t,subst_patt rule_ctx (unfold h)))
-      (Symb(s,Nothing)) r.lhs
+      (Symb s) r.lhs
   in
   let ctx =
     let fn l x = (x, (Meta(fresh_meta Type 0,[||])), None) :: l in

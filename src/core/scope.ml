@@ -43,15 +43,15 @@ let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
     are allowed in left-hand side of rewrite rules (only) iff [~prt] is true.
     {!constructor:Terms.expo.Privat} symbols are allowed iff [~prv]
     is [true]. *)
-let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
-  sym * pp_hint = fun ~prt ~prv b st qid ->
+let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident -> sym
+  = fun ~prt ~prv b st qid ->
   let {elt = (mp, s); pos} = qid in
   let mp = List.map fst mp in
-  let (s, h) =
+  let s =
     match mp with
     | []                               -> (* Symbol in scope. *)
         begin
-          try (fst (StrMap.find s st.in_scope), Nothing) with Not_found ->
+          try fst (StrMap.find s st.in_scope) with Not_found ->
           let txt = if b then " or variable" else "" in
           fatal pos "Unbound symbol%s [%s]." txt s
         end
@@ -63,7 +63,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
             with _ -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try (Sign.find sign s, Alias m) with Not_found ->
+          try Sign.find sign s with Not_found ->
           fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
     | _                                -> (* Fully-qualified symbol. *)
@@ -78,7 +78,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
             with Not_found -> assert false (* Should not happen. *)
           in
           (* Look for the symbol. *)
-          try (Sign.find sign s, Qualified) with Not_found ->
+          try Sign.find sign s with Not_found ->
           fatal pos "Unbound symbol [%a.%s]." Path.pp mp s
         end
   in
@@ -92,7 +92,7 @@ let find_sym : prt:bool -> prv:bool -> bool -> sig_state -> qident ->
         fatal pos "Private symbol not allowed here."
     | _                      -> ()
   end;
-  (s, h)
+  s
 
 (** [find_qid prt prv st env qid] returns a boxed term corresponding to a
     variable of the environment [env] (or to a symbol) which name corresponds
@@ -113,11 +113,10 @@ let find_qid : bool -> bool -> sig_state -> env -> qident -> tbox =
     _Vari (Env.find s env)
   with Not_found ->
     (* Check for symbols. *)
-    let (s, hint) = find_sym ~prt ~prv true st qid in
-    _Symb s hint
+    _Symb (find_sym ~prt ~prv true st qid)
 
 (** [get_root t ss] returns the symbol at the root of term [t]. *)
-let get_root : p_term -> sig_state -> sym * pp_hint = fun t ss ->
+let get_root : p_term -> sig_state -> sym = fun t ss ->
   let rec get_root t =
     match t.elt with
     | P_Iden(qid,_)
@@ -229,7 +228,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
       let expl = match p_head.elt with P_Iden(_,b) -> b | _ -> false in
       (* We avoid unboxing if [h] is not closed (and hence not a symbol). *)
       if expl || not (Bindlib.is_closed h) then [] else
-      match Bindlib.unbox h with Symb(s,_) -> s.sym_impl | _ -> []
+      match Bindlib.unbox h with Symb(s) -> s.sym_impl | _ -> []
     in
     (* Scope and insert the (implicit) arguments. *)
     add_impl env t.pos h impl args
@@ -426,24 +425,24 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
     | (P_LLet(_)       , M_Patt             ) ->
         fatal t.pos "Let-bindings are not allowed in a pattern."
     | (P_NLit(n)       , _                  ) ->
-        let sym_z = _Symb (Builtin.get t.pos ss.builtins "0") Nothing
-        and sym_s = _Symb (Builtin.get t.pos ss.builtins "+1") Nothing in
+        let sym_z = _Symb (Builtin.get t.pos ss.builtins "0")
+        and sym_s = _Symb (Builtin.get t.pos ss.builtins "+1") in
         let rec unsugar_nat_lit acc n =
           if n <= 0 then acc else unsugar_nat_lit (_Appl sym_s acc) (n-1)
         in
         unsugar_nat_lit sym_z n
     | (P_UnaO(u,t)    , _                   ) ->
         let (s, impl) =
-          let (op,_,qid) = u in
-          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s (Unary(op)), s.sym_impl)
+          let (_op,_,qid) = u in
+          let s = find_sym ~prt:true ~prv:true true ss qid in
+          (_Symb s, s.sym_impl)
         in
         add_impl env t.pos s impl [t]
     | (P_BinO(l,b,r)  , _                   ) ->
         let (s, impl) =
-          let (op,_,_,qid) = b in
-          let (s, _) = find_sym ~prt:true ~prv:true true ss qid in
-          (_Symb s (Binary(op)), s.sym_impl)
+          let (_op,_,_,qid) = b in
+          let s = find_sym ~prt:true ~prv:true true ss qid in
+          (_Symb s, s.sym_impl)
         in
         add_impl env t.pos s impl [l; r]
     | (P_Wrap(t)      , _                   ) -> scope env t
@@ -510,7 +509,7 @@ let patt_vars : p_term -> (string * int) list * string list =
 
 (** Representation of a rewriting rule prior to SR-checking. *)
 type pre_rule =
-  { pr_sym     : sym * pp_hint
+  { pr_sym     : sym
   (** Head symbol of the LHS with its printing hint. *)
   ; pr_lhs     : term list
   (** Arguments of the LHS. *)
@@ -541,7 +540,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   in
   List.iter check_in_lhs pvs_rhs;
   (* Get privacy of head of the rule, scope the rest accordingly. *)
-  let prv = is_private (fst (get_root p_lhs ss)) in
+  let prv = is_private (get_root p_lhs ss) in
   (* Scope the LHS and get the reserved index for named pattern variables. *)
   let (pr_lhs, data) =
     let data =
@@ -555,16 +554,16 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     (Bindlib.unbox pr_lhs, data)
   in
   (* Check the head symbol and build actual LHS. *)
-  let (sym, hint, pr_lhs) =
+  let (sym, pr_lhs) =
     let (h, args) = Basics.get_args pr_lhs in
     match h with
-    | Symb(s,h) ->
+    | Symb(s) ->
         if is_constant s then
           fatal p_lhs.pos "Constant LHS head symbol.";
         if s.sym_expo = Protec && ss.signature.sign_path <> s.sym_path then
           fatal p_lhs.pos "Cannot define rules on foreign protected symbols.";
-        (s, h, args)
-    | _         ->
+        (s, args)
+    | _       ->
         fatal p_lhs.pos "No head symbol in LHS."
   in
   if pr_lhs = [] then wrn p_lhs.pos "LHS head symbol with no argument.";
@@ -598,7 +597,7 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
     Array.init data.m_lhs_size fn
   in
   let pr =
-    { pr_sym = (sym, hint) ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
+    { pr_sym = sym ; pr_lhs ; pr_vars ; pr_rhs ; pr_arities
     ; pr_names = data.m_lhs_names }
   in
   Pos.make r.pos pr

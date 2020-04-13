@@ -23,13 +23,13 @@ let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
 (** [pp_symbol h oc s] prints the name of the symbol [s] to channel [oc] using
     the printing hint [h] to decide qualification. *)
-let pp_symbol : pp_hint -> sym pp = fun h oc s ->
-  match h with
-  | Nothing   -> Format.pp_print_string oc s.sym_name
-  | Qualified -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+let pp_symbol : sym pp = fun oc s ->
+  (*match h with
+  | Nothing   ->*) Format.pp_print_string oc s.sym_name
+  (*| Qualified -> Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
   | Alias(a)  -> Format.fprintf oc "%s.%s" a s.sym_name
   | Binary(o) -> Format.fprintf oc "(%s)" o
-  | Unary(o)  -> Format.fprintf oc "(%s)" o
+  | Unary(o)  -> Format.fprintf oc "(%s)" o*)
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
 let pp_tvar : tvar pp = fun oc x ->
@@ -52,7 +52,7 @@ and pp_term : term pp = fun oc t ->
     let (h, args) = Basics.get_args t in
     let args =
       if !print_implicits then args else
-      let impl =  match h with Symb(s,_) -> s.sym_impl | _ -> [] in
+      let impl =  match h with Symb(s) -> s.sym_impl | _ -> [] in
       let rec filter_impl impl args =
         match (impl, args) with
         | ([]         , _      ) -> args
@@ -63,11 +63,11 @@ and pp_term : term pp = fun oc t ->
       filter_impl impl args
     in
     match (h, args) with
-    | (Symb(_,Binary(o)), [l;r]) ->
+    (*| (Symb(_,Binary(o)), [l;r]) ->
         if p <> `Func then out oc "(";
         (* Can be improved by looking at symbol priority. *)
         out oc "%a %s %a" (pp `Appl) l o (pp `Appl) r;
-        if p <> `Func then out oc ")";
+        if p <> `Func then out oc ")";*)
     | (h                , []   ) ->
         pp_head (p <> `Func) oc h
     | (h                , args ) ->
@@ -94,7 +94,7 @@ and pp_term : term pp = fun oc t ->
     | Vari(x)     -> pp_tvar oc x
     | Type        -> out oc "TYPE"
     | Kind        -> out oc "KIND"
-    | Symb(s,h)   -> pp_symbol h oc s
+    | Symb(s)     -> pp_symbol oc s
     | Meta(m,e)   -> out oc "%a%a" pp_meta m pp_env e
     | Patt(_,n,e) -> out oc "&%s%a" n pp_env e
     | TEnv(t,e)   -> out oc "&%a%a" pp_term_env t pp_env e
@@ -150,8 +150,8 @@ let pp : term pp = pp_term
 
 (** [pp_rule oc (s,h,r)] prints the rule [r] of symbol [s] (with printing hint
     [h]) to the output channel [oc]. *)
-let pp_rule : (sym * pp_hint * rule) pp = fun oc (s,h,r) ->
-  let lhs = Basics.add_args (Symb(s,h)) r.lhs in
+let pp_rule : (sym * rule) pp = fun oc (s,r) ->
+  let lhs = Basics.add_args (Symb s) r.lhs in
   let (_, rhs) = Bindlib.unmbind r.rhs in
   Format.fprintf oc "%a → %a" pp lhs pp rhs
 

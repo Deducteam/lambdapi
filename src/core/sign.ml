@@ -75,7 +75,7 @@ let link : t -> unit = fun sign ->
     | Vari(_)     -> t
     | Type        -> t
     | Kind        -> t
-    | Symb(s,h)   -> Symb(link_symb s, h)
+    | Symb(s)     -> Symb(link_symb s)
     | Prod(a,b)   -> Prod(link_term a, link_binder b)
     | Abst(a,t)   -> Abst(link_term a, link_binder t)
     | LLet(a,t,u) -> LLet(link_term a, link_term t, link_binder u)
@@ -145,7 +145,7 @@ let unlink : t -> unit = fun sign ->
     | Vari(_)      -> ()
     | Type         -> ()
     | Kind         -> ()
-    | Symb(s,_)    -> unlink_sym s
+    | Symb(s)      -> unlink_sym s
     | Prod(a,b)    -> unlink_term a; unlink_binder b
     | Abst(a,t)    -> unlink_term a; unlink_binder t
     | LLet(a,t,u)  -> unlink_term a; unlink_term t; unlink_binder u
@@ -232,7 +232,7 @@ let read : string -> t = fun fname ->
       | Vari(_)     -> ()
       | Type        -> ()
       | Kind        -> ()
-      | Symb(s,_)   -> shallow_reset_sym s
+      | Symb(s)     -> shallow_reset_sym s
       | Prod(a,b)   -> reset_term a; reset_binder b
       | Abst(a,t)   -> reset_term a; reset_binder t
       | LLet(a,t,u) -> reset_term a; reset_term t; reset_binder u
