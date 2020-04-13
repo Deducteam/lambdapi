@@ -32,39 +32,41 @@
   "Commands that can appear in proofs.")
 (defconst lambdapi--keywords
   '("let"
-    "in"
-    "λ"
-    "∀"
     ","
-    "⇒"
-    "TYPE"
-    "≔"
-    "→"
-    "≔"
-    "symbol"
-    "private"
-    "protected"
-    "injective"
-    "constant"
-    "theorem"
-    "proof"
-    "definition"
-    "rule"
     "and"
     "assert"
     "assertnot"
-    "type"
     "compute"
-    "set"
-    "verbose"
-    "prefix"
+    "constant"
+    "definition"
+    "in"
     "infix"
+    "injective"
     "left"
-    "right"
+    "off"
+    "on"
+    "open"
+    "prefix"
+    "private"
+    "proof"
+    "protected"
     "prover"
     "prover_timeout"
     "require"
-    "open"
+    "right"
+    "rule"
+    "set"
+    "symbol"
+    "theorem"
+    "TYPE"
+    "type"
+    "verbose"
+    "λ"
+    "→"
+    "⇒"
+    "∀"
+    "≔"
+    "≔"
     "as"))
 
 (defconst lambdapi--smie-prec
@@ -77,21 +79,27 @@
            (csidentl "," ident))
       (rw-patt)
       (args (ident)
+            ("(" ident ")")
+            ("{" ident "}")
             ("{" ident ":" sterm "}")
             ("(" ident ":" sterm ")"))
       (sterm ("TYPE")
              ("_")
-             (ident)
+             (qident)
              ("?" ident "[" env "]") ;; ?M[x,y,z]
              ("&" ident "[" env "]") ;; &X[x,y,z]
-             ( "(" sterm ")" )
-             ( "{" sterm "}" )
+             ( "(" sterm ")")
+             ( "{" sterm "}")
              (sterm "⇒" sterm)
              ("λ" args "," sterm)
-             ("λ" "ID" ":" sterm "," sterm)
+             ("λ" ident ":" sterm "," sterm)
              ("∀" args "," sterm)
-             ("∀" "ID" ":" sterm "," sterm)
-             ("let" args "≔" sterm "in" sterm))
+             ("∀" ident ":" sterm "," sterm)
+             ("let" ident "≔" sterm "in" sterm)
+             ("let" ident ":" sterm "≔" sterm "in" sterm)
+             ("let" "ID" args ":" sterm "≔" sterm "in" sterm)
+             ("let" "ID" args "≔" sterm "in" sterm))
+
       (tactic ("refine" sterm)
               ("assume" sterm)
               ("apply" sterm)
@@ -102,41 +110,47 @@
               ("print")
               ("proofterm")
               ("why3"))
-      ; TODO: token SYMTAG?
+      (query ("assert" sterm "≡" sterm)
+             ("assert" sterm ":" sterm)
+             ("assertnot" sterm ":" sterm)
+             ("assertnot" sterm "≡" sterm)
+             ("compute" sterm)
+             ("type" sterm)
+
+             ("set" "prover") ; no stringlit because of conflict
+             ("set" "prover_timeout" "NATLIT")
+             ("set" "verbose" "NATLIT")
+             ("set" "debug" ident)
+             ("set" "flag" "STRINGLIT" "on")
+             ("set" "flag" "STRINGLIT" "off"))
+
+      (prfcontent (tactic)
+                  (query))
+                                        ; TODO: token SYMTAG?
       (symdec ("symbol" "ID" args ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
                ("private" symdec)
                ("protected" symdec)
                (symdec)
-               ("theorem" "ID" args ":" sterm "proof" tactic "PRFEND")
+               ("theorem" "ID" args ":" sterm)
+               ("proof" prfcontent "PRFEND")
                ("definition" "ID" args "≔" sterm)
 
                ("rule" sterm "→" sterm)
                ("and" sterm "→" sterm)
 
-               ("assert" sterm "≡" sterm)
-               ("assert" sterm ":" sterm)
-               ("assertnot" sterm ":" sterm)
-               ("assertnot" sterm "≡" sterm)
-               ("compute" sterm)
-               ("type" sterm)
-
                ("require" qident)
                ("require" "open" qident)
                ("require" qident "as" ident)
 
-               ("set" "verbose" "NATLIT")
-               ("set" "debug" ident)
                ("set" "builtin" "STRINGLIT" "≔" qident)
                ("set" "prefix" "FLOATLIT" "STRINGLIT" "≔" qident)
                ("set" "infix" "FLOATLIT" ident "≔" qident)
                ("set" "infix" "left" "FLOATLIT" ident "≔" qident)
                ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
-               ("set" "prover") ; no stringlit because of conflict
-               ("set" "prover_timeout" "NATLIT")
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "⇒") (assoc "≔")
+    '((assoc ",") (assoc "in") (assoc "⇒") (assoc "let") (assoc "≔")
       (assoc "λ" "∀") (assoc ":") (assoc "ID")))))
 
 (defun lambdapi--smie-forward-token ()
@@ -230,7 +244,9 @@
     (`(:before . "reflexivity") `(column . ,lambdapi-indent-basic))
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
+
     (`(:before . "PRFEND") '(column . 0))
+    (`(:after . "PRFEND") '(column . 0))
 
     (`(:before . "set") (lambdapi--misc-cmd-indent))
     (`(:before . "compute") (lambdapi--misc-cmd-indent))
@@ -239,6 +255,12 @@
     (`(:before . "assertnot") (lambdapi--misc-cmd-indent))
 
     (`(:before . ":") (lambdapi--colon-indent))
+    (`(:list-intro . ,(or "and" "rule" "λ" "∀" "proof" "ID")) t)
+    (`(:after . "proof") lambdapi-indent-basic)
+    (`(:after . ,(or ":" "≔")) (when (smie-rule-hanging-p) lambdapi-indent-basic))
+    (`(,_ . ",") (smie-rule-separator kind))
+    (`(:after . "in") (smie-rule-parent))
+    (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
 
     ;; Toplevel
     (`(:before . "protected") '(column . 0))
@@ -253,14 +275,14 @@
 
     (`(:before . "rule") '(column . 0))
     (`(:before . "and") '(column . 1))
-    (`(:before . "→") ,(when (smie-rule-bolp) '(column . 3)))))
+    (`(,_ . "→") (smie-rule-separator kind))))
 
 (defun lambdapi--id-indent ()
-  "Indentation before identifier.
+  "Indentation before identifier.)))))
 Yield nil except when identifier is top (no parentheses) and at the beginning
 of line and not before a colon. In this case, it returns
 `lambdapi-indent-basic'. It applies for arguments of a `require' or identifiers
-before a top-level colon."
+before a top level colon."
   (let ((ppss (syntax-ppss)))
     (when (and (= 0 (nth 0 ppss))
                (smie-rule-bolp))
