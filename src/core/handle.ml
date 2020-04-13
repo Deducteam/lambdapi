@@ -11,10 +11,6 @@ open Files
 open Syntax
 open Scope
 
-(** [write_trees] tells whether graphviz files containing the representation
-    of decision trees should be created. *)
-let write_trees : bool Stdlib.ref = Stdlib.ref false
-
 (* Register a check for the type of builtin successor symbol ["+1"]. *)
 let _ =
   let expected_successor pos map =
@@ -129,17 +125,6 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _, _) -> s) rs) in
       List.iter Tree.update_dtree syms;
-      (* Writing decision tree if required. *)
-      if Stdlib.(!write_trees) then
-        begin
-          let write_tree s =
-            let fname = String.concat Filename.dir_sep s.sym_path in
-            let fname = Printf.sprintf "%s.%s.gv" fname s.sym_name in
-            Console.out 3 "Writing file [%s]\n" fname;
-            Tree_graphviz.to_dot fname s
-          in
-          List.iter write_tree syms
-        end;
       (ss, None)
   | P_definition(e,op,x,xs,ao,t) ->
       (* We check that [x] is not already used. *)
