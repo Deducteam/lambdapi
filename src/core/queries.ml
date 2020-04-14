@@ -1,11 +1,11 @@
 (** Queries (available in tactics and at the toplevel). *)
 
 open Console
-open Print
 open Pos
 open Syntax
 open Scope
 open Unif
+open Terms
 
 (** [handle_query ss ps q] *)
 let handle_query : sig_state -> Proof.t option -> p_query -> unit =
@@ -29,13 +29,13 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
           let infer = Typing.infer ss.builtins (Env.to_ctxt env) in
           match (infer t, infer u) with
           | (Some(a), Some(b)) ->
-              let pb = { no_problems with to_solve = [[], a, b] } in
+              let pb = {empty_problem with to_solve = [[], a, b]} in
               begin
                 match solve ss.builtins pb with
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
-                    List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs;
+                    List.iter (fatal_msg "Cannot solve %a.\n" Print.constr) cs;
                     fatal q.pos "Infered types are not convertible."
               end
           | (None   , _      ) ->
@@ -66,18 +66,18 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let a =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(a) -> Eval.eval cfg [] a
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
       in
-      out 3 "(infr) %a : %a\n" pp t pp a
+      out 3 "(infr) %a : %a\n" Print.term t Print.term a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
       let v =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(_) -> Eval.eval cfg [] t
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
       in
-      out 3 "(comp) %a\n" pp v
+      out 3 "(comp) %a\n" Print.term v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->

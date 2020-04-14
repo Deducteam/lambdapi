@@ -308,7 +308,7 @@ let hover_symInfo ofmt ~id params =
     | Some (sym, Some _) ->
       !(sym.sym_type)
   in let sym_type : string =
-    Format.asprintf "%a" Print.pp_term sym_found  in
+    Format.asprintf "%a" Print.term sym_found  in
   let result = `Assoc [ "contents", `String sym_type] in
   let msg = LSP.mk_reply ~id ~result in
   LIO.send_json ofmt msg

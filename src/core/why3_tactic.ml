@@ -103,7 +103,7 @@ let translate_term : config -> cnst_table -> term ->
 
 (** [encode pos builtins hs g] translates the hypotheses [hs] and the goal [g]
     into Why3 terms, to construct a Why3 task. *)
-let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
+let encode : Pos.popt -> Builtin.map -> Env.env -> term -> Why3.Task.task =
     fun pos builtins hs g ->
   let cfg = get_config pos builtins in
   let (constants, hypothesis) =
@@ -119,7 +119,7 @@ let encode : Pos.popt -> sym StrMap.t -> Env.env -> term -> Why3.Task.task =
     match translate_term cfg constants g with
     | Some(tbl, why3_term) -> (tbl, why3_term)
     | None                 ->
-        fatal pos "The goal [%a] is not of the form [P _]" Print.pp g
+        fatal pos "The goal [%a] is not of the form [P _]" Print.term g
   in
   (* Add the declaration of every constant in a task. *)
   let fn tsk (_,t) = Why3.Task.add_param_decl tsk t in

@@ -3,7 +3,6 @@
 open Extra
 open Console
 open Terms
-open Print
 open Pos
 open Syntax
 open Scope
@@ -26,7 +25,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       (* Just print the current proof term. *)
       let t = Meta(ps.Proof.proof_term, [||]) in
       let name = ps.Proof.proof_name.elt in
-      Console.out 1 "Proof term for [%s]: [%a]\n" name Print.pp t; ps
+      Console.out 1 "Proof term for [%s]: [%a]\n" name Print.term t; ps
   | P_tac_query(q)      ->
       Queries.handle_query ss (Some ps) q; ps
   | _                   ->
@@ -47,10 +46,11 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   let handle_refine : term -> Proof.t = fun t ->
     (* Check if the goal metavariable appears in [t]. *)
     let m = Proof.Goal.get_meta g in
-    log_tact "refining [%a] with term [%a]" pp_meta m pp t;
+    log_tact "refining [%a] with term [%a]" Print.meta m Print.term t;
     if Basics.occurs m t then fatal tac.pos "Circular refinement.";
     (* Check that [t] is well-typed. *)
-    log_tact "proving [%a%a : %a]" pp_ctxt (Env.to_ctxt env) pp t pp a;
+    log_tact "proving [%a%a : %a]"
+      Print.ctxt (Env.to_ctxt env) Print.term t Print.term a;
     if not (check t a) then fatal tac.pos "Ill-typed refinement.";
     (* Instantiation. *)
     set_meta m (Bindlib.unbox (Bindlib.bind_mvar (Env.vars env) (lift t)));
@@ -87,7 +87,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
       let nb =
         match infer t with
         | Some(a) -> Basics.count_products a
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.pp t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
       in
       (* Refine using [t] applied to [nb] wildcards (metavariables). *)
       (* NOTE it is scoping that handles wildcards as metavariables. *)

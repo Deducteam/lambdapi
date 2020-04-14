@@ -7,10 +7,9 @@ open Terms
 open Basics
 open Console
 open Proof
-open Print
 
 let register_builtin =
-  Builtin.register_expected_type (Eval.eq_modulo []) pp_term
+  Builtin.register_expected_type (Eval.eq_modulo []) Print.term
 
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
@@ -32,7 +31,7 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
     | []       -> ()
     | (a,b)::l ->
     begin
-    if !log_enabled then log_rewr "eq [%a] [%a]" pp_term a pp_term b;
+    if !log_enabled then log_rewr "eq [%a] [%a]" Print.term a Print.term b;
     match (Ctxt.unfold ctx a, Ctxt.unfold ctx b) with
     | (a          , b          ) when a == b -> eq l
     | (Vari(x1)   , Vari(x2)   ) when Bindlib.eq_vars x1 x2 -> eq l
@@ -166,9 +165,9 @@ let get_eq_data : popt -> eq_config -> term -> term * term * term =
         match get_args u with
         | (eq, [a;l;r]) when is_symb cfg.symb_eq eq -> (a, l, r)
         | _ ->
-           fatal pos "Expected an equality type, found [%a]." pp t
+           fatal pos "Expected an equality type, found [%a]." Print.term t
       end
-  | _ -> fatal pos "Expected an equality type, found [%a]." pp t
+  | _ -> fatal pos "Expected an equality type, found [%a]." Print.term t
 
 (** Type of a term with the free variables that need to be substituted (during
     some unification process).  It is usually used to store the LHS of a proof
@@ -295,7 +294,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   let t_type =
     match Typing.infer ps.proof_builtins g_ctxt t with
     | Some(a) -> a
-    | None    -> fatal pos "Cannot infer the type of [%a]." pp t
+    | None    -> fatal pos "Cannot infer the type of [%a]." Print.term t
   in
 
   (* Check that the type of [t] is of the form “P (eq a l r)”. *)
@@ -316,7 +315,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
     match get_args g_type with
     | (p, [t]) when is_symb cfg.symb_P p -> t
     | _                                        ->
-        fatal pos "Goal type [%a] is not of the form “P t”." pp g_type
+        fatal pos "Goal type [%a] is not of the form “P t”." Print.term g_type
   in
 
   (* Obtain the different components depending on the pattern. *)
@@ -329,7 +328,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           match find_subst g_term (vars, l) with
           | Some(sigma) -> sigma
           | None        -> fatal pos "No subterm of [%a] matches [%a]."
-                             pp g_term pp l
+                             Print.term g_term Print.term l
         in
         (* Build the required data from that substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
@@ -342,7 +341,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
         let match_p =
           let p_refs = add_refs p in
           if not (make_pat g_term p_refs) then
-            fatal pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+            fatal pos "No subterm of [%a] matches [%a]."
+              Print.term g_term Print.term p;
           p_refs (* [TRef] cells have been instantiated here. *)
         in
         (* Build a substitution by matching [match_p] with the LHS [l]. *)
@@ -350,7 +350,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           match match_pattern (vars,l) match_p with
           | Some(sigma) -> sigma
           | None        -> fatal pos "No subterm of [%a] matches [%a]."
-                             pp match_p pp l
+                             Print.term match_p Print.term l
         in
         (* Build the data from the substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
@@ -363,7 +363,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
         let match_p =
           let p_refs = add_refs p in
           if not (make_pat g_term p_refs) then
-            fatal pos "No subterm of [%a] matches [%a]." pp g_term pp p;
+            fatal pos "No subterm of [%a] matches [%a]."
+              Print.term g_term Print.term p;
           p_refs (* [TRef] cells have been instantiated here. *)
         in
         (* Build a substitution from a subterm of [match_p] matching [l]. *)
@@ -372,7 +373,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | Some(sigma) -> sigma
           | None        ->
               fatal pos "No subterm of the pattern [%a] matches [%a]."
-                pp match_p pp l
+                Print.term match_p Print.term l
         in
         (* Build the data from the substitution. *)
         let (t, l, r) = Bindlib.msubst bound sigma in
@@ -406,7 +407,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           match find_subst g_term ([|id|],p_refs) with
           | Some(id_val) -> id_val.(0)
           | None         ->
-              fatal pos "The pattern [%a] does not match [%a]." pp p pp l
+              fatal pos "The pattern [%a] does not match [%a]."
+                Print.term p Print.term l
         in
         let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
         (* The LHS of the pattern, i.e. the pattern with id replaced by *)
@@ -420,7 +422,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | None        ->
               fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp id_val pp p pp l
+                (Bindlib.name_of id)
+                Print.term id_val Print.term p Print.term l
         in
         (* Build t, l, using the substitution we found. Note that r  *)
         (* corresponds to the value we get by applying rewrite to *)
@@ -461,7 +464,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           match find_subst g_term ([|id|],p_refs) with
           | Some(id_val) -> id_val
           | None         ->
-              fatal pos "The pattern [%a] does not match [%a]." pp p pp l
+              fatal pos "The pattern [%a] does not match [%a]."
+                Print.term p Print.term l
         in
         (* Once we get the value of id, we work with that as our main term
            since this is where s will appear and will be substituted in. *)
@@ -476,7 +480,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
         let s_refs = add_refs s in
         if not (make_pat id_val s_refs) then
           fatal pos "The value of [%s], [%a], in [%a] does not match [%a]."
-            (Bindlib.name_of id) pp id_val pp p pp s;
+            (Bindlib.name_of id) Print.term id_val Print.term p Print.term s;
         (* Now we must match s, which no longer contains any TRef's
            with the LHS of the lemma,*)
         let s = s_refs in
@@ -485,7 +489,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | Some(sigma) -> sigma
           | None        ->
               fatal pos "The term [%a] does not match the LHS [%a]"
-                pp s pp l
+                Print.term s Print.term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 
@@ -532,7 +536,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
         let p_refs = add_refs p_s in
         if not (make_pat g_term p_refs) then
             fatal pos "No subterm of [%a] matches the pattern [%a]"
-              pp g_term pp p_s;
+              Print.term g_term Print.term p_s;
         let p = p_refs in
         let pat_refs = add_refs pat in
         (* Here we have already asserted tat an instance of p[s/id] exists
@@ -553,7 +557,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | None        ->
               fatal pos
                 "The value of X, [%a], does not match the LHS, [%a]"
-                pp id_val pp l
+                Print.term id_val Print.term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 
@@ -579,7 +583,7 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | Some(id_val) -> id_val
           | None         ->
               fatal pos "The pattern [%a] does not match [%a]."
-                pp p pp g_term
+                Print.term p Print.term g_term
         in
         let id_val = id_val.(0) in
         let pat = Bindlib.unbox (Bindlib.bind_var id (lift p_refs)) in
@@ -590,7 +594,8 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
           | None        ->
               fatal pos
                 "The value of [%s], [%a], in [%a] does not match [%a]."
-                (Bindlib.name_of id) pp id_val pp p pp l
+                (Bindlib.name_of id)
+                Print.term id_val Print.term p Print.term l
         in
         let (t,l,r) = Bindlib.msubst bound sigma in
 
@@ -624,14 +629,14 @@ let rewrite : popt -> Proof.t -> rw_patt option -> term -> term =
   if !log_enabled then
     begin
       log_rewr "Rewriting with:";
-      log_rewr "  goal           = [%a]" pp g_type;
-      log_rewr "  equality proof = [%a]" pp t;
-      log_rewr "  equality type  = [%a]" pp t_type;
-      log_rewr "  equality LHS   = [%a]" pp l;
-      log_rewr "  equality RHS   = [%a]" pp r;
-      log_rewr "  pred           = [%a]" pp pred;
-      log_rewr "  new goal       = [%a]" pp goal_type;
-      log_rewr "  produced term  = [%a]" pp term;
+      log_rewr "  goal           = [%a]" Print.term g_type;
+      log_rewr "  equality proof = [%a]" Print.term t;
+      log_rewr "  equality type  = [%a]" Print.term t_type;
+      log_rewr "  equality LHS   = [%a]" Print.term l;
+      log_rewr "  equality RHS   = [%a]" Print.term r;
+      log_rewr "  pred           = [%a]" Print.term pred;
+      log_rewr "  new goal       = [%a]" Print.term goal_type;
+      log_rewr "  produced term  = [%a]" Print.term term;
     end;
 
   (* Return the proof-term. *)
@@ -680,10 +685,10 @@ let symmetry : popt -> Proof.t -> term = fun pos ps ->
   if !log_enabled then
     begin
       log_rewr "Symmetry with:";
-      log_rewr "  goal       = [%a]" pp g_type;
-      log_rewr "  new goal   = [%a]" pp meta_type;
-      log_rewr "  predicate  = [%a]" pp pred;
-      log_rewr "  proof term = [%a]" pp term
+      log_rewr "  goal       = [%a]" Print.term g_type;
+      log_rewr "  new goal   = [%a]" Print.term meta_type;
+      log_rewr "  predicate  = [%a]" Print.term pred;
+      log_rewr "  proof term = [%a]" Print.term term
     end;
   (* Return the proof-term. *)
   term

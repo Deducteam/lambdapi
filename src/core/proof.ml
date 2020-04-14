@@ -55,7 +55,7 @@ type proof_state =
   { proof_name     : Pos.strloc  (** Name of the theorem.                 *)
   ; proof_term     : meta        (** Metavariable holding the proof term. *)
   ; proof_goals    : Goal.t list (** Open goals (focused goal is first).  *)
-  ; proof_builtins : sym StrMap.t(** Signature state, for builtins.       *) }
+  ; proof_builtins : Builtin.map (** Signature state, for builtins.       *) }
 
 (** Short synonym for qualified use. *)
 type t = proof_state
@@ -63,7 +63,7 @@ type t = proof_state
 (** [init builtins name a] returns an initial proof state for a theorem  named
     [name], which statement is represented by the type [a]. Builtin symbols of
     [builtins] may be used by tactics, and have been declared. *)
-let init : sym StrMap.t -> Pos.strloc -> term -> t =
+let init : Builtin.map -> Pos.strloc -> term -> t =
   fun proof_builtins name a ->
   let proof_term = fresh_meta ~name:name.elt a 0 in
   let proof_goals = [Goal.of_meta proof_term] in
@@ -79,7 +79,6 @@ let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
 let pp_goals : _ pp = fun oc gl ->
-  let open Print in
   match gl with
   | []    -> Format.fprintf oc " No more goals...\n"
   | g::gs ->
@@ -88,23 +87,22 @@ let pp_goals : _ pp = fun oc gl ->
     if hyps <> [] then
       begin
         let print_hyp (s,(_,t,_)) =
-          Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
+          Format.fprintf oc "   %s : %a\n" s Print.term (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);
         Format.fprintf oc "   --------------------------------------\n"
       end;
     let (_, a) = Goal.get_type g in
-    Format.fprintf oc "0. %a\n" pp a;
+    Format.fprintf oc "0. %a\n" Print.term a;
     if gs <> [] then
       begin
         Format.fprintf oc "\n";
         let print_goal i g =
           let (_, a) = Goal.get_type g in
-          Format.fprintf oc "%i. %a\n" (i+1) pp a
+          Format.fprintf oc "%i. %a\n" (i+1) Print.term a
         in
         List.iteri print_goal gs
       end
-
 
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
 let pp : t pp = fun oc ps -> pp_goals oc ps.proof_goals

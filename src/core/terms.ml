@@ -241,8 +241,8 @@ let is_private : sym -> bool = fun s -> s.sym_expo = Privat
     definition. *)
 type ctxt = (term Bindlib.var * term * term option) list
 
-(** Type of a list of unification constraints. *)
-type unif_constrs = (ctxt * term * term) list
+(** Type of unification constraints. *)
+type constr = ctxt * term * term
 
 (** [unfold t] repeatedly unfolds the definition of the surface constructor of
     [t], until a significant {!type:term} constructor is found.  The term that
@@ -462,19 +462,27 @@ end
 module MetaSet = Set.Make(Meta)
 module MetaMap = Map.Make(Meta)
 
-(** Sets of term variables. *)
-module VarSet = Set.Make(
-  struct
-    type t = tvar
-    let compare = Bindlib.compare_vars
-  end)
+(** Sets and maps of term variables. *)
+module Var = struct
+  type t = tvar
+  let compare = Bindlib.compare_vars
+end
 
-(** Maps over term variables. *)
-module VarMap = Map.Make(
-  struct
-    type t = tvar
-    let compare = Bindlib.compare_vars
-  end)
+module VarSet = Set.Make(Var)
+module VarMap = Map.Make(Var)
+
+(** Sets and maps of symbols. *)
+module Sym = struct
+  type t = sym
+  let compare s1 s2 =
+    if s1 == s2 then 0 else
+    match Stdlib.compare s1.sym_name s2.sym_name with
+    | 0 -> Stdlib.compare s1.sym_path s2.sym_path
+    | n -> n
+end
+
+module SymSet = Set.Make(Sym)
+module SymMap = Map.Make(Sym)
 
 (** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
     Reflection Extension for the Coq system", by Georges Gonthier,
@@ -487,3 +495,16 @@ type rw_patt =
   | RW_IdInTerm       of (term, term) Bindlib.binder
   | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
   | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
+
+(** Representation of unification problems. *)
+type problem =
+  { to_solve  : constr list
+  (** List of unification problems to solve. *)
+  ; unsolved  : constr list
+  (** List of unification problems that could not be solved. *)
+  ; recompute : bool
+  (** Indicates whether unsolved problems should be rechecked. *) }
+
+(** Empty problem. *)
+let empty_problem : problem =
+  {to_solve  = []; unsolved = []; recompute = false}

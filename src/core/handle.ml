@@ -4,7 +4,6 @@ open Extra
 open Timed
 open Console
 open Terms
-open Print
 open Sign
 open Pos
 open Files
@@ -17,7 +16,7 @@ let _ =
     let typ_0 = lift !((Builtin.get pos map "0").sym_type) in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
-  Builtin.register_expected_type (Eval.eq_modulo []) pp_term
+  Builtin.register_expected_type (Eval.eq_modulo []) Print.term
     "+1" expected_succ_type
 
 (** Representation of a yet unchecked proof. The structure is initialized when
@@ -101,7 +100,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp a
+          fatal x.pos "We have %s : %a." x.elt Print.term a
         end;
       (* Actually add the symbol to the signature and the state. *)
       let s = Sign.add_symbol ss.signature e p x a impl in
@@ -121,7 +120,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (* Adding the rules all at once. *)
       let add_rule (s,r) =
         Sign.add_rule ss.signature s r.elt;
-        out 3 "(rule) %a\n" Print.pp_rule (s,r.elt)
+        out 3 "(rule) %a\n" Print.rule (s,r.elt)
       in
       List.iter add_rule rs;
       let syms = List.remove_phys_dups (List.map (fun (s, _) -> s) rs) in
@@ -151,22 +150,24 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
         | Some(a) ->
             Typing.sort_type ss.builtins [] a;
             if Typing.check ss.builtins [] t a then a else
-            fatal cmd.pos "The term [%a] does not have type [%a]." pp t pp a
+              fatal cmd.pos "The term [%a] does not have type [%a]."
+                Print.term t Print.term a
         | None    ->
             match Typing.infer ss.builtins [] t with
             | Some(a) -> a
-            | None    -> fatal cmd.pos "Cannot infer the type of [%a]." pp t
+            | None    -> fatal cmd.pos "Cannot infer the type of [%a]."
+                           Print.term t
       in
       (* We check that no metavariable remains. *)
       if Basics.has_metas true t || Basics.has_metas true a then
         begin
           fatal_msg "The definition of [%s] or its type \
                      have unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a ≔ %a." x.elt pp a pp t
+          fatal x.pos "We have %s : %a ≔ %a." x.elt Print.term a Print.term t
         end;
       (* Actually add the symbol to the signature. *)
       let s = Sign.add_symbol ss.signature e Defin x a impl in
-      out 3 "(symb) %s ≔ %a\n" s.sym_name pp t;
+      out 3 "(symb) %s ≔ %a\n" s.sym_name Print.term t;
       (* Also add its definition, if it is not opaque. *)
       if not op then s.sym_def := Some(t);
       ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
@@ -187,7 +188,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       if Basics.has_metas true a then
         begin
           fatal_msg "The type of [%s] has unsolved metavariables.\n" x.elt;
-          fatal x.pos "We have %s : %a." x.elt pp a
+          fatal x.pos "We have %s : %a." x.elt Print.term a
         end;
       (* Initialize proof state and save configuration data. *)
       let st = Proof.init ss.builtins x a in

@@ -14,7 +14,7 @@ type t =
   { sign_symbols  : (sym * Pos.popt) StrMap.t ref
   ; sign_path     : Path.t
   ; sign_deps     : (string * rule) list PathMap.t ref
-  ; sign_builtins : sym StrMap.t ref
+  ; sign_builtins : Builtin.map ref
   ; sign_unops    : (sym * unop ) StrMap.t ref
   ; sign_binops   : (sym * binop) StrMap.t ref
   ; sign_idents   : StrSet.t ref }

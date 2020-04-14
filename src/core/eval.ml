@@ -5,7 +5,6 @@ open Timed
 open Console
 open Terms
 open Basics
-open Print
 
 (** The head-structure of a term t is:
 - λx:_,h if t=λx:a,u and h is the head-structure of u
@@ -49,7 +48,7 @@ type stack = term list
 
 (** [whnf_beta t] computes a weak head beta normal form of the term [t]. *)
 let rec whnf_beta : term -> term = fun t ->
-  if !log_enabled then log_eval "evaluating %a" pp t;
+  if !log_enabled then log_eval "evaluating %a" Print.term t;
   let s = Stdlib.(!steps) in
   let (u, stk) = whnf_beta_stk t [] in
   if Stdlib.(!steps) <> s then add_args u stk else unfold t
@@ -79,7 +78,7 @@ let whnf_beta : term -> term = fun t ->
 (** [whnf ctx t] computes a weak head normal form of the term [t] in context
     [ctx]. *)
 let rec whnf : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_eval "evaluating [%a]" pp t;
+  if !log_enabled then log_eval "evaluating [%a]" Print.term t;
   let s = Stdlib.(!steps) in
   let (u, stk) = whnf_stk ctx t [] in
   if Stdlib.(!steps) <> s then add_args u stk else Ctxt.unfold ctx t
@@ -120,7 +119,7 @@ and whnf_stk : ctxt -> term -> stack -> term * stack = fun ctx t stk ->
 (** [eq_modulo ctx a b] tests the equality of [a] and [b] modulo rewriting and
     the unfolding of variables from the context [ctx] (δ-reduction). *)
 and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
-  if !log_enabled then log_conv "%a[%a] ≡ [%a]" pp_ctxt ctx pp a pp b;
+  if !log_enabled then log_conv "%a" Print.constr (ctx,a,b);
   let rec eq_modulo l =
     match l with
     | []       -> ()
@@ -151,7 +150,7 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (_          , _          ) -> raise Exit
   in
   let res = try eq_modulo [(a,b)]; true with Exit -> false in
-  if !log_enabled then log_conv (r_or_g res "%a == %a") pp a pp b; res
+  if !log_enabled then log_conv (r_or_g res "%a") Print.constr (ctx,a,b); res
 
 (** {b NOTE} that in {!val:tree_walk} matching with trees involves two
     collections of terms.

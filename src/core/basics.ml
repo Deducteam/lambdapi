@@ -73,6 +73,17 @@ let is_symb : sym -> term -> bool = fun s t ->
   | Symb(r) -> r == s
   | _       -> false
 
+(** Given a symbol [s], [expl_args s ts] returns the explicit arguments of
+   [ts]. *)
+let expl_args : sym -> term list -> term list = fun s ts ->
+  let rec expl bs ts =
+    match bs, ts with
+    | true::bs, _::ts -> expl bs ts
+    | false::bs, t::ts -> t :: expl bs ts
+    | _, ts -> ts
+  in
+  expl s.sym_impl ts
+
 (** [iter f t] applies the function [f] to every node of the term [t] with
    bound variables replaced by [Kind]. Note: [f] is called on already unfolded
    terms only. *)

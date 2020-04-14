@@ -3,7 +3,6 @@
 open Timed
 open Console
 open Terms
-open Print
 open Env
 
 (** Logging function for typing. *)
@@ -66,7 +65,7 @@ let extend_meta_type : meta -> term * term *
 let conv ctx a b =
   if not (Eval.eq_modulo ctx a b) then
     begin
-      if !log_enabled then log_infr (yel "add %a") pp_constr (ctx,a,b);
+      if !log_enabled then log_infr (yel "add %a") Print.constr (ctx,a,b);
       let open Stdlib in constraints := (ctx,a,b) :: !constraints
     end
 
@@ -87,7 +86,7 @@ let make_meta_codomain : ctxt -> term -> tbinder = fun ctx a ->
    constraints are satisfied. [ctx] must be well-formed. This function
    never fails (but constraints may be unsatisfiable). *)
 let rec infer : ctxt -> term -> term = fun ctx t ->
-  if !log_enabled then log_infr "infer %a%a" pp_ctxt ctx pp t;
+  if !log_enabled then log_infr "infer %a%a" Print.ctxt ctx Print.term t;
   match unfold t with
   | Patt(_,_,_) -> assert false (* Forbidden case. *)
   | TEnv(_,_)   -> assert false (* Forbidden case. *)
@@ -104,7 +103,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Vari(x)     ->
       let a = try Ctxt.type_of x ctx with Not_found -> assert false in
       if !log_enabled then
-        log_infr (blu "%a : %a") pp_term t pp_term a;
+        log_infr (blu "%a : %a") Print.term t Print.term a;
       a
 
   (* -------------------------------
@@ -112,7 +111,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | Symb(s)     ->
       let a = !(s.sym_type) in
       if !log_enabled then
-        log_infr (blu "%a : %a") pp_term t pp_term a;
+        log_infr (blu "%a : %a") Print.term t Print.term a;
       a
 
   (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
@@ -193,7 +192,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
    using [conv]. [ctx] must be well-formed and [c] well-sorted. This
    function never fails (but constraints may be unsatisfiable). *)
 and check : ctxt -> term -> term -> unit = fun ctx t c ->
-  if !log_enabled then log_infr "check %a : %a" pp t pp c;
+  if !log_enabled then log_infr "check %a : %a" Print.term t Print.term c;
   conv ctx (infer ctx t) c
 
 (** [infer ctx t] returns a pair [(a,cs)] where [a] is a type for the
@@ -201,14 +200,14 @@ and check : ctxt -> term -> term -> unit = fun ctx t c ->
    In other words, the constraints of [cs] must be satisfied for [t]
    to have type [a]. [ctx] must be well-formed. This function never
    fails (but constraints may be unsatisfiable). *)
-let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
+let infer : ctxt -> term -> term * constr list = fun ctx t ->
   Stdlib.(constraints := []);
   let a = infer ctx t in
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "infer %a : %a") pp t pp a;
-      List.iter (log_infr "  if %a" pp_constr) constrs;
+      log_infr (gre "infer %a : %a") Print.term t Print.term a;
+      List.iter (log_infr "  if %a" Print.constr) constrs;
     end;
   Stdlib.(constraints := []);
   (a, constrs)
@@ -218,14 +217,14 @@ let infer : ctxt -> term -> term * unif_constrs = fun ctx t ->
    context [ctx] must be well-typed, and the type [c]
    well-sorted. This function never fails (but constraints may be
    unsatisfiable). *)
-let check : ctxt -> term -> term -> unif_constrs = fun ctx t c ->
+let check : ctxt -> term -> term -> constr list = fun ctx t c ->
   Stdlib.(constraints := []);
   check ctx t c;
   let constrs = Stdlib.(!constraints) in
   if !log_enabled then
     begin
-      log_infr (gre "check %a : %a") pp t pp c;
-      List.iter (log_infr "  if %a" pp_constr) constrs;
+      log_infr (gre "check %a : %a") Print.term t Print.term c;
+      List.iter (log_infr "  if %a" Print.constr) constrs;
     end;
   Stdlib.(constraints := []);
   constrs

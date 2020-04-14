@@ -5,7 +5,6 @@ open Timed
 open Console
 open Terms
 open Basics
-open Print
 open Env
 
 (** Logging function for unification. *)
@@ -14,25 +13,6 @@ let log_unif = log_unif.logger
 
 (** Exception raised when a constraint is not solvable. *)
 exception Unsolvable
-
-(** Representation of a set of problems. *)
-type problems =
-  { to_solve  : unif_constrs
-  (** List of unification problems to solve. *)
-  ; unsolved  : unif_constrs
-  (** List of unification problems that could not be solved. *)
-  ; recompute : bool
-  (** Indicates whether unsolved problems should be rechecked. *) }
-
-let pp_problem oc p =
-  Format.fprintf oc "{ to_solve = [%a]; unsolved = [%a]; recompute = %b }"
-    (List.pp pp_constr "; ") p.to_solve
-    (List.pp pp_constr "; ") p.unsolved
-    p.recompute
-
-(** Empty problem. *)
-let no_problems : problems =
-  {to_solve  = []; unsolved = []; recompute = false}
 
 (** [copy_prod_env xs prod] constructs an environment mapping the variables of
     [xs] to successive dependent product type domains of the term [prod]. Note
@@ -139,29 +119,29 @@ let instantiate : ctxt -> meta -> term array -> term -> bool =
   match instantiation ctx m ts u with
   | Some(bu) when Bindlib.is_closed bu ->
       if !log_enabled then
-        log_unif (yel "%a ≔ %a") pp_meta m pp_term u;
+        log_unif (yel "%a ≔ %a") Print.meta m Print.term u;
       set_meta m (Bindlib.unbox bu); true
   | _ -> false
 
-(** [solve cfg p] tries to solve the unification problems of [p] and
+(** [solve cfg p] tries to solve the unification problem [p] and
     returns the constraints that could not be solved. *)
-let rec solve : problems -> unif_constrs = fun p ->
+let rec solve : problem -> constr list = fun p ->
   match p with
   | { to_solve = []; unsolved = []; _ } -> []
   | { to_solve = []; unsolved = cs; recompute = true } ->
-     solve {no_problems with to_solve = cs}
+     solve {empty_problem with to_solve = cs}
   | { to_solve = []; unsolved = cs; _ } -> cs
   | { to_solve = (c,t,u)::to_solve; _ } -> solve_aux c t u {p with to_solve}
 
 (** [solve_aux t1 t2 p] tries to solve the unificaton problem given by [p] and
     the constraint [(t1,t2)], starting with the latter. *)
-and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
+and solve_aux : ctxt -> term -> term -> problem -> constr list =
   fun ctx t1 t2 p ->
   let t1 = Eval.whnf ctx t1 in
   let t2 = Eval.whnf ctx t2 in
   let (h1, ts1) = Basics.get_args t1 in
   let (h2, ts2) = Basics.get_args t2 in
-  if !log_enabled then log_unif "solve %a" pp_constr (ctx, t1, t2);
+  if !log_enabled then log_unif "solve %a" Print.constr (ctx, t1, t2);
 
   let add_to_unsolved () =
     if Eval.eq_modulo ctx t1 t2 then solve p else
@@ -170,7 +150,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   in
 
   let error () =
-    fatal_msg "[%a] and [%a] are not convertible.\n" pp t1 pp t2;
+    fatal_msg "[%a] and [%a] are not convertible.\n"
+      Print.term t1 Print.term t2;
     raise Unsolvable
   in
 
@@ -192,7 +173,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let imitate_inj m vs us s ts =
     if !log_enabled then
       log_unif "imitate_inj %a ≡ %a"
-        pp (add_args (Meta(m,vs)) us) pp (add_args (Symb s) ts);
+        Print.term (add_args (Meta(m,vs)) us)
+        Print.term (add_args (Symb s) ts);
     let exception Cannot_imitate in
     try
       if not (us = [] && is_injective s) then raise Cannot_imitate;
@@ -312,7 +294,7 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
       if !log_enabled then
         let f (s0,s1,s2,b) =
           log_unif (yel "inverses_for_prod %a: %a, %a, %a, %b")
-            pp (Symb s) pp (Symb s0) pp (Symb s1) pp (Symb s2) b
+            Print.symbol s Print.symbol s0 Print.symbol s1 Print.symbol s2 b
         in List.iter f l
     end;
     l
@@ -323,7 +305,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
   let exception Not_invertible in
 
   let rec inverse s v =
-    if !log_enabled then log_unif "inverse [%a] [%a]" pp (Symb s) pp v;
+    if !log_enabled then
+      log_unif "inverse [%a] [%a]" Print.symbol s Print.term v;
     match get_args (Eval.whnf [] v) with
     | Symb(s'), [u] when s' == s -> u
     | Prod(a,b), _ -> find_inverse_prod a b (inverses_for_prod s)
@@ -358,7 +341,8 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
      [t = s^{-1}(v)] when [s] is injective and [ts=[t]]. *)
   let solve_inj s ts v =
     if !log_enabled then
-      log_unif "solve_inj %a ≡ %a" pp (add_args (Symb s) ts) pp v;
+      log_unif "solve_inj %a ≡ %a"
+        Print.term (add_args (Symb s) ts) Print.term v;
     match inverse_opt s ts v with
     | Some (a, b) -> solve_aux ctx a b p
     | None -> add_to_unsolved ()
@@ -440,10 +424,10 @@ and solve_aux : ctxt -> term -> term -> problems -> unif_constrs =
 
   | (_          , _          ) -> add_to_unsolved ()
 
-(** [solve builtins flag problems] attempts to solve [problems]. If there is
+(** [solve builtins flag problem] attempts to solve [problem]. If there is
    no solution, the value [None] is returned. Otherwise [Some(cs)] is
    returned, where the list [cs] is a list of unsolved convertibility
    constraints. *)
-let solve : sym StrMap.t -> problems -> unif_constrs option =
+let solve : Builtin.map -> problem -> constr list option =
   fun _builtins p ->
   try Some (solve p) with Unsolvable -> None
