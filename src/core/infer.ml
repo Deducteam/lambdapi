@@ -4,6 +4,7 @@ open Timed
 open Console
 open Terms
 open Print
+open Env
 
 (** Logging function for typing. *)
 let log_infr = new_logger 'i' "infr" "type inference/checking"
@@ -11,6 +12,55 @@ let log_infr = log_infr.logger
 
 (** Accumulated constraints. *)
 let constraints = Stdlib.ref []
+
+(** [destruct_prod n prod] returns a tuple [(env, a)] where [a] is constructed
+    from the term [prod] by destructing (i.e., by unbinding with the [Bindlib]
+    terminology) a total [n] dependent products. The free variables created by
+    the process are are given (with their types) in the environment [env]. The
+    function raises [Invalid_argument] if [prod] does not evaluate to a series
+    of (at least) [n] product types. Intuitively, if the term [prod] is of the
+    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
+    the environment [(xn, an) ; ⋯ ; (x1, a1)]. *)
+let destruct_prod : int -> term -> env * term = fun n t ->
+  let rec build_env i env t =
+    if i >= n then (env, t) else
+    match Eval.whnf [] t with
+    | Prod(a,b) ->
+        let (x, b) = Bindlib.unbind b in
+        build_env (i+1) (add x (lift (Eval.simplify [] a)) None env) b
+    | _         -> invalid_arg "destruct_prod"
+  in
+  build_env 0 [] t
+
+(** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
+   [B] being a sort normally), [extend_meta_type m] returns
+   [m[x1,..,xn],(∀y:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
+   a mbinder of [x1,..,xn] over p, and bq is a mbinder of [x1,..,xn] over q,
+   where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
+   arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
+   [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
+let extend_meta_type : meta -> term * term *
+    tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
+  let n = m.meta_arity in
+  let (env, s) = destruct_prod n Timed.(!(m.meta_type)) in
+  let vs = vars env in
+  let xs = Array.map _Vari vs in
+
+  let t1 = to_prod env _Type in
+  let m1 = fresh_meta t1 n in
+
+  let y = Bindlib.new_var mkfree "y" in
+  let env = add y (_Meta m1 xs) None env in
+  let t2 = to_prod env (lift s) in
+  let m2 = fresh_meta t2 (n+1) in
+
+  let r1 = Bindlib.unbox (_Meta m xs) in
+  let p = _Meta m1 xs in
+  let q = Bindlib.bind_var y (_Meta m2 (Array.append xs [|_Vari y|])) in
+  let r2 = Bindlib.unbox (_Prod p q) in
+
+  let f x = Bindlib.unbox (Bindlib.bind_mvar vs x) in
+  r1, r2, f p, f q
 
 (** Function adding a constraint. *)
 let conv ctx a b =
@@ -107,7 +157,7 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
         match c with
         | Prod(a,b) -> (a,b)
         | Meta(m,ts) ->
-            let mxs, p, bp1, bp2 = Env.extend_meta_type m in
+            let mxs, p, bp1, bp2 = extend_meta_type m in
             conv ctx mxs p; (Bindlib.msubst bp1 ts, Bindlib.msubst bp2 ts)
         | _         ->
             let a = Basics.make_meta ctx Type in

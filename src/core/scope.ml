@@ -14,7 +14,7 @@ type sig_state =
   { signature : Sign.t                    (** Current signature.   *)
   ; in_scope  : (sym * Pos.popt) StrMap.t (** Symbols in scope.    *)
   ; aliases   : Path.t StrMap.t           (** Established aliases. *)
-  ; builtins  : sym StrMap.t              (** Builtin symbols.     *) }
+  ; builtins  : Builtin.map               (** Builtin symbols.     *) }
 
 (** [empty_sig_state] is an empty signature state, without symbols/aliases. *)
 let empty_sig_state : Sign.t -> sig_state = fun sign ->
@@ -303,7 +303,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
   and scope_head : env -> p_term -> tbox = fun env t ->
     match (t.elt, md) with
     | (P_Type          , M_LHS(_)         ) ->
-        fatal t.pos "[%a] is not allowed in a LHS." Print.pp Type
+        fatal t.pos "TYPE is not allowed in a LHS."
     | (P_Type          , _                ) -> _Type
     | (P_Iden(qid,_)   , M_LHS(p,_)       ) -> find_qid true p ss env qid
     | (P_Iden(qid,_)   , M_Term(_,Privat )) -> find_qid false true ss env qid
@@ -610,9 +610,8 @@ let scope_pattern : sig_state -> env -> p_term -> term = fun ss env t ->
 (** [scope_rw_patt ss env t] turns a parser-level rewrite tactic specification
     [s] into an actual rewrite specification (possibly containing variables of
     [env] and using [ss] for aliasing). *)
-let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> Rewrite.rw_patt =
+let scope_rw_patt : sig_state ->  env -> p_rw_patt loc -> rw_patt =
     fun ss env s ->
-  let open Rewrite in
   match s.elt with
   | P_rw_Term(t)               -> RW_Term(scope_pattern ss env t)
   | P_rw_InTerm(t)             -> RW_InTerm(scope_pattern ss env t)

@@ -279,7 +279,7 @@ module CM = struct
 
   (** [pp ?(pp_cond=false) o m] prints matrix [m] to out channel [o]. The flag
       [pp_cond] indicates whether the condition pull should be printed. *)
-  let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
+  (*let pp : ?pp_cond:bool -> t pp = fun ?(pp_cond=false) oc m ->
     let pp_lhs oc lhs =
       Format.fprintf oc "@[%a → … @]" (Array.pp Print.pp " | ") lhs
     in
@@ -303,7 +303,7 @@ module CM = struct
         let lcp = List.map (fun cl -> cl.cond_pool) m.clauses in
         out "@[<v 0>%a@]@," (Format.pp_print_list ~pp_sep:cut CP.pp) lcp
       end;
-    out "### Matrix end   ###@]@."
+    out "### Matrix end   ###@]@."*)
 
   (** [is_treecons t] tells whether term [t] corresponds to a constructor (see
       {!type:Tree_types.TC.t}) that is a candidate for a specialization. *)

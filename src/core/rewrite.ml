@@ -9,6 +9,9 @@ open Console
 open Proof
 open Print
 
+let register_builtin =
+  Builtin.register_expected_type (Eval.eq_modulo []) pp_term
+
 (** Logging function for the rewrite tactic. *)
 let log_rewr = new_logger 'r' "rewr" "the rewrite tactic"
 let log_rewr = log_rewr.logger
@@ -58,18 +61,6 @@ let eq : ctxt -> term -> term -> bool = fun ctx a b -> a == b ||
   in
   try eq [(a,b)]; true with Not_equal -> false
 
-(** Rewrite patterns as in Coq/SSReflect. See "A Small Scale
-    Reflection Extension for the Coq system", by Georges Gonthier,
-    Assia Mahboubi and Enrico Tassi, INRIA Research Report 6455, 2016,
-    http://hal.inria.fr/inria-00258384, section 8, p. 48. *)
-type rw_patt =
-  | RW_Term           of term
-  | RW_InTerm         of term
-  | RW_InIdInTerm     of (term, term) Bindlib.binder
-  | RW_IdInTerm       of (term, term) Bindlib.binder
-  | RW_TermInIdInTerm of term * (term, term) Bindlib.binder
-  | RW_TermAsIdInTerm of term * (term, term) Bindlib.binder
-
 (** Equality configuration. *)
 type eq_config =
   { symb_P     : sym (** Encoding of propositions.        *)
@@ -80,7 +71,8 @@ type eq_config =
 
 (** [get_eq_config pos builtins] returns the current configuration for
     equality, used by tactics such as “rewrite” or “reflexivity”. *)
-let get_eq_config : popt -> Builtin.map -> eq_config = fun pos builtins ->
+let get_eq_config : popt -> Builtin.map -> eq_config
+  = fun pos builtins ->
   let builtin = Builtin.get pos builtins in
   { symb_P     = builtin "P"
   ; symb_T     = builtin "T"
@@ -100,15 +92,15 @@ let _ =
       fatal pos "The type of [%s] is not of the form [_ ⇒ TYPE]." sym.sym_name
   in
   (* The type of the builtin ["T"] should be [U ⇒ TYPE]. *)
-  Builtin.Check.register "T" check_t_or_p;
+  Builtin.register "T" check_t_or_p;
   (* The type of the builtin ["P"] should be [Prop ⇒ TYPE]. *)
-  Builtin.Check.register "P" check_t_or_p;
+  Builtin.register "P" check_t_or_p;
   let get_domain_of_type s =
     match Eval.whnf [] !(s.sym_type) with
     | Prod(a,_) -> a
     | _         -> assert false
   in
-  let expected_eq pos map =
+  let expected_eq_type pos map =
     (* [∀ (a:U), T a ⇒ T a ⇒ Prop] *)
     let symb_T = Builtin.get pos map "T" in
     let symb_P = Builtin.get pos map "P" in
@@ -119,8 +111,8 @@ let _ =
     let impls = _Impl term_T_a (_Impl term_T_a term_Prop) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a impls))
   in
-  Builtin.Check.register_expected_type "eq" expected_eq;
-  let expected_refl pos map =
+  register_builtin "eq" expected_eq_type;
+  let expected_refl_type pos map =
     (* [∀ (a:U) (x:T a), P (eq a x x)] *)
     let symb_T = Builtin.get pos map "T" in
     let symb_P = Builtin.get pos map "P" in
@@ -135,8 +127,8 @@ let _ =
     let prod = _Prod term_T_a (Bindlib.bind_var x appl) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a prod))
   in
-  Builtin.Check.register_expected_type "refl" expected_refl;
-  let expected_eqind pos map =
+  register_builtin "refl" expected_refl_type;
+  let expected_eqind_type pos map =
     (* [∀ (a:U) (x y:T a), P (eq x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)] *)
     let symb_T = Builtin.get pos map "T" in
     let term_T = _Symb symb_T in
@@ -161,7 +153,7 @@ let _ =
     let prod = _Prod term_T_a (Bindlib.bind_var x prod) in
     Bindlib.unbox (_Prod term_U (Bindlib.bind_var a prod))
   in
-  Builtin.Check.register_expected_type "eqind" expected_eqind
+  register_builtin "eqind" expected_eqind_type
 
 (** [get_eq_data cfg a] extra data from an equality type [a]. It consists of a
     triple containing the type in which equality is used and the equated terms

@@ -13,11 +13,12 @@ open Scope
 
 (* Register a check for the type of builtin successor symbol ["+1"]. *)
 let _ =
-  let expected_successor pos map =
+  let expected_succ_type pos map =
     let typ_0 = lift !((Builtin.get pos map "0").sym_type) in
     Bindlib.unbox (_Impl typ_0 typ_0)
   in
-  Builtin.Check.register_expected_type "+1" expected_successor
+  Builtin.register_expected_type (Eval.eq_modulo []) pp_term
+    "+1" expected_succ_type
 
 (** Representation of a yet unchecked proof. The structure is initialized when
     the proof mode is entered, and its finalizer is called when the proof mode
@@ -232,7 +233,7 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if StrMap.mem s ss.builtins then
               fatal cmd.pos "Builtin [%s] already exists." s;
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Builtin.Check.check  cmd.pos ss.builtins s sym;
+            Builtin.check cmd.pos ss.builtins s sym;
             Sign.add_builtin ss.signature s sym;
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
