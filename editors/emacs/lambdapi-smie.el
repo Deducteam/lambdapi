@@ -8,11 +8,15 @@
 ;;; Code:
 (require 'lambdapi-vars)
 (require 'smie)
+
+;; Regular expressions
 (defconst lambdapi--rx-escident "{|\\([^|]\\|\\(|[^}]\\)\\)*|*|}")
 (defconst lambdapi--rx-ident "[a-zA-Z_][a-zA-Z0-9_]*")
 (defconst lambdapi--rx-natlit "[0-9]+")
 (defconst lambdapi--rx-floatlit "[0-9]+\\([.][0-9]+\\)?")
 (defconst lambdapi--rx-stringlit "\"[^\"\n]\"")
+
+;; Lists of keywords
 (defconst lambdapi--tactics
   '("apply"
     "assume"
@@ -26,48 +30,24 @@
     "symmetry"
     "why3"))
 (defconst lambdapi--prf-finish '("abort" "admit" "qed"))
-(defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":" "?" "&"))
-(defconst lambdapi--misc-cmds
-  '("set" "assert" "assertnot" "type" "compute")
+(defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
   "Commands that can appear in proofs.")
+(defconst lambdapi--cmds
+  (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require")
+          lambdapi--queries)
+  "Commands at top level.")
 (defconst lambdapi--keywords
-  '("let"
-    ","
-    "and"
-    "assert"
-    "assertnot"
-    "compute"
-    "constant"
-    "definition"
-    "in"
-    "infix"
-    "injective"
-    "left"
-    "off"
-    "on"
-    "open"
-    "prefix"
-    "private"
-    "proof"
-    "protected"
-    "prover"
-    "prover_timeout"
-    "require"
-    "right"
-    "rule"
-    "set"
-    "symbol"
-    "theorem"
-    "TYPE"
-    "type"
-    "verbose"
-    "λ"
-    "→"
-    "⇒"
-    "∀"
-    "≔"
-    "≔"
-    "as"))
+  (append
+   '("and" "→"
+     "infix" "prefix"
+     "left" "right"
+     "off" "on"
+     "open" "as"
+     "constant" "injective" "private" "protected"
+     "prover" "prover_timeout" "verbose"
+     "let" "," "in" "∀" "λ" "⇒" "TYPE" "&" "?"
+     "[" "]" "|" ")" "(" "{" "}" "." ":" "≔")
+   lambdapi--cmds))
 
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
@@ -163,8 +143,7 @@
     (goto-char (match-end 0))
     "PRFEND")
    ((looking-at (regexp-opt (append lambdapi--keywords
-                                    lambdapi--tactics
-                                    lambdapi--punctuation)))
+                                    lambdapi--tactics)))
     (goto-char (match-end 0))
     (match-string-no-properties 0))
    ;; nat lit
@@ -198,8 +177,7 @@
   (cond
    ((looking-back (regexp-opt
                    (append lambdapi--keywords
-                           lambdapi--tactics
-                           lambdapi--punctuation))
+                           lambdapi--tactics))
                   (- (point) 14) t)
     (goto-char (match-beginning 0))
     (match-string-no-properties 0))
@@ -248,15 +226,16 @@
     (`(:before . "PRFEND") '(column . 0))
     (`(:after . "PRFEND") '(column . 0))
 
-    (`(:before . "set") (lambdapi--misc-cmd-indent))
-    (`(:before . "compute") (lambdapi--misc-cmd-indent))
-    (`(:before . "type") (lambdapi--misc-cmd-indent))
-    (`(:before . "assert") (lambdapi--misc-cmd-indent))
-    (`(:before . "assertnot") (lambdapi--misc-cmd-indent))
+    (`(:before . "set") (lambdapi--query-indent))
+    (`(:before . "compute") (lambdapi--query-indent))
+    (`(:before . "type") (lambdapi--query-indent))
+    (`(:before . "assert") (lambdapi--query-indent))
+    (`(:before . "assertnot") (lambdapi--query-indent))
 
     (`(:before . ":") (lambdapi--colon-indent))
     (`(:list-intro . ,(or "and" "rule" "λ" "∀" "proof" "ID")) t)
     (`(:after . "proof") lambdapi-indent-basic)
+    (`(:after . ,(or "rule" "and")) (* 2 lambdapi-indent-basic))
     (`(:after . ,(or ":" "≔")) (when (smie-rule-hanging-p) lambdapi-indent-basic))
     (`(,_ . ",") (smie-rule-separator kind))
     (`(:after . "in") (smie-rule-parent))
@@ -277,15 +256,25 @@
     (`(:before . "and") '(column . 1))
     (`(,_ . "→") (smie-rule-separator kind))))
 
+(defun lambdapi--previous-cmd ()
+  "Return the previous command used in the file."
+  (save-excursion
+    (while
+        (progn
+          (back-to-indentation)
+          (not (looking-at (regexp-opt lambdapi--cmds))))
+      (forward-line -1)))
+  (match-string 0))
+
 (defun lambdapi--id-indent ()
   "Indentation before identifier.)))))
 Yield nil except when identifier is top (no parentheses) and at the beginning
 of line and not before a colon. In this case, it returns
-`lambdapi-indent-basic'. It applies for arguments of a `require' or identifiers
-before a top level colon."
+ `lambdapi-indent-basic'."
   (let ((ppss (syntax-ppss)))
     (when (and (= 0 (nth 0 ppss))
-               (smie-rule-bolp))
+               (smie-rule-bolp)
+               (string= (lambdapi--previous-cmd) "require"))
       `(column . ,lambdapi-indent-basic))))
 
 (defun lambdapi--colon-indent ()
@@ -294,7 +283,7 @@ before a top level colon."
     (when (and (= 0 (nth 0 ppss)) (smie-rule-bolp))
       '(column 0)))) ; At beginning of line if not inside parentheses
 
-(defun lambdapi--misc-cmd-indent ()
+(defun lambdapi--query-indent ()
   "Indent commands that may be in proofs.
 Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
   (save-excursion
@@ -304,7 +293,7 @@ Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
      ;; Perhaps `(smie-rule-parent)' would be enough here
      ((looking-at-p (regexp-opt (cons "proof" lambdapi--tactics)))
       `(column . ,lambdapi-indent-basic))
-     ((looking-at-p (regexp-opt lambdapi--misc-cmds))
+     ((looking-at-p (regexp-opt lambdapi--queries))
       (smie-rule-parent))
      (t '(column . 0)))))
 
