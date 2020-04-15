@@ -586,8 +586,9 @@ let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
     parser_fatal loc fmt Path.pp path
   in
-  (* We attach our position to errors comming from the outside. *)
-  let call_require () =
+  (* Saving/restoring parser state here is necessary for reentrancy: [require]
+     can call compilation, which in turn can call the parser. *)
+  let reentrant_call () =
     let saved_unops = Prefix.save unops in
     let saved_binops  = Prefix.save binops in
     let saved_declared_ids = Prefix.save declared_ids in
@@ -598,7 +599,8 @@ let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
     in
     try !require path; restore () with e -> restore (); raise e
   in
-  try call_require () with
+  (* We attach our position to errors comming from the outside. *)
+  try reentrant_call () with
   | Console.Fatal(None     , msg) -> local_fatal "%s" msg
   | Console.Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
   | e                             -> local_fatal "Uncaught exception: [%s]"
