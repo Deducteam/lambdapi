@@ -83,12 +83,12 @@ reserved "why3"
   | "@"? <qident>
   | "_"
   | "?" - <ident> {"[" <term> {"," <term>}* "]"}?
-  | "&" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
+  | "$" - {<ident> | "_"} {"[" <term> {"," <term>}* "]"}?
   | "(" <term> ")"
   | "{" <term> "}"
   | <term> <term>
-  | <type> "⇒" <type>
-  | "∀" <arg>+ "," <type>
+  | <type> "→" <type>
+  | "Π" <arg>+ "," <type>
   | "λ" <arg>+ "," <term>
   | "let" <ident> <arg>* {":" <term>}? "≔" <term> "in" <term>
   | <nat_lit>
@@ -108,7 +108,7 @@ reserved "why3"
 
 // Rewriting rule
 <rule> ::=
-  | <patt> "→" <term>
+  | <patt> "↪" <term>
 
 // TODO rule naming, positive / negative
 

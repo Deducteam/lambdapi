@@ -11,9 +11,9 @@ open Print
 let log_subj = new_logger 's' "subj" "subject-reduction"
 let log_subj = log_subj.logger
 
-(** [build_meta_type k] builds the type “∀x1:A1,⋯,xk:Ak,A(k+1)” where the
+(** [build_meta_type k] builds the type “Πx1:A1,⋯,xk:Ak,A(k+1)” where the
     type “Ai = Mi[x1,⋯,x(i-1)]” is defined as the metavariable “Mi” which has
-    arity “i-1” and type “∀(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
+    arity “i-1” and type “Π(x1:A1) ⋯ (x(i-1):A(i-1)), TYPE”. *)
 let build_meta_type : int -> term = fun k ->
   assert (k >= 0);
   let xs = Basics.fresh_vars k in
@@ -156,7 +156,7 @@ let check_rule : sym StrMap.t -> pre_rule Pos.loc -> rule = fun bmap pr ->
     List.fold_left _Appl (_Symb s h) args
   in
   (* Create metavariables that will stand for the variables of [vars]. *)
-  let var_names = Array.map (fun x -> "&" ^ Bindlib.name_of x) vars in
+  let var_names = Array.map (fun x -> "$" ^ Bindlib.name_of x) vars in
   let metas =
     let fn i name =
       let arity = arities.(i) in

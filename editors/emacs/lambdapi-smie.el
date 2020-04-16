@@ -26,17 +26,16 @@
     "symmetry"
     "why3"))
 (defconst lambdapi--prf-finish '("abort" "admit" "qed"))
-(defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":" "?" "&"))
+(defconst lambdapi--punctuation '("[" "]" "|" ")" "(" "{" "}" "." ":" "?" "$"))
 (defconst lambdapi--keywords
   '("let"
     "in"
     "λ"
-    "∀"
+    "Π"
     ","
-    "⇒"
-    "TYPE"
-    "≔"
     "→"
+    "TYPE"
+    "↪"
     "≔"
     "symbol"
     "private"
@@ -47,7 +46,7 @@
     "proof"
     "definition"
     "rule"
-    "and"
+    "with"
     "assert"
     "assertnot"
     "type"
@@ -80,7 +79,7 @@
              ("_")
              (ident)
              ("?" ident "[" env "]") ;; ?M[x,y,z]
-             ("&" ident "[" env "]") ;; &X[x,y,z]
+             ("$" ident "[" env "]") ;; $X[x,y,z]
              ( "(" sterm ")" )
              ( "{" sterm "}" )
              (sterm "⇒" sterm)
@@ -99,9 +98,9 @@
               ("print")
               ("proofterm")
               ("why3"))
-      (rule (sterm "→" sterm))
+      (rule (sterm "↪" sterm))
       (rules (rule)
-             (rule "and" rule))
+             (rule "with" rule))
       ; TODO: token SYMTAG?
       (symtag ("constant")
               ("injective")
@@ -249,7 +248,7 @@
     (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))
     (`(:before . "rule") '(column . 0))
-    (`(:before . "and") '(column . 1))))
+    (`(:before . "with") '(column . 0))))
 
 (defun lambdapi--id-indent ()
   "Indentation before identifier.
