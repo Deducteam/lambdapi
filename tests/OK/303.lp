@@ -2,10 +2,10 @@ constant symbol U : TYPE
 
 constant symbol u : U
 
-constant symbol f : (U ⇒ U) ⇒ TYPE
+constant symbol f : (U → U) → TYPE
 
-symbol G : U ⇒ TYPE
+symbol G : U → TYPE
 
-constant symbol H : U ⇒ TYPE
+constant symbol H : U → TYPE
 
-rule G &v → ∀ (a : H &v), f (λ _, u)
+rule G $v ↪ Π (a : H $v), f (λ _, u)

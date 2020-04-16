@@ -66,7 +66,7 @@ metavariables that cannot be solved are added as new goals.
 <!---------------------------------------------------------------------------->
 ### `assume`
 
-The tactic `assume h1 .. hn` replaces a goal of type `∀x1
+The tactic `assume h1 .. hn` replaces a goal of type `Πx1
 .. xn,T` by a goal of type `T` with `xi` replaced by `hi`.
 
 <!---------------------------------------------------------------------------->
@@ -74,7 +74,7 @@ The tactic `assume h1 .. hn` replaces a goal of type `∀x1
 
 The tactic `apply t` replaces a goal of type `T` by possibly new
 goals `?0` of type `TO`, ..., `?n` of type `Tn` if `t` is of type
-`∀x1:T1,..,∀xn:Tn,?0` and `t ?1 .. ?n` is of type `T`.
+`Πx1:T1,..,Πxn:Tn,?0` and `t ?1 .. ?n` is of type `T`.
 
 <!---------------------------------------------------------------------------->
 ### `why3`
@@ -92,14 +92,14 @@ If no prover name is given, then the globally set prover is used
 A set of symbols should be defined in order to use the `why3` tactic.
 The user should define those symbols using builtins as follow :
 ```
-set builtin "T"     ≔ T       // : U ⇒ TYPE
-set builtin "P"     ≔ P       // : Prop ⇒ TYPE
+set builtin "T"     ≔ T       // : U → TYPE
+set builtin "P"     ≔ P       // : Prop → TYPE
 set builtin "bot"   ≔ bot     // : Prop
 set builtin "top"   ≔ top     // : Prop
-set builtin "imp"   ≔ imp     // : Prop ⇒ Prop ⇒ Prop
-set builtin "and"   ≔ {|and|} // : Prop ⇒ Prop ⇒ Prop
-set builtin "or"    ≔ or      // : Prop ⇒ Prop ⇒ Prop
-set builtin "not"   ≔ not     // : Prop ⇒ Prop
+set builtin "imp"   ≔ imp     // : Prop → Prop → Prop
+set builtin "and"   ≔ {|and|} // : Prop → Prop → Prop
+set builtin "or"    ≔ or      // : Prop → Prop → Prop
+set builtin "not"   ≔ not     // : Prop → Prop
 ```
 
 **Important note:** you must run `why3 config --detect` whenever installing a
@@ -114,12 +114,12 @@ existence of terms of the approriate type mapped to the builtins `T`,
 declarations:
 
 ```
-set builtin "T"     ≔ ... // : U ⇒ TYPE
-set builtin "P"     ≔ ... // : Prop ⇒ TYPE
-set builtin "eq"    ≔ ... // : ∀ {a}, T a ⇒ T a ⇒ Prop
+set builtin "T"     ≔ ... // : U → TYPE
+set builtin "P"     ≔ ... // : Prop → TYPE
+set builtin "eq"    ≔ ... // : Π {a}, T a → T a → Prop
 set infix ... "=" := eq   // optional
-set builtin "refl"  ≔ ... // : ∀ {a} (x:T a), P (x=x)
-set builtin "eqind" ≔ ... // : ∀ {a} x y, P (x=y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)
+set builtin "refl"  ≔ ... // : Π {a} (x:T a), P (x=x)
+set builtin "eqind" ≔ ... // : Π {a} x y, P (x=y) → Π (p:T a→Prop), P (p y) → P (p x)
 ```
 
 <!---------------------------------------------------------------------------->
@@ -136,7 +136,7 @@ The tactic `sym` replaces a goal of the form `P (t = u)` by the goal
 <!---------------------------------------------------------------------------->
 ### `rewrite`
 
-The `rewrite` tactic takes as argument a term `t` of type `∀x1
+The `rewrite` tactic takes as argument a term `t` of type `Πx1
 .. xn,P(l=r)` prefixed by an optional rewrite pattern in square
 brackets, following the syntax and semantics of SSReflect rewrite
 patterns:

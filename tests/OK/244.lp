@@ -1,5 +1,5 @@
 symbol o : TYPE
-symbol not : o ⇒ o
+symbol not : o → o
 set prefix 5 "~" ≔ not
 type λp x,~(p x)
 type λp x,~ p x

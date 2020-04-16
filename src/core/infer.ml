@@ -46,11 +46,11 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
   | TRef(_)     -> assert false (* Forbidden case. *)
 
   (* -------------------
-      ctx ⊢ Type ⇒ Kind  *)
+      ctx ⊢ Type → Kind  *)
   | Type        -> Kind
 
   (* ---------------------------------
-      ctx ⊢ Vari(x) ⇒ Ctxt.find x ctx  *)
+      ctx ⊢ Vari(x) → Ctxt.find x ctx  *)
   | Vari(x)     ->
       let a = try Ctxt.type_of x ctx with Not_found -> assert false in
       if !log_enabled then
@@ -58,16 +58,16 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       a
 
   (* -------------------------------
-      ctx ⊢ Symb(s) ⇒ !(s.sym_type)  *)
+      ctx ⊢ Symb(s) → !(s.sym_type)  *)
   | Symb(s,_)   ->
       let a = !(s.sym_type) in
       if !log_enabled then
         log_infr (blu "%a : %a") pp_term t pp_term a;
       a
 
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> ⇒ s
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ b<x> → s
      -----------------------------------------
-                ctx ⊢ Prod(a,b) ⇒ s            *)
+                ctx ⊢ Prod(a,b) → s            *)
   | Prod(a,b)   ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
@@ -85,9 +85,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
          inside a term. So, [t] cannot be a kind. *)
       end
 
-  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> ⇒ b<x>
+  (*  ctx ⊢ a ⇐ Type    ctx, x : a ⊢ t<x> → b<x>
      --------------------------------------------
-             ctx ⊢ Abst(a,t) ⇒ Prod(a,b)          *)
+             ctx ⊢ Abst(a,t) → Prod(a,b)          *)
   | Abst(a,t)   ->
       (* We ensure that [a] is of type [Type]. *)
       check ctx a Type;
@@ -97,9 +97,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We build the product type by binding [x] in [b]. *)
       Prod(a, Bindlib.unbox (Bindlib.bind_var x (lift b)))
 
-  (*  ctx ⊢ t ⇒ Prod(a,b)    ctx ⊢ u ⇐ a
+  (*  ctx ⊢ t → Prod(a,b)    ctx ⊢ u ⇐ a
      ------------------------------------
-         ctx ⊢ Appl(t,u) ⇒ subst b u      *)
+         ctx ⊢ Appl(t,u) → subst b u      *)
   | Appl(t,u)   ->
       (* We first infer a product type for [t]. *)
       let (a,b) =
@@ -119,9 +119,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       (* We produce the returned type. *)
       Bindlib.subst b u
 
-  (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u ⇒ b
+  (*  ctx ⊢ t ⇐ a       ctx, x : a := t ⊢ u → b
      -------------------------------------------
-        ctx ⊢ let x : a ≔ t in u ⇒ subst b t     *)
+        ctx ⊢ let x : a ≔ t in u → subst b t     *)
   | LLet(a,t,u) ->
       check ctx a Type;
       check ctx t a;
@@ -132,9 +132,9 @@ let rec infer : ctxt -> term -> term = fun ctx t ->
       let b = Bindlib.unbox (Bindlib.bind_var x (lift b)) in
       Bindlib.subst b t
 
-  (*  ctx ⊢ term_of_meta m e ⇒ a
+  (*  ctx ⊢ term_of_meta m e → a
      ----------------------------
-         ctx ⊢ Meta(m,e) ⇒ a      *)
+         ctx ⊢ Meta(m,e) → a      *)
   | Meta(m,ts)   ->
       infer ctx (term_of_meta m ts)
 

@@ -375,7 +375,7 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
                 wrn t.pos "Pattern variable [%a] can be replaced by a \
                            wildcard [_]." Pretty.pp t
               else
-                wrn t.pos "Pattern variable [&%s] does not need to be \
+                wrn t.pos "Pattern variable [$%s] does not need to be \
                            named." id.elt
           | _                                                  -> ()
         end;

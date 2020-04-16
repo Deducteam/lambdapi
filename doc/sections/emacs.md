@@ -80,7 +80,7 @@ via the `LambdaPi` input method. Greek characters can be accessed using
 backquoted letters (as done in
 [`cdlatex`](https://www.gnu.org/software/emacs/manual/html_node/org/CDLaTeX-mode.html)
 ), or with the LaTeX command: α can be accessed with `` `a `` or `\alpha`, β
-with `` `b `` or `\beta` &c.
+with `` `b `` or `\beta`, and similarly for other Greek letters.
 
 To force using the input method rather than `company`, set the variable
 `lambdapi-unicode-force-quail` to a non-nil value in `~/.emacs` or
@@ -125,7 +125,7 @@ lambdapi while editing a buffer. It can be configured for lambdapi with
 ```
 to run lambdapi on the edited buffer with `C-c r`. It can be used to display
 goals while doing a proof.
-To display the result of `compute`, `type`, &c. as well, write
+To display the result of `compute`, `type`, and simlar commmand as well, write
 `"%c --verbose 1 %s"` instead of `"%c %s"`.
 
 ### Other relevant packages
