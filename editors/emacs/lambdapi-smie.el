@@ -29,7 +29,6 @@
     "simpl"
     "symmetry"
     "why3"))
-(defconst lambdapi--prf-finish '("abort" "admit" "qed"))
 (defconst lambdapi--queries '("set" "assert" "assertnot" "type" "compute")
   "Commands that can appear in proofs.")
 (defconst lambdapi--cmds
@@ -52,24 +51,20 @@
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
    (smie-bnf->prec2
-    '((ident ("ID"))
+    '((ident)
       (qident (ident)
               (qident "." ident))
       (env (ident)
            (csidentl "," ident))
       (rw-patt)
       (args (ident)
-            ("(" ident ")")
-            ("{" ident "}")
             ("{" ident ":" sterm "}")
             ("(" ident ":" sterm ")"))
       (sterm ("TYPE")
              ("_")
              (qident)
              ("?" ident "[" env "]") ;; ?M[x,y,z]
-             ("$" ident "[" env "]") ;; &X[x,y,z]
-             ( "(" sterm ")")
-             ( "{" sterm "}")
+             ("$" ident "[" env "]") ;; $X[x,y,z]
              (sterm "→" sterm)
              ("λ" args "," sterm)
              ("λ" ident ":" sterm "," sterm)
@@ -77,8 +72,8 @@
              ("Π" ident ":" sterm "," sterm)
              ("let" ident "≔" sterm "in" sterm)
              ("let" ident ":" sterm "≔" sterm "in" sterm)
-             ("let" "ID" args ":" sterm "≔" sterm "in" sterm)
-             ("let" "ID" args "≔" sterm "in" sterm))
+             ("let" args ":" sterm "≔" sterm "in" sterm)
+             ("let" args "≔" sterm "in" sterm))
 
       (tactic ("refine" sterm)
               ("assume" sterm)
@@ -106,19 +101,20 @@
 
       (prfcontent (tactic)
                   (query))
-                                        ; TODO: token SYMTAG?
-      (symdec ("symbol" "ID" args ":" sterm))
+      (symdec ("symbol" args ":" sterm))
       (command ("injective" symdec)
                ("constant" symdec)
                ("private" symdec)
                ("protected" symdec)
                (symdec)
-               ("theorem" "ID" args ":" sterm)
-               ("proof" prfcontent "PRFEND")
-               ("definition" "ID" args "≔" sterm)
-                                        ; TODO: token SYMTAG?
+               ("theorem" args ":" sterm)
+               ("proof" prfcontent "qed")
+               ("proof" prfcontent "admit")
+               ("proof" prfcontent "abort")
+               ("definition" args "≔" sterm)
+
                ("rule" sterm "↪" sterm)
-               ("and" sterm "↪" sterm)
+               ("with" sterm "↪" sterm)
 
                ("require" qident)
                ("open" qident)
@@ -131,17 +127,13 @@
                ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
                ("set" "declared" ident)))
     '((assoc ",") (assoc "in") (assoc "→") (assoc "let") (assoc "≔")
-      (assoc "λ" "Π") (assoc ":") (assoc "ID")))))
+      (assoc "λ" "Π") (assoc ":")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
   ;; Skip comments
   (forward-comment (point-max))
   (cond
-   ;; qed, admit or abort as "PRFEND"
-   ((looking-at (regexp-opt '("qed" "admit" "abort")))
-    (goto-char (match-end 0))
-    "PRFEND")
    ((looking-at (regexp-opt (append lambdapi--keywords
                                     lambdapi--tactics)))
     (goto-char (match-end 0))
@@ -158,52 +150,15 @@
    ((looking-at lambdapi--rx-stringlit)
     (goto-char (match-end 0))
     "STRINGLIT")
-   ;; identifiers
-   ((looking-at lambdapi--rx-ident)
-    (goto-char (match-end 0))
-    "ID")
-   ;; escaped identifiers
-   ((looking-at lambdapi--rx-escident)
-    (goto-char (match-end 0))
-    "ID")
    (t (buffer-substring-no-properties
        (point)
        (progn (skip-syntax-forward "w_")
               (point))))))
 
 (defun lambdapi--smie-backward-token ()
-  "Backward lexer for Dedukti3."
-  (forward-comment (- (point)))
-  (cond
-   ((looking-back (regexp-opt
-                   (append lambdapi--keywords
-                           lambdapi--tactics))
-                  (- (point) 14) t)
-    (goto-char (match-beginning 0))
-    (match-string-no-properties 0))
-   ;; naturals
-   ((looking-back lambdapi--rx-natlit nil t)
-    (goto-char (match-beginning 0))
-    "NATLIT")
-   ;; floats
-   ((looking-back lambdapi--rx-floatlit nil t)
-    (goto-char (match-beginning 0))
-    "FLOATLIT")
-   ((looking-back lambdapi--rx-stringlit nil t)
-    (goto-char (match-beginning 0))
-    "STRINGLIT")
-   ;; identifiers
-   ((looking-back lambdapi--rx-ident nil t)
-    (goto-char (match-beginning 0))
-    "ID")
-   ;; escaped identifiers
-   ((looking-back lambdapi--rx-escident nil t)
-    (goto-char (match-beginning 0))
-    "ID")
-   (t (buffer-substring-no-properties
-       (point)
-       (progn (skip-syntax-backward "w_")
-              (point))))))
+  "Backward lexer for Dedukti3.
+The default lexer is used because the syntax is primarily made of sexps."
+  (smie-default-backward-token))
 
 (defun lambdapi--smie-rules (kind token)
   "Indentation rule for case KIND and token TOKEN."
@@ -223,23 +178,23 @@
     (`(:before . "focus") `(column . ,lambdapi-indent-basic))
     (`(:before . "print") `(column . ,lambdapi-indent-basic))
 
-    (`(:before . "PRFEND") '(column . 0))
-    (`(:after . "PRFEND") '(column . 0))
+    (`(:before . ,(or "admit" "abort" "qed")) '(column . 0))
+    (`(:after . ,(or "admit" "abort" "qed")) '(column . 0))
 
-    (`(:before . "set") (lambdapi--query-indent))
-    (`(:before . "compute") (lambdapi--query-indent))
-    (`(:before . "type") (lambdapi--query-indent))
-    (`(:before . "assert") (lambdapi--query-indent))
-    (`(:before . "assertnot") (lambdapi--query-indent))
+    (`(:before . ,(or "set" "compute" "type" "assert" "assertnot"))
+     (lambdapi--query-indent))
 
     (`(:before . ":") (lambdapi--colon-indent))
-    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof" "ID")) t)
+    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof")) t)
     (`(:after . "proof") lambdapi-indent-basic)
-    (`(:after . ,(or "rule" "and")) (* 2 lambdapi-indent-basic))
+    (`(:after . ,(or "rule")) (* 2 lambdapi-indent-basic))
     (`(:after . ,(or ":" "≔")) (when (smie-rule-hanging-p) lambdapi-indent-basic))
     (`(,_ . ",") (smie-rule-separator kind))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
+    (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
+                     "why3" "reflexivity" "focus" "print"))
+      (* 2 lambdapi-indent-basic))
 
     ;; Toplevel
     (`(:before . "protected") '(column . 0))
@@ -253,8 +208,8 @@
     (`(:before . "symbol") '(column . 0))
 
     (`(:before . "rule") '(column . 0))
-    (`(:before . "with") '(column . 0))
-    (`(,_ . "↪") (smie-rule-separator kind))))
+    (`(,_ . "↪") (smie-rule-separator kind))
+    (`(,_ . "with") (smie-rule-separator kind))))
 
 (defun lambdapi--previous-cmd ()
   "Return the previous command used in the file."
@@ -274,7 +229,8 @@ of line and not before a colon. In this case, it returns
   (let ((ppss (syntax-ppss)))
     (when (and (= 0 (nth 0 ppss))
                (smie-rule-bolp)
-               (string= (lambdapi--previous-cmd) "require"))
+               (or (string= (lambdapi--previous-cmd) "require")
+                   (string= (lambdapi--previous-cmd) "open")))
       `(column . ,lambdapi-indent-basic))))
 
 (defun lambdapi--colon-indent ()
