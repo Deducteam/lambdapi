@@ -126,8 +126,7 @@
                ("set" "infix" "left" "FLOATLIT" ident "≔" qident)
                ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "→") (assoc "let") (assoc "≔")
-      (assoc "λ" "Π") (assoc ":")))))
+    '((assoc ",") (assoc "in") (assoc "→")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
