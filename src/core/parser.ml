@@ -41,6 +41,18 @@ module Prefix :
         of the input corresponding to a word of [t]. The corresponding, stored
         value is returned. It fails if no such longest prefix exist. *)
     val grammar : 'a t -> 'a Earley.grammar
+
+    (** Type of a saved prefix tree. Prefix trees are imperative, so they need
+        to be manually saved and restored to enforce reentrancy. Note that the
+        parser may call itself through dependency loading *)
+    type 'a saved
+
+    (** [save t] returns a snapshot of the internal state of [t]. *)
+    val save : 'a t -> 'a saved
+
+    (** [restore t s] restores the internal state of [t] as it was at the time
+        of calling [save]. *)
+    val restore : 'a t -> 'a saved -> unit
   end =
   struct
     type 'a tree = Node of 'a option * (char * 'a tree) list
@@ -84,6 +96,12 @@ module Prefix :
         in fn None !t buf pos
       in
       Earley.black_box fn Charset.full false "<tree>"
+
+    type 'a saved = 'a tree
+
+    let save : 'a t -> 'a saved = Stdlib.(!)
+
+    let restore : 'a t -> 'a saved -> unit = Stdlib.(:=)
   end
 
 (** Currently defined unary operators. *)
@@ -568,8 +586,21 @@ let do_require : Pos.pos -> p_module_path -> unit = fun loc path ->
     let fmt = "Error when loading module [%a].\n" ^^ fmt in
     parser_fatal loc fmt Path.pp path
   in
+  (* Saving/restoring parser state here is necessary for reentrancy: [require]
+     can call compilation, which in turn can call the parser. *)
+  let reentrant_call () =
+    let saved_unops = Prefix.save unops in
+    let saved_binops  = Prefix.save binops in
+    let saved_declared_ids = Prefix.save declared_ids in
+    let restore () =
+      Prefix.restore unops saved_unops;
+      Prefix.restore binops saved_binops;
+      Prefix.restore declared_ids saved_declared_ids
+    in
+    try !require path; restore () with e -> restore (); raise e
+  in
   (* We attach our position to errors comming from the outside. *)
-  try !require path with
+  try reentrant_call () with
   | Console.Fatal(None     , msg) -> local_fatal "%s" msg
   | Console.Fatal(Some(pos), msg) -> local_fatal "[%a] %s" Pos.print pos msg
   | e                             -> local_fatal "Uncaught exception: [%s]"
