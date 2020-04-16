@@ -20,7 +20,7 @@ let handle_tactic : sig_state -> Proof.t -> p_tactic -> Proof.t =
   match tac.elt with
   | P_tac_print         ->
       (* Just print the current proof state. *)
-      Console.out 1 "%a" Proof.pp ps; ps
+      Console.out 1 "%a" (Proof.pp ss) ps; ps
   | P_tac_proofterm     ->
       (* Just print the current proof term. *)
       let t = Meta(ps.Proof.proof_term, [||]) in

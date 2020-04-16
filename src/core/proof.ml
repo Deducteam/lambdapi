@@ -78,7 +78,9 @@ let focus_goal : Pos.popt -> proof_state -> Env.t * term = fun pos ps ->
   with Failure(_)  -> Console.fatal pos "No remaining goals..."
 
 (** [pp_goals oc gl] prints the goal list [gl] to channel [oc]. *)
-let pp_goals : _ pp = fun oc gl ->
+let pp_goals : Scope.sig_state -> Goal.t list pp = fun ss oc gl ->
+  let cfg = Print.build_config ss in
+  let pp = Print.pp_term cfg in
   match gl with
   | []    -> Format.fprintf oc " No more goals...\n"
   | g::gs ->
@@ -87,22 +89,23 @@ let pp_goals : _ pp = fun oc gl ->
     if hyps <> [] then
       begin
         let print_hyp (s,(_,t,_)) =
-          Format.fprintf oc "   %s : %a\n" s Print.term (Bindlib.unbox t)
+          Format.fprintf oc "   %s : %a\n" s pp (Bindlib.unbox t)
         in
         List.iter print_hyp (List.rev hyps);
         Format.fprintf oc "   --------------------------------------\n"
       end;
     let (_, a) = Goal.get_type g in
-    Format.fprintf oc "0. %a\n" Print.term a;
+    Format.fprintf oc "0. %a\n" pp a;
     if gs <> [] then
       begin
         Format.fprintf oc "\n";
         let print_goal i g =
           let (_, a) = Goal.get_type g in
-          Format.fprintf oc "%i. %a\n" (i+1) Print.term a
+          Format.fprintf oc "%i. %a\n" (i+1) pp a
         in
         List.iteri print_goal gs
       end
 
 (** [pp oc ps] prints the proof state [ps] to channel [oc]. *)
-let pp : t pp = fun oc ps -> pp_goals oc ps.proof_goals
+let pp : Scope.sig_state -> t pp = fun ss oc ps ->
+  pp_goals ss oc ps.proof_goals

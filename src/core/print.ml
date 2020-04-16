@@ -8,6 +8,12 @@
 open Timed
 open Extra
 open Terms
+open Console
+open Syntax
+
+(** Logging function for printing. *)
+let log_prnt = new_logger 'p' "prnt" "pretty-printing"
+let log_prnt = log_prnt.logger
 
 (** Flag controling the printing of the domains of λ-abstractions. *)
 let print_domains : bool ref = Console.register_flag "print_domains" false
@@ -21,50 +27,77 @@ let print_meta_type : bool ref = Console.register_flag "print_meta_type" false
 (** Flag controlling the printing of the context in unification. *)
 let print_contexts : bool ref = Console.register_flag "print_contexts" false
 
-(** Type for printing configuration. *)
-type config =
-  { pc_scope : SymSet.t
-  ; pc_infix : string SymMap.t }
+(** Pretty-printing information associated to a symbol. *)
+type hint =
+  | No_hint
+  | Prefix of unop
+  | Infix of binop
+
+let assoc : assoc pp = fun oc assoc ->
+  Format.fprintf oc
+    (match assoc with
+     | Assoc_none -> ""
+     | Assoc_left -> "left"
+     | Assoc_right -> "right")
+
+let hint : hint pp = fun oc pp_hint ->
+  match pp_hint with
+  | No_hint -> ()
+  | Prefix(n,p,_) -> Format.fprintf oc "prefix %s %f" n p
+  | Infix(n,a,p,_) -> Format.fprintf oc "infix %s %a %f" n assoc a p
+
+(** Type for printing configurations. *)
+type config = hint SymMap.t
 
 (** Default printing configuration. *)
-let empty_config =
-  { pc_scope = SymSet.empty
-  ; pc_infix = SymMap.empty }
+let empty_config = SymMap.empty
 
-(** [build_scope in_scope] builds the set of symbols in scope from a map from
-   string to [sym * popt] map. *)
-let build_scope : (sym * Pos.popt) StrMap.t -> SymSet.t = fun in_scope ->
-  let fn _ x set =
-    let (sym, _) = x in
-    SymSet.add sym set
-  in
-  StrMap.fold fn in_scope SymSet.empty
-
-(** [build_infix binops] builds a map from symbol to string from a map from
-   string to [sym * binop]. *)
-let build_infix : (sym * Syntax.binop) StrMap.t -> string SymMap.t
-  = fun binops ->
-  let fn name x imap =
-    let (sym, _binop) = x in
-    SymMap.add sym name imap
-  in
-  StrMap.fold fn binops SymMap.empty
+let qualified : sym pp = fun oc s ->
+  Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
 
 (** [config_of_sig_state ss] computes a printing configuration from [ss]. *)
-let config_of_sig_state : Scope.sig_state -> config = fun ss ->
-  { pc_scope = build_scope ss.in_scope
-  ; pc_infix = build_infix !(ss.signature.sign_binops) }
+let build_config : Scope.sig_state -> config = fun ss ->
+  let fn_in_scope _ (sym,_) cfg =
+    (*log_prnt "build_config %a" qualified sym;*)
+    let sign =
+      try Files.PathMap.find sym.sym_path !Sign.loaded
+      with Not_found -> assert false (* Should not happen. *)
+    in
+    (*log_prnt "%a" Files.Path.pp sign.sign_path;
+    let pr n (s,binop) =
+      log_prnt "%s %a %a" n qualified s hint (Infix binop)
+    in
+    StrMap.iter pr !(sign.sign_binops);*)
+    let h =
+      let exception Hint of hint in
+      try
+        let fn_binop _ (s,binop) =
+          (*log_prnt "%s" s.sym_name;*)
+          if s == sym then raise (Hint (Infix binop)) in
+        StrMap.iter fn_binop !(sign.sign_binops);
+        let fn_unop _ (s,unop) =
+          (*log_prnt "%s" s.sym_name;*)
+          if s == sym then raise (Hint (Prefix unop)) in
+        StrMap.iter fn_unop !(sign.sign_unops);
+        No_hint
+      with Hint h -> h
+    in
+    (*log_prnt (mag "%a") hint h;*)
+    SymMap.add sym h cfg
+  in
+  let map = StrMap.fold fn_in_scope ss.in_scope SymMap.empty in
+  (*let pr s h = log_prnt "%a %a" qualified s hint h in
+  SymMap.iter pr map;*)
+  map
 
-(** Tell whether a symbol is infix. *)
-let infix : config -> sym -> string option = fun cfg s ->
-  SymMap.find_opt s cfg.pc_infix
+(** Get the printing hint of a symbol. *)
+let get_hint : config -> sym -> hint = fun cfg s ->
+  try SymMap.find s cfg with Not_found -> No_hint
 
 (** [pp_symbol oc s] prints the name of the symbol [s] to channel [oc]. *)
 let pp_symbol : config -> sym pp = fun cfg oc s ->
-  if SymSet.mem s cfg.pc_scope then
-    Format.pp_print_string oc s.sym_name
-  else
-    Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
+  if SymMap.mem s cfg then Format.pp_print_string oc s.sym_name
+  else Format.fprintf oc "%a.%s" Files.Path.pp s.sym_path s.sym_name
     (*FIXME: handle aliases. *)
 
 (** [pp_tvar oc x] prints the term variable [x] to the channel [oc]. *)
@@ -86,18 +119,6 @@ and pp_term : config -> term pp = fun cfg oc t ->
      priority). *)
   let rec pp (p : [`Func | `Appl | `Atom]) oc t =
     let (h, args) = Basics.get_args t in
-    let args =
-      if !print_implicits then args else
-      let impl =  match h with Symb(s) -> s.sym_impl | _ -> [] in
-      let rec filter_impl impl args =
-        match (impl, args) with
-        | ([]         , _      ) -> args
-        | (true ::impl, _::args) -> filter_impl impl args
-        | (false::impl, a::args) -> a :: filter_impl impl args
-        | (_          , []     ) -> args
-      in
-      filter_impl impl args
-    in
     let pp_appl h args =
       match args with
       | []   -> pp_head (p <> `Func) oc h
@@ -108,13 +129,15 @@ and pp_term : config -> term pp = fun cfg oc t ->
           if p = `Atom then out oc ")"
     in
     match h with
-    | Symb(s) ->
+    | Symb(s) when not !print_implicits ->
         begin
-          match infix cfg s with
-          | None -> pp_appl h args
-          | Some op ->
+          let args = Basics.expl_args s args in
+          match get_hint cfg s with
+          | No_hint -> pp_appl h args
+          | Prefix(_) -> pp_appl h args
+          | Infix(op,_,_,_) ->
               begin
-                match Basics.expl_args s args with
+                match args with
                 | l::r::[] ->
                     if p <> `Func then out oc "(";
                     (* Can be improved by looking at symbol priority. *)

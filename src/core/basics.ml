@@ -80,7 +80,7 @@ let expl_args : sym -> term list -> term list = fun s ts ->
     match bs, ts with
     | true::bs, _::ts -> expl bs ts
     | false::bs, t::ts -> t :: expl bs ts
-    | _, ts -> ts
+    | _, _ -> ts
   in
   expl s.sym_impl ts
 
