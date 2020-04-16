@@ -1,10 +1,6 @@
 ;;; lambdapi-smie.el --- Indentation for lambdapi -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
-;; TODO: refine proof edition, perhaps make a single token PRFTAC for
-;; tactics, adjust backward parsing (greed and lookahead of `looking-back`) to
-;; avoid finding token `in` in `refine` and `definition`.
-;;
 ;;; Code:
 (require 'lambdapi-vars)
 (require 'smie)
@@ -35,25 +31,11 @@
   (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require")
           lambdapi--queries)
   "Commands at top level.")
-(defconst lambdapi--keywords
-  (append
-   '("with" "↪"
-     "infix" "prefix"
-     "left" "right"
-     "off" "on"
-     "open" "as"
-     "constant" "injective" "private" "protected"
-     "prover" "prover_timeout" "verbose"
-     "let" "," "in" "Π" "λ" "→" "TYPE" "&" "?"
-     "[" "]" "|" ")" "(" "{" "}" "." ":" "≔")
-   lambdapi--cmds))
 
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
    (smie-bnf->prec2
     '((ident)
-      (qident (ident)
-              (qident "." ident))
       (env (ident)
            (csidentl "," ident))
       (rw-patt)
@@ -62,7 +44,7 @@
             ("(" ident ":" sterm ")"))
       (sterm ("TYPE")
              ("_")
-             (qident)
+             (ident)
              ("?" ident "[" env "]") ;; ?M[x,y,z]
              ("$" ident "[" env "]") ;; $X[x,y,z]
              (sterm "→" sterm)
@@ -116,15 +98,15 @@
                ("rule" sterm "↪" sterm)
                ("with" sterm "↪" sterm)
 
-               ("require" qident)
-               ("open" qident)
-               ("require" qident "as" ident)
+               ("require" ident)
+               ("open" ident)
+               ("require" ident "as" ident)
 
-               ("set" "builtin" "STRINGLIT" "≔" qident)
-               ("set" "prefix" "FLOATLIT" "STRINGLIT" "≔" qident)
-               ("set" "infix" "FLOATLIT" ident "≔" qident)
-               ("set" "infix" "left" "FLOATLIT" ident "≔" qident)
-               ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
+               ("set" "builtin" "STRINGLIT" "≔" ident)
+               ("set" "prefix" "FLOATLIT" "STRINGLIT" "≔" ident)
+               ("set" "infix" "FLOATLIT" ident "≔" ident)
+               ("set" "infix" "left" "FLOATLIT" ident "≔" ident)
+               ("set" "infix" "right" "FLOATLIT" ident "≔" ident)
                ("set" "declared" ident)))
     '((assoc ",") (assoc "in") (assoc "→")))))
 
@@ -133,10 +115,6 @@
   ;; Skip comments
   (forward-comment (point-max))
   (cond
-   ((looking-at (regexp-opt (append lambdapi--keywords
-                                    lambdapi--tactics)))
-    (goto-char (match-end 0))
-    (match-string-no-properties 0))
    ;; nat lit
    ((looking-at lambdapi--rx-natlit)
     (goto-char (match-end 0))
@@ -164,7 +142,8 @@ The default lexer is used because the syntax is primarily made of sexps."
   (pcase (cons kind token)
     (`(:elem . basic) 0)
 
-    (`(:before . "ID") (lambdapi--id-indent))
+    (`(:list-intro . ,(or "require" "open")) t)
+    (`(:after . ,(or "require" "open")) lambdapi-indent-basic)
 
     ;; tactics
     (`(:before . "simpl") `(column . ,lambdapi-indent-basic))
@@ -206,9 +185,8 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))
 
-    (`(:before . "rule") '(column . 0))
-    (`(,_ . "↪") (smie-rule-separator kind))
-    (`(,_ . "with") (smie-rule-separator kind))))
+    (`(:before . ,(or "with" "rule")) '(column . 0))
+    (`(,_ . "↪") (smie-rule-separator kind))))
 
 (defun lambdapi--previous-cmd ()
   "Return the previous command used in the file."
@@ -219,18 +197,6 @@ The default lexer is used because the syntax is primarily made of sexps."
           (not (looking-at (regexp-opt lambdapi--cmds))))
       (forward-line -1)))
   (match-string 0))
-
-(defun lambdapi--id-indent ()
-  "Indentation before identifier.)))))
-Yield nil except when identifier is top (no parentheses) and at the beginning
-of line and not before a colon. In this case, it returns
- `lambdapi-indent-basic'."
-  (let ((ppss (syntax-ppss)))
-    (when (and (= 0 (nth 0 ppss))
-               (smie-rule-bolp)
-               (or (string= (lambdapi--previous-cmd) "require")
-                   (string= (lambdapi--previous-cmd) "open")))
-      `(column . ,lambdapi-indent-basic))))
 
 (defun lambdapi--colon-indent ()
   "Indent before colon."

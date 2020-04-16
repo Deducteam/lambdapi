@@ -60,6 +60,7 @@
     (modify-syntax-entry ?$ ".")
     (modify-syntax-entry ?? ".")
     (modify-syntax-entry ?\n "> b" table)
+    (modify-syntax-entry ?. "_" table)
     (modify-syntax-entry ?_ "w" table)
     table)
   "Syntax table for lambdapi-mode.")
