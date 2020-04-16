@@ -15,7 +15,7 @@ assert let f x ≔ x in f a ≡ a
 
 // In rewrite rules
 symbol f : T → T
-rule f _ ⟶ let x ≔ a in x
+rule f _ ↪ let x ≔ a in x
 assert f a ≡ a
 
 // With type annotated arguments

@@ -16,4 +16,4 @@ private definition fogoh x ≔ f (g (h x)) // Public, private, protected
 
 // Rewriting rules from private symbols to private symbols are allowed
 private symbol a : A
-rule f _ ⟶ a
+rule f _ ↪ a

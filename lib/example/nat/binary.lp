@@ -12,9 +12,9 @@ constant symbol times2plus1 : N → N
 
 symbol succ : N → N
 
-rule succ zero             ⟶ times2plus1 zero
-with succ (times2plus0 $n) ⟶ times2plus1 $n
-with succ (times2plus1 $n) ⟶ times2plus0 (succ $n)
+rule succ zero             ↪ times2plus1 zero
+with succ (times2plus0 $n) ↪ times2plus1 $n
+with succ (times2plus1 $n) ↪ times2plus0 (succ $n)
 
 // Enabling built-in natural number literal,with example.
 
@@ -28,12 +28,12 @@ definition forty_two ≔ 42
 symbol add : N → N → N
 set infix left 6 "+" ≔ add
 
-rule zero           + $m             ⟶ $m
-with $n             + zero           ⟶ $n
-with times2plus0 $n + times2plus0 $m ⟶ times2plus0 ($n + $m)
-with times2plus0 $n + times2plus1 $m ⟶ times2plus1 ($n + $m)
-with times2plus1 $n + times2plus0 $m ⟶ times2plus1 ($n + $m)
-with times2plus1 $n + times2plus1 $m ⟶ times2plus0 (succ ($n + $m))
+rule zero           + $m             ↪ $m
+with $n             + zero           ↪ $n
+with times2plus0 $n + times2plus0 $m ↪ times2plus0 ($n + $m)
+with times2plus0 $n + times2plus1 $m ↪ times2plus1 ($n + $m)
+with times2plus1 $n + times2plus0 $m ↪ times2plus1 ($n + $m)
+with times2plus1 $n + times2plus1 $m ↪ times2plus0 (succ ($n + $m))
 
 // Multiplication function.
 
@@ -42,11 +42,11 @@ set infix left 7 "×" ≔ mul
 
 definition times4 : N → N ≔ λ n, times2plus0 (times2plus0 n)
 
-rule zero           × _              ⟶ zero
-with _              × zero           ⟶ zero
-with times2plus0 $n × times2plus0 $m ⟶ $n × times4 ($n × $m)
-with times2plus0 $n × times2plus1 $m ⟶ $n × times4 ($n × $m) + times2plus0 $n
-with times2plus1 $n × times2plus0 $m ⟶ $n × times4 ($n × $m) + times2plus0 $m
-with times2plus1 $n × times2plus1 $m ⟶ times4 ($n × $m) + times2plus1($n + $m)
+rule zero           × _              ↪ zero
+with _              × zero           ↪ zero
+with times2plus0 $n × times2plus0 $m ↪ $n × times4 ($n × $m)
+with times2plus0 $n × times2plus1 $m ↪ $n × times4 ($n × $m) + times2plus0 $n
+with times2plus1 $n × times2plus0 $m ↪ $n × times4 ($n × $m) + times2plus0 $m
+with times2plus1 $n × times2plus1 $m ↪ times4 ($n × $m) + times2plus1($n + $m)
 
 definition double n ≔ times2plus0 n

@@ -5,8 +5,8 @@ constant symbol false : B
 
 symbol neg : B → B
 
-rule neg true  ⟶ false
-rule neg false ⟶ true
+rule neg true  ↪ false
+rule neg false ↪ true
 
 constant symbol Prop : TYPE
 

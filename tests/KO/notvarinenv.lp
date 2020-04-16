@@ -7,4 +7,4 @@ constant symbol s : Nat → Nat
 
 symbol f : (Nat → Nat) → Nat
 
-rule f (λx, $m[x,z]) ⟶ z
+rule f (λx, $m[x,z]) ↪ z

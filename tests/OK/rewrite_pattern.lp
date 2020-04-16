@@ -19,15 +19,15 @@ set builtin "+1" ≔ s
 
 symbol add : N → N → N
 
-rule add z      $x ⟶ $x
-rule add (s $x) $y ⟶ s (add $x $y)
+rule add z      $x ↪ $x
+rule add (s $x) $y ↪ s (add $x $y)
 
 // Multiplication on natural numbers.
 
 symbol mul : N → N → N
 
-rule mul z      _  ⟶ z
-rule mul (s $x) $y ⟶ add $y (mul $x $y)
+rule mul z      _  ↪ z
+rule mul (s $x) $y ↪ add $y (mul $x $y)
 
 // Type of data type codeswith their interpretation as types.
 
@@ -38,12 +38,12 @@ symbol T : U → TYPE
 constant symbol bool : U
 constant symbol nat  : U
 
-rule T bool ⟶ B
-rule T nat  ⟶ N
+rule T bool ↪ B
+rule T nat  ↪ N
 
 constant symbol pi : Π (a : U), (T a → U) → U
 
-rule T (pi $a $f) ⟶ Π (x : T $a), T ($f x)
+rule T (pi $a $f) ↪ Π (x : T $a), T ($f x)
 
 // Type of propositionswith their interpretation as types.
 
@@ -53,23 +53,23 @@ symbol P : Prop → TYPE
 
 constant symbol all : Π (a : U), (T a → Prop) → Prop
 
-rule P (all $a $f) ⟶ Π (x : T $a), P ($f x)
+rule P (all $a $f) ↪ Π (x : T $a), P ($f x)
 
 // Induction principle on N.
 
 symbol nat_ind : Π (p:N→Prop), P(p z) → (Πn, P(p n) → P(p (s n))) → Πn, P(p n)
 
-rule nat_ind _  $u _  z      ⟶ $u
-rule nat_ind $p $u $v (s $n) ⟶ $v $n (nat_ind $p $u $v $n)
+rule nat_ind _  $u _  z      ↪ $u
+rule nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n)
 
 // Boolean equality on N.
 
 symbol beq : N → N → B
 
-rule beq z      z      ⟶ true
-rule beq (s $x) (s $y) ⟶ beq $x $y
-rule beq z      (s _ ) ⟶ false
-rule beq (s _ ) z      ⟶ false
+rule beq z      z      ↪ true
+rule beq (s $x) (s $y) ↪ beq $x $y
+rule beq z      (s _ ) ↪ false
+rule beq (s _ ) z      ↪ false
 
 // Leibniz equality.
 

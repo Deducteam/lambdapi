@@ -37,8 +37,8 @@ set infix 4 "⸬" ≔ cons
 
 symbol length {a} : L a → N
 
-rule length □ ⟶ zero
-with length (_ ⸬ $l) ⟶ succ (length $l)
+rule length □ ↪ zero
+with length (_ ⸬ $l) ↪ succ (length $l)
 
 // Concatenation of two lists
 
@@ -46,5 +46,5 @@ symbol concat {a} : L a → L a → L a
 
 set infix right 5 "⋅" ≔ concat
 
-rule □ ⋅ $m ⟶ $m
-with ($x ⸬ $l) ⋅ $m ⟶ $x ⸬ ($l ⋅ $m)
+rule □ ⋅ $m ↪ $m
+with ($x ⸬ $l) ⋅ $m ↪ $x ⸬ ($l ⋅ $m)

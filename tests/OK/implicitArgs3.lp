@@ -14,15 +14,15 @@ constant symbol s : N → N
 symbol add : N → N → N
 set infix left 6 "+" ≔ add
 
-rule zero   + $n     ⟶ $n
-rule (s $m) + $n     ⟶ s ($m + $n)
-rule $m     + zero   ⟶ $m
-rule $m     + (s $n) ⟶ s ($m + $n)
+rule zero   + $n     ↪ $n
+rule (s $m) + $n     ↪ s ($m + $n)
+rule $m     + zero   ↪ $m
+rule $m     + (s $n) ↪ s ($m + $n)
 
 // Mini interpretation function from code of types to real types
 injective symbol T : U → TYPE
-rule T Nat     ⟶ N
-rule T Bool    ⟶ B
+rule T Nat     ↪ N
+rule T Bool    ↪ B
 
 // Mini vectors of booleans
 constant symbol Vect : T Nat → U
@@ -53,7 +53,7 @@ definition l4 : T (Vect (s (s zero))) ≔ @cons (s zero) true (@cons zero false 
 
 symbol append : Π (n:T Nat) (m:T Nat), T (Vect n) → T (Vect m) → T (Vect (n+m))
 // Works, but unfortunately, we can't use implicits in RHS of rewrite rules at the moment
-rule append zero    $m nil           $v2  ⟶ $v2
-rule append (s $pn) $m (cons $h $t)  $v2  ⟶ @cons ($pn+$m) $h (append $pn $m $t $v2)
+rule append zero    $m nil           $v2  ↪ $v2
+rule append (s $pn) $m (cons $h $t)  $v2  ↪ @cons ($pn+$m) $h (append $pn $m $t $v2)
 
-rule append (s $pn) $m (cons $h $t)  $v2  ⟶ cons {$pn+$m} $h (append $pn $m $t $v2)
+rule append (s $pn) $m (cons $h $t)  $v2  ↪ cons {$pn+$m} $h (append $pn $m $t $v2)

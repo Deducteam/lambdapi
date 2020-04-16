@@ -12,7 +12,7 @@ qed
 
 // Same and a reduction rule.
 
-rule bool_and $a $a ⟶ $a
+rule bool_and $a $a ↪ $a
 
 theorem and_idempotent_rw : Πa, P (eq bool (bool_and a a) a)
 proof

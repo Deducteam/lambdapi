@@ -15,9 +15,9 @@ symbol calc :
   Π c : C a,
   A
 
-rule calc _ (consB _) (consC _) ⟶ A
+rule calc _ (consB _) (consC _) ↪ A
 
-rule f $x ⟶ $x
-rule g $x ⟶ $x
+rule f $x ↪ $x
+rule g $x ↪ $x
 
-rule calc _ (consB _) (consC _) ⟶ A
+rule calc _ (consB _) (consC _) ↪ A

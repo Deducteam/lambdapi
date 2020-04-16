@@ -8,4 +8,4 @@ symbol G : U → TYPE
 
 constant symbol H : U → TYPE
 
-rule G $v ⟶ Π (a : H $v), f (λ _, u)
+rule G $v ↪ Π (a : H $v), f (λ _, u)

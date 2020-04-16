@@ -5,7 +5,7 @@ injective symbol eta : Type → TYPE
 constant symbol Ar : Type → Type → Type
 set infix right 6 ">" ≔ Ar
 
-rule eta ($a > $b) ⟶ eta $a → eta $b
+rule eta ($a > $b) ↪ eta $a → eta $b
 
 constant symbol i : Type
 constant symbol o : Type
@@ -14,12 +14,12 @@ injective symbol eps : eta o → TYPE
 
 constant symbol imp : eta (o > o > o)
 
-rule eps (imp $a $b) ⟶ eps $a → eps $b
+rule eps (imp $a $b) ↪ eps $a → eps $b
 
 set infix right 6 "-->" ≔ imp
 
 constant symbol all : Π {A : Type}, eta ((A > o) > o)
-rule eps (@all $a $b) ⟶ Π (x : eta $a), eps ($b x)
+rule eps (@all $a $b) ↪ Π (x : eta $a), eps ($b x)
 
 // Leibniz equality
 definition eq :

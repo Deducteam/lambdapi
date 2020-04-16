@@ -11,4 +11,4 @@ constant symbol cons:A→Πn,V n→V(s n)
 symbol tail:Πn,V(s n)→V n
 
 //set debug +sui
-rule tail _ (cons _ _ $v) ⟶ $v
+rule tail _ (cons _ _ $v) ↪ $v

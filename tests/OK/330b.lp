@@ -2,7 +2,7 @@ constant symbol Term : TYPE
 constant symbol Prop : TYPE
 symbol prf : Prop → TYPE
 symbol prop_with : Prop → Prop → Prop
-rule prf (prop_with $A $B) ⟶ Π C, (prf $A →  prf $B →  prf C) → prf C
+rule prf (prop_with $A $B) ↪ Π C, (prf $A →  prf $B →  prf C) → prf C
 
 definition and_elim_1 : Π A B, prf (prop_with A B) → prf A
 ≔  λ A B h, h A (λ a _, a)

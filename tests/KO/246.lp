@@ -4,7 +4,7 @@ injective symbol eta : Type → TYPE
 // function type
 constant symbol Ar : Type → Type → Type
 set infix right 6 ">" ≔ Ar
-rule eta ($a > $b) ⟶ eta $a → eta $b
+rule eta ($a > $b) ↪ eta $a → eta $b
 
 definition fst : Π (A B : Type), eta (A > B > A) ≔
   λ A B a b, a

@@ -4,4 +4,4 @@ symbol f : A → A
 private symbol z : A
 
 // z would escape its scope
-rule f _ ⟶ z
+rule f _ ↪ z

@@ -15,9 +15,9 @@ constant symbol bool : U
 constant symbol nat  : U
 constant symbol pi   : Π (a : U), (T a → U) → U
 
-rule T bool       ⟶ B
-rule T nat        ⟶ N
-rule T (pi $a $f) ⟶ Π (x : T $a), T ($f x)
+rule T bool       ↪ B
+rule T nat        ↪ N
+rule T (pi $a $f) ↪ Π (x : T $a), T ($f x)
 
 // Type of propositions and their interpretation as types.
 
@@ -29,21 +29,21 @@ constant symbol all : Π (a : U), (T a → Prop) → Prop
 
 injective symbol P : Prop → TYPE
 
-rule P (all $a $f) ⟶ Π (x : T $a), P ($f x)
+rule P (all $a $f) ↪ Π (x : T $a), P ($f x)
 
 // Induction principle on B.
 
 symbol bool_ind : Π (p:B→Prop), P(p true) → P(p false) → Πb, P(p b)
 
-rule bool_ind _ $t _  true  ⟶ $t
-rule bool_ind _ _  $f false ⟶ $f
+rule bool_ind _ $t _  true  ↪ $t
+rule bool_ind _ _  $f false ↪ $f
 
 // Induction principle on N.
 
 symbol nat_ind : Π (p:N→Prop), P(p z) → (Πn, P(p n) → P(p (s n))) → Πn, P(p n)
 
-rule nat_ind _  $u _  z      ⟶ $u
-rule nat_ind $p $u $v (s $n) ⟶ $v $n (nat_ind $p $u $v $n)
+rule nat_ind _  $u _  z      ↪ $u
+rule nat_ind $p $u $v (s $n) ↪ $v $n (nat_ind $p $u $v $n)
 
 // Leibniz equality.
 

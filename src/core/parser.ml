@@ -125,7 +125,7 @@ let declared_id = Prefix.grammar declared_ids
 (** The following should not appear as substrings of binary operators, as they
     would introduce ambiguity in the parsing. *)
 let forbidden_in_ops =
-  [ "("; ")"; "."; "λ"; "Π"; "$"; "["; "]"; "{"; "}"; "?"; ":"; "⟶"; "⊢"
+  [ "("; ")"; "."; "λ"; "Π"; "$"; "["; "]"; "{"; "}"; "?"; ":"; "↪"; "⊢"
   ; "→"; "@"; ","; ";"; "\""; "\'"; "≔"; "//"; " "; "\r"; "\n"; "\t"; "\b" ]
   @ List.init 10 string_of_int
 
@@ -465,7 +465,7 @@ let term = term PFunc
 
 (** [rule] is a parser for a single rewriting rule. *)
 let parser rule =
-  | l:term "⟶" r:term -> Pos.in_pos _loc (l, r)
+  | l:term "↪" r:term -> Pos.in_pos _loc (l, r)
 
 (** [rw_patt_spec] is a parser for a rewrite pattern specification. *)
 let parser rw_patt_spec =

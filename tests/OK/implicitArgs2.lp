@@ -6,7 +6,7 @@ constant symbol N : TYPE
 
 // Mini interpretation function
 injective symbol T : U → TYPE
-rule T Nat        ⟶ N
+rule T Nat        ↪ N
 
 constant symbol zero : T Nat
 constant symbol s : N → N
