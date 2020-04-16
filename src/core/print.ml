@@ -179,47 +179,27 @@ and pp_term : config -> term pp = fun cfg oc t ->
     | Patt(_,n,e) -> out oc "&%s%a" n pp_env e
     | TEnv(t,e)   -> out oc "&%a%a" pp_term_env t pp_env e
     (* Product and abstraction (only them can be wrapped). *)
-    | Abst(a,t)   ->
+    | Abst(a,b)   ->
         if wrap then out oc "(";
-        let pp_arg oc (x,a) =
-          if !print_domains then out oc "(%a:%a)" pp_tvar x (pp `Func) a
-          else pp_tvar oc x
-        in
-        let (x,t) = Bindlib.unbind t in
-        out oc "λ%a" pp_arg (x,a);
-        let rec pp_absts oc t =
-          match unfold t with
-          | Abst(a,t) -> let (x,t) = Bindlib.unbind t in
-                         out oc " %a%a" pp_arg (x,a) pp_absts t
-          | _         -> out oc ", %a" (pp `Func) t
-        in
-        pp_absts oc t;
+        out oc "λ";
+        let (x,t) = Bindlib.unbind b in
+        if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_";
+        if !print_domains then out oc ": %a" (pp `Func) a;
+        out oc ", %a" (pp `Func) t;
         if wrap then out oc ")"
     | Prod(a,b)   ->
         if wrap then out oc "(";
-        let pp_arg oc (x,a) = out oc "(%a:%a)" pp_tvar x (pp `Func) a in
-        let (x,c) = Bindlib.unbind b in
+        let (x,t) = Bindlib.unbind b in
         if Bindlib.binder_occur b then
-          begin
-            out oc "∀%a" pp_arg (x,a);
-            let rec pp_prods oc c =
-              match unfold c with
-              | Prod(a,b) when Bindlib.binder_occur b ->
-                  let (x,b) = Bindlib.unbind b in
-                  out oc " %a%a" pp_arg (x,a) pp_prods b
-              | _                                      ->
-                  out oc ", %a" (pp `Func) c
-            in
-            pp_prods oc c
-          end
+          out oc "∀%a: %a, %a" pp_tvar x (pp `Func) a (pp `Func) t
         else
-          out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) c;
+          out oc "%a ⇒ %a" (pp `Appl) a (pp `Func) t;
         if wrap then out oc ")"
-    | LLet(a,t,u) ->
+    | LLet(a,t,b) ->
         if wrap then out oc "(";
-        let x, u = Bindlib.unbind u in
-        out oc "let %a" pp_tvar x;
-        if !print_domains then out oc ":%a" (pp `Atom) a;
+        let (x,u) = Bindlib.unbind b in
+        if Bindlib.binder_occur b then out oc "%a" pp_tvar x else out oc "_";
+        if !print_domains then out oc ": %a" (pp `Atom) a;
         out oc " ≔ %a in %a" (pp `Atom) t (pp `Atom) u;
         if wrap then out oc ")"
   in
