@@ -30,7 +30,7 @@ let find : string -> env -> tvar = fun n env ->
 (** [to_prod env t] builds a sequence of products / let-bindings whose domains
     are the variables of the environment [env] (from left to right), and whose
     body is the term [t]. By calling [to_prod [(xn,an,None);⋯;(x1,a1,None)] t]
-    you obtain a term of the form [∀x1:a1,..,∀xn:an,t]. *)
+    you obtain a term of the form [Πx1:a1,..,Πxn:an,t]. *)
 let to_prod_box : env -> tbox -> tbox = fun env t ->
   let fn t (_,(x,a,u)) =
     match u with
@@ -77,7 +77,7 @@ let to_tbox : env -> tbox array = fun env ->
     the process are are given (with their types) in the environment [env]. The
     function raises [Invalid_argument] if [prod] does not evaluate to a series
     of (at least) [n] product types. Intuitively, if the term [prod] is of the
-    form [∀ (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
+    form [Π (x1:a1) ⋯ (xn:an), a] then the function (roughly) returns [a], and
     the environment [(xn, an) ; ⋯ ; (x1, a1)]. *)
 let destruct_prod : int -> term -> env * term = fun n t ->
   let rec build_env i env t =
@@ -97,7 +97,7 @@ let destruct_prod : int -> term -> env * term = fun n t ->
     this is necessary. Note that the produced environment is equivalent to the
     environment [fst (destruct_prod (Array,length xs) prod)] if the variables
     of its domain are substituted by those of [xs]. Intuitively,  if [prod] is
-    of the form [∀ (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
+    of the form [Π (y1:a1) ⋯ (yn:an), a]  then the environment returned by the
     function is (roughly) [(xn, an{y1≔x1, ⋯, yn-1≔xn-1}) ; ⋯ ; (x1, a1)]. Note
     that the function raises [Invalid_argument] if [prod] does not evaluate to
     a sequence of [Array.length xs] dependent products. *)
@@ -112,13 +112,13 @@ let copy_prod_env : tvar array -> term -> env = fun xs t ->
   in
   build_env 0 [] t
 
-(** Given a metavariable [m] of arity [n] and type [∀x1:A1,..,∀xn:An,B] (with
+(** Given a metavariable [m] of arity [n] and type [Πx1:A1,..,Πxn:An,B] (with
    [B] being a sort normally), [extend_meta_type m] returns
-   [m[x1,..,xn],(∀y:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
+   [m[x1,..,xn],(Πy:p,q),bp,bq] where p=m1[x1,..,xn], q=m2[x1,..,xn,y], bp is
    a mbinder of [x1,..,xn] over p, and bq is a mbinder of [x1,..,xn] over q,
    where [y] is a fresh variable, and [m1] and [m2] are fresh metavariables of
-   arity [n] and [n+1], and type [∀x1:A1,..,∀xn:An,TYPE] and
-   [∀x1:A1,..,∀xn:An,∀y:m1[x1,..,xn],B] respectively. *)
+   arity [n] and [n+1], and type [Πx1:A1,..,Πxn:An,TYPE] and
+   [Πx1:A1,..,Πxn:An,Πy:m1[x1,..,xn],B] respectively. *)
 let extend_meta_type : meta -> term * term *
     tmbinder * (term, tbinder) Bindlib.mbinder = fun m ->
   let n = m.meta_arity in

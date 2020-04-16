@@ -38,14 +38,14 @@
   "Commands at top level.")
 (defconst lambdapi--keywords
   (append
-   '("and" "→"
+   '("with" "↪"
      "infix" "prefix"
      "left" "right"
      "off" "on"
      "open" "as"
      "constant" "injective" "private" "protected"
      "prover" "prover_timeout" "verbose"
-     "let" "," "in" "∀" "λ" "⇒" "TYPE" "&" "?"
+     "let" "," "in" "Π" "λ" "→" "TYPE" "&" "?"
      "[" "]" "|" ")" "(" "{" "}" "." ":" "≔")
    lambdapi--cmds))
 
@@ -67,14 +67,14 @@
              ("_")
              (qident)
              ("?" ident "[" env "]") ;; ?M[x,y,z]
-             ("&" ident "[" env "]") ;; &X[x,y,z]
+             ("$" ident "[" env "]") ;; &X[x,y,z]
              ( "(" sterm ")")
              ( "{" sterm "}")
-             (sterm "⇒" sterm)
+             (sterm "→" sterm)
              ("λ" args "," sterm)
              ("λ" ident ":" sterm "," sterm)
-             ("∀" args "," sterm)
-             ("∀" ident ":" sterm "," sterm)
+             ("Π" args "," sterm)
+             ("Π" ident ":" sterm "," sterm)
              ("let" ident "≔" sterm "in" sterm)
              ("let" ident ":" sterm "≔" sterm "in" sterm)
              ("let" "ID" args ":" sterm "≔" sterm "in" sterm)
@@ -116,12 +116,12 @@
                ("theorem" "ID" args ":" sterm)
                ("proof" prfcontent "PRFEND")
                ("definition" "ID" args "≔" sterm)
-
-               ("rule" sterm "→" sterm)
-               ("and" sterm "→" sterm)
+                                        ; TODO: token SYMTAG?
+               ("rule" sterm "↪" sterm)
+               ("and" sterm "↪" sterm)
 
                ("require" qident)
-               ("require" "open" qident)
+               ("open" qident)
                ("require" qident "as" ident)
 
                ("set" "builtin" "STRINGLIT" "≔" qident)
@@ -130,8 +130,8 @@
                ("set" "infix" "left" "FLOATLIT" ident "≔" qident)
                ("set" "infix" "right" "FLOATLIT" ident "≔" qident)
                ("set" "declared" ident)))
-    '((assoc ",") (assoc "in") (assoc "⇒") (assoc "let") (assoc "≔")
-      (assoc "λ" "∀") (assoc ":") (assoc "ID")))))
+    '((assoc ",") (assoc "in") (assoc "→") (assoc "let") (assoc "≔")
+      (assoc "λ" "Π") (assoc ":") (assoc "ID")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
@@ -233,7 +233,7 @@
     (`(:before . "assertnot") (lambdapi--query-indent))
 
     (`(:before . ":") (lambdapi--colon-indent))
-    (`(:list-intro . ,(or "and" "rule" "λ" "∀" "proof" "ID")) t)
+    (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof" "ID")) t)
     (`(:after . "proof") lambdapi-indent-basic)
     (`(:after . ,(or "rule" "and")) (* 2 lambdapi-indent-basic))
     (`(:after . ,(or ":" "≔")) (when (smie-rule-hanging-p) lambdapi-indent-basic))
@@ -253,8 +253,8 @@
     (`(:before . "symbol") '(column . 0))
 
     (`(:before . "rule") '(column . 0))
-    (`(:before . "and") '(column . 1))
-    (`(,_ . "→") (smie-rule-separator kind))))
+    (`(:before . "with") '(column . 0))
+    (`(,_ . "↪") (smie-rule-separator kind))))
 
 (defun lambdapi--previous-cmd ()
   "Return the previous command used in the file."
