@@ -206,10 +206,10 @@ let scope : mode -> sig_state -> env -> p_term -> tbox = fun md ss env t ->
           Hashtbl.add data.m_lhs_indices name i;
           Hashtbl.add data.m_lhs_names i name; i
         in
-        _Patt (Some(i)) (Printf.sprintf "#%i_%s" i name) env
+        _Patt (Some(i)) (Printf.sprintf "%i_%s" i name) env
     | None       ->
         let i = fresh_index () in
-        _Patt (Some(i)) (Printf.sprintf "#%i" i) env
+        _Patt (Some(i)) (Printf.sprintf "%i" i) env
   in
   (* Toplevel scoping function, with handling of implicit arguments. *)
   let rec scope : env -> p_term -> tbox = fun env t ->
@@ -572,8 +572,8 @@ let scope_rule : sig_state -> p_rule -> pre_rule loc = fun ss r ->
   let pr_vars =
     let fn i =
       let name =
-        try Printf.sprintf "#%i_%s" i (Hashtbl.find data.m_lhs_names i)
-        with Not_found -> Printf.sprintf "#%i" i
+        try Printf.sprintf "%i_%s" i (Hashtbl.find data.m_lhs_names i)
+        with Not_found -> Printf.sprintf "%i" i
       in
       Bindlib.new_var te_mkfree name
     in
