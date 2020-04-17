@@ -32,11 +32,13 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
   ; hints     = SymMap.empty }
 
 (** [build_hints ss] computes hints from a signature [sign]. *)
-let add_hints : hint SymMap.t -> Sign.t -> hint SymMap.t = fun hints sign ->
+let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
   let fn _ (sym,_) hints =
-    let sign =
-      try Files.PathMap.find sym.sym_path !Sign.loaded
-      with Not_found -> assert false (* Should not happen. *)
+    (* Remove from hints the symbols having a name occurring in the opened
+       signature as it gets hidden. *)
+    let hints =
+      if StrMap.mem sym.sym_name ss.in_scope then SymMap.remove sym hints
+      else hints
     in
     let h =
       let exception Hint of hint in
@@ -52,17 +54,17 @@ let add_hints : hint SymMap.t -> Sign.t -> hint SymMap.t = fun hints sign ->
     in
     SymMap.add sym h hints
   in
-  StrMap.fold fn !(sign.sign_symbols) hints
+  StrMap.fold fn !(sign.sign_symbols) ss.hints
 
 (** [open_sign ss sign] extends the signature state [ss] with every symbol  of
     the signature [sign].  This has the effect of putting these symbols in the
     scope when (possibly masking symbols with the same name).  Builtin symbols
     are also handled in a similar way. *)
 let open_sign : sig_state -> Sign.t -> sig_state = fun ss sign ->
-  let fn _ v _ = Some(v) in
-  let in_scope = StrMap.union fn ss.in_scope Sign.(!(sign.sign_symbols)) in
-  let builtins = StrMap.union fn ss.builtins Sign.(!(sign.sign_builtins)) in
-  let hints = add_hints ss.hints sign in
+  let f _key _v1 v2 = Some(v2) in (*signature opening hides previous symbols*)
+  let in_scope = StrMap.union f ss.in_scope Sign.(!(sign.sign_symbols)) in
+  let builtins = StrMap.union f ss.builtins Sign.(!(sign.sign_builtins)) in
+  let hints = update_hints ss sign in
   {ss with in_scope; builtins; hints}
 
 (** [find_sym ~prt ~prv b st qid] returns the symbol
