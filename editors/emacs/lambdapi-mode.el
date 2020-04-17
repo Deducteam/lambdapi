@@ -5,6 +5,7 @@
 ;; Author: Rodolphe Lepigre, Gabriel Hondet
 ;; Maintainer: Deducteam <dedukti-dev@inria.fr>
 ;; Version: 1.0
+;; License: CeCILL-B
 ;; Homepage: https://github.com/Deducteam/lambdapi
 ;; Keywords: languages
 ;; Compatibility: GNU Emacs 26.1
@@ -108,8 +109,7 @@
    :forward-token #'lambdapi--smie-forward-token
    :backward-token #'lambdapi--smie-backward-token)
   ;; Reindent on colon
-  (setq-local electric-indent-chars (cons ?: electric-indent-chars))
-  (setq-local electric-indent-chars (append '(?→ ?≔ ?:) electric-indent-chars))
+  (setq-local electric-indent-chars (append '(?↪ ?≔ ?:) electric-indent-chars))
 
   ;; Abbrev mode
   (lambdapi-abbrev-setup)

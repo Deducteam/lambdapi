@@ -25,7 +25,8 @@
 
 (defun lambdapi--company-setup ()
   "Setup company for lambdapi."
-  (when (and (require 'company-math nil 1) (not lambdapi-unicode-force-quail))
+  (when (and (require 'company nil 1) ; To avoid free-variable warning
+             (require 'company-math nil 1)) ; load company-math if available
     (add-to-list 'eglot-stay-out-of 'company) ; Eglot reinits backends
     (setq-local company-backends
                   (cons 'company-math-symbols-unicode company-backends))))
