@@ -130,9 +130,8 @@ and eq_modulo : ctxt -> term -> term -> bool = fun ctx a b ->
     | (Patt(_,_,_), _          )
     | (_          , Patt(_,_,_))
     | (TEnv(_,_)  , _          )
-    | (_          , TEnv(_,_)  )
-    | (Kind       , _          )
-    | (_          , Kind       ) -> assert false
+    | (_          , TEnv(_,_)  ) -> assert false
+    | (Kind       , Kind       )
     | (Type       , Type       ) -> eq_modulo l
     | (Vari(x)    , Vari(y)    ) when Bindlib.eq_vars x y -> eq_modulo l
     | (Symb(s1)   , Symb(s2)   ) when s1 == s2 -> eq_modulo l

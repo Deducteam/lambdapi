@@ -403,29 +403,45 @@ let _TRef : term option ref -> tbox = fun r ->
 let _LLet : tbox -> tbox -> tbinder Bindlib.box -> tbox =
   Bindlib.box_apply3 (fun a t u -> LLet(a, t, u))
 
+(** [_TE_Vari x] injects a term environment variable [x] into the {!type:tbox}
+    type so that it may be available for binding. *)
+let _TE_Vari : tevar -> tebox = Bindlib.box_var
+
+(** [_TE_None] injects the constructor [TE_None] into the {!type:tbox} type.*)
+let _TE_None : tebox = Bindlib.box TE_None
+
 (** [lift t] lifts the {!type:term} [t] to the {!type:tbox} type. This has the
     effect of gathering its free variables, making them available for binding.
     Bound variable names are automatically updated in the process. *)
 let rec lift : term -> tbox = fun t ->
   let lift_term_env te =
     match te with
-    | TE_Vari(x) -> Bindlib.box_var x
-    | _          -> Bindlib.box te (* closed objects *)
+    | TE_Vari(x) -> _TE_Vari x
+    | TE_None    -> _TE_None
+    | TE_Some(_) -> assert false (* Unreachable. *)
+  in
+  (* We do not use [Bindlib.box_binder] here because it is possible for a free
+     variables to disappear form a term through metavariable instantiation. As
+     a consequence we must traverse the whole term, even when we find a closed
+     binder, so that the metadata on nested binders is also updated. *)
+  let lift_binder b =
+    let (x, t) = Bindlib.unbind b in
+    Bindlib.bind_var x (lift t)
   in
   match unfold t with
   | Vari(x)     -> _Vari x
   | Type        -> _Type
   | Kind        -> _Kind
   | Symb(s)     -> _Symb s
-  | Prod(a,b)   -> _Prod (lift a) (Bindlib.box_binder lift b)
-  | Abst(a,t)   -> _Abst (lift a) (Bindlib.box_binder lift t)
+  | Prod(a,b)   -> _Prod (lift a) (lift_binder b)
+  | Abst(a,t)   -> _Abst (lift a) (lift_binder t)
   | Appl(t,u)   -> _Appl (lift t) (lift u)
   | Meta(r,m)   -> _Meta r (Array.map lift m)
   | Patt(i,n,m) -> _Patt i n (Array.map lift m)
   | TEnv(te,m)  -> _TEnv (lift_term_env te) (Array.map lift m)
   | Wild        -> _Wild
   | TRef(r)     -> _TRef r
-  | LLet(a,t,u) -> _LLet (lift a) (lift t) (Bindlib.box_binder lift u)
+  | LLet(a,t,u) -> _LLet (lift a) (lift t) (lift_binder u)
 
 (** [cleanup t] builds a copy of the {!type:term} [t] where every instantiated
     metavariable,  instantiated term environment,  and reference cell has been
