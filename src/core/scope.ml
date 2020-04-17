@@ -49,7 +49,7 @@ let add_symbol
     | Some t -> s.sym_def := Some(t)
     | None -> ()
   end;
-  let hints = remove_hint ss s ss.hints in
+  let hints = SymMap.add s No_hint (remove_hint ss s ss.hints) in
   let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
   {ss with in_scope; hints}
 
