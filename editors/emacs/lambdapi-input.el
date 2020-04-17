@@ -20,25 +20,17 @@
 
  ;; Lambdapi syntax
 
- ("\\rightarrow" ?→) ("->" ?→)
- ("\\hookrightarrow" ?↪) ("-->" ?↪)
- ("\\\\" ?λ)
- ("\\defeq" ?≔) (":=" ?≔)
- ("\\equiv" ?≡) ("==" ?≡)
- ("\\vdash" ?⊢) ("|-" ?⊢)
-
+ ("->" ?→) ("-->" ?↪) ("!!" ?Π) ("\\\\" ?λ)
+ ("\\defeq" ?≔) (":=" ?≔) ("==" ?≡) ("|-" ?⊢)
+ 
  ;; Logical connectors
 
- ("\\wedge" ?∧) ("\\and" ?∧) ("&&" ?∧) ("/\\" ?∧)
- ("\\vee" ?∨) ("\\or" ?∨) ("||" ?∨) ("\\/" ?∨)
- ("\\implies" ?⇒) ("=>" ?⇒)
- ("\\neg" ?¬) ("~~" ?¬)
- ("\\forall" ?∀) ("!!" ?∀)
- ("\\exists" ?∃) ("??" ?∃)
- ("\\supset" ?⊃) ("=)" ?⊃)
- ("\\is_equiv" ?⇔)
+ ("\\and" ?∧) ("&&" ?∧) ("/\\" ?∧)
+ ("\\or" ?∨) ("||" ?∨) ("\\/" ?∨)
+ ("~~" ?¬) ("??" ?∃)
+ ("=)" ?⊃) ("\\defeq" ?≔)
 
-  ;; Miscellaneous
+ ;; Miscellaneous
 
  ("\\Box" ?□) ("[]" ?□)
  ("::" ?⸬)
@@ -52,7 +44,7 @@
  ("_k" ?ₖ) ("_l" ?ₗ) ("_m" ?ₘ) ("_n" ?ₙ) ("_o" ?ₒ)
  ("_p" ?ₚ) ("_r" ?ᵣ) ("_s" ?ₛ) ("_t" ?ₜ) ("_u" ?ᵤ)
  ("_v" ?ᵥ) ("_x" ?ₓ)
-  
+
  ;; Superscripts
 
  ("^0" ?⁰) ("^1" ?¹) ("^2" ?²) ("^3" ?³) ("^4" ?⁴)
@@ -67,33 +59,16 @@
  ("^H" ?ᴴ) ("^I" ?ᴵ) ("^J" ?ᴶ) ("^K" ?ᴷ) ("^L" ?ᴸ)
  ("^M" ?ᴹ) ("^N" ?ᴺ) ("^O" ?ᴼ) ("^P" ?ᴾ) ("^R" ?ᴿ)
  ("^T" ?ᵀ) ("^U" ?ᵁ) ("^V" ?ⱽ) ("^W" ?ᵂ)
-  
+
  ;; Greek letters
 
- ("\\alpha" ?α) ("`a" ?α)
- ("\\beta" ?β) ("`b" ?β)
- ("\\gamma" ?γ) ("`c" ?γ) ("\\Gamma" ?Γ) ("`C" ?Γ)
- ("\\delta" ?δ) ("`d" ?δ) ("\\Delta" ?Δ) ("`D" ?Δ)
- ("\\epsilon" ?ϵ) ("`e" ?ε)
- ("\\zeta" ?ζ) ("`z" ?ζ)
- ("\\eta" ?η) ("`h" ?η)
- ("\\theta" ?θ)
- ("\\iota" ?ι) ("`i" ?ι)
- ("\\kappa" ?κ) ("`k" ?κ)
- ("\\lambda" ?λ) ("`l" ?λ) ("\\Lambda" ?Λ) ("`L" ?Λ)
- ("\\mu" ?μ) ("`m" ?μ)
- ("\nu" ?ν) ("`n" ?ν)
- ("\\xi" ?ξ) ("\\Xi" ?Ξ)
- ("\\omicron" ?ο)
- ("\\pi" ?π) ("`p" ?π) ("\\Pi" ?Π) ("`P" ?Π)
- ("\\rho" ?ρ) ("`r" ?ρ)
- ("\\sigma" ?σ) ("`s" ?σ) ("\\Sigma" ?Σ) ("`S" ?Σ)
- ("\\tau" ?τ) ("`t" ?τ)
- ("\\upsilon" ?υ) ("`u" ?υ) ("\\Upsilon" ?ϒ) ("`U" ?ϒ)
- ("\\phi" ?φ) ("\\Phi" ?Φ)
- ("\\chi" ?χ) ("`x" ?χ)
- ("\\omega" ?ω) ("`w" ?ω) ("\\omega" ?Ω) ("`w" ?Ω)
- ("\\psi" ?ψ) ("\\Psi" ?Ψ)
+ ("`a" ?α) ("`b" ?β) ("`c" ?γ) ("`C" ?Γ)
+ ("`d" ?δ) ("`D" ?Δ) ("`e" ?ε) ("`z" ?ζ)
+ ("`h" ?η) ("`i" ?ι) ("`k" ?κ) ("`l" ?λ)
+ ("`L" ?Λ) ("`m" ?μ) ("`n" ?ν) ("`p" ?π)
+ ("`P" ?Π) ("`r" ?ρ) ("`s" ?σ) ("`S" ?Σ)
+ ("`t" ?τ) ("`u" ?υ) ("`U" ?ϒ) ("`x" ?χ)
+ ("`w" ?ω) ("`W" ?Ω)
 
  ;; Double-struck letters
 
@@ -263,8 +238,7 @@
  ("`fw" ?𝔴) ("`fW" ?𝔚)
  ("`fx" ?𝔵) ("`fX" ?𝔛)
  ("`fy" ?𝔶) ("`fY" ?𝔜)
- ("`fz" ?𝔷) ("`fZ" ?ℨ)
- )
+ ("`fz" ?𝔷) ("`fZ" ?ℨ))
 
 (require 'seq)
 (defconst lambdapi--math-symbol-list-basic
@@ -275,7 +249,9 @@
       (seq-map (lambda (sym) `(,(cadr sym) . ,(cddr sym))) filt)))
   "Formatted sublist of `math-symbol-list-basic'.
 An element of this list is a dotted pair (COM . CH) where com is the LaTeX
-command (e.g. \alpha) and CH is the character (e.g. α).")
+command (e.g. \alpha) and CH is the character (e.g. α). The list is made up of
+the arrows, greek letters (upper and lowercase), binary relations, relations and
+miscellaneous.")
 
 (defconst lambdapi--math-symbol-list-extended
   (eval-when-compile
@@ -285,9 +261,10 @@ command (e.g. \alpha) and CH is the character (e.g. α).")
       (seq-map (lambda (sym) `(,(cadr sym) . ,(cdddr sym))) filt)))
   "Formatted sublist of `math-symbol-list-extended'.
 An element of this list is a dotted pair (COM . CH) where com is the LaTeX
-command (e.g. \alpha) and CH is the character (e.g. α).")
+command (e.g. \alpha) and CH is the character (e.g. α). This list is made of the
+double-struck capital letters.")
 
-(when (or lambdapi-unicode-force-quail (not (require 'company-math nil 1)))
+(when (not lambdapi-unicode-prefer-company)
   (seq-do (lambda (com-ltx) (quail-defrule (car com-ltx) (cdr com-ltx)))
           (seq-concatenate 'list
                            lambdapi--math-symbol-list-basic

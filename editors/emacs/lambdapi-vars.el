@@ -21,6 +21,7 @@
   '("definition"
     "in"
     "let"
+    "open"
     "proof"
     "qed"
     "require"
@@ -44,23 +45,39 @@
 
 (defconst lambdapi-misc-keywords
   '("TYPE" "left" "right" "infix" "prefix"
-    "protected" "private" "injective" "constant" "open" "as"))
+    "protected" "private" "injective" "constant" "as"))
 
-(defvar lambdapi-indent-basic 2
-  "Basic indentation for lambdapi-mode.")
+(defcustom lambdapi-indent-basic 2
+  "Basic indentation for lambdapi-mode."
+  :type 'number
+  :options '(2 4)
+  :group 'indent)
 
 (defvar lambdapi-syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?\/ ". 12b" table)
+    (modify-syntax-entry ?Π "." table)
+    (modify-syntax-entry ?λ "." table)
+    (modify-syntax-entry ?→ "." table)
+    (modify-syntax-entry ?↪ "." table)
+    (modify-syntax-entry ?≔ "." table)
+    (modify-syntax-entry ?$ "." table)
+    (modify-syntax-entry ?? "." table)
+    (modify-syntax-entry ?: "." table)
+    (modify-syntax-entry ?, "." table)
+    ;; (modify-syntax-entry ?| "\\" table) ; | instead of {| |} for simplicity
     (modify-syntax-entry ?\n "> b" table)
+    (modify-syntax-entry ?. "w" table)
     (modify-syntax-entry ?_ "w" table)
     table)
   "Syntax table for lambdapi-mode.")
 
 (defvar lambdapi-mode-map (make-sparse-keymap))
 
-(defvar lambdapi-unicode-force-quail nil
-  "Set to non-nil to use Quail rather that company-math for unicode.")
+(defvar lambdapi-unicode-prefer-company nil
+  "Set to non-nil to favour company-math over quail.
+Useful for people who prefer to have the dropdown window display systematically,
+since the window won't display if there are quail candidates.")
 
 (provide 'lambdapi-vars)
 ;;; lambdapi-vars.el ends here
