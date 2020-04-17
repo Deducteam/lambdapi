@@ -226,6 +226,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
       (ss, Some(data))
   | P_set(cfg)                 ->
       let ss =
+        let with_path : Path.t -> qident -> qident = fun path qid ->
+          let path = List.map (fun s -> (s, false)) path in
+          Pos.make qid.pos (path, snd qid.elt)
+        in
         match cfg with
         | P_config_builtin(s,qid) ->
             (* Set the builtin symbol [s]. *)
@@ -237,15 +241,19 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             out 3 "(conf) set builtin [%s]\n" s;
             {ss with builtins = StrMap.add s sym ss.builtins}
         | P_config_unop(unop)     ->
-            let (s, _, qid) = unop in
+            let (s, prio, qid) = unop in
             (* Define the unary operator [s]. *)
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            (* Make sure the operator has a fully qualified [qid]. *)
+            let unop = (s, prio, with_path sym.sym_path qid) in
             Sign.add_unop ss.signature s (sym, unop);
             out 3 "(conf) new prefix [%s]\n" s; ss
         | P_config_binop(binop)   ->
-            let (s, _, _, qid) = binop in
+            let (s, assoc, prio, qid) = binop in
             (* Define the binary operator [s]. *)
             let (sym, _) = find_sym ~prt:true ~prv:true false ss qid in
+            (* Make sure the operator has a fully qualified [qid]. *)
+            let binop = (s, assoc, prio, with_path sym.sym_path qid) in
             Sign.add_binop ss.signature s (sym, binop);
             out 3 "(conf) new infix [%s]\n" s; ss
         | P_config_ident(id)      ->
