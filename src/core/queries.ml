@@ -9,7 +9,9 @@ open Terms
 
 (** [handle_query ss ps q] *)
 let handle_query : sig_state -> Proof.t option -> p_query -> unit =
-    fun ss ps q ->
+  fun ss ps q ->
+  let pp = Print.pp_term ss.hints in
+  let pp_constr = Print.pp_constr ss.hints in
   let env =
     match ps with
     | None     -> Env.empty
@@ -35,7 +37,7 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
                 | None -> fatal q.pos "Infered types are not convertible."
                 | Some [] -> Eval.eq_modulo [] t u
                 | Some cs ->
-                    List.iter (fatal_msg "Cannot solve %a.\n" Print.constr) cs;
+                    List.iter (fatal_msg "Cannot solve %a.\n" pp_constr) cs;
                     fatal q.pos "Infered types are not convertible."
               end
           | (None   , _      ) ->
@@ -66,18 +68,18 @@ let handle_query : sig_state -> Proof.t option -> p_query -> unit =
       let a =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(a) -> Eval.eval cfg [] a
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
-      out 3 "(infr) %a : %a\n" Print.term t Print.term a
+      out 3 "(infr) %a : %a\n" pp t pp a
   | P_query_normalize(pt, cfg)        ->
       (* Infer a type for [t], and evaluate [t]. *)
       let t = scope pt in
       let v =
         match Typing.infer ss.builtins (Env.to_ctxt env) t with
         | Some(_) -> Eval.eval cfg [] t
-        | None    -> fatal pt.pos "Cannot infer the type of [%a]." Print.term t
+        | None    -> fatal pt.pos "Cannot infer the type of [%a]." pp t
       in
-      out 3 "(comp) %a\n" Print.term v
+      out 3 "(comp) %a\n" pp v
   | P_query_prover(s)      ->
       Timed.(Why3_tactic.default_prover := s)
   | P_query_prover_timeout(n)->
