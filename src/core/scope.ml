@@ -31,15 +31,45 @@ let empty_sig_state : Sign.t -> sig_state = fun sign ->
   ; builtins  = StrMap.empty
   ; hints     = SymMap.empty }
 
+(** [remove_hint ss s hints] removes from [hints] the mapping for [s] if
+   [s.sym_name] is mapped in [ss.in_scope]. *)
+let remove_hint : sig_state -> sym -> hint SymMap.t -> hint SymMap.t
+  = fun ss s hints ->
+  if StrMap.mem s.sym_name ss.in_scope then SymMap.remove s hints
+  else hints
+
+(** [add_symbol ss e p x a impl] adds a symbol in [ss]. *)
+let add_symbol
+    : sig_state -> expo -> prop -> strloc -> term -> bool list
+      -> term option -> sig_state
+  = fun ss e p x a impl t ->
+  let s = Sign.add_symbol ss.signature e p x a impl in
+  begin
+    match t with
+    | Some t -> s.sym_def := Some(t)
+    | None -> ()
+  end;
+  let hints = remove_hint ss s ss.hints in
+  let in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope in
+  {ss with in_scope; hints}
+
+(** [add_unop ss n (sym,unop)] declares [n] as prefix and maps it to [sym]. *)
+let add_unop  : sig_state -> string -> (sym * unop) -> sig_state
+  = fun ss n (sym, unop) ->
+  Sign.add_unop ss.signature n (sym, unop);
+  let hints = SymMap.add sym (Prefix unop) (remove_hint ss sym ss.hints) in
+  {ss with hints}
+
+(** [add_binop ss n (sym,binop)] declares [n] as infix and maps it to [sym]. *)
+let add_binop  : sig_state -> string -> (sym * binop) -> sig_state
+  = fun ss n (sym, binop) ->
+  Sign.add_binop ss.signature n (sym, binop);
+  let hints = SymMap.add sym (Infix binop) (remove_hint ss sym ss.hints) in
+  {ss with hints}
+
 (** [build_hints ss] computes hints from a signature [sign]. *)
 let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
   let fn _ (sym,_) hints =
-    (* Remove from hints the symbols having a name occurring in the opened
-       signature as it gets hidden. *)
-    let hints =
-      if StrMap.mem sym.sym_name ss.in_scope then SymMap.remove sym hints
-      else hints
-    in
     let h =
       let exception Hint of hint in
       try
@@ -52,7 +82,9 @@ let update_hints : sig_state -> Sign.t -> hint SymMap.t = fun ss sign ->
         No_hint
       with Hint h -> h
     in
-    SymMap.add sym h hints
+    (* Remove from hints the symbols having a name occurring in the opened
+       signature as it gets hidden. *)
+    SymMap.add sym h (remove_hint ss sym hints)
   in
   StrMap.fold fn !(sign.sign_symbols) ss.hints
 

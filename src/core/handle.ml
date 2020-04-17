@@ -166,11 +166,10 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
           fatal x.pos "We have %s : %a ≔ %a." x.elt Print.term a Print.term t
         end;
       (* Actually add the symbol to the signature. *)
-      let s = Sign.add_symbol ss.signature e Defin x a impl in
-      out 3 "(symb) %s ≔ %a\n" s.sym_name Print.term t;
-      (* Also add its definition, if it is not opaque. *)
-      if not op then s.sym_def := Some(t);
-      ({ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}, None)
+      let d = if op then None else Some(t) in
+      let ss = Scope.add_symbol ss e Defin x a impl d in
+      out 3 "(symb) %s ≔ %a\n" x.elt (Print.pp_term ss.hints) t;
+      (ss, None)
   | P_theorem(e, stmt, ts, pe) ->
       let (x,xs,a) = stmt.elt in
       (* We check that [x] is not already used. *)
@@ -205,10 +204,9 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             if Proof.finished st then
               wrn cmd.pos "The proof is finished. You can use 'qed' instead.";
             (* Add a symbol corresponding to the proof, with a warning. *)
-            let s = Sign.add_symbol ss.signature e Const x a impl in
-            out 3 "(symb) %s (admit)\n" s.sym_name;
+            out 3 "(symb) %s (admit)\n" x.elt;
             wrn cmd.pos "Proof admitted.";
-            {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
+            Scope.add_symbol ss e Const x a impl None
         | P_proof_qed   ->
             (* Check that the proof is indeed finished. *)
             if not (Proof.finished st) then
@@ -217,9 +215,8 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
                 fatal cmd.pos "The proof is not finished."
               end;
             (* Add a symbol corresponding to the proof. *)
-            let s = Sign.add_symbol ss.signature e Const x a impl in
-            out 3 "(symb) %s (qed)\n" s.sym_name;
-            {ss with in_scope = StrMap.add x.elt (s, x.pos) ss.in_scope}
+            out 3 "(symb) %s (qed)\n" x.elt;
+            Scope.add_symbol ss e Const x a impl None
       in
       let data =
         { pdata_stmt_pos = stmt.pos ; pdata_p_state = st ; pdata_tactics = ts
@@ -242,14 +239,14 @@ let handle_cmd : sig_state -> p_command -> sig_state * proof_data option =
             let (s, _, qid) = unop in
             (* Define the unary operator [s]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Sign.add_unop ss.signature s (sym, unop);
-            out 3 "(conf) new prefix [%s]\n" s; ss
+            out 3 "(conf) new prefix [%s]\n" s;
+            Scope.add_unop ss s (sym, unop)
         | P_config_binop(binop)   ->
             let (s, _, _, qid) = binop in
             (* Define the binary operator [s]. *)
             let sym = find_sym ~prt:true ~prv:true false ss qid in
-            Sign.add_binop ss.signature s (sym, binop);
-            out 3 "(conf) new infix [%s]\n" s; ss
+            out 3 "(conf) new infix [%s]\n" s;
+            Scope.add_binop ss s (sym, binop)
         | P_config_ident(id)      ->
             Sign.add_ident ss.signature id;
             out 3 "(conf) declared identifier [%s]\n" id; ss
