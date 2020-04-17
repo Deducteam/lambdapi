@@ -5,13 +5,6 @@
 (require 'lambdapi-vars)
 (require 'smie)
 
-;; Regular expressions
-(defconst lambdapi--rx-escident "{|\\([^|]\\|\\(|[^}]\\)\\)*|*|}")
-(defconst lambdapi--rx-ident "[a-zA-Z_][a-zA-Z0-9_]*")
-(defconst lambdapi--rx-natlit "[0-9]+")
-(defconst lambdapi--rx-floatlit "[0-9]+\\([.][0-9]+\\)?")
-(defconst lambdapi--rx-stringlit "\"[^\"\n]\"")
-
 ;; Lists of keywords
 (defconst lambdapi--tactics
   '("apply"
@@ -31,6 +24,36 @@
   (append '("symbol" "theorem" "rule" "and" "definition" "proof" "require")
           lambdapi--queries)
   "Commands at top level.")
+
+(defun lambdapi--previous-cmd ()
+  "Return the previous command used in the file."
+  (save-excursion
+    (while
+        (progn
+          (back-to-indentation)
+          (not (looking-at (regexp-opt lambdapi--cmds))))
+      (forward-line -1)))
+  (match-string 0))
+
+(defun lambdapi--colon-indent ()
+  "Indent before colon."
+  (let ((ppss (syntax-ppss)))
+    (when (and (= 0 (nth 0 ppss)) (smie-rule-bolp))
+      '(column 0)))) ; At beginning of line if not inside parentheses
+
+(defun lambdapi--query-indent ()
+  "Indent commands that may be in proofs.
+Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
+  (save-excursion
+    (forward-line -1)
+    (back-to-indentation)
+    (cond
+     ;; Perhaps `(smie-rule-parent)' would be enough here
+     ((looking-at-p (regexp-opt (cons "proof" lambdapi--tactics)))
+      `(column . ,lambdapi-indent-basic))
+     ((looking-at-p (regexp-opt lambdapi--queries))
+      (smie-rule-parent))
+     (t '(column . 0)))))
 
 (defconst lambdapi--smie-prec
   (smie-prec2->grammar
@@ -63,7 +86,7 @@
               ("simpl")
               ("rewrite" "[" rw-patt "]")
               ("reflexivity")
-              ("focus" "NATLIT")
+              ("focus" ident)
               ("print")
               ("proofterm")
               ("why3"))
@@ -74,12 +97,12 @@
              ("compute" sterm)
              ("type" sterm)
 
-             ("set" "prover") ; no stringlit because of conflict
-             ("set" "prover_timeout" "NATLIT")
-             ("set" "verbose" "NATLIT")
+             ("set" "prover" ident) ; no stringlit because of conflict
+             ("set" "prover_timeout" ident)
+             ("set" "verbose" ident)
              ("set" "debug" ident)
-             ("set" "flag" "STRINGLIT" "on")
-             ("set" "flag" "STRINGLIT" "off"))
+             ("set" "flag" ident "on")
+             ("set" "flag" ident "off"))
 
       (prfcontent (tactic)
                   (query))
@@ -102,36 +125,17 @@
                ("open" ident)
                ("require" ident "as" ident)
 
-               ("set" "builtin" "STRINGLIT" "≔" ident)
-               ("set" "prefix" "FLOATLIT" "STRINGLIT" "≔" ident)
-               ("set" "infix" "FLOATLIT" ident "≔" ident)
-               ("set" "infix" "left" "FLOATLIT" ident "≔" ident)
-               ("set" "infix" "right" "FLOATLIT" ident "≔" ident)
+               ("set" "builtin" ident "≔" ident)
+               ("set" "prefix" ident "≔" ident)
+               ("set" "infix" ident "≔" ident)
+               ("set" "infix" "left" ident "≔" ident)
+               ("set" "infix" "right" ident "≔" ident)
                ("set" "declared" ident)))
     '((assoc ",") (assoc "in") (assoc "→")))))
 
 (defun lambdapi--smie-forward-token ()
   "Forward lexer for Dedukti3."
-  ;; Skip comments
-  (forward-comment (point-max))
-  (cond
-   ;; nat lit
-   ((looking-at lambdapi--rx-natlit)
-    (goto-char (match-end 0))
-    "NATLIT")
-   ;; float lit
-   ((looking-at lambdapi--rx-floatlit)
-    (goto-char (match-end 0))
-    "FLOATLIT")
-   ;; string lit
-   ((looking-at lambdapi--rx-stringlit)
-    (goto-char (match-end 0))
-    "STRINGLIT")
-   (t (buffer-substring-no-properties
-       (point)
-       (progn (if (zerop (skip-syntax-forward "."))
-                  (skip-syntax-forward "w_"))
-              (point))))))
+  (smie-default-forward-token))
 
 (defun lambdapi--smie-backward-token ()
   "Backward lexer for Dedukti3.
@@ -163,11 +167,11 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . ,(or "set" "compute" "type" "assert" "assertnot"))
      (lambdapi--query-indent))
 
+    (`(,_ . ,(or "≔" "," "↪" "→" ":" "≡")) (smie-rule-separator kind))
+
     (`(:list-intro . ,(or "with" "rule" "λ" "Π" "proof")) t)
     (`(:after . "proof") lambdapi-indent-basic)
     (`(:after . ,(or "rule" "with")) (* 2 lambdapi-indent-basic))
-    (`(,_ . ,(or ":" "≔")) (smie-rule-separator kind))
-    (`(,_ . ",") (smie-rule-separator kind))
     (`(:after . "in") (smie-rule-parent))
     (`(:after . ,(or "symbol" "definition" "theorem")) lambdapi-indent-basic)
     (`(:after . ,(or "simpl" "rewrite" "assume" "apply" "refine"
@@ -186,38 +190,7 @@ The default lexer is used because the syntax is primarily made of sexps."
     (`(:before . "proof") '(column . 0))
     (`(:before . "symbol") '(column . 0))
 
-    (`(:before . ,(or "with" "rule")) '(column . 0))
-    (`(,_ . "↪") (smie-rule-separator kind))))
-
-(defun lambdapi--previous-cmd ()
-  "Return the previous command used in the file."
-  (save-excursion
-    (while
-        (progn
-          (back-to-indentation)
-          (not (looking-at (regexp-opt lambdapi--cmds))))
-      (forward-line -1)))
-  (match-string 0))
-
-(defun lambdapi--colon-indent ()
-  "Indent before colon."
-  (let ((ppss (syntax-ppss)))
-    (when (and (= 0 (nth 0 ppss)) (smie-rule-bolp))
-      '(column 0)))) ; At beginning of line if not inside parentheses
-
-(defun lambdapi--query-indent ()
-  "Indent commands that may be in proofs.
-Indent by `lambdapi-indent-basic' in proofs, and 0 otherwise."
-  (save-excursion
-    (forward-line -1)
-    (back-to-indentation)
-    (cond
-     ;; Perhaps `(smie-rule-parent)' would be enough here
-     ((looking-at-p (regexp-opt (cons "proof" lambdapi--tactics)))
-      `(column . ,lambdapi-indent-basic))
-     ((looking-at-p (regexp-opt lambdapi--queries))
-      (smie-rule-parent))
-     (t '(column . 0)))))
+    (`(:before . ,(or "with" "rule")) '(column . 0))))
 
 (provide 'lambdapi-smie)
 ;;; lambdapi-smie.el ends here
