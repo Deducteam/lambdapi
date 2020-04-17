@@ -30,7 +30,7 @@ let print_term : bool -> term pp = fun lhs ->
     | Type         -> out "TYPE"
     | Symb(s)      -> print_sym oc s
     | Patt(i,n,ts) ->
-        if ts = [||] then out "&%s" n else
+        if ts = [||] then out "$%s" n else
         pp oc (Array.fold_left (fun t u -> Appl(t,u)) (Patt(i,n,[||])) ts)
     | Appl(t,u)    -> out "app(%a,%a)" pp t pp u
     | Abst(a,t)    ->
@@ -52,7 +52,7 @@ let print_rule : Format.formatter -> term -> term -> unit =
     let names = Stdlib.ref ns in
     let fn t =
       match t with
-      | Patt(_,n,_) -> Stdlib.(names := StrSet.add ("&" ^ n) !names)
+      | Patt(_,n,_) -> Stdlib.(names := StrSet.add ("$" ^ n) !names)
       | Abst(_,b) ->
         let (x, _) = Bindlib.unbind b in
         Stdlib.(names := StrSet.add (Bindlib.name_of x) !names)

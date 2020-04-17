@@ -88,11 +88,11 @@ let _ =
       | _          -> false
     in
     if not valid then
-      fatal pos "The type of [%s] is not of the form [_ ⇒ TYPE]." sym.sym_name
+      fatal pos "The type of [%s] is not of the form [_ → TYPE]." sym.sym_name
   in
-  (* The type of the builtin ["T"] should be [U ⇒ TYPE]. *)
+  (* The type of the builtin ["T"] should be [U → TYPE]. *)
   Builtin.register "T" check_t_or_p;
-  (* The type of the builtin ["P"] should be [Prop ⇒ TYPE]. *)
+  (* The type of the builtin ["P"] should be [Prop → TYPE]. *)
   Builtin.register "P" check_t_or_p;
   let get_domain_of_type s =
     match Eval.whnf [] !(s.sym_type) with
@@ -100,7 +100,7 @@ let _ =
     | _         -> assert false
   in
   let expected_eq_type pos map =
-    (* [∀ (a:U), T a ⇒ T a ⇒ Prop] *)
+    (* [Π (a:U), T a → T a → Prop] *)
     let symb_T = Builtin.get pos map "T" in
     let symb_P = Builtin.get pos map "P" in
     let term_U = lift (get_domain_of_type symb_T) in
@@ -112,7 +112,7 @@ let _ =
   in
   register_builtin "eq" expected_eq_type;
   let expected_refl_type pos map =
-    (* [∀ (a:U) (x:T a), P (eq a x x)] *)
+    (* [Π (a:U) (x:T a), P (eq a x x)] *)
     let symb_T = Builtin.get pos map "T" in
     let symb_P = Builtin.get pos map "P" in
     let symb_eq = Builtin.get pos map "eq" in
@@ -128,7 +128,7 @@ let _ =
   in
   register_builtin "refl" expected_refl_type;
   let expected_eqind_type pos map =
-    (* [∀ (a:U) (x y:T a), P (eq x y) ⇒ ∀ (p:T a⇒Prop), P (p y) ⇒ P (p x)] *)
+    (* [Π (a:U) (x y:T a), P (eq x y) → Π (p:T a→Prop), P (p y) → P (p x)] *)
     let symb_T = Builtin.get pos map "T" in
     let term_T = _Symb symb_T in
     let symb_P = Builtin.get pos map "P" in

@@ -146,12 +146,12 @@ type term =
     the RHS. If it is [Some(_)], then the variables is bound in the RHS, or it
     appears non-linearly in the LHS.
 
-    For instance, with the rule [f &X &Y &Y &Z → &X]:
-     - [&X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
+    For instance, with the rule [f $X $Y $Y $Z ↪ $X]:
+     - [$X] is represented by [Patt(Some 0, "X", [||])] since it occurs in the
        RHS of the rule (and it is actually the only one),
-     - [&Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than
+     - [$Y] is represented by [Patt(Some 1, "Y", [||])] at it occurs more than
        once in the LHS (the rule is non-linear in this variable),
-     - [&Z] is represented by [Patt(None, "Z", [||])] since it is only appears
+     - [$Z] is represented by [Patt(None, "Z", [||])] since it is only appears
        once in the LHS, and it is not used in the RHS. Note that wildcards (in
        the concrete syntax) are represented in the same way, and with a unique
        name (in the rule) that is generated automatically.

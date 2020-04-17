@@ -8,7 +8,7 @@ open Basics
 
 (** The head-structure of a term t is:
 - λx:_,h if t=λx:a,u and h is the head-structure of u
-- ∀ if t=∀x:a,u
+- Π if t=Πx:a,u
 - h _ if t=uv and h is the head-structure of u
 - ? if t=?M[t1,..,tn] (and ?M is not instanciated)
 - t itself otherwise (TYPE, KIND, x, f)
