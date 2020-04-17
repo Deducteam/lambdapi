@@ -129,7 +129,8 @@
     "STRINGLIT")
    (t (buffer-substring-no-properties
        (point)
-       (progn (skip-syntax-forward "w_")
+       (progn (if (zerop (skip-syntax-forward "."))
+                  (skip-syntax-forward "w_"))
               (point))))))
 
 (defun lambdapi--smie-backward-token ()
